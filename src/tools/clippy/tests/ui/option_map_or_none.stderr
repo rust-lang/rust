@@ -2,7 +2,7 @@ error: called `map_or(None, ..)` on an `Option` value
   --> $DIR/option_map_or_none.rs:10:26
    |
 LL |     let _: Option<i32> = opt.map_or(None, |x| Some(x + 1));
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `map` instead: `opt.map(|x| x + 1)`
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `map`: `opt.map(|x| x + 1)`
    |
    = note: `-D clippy::option-map-or-none` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_map_or_none)]`
@@ -14,13 +14,13 @@ LL |       let _: Option<i32> = opt.map_or(None, |x| {
    |  __________________________^
 LL | |                         Some(x + 1)
 LL | |                        });
-   | |_________________________^ help: try using `map` instead: `opt.map(|x| x + 1)`
+   | |_________________________^ help: consider using `map`: `opt.map(|x| x + 1)`
 
 error: called `map_or(None, ..)` on an `Option` value
   --> $DIR/option_map_or_none.rs:17:26
    |
 LL |     let _: Option<i32> = opt.map_or(None, bar);
-   |                          ^^^^^^^^^^^^^^^^^^^^^ help: try using `and_then` instead: `opt.and_then(bar)`
+   |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider using `and_then`: `opt.and_then(bar)`
 
 error: called `map_or(None, ..)` on an `Option` value
   --> $DIR/option_map_or_none.rs:18:26
@@ -33,7 +33,7 @@ LL | |         Some(offset + height)
 LL | |     });
    | |______^
    |
-help: try using `and_then` instead
+help: consider using `and_then`
    |
 LL ~     let _: Option<i32> = opt.and_then(|x| {
 LL +         let offset = 0;
@@ -46,7 +46,7 @@ error: called `map_or(None, Some)` on a `Result` value
   --> $DIR/option_map_or_none.rs:25:26
    |
 LL |     let _: Option<i32> = r.map_or(None, Some);
-   |                          ^^^^^^^^^^^^^^^^^^^^ help: try using `ok` instead: `r.ok()`
+   |                          ^^^^^^^^^^^^^^^^^^^^ help: consider using `ok`: `r.ok()`
    |
    = note: `-D clippy::result-map-or-into-option` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::result_map_or_into_option)]`

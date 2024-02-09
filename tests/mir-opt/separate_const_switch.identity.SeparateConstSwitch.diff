@@ -66,7 +66,7 @@
           _5 = ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
           StorageLive(_6);
           _6 = _5;
-          _12 = move ((_5 as Err).0: i32);
+          _12 = ((_5 as Err).0: i32);
           _0 = Result::<i32, i32>::Err(_12);
           StorageDead(_6);
           StorageDead(_2);
@@ -83,7 +83,7 @@
       }
   
       bb4: {
-          _10 = move ((_1 as Err).0: i32);
+          _10 = ((_1 as Err).0: i32);
           StorageLive(_11);
           _11 = Result::<Infallible, i32>::Err(_10);
           _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _11);
@@ -92,7 +92,7 @@
       }
   
       bb5: {
-          _9 = move ((_1 as Ok).0: i32);
+          _9 = ((_1 as Ok).0: i32);
           _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(_9);
           goto -> bb3;
       }

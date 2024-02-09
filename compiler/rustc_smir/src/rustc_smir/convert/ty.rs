@@ -223,7 +223,6 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 abi::Abi::PtxKernel => Abi::PtxKernel,
                 abi::Abi::Msp430Interrupt => Abi::Msp430Interrupt,
                 abi::Abi::X86Interrupt => Abi::X86Interrupt,
-                abi::Abi::AmdGpuKernel => Abi::AmdGpuKernel,
                 abi::Abi::EfiApi => Abi::EfiApi,
                 abi::Abi::AvrInterrupt => Abi::AvrInterrupt,
                 abi::Abi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
@@ -384,6 +383,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 tables.closure_def(*def_id),
                 generic_args.stable(tables),
             )),
+            ty::CoroutineClosure(..) => todo!("FIXME(async_closures): Lower these to SMIR"),
             ty::Coroutine(def_id, generic_args) => TyKind::RigidTy(RigidTy::Coroutine(
                 tables.coroutine_def(*def_id),
                 generic_args.stable(tables),
@@ -799,6 +799,8 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             | ty::InstanceDef::ReifyShim(..)
             | ty::InstanceDef::FnPtrAddrShim(..)
             | ty::InstanceDef::ClosureOnceShim { .. }
+            | ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
+            | ty::InstanceDef::CoroutineKindShim { .. }
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::DropGlue(..)
             | ty::InstanceDef::CloneShim(..)

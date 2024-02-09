@@ -152,26 +152,22 @@ pub(super) fn check_fn<'a, 'tcx>(
 }
 
 fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
+    let span = tcx.def_span(fn_id);
+
     let DefKind::Fn = tcx.def_kind(fn_id) else {
-        let span = tcx.def_span(fn_id);
         tcx.dcx().span_err(span, "should be a function");
         return;
     };
 
     let generic_counts = tcx.generics_of(fn_id).own_counts();
     if generic_counts.types != 0 {
-        let span = tcx.def_span(fn_id);
         tcx.dcx().span_err(span, "should have no type parameters");
     }
     if generic_counts.consts != 0 {
-        let span = tcx.def_span(fn_id);
         tcx.dcx().span_err(span, "should have no const parameters");
     }
 
-    let Some(panic_info_did) = tcx.lang_items().panic_info() else {
-        tcx.dcx().err("language item required, but not found: `panic_info`");
-        return;
-    };
+    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
@@ -203,11 +199,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
 
     let _ = check_function_signature(
         tcx,
-        ObligationCause::new(
-            tcx.def_span(fn_id),
-            fn_id,
-            ObligationCauseCode::LangFunctionType(sym::panic_impl),
-        ),
+        ObligationCause::new(span, fn_id, ObligationCauseCode::LangFunctionType(sym::panic_impl)),
         fn_id.into(),
         expected_sig,
     );

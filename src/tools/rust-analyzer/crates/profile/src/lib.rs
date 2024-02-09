@@ -2,17 +2,14 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod stop_watch;
-mod memory_usage;
 #[cfg(feature = "cpu_profiler")]
 mod google_cpu_profiler;
-mod hprof;
-mod tree;
+mod memory_usage;
+mod stop_watch;
 
 use std::cell::RefCell;
 
 pub use crate::{
-    hprof::{heartbeat, heartbeat_span, init, init_from, span},
     memory_usage::{Bytes, MemoryUsage},
     stop_watch::{StopWatch, StopWatchSpan},
 };

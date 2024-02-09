@@ -25,7 +25,7 @@ pub(crate) fn render_fn(
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> Builder {
-    let _p = profile::span("render_fn");
+    let _p = tracing::span!(tracing::Level::INFO, "render_fn").entered();
     render(ctx, local_name, func, FuncKind::Function(path_ctx))
 }
 
@@ -36,7 +36,7 @@ pub(crate) fn render_method(
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> Builder {
-    let _p = profile::span("render_method");
+    let _p = tracing::span!(tracing::Level::INFO, "render_method").entered();
     render(ctx, local_name, func, FuncKind::Method(dot_access, receiver))
 }
 

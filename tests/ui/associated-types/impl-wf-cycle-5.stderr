@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
-  --> $DIR/impl-wf-cycle-5.rs:20:1
+  --> $DIR/impl-wf-cycle-5.rs:22:1
    |
 LL | / impl<T> Grault for (T,)
 LL | |
@@ -12,7 +12,7 @@ LL |       type A = ();
    |       ------ associated type `<(T,) as Grault>::A` is specified here
    |
 note: required for `(T,)` to implement `Grault`
-  --> $DIR/impl-wf-cycle-5.rs:20:9
+  --> $DIR/impl-wf-cycle-5.rs:22:9
    |
 LL | impl<T> Grault for (T,)
    |         ^^^^^^     ^^^^

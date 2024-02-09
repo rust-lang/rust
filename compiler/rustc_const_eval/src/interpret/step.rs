@@ -246,13 +246,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     );
                 }
                 let val = match null_op {
-                    mir::NullOp::SizeOf => layout.size.bytes(),
-                    mir::NullOp::AlignOf => layout.align.abi.bytes(),
+                    mir::NullOp::SizeOf => {
+                        let val = layout.size.bytes();
+                        Scalar::from_target_usize(val, self)
+                    }
+                    mir::NullOp::AlignOf => {
+                        let val = layout.align.abi.bytes();
+                        Scalar::from_target_usize(val, self)
+                    }
                     mir::NullOp::OffsetOf(fields) => {
-                        layout.offset_of_subfield(self, fields.iter()).bytes()
+                        let val = layout.offset_of_subfield(self, fields.iter()).bytes();
+                        Scalar::from_target_usize(val, self)
+                    }
+                    mir::NullOp::DebugAssertions => {
+                        // The checks hidden behind this are always better done by the interpreter
+                        // itself, because it knows the runtime state better.
+                        Scalar::from_bool(false)
                     }
                 };
-                self.write_scalar(Scalar::from_target_usize(val, self), &dest)?;
+                self.write_scalar(val, &dest)?;
             }
 
             ShallowInitBox(ref operand, _) => {

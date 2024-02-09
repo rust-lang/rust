@@ -4,7 +4,7 @@
 
 #![allow(unused_variables)] // unused foobar_immut + foobar_mut
 trait FooBar {
-    fn dummy(&self) { }
+    fn dummy(&self) { } //~ WARN method `dummy` is never used
 }
 struct Bar(#[allow(dead_code)] i32);
 struct Foo { bar: Bar }

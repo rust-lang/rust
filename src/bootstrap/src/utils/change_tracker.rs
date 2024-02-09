@@ -2,6 +2,9 @@
 //! with the goal of keeping developers synchronized with important modifications in
 //! the bootstrap.
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Clone, Debug)]
 pub struct ChangeInfo {
     /// Represents the ID of PR caused major change on bootstrap.

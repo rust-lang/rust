@@ -131,7 +131,7 @@ impl<'tcx> IfThisChanged<'tcx> {
                     None => DepNode::from_def_path_hash(
                         self.tcx,
                         def_path_hash,
-                        dep_kinds::hir_owner_nodes,
+                        dep_kinds::opt_hir_owner_nodes,
                     ),
                     Some(n) => {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {

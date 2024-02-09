@@ -958,23 +958,35 @@ fn test_append() {
 #[test]
 fn test_split_off() {
     let mut vec = vec![1, 2, 3, 4, 5, 6];
+    let orig_ptr = vec.as_ptr();
     let orig_capacity = vec.capacity();
-    let vec2 = vec.split_off(4);
+
+    let split_off = vec.split_off(4);
     assert_eq!(vec, [1, 2, 3, 4]);
-    assert_eq!(vec2, [5, 6]);
+    assert_eq!(split_off, [5, 6]);
     assert_eq!(vec.capacity(), orig_capacity);
+    assert_eq!(vec.as_ptr(), orig_ptr);
 }
 
 #[test]
 fn test_split_off_take_all() {
-    let mut vec = vec![1, 2, 3, 4, 5, 6];
+    // Allocate enough capacity that we can tell whether the split-off vector's
+    // capacity is based on its size, or (incorrectly) on the original capacity.
+    let mut vec = Vec::with_capacity(1000);
+    vec.extend([1, 2, 3, 4, 5, 6]);
     let orig_ptr = vec.as_ptr();
     let orig_capacity = vec.capacity();
-    let vec2 = vec.split_off(0);
+
+    let split_off = vec.split_off(0);
     assert_eq!(vec, []);
-    assert_eq!(vec2, [1, 2, 3, 4, 5, 6]);
+    assert_eq!(split_off, [1, 2, 3, 4, 5, 6]);
     assert_eq!(vec.capacity(), orig_capacity);
-    assert_eq!(vec2.as_ptr(), orig_ptr);
+    assert_eq!(vec.as_ptr(), orig_ptr);
+
+    // The split-off vector should be newly-allocated, and should not have
+    // stolen the original vector's allocation.
+    assert!(split_off.capacity() < orig_capacity);
+    assert_ne!(split_off.as_ptr(), orig_ptr);
 }
 
 #[test]

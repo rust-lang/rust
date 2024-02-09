@@ -5,7 +5,7 @@ LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error[E0736]: cannot use `#[track_caller]` with `#[naked]`
-  --> $DIR/error-with-naked.rs:16:5
+  --> $DIR/error-with-naked.rs:18:5
    |
 LL |     #[track_caller]
    |     ^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/error-with-naked.rs:16:5
+  --> $DIR/error-with-naked.rs:18:5
    |
 LL |     #[track_caller]
    |     ^^^^^^^^^^^^^^^

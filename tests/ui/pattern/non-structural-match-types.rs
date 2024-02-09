@@ -1,6 +1,5 @@
 // edition:2021
 
-#![allow(incomplete_features)]
 #![allow(unreachable_code)]
 #![feature(const_async_blocks)]
 #![feature(inline_const_pat)]

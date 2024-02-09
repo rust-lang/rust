@@ -40,7 +40,7 @@ error: called `is_some()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some.rs:42:20
    |
 LL |     let _ = (0..1).find(some_closure).is_some();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `any()` instead: `any(some_closure)`
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(some_closure)`
 
 error: called `is_none()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some.rs:52:13
@@ -82,7 +82,7 @@ error: called `is_none()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some.rs:79:13
    |
 LL |     let _ = (0..1).find(some_closure).is_none();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!(0..1).any(some_closure)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!(0..1).any(some_closure)`
 
 error: aborting due to 8 previous errors
 

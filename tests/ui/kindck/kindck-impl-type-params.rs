@@ -28,6 +28,7 @@ fn g<T>(val: T) {
 fn foo<'a>() {
     let t: S<&'a isize> = S(marker::PhantomData);
     let a = &t as &dyn Gettable<&'a isize>;
+    //~^ ERROR: lifetime may not live long enough
 }
 
 fn foo2<'a>() {

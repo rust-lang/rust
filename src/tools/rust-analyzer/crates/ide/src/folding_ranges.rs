@@ -494,7 +494,7 @@ fn main() <fold block>{
                         2,
                         3,
                     ]</fold>,
-                    strustS => <fold matcharm>StructS <fold block>{
+                    structS => <fold matcharm>StructS <fold block>{
                         a: 31,
                     }</fold></fold>,
                 }</fold>

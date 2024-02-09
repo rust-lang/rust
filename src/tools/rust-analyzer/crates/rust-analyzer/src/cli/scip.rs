@@ -143,11 +143,14 @@ impl flags::Scip {
                             .map(|hover| hover.markup.as_str())
                             .filter(|it| !it.is_empty())
                             .map(|it| vec![it.to_owned()]);
+                        let position_encoding =
+                            scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
                         let signature_documentation =
                             token.signature.clone().map(|text| scip_types::Document {
                                 relative_path: relative_path.clone(),
                                 language: "rust".to_string(),
                                 text,
+                                position_encoding,
                                 ..Default::default()
                             });
                         let symbol_info = scip_types::SymbolInformation {
@@ -181,13 +184,16 @@ impl flags::Scip {
                 continue;
             }
 
+            let position_encoding =
+                scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
             documents.push(scip_types::Document {
                 relative_path,
                 language: "rust".to_string(),
                 occurrences,
                 symbols,
-                special_fields: Default::default(),
                 text: String::new(),
+                position_encoding,
+                special_fields: Default::default(),
             });
         }
 

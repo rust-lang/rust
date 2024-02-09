@@ -1,5 +1,3 @@
-#![allow(rustc::untranslatable_diagnostic, rustc::diagnostic_outside_of_impl)]
-
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::query::Providers;

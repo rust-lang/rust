@@ -26,6 +26,7 @@ use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
 use std::any::Any;
+use std::mem;
 
 use super::{Decodable, DecodeContext, DecodeIterator};
 
@@ -576,12 +577,24 @@ impl CStore {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
     }
 
+    pub fn set_used_recursively(&mut self, cnum: CrateNum) {
+        let cmeta = self.get_crate_data_mut(cnum);
+        if !cmeta.used {
+            cmeta.used = true;
+            let dependencies = mem::take(&mut cmeta.dependencies);
+            for &dep_cnum in &dependencies {
+                self.set_used_recursively(dep_cnum);
+            }
+            self.get_crate_data_mut(cnum).dependencies = dependencies;
+        }
+    }
+
     pub(crate) fn update_extern_crate(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
         let cmeta = self.get_crate_data_mut(cnum);
         if cmeta.update_extern_crate(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
-            let dependencies = std::mem::take(&mut cmeta.dependencies);
+            let dependencies = mem::take(&mut cmeta.dependencies);
             for &dep_cnum in &dependencies {
                 self.update_extern_crate(dep_cnum, extern_crate);
             }

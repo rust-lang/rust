@@ -1,4 +1,4 @@
-#![feature(const_mut_refs)]
+#![feature(const_mut_refs, const_intrinsic_copy)]
 
 
 const MISALIGNED_LOAD: () = unsafe {

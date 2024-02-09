@@ -1,11 +1,11 @@
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/E0392.rs:1:10
    |
 LL | enum Foo<T> { Bar }
-   |          ^ unused parameter
+   |          ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
 error: aborting due to 1 previous error
 

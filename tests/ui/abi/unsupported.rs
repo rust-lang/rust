@@ -19,7 +19,6 @@
     abi_ptx,
     abi_msp430_interrupt,
     abi_avr_interrupt,
-    abi_amdgpu_kernel,
     wasm_abi,
     abi_x86_interrupt,
     abi_riscv_interrupt
@@ -28,8 +27,6 @@
 trait Sized {}
 
 extern "ptx-kernel" fn ptx() {}
-//~^ ERROR is not a supported ABI
-extern "amdgpu-kernel" fn amdgpu() {}
 //~^ ERROR is not a supported ABI
 extern "wasm" fn wasm() {}
 //~^ ERROR is not a supported ABI

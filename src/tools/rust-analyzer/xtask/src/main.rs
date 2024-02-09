@@ -12,11 +12,11 @@
 
 mod flags;
 
-mod install;
-mod release;
 mod dist;
-mod publish;
+mod install;
 mod metrics;
+mod publish;
+mod release;
 
 use anyhow::bail;
 use std::{

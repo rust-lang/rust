@@ -94,7 +94,7 @@ impl<'tcx> SpanMapVisitor<'tcx> {
 
     /// Used to generate links on items' definition to go to their documentation page.
     pub(crate) fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
-        if let Some(Node::Item(item)) = self.tcx.opt_hir_node(hir_id) {
+        if let Node::Item(item) = self.tcx.hir_node(hir_id) {
             if let Some(span) = self.tcx.def_ident_span(item.owner_id) {
                 let cspan = clean::Span::new(span);
                 // If the span isn't from the current crate, we ignore it.
@@ -199,7 +199,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         if !span.overlaps(m.spans.inner_span) {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
-            if let Some(Node::Item(item)) = self.tcx.opt_hir_node(id) {
+            if let Node::Item(item) = self.tcx.hir_node(id) {
                 self.matches.insert(
                     item.ident.span,
                     LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),

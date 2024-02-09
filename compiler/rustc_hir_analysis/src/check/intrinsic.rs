@@ -8,7 +8,7 @@ use crate::errors::{
 };
 
 use hir::def_id::DefId;
-use rustc_errors::{struct_span_code_err, DiagnosticMessage};
+use rustc_errors::{codes::*, struct_span_code_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -112,7 +112,8 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
         | sym::forget
         | sym::black_box
         | sym::variant_count
-        | sym::ptr_mask => hir::Unsafety::Normal,
+        | sym::ptr_mask
+        | sym::debug_assertions => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     };
 
@@ -460,6 +461,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             sym::vtable_size | sym::vtable_align => {
                 (0, vec![Ty::new_imm_ptr(tcx, Ty::new_unit(tcx))], tcx.types.usize)
             }
+
+            sym::debug_assertions => (0, Vec::new(), tcx.types.bool),
 
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });

@@ -72,7 +72,7 @@ fn expand(
     mut fake_ident_token: SyntaxToken,
     relative_offset: TextSize,
 ) -> ExpansionResult {
-    let _p = profile::span("CompletionContext::expand");
+    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::expand").entered();
     let mut derive_ctx = None;
 
     'expansion: loop {
@@ -211,7 +211,7 @@ fn analyze(
     original_token: &SyntaxToken,
     self_token: &SyntaxToken,
 ) -> Option<(CompletionAnalysis, (Option<Type>, Option<ast::NameOrNameRef>), QualifierCtx)> {
-    let _p = profile::span("CompletionContext::analyze");
+    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::analyze").entered();
     let ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx } =
         expansion_result;
 
@@ -1267,8 +1267,7 @@ fn pattern_context_for(
     pat
         .syntax()
         .ancestors()
-        .skip_while(|it| ast::Pat::can_cast(it.kind()))
-        .next()
+        .find(|it| !ast::Pat::can_cast(it.kind()))
         .map_or((PatternRefutability::Irrefutable, false), |node| {
             let refutability = match_ast! {
                 match node {

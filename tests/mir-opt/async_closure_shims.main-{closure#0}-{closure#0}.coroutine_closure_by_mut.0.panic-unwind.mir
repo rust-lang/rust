@@ -1,0 +1,16 @@
+// MIR for `main::{closure#0}::{closure#0}` 0 coroutine_closure_by_mut
+
+fn main::{closure#0}::{closure#0}(_1: &mut {coroutine-closure@$DIR/async_closure_shims.rs:39:33: 39:52}, _2: i32) -> {async closure body@$DIR/async_closure_shims.rs:39:53: 42:10} {
+    debug a => _2;
+    debug b => ((*_1).0: i32);
+    let mut _0: {async closure body@$DIR/async_closure_shims.rs:39:53: 42:10};
+    let mut _3: &i32;
+
+    bb0: {
+        StorageLive(_3);
+        _3 = &((*_1).0: i32);
+        _0 = {coroutine@$DIR/async_closure_shims.rs:39:53: 42:10 (#0)} { a: _2, b: move _3 };
+        StorageDead(_3);
+        return;
+    }
+}

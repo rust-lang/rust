@@ -43,8 +43,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.opt_hir_node(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
+        match tcx.hir_node(hir_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }) => {
                 generics.params.is_empty().not().then_some(generics.span)
             }
             _ => {
@@ -58,8 +58,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.opt_hir_node(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
+        match tcx.hir_node(hir_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. }) => {
                 Some(generics.where_clause_span)
             }
             _ => {
@@ -80,8 +80,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.opt_hir_node(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(fn_sig, _, _), .. })) => {
+        match tcx.hir_node(hir_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn(fn_sig, _, _), .. }) => {
                 Some(fn_sig.decl.output.span())
             }
             _ => {
@@ -202,7 +202,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_t = tcx.type_of(start_def_id).instantiate_identity();
     match start_t.kind() {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.opt_hir_node(start_id) {
+            if let Node::Item(it) = tcx.hir_node(start_id) {
                 if let hir::ItemKind::Fn(sig, generics, _) = &it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {

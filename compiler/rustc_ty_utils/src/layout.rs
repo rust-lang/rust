@@ -328,6 +328,17 @@ fn layout_of_uncached<'tcx>(
             )?
         }
 
+        ty::CoroutineClosure(_, args) => {
+            let tys = args.as_coroutine_closure().upvar_tys();
+            univariant(
+                &tys.iter()
+                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
+                    .try_collect::<IndexVec<_, _>>()?,
+                &ReprOptions::default(),
+                StructKind::AlwaysSized,
+            )?
+        }
+
         ty::Tuple(tys) => {
             let kind =
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };

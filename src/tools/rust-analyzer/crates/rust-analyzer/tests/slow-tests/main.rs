@@ -31,15 +31,13 @@ use lsp_types::{
 };
 use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
+use stdx::format_to_acc;
 use test_utils::skip_slow_tests;
 
 use crate::{
     support::{project, Project},
     testdir::TestDir,
 };
-
-const PROFILE: &str = "";
-// const PROFILE: &'static str = "*@3>100";
 
 #[test]
 fn completes_items_from_standard_library() {
@@ -594,8 +592,10 @@ fn diagnostics_dont_block_typing() {
         return;
     }
 
-    let librs: String = (0..10).map(|i| format!("mod m{i};")).collect();
-    let libs: String = (0..10).map(|i| format!("//- /src/m{i}.rs\nfn foo() {{}}\n\n")).collect();
+    let librs: String = (0..10).fold(String::new(), |mut acc, i| format_to_acc!(acc, "mod m{i};"));
+    let libs: String = (0..10).fold(String::new(), |mut acc, i| {
+        format_to_acc!(acc, "//- /src/m{i}.rs\nfn foo() {{}}\n\n")
+    });
     let server = Project::with_fixture(&format!(
         r#"
 //- /Cargo.toml

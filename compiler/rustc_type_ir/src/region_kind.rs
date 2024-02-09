@@ -163,8 +163,7 @@ pub enum RegionKind<I: Interner> {
     /// A placeholder region -- the higher-ranked version of `ReLateParam`.
     /// Should not exist outside of type inference.
     ///
-    /// Used when instantiating a `forall` binder via
-    /// `infcx.instantiate_binder_with_placeholders`.
+    /// Used when instantiating a `forall` binder via `infcx.enter_forall`.
     RePlaceholder(I::PlaceholderRegion),
 
     /// Erased region, used by trait selection, in MIR and during codegen.

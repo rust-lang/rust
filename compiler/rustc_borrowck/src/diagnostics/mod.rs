@@ -614,7 +614,7 @@ impl UseSpans<'_> {
                         PartialAssignment => AssignPartInCoroutine { path_span },
                     });
                 }
-                hir::ClosureKind::Closure => {
+                hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                     err.subdiagnostic(match action {
                         Borrow => BorrowInClosure { path_span },
                         MatchOn | Use => UseInClosure { path_span },
@@ -1253,7 +1253,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     hir::ClosureKind::Coroutine(_) => {
                         CaptureVarCause::PartialMoveUseInCoroutine { var_span, is_partial }
                     }
-                    hir::ClosureKind::Closure => {
+                    hir::ClosureKind::Closure | hir::ClosureKind::CoroutineClosure(_) => {
                         CaptureVarCause::PartialMoveUseInClosure { var_span, is_partial }
                     }
                 })

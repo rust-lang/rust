@@ -1,0 +1,12 @@
+warning: method `get` is never used
+  --> $DIR/drop-struct-as-object.rs:15:8
+   |
+LL | trait Dummy {
+   |       ----- method in this trait
+LL |     fn get(&self) -> usize;
+   |        ^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

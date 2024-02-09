@@ -21,6 +21,9 @@ macro_rules! global_asm {
 #[lang = "sized"]
 trait Sized {}
 
+#[lang = "copy"]
+trait Copy {}
+
 fn main() {
     let mut foo = 0;
     unsafe {

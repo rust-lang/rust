@@ -5,16 +5,15 @@ use clippy_utils::visitors::for_each_expr_with_closures;
 use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
+use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     BlockCheckMode, Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node,
-    PatKind, QPath,
+    PatKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::associated_body;
-use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
 use rustc_session::impl_lint_pass;
@@ -234,12 +233,29 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         }
     }
 
-    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
-        cx.tcx.hir().visit_all_item_likes_in_crate(&mut FnNeedsMutVisitor {
-            cx,
-            used_fn_def_ids: &mut self.used_fn_def_ids,
-        });
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        // #11182; do not lint if mutability is required elsewhere
+        if let ExprKind::Path(..) = expr.kind
+            && let Some(parent) = get_parent_node(cx.tcx, expr.hir_id)
+            && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(expr).kind()
+            && let Some(def_id) = def_id.as_local()
+        {
+            if let Node::Expr(e) = parent
+                && let ExprKind::Call(call, _) = e.kind
+                && call.hir_id == expr.hir_id
+            {
+                return;
+            }
 
+            // We don't need to check each argument individually as you cannot coerce a function
+            // taking `&mut` -> `&`, for some reason, so if we've gotten this far we know it's
+            // passed as a `fn`-like argument (or is unified) and should ignore every "unused"
+            // argument entirely
+            self.used_fn_def_ids.insert(def_id);
+        }
+    }
+
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         for (fn_def_id, unused) in self
             .fn_def_ids_to_maybe_unused_mut
             .iter()
@@ -498,51 +514,6 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
             if self.is_in_unsafe_block(id) {
                 self.add_mutably_used_var(*vid);
             }
-        }
-    }
-}
-
-/// A final pass to check for paths referencing this function that require the argument to be
-/// `&mut`, basically if the function is ever used as a `fn`-like argument.
-struct FnNeedsMutVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    used_fn_def_ids: &'a mut FxHashSet<LocalDefId>,
-}
-
-impl<'tcx> Visitor<'tcx> for FnNeedsMutVisitor<'_, 'tcx> {
-    type NestedFilter = OnlyBodies;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
-    }
-
-    fn visit_qpath(&mut self, qpath: &'tcx QPath<'tcx>, hir_id: HirId, _: Span) {
-        walk_qpath(self, qpath, hir_id);
-
-        let Self { cx, used_fn_def_ids } = self;
-
-        // #11182; do not lint if mutability is required elsewhere
-        if let Node::Expr(expr) = cx.tcx.hir_node(hir_id)
-            && let Some(parent) = get_parent_node(cx.tcx, expr.hir_id)
-            && let ty::FnDef(def_id, _) = cx
-                .tcx
-                .typeck(cx.tcx.hir().enclosing_body_owner(hir_id))
-                .expr_ty(expr)
-                .kind()
-            && let Some(def_id) = def_id.as_local()
-        {
-            if let Node::Expr(e) = parent
-                && let ExprKind::Call(call, _) = e.kind
-                && call.hir_id == expr.hir_id
-            {
-                return;
-            }
-
-            // We don't need to check each argument individually as you cannot coerce a function
-            // taking `&mut` -> `&`, for some reason, so if we've gotten this far we know it's
-            // passed as a `fn`-like argument (or is unified) and should ignore every "unused"
-            // argument entirely
-            used_fn_def_ids.insert(def_id);
         }
     }
 }

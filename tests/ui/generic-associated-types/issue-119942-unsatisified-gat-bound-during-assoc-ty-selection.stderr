@@ -19,16 +19,10 @@ error[E0599]: the size for values of type `Node<i32, RcFamily>` cannot be known 
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:31:35
    |
 LL | enum Node<T, P: PointerFamily> {
-   | ------------------------------
-   | |
-   | variant or associated item `new` not found for this enum
-   | doesn't satisfy `Node<i32, RcFamily>: Sized`
+   | ------------------------------ variant or associated item `new` not found for this enum because it doesn't satisfy `Node<i32, RcFamily>: Sized`
 ...
 LL |     let mut list = RcNode::<i32>::new();
    |                                   ^^^ doesn't have a size known at compile-time
-  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
-   |
-   = note: doesn't satisfy `_: Sized`
    |
 note: trait bound `Node<i32, RcFamily>: Sized` was not satisfied
   --> $DIR/issue-119942-unsatisified-gat-bound-during-assoc-ty-selection.rs:4:18

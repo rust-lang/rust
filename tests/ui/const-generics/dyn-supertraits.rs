@@ -4,7 +4,7 @@ trait Foo<const N: usize> {
     fn myfun(&self) -> usize;
 }
 trait Bar<const N: usize> : Foo<N> {}
-trait Baz: Foo<3> {}
+trait Baz: Foo<3> {} //~ WARN trait `Baz` is never used
 
 struct FooType<const N: usize>;
 struct BarType<const N: usize>;
@@ -23,10 +23,10 @@ impl Foo<3> for BazType {
 impl Baz for BazType {}
 
 trait Foz {}
-trait Boz: Foo<3> + Foz {}
+trait Boz: Foo<3> + Foz {} //~ WARN trait `Boz` is never used
 trait Bok<const N: usize>: Foo<N> + Foz {}
 
-struct FozType;
+struct FozType; //~ WARN struct `FozType` is never constructed
 struct BozType;
 struct BokType<const N: usize>;
 

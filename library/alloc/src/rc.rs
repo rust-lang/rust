@@ -939,8 +939,11 @@ impl<T, A: Allocator> Rc<T, A> {
     /// it is guaranteed that exactly one of the calls returns the inner value.
     /// This means in particular that the inner value is not dropped.
     ///
-    /// This is equivalent to `Rc::try_unwrap(this).ok()`. (Note that these are not equivalent for
-    /// [`Arc`](crate::sync::Arc), due to race conditions that do not apply to `Rc`.)
+    /// [`Rc::try_unwrap`] is conceptually similar to `Rc::into_inner`.
+    /// And while they are meant for different use-cases, `Rc::into_inner(this)`
+    /// is in fact equivalent to <code>[Rc::try_unwrap]\(this).[ok][Result::ok]()</code>.
+    /// (Note that the same kind of equivalence does **not** hold true for
+    /// [`Arc`](crate::sync::Arc), due to race conditions that do not apply to `Rc`!)
     #[inline]
     #[stable(feature = "rc_into_inner", since = "1.70.0")]
     pub fn into_inner(this: Self) -> Option<T> {

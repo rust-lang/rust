@@ -32,14 +32,6 @@ LL |         MyTrait::foo(&self)
    |
    = help: the trait `MyTrait` is implemented for `Outer`
 
-error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
-  --> $DIR/cycle-effective-visibilities-during-object-safety.rs:20:9
-   |
-LL |         MyTrait::foo(&self)
-   |         ^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
-   |
-   = help: the trait `MyTrait` is implemented for `Outer`
-
 error[E0038]: the trait `MyTrait` cannot be made into an object
   --> $DIR/cycle-effective-visibilities-during-object-safety.rs:16:6
    |
@@ -72,7 +64,7 @@ LL |     fn foo(&self) -> impl Marker;
    = help: consider moving `foo` to another trait
    = help: only type `Outer` implements the trait, consider using it directly instead
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0038, E0277.
 For more information about an error, try `rustc --explain E0038`.

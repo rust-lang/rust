@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/issue-14589.rs:22:16
+   |
+LL | trait Foo { fn dummy(&self) { }}
+   |       ---      ^^^^^
+   |       |
+   |       method in this trait
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

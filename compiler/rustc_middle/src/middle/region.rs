@@ -221,9 +221,6 @@ pub struct ScopeTree {
     /// variable is declared.
     var_map: FxIndexMap<hir::ItemLocalId, Scope>,
 
-    /// Maps from a `NodeId` to the associated destruction scope (if any).
-    destruction_scopes: FxIndexMap<hir::ItemLocalId, Scope>,
-
     /// Identifies expressions which, if captured into a temporary, ought to
     /// have a temporary whose lifetime extends to the end of the enclosing *block*,
     /// and not the enclosing *statement*. Expressions that are not present in this
@@ -335,11 +332,6 @@ impl ScopeTree {
         if let Some(p) = parent {
             let prev = self.parent_map.insert(child, p);
             assert!(prev.is_none());
-        }
-
-        // Record the destruction scopes for later so we can query them.
-        if let ScopeData::Destruction = child.data {
-            self.destruction_scopes.insert(child.item_local_id(), child);
         }
     }
 

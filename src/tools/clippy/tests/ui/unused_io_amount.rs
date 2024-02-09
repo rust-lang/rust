@@ -1,4 +1,5 @@
 #![allow(dead_code, clippy::needless_pass_by_ref_mut)]
+#![allow(clippy::redundant_pattern_matching)]
 #![warn(clippy::unused_io_amount)]
 
 extern crate futures;
@@ -140,6 +141,92 @@ async fn undetected_bad_async_write<W: AsyncWrite + Unpin>(w: &mut W) {
     // only common patterns".)
     let future = w.write(b"Hello world");
     future.await.unwrap();
+}
+
+fn match_okay_underscore<T: io::Read + io::Write>(s: &mut T) {
+    match s.write(b"test") {
+        //~^ ERROR: written amount is not handled
+        Ok(_) => todo!(),
+        //~^ NOTE: the result is consumed here, but the amount of I/O bytes remains unhandled
+        Err(_) => todo!(),
+    };
+
+    let mut buf = [0u8; 4];
+    match s.read(&mut buf) {
+        //~^ ERROR: read amount is not handled
+        Ok(_) => todo!(),
+        //~^ NOTE: the result is consumed here, but the amount of I/O bytes remains unhandled
+        Err(_) => todo!(),
+    }
+}
+
+fn match_okay_underscore_read_expr<T: io::Read + io::Write>(s: &mut T) {
+    match s.read(&mut [0u8; 4]) {
+        //~^ ERROR: read amount is not handled
+        Ok(_) => todo!(),
+        //~^ NOTE: the result is consumed here, but the amount of I/O bytes remains unhandled
+        Err(_) => todo!(),
+    }
+}
+
+fn match_okay_underscore_write_expr<T: io::Read + io::Write>(s: &mut T) {
+    match s.write(b"test") {
+        //~^ ERROR: written amount is not handled
+        Ok(_) => todo!(),
+        //~^ NOTE: the result is consumed here, but the amount of I/O bytes remains unhandled
+        Err(_) => todo!(),
+    }
+}
+
+fn returned_value_should_not_lint<T: io::Read + io::Write>(s: &mut T) -> Result<usize, std::io::Error> {
+    s.write(b"test")
+}
+
+fn if_okay_underscore_read_expr<T: io::Read + io::Write>(s: &mut T) {
+    if let Ok(_) = s.read(&mut [0u8; 4]) {
+        //~^ ERROR: read amount is not handled
+        todo!()
+    }
+}
+
+fn if_okay_underscore_write_expr<T: io::Read + io::Write>(s: &mut T) {
+    if let Ok(_) = s.write(b"test") {
+        //~^ ERROR: written amount is not handled
+        todo!()
+    }
+}
+
+fn if_okay_dots_write_expr<T: io::Read + io::Write>(s: &mut T) {
+    if let Ok(..) = s.write(b"test") {
+        //~^ ERROR: written amount is not handled
+        todo!()
+    }
+}
+
+fn if_okay_underscore_write_expr_true_negative<T: io::Read + io::Write>(s: &mut T) {
+    if let Ok(bound) = s.write(b"test") {
+        todo!()
+    }
+}
+
+fn match_okay_underscore_true_neg<T: io::Read + io::Write>(s: &mut T) {
+    match s.write(b"test") {
+        Ok(bound) => todo!(),
+        Err(_) => todo!(),
+    };
+}
+
+fn true_negative<T: io::Read + io::Write>(s: &mut T) {
+    let mut buf = [0u8; 4];
+    let read_amount = s.read(&mut buf).unwrap();
+}
+
+fn on_return_should_not_raise<T: io::Read + io::Write>(s: &mut T) -> io::Result<usize> {
+    /// this is bad code because it goes around the problem of handling the read amount
+    /// by returning it, which makes it impossible to know this is a resonpose from the
+    /// correct account.
+    let mut buf = [0u8; 4];
+    s.read(&mut buf)
 }
 
 fn main() {}

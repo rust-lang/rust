@@ -75,5 +75,7 @@ fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn <u32 as Trait>::foo
     let _wrapper_sized = wrapper_sized as Wrapper<Trait>;
 
+    false.foo();
+
     0
 }

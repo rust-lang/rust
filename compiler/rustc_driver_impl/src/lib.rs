@@ -12,8 +12,6 @@
 #![feature(let_chains)]
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -23,9 +21,10 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
-use rustc_errors::registry::{InvalidErrorCode, Registry};
-use rustc_errors::{markdown, ColorConfig};
-use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
+use rustc_errors::registry::Registry;
+use rustc_errors::{
+    markdown, ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult,
+};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
@@ -207,7 +206,7 @@ impl Callbacks for TimePassesCallbacks {
 }
 
 pub fn diagnostics_registry() -> Registry {
-    Registry::new(rustc_error_codes::DIAGNOSTICS)
+    Registry::new(rustc_errors::codes::DIAGNOSTICS)
 }
 
 /// This is the primary entry point for rustc.
@@ -535,37 +534,36 @@ pub enum Compilation {
 }
 
 fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
+    // Allow "E0123" or "0123" form.
     let upper_cased_code = code.to_ascii_uppercase();
-    let normalised =
-        if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
-    match registry.try_find_description(&normalised) {
-        Ok(description) => {
-            let mut is_in_code_block = false;
-            let mut text = String::new();
-            // Slice off the leading newline and print.
-            for line in description.lines() {
-                let indent_level =
-                    line.find(|c: char| !c.is_whitespace()).unwrap_or_else(|| line.len());
-                let dedented_line = &line[indent_level..];
-                if dedented_line.starts_with("```") {
-                    is_in_code_block = !is_in_code_block;
-                    text.push_str(&line[..(indent_level + 3)]);
-                } else if is_in_code_block && dedented_line.starts_with("# ") {
-                    continue;
-                } else {
-                    text.push_str(line);
-                }
-                text.push('\n');
-            }
-            if io::stdout().is_terminal() {
-                show_md_content_with_pager(&text, color);
+    let start = if upper_cased_code.starts_with('E') { 1 } else { 0 };
+    if let Ok(code) = upper_cased_code[start..].parse::<u32>()
+        && let Ok(description) = registry.try_find_description(ErrCode::from_u32(code))
+    {
+        let mut is_in_code_block = false;
+        let mut text = String::new();
+        // Slice off the leading newline and print.
+        for line in description.lines() {
+            let indent_level =
+                line.find(|c: char| !c.is_whitespace()).unwrap_or_else(|| line.len());
+            let dedented_line = &line[indent_level..];
+            if dedented_line.starts_with("```") {
+                is_in_code_block = !is_in_code_block;
+                text.push_str(&line[..(indent_level + 3)]);
+            } else if is_in_code_block && dedented_line.starts_with("# ") {
+                continue;
             } else {
-                safe_print!("{text}");
+                text.push_str(line);
             }
+            text.push('\n');
         }
-        Err(InvalidErrorCode) => {
-            early_dcx.early_fatal(format!("{code} is not a valid error code"));
+        if io::stdout().is_terminal() {
+            show_md_content_with_pager(&text, color);
+        } else {
+            safe_print!("{text}");
         }
+    } else {
+        early_dcx.early_fatal(format!("{code} is not a valid error code"));
     }
 }
 
@@ -1233,11 +1231,10 @@ fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
 /// The compiler currently unwinds with a special sentinel value to abort
 /// compilation on fatal errors. This function catches that sentinel and turns
 /// the panic into a `Result` instead.
-pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuaranteed> {
+pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, FatalError> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<rustc_errors::FatalErrorMarker>() {
-            #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_claim_error_was_emitted()
+            FatalError
         } else {
             panic::resume_unwind(value);
         }
@@ -1247,9 +1244,9 @@ pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuarantee
 /// Variant of `catch_fatal_errors` for the `interface::Result` return type
 /// that also computes the exit code.
 pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
-    match catch_fatal_errors(f).flatten() {
-        Ok(()) => EXIT_SUCCESS,
-        Err(_) => EXIT_FAILURE,
+    match catch_fatal_errors(f) {
+        Ok(Ok(())) => EXIT_SUCCESS,
+        _ => EXIT_FAILURE,
     }
 }
 

@@ -881,6 +881,7 @@ impl TyCoercionStability {
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
                 | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::Alias(ty::Projection, _) => Self::Deref,

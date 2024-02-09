@@ -33,8 +33,10 @@
     clippy::bool_to_int_with_if,
     clippy::box_default,
     clippy::needless_question_mark,
+    rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
-    rustc::potential_query_instability
+    rustc::potential_query_instability,
+    rustc::untranslatable_diagnostic,
 )]
 #![warn(
     rust_2018_idioms,
@@ -94,7 +96,6 @@ pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
-pub use crate::shims::EvalContextExt as _;
 
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,

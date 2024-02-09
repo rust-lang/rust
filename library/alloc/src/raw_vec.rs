@@ -207,11 +207,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             // Allocators currently return a `NonNull<[u8]>` whose length
             // matches the size requested. If that ever changes, the capacity
             // here should change to `ptr.len() / mem::size_of::<T>()`.
-            Self {
-                ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
-                cap: unsafe { Cap(capacity) },
-                alloc,
-            }
+            Self { ptr: Unique::from(ptr.cast()), cap: unsafe { Cap(capacity) }, alloc }
         }
     }
 
@@ -237,6 +233,11 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[inline]
     pub fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
+    }
+
+    #[inline]
+    pub fn non_null(&self) -> NonNull<T> {
+        NonNull::from(self.ptr)
     }
 
     /// Gets the capacity of the allocation.
@@ -398,7 +399,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
         // change to `ptr.len() / mem::size_of::<T>()`.
-        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.ptr = Unique::from(ptr.cast());
         self.cap = unsafe { Cap(cap) };
     }
 

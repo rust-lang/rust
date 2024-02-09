@@ -106,6 +106,8 @@ pub(crate) struct CrateMetadata {
     private_dep: bool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
+    /// The crate was used non-speculatively.
+    used: bool,
 
     /// Additional data used for decoding `HygieneData` (e.g. `SyntaxContext`
     /// and `ExpnId`).
@@ -1811,6 +1813,7 @@ impl CrateMetadata {
             source: Lrc::new(source),
             private_dep,
             host_hash,
+            used: false,
             extern_crate: None,
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
@@ -1858,6 +1861,10 @@ impl CrateMetadata {
 
     pub(crate) fn update_and_private_dep(&mut self, private_dep: bool) {
         self.private_dep &= private_dep;
+    }
+
+    pub(crate) fn used(&self) -> bool {
+        self.used
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {

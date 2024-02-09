@@ -264,6 +264,28 @@ impl S13 {
     }
 }
 
-fn main() {
-    // test code goes here
+struct S14 {
+    field: String,
 }
+
+impl PartialEq for S14 {
+    fn eq(&self, other: &Self) -> bool {
+        // Should not warn!
+        self.field.eq(&other.field)
+    }
+}
+
+struct S15<'a> {
+    field: &'a S15<'a>,
+}
+
+impl PartialEq for S15<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        //~^ ERROR: function cannot return without recursing
+        let mine = &self.field;
+        let theirs = &other.field;
+        mine.eq(theirs)
+    }
+}
+
+fn main() {}

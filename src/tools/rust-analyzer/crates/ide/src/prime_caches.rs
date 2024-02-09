@@ -33,7 +33,7 @@ pub(crate) fn parallel_prime_caches(
     num_worker_threads: u8,
     cb: &(dyn Fn(ParallelPrimeCachesProgress) + Sync),
 ) {
-    let _p = profile::span("prime_caches");
+    let _p = tracing::span!(tracing::Level::INFO, "prime_caches").entered();
 
     let graph = db.crate_graph();
     let mut crates_to_prime = {

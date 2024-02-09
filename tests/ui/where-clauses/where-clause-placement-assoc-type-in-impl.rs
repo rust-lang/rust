@@ -1,6 +1,8 @@
 // check-pass
 // run-rustfix
 
+#![allow(dead_code)]
+
 trait Trait {
     // Fine.
     type Assoc where u32: Copy;

@@ -197,13 +197,18 @@ impl Duration {
     #[must_use]
     #[rustc_const_stable(feature = "duration_consts_2", since = "1.58.0")]
     pub const fn new(secs: u64, nanos: u32) -> Duration {
-        let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
-            Some(secs) => secs,
-            None => panic!("overflow in Duration::new"),
-        };
-        let nanos = nanos % NANOS_PER_SEC;
-        // SAFETY: nanos % NANOS_PER_SEC < NANOS_PER_SEC, therefore nanos is within the valid range
-        Duration { secs, nanos: unsafe { Nanoseconds(nanos) } }
+        if nanos < NANOS_PER_SEC {
+            // SAFETY: nanos < NANOS_PER_SEC, therefore nanos is within the valid range
+            Duration { secs, nanos: unsafe { Nanoseconds(nanos) } }
+        } else {
+            let secs = match secs.checked_add((nanos / NANOS_PER_SEC) as u64) {
+                Some(secs) => secs,
+                None => panic!("overflow in Duration::new"),
+            };
+            let nanos = nanos % NANOS_PER_SEC;
+            // SAFETY: nanos % NANOS_PER_SEC < NANOS_PER_SEC, therefore nanos is within the valid range
+            Duration { secs, nanos: unsafe { Nanoseconds(nanos) } }
+        }
     }
 
     /// Creates a new `Duration` from the specified number of whole seconds.

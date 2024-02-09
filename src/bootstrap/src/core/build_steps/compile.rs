@@ -97,6 +97,20 @@ impl Std {
             is_for_mir_opt_tests: false,
         }
     }
+
+    fn copy_extra_objects(
+        &self,
+        builder: &Builder<'_>,
+        compiler: &Compiler,
+        target: TargetSelection,
+    ) -> Vec<(PathBuf, DependencyType)> {
+        let mut deps = Vec::new();
+        if !self.is_for_mir_opt_tests {
+            deps.extend(copy_third_party_objects(builder, &compiler, target));
+            deps.extend(copy_self_contained_objects(builder, &compiler, target));
+        }
+        deps
+    }
 }
 
 impl Step for Std {
@@ -159,8 +173,9 @@ impl Step for Std {
         {
             builder.info("WARNING: Using a potentially old libstd. This may not behave well.");
 
-            copy_third_party_objects(builder, &compiler, target);
-            copy_self_contained_objects(builder, &compiler, target);
+            builder.ensure(StartupObjects { compiler, target });
+
+            self.copy_extra_objects(builder, &compiler, target);
 
             builder.ensure(StdLink::from_std(self, compiler));
             return;
@@ -193,15 +208,13 @@ impl Step for Std {
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
-            copy_third_party_objects(builder, &compiler, target);
-            copy_self_contained_objects(builder, &compiler, target);
+            self.copy_extra_objects(builder, &compiler, target);
 
             builder.ensure(StdLink::from_std(self, compiler_to_use));
             return;
         }
 
-        target_deps.extend(copy_third_party_objects(builder, &compiler, target));
-        target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
+        target_deps.extend(self.copy_extra_objects(builder, &compiler, target));
 
         // The LLD wrappers and `rust-lld` are self-contained linking components that can be
         // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
@@ -222,10 +235,13 @@ impl Step for Std {
             }
         }
 
+        // We build a sysroot for mir-opt tests using the same trick that Miri does: A check build
+        // with -Zalways-encode-mir. This frees us from the need to have a target linker, and the
+        // fact that this is a check build integrates nicely with run_cargo.
         let mut cargo = if self.is_for_mir_opt_tests {
-            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustc");
-            cargo.arg("-p").arg("std").arg("--crate-type=lib");
-            std_cargo(builder, target, compiler.stage, &mut cargo);
+            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "check");
+            cargo.rustflag("-Zalways-encode-mir");
+            cargo.arg("--manifest-path").arg(builder.src.join("library/sysroot/Cargo.toml"));
             cargo
         } else {
             let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
@@ -257,7 +273,7 @@ impl Step for Std {
             vec![],
             &libstd_stamp(builder, compiler, target),
             target_deps,
-            false,
+            self.is_for_mir_opt_tests, // is_check
             false,
         );
 
@@ -367,13 +383,10 @@ fn copy_self_contained_objects(
         let srcdir = builder
             .wasi_root(target)
             .unwrap_or_else(|| {
-                panic!(
-                    "Target {:?} does not have a \"wasi-root\" key in Config.toml",
-                    target.triple
-                )
+                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
             })
             .join("lib")
-            .join(target.to_string().replace("-preview1", "").replace("-preview2", ""));
+            .join(target.to_string().replace("-preview1", ""));
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -1116,16 +1129,11 @@ pub fn rustc_cargo_env(
 /// Pass down configuration from the LLVM build into the build of
 /// rustc_llvm and rustc_codegen_llvm.
 fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
-    let target_config = builder.config.target_config.get(&target);
-
     if builder.is_rust_llvm(target) {
         cargo.env("LLVM_RUSTLLVM", "1");
     }
     let llvm::LlvmResult { llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     cargo.env("LLVM_CONFIG", &llvm_config);
-    if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-        cargo.env("CFG_LLVM_ROOT", s);
-    }
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
     // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by

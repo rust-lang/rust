@@ -2,8 +2,10 @@
 
 pub(crate) mod attribute;
 pub(crate) mod dot;
+pub(crate) mod env_vars;
 pub(crate) mod expr;
 pub(crate) mod extern_abi;
+pub(crate) mod extern_crate;
 pub(crate) mod field;
 pub(crate) mod flyimport;
 pub(crate) mod fn_param;
@@ -19,8 +21,6 @@ pub(crate) mod snippet;
 pub(crate) mod r#type;
 pub(crate) mod use_;
 pub(crate) mod vis;
-pub(crate) mod env_vars;
-pub(crate) mod extern_crate;
 
 use std::iter;
 

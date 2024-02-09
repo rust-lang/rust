@@ -3,7 +3,9 @@
 #[marker]
 trait Marker {
     const N: usize = 0;
+    //~^ ERROR marker traits cannot have associated items
     fn do_something() {}
+    //~^ ERROR marker traits cannot have associated items
 }
 
 struct OverrideConst;

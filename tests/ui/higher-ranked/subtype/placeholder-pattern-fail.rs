@@ -12,10 +12,12 @@ fn hr_subtype<'c>(f: for<'a, 'b> fn(Inv<'a>, Inv<'a>)) {
 
 fn simple1<'c>(x: (&'c i32,)) {
     let _x: (&'static i32,) = x;
+    //~^ ERROR: lifetime may not live long enough
 }
 
 fn simple2<'c>(x: (&'c i32,)) {
     let _: (&'static i32,) = x;
+    //~^ ERROR: lifetime may not live long enough
 }
 
 fn main() {

@@ -194,33 +194,37 @@ impl<'tcx> UnifyValue for ConstVariableValue<'tcx> {
 /// values for the effect inference variable
 #[derive(Clone, Copy, Debug)]
 pub enum EffectVarValue<'tcx> {
-    /// The host effect is on, enabling access to syscalls, filesystem access, etc.
-    Host,
-    /// The host effect is off. Execution is restricted to const operations only.
-    NoHost,
-    Const(ty::Const<'tcx>),
+    Unknown,
+    Known(ty::Const<'tcx>),
 }
 
 impl<'tcx> EffectVarValue<'tcx> {
-    pub fn as_const(self, tcx: TyCtxt<'tcx>) -> ty::Const<'tcx> {
+    pub fn known(self) -> Option<ty::Const<'tcx>> {
         match self {
-            EffectVarValue::Host => tcx.consts.true_,
-            EffectVarValue::NoHost => tcx.consts.false_,
-            EffectVarValue::Const(c) => c,
+            EffectVarValue::Unknown => None,
+            EffectVarValue::Known(value) => Some(value),
+        }
+    }
+
+    pub fn is_unknown(self) -> bool {
+        match self {
+            EffectVarValue::Unknown => true,
+            EffectVarValue::Known(_) => false,
         }
     }
 }
 
 impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
-    type Error = (EffectVarValue<'tcx>, EffectVarValue<'tcx>);
+    type Error = NoError;
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
-        match (value1, value2) {
-            (EffectVarValue::Host, EffectVarValue::Host) => Ok(EffectVarValue::Host),
-            (EffectVarValue::NoHost, EffectVarValue::NoHost) => Ok(EffectVarValue::NoHost),
-            (EffectVarValue::NoHost | EffectVarValue::Host, _)
-            | (_, EffectVarValue::NoHost | EffectVarValue::Host) => Err((*value1, *value2)),
-            (EffectVarValue::Const(_), EffectVarValue::Const(_)) => {
-                bug!("equating two const variables, both of which have known values")
+        match (*value1, *value2) {
+            (EffectVarValue::Unknown, EffectVarValue::Unknown) => Ok(EffectVarValue::Unknown),
+            (EffectVarValue::Unknown, EffectVarValue::Known(val))
+            | (EffectVarValue::Known(val), EffectVarValue::Unknown) => {
+                Ok(EffectVarValue::Known(val))
+            }
+            (EffectVarValue::Known(_), EffectVarValue::Known(_)) => {
+                bug!("equating known inference variables: {value1:?} {value2:?}")
             }
         }
     }
@@ -229,7 +233,7 @@ impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct EffectVidKey<'tcx> {
     pub vid: ty::EffectVid,
-    pub phantom: PhantomData<EffectVarValue<'tcx>>,
+    pub phantom: PhantomData<ty::Const<'tcx>>,
 }
 
 impl<'tcx> From<ty::EffectVid> for EffectVidKey<'tcx> {
@@ -239,7 +243,7 @@ impl<'tcx> From<ty::EffectVid> for EffectVidKey<'tcx> {
 }
 
 impl<'tcx> UnifyKey for EffectVidKey<'tcx> {
-    type Value = Option<EffectVarValue<'tcx>>;
+    type Value = EffectVarValue<'tcx>;
     #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()

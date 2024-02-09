@@ -5,6 +5,7 @@
 // edition:2015
 // run-rustfix
 
+#[allow(dead_code)]
 trait T {
     fn foo(_: i32); //~ WARNING anonymous parameters are deprecated
                  //~| WARNING this is accepted in the current edition

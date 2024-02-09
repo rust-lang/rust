@@ -68,8 +68,8 @@ pub use iter::{ArrayChunks, ArrayChunksMut};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-pub use iter::{GroupBy, GroupByMut};
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+pub use iter::{ChunkBy, ChunkByMut};
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
@@ -1748,18 +1748,16 @@ impl<T> [T] {
     /// Returns an iterator over the slice producing non-overlapping runs
     /// of elements using the predicate to separate them.
     ///
-    /// The predicate is called on two elements following themselves,
-    /// it means the predicate is called on `slice[0]` and `slice[1]`
-    /// then on `slice[1]` and `slice[2]` and so on.
+    /// The predicate is called for every pair of consecutive elements,
+    /// meaning that it is called on `slice[0]` and `slice[1]`,
+    /// followed by `slice[1]` and `slice[2]`, and so on.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &[1, 1, 1, 3, 3, 2, 2, 2];
     ///
-    /// let mut iter = slice.group_by(|a, b| a == b);
+    /// let mut iter = slice.chunk_by(|a, b| a == b);
     ///
     /// assert_eq!(iter.next(), Some(&[1, 1, 1][..]));
     /// assert_eq!(iter.next(), Some(&[3, 3][..]));
@@ -1770,41 +1768,37 @@ impl<T> [T] {
     /// This method can be used to extract the sorted subslices:
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &[1, 1, 2, 3, 2, 3, 2, 3, 4];
     ///
-    /// let mut iter = slice.group_by(|a, b| a <= b);
+    /// let mut iter = slice.chunk_by(|a, b| a <= b);
     ///
     /// assert_eq!(iter.next(), Some(&[1, 1, 2, 3][..]));
     /// assert_eq!(iter.next(), Some(&[2, 3][..]));
     /// assert_eq!(iter.next(), Some(&[2, 3, 4][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "80552")]
+    #[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    pub fn group_by<F>(&self, pred: F) -> GroupBy<'_, T, F>
+    pub fn chunk_by<F>(&self, pred: F) -> ChunkBy<'_, T, F>
     where
         F: FnMut(&T, &T) -> bool,
     {
-        GroupBy::new(self, pred)
+        ChunkBy::new(self, pred)
     }
 
     /// Returns an iterator over the slice producing non-overlapping mutable
     /// runs of elements using the predicate to separate them.
     ///
-    /// The predicate is called on two elements following themselves,
-    /// it means the predicate is called on `slice[0]` and `slice[1]`
-    /// then on `slice[1]` and `slice[2]` and so on.
+    /// The predicate is called for every pair of consecutive elements,
+    /// meaning that it is called on `slice[0]` and `slice[1]`,
+    /// followed by `slice[1]` and `slice[2]`, and so on.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &mut [1, 1, 1, 3, 3, 2, 2, 2];
     ///
-    /// let mut iter = slice.group_by_mut(|a, b| a == b);
+    /// let mut iter = slice.chunk_by_mut(|a, b| a == b);
     ///
     /// assert_eq!(iter.next(), Some(&mut [1, 1, 1][..]));
     /// assert_eq!(iter.next(), Some(&mut [3, 3][..]));
@@ -1815,24 +1809,22 @@ impl<T> [T] {
     /// This method can be used to extract the sorted subslices:
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &mut [1, 1, 2, 3, 2, 3, 2, 3, 4];
     ///
-    /// let mut iter = slice.group_by_mut(|a, b| a <= b);
+    /// let mut iter = slice.chunk_by_mut(|a, b| a <= b);
     ///
     /// assert_eq!(iter.next(), Some(&mut [1, 1, 2, 3][..]));
     /// assert_eq!(iter.next(), Some(&mut [2, 3][..]));
     /// assert_eq!(iter.next(), Some(&mut [2, 3, 4][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "80552")]
+    #[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<'_, T, F>
+    pub fn chunk_by_mut<F>(&mut self, pred: F) -> ChunkByMut<'_, T, F>
     where
         F: FnMut(&T, &T) -> bool,
     {
-        GroupByMut::new(self, pred)
+        ChunkByMut::new(self, pred)
     }
 
     /// Divides one slice into two at an index.
@@ -2997,7 +2989,7 @@ impl<T> [T] {
         sort::quicksort(self, |a, b| f(a).lt(&f(b)));
     }
 
-    /// Reorder the slice such that the element at `index` is at its final sorted position.
+    /// Reorder the slice such that the element at `index` after the reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
@@ -3025,7 +3017,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
+    /// let mut v = [-5i32, 4, 2, -3, 1];
     ///
     /// // Find the median
     /// v.select_nth_unstable(2);
@@ -3046,8 +3038,8 @@ impl<T> [T] {
         select::partition_at_index(self, index, T::lt)
     }
 
-    /// Reorder the slice with a comparator function such that the element at `index` is at its
-    /// final sorted position.
+    /// Reorder the slice with a comparator function such that the element at `index` after the reordering is at
+    /// its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the comparator function.
@@ -3076,7 +3068,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
+    /// let mut v = [-5i32, 4, 2, -3, 1];
     ///
     /// // Find the median as if the slice were sorted in descending order.
     /// v.select_nth_unstable_by(2, |a, b| b.cmp(a));
@@ -3101,8 +3093,8 @@ impl<T> [T] {
         select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
-    /// Reorder the slice with a key extraction function such that the element at `index` is at its
-    /// final sorted position.
+    /// Reorder the slice with a key extraction function such that the element at `index` after the reordering is
+    /// at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the key extraction function.

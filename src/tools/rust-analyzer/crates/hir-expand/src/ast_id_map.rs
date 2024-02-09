@@ -155,7 +155,14 @@ impl PartialEq for AstIdMap {
 impl Eq for AstIdMap {}
 
 impl AstIdMap {
-    pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
+    pub(crate) fn ast_id_map(
+        db: &dyn ExpandDatabase,
+        file_id: span::HirFileId,
+    ) -> triomphe::Arc<AstIdMap> {
+        triomphe::Arc::new(AstIdMap::from_source(&db.parse_or_expand(file_id)))
+    }
+
+    fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap::default();
 

@@ -398,7 +398,9 @@ fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(&t);
         }
-        ty::Closure(def_id, args) | ty::Coroutine(def_id, args, ..) => {
+        ty::Closure(def_id, args)
+        | ty::CoroutineClosure(def_id, args)
+        | ty::Coroutine(def_id, args, ..) => {
             // Name will be "{closure_env#0}<T1, T2, ...>", "{coroutine_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
@@ -768,6 +770,8 @@ fn push_closure_or_coroutine_name<'tcx>(
 
     // Truncate the args to the length of the above generics. This will cut off
     // anything closure- or coroutine-specific.
+    // FIXME(async_closures): This is probably not going to be correct w.r.t.
+    // multiple coroutine flavors. Maybe truncate to (parent + 1)?
     let args = args.truncate_to(tcx, generics);
     push_generic_params_internal(tcx, args, enclosing_fn_def_id, output, visited);
 }

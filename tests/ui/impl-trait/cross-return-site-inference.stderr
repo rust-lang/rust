@@ -13,7 +13,7 @@ error[E0790]: cannot call associated function on trait without specifying the co
   --> $DIR/cross-return-site-inference.rs:38:16
    |
 LL |     return Err(From::from("foo"));
-   |                ^^^^^^^^^^ cannot call associated function of trait
+   |                ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
 help: use a fully-qualified path to a specific available implementation
    |
@@ -24,7 +24,7 @@ error[E0790]: cannot call associated function on trait without specifying the co
   --> $DIR/cross-return-site-inference.rs:44:9
    |
 LL |     Err(From::from("foo"))
-   |         ^^^^^^^^^^ cannot call associated function of trait
+   |         ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
 help: use a fully-qualified path to a specific available implementation
    |

@@ -6,13 +6,13 @@ use std::io as sio;
 use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
 
+pub mod anymap;
 mod macros;
-pub mod process;
-pub mod panic_context;
 pub mod non_empty_vec;
+pub mod panic_context;
+pub mod process;
 pub mod rand;
 pub mod thread;
-pub mod anymap;
 
 pub use always_assert::{always, never};
 pub use itertools;

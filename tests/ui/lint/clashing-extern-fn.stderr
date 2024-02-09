@@ -8,7 +8,7 @@ LL |             fn hidden_niche_transparent_no_niche() -> Option<TransparentNoN
    = note: enum has no representation hint
    = note: `#[warn(improper_ctypes)]` on by default
 
-warning: `extern` block uses type `Option<UnsafeCell<NonZeroUsize>>`, which is not FFI-safe
+warning: `extern` block uses type `Option<UnsafeCell<NonZero<usize>>>`, which is not FFI-safe
   --> $DIR/clashing-extern-fn.rs:437:46
    |
 LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZeroUsize>>;
@@ -163,7 +163,7 @@ LL |             fn non_zero_usize() -> core::num::NonZeroUsize;
 LL |             fn non_zero_usize() -> usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
-   = note: expected `unsafe extern "C" fn() -> NonZeroUsize`
+   = note: expected `unsafe extern "C" fn() -> NonZero<usize>`
               found `unsafe extern "C" fn() -> usize`
 
 warning: `non_null_ptr` redeclared with a different signature
@@ -224,7 +224,7 @@ LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZeroUsize
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this signature doesn't match the previous declaration
    |
    = note: expected `unsafe extern "C" fn() -> usize`
-              found `unsafe extern "C" fn() -> Option<UnsafeCell<NonZeroUsize>>`
+              found `unsafe extern "C" fn() -> Option<UnsafeCell<NonZero<usize>>>`
 
 warning: 19 warnings emitted
 

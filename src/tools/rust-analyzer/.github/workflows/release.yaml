@@ -43,10 +43,10 @@ jobs:
           - os: ubuntu-20.04
             target: arm-unknown-linux-gnueabihf
             code-target: linux-armhf
-          - os: macos-11
+          - os: macos-12
             target: x86_64-apple-darwin
             code-target: darwin-x64
-          - os: macos-11
+          - os: macos-12
             target: aarch64-apple-darwin
             code-target: darwin-arm64
 

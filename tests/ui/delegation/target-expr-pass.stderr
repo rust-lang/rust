@@ -7,5 +7,25 @@ LL | #![feature(fn_delegation)]
    = note: see issue #118212 <https://github.com/rust-lang/rust/issues/118212> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-warning: 1 warning emitted
+warning: trait `Trait` is never used
+  --> $DIR/target-expr-pass.rs:17:7
+   |
+LL | trait Trait {
+   |       ^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: struct `F` is never constructed
+  --> $DIR/target-expr-pass.rs:21:8
+   |
+LL | struct F;
+   |        ^
+
+warning: struct `S` is never constructed
+  --> $DIR/target-expr-pass.rs:24:8
+   |
+LL | struct S(F);
+   |        ^
+
+warning: 4 warnings emitted
 

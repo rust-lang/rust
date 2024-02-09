@@ -383,7 +383,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // will never cause UB on the pointer itself.
             let (_, _, kind) = this.get_alloc_info(*alloc_id);
             if matches!(kind, AllocKind::LiveData) {
-                let alloc_extra = this.get_alloc_extra(*alloc_id).unwrap();
+                let alloc_extra = this.get_alloc_extra(*alloc_id)?; // can still fail for `extern static`
                 let alloc_borrow_tracker = &alloc_extra.borrow_tracker.as_ref().unwrap();
                 alloc_borrow_tracker.release_protector(&this.machine, borrow_tracker, *tag)?;
             }

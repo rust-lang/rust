@@ -2,7 +2,7 @@
 //! `Machine` trait.
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::path::Path;
@@ -10,8 +10,8 @@ use std::process;
 
 use either::Either;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 use rand::Rng;
+use rand::SeedableRng;
 
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -83,7 +83,8 @@ pub struct FrameExtra<'tcx> {
 impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _, salt: _ } = self;
+        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant: _, salt: _ } =
+            self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
@@ -93,7 +94,8 @@ impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
 
 impl VisitProvenance for FrameExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _, salt: _ } = self;
+        let FrameExtra { catch_unwind, borrow_tracker, timing: _, is_user_relevant: _, salt: _ } =
+            self;
 
         catch_unwind.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
@@ -334,20 +336,11 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
-    /// An offset inside this allocation that was deemed aligned even for symbolic alignment checks.
-    /// Invariant: the promised alignment will never be less than the native alignment of this allocation.
-    pub symbolic_alignment: Cell<Option<(Size, Align)>>,
 }
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra {
-            borrow_tracker,
-            data_race,
-            weak_memory,
-            backtrace: _,
-            symbolic_alignment: _,
-        } = self;
+        let AllocExtra { borrow_tracker, data_race, weak_memory, backtrace: _ } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -570,6 +563,14 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// that is fixed per stack frame; this lets us have sometimes different results for the
     /// same const while ensuring consistent results within a single call.
     const_cache: RefCell<FxHashMap<(mir::Const<'tcx>, usize), OpTy<'tcx, Provenance>>>,
+
+    /// For each allocation, an offset inside that allocation that was deemed aligned even for
+    /// symbolic alignment checks. This cannot be stored in `AllocExtra` since it needs to be
+    /// tracked for vtables and function allocations as well as regular allocations.
+    ///
+    /// Invariant: the promised alignment will never be less than the native alignment of the
+    /// allocation.
+    pub(crate) symbolic_alignment: RefCell<FxHashMap<AllocId, (Size, Align)>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -696,6 +697,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             collect_leak_backtraces: config.collect_leak_backtraces,
             allocation_spans: RefCell::new(FxHashMap::default()),
             const_cache: RefCell::new(FxHashMap::default()),
+            symbolic_alignment: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -710,7 +712,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         Ok(())
     }
 
-    fn add_extern_static(
+    pub(crate) fn add_extern_static(
         this: &mut MiriInterpCx<'mir, 'tcx>,
         name: &str,
         ptr: Pointer<Option<Provenance>>,
@@ -718,75 +720,6 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // This got just allocated, so there definitely is a pointer here.
         let ptr = ptr.into_pointer_or_addr().unwrap();
         this.machine.extern_statics.try_insert(Symbol::intern(name), ptr).unwrap();
-    }
-
-    fn alloc_extern_static(
-        this: &mut MiriInterpCx<'mir, 'tcx>,
-        name: &str,
-        val: ImmTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx> {
-        let place = this.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
-        this.write_immediate(*val, &place)?;
-        Self::add_extern_static(this, name, place.ptr());
-        Ok(())
-    }
-
-    /// Sets up the "extern statics" for this machine.
-    fn init_extern_statics(this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
-        // "__rust_no_alloc_shim_is_unstable"
-        let val = ImmTy::from_int(0, this.machine.layouts.u8);
-        Self::alloc_extern_static(this, "__rust_no_alloc_shim_is_unstable", val)?;
-
-        match this.tcx.sess.target.os.as_ref() {
-            "linux" => {
-                // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
-                // A couple zero-initialized pointer-sized extern statics.
-                // Most of them are for weak symbols, which we all set to null (indicating that the
-                // symbol is not supported, and triggering fallback code which ends up calling a
-                // syscall that we do support).
-                for name in &["__cxa_thread_atexit_impl", "getrandom", "statx", "__clock_gettime64"]
-                {
-                    let val = ImmTy::from_int(0, this.machine.layouts.usize);
-                    Self::alloc_extern_static(this, name, val)?;
-                }
-            }
-            "freebsd" => {
-                // "environ"
-                Self::add_extern_static(
-                    this,
-                    "environ",
-                    this.machine.env_vars.environ.as_ref().unwrap().ptr(),
-                );
-            }
-            "android" => {
-                // "signal" -- just needs a non-zero pointer value (function does not even get called),
-                // but we arrange for this to be callable anyway (it will then do nothing).
-                let layout = this.machine.layouts.const_raw_ptr;
-                let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
-                let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
-                Self::alloc_extern_static(this, "signal", val)?;
-                // A couple zero-initialized pointer-sized extern statics.
-                // Most of them are for weak symbols, which we all set to null (indicating that the
-                // symbol is not supported, and triggering fallback code.)
-                for name in &["bsd_signal"] {
-                    let val = ImmTy::from_int(0, this.machine.layouts.usize);
-                    Self::alloc_extern_static(this, name, val)?;
-                }
-            }
-            "windows" => {
-                // "_tls_used"
-                // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
-                let val = ImmTy::from_int(0, this.machine.layouts.u8);
-                Self::alloc_extern_static(this, "_tls_used", val)?;
-            }
-            _ => {} // No "extern statics" supported on this target
-        }
-        Ok(())
     }
 
     pub(crate) fn communicate(&self) -> bool {
@@ -877,6 +810,7 @@ impl VisitProvenance for MiriMachine<'_, '_> {
             collect_leak_backtraces: _,
             allocation_spans: _,
             const_cache: _,
+            symbolic_alignment: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -960,9 +894,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             return None;
         }
         // Let's see which alignment we have been promised for this allocation.
-        let alloc_info = ecx.get_alloc_extra(alloc_id).unwrap(); // cannot fail since the allocation is live
-        let (promised_offset, promised_align) =
-            alloc_info.symbolic_alignment.get().unwrap_or((Size::ZERO, alloc_align));
+        let (promised_offset, promised_align) = ecx
+            .machine
+            .symbolic_alignment
+            .borrow()
+            .get(&alloc_id)
+            .copied()
+            .unwrap_or((Size::ZERO, alloc_align));
         if promised_align < align {
             // Definitely not enough.
             Some(Misalignment { has: promised_align, required: align })
@@ -1009,7 +947,21 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        ecx.find_mir_or_eval_fn(instance, abi, args, dest, ret, unwind)
+        // For foreign items, try to see if we can emulate them.
+        if ecx.tcx.is_foreign_item(instance.def_id()) {
+            // An external function call that does not have a MIR body. We either find MIR elsewhere
+            // or emulate its effect.
+            // This will be Ok(None) if we're emulating the intrinsic entirely within Miri (no need
+            // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
+            // foreign function
+            // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
+            let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+            let link_name = ecx.item_link_name(instance.def_id());
+            return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
+        }
+
+        // Otherwise, load the MIR.
+        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
     }
 
     #[inline(always)]
@@ -1185,7 +1137,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 data_race: race_alloc,
                 weak_memory: buffer_alloc,
                 backtrace,
-                symbolic_alignment: Cell::new(None),
             },
             |ptr| ecx.global_base_pointer(ptr),
         )?;

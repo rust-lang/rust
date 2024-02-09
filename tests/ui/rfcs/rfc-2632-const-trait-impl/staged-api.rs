@@ -30,8 +30,7 @@ fn non_const_context() {
 #[unstable(feature = "none", issue = "none")]
 const fn const_context() {
     Unstable::func();
-    // ^ This is okay regardless of whether the `unstable` feature is enabled, as this function is
-    // not const-stable.
+    //[stable]~^ ERROR not yet stable as a const fn
     Foo::func();
     //[unstable]~^ ERROR not yet stable as a const fn
     // ^ fails, because the `foo` feature is not active
@@ -42,8 +41,7 @@ const fn const_context() {
 pub const fn const_context_not_const_stable() {
     //[stable]~^ ERROR function has missing const stability attribute
     Unstable::func();
-    // ^ This is okay regardless of whether the `unstable` feature is enabled, as this function is
-    // not const-stable.
+    //[stable]~^ ERROR not yet stable as a const fn
     Foo::func();
     //[unstable]~^ ERROR not yet stable as a const fn
     // ^ fails, because the `foo` feature is not active
@@ -53,7 +51,7 @@ pub const fn const_context_not_const_stable() {
 #[rustc_const_stable(feature = "cheese", since = "1.0.0")]
 const fn stable_const_context() {
     Unstable::func();
-    //[unstable]~^ ERROR not yet stable as a const fn
+    //~^ ERROR not yet stable as a const fn
     Foo::func();
     //[unstable]~^ ERROR not yet stable as a const fn
     const_context_not_const_stable()

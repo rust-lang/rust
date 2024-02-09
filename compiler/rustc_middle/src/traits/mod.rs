@@ -292,6 +292,8 @@ pub enum ObligationCauseCode<'tcx> {
     SizedArgumentType(Option<hir::HirId>),
     /// Return type must be `Sized`.
     SizedReturnType,
+    /// Return type of a call expression must be `Sized`.
+    SizedCallReturnType,
     /// Yield type must be `Sized`.
     SizedYieldType,
     /// Inline asm operand type must be `Sized`.

@@ -9,6 +9,8 @@ pub struct Vector2<T: Debug + Copy + Clone>{
 #[derive(Debug, Copy, Clone)] //~ ERROR the trait `Copy` cannot be implemented for this type
 pub struct AABB<K>{
     pub loc: Vector2<K>,
+    //~^ ERROR doesn't implement `Debug`
+    //~| ERROR `K: Copy` is not satisfied
     pub size: Vector2<K>
 }
 

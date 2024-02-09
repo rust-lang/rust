@@ -1,4 +1,5 @@
 #![feature(auto_traits)]
+#![allow(dead_code)]
 
 // run-rustfix
 

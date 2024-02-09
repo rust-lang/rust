@@ -58,7 +58,10 @@ impl<'tcx> MirPass<'tcx> for Validator {
             let body_abi = match body_ty.kind() {
                 ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
                 ty::Closure(..) => Abi::RustCall,
+                ty::CoroutineClosure(..) => Abi::RustCall,
                 ty::Coroutine(..) => Abi::Rust,
+                // No need to do MIR validation on error bodies
+                ty::Error(_) => return,
                 _ => {
                     span_bug!(body.span, "unexpected body ty: {:?} phase {:?}", body_ty, mir_phase)
                 }
@@ -665,6 +668,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
+                    ty::CoroutineClosure(_, args) => {
+                        let args = args.as_coroutine_closure();
+                        let Some(&f_ty) = args.upvar_tys().get(f.as_usize()) else {
+                            fail_out_of_bounds(self, location);
+                            return;
+                        };
+                        check_equal(self, location, f_ty);
+                    }
                     &ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
@@ -810,12 +821,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let adt_def = self.tcx.adt_def(def_id);
                     assert!(adt_def.is_union());
                     assert_eq!(idx, FIRST_VARIANT);
-                    let dest = adt_def.non_enum_variant().fields[field].ty(self.tcx, args);
-                    if fields.len() != 1 {
+                    let dest_ty = self.tcx.normalize_erasing_regions(
+                        self.param_env,
+                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
+                    );
+                    if fields.len() == 1 {
+                        let src_ty = fields.raw[0].ty(self.body, self.tcx);
+                        if !self.mir_assign_valid_types(src_ty, dest_ty) {
+                            self.fail(location, "union field has the wrong type");
+                        }
+                    } else {
                         self.fail(location, "unions should have one initialized field");
-                    }
-                    if !self.mir_assign_valid_types(fields.raw[0].ty(self.body, self.tcx), dest) {
-                        self.fail(location, "union field has the wrong type");
                     }
                 }
                 AggregateKind::Adt(def_id, idx, args, _, None) => {
@@ -826,10 +842,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         self.fail(location, "adt has the wrong number of initialized fields");
                     }
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
-                        if !self.mir_assign_valid_types(
-                            src.ty(self.body, self.tcx),
-                            dest.ty(self.tcx, args),
-                        ) {
+                        let dest_ty = self
+                            .tcx
+                            .normalize_erasing_regions(self.param_env, dest.ty(self.tcx, args));
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
                             self.fail(location, "adt field has the wrong type");
                         }
                     }
@@ -853,6 +869,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     for (src, dest) in std::iter::zip(fields, upvars) {
                         if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
                             self.fail(location, "coroutine field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::CoroutineClosure(_, args) => {
+                    let upvars = args.as_coroutine_closure().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(
+                            location,
+                            "coroutine-closure has the wrong number of initialized fields",
+                        );
+                    }
+                    for (src, dest) in std::iter::zip(fields, upvars) {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "coroutine-closure field has the wrong type");
                         }
                     }
                 }
@@ -1111,7 +1141,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::AddressOf(_, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _)
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::DebugAssertions, _)
             | Rvalue::Discriminant(_) => {}
         }
         self.super_rvalue(rvalue, location);

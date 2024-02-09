@@ -11,6 +11,7 @@ mod defining_scope {
     pub type Alias<T> = impl Sized;
 
     pub fn cast<T>(x: Container<Alias<T>, T>) -> Container<T, T> {
+        //[next]~^ ERROR type annotations needed
         x
     }
 }

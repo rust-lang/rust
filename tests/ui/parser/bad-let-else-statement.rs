@@ -5,6 +5,7 @@
 
 fn a() {
     let foo = {
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -23,6 +24,7 @@ fn b() {
 
 fn c() {
     let foo = if true {
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         0
@@ -43,6 +45,7 @@ fn d() {
 
 fn e() {
     let foo = match true {
+        //~^ WARN irrefutable `let...else` pattern
         true => 1,
         false => 0
     } else {
@@ -54,6 +57,7 @@ fn e() {
 struct X {a: i32}
 fn f() {
     let foo = X {
+        //~^ WARN irrefutable `let...else` pattern
         a: 1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -72,6 +76,7 @@ fn g() {
 
 fn h() {
     let foo = const {
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -81,6 +86,7 @@ fn h() {
 
 fn i() {
     let foo = &{
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -90,7 +96,8 @@ fn i() {
 
 fn j() {
     let bar = 0;
-    let foo = bar = {
+    let foo = bar = { //~ ERROR: cannot assign twice
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -100,6 +107,7 @@ fn j() {
 
 fn k() {
     let foo = 1 + {
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -109,6 +117,7 @@ fn k() {
 
 fn l() {
     let foo = 1..{
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -118,6 +127,7 @@ fn l() {
 
 fn m() {
     let foo = return {
+        //~^ WARN irrefutable `let...else` pattern
         ()
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -127,6 +137,7 @@ fn m() {
 
 fn n() {
     let foo = -{
+        //~^ WARN irrefutable `let...else` pattern
         1
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -136,6 +147,7 @@ fn n() {
 
 fn o() -> Result<(), ()> {
     let foo = do yeet {
+        //~^ WARN irrefutable `let...else` pattern
         ()
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -145,6 +157,7 @@ fn o() -> Result<(), ()> {
 
 fn p() {
     let foo = become {
+        //~^ WARN irrefutable `let...else` pattern
         ()
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -154,6 +167,7 @@ fn p() {
 
 fn q() {
     let foo = |x: i32| {
+        //~^ WARN irrefutable `let...else` pattern
         x
     } else {
         //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
@@ -163,14 +177,18 @@ fn q() {
 
 fn r() {
     let ok = format_args!("") else { return; };
+    //~^ WARN irrefutable `let...else` pattern
 
     let bad = format_args! {""} else { return; };
     //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+    //~| WARN irrefutable `let...else` pattern
 }
 
 fn s() {
     macro_rules! a {
         () => { {} }
+        //~^ WARN irrefutable `let...else` pattern
+        //~| WARN irrefutable `let...else` pattern
     }
 
     macro_rules! b {

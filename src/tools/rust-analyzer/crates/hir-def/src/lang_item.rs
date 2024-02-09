@@ -91,7 +91,7 @@ impl LangItems {
         db: &dyn DefDatabase,
         krate: CrateId,
     ) -> Option<Arc<LangItems>> {
-        let _p = profile::span("crate_lang_items_query");
+        let _p = tracing::span!(tracing::Level::INFO, "crate_lang_items_query").entered();
 
         let mut lang_items = LangItems::default();
 
@@ -163,7 +163,7 @@ impl LangItems {
         start_crate: CrateId,
         item: LangItem,
     ) -> Option<LangItemTarget> {
-        let _p = profile::span("lang_item_query");
+        let _p = tracing::span!(tracing::Level::INFO, "lang_item_query").entered();
         if let Some(target) =
             db.crate_lang_items(start_crate).and_then(|it| it.items.get(&item).copied())
         {
@@ -183,7 +183,7 @@ impl LangItems {
     ) where
         T: Into<AttrDefId> + Copy,
     {
-        let _p = profile::span("collect_lang_item");
+        let _p = tracing::span!(tracing::Level::INFO, "collect_lang_item").entered();
         if let Some(lang_item) = lang_attr(db, item.into()) {
             self.items.entry(lang_item).or_insert_with(|| constructor(item));
         }
@@ -199,7 +199,7 @@ pub(crate) fn notable_traits_in_deps(
     db: &dyn DefDatabase,
     krate: CrateId,
 ) -> Arc<[Arc<[TraitId]>]> {
-    let _p = profile::span("notable_traits_in_deps").detail(|| format!("{krate:?}"));
+    let _p = tracing::span!(tracing::Level::INFO, "notable_traits_in_deps", ?krate).entered();
     let crate_graph = db.crate_graph();
 
     Arc::from_iter(
@@ -208,7 +208,7 @@ pub(crate) fn notable_traits_in_deps(
 }
 
 pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: CrateId) -> Option<Arc<[TraitId]>> {
-    let _p = profile::span("crate_notable_traits").detail(|| format!("{krate:?}"));
+    let _p = tracing::span!(tracing::Level::INFO, "crate_notable_traits", ?krate).entered();
 
     let mut traits = Vec::new();
 

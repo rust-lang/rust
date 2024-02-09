@@ -49,8 +49,9 @@ error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:13:5
    |
 LL |     f(|| panic!());
-   |     ^ -- takes 0 arguments
-   |     |
+   |     ^^--^^^^^^^^^^
+   |     | |
+   |     | takes 0 arguments
    |     expected closure that takes 1 argument
    |
 note: required by a bound in `f`
@@ -67,8 +68,9 @@ error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:5
    |
 LL |     f(  move    || panic!());
-   |     ^   ---------- takes 0 arguments
-   |     |
+   |     ^^^^----------^^^^^^^^^^
+   |     |   |
+   |     |   takes 0 arguments
    |     expected closure that takes 1 argument
    |
 note: required by a bound in `f`

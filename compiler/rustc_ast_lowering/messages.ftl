@@ -11,6 +11,12 @@ ast_lowering_argument = argument
 ast_lowering_assoc_ty_parentheses =
     parenthesized generic arguments cannot be used in associated type constraints
 
+ast_lowering_async_bound_not_on_trait =
+    `async` bound modifier only allowed on trait, not `{$descr}`
+
+ast_lowering_async_bound_only_for_fn_traits =
+    `async` bound modifier only allowed on `Fn`/`FnMut`/`FnOnce` traits
+
 ast_lowering_async_coroutines_not_supported =
     `async` coroutines are not yet supported
 
@@ -116,9 +122,6 @@ ast_lowering_never_pattern_with_body =
 ast_lowering_never_pattern_with_guard =
     a guard on a never pattern will never be run
     .suggestion = remove this guard
-
-ast_lowering_not_supported_for_lifetime_binder_async_closure =
-    `for<...>` binders on `async` closures are not currently supported
 
 ast_lowering_previously_used_here = previously used here
 

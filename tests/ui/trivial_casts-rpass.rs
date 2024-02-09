@@ -4,7 +4,7 @@
 #![allow(trivial_casts, trivial_numeric_casts)]
 
 trait Foo {
-    fn foo(&self) {}
+    fn foo(&self) {} //~ WARN method `foo` is never used
 }
 
 pub struct Bar;

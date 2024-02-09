@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::HashStable;
+use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::{ConstTy, IntoKind, TypeFlags, WithCachedTypeInfo};
 
 mod int;
@@ -19,7 +20,7 @@ use rustc_span::Span;
 use rustc_span::DUMMY_SP;
 pub use valtree::*;
 
-use super::sty::ConstKind;
+pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
 
 /// Use this rather than `ConstData`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]

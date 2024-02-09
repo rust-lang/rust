@@ -407,7 +407,8 @@ mod desc {
     pub const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
     pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
-    pub const parse_symbol_mangling_version: &str = "either `legacy` or `v0` (RFC 2603)";
+    pub const parse_symbol_mangling_version: &str =
+        "one of: `legacy`, `v0` (RFC 2603), or `hashed`";
     pub const parse_src_file_hash: &str = "either `md5` or `sha1`";
     pub const parse_relocation_model: &str =
         "one of supported relocation models (`rustc --print relocation-models`)";
@@ -1180,6 +1181,7 @@ mod parse {
         *slot = match v {
             Some("legacy") => Some(SymbolManglingVersion::Legacy),
             Some("v0") => Some(SymbolManglingVersion::V0),
+            Some("hashed") => Some(SymbolManglingVersion::Hashed),
             _ => return false,
         };
         true
@@ -1504,7 +1506,7 @@ options! {
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
-        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
+        "which mangling version to use for symbol names ('legacy' (default), 'v0', or 'hashed')"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
@@ -1570,6 +1572,8 @@ options! {
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
+    direct_access_external_data: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "Direct or use GOT indirect to reference external data symbols"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],

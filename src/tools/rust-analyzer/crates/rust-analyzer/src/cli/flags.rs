@@ -71,7 +71,7 @@ xflags::xflags! {
             optional --with-deps
             /// Don't load sysroot crates (`std`, `core` & friends).
             optional --no-sysroot
-            /// Run cargo metadata on the sysroot to analyze its third-pary dependencies.
+            /// Run cargo metadata on the sysroot to analyze its third-party dependencies.
             /// Requires --no-sysroot to not be set.
             optional --query-sysroot-metadata
 

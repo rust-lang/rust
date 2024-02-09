@@ -17,10 +17,7 @@ error[E0599]: the method `clone` exists for union `U5<CloneNoCopy>`, but its tra
   --> $DIR/union-derive-clone.rs:35:15
    |
 LL | union U5<T> {
-   | -----------
-   | |
-   | method `clone` not found for this union
-   | doesn't satisfy `U5<CloneNoCopy>: Clone`
+   | ----------- method `clone` not found for this union because it doesn't satisfy `U5<CloneNoCopy>: Clone`
 ...
 LL | struct CloneNoCopy;
    | ------------------ doesn't satisfy `CloneNoCopy: Copy`

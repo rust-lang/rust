@@ -15,16 +15,16 @@
    LL|       |
    LL|       |macro_rules! on_error {
    LL|       |    ($value:expr, $error_message:expr) => {
-   LL|       |        $value.or_else(|e| {
-   LL|       |            // FIXME(85000): no coverage in closure macros
-   LL|       |            let message = format!($error_message, e);
-   LL|       |            if message.len() > 0 {
-   LL|       |                println!("{}", message);
-   LL|       |                Ok(String::from("ok"))
+   LL|      0|        $value.or_else(|e| {
+   LL|      0|            // This closure, which is declared in a macro, should be instrumented.
+   LL|      0|            let message = format!($error_message, e);
+   LL|      0|            if message.len() > 0 {
+   LL|      0|                println!("{}", message);
+   LL|      0|                Ok(String::from("ok"))
    LL|       |            } else {
-   LL|       |                bail!("error");
+   LL|      0|                bail!("error");
    LL|       |            }
-   LL|       |        })
+   LL|      0|        })
    LL|       |    };
    LL|       |}
    LL|       |

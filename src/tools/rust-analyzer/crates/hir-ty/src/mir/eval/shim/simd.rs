@@ -10,7 +10,7 @@ macro_rules! from_bytes {
     ($ty:tt, $value:expr) => {
         ($ty::from_le_bytes(match ($value).try_into() {
             Ok(it) => it,
-            Err(_) => return Err(MirEvalError::TypeError("mismatched size")),
+            Err(_) => return Err(MirEvalError::InternalError("mismatched size".into())),
         }))
     };
 }
@@ -40,7 +40,9 @@ impl Evaluator<'_> {
                                 .substitute(Interner, subst);
                             return Ok((fields.len(), field_ty));
                         }
-                        return Err(MirEvalError::TypeError("simd type with no len param"));
+                        return Err(MirEvalError::InternalError(
+                            "simd type with no len param".into(),
+                        ));
                     }
                 };
                 match try_const_usize(self.db, len) {
@@ -48,14 +50,18 @@ impl Evaluator<'_> {
                         let Some(ty) =
                             subst.as_slice(Interner).first().and_then(|it| it.ty(Interner))
                         else {
-                            return Err(MirEvalError::TypeError("simd type with no ty param"));
+                            return Err(MirEvalError::InternalError(
+                                "simd type with no ty param".into(),
+                            ));
                         };
                         Ok((len as usize, ty.clone()))
                     }
-                    None => Err(MirEvalError::TypeError("simd type with unevaluatable len param")),
+                    None => Err(MirEvalError::InternalError(
+                        "simd type with unevaluatable len param".into(),
+                    )),
                 }
             }
-            _ => Err(MirEvalError::TypeError("simd type which is not a struct")),
+            _ => Err(MirEvalError::InternalError("simd type which is not a struct".into())),
         }
     }
 
@@ -71,7 +77,9 @@ impl Evaluator<'_> {
         match name {
             "and" | "or" | "xor" => {
                 let [left, right] = args else {
-                    return Err(MirEvalError::TypeError("simd bit op args are not provided"));
+                    return Err(MirEvalError::InternalError(
+                        "simd bit op args are not provided".into(),
+                    ));
                 };
                 let result = left
                     .get(self)?
@@ -88,7 +96,7 @@ impl Evaluator<'_> {
             }
             "eq" | "ne" | "lt" | "le" | "gt" | "ge" => {
                 let [left, right] = args else {
-                    return Err(MirEvalError::TypeError("simd args are not provided"));
+                    return Err(MirEvalError::InternalError("simd args are not provided".into()));
                 };
                 let (len, ty) = self.detect_simd_ty(&left.ty)?;
                 let is_signed = matches!(ty.as_builtin(), Some(BuiltinType::Int(_)));
@@ -125,7 +133,9 @@ impl Evaluator<'_> {
             }
             "bitmask" => {
                 let [op] = args else {
-                    return Err(MirEvalError::TypeError("simd_bitmask args are not provided"));
+                    return Err(MirEvalError::InternalError(
+                        "simd_bitmask args are not provided".into(),
+                    ));
                 };
                 let (op_len, _) = self.detect_simd_ty(&op.ty)?;
                 let op_count = op.interval.size / op_len;
@@ -139,18 +149,20 @@ impl Evaluator<'_> {
             }
             "shuffle" => {
                 let [left, right, index] = args else {
-                    return Err(MirEvalError::TypeError("simd_shuffle args are not provided"));
+                    return Err(MirEvalError::InternalError(
+                        "simd_shuffle args are not provided".into(),
+                    ));
                 };
                 let TyKind::Array(_, index_len) = index.ty.kind(Interner) else {
-                    return Err(MirEvalError::TypeError(
-                        "simd_shuffle index argument has non-array type",
+                    return Err(MirEvalError::InternalError(
+                        "simd_shuffle index argument has non-array type".into(),
                     ));
                 };
                 let index_len = match try_const_usize(self.db, index_len) {
                     Some(it) => it as usize,
                     None => {
-                        return Err(MirEvalError::TypeError(
-                            "simd type with unevaluatable len param",
+                        return Err(MirEvalError::InternalError(
+                            "simd type with unevaluatable len param".into(),
                         ))
                     }
                 };
@@ -164,8 +176,8 @@ impl Evaluator<'_> {
                     let val = match vector.clone().nth(index) {
                         Some(it) => it,
                         None => {
-                            return Err(MirEvalError::TypeError(
-                                "out of bound access in simd shuffle",
+                            return Err(MirEvalError::InternalError(
+                                "out of bound access in simd shuffle".into(),
                             ))
                         }
                     };

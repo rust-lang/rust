@@ -53,6 +53,7 @@ bitflags::bitflags! {
         const CONST_EXPR        = 1 << 2;
         const ALLOW_LET         = 1 << 3;
         const IN_IF_GUARD       = 1 << 4;
+        const IS_PAT            = 1 << 5;
     }
 }
 

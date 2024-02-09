@@ -261,52 +261,55 @@ where
         Ok(a)
     }
 
-    #[instrument(skip(self), level = "debug")]
-    fn instantiate_binder_with_placeholders<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
+    fn enter_forall<T, U>(
+        &mut self,
+        binder: ty::Binder<'tcx, T>,
+        f: impl FnOnce(&mut Self, T) -> U,
+    ) -> U
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        if let Some(inner) = binder.no_bound_vars() {
-            return inner;
-        }
+        let value = if let Some(inner) = binder.no_bound_vars() {
+            inner
+        } else {
+            let mut next_region = {
+                let nll_delegate = &mut self.delegate;
+                let mut lazy_universe = None;
 
-        let mut next_region = {
-            let nll_delegate = &mut self.delegate;
-            let mut lazy_universe = None;
+                move |br: ty::BoundRegion| {
+                    // The first time this closure is called, create a
+                    // new universe for the placeholders we will make
+                    // from here out.
+                    let universe = lazy_universe.unwrap_or_else(|| {
+                        let universe = nll_delegate.create_next_universe();
+                        lazy_universe = Some(universe);
+                        universe
+                    });
 
-            move |br: ty::BoundRegion| {
-                // The first time this closure is called, create a
-                // new universe for the placeholders we will make
-                // from here out.
-                let universe = lazy_universe.unwrap_or_else(|| {
-                    let universe = nll_delegate.create_next_universe();
-                    lazy_universe = Some(universe);
-                    universe
-                });
+                    let placeholder = ty::PlaceholderRegion { universe, bound: br };
+                    debug!(?placeholder);
+                    let placeholder_reg = nll_delegate.next_placeholder_region(placeholder);
+                    debug!(?placeholder_reg);
 
-                let placeholder = ty::PlaceholderRegion { universe, bound: br };
-                debug!(?placeholder);
-                let placeholder_reg = nll_delegate.next_placeholder_region(placeholder);
-                debug!(?placeholder_reg);
+                    placeholder_reg
+                }
+            };
 
-                placeholder_reg
-            }
+            let delegate = FnMutDelegate {
+                regions: &mut next_region,
+                types: &mut |_bound_ty: ty::BoundTy| {
+                    unreachable!("we only replace regions in nll_relate, not types")
+                },
+                consts: &mut |_bound_var: ty::BoundVar, _ty| {
+                    unreachable!("we only replace regions in nll_relate, not consts")
+                },
+            };
+
+            self.infcx.tcx.replace_bound_vars_uncached(binder, delegate)
         };
 
-        let delegate = FnMutDelegate {
-            regions: &mut next_region,
-            types: &mut |_bound_ty: ty::BoundTy| {
-                unreachable!("we only replace regions in nll_relate, not types")
-            },
-            consts: &mut |_bound_var: ty::BoundVar, _ty| {
-                unreachable!("we only replace regions in nll_relate, not consts")
-            },
-        };
-
-        let replaced = self.infcx.tcx.replace_bound_vars_uncached(binder, delegate);
-        debug!(?replaced);
-
-        replaced
+        debug!(?value);
+        f(self, value)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -630,10 +633,10 @@ where
 
             // Note: the order here is important. Create the placeholders first, otherwise
             // we assign the wrong universe to the existential!
-            let b_replaced = self.instantiate_binder_with_placeholders(b);
-            let a_replaced = self.instantiate_binder_with_existentials(a);
-
-            self.relate(a_replaced, b_replaced)?;
+            self.enter_forall(b, |this, b| {
+                let a = this.instantiate_binder_with_existentials(a);
+                this.relate(a, b)
+            })?;
 
             self.ambient_variance = variance;
         }
@@ -650,10 +653,10 @@ where
             let variance =
                 std::mem::replace(&mut self.ambient_variance, ty::Variance::Contravariant);
 
-            let a_replaced = self.instantiate_binder_with_placeholders(a);
-            let b_replaced = self.instantiate_binder_with_existentials(b);
-
-            self.relate(a_replaced, b_replaced)?;
+            self.enter_forall(a, |this, a| {
+                let b = this.instantiate_binder_with_existentials(b);
+                this.relate(a, b)
+            })?;
 
             self.ambient_variance = variance;
         }

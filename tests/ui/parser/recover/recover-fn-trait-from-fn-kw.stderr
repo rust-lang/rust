@@ -30,8 +30,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/recover-fn-trait-from-fn-kw.rs:10:5
    |
 LL |     foo2(|_: ()| {});
-   |     ^^^^ ------- found signature defined here
-   |     |
+   |     ^^^^^-------^^^^
+   |     |    |
+   |     |    found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `fn(i32) -> _`

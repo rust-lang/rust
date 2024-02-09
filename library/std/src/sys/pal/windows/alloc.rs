@@ -95,7 +95,7 @@ static HEAP: AtomicPtr<c_void> = AtomicPtr::new(ptr::null_mut());
 #[inline]
 fn init_or_get_process_heap() -> c::HANDLE {
     let heap = HEAP.load(Ordering::Relaxed);
-    if heap.is_null() {
+    if core::intrinsics::unlikely(heap.is_null()) {
         // `HEAP` has not yet been successfully initialized
         let heap = unsafe { GetProcessHeap() };
         if !heap.is_null() {
@@ -113,6 +113,16 @@ fn init_or_get_process_heap() -> c::HANDLE {
         // SAFETY: `HEAP` contains a non-null handle returned by `GetProcessHeap`
         heap
     }
+}
+
+#[inline(never)]
+fn process_heap_alloc(flags: c::DWORD, dwBytes: c::SIZE_T) -> c::LPVOID {
+    let heap = init_or_get_process_heap();
+    if core::intrinsics::unlikely(heap.is_null()) {
+        return ptr::null_mut();
+    }
+    // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`.
+    unsafe { HeapAlloc(heap, flags, dwBytes) }
 }
 
 // Get a non-null handle to the default heap of the current process.
@@ -133,25 +143,17 @@ struct Header(*mut u8);
 // initialized.
 #[inline]
 unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
-    let heap = init_or_get_process_heap();
-    if heap.is_null() {
-        // Allocation has failed, could not get the current process heap.
-        return ptr::null_mut();
-    }
-
     // Allocated memory will be either zeroed or uninitialized.
     let flags = if zeroed { HEAP_ZERO_MEMORY } else { 0 };
 
     if layout.align() <= MIN_ALIGN {
-        // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`.
         // The returned pointer points to the start of an allocated block.
-        unsafe { HeapAlloc(heap, flags, layout.size()) as *mut u8 }
+        process_heap_alloc(flags, layout.size()) as *mut u8
     } else {
         // Allocate extra padding in order to be able to satisfy the alignment.
         let total = layout.align() + layout.size();
 
-        // SAFETY: `heap` is a non-null handle returned by `GetProcessHeap`.
-        let ptr = unsafe { HeapAlloc(heap, flags, total) as *mut u8 };
+        let ptr = process_heap_alloc(flags, total) as *mut u8;
         if ptr.is_null() {
             // Allocation has failed.
             return ptr::null_mut();

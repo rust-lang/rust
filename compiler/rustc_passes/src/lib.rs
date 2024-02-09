@@ -11,10 +11,7 @@
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
-#![feature(slice_group_by)]
 #![feature(try_blocks)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_middle;

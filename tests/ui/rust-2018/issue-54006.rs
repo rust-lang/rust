@@ -8,6 +8,5 @@ use alloc::vec;
 
 pub fn foo() {
     let mut xs = vec![];
-    //~^ ERROR cannot determine resolution for the macro `vec`
     xs.push(0);
 }

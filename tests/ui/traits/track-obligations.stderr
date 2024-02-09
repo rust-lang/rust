@@ -2,10 +2,7 @@ error[E0599]: the method `check` exists for struct `Client<()>`, but its trait b
   --> $DIR/track-obligations.rs:83:16
    |
 LL | struct ALayer<C>(C);
-   | ----------------
-   | |
-   | doesn't satisfy `<_ as Layer<()>>::Service = <ALayer<()> as ParticularServiceLayer<()>>::Service`
-   | doesn't satisfy `ALayer<()>: ParticularServiceLayer<()>`
+   | ---------------- doesn't satisfy `<_ as Layer<()>>::Service = <ALayer<()> as ParticularServiceLayer<()>>::Service` or `ALayer<()>: ParticularServiceLayer<()>`
 ...
 LL | struct Client<C>(C);
    | ---------------- method `check` not found for this struct

@@ -235,8 +235,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // leaf type -- noop
             }
 
-            ty::FnDef(..) | ty::Coroutine(..) | ty::Closure(..) => {
-                bug!("Unexpected closure type in variance computation");
+            ty::FnDef(..) | ty::Coroutine(..) | ty::Closure(..) | ty::CoroutineClosure(..) => {
+                bug!("Unexpected coroutine/closure type in variance computation");
             }
 
             ty::Ref(region, ty, mutbl) => {

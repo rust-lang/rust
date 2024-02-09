@@ -1,10 +1,9 @@
 //! Emulated wait status for non-Unix #[cfg(unix) platforms
 //!
 //! Separate module to facilitate testing against a real Unix implementation.
-use core::ffi::NonZero_c_int;
-
 use crate::ffi::c_int;
 use crate::fmt;
+use crate::num::NonZero;
 
 use super::ExitStatusError;
 
@@ -50,7 +49,7 @@ impl ExitStatus {
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
         // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
-        match NonZero_c_int::try_from(self.wait_status) {
+        match NonZero::try_from(self.wait_status) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }

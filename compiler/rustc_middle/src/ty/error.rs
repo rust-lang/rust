@@ -299,7 +299,7 @@ impl<'tcx> Ty<'tcx> {
             },
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(..) => "trait object".into(),
-            ty::Closure(..) => "closure".into(),
+            ty::Closure(..) | ty::CoroutineClosure(..) => "closure".into(),
             ty::Coroutine(def_id, ..) => {
                 format!("{:#}", tcx.coroutine_kind(def_id).unwrap()).into()
             }

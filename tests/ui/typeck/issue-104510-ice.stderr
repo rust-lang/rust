@@ -4,6 +4,18 @@ error[E0412]: cannot find type `Oops` in this scope
 LL | struct W<T: ?Sized>(Oops);
    |                     ^^^^ not found in this scope
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed for `*const W<T>`
+  --> $DIR/issue-104510-ice.rs:9:9
+   |
+LL |     let pointer = &j as *const _;
+   |         ^^^^^^^
+   |
+help: consider giving `pointer` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let pointer: *const W<T> = &j as *const _;
+   |                +++++++++++++
 
-For more information about this error, try `rustc --explain E0412`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0412.
+For more information about an error, try `rustc --explain E0282`.

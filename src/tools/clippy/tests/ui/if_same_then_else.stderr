@@ -3,16 +3,16 @@ error: this `if` has identical blocks
    |
 LL |       if true {
    |  _____________^
-LL | |
 LL | |         Foo { bar: 42 };
 LL | |         0..10;
+LL | |         ..;
 ...  |
 LL | |         foo();
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:32:12
+  --> $DIR/if_same_then_else.rs:31:12
    |
 LL |       } else {
    |  ____________^
@@ -29,75 +29,54 @@ LL | |     }
 error: this `if` has identical blocks
   --> $DIR/if_same_then_else.rs:67:21
    |
-LL |       let _ = if true {
-   |  _____________________^
-LL | |
-LL | |         0.0
-LL | |     } else {
-   | |_____^
+LL |     let _ = if true { 0.0 } else { 0.0 };
+   |                     ^^^^^^^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:70:12
+  --> $DIR/if_same_then_else.rs:67:34
    |
-LL |       } else {
-   |  ____________^
-LL | |         0.0
-LL | |     };
-   | |_____^
+LL |     let _ = if true { 0.0 } else { 0.0 };
+   |                                  ^^^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:74:21
+  --> $DIR/if_same_then_else.rs:70:21
    |
-LL |       let _ = if true {
-   |  _____________________^
-LL | |
-LL | |         -0.0
-LL | |     } else {
-   | |_____^
+LL |     let _ = if true { -0.0 } else { -0.0 };
+   |                     ^^^^^^^^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:77:12
+  --> $DIR/if_same_then_else.rs:70:35
    |
-LL |       } else {
-   |  ____________^
-LL | |         -0.0
-LL | |     };
-   | |_____^
+LL |     let _ = if true { -0.0 } else { -0.0 };
+   |                                   ^^^^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:90:21
+  --> $DIR/if_same_then_else.rs:82:21
    |
-LL |       let _ = if true {
-   |  _____________________^
-LL | |
-LL | |         42
-LL | |     } else {
-   | |_____^
+LL |     let _ = if true { 42 } else { 42 };
+   |                     ^^^^^^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:93:12
+  --> $DIR/if_same_then_else.rs:82:33
    |
-LL |       } else {
-   |  ____________^
-LL | |         42
-LL | |     };
-   | |_____^
+LL |     let _ = if true { 42 } else { 42 };
+   |                                 ^^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:97:13
+  --> $DIR/if_same_then_else.rs:85:13
    |
 LL |       if true {
    |  _____________^
-LL | |
 LL | |         let bar = if true { 42 } else { 43 };
 LL | |
+LL | |         while foo() {
 ...  |
 LL | |         bar + 1;
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:105:12
+  --> $DIR/if_same_then_else.rs:92:12
    |
 LL |       } else {
    |  ____________^
@@ -110,7 +89,7 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:250:14
+  --> $DIR/if_same_then_else.rs:238:14
    |
 LL |           if x {
    |  ______________^
@@ -119,7 +98,7 @@ LL | |         } else {
    | |_________^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:252:16
+  --> $DIR/if_same_then_else.rs:240:16
    |
 LL |           } else {
    |  ________________^

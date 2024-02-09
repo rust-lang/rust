@@ -13,17 +13,14 @@ use gimli::write::{
 };
 use gimli::{Encoding, Format, LineEncoding, RunTimeEndian};
 use indexmap::IndexSet;
+use rustc_session::Session;
 
 pub(crate) use self::emit::{DebugReloc, DebugRelocName};
 pub(crate) use self::unwind::UnwindContext;
 use crate::prelude::*;
 
-pub(crate) fn producer() -> String {
-    format!(
-        "rustc version {} with cranelift {}",
-        rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
-        cranelift_codegen::VERSION,
-    )
+pub(crate) fn producer(sess: &Session) -> String {
+    format!("rustc version {} with cranelift {}", sess.cfg_version, cranelift_codegen::VERSION)
 }
 
 pub(crate) struct DebugContext {
@@ -67,7 +64,7 @@ impl DebugContext {
 
         let should_remap_filepaths = tcx.sess.should_prefer_remapped_for_codegen();
 
-        let producer = producer();
+        let producer = producer(tcx.sess);
         let comp_dir = tcx
             .sess
             .opts

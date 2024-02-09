@@ -369,7 +369,7 @@ EOF
 
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
-Check out https://github.com/simrat39/rust-tools.nvim for a batteries included rust-analyzer setup for Neovim.
+Check out https://github.com/mrcjkb/rustaceanvim for a batteries included rust-analyzer setup for Neovim.
 
 ==== vim-lsp
 

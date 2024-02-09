@@ -9,7 +9,7 @@ impl Numberer {
     //~^ ERROR `async fn` is not permitted in Rust 2015
         interval: Duration,
         //~^ ERROR cannot find type `Duration` in this scope
-    ) -> Numberer { //~WARN: changes to closure capture in Rust 2021
+    ) -> Numberer {
         Numberer {}
     }
 }

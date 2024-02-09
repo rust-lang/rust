@@ -42,7 +42,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, recv: &'tcx Expr<'tcx>, join_a
                     )
                     .span_suggestion(
                         expr_span,
-                        "if this is intentional, try using `Path::new` instead",
+                        "if this is intentional, consider using `Path::new`",
                         format!("PathBuf::from({arg_str})"),
                         Applicability::Unspecified,
                     );

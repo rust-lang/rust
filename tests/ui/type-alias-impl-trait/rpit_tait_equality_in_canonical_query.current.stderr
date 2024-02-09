@@ -1,4 +1,4 @@
-note: no errors encountered even though `span_delayed_bug` issued
+note: no errors encountered even though delayed bugs were created
 
 note: those delayed bugs will now be shown as internal compiler errors
 

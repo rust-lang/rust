@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![allow(dead_code)]
 #![deny(unused_qualifications)]
 #![feature(unsized_fn_params)]
 

@@ -2,12 +2,13 @@
 //
 // We don't do any drop checking during hir typeck.
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
+use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 use crate::errors;
@@ -188,6 +189,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 RegionResolutionError::UpperBoundUniverseConflict(a, _, _, _, b) => {
                     format!("{b}: {a}", a = ty::Region::new_var(tcx, a))
                 }
+                RegionResolutionError::CannotNormalize(..) => unreachable!(),
             };
             guar = Some(
                 struct_span_code_err!(

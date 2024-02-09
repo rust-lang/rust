@@ -185,8 +185,8 @@ impl EraseType for Option<ty::EarlyBinder<Ty<'_>>> {
     type Result = [u8; size_of::<Option<ty::EarlyBinder<Ty<'static>>>>()];
 }
 
-impl<T> EraseType for rustc_hir::MaybeOwner<&'_ T> {
-    type Result = [u8; size_of::<rustc_hir::MaybeOwner<&'static ()>>()];
+impl EraseType for rustc_hir::MaybeOwner<'_> {
+    type Result = [u8; size_of::<rustc_hir::MaybeOwner<'static>>()];
 }
 
 impl<T: EraseType> EraseType for ty::EarlyBinder<T> {

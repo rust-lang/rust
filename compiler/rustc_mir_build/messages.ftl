@@ -107,8 +107,6 @@ mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .note = extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
     .label = use of extern static
 
-mir_build_float_pattern = floating-point types cannot be used in patterns
-
 mir_build_indirect_structural_match =
     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]`
 
@@ -231,6 +229,10 @@ mir_build_mutation_of_layout_constrained_field_requires_unsafe_unsafe_op_in_unsa
     mutation of layout constrained field is unsafe and requires unsafe function or block
     .note = mutating layout constrained fields cannot statically be checked for valid values
     .label = mutation of layout constrained field
+
+mir_build_nan_pattern = cannot use NaN in patterns
+    .note = NaNs compare inequal to everything, even themselves, so this pattern would never match
+    .help = try using the `is_nan` method instead
 
 mir_build_non_const_path = runtime values cannot be referenced in patterns
 

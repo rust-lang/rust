@@ -258,7 +258,7 @@ impl ParseSess {
         }
     }
 
-    pub fn with_silent_emitter(fatal_note: Option<String>) -> Self {
+    pub fn with_silent_emitter(fatal_note: String) -> Self {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let fatal_dcx = DiagCtxt::with_tty_emitter(None, fallback_bundle).disable_warnings();

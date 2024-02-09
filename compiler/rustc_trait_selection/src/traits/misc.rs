@@ -1,5 +1,6 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
+use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, ObligationCause, ObligationCtxt};
 
 use hir::LangItem;

@@ -12,7 +12,7 @@ use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_code_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_middle::query::Providers;

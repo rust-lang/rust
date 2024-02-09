@@ -1,5 +1,6 @@
 #![feature(coverage_attribute)]
-// compile-flags: --edition=2021 -Copt-level=0 -Zmir-opt-level=3
+// edition: 2021
+// compile-flags: -Copt-level=0 -Zmir-opt-level=3
 
 // Regression test for <https://github.com/rust-lang/rust/issues/117012>.
 //

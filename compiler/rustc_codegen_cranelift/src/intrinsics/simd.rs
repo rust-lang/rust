@@ -293,7 +293,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             ret.write_cvalue(fx, base);
-            let ret_lane = ret.place_lane(fx, idx.try_into().unwrap());
+            let ret_lane = ret.place_lane(fx, idx.into());
             ret_lane.write_cvalue(fx, val);
         }
 
@@ -340,7 +340,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 );
             }
 
-            let ret_lane = v.value_lane(fx, idx.try_into().unwrap());
+            let ret_lane = v.value_lane(fx, idx.into());
             ret.write_cvalue(fx, ret_lane);
         }
 
@@ -822,7 +822,35 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
             let lane_layout = fx.layout_of(lane_ty);
 
-            let m = m.load_scalar(fx);
+            let expected_int_bits = lane_count.max(8);
+            let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
+
+            let m = match m.layout().ty.kind() {
+                ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => m.load_scalar(fx),
+                ty::Array(elem, len)
+                    if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
+                        && len.try_eval_target_usize(fx.tcx, ty::ParamEnv::reveal_all())
+                            == Some(expected_bytes) =>
+                {
+                    m.force_stack(fx).0.load(
+                        fx,
+                        Type::int(expected_int_bits as u16).unwrap(),
+                        MemFlags::trusted(),
+                    )
+                }
+                _ => {
+                    fx.tcx.dcx().span_fatal(
+                        span,
+                        format!(
+                            "invalid monomorphization of `simd_select_bitmask` intrinsic: \
+                            cannot accept `{}` as mask, expected `u{}` or `[u8; {}]`",
+                            ret.layout().ty,
+                            expected_int_bits,
+                            expected_bytes
+                        ),
+                    );
+                }
+            };
 
             for lane in 0..lane_count {
                 let m_lane = fx.bcx.ins().ushr_imm(m, u64::from(lane) as i64);

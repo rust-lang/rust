@@ -108,8 +108,8 @@ impl<'a> FnKind<'a> {
 
 /// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
 pub trait Map<'hir> {
-    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
-    fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
+    /// Retrieves the `Node` corresponding to `id`.
+    fn hir_node(&self, hir_id: HirId) -> Node<'hir>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -119,7 +119,7 @@ pub trait Map<'hir> {
 
 // Used when no map is actually available, forcing manual implementation of nested visitors.
 impl<'hir> Map<'hir> for ! {
-    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+    fn hir_node(&self, _: HirId) -> Node<'hir> {
         *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
@@ -340,9 +340,6 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         walk_expr(self, ex)
-    }
-    fn visit_let_expr(&mut self, lex: &'v Let<'v>) {
-        walk_let_expr(self, lex)
     }
     fn visit_expr_field(&mut self, field: &'v ExprField<'v>) {
         walk_expr_field(self, field)
@@ -672,7 +669,8 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
 
 pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen) {
     match len {
-        &ArrayLen::Infer(hir_id, _span) => visitor.visit_id(hir_id),
+        // FIXME: Use `visit_infer` here.
+        ArrayLen::Infer(InferArg { hir_id, span: _ }) => visitor.visit_id(*hir_id),
         ArrayLen::Body(c) => visitor.visit_anon_const(c),
     }
 }
@@ -729,7 +727,12 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::DropTemps(ref subexpression) => {
             visitor.visit_expr(subexpression);
         }
-        ExprKind::Let(ref let_expr) => visitor.visit_let_expr(let_expr),
+        ExprKind::Let(Let { span: _, pat, ty, init, is_recovered: _ }) => {
+            // match the visit order in walk_local
+            visitor.visit_expr(init);
+            visitor.visit_pat(pat);
+            walk_list!(visitor, visit_ty, ty);
+        }
         ExprKind::If(ref cond, ref then, ref else_opt) => {
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
@@ -804,14 +807,6 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         }
         ExprKind::Lit(_) | ExprKind::Err(_) => {}
     }
-}
-
-pub fn walk_let_expr<'v, V: Visitor<'v>>(visitor: &mut V, let_expr: &'v Let<'v>) {
-    // match the visit order in walk_local
-    visitor.visit_expr(let_expr.init);
-    visitor.visit_id(let_expr.hir_id);
-    visitor.visit_pat(let_expr.pat);
-    walk_list!(visitor, visit_ty, let_expr.ty);
 }
 
 pub fn walk_expr_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v ExprField<'v>) {

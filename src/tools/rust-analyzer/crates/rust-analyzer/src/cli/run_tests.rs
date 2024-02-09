@@ -13,8 +13,8 @@ use crate::cli::{flags, full_name_of_item, Result};
 
 impl flags::RunTests {
     pub fn run(self) -> Result<()> {
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
+        let cargo_config =
+            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,

@@ -74,25 +74,6 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
-
-      url="https://$CACHE_DOMAIN/docker/$cksum"
-
-      echo "Attempting to download $url"
-      rm -f /tmp/rustci_docker_cache
-      set +e
-      retry curl --max-time 600 -y 30 -Y 10 --connect-timeout 30 -f -L -C - \
-        -o /tmp/rustci_docker_cache "$url"
-
-      docker_archive_hash=$(sha512sum /tmp/rustci_docker_cache | awk '{print $1}')
-      echo "Downloaded archive hash: ${docker_archive_hash}"
-
-      echo "Loading images into docker"
-      # docker load sometimes hangs in the CI, so time out after 10 minutes with TERM,
-      # KILL after 12 minutes
-      loaded_images=$(/usr/bin/timeout -k 720 600 docker load -i /tmp/rustci_docker_cache \
-        | sed 's/.* sha/sha/')
-      set -e
-      printf "Downloaded containers:\n$loaded_images\n"
     fi
 
     dockerfile="$docker_dir/$image/Dockerfile"
@@ -103,46 +84,65 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         context="$script_dir"
     fi
     echo "::group::Building docker image for $image"
+    echo "Image input"
+    cat $hash_key
+    echo "Image input checksum ${cksum}"
 
-    # As of August 2023, Github Actions have updated Docker to 23.X,
-    # which uses the BuildKit by default. It currently throws aways all
-    # intermediate layers, which breaks our usage of S3 layer caching.
-    # Therefore we opt-in to the old build backend for now.
-    export DOCKER_BUILDKIT=0
-    retry docker \
-      build \
-      --rm \
-      -t rust-ci \
-      -f "$dockerfile" \
-      "$context"
-    echo "::endgroup::"
+    # Print docker version
+    docker --version
 
-    if [ "$CI" != "" ]; then
-      s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
-      upload="aws s3 cp - $s3url"
-      digest=$(docker inspect rust-ci --format '{{.Id}}')
-      echo "Built container $digest"
-      if ! grep -q "$digest" <(echo "$loaded_images"); then
-        echo "Uploading finished image $digest to $url"
-        set +e
-        # Print image history for easier debugging of layer SHAs
-        docker history rust-ci
-        docker history -q rust-ci | \
-          grep -v missing | \
-          xargs docker save | \
-          gzip | \
-          $upload
-        set -e
-      else
-        echo "Looks like docker image is the same as before, not uploading"
-      fi
-      # Record the container image for reuse, e.g. by rustup.rs builds
-      info="$dist/image-$image.txt"
-      mkdir -p "$dist"
-      echo "$url" >"$info"
-      echo "$digest" >>"$info"
-      cat "$info"
+    # On non-CI or PR jobs, we don't have permissions to write to the registry cache, so we should
+    # not use `docker login` nor caching.
+    if [[ "$CI" == "" ]] || [[ "$PR_CI_JOB" == "1" ]];
+    then
+        retry docker build --rm -t rust-ci -f "$dockerfile" "$context"
+    else
+        REGISTRY=ghcr.io
+        # Most probably rust-lang-ci, but in general the owner of the repository where CI runs
+        REGISTRY_USERNAME=${GITHUB_REPOSITORY_OWNER}
+        # Tag used to push the final Docker image, so that it can be pulled by e.g. rustup
+        IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci:${cksum}
+        # Tag used to cache the Docker build
+        # It seems that it cannot be the same as $IMAGE_TAG, otherwise it overwrites the cache
+        CACHE_IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci-cache:${cksum}
+
+        # Log into the Docker registry, so that we can read/write cache and the final image
+        echo ${DOCKER_TOKEN} | docker login ${REGISTRY} \
+            --username ${REGISTRY_USERNAME} \
+            --password-stdin
+
+        # Enable a new Docker driver so that --cache-from/to works with a registry backend
+        docker buildx create --use --driver docker-container
+
+        # Build the image using registry caching backend
+        retry docker \
+          buildx \
+          build \
+          --rm \
+          -t rust-ci \
+          -f "$dockerfile" \
+          --cache-from type=registry,ref=${CACHE_IMAGE_TAG} \
+          --cache-to type=registry,ref=${CACHE_IMAGE_TAG},compression=zstd \
+          --output=type=docker \
+          "$context"
+
+        # Print images for debugging purposes
+        docker images
+
+        # Tag the built image and push it to the registry
+        docker tag rust-ci "${IMAGE_TAG}"
+        docker push "${IMAGE_TAG}"
+
+        # Record the container registry tag/url for reuse, e.g. by rustup.rs builds
+        # It should be possible to run `docker pull <$IMAGE_TAG>` to download the image
+        info="$dist/image-$image.txt"
+        mkdir -p "$dist"
+        echo "${IMAGE_TAG}" > "$info"
+        cat "$info"
+
+        echo "To download the image, run docker pull ${IMAGE_TAG}"
     fi
+    echo "::endgroup::"
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
     if isCI; then
         echo Cannot run disabled images on CI!

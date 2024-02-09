@@ -22,7 +22,7 @@ use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage,
+    codes::*, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrCode,
     ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
@@ -111,7 +111,7 @@ impl Mul<usize> for Limit {
 }
 
 impl rustc_errors::IntoDiagnosticArg for Limit {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -288,19 +288,9 @@ impl Session {
     pub fn finish_diagnostics(&self, registry: &Registry) {
         self.check_miri_unleashed_features();
         self.dcx().print_error_count(registry);
-        self.emit_future_breakage();
-    }
-
-    fn emit_future_breakage(&self) {
-        if !self.opts.json_future_incompat {
-            return;
+        if self.opts.json_future_incompat {
+            self.dcx().emit_future_breakage_report();
         }
-
-        let diags = self.dcx().take_future_breakage_diagnostics();
-        if diags.is_empty() {
-            return;
-        }
-        self.dcx().emit_future_breakage_report(diags);
     }
 
     /// Returns true if the crate is a testing one.
@@ -316,7 +306,7 @@ impl Session {
     ) -> DiagnosticBuilder<'a> {
         let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
-            err.code(error_code!(E0658));
+            err.code(E0658);
         }
         add_feature_diagnostics(&mut err, self, feature);
         err
@@ -325,7 +315,7 @@ impl Session {
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
         // We must include lint errors here.
         if let Some(reported) = self.dcx().has_errors_or_lint_errors() {
-            let _ = self.dcx().emit_stashed_diagnostics();
+            self.dcx().emit_stashed_diagnostics();
             Err(reported)
         } else {
             Ok(())
@@ -777,6 +767,13 @@ impl Session {
         self.opts.unstable_opts.tls_model.unwrap_or(self.target.tls_model)
     }
 
+    pub fn direct_access_external_data(&self) -> Option<bool> {
+        self.opts
+            .unstable_opts
+            .direct_access_external_data
+            .or(self.target.direct_access_external_data)
+    }
+
     pub fn split_debuginfo(&self) -> SplitDebuginfo {
         self.opts.cg.split_debuginfo.unwrap_or(self.target.split_debuginfo)
     }
@@ -893,7 +890,7 @@ impl Session {
         CodegenUnits::Default(16)
     }
 
-    pub fn teach(&self, code: &str) -> bool {
+    pub fn teach(&self, code: ErrCode) -> bool {
         self.opts.unstable_opts.teach && self.dcx().must_teach(code)
     }
 

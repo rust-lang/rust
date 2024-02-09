@@ -29,7 +29,7 @@ LL | struct BadStruct2<_, T>(_, T);
    |                   ^ expected identifier, found reserved identifier
 
 error: associated constant in `impl` without body
-  --> $DIR/typeck_type_placeholder_item.rs:205:5
+  --> $DIR/typeck_type_placeholder_item.rs:206:5
    |
 LL |     const C: _;
    |     ^^^^^^^^^^-
@@ -411,7 +411,7 @@ LL | type Y = impl Trait<_>;
    |                     ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/typeck_type_placeholder_item.rs:216:31
+  --> $DIR/typeck_type_placeholder_item.rs:217:31
    |
 LL | fn value() -> Option<&'static _> {
    |               ----------------^-
@@ -420,7 +420,7 @@ LL | fn value() -> Option<&'static _> {
    |               help: replace with the correct return type: `Option<&'static u8>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/typeck_type_placeholder_item.rs:221:10
+  --> $DIR/typeck_type_placeholder_item.rs:222:10
    |
 LL | const _: Option<_> = map(value);
    |          ^^^^^^^^^
@@ -429,7 +429,7 @@ LL | const _: Option<_> = map(value);
    |          help: replace with the correct type: `Option<u8>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/typeck_type_placeholder_item.rs:224:31
+  --> $DIR/typeck_type_placeholder_item.rs:225:31
    |
 LL | fn evens_squared(n: usize) -> _ {
    |                               ^
@@ -438,13 +438,13 @@ LL | fn evens_squared(n: usize) -> _ {
    |                               help: replace with an appropriate return type: `impl Iterator<Item = usize>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/typeck_type_placeholder_item.rs:229:10
+  --> $DIR/typeck_type_placeholder_item.rs:230:10
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |          ^ not allowed in type signatures
    |
-note: however, the inferred type `Map<Filter<Range<i32>, {closure@typeck_type_placeholder_item.rs:229:29}>, {closure@typeck_type_placeholder_item.rs:229:49}>` cannot be named
-  --> $DIR/typeck_type_placeholder_item.rs:229:14
+note: however, the inferred type `Map<Filter<Range<i32>, {closure@typeck_type_placeholder_item.rs:230:29}>, {closure@typeck_type_placeholder_item.rs:230:49}>` cannot be named
+  --> $DIR/typeck_type_placeholder_item.rs:230:14
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -631,25 +631,25 @@ LL |         fn clone_from(&mut self, other: &FnTest9) { *self = FnTest9; }
    |                                         ~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:201:14
+  --> $DIR/typeck_type_placeholder_item.rs:202:14
    |
 LL |     type A = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:203:14
+  --> $DIR/typeck_type_placeholder_item.rs:204:14
    |
 LL |     type B = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:205:14
+  --> $DIR/typeck_type_placeholder_item.rs:206:14
    |
 LL |     const C: _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:208:14
+  --> $DIR/typeck_type_placeholder_item.rs:209:14
    |
 LL |     const D: _ = 42;
    |              ^
@@ -657,7 +657,16 @@ LL |     const D: _ = 42;
    |              not allowed in type signatures
    |              help: replace with the correct type: `i32`
 
-error: aborting due to 71 previous errors
+error[E0046]: not all trait items implemented, missing: `F`
+  --> $DIR/typeck_type_placeholder_item.rs:200:1
+   |
+LL |     type F: std::ops::Fn(_);
+   |     ----------------------- `F` from trait
+...
+LL | impl Qux for Struct {
+   | ^^^^^^^^^^^^^^^^^^^ missing `F` in implementation
 
-Some errors have detailed explanations: E0121, E0282, E0403.
-For more information about an error, try `rustc --explain E0121`.
+error: aborting due to 72 previous errors
+
+Some errors have detailed explanations: E0046, E0121, E0282, E0403.
+For more information about an error, try `rustc --explain E0046`.

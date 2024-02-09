@@ -4,7 +4,7 @@
 
 // pretty-expanded FIXME #23616
 
-trait A {
+trait A { //~ WARN trait `A` is never used
     fn foo(self);
 }
 

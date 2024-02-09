@@ -9,34 +9,34 @@
       let mut _8: &&E;
       let mut _10: isize;
       scope 1 {
-          debug e => _1;
+          debug e1 => _1;
           let _3: i32;
           let _5: i32;
           let _6: i32;
           scope 2 {
-              debug x => _3;
+              debug x1 => _3;
               let _7: &E;
               scope 5 {
-                  debug e => _7;
+                  debug e2 => _7;
                   let _9: &i32;
                   let _11: &i32;
                   let _12: &i32;
                   scope 6 {
-                      debug x => _9;
+                      debug x2 => _9;
                   }
                   scope 7 {
-                      debug x => _11;
+                      debug x21 => _11;
                   }
                   scope 8 {
-                      debug x => _12;
+                      debug x22 => _12;
                   }
               }
           }
           scope 3 {
-              debug x => _5;
+              debug x11 => _5;
           }
           scope 4 {
-              debug x => _6;
+              debug x12 => _6;
           }
       }
   

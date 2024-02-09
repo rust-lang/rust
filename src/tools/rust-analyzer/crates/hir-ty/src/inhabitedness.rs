@@ -84,8 +84,7 @@ impl TypeVisitor<Interner> for UninhabitedFrom<'_> {
                 Some(0) | None => CONTINUE_OPAQUELY_INHABITED,
                 Some(1..) => item_ty.super_visit_with(self, outer_binder),
             },
-
-            TyKind::Ref(..) | _ => CONTINUE_OPAQUELY_INHABITED,
+            _ => CONTINUE_OPAQUELY_INHABITED,
         };
         self.recursive_ty.remove(ty);
         self.max_depth += 1;

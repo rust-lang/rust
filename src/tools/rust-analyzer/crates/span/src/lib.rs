@@ -1,7 +1,4 @@
 //! File and span related types.
-// FIXME: This should be moved into its own crate to get rid of the dependency inversion, base-db
-// has business depending on tt, tt should depend on a span crate only (which unforunately will have
-// to depend on salsa)
 use std::fmt::{self, Write};
 
 use salsa::InternId;

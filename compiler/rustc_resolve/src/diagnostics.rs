@@ -6,8 +6,8 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, report_ambiguity_error, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
-    DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    codes::*, pluralize, report_ambiguity_error, struct_span_code_err, Applicability, DiagCtxt,
+    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -561,13 +561,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         resolution_error: ResolutionError<'a>,
     ) -> DiagnosticBuilder<'_> {
         match resolution_error {
-            ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params) => {
+            ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params, def_kind) => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
+                let static_or_const = match def_kind {
+                    DefKind::Static(_) => Some(errs::GenericParamsFromOuterItemStaticOrConst::Static),
+                    DefKind::Const => Some(errs::GenericParamsFromOuterItemStaticOrConst::Const),
+                    _ => None,
+                };
+                let is_self = matches!(outer_res, Res::SelfTyParam { .. } | Res::SelfTyAlias { .. });
                 let mut err = errs::GenericParamsFromOuterItem {
                     span,
                     label: None,
                     refer_to_type_directly: None,
                     sugg: None,
+                    static_or_const,
+                    is_self,
                 };
 
                 let sm = self.tcx.sess.source_map();

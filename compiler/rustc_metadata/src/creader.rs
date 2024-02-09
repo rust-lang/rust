@@ -534,7 +534,10 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     ) -> Option<CrateNum> {
         self.used_extern_options.insert(name);
         match self.maybe_resolve_crate(name, dep_kind, None) {
-            Ok(cnum) => Some(cnum),
+            Ok(cnum) => {
+                self.cstore.set_used_recursively(cnum);
+                Some(cnum)
+            }
             Err(err) => {
                 let missing_core =
                     self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
@@ -1066,6 +1069,16 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {
         self.maybe_resolve_crate(name, CrateDepKind::Explicit, None).ok()
+    }
+
+    pub fn unload_unused_crates(&mut self) {
+        for opt_cdata in &mut self.cstore.metas {
+            if let Some(cdata) = opt_cdata
+                && !cdata.used()
+            {
+                *opt_cdata = None;
+            }
+        }
     }
 }
 

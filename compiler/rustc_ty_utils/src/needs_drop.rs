@@ -172,6 +172,12 @@ where
                         }
                     }
 
+                    ty::CoroutineClosure(_, args) => {
+                        for upvar in args.as_coroutine_closure().upvar_tys() {
+                            queue_type(self, upvar);
+                        }
+                    }
+
                     // Check for a `Drop` impl and whether this is a union or
                     // `ManuallyDrop`. If it's a struct or enum without a `Drop`
                     // impl then check whether the field types need `Drop`.

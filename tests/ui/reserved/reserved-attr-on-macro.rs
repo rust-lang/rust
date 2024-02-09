@@ -7,5 +7,5 @@ macro_rules! foo {
 }
 
 fn main() {
-    foo!(); //~ ERROR cannot determine resolution for the macro `foo`
+    foo!();
 }

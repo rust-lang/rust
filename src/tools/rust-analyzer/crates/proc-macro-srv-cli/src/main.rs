@@ -45,9 +45,11 @@ fn run() -> io::Result<()> {
                 msg::Response::ListMacros(srv.list_macros(&dylib_path))
             }
             msg::Request::ExpandMacro(task) => match srv.span_mode() {
-                msg::SpanMode::Id => msg::Response::ExpandMacro(srv.expand(task).map(|(it, _)| it)),
+                msg::SpanMode::Id => {
+                    msg::Response::ExpandMacro(srv.expand(*task).map(|(it, _)| it))
+                }
                 msg::SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended(
-                    srv.expand(task).map(|(tree, span_data_table)| msg::ExpandMacroExtended {
+                    srv.expand(*task).map(|(tree, span_data_table)| msg::ExpandMacroExtended {
                         tree,
                         span_data_table,
                     }),

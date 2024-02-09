@@ -1,4 +1,5 @@
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -38,19 +39,27 @@ impl Debug for BcbCounter {
     }
 }
 
+#[derive(Debug)]
+pub(super) enum CounterIncrementSite {
+    Node { bcb: BasicCoverageBlock },
+    Edge { from_bcb: BasicCoverageBlock, to_bcb: BasicCoverageBlock },
+}
+
 /// Generates and stores coverage counter and coverage expression information
 /// associated with nodes/edges in the BCB graph.
 pub(super) struct CoverageCounters {
-    next_counter_id: CounterId,
+    /// List of places where a counter-increment statement should be injected
+    /// into MIR, each with its corresponding counter ID.
+    counter_increment_sites: IndexVec<CounterId, CounterIncrementSite>,
 
     /// Coverage counters/expressions that are associated with individual BCBs.
     bcb_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
     /// Coverage counters/expressions that are associated with the control-flow
     /// edge between two BCBs.
     ///
-    /// The iteration order of this map can affect the precise contents of MIR,
-    /// so we use `FxIndexMap` to avoid query stability hazards.
-    bcb_edge_counters: FxIndexMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
+    /// We currently don't iterate over this map, but if we do in the future,
+    /// switch it back to `FxIndexMap` to avoid query stability hazards.
+    bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
     /// Tracks which BCBs have a counter associated with some incoming edge.
     /// Only used by assertions, to verify that BCBs with incoming edge
     /// counters do not have their own physical counters (expressions are allowed).
@@ -71,9 +80,9 @@ impl CoverageCounters {
         let num_bcbs = basic_coverage_blocks.num_nodes();
 
         let mut this = Self {
-            next_counter_id: CounterId::START,
+            counter_increment_sites: IndexVec::new(),
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
-            bcb_edge_counters: FxIndexMap::default(),
+            bcb_edge_counters: FxHashMap::default(),
             bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
             expressions: IndexVec::new(),
         };
@@ -84,8 +93,8 @@ impl CoverageCounters {
         this
     }
 
-    fn make_counter(&mut self) -> BcbCounter {
-        let id = self.next_counter();
+    fn make_counter(&mut self, site: CounterIncrementSite) -> BcbCounter {
+        let id = self.counter_increment_sites.push(site);
         BcbCounter::Counter { id }
     }
 
@@ -103,15 +112,8 @@ impl CoverageCounters {
         self.make_expression(lhs, Op::Add, rhs)
     }
 
-    /// Counter IDs start from one and go up.
-    fn next_counter(&mut self) -> CounterId {
-        let next = self.next_counter_id;
-        self.next_counter_id = self.next_counter_id + 1;
-        next
-    }
-
     pub(super) fn num_counters(&self) -> usize {
-        self.next_counter_id.as_usize()
+        self.counter_increment_sites.len()
     }
 
     #[cfg(test)]
@@ -171,22 +173,26 @@ impl CoverageCounters {
         self.bcb_counters[bcb]
     }
 
-    pub(super) fn bcb_node_counters(
+    /// Returns an iterator over all the nodes/edges in the coverage graph that
+    /// should have a counter-increment statement injected into MIR, along with
+    /// each site's corresponding counter ID.
+    pub(super) fn counter_increment_sites(
         &self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, &BcbCounter)> {
-        self.bcb_counters
-            .iter_enumerated()
-            .filter_map(|(bcb, counter_kind)| Some((bcb, counter_kind.as_ref()?)))
+    ) -> impl Iterator<Item = (CounterId, &CounterIncrementSite)> {
+        self.counter_increment_sites.iter_enumerated()
     }
 
-    /// For each edge in the BCB graph that has an associated counter, yields
-    /// that edge's *from* and *to* nodes, and its counter.
-    pub(super) fn bcb_edge_counters(
+    /// Returns an iterator over the subset of BCB nodes that have been associated
+    /// with a counter *expression*, along with the ID of that expression.
+    pub(super) fn bcb_nodes_with_coverage_expressions(
         &self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, BasicCoverageBlock, &BcbCounter)> {
-        self.bcb_edge_counters
-            .iter()
-            .map(|(&(from_bcb, to_bcb), counter_kind)| (from_bcb, to_bcb, counter_kind))
+    ) -> impl Iterator<Item = (BasicCoverageBlock, ExpressionId)> + Captures<'_> {
+        self.bcb_counters.iter_enumerated().filter_map(|(bcb, &counter_kind)| match counter_kind {
+            // Yield the BCB along with its associated expression ID.
+            Some(BcbCounter::Expression { id }) => Some((bcb, id)),
+            // This BCB is associated with a counter or nothing, so skip it.
+            Some(BcbCounter::Counter { .. }) | None => None,
+        })
     }
 
     pub(super) fn into_expressions(self) -> IndexVec<ExpressionId, Expression> {
@@ -339,7 +345,8 @@ impl<'a> MakeBcbCounters<'a> {
         // program results in a tight infinite loop, but it should still compile.
         let one_path_to_target = !self.basic_coverage_blocks.bcb_has_multiple_in_edges(bcb);
         if one_path_to_target || self.bcb_predecessors(bcb).contains(&bcb) {
-            let counter_kind = self.coverage_counters.make_counter();
+            let counter_kind =
+                self.coverage_counters.make_counter(CounterIncrementSite::Node { bcb });
             if one_path_to_target {
                 debug!("{bcb:?} gets a new counter: {counter_kind:?}");
             } else {
@@ -401,7 +408,8 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         // Make a new counter to count this edge.
-        let counter_kind = self.coverage_counters.make_counter();
+        let counter_kind =
+            self.coverage_counters.make_counter(CounterIncrementSite::Edge { from_bcb, to_bcb });
         debug!("Edge {from_bcb:?}->{to_bcb:?} gets a new counter: {counter_kind:?}");
         self.coverage_counters.set_bcb_edge_counter(from_bcb, to_bcb, counter_kind)
     }

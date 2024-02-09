@@ -24,4 +24,5 @@ fn main() {
                                                //~| ERROR `'_` cannot be used here
     let _ = for<'a> |x: &()| -> &'a () { x };  //~ ERROR `&` without an explicit lifetime name cannot be used here
     let _ = for<'a> |x: &'a ()| -> &() { x };  //~ ERROR `&` without an explicit lifetime name cannot be used here
+    //~^ ERROR: lifetime may not live long enough
 }

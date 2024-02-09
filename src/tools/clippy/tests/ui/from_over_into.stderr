@@ -86,5 +86,19 @@ LL ~         fn from(val: Vec<T>) -> Self {
 LL ~             FromOverInto(val)
    |
 
-error: aborting due to 6 previous errors
+error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
+  --> $DIR/from_over_into.rs:95:5
+   |
+LL |     impl Into<()> for Hello {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `impl From<Local> for Foreign` is allowed by the orphan rules, for more information see
+           https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence
+help: replace the `Into` implementation with `From<issue_12138::Hello>`
+   |
+LL ~     impl From<Hello> for () {
+LL ~         fn from(val: Hello) {}
+   |
+
+error: aborting due to 7 previous errors
 

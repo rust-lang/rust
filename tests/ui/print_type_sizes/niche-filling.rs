@@ -1,5 +1,5 @@
-// compile-flags: -Z print-type-sizes --crate-type=lib
-// ignore-debug debug assertions will print more types
+// compile-flags: -Z print-type-sizes --crate-type lib
+// ignore-debug: debug assertions will print more types
 // build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.

@@ -55,7 +55,7 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
     fn regions(
         &mut self,
         a: ty::Region<'tcx>,
-        b: ty::Region<'tcx>,
+        _b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         Ok(a)
     }

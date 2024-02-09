@@ -1,11 +1,11 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
 use clippy_utils::consts::{constant, constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::type_diagnostic_name;
+use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
@@ -88,37 +88,44 @@ impl ArithmeticSideEffects {
     }
 
     /// Verifies built-in types that have specific allowed operations
-    fn has_specific_allowed_type_and_operation(
-        cx: &LateContext<'_>,
-        lhs_ty: Ty<'_>,
+    fn has_specific_allowed_type_and_operation<'tcx>(
+        cx: &LateContext<'tcx>,
+        lhs_ty: Ty<'tcx>,
         op: &Spanned<hir::BinOpKind>,
-        rhs_ty: Ty<'_>,
+        rhs_ty: Ty<'tcx>,
     ) -> bool {
         let is_div_or_rem = matches!(op.node, hir::BinOpKind::Div | hir::BinOpKind::Rem);
-        let is_non_zero_u = |symbol: Option<Symbol>| {
-            matches!(
-                symbol,
-                Some(
-                    sym::NonZeroU128
-                        | sym::NonZeroU16
-                        | sym::NonZeroU32
-                        | sym::NonZeroU64
-                        | sym::NonZeroU8
-                        | sym::NonZeroUsize
-                )
-            )
+        let is_non_zero_u = |cx: &LateContext<'tcx>, ty: Ty<'tcx>| {
+            let tcx = cx.tcx;
+
+            let ty::Adt(adt, substs) = ty.kind() else { return false };
+
+            if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
+                return false;
+            };
+
+            let int_type = substs.type_at(0);
+            let unsigned_int_types = [
+                tcx.types.u8,
+                tcx.types.u16,
+                tcx.types.u32,
+                tcx.types.u64,
+                tcx.types.u128,
+                tcx.types.usize,
+            ];
+
+            unsigned_int_types.contains(&int_type)
         };
         let is_sat_or_wrap = |ty: Ty<'_>| {
-            let is_sat = type_diagnostic_name(cx, ty) == Some(sym::Saturating);
-            let is_wrap = type_diagnostic_name(cx, ty) == Some(sym::Wrapping);
-            is_sat || is_wrap
+            is_type_diagnostic_item(cx, ty, sym::Saturating) || is_type_diagnostic_item(cx, ty, sym::Wrapping)
         };
 
-        // If the RHS is NonZeroU*, then division or module by zero will never occur
-        if is_non_zero_u(type_diagnostic_name(cx, rhs_ty)) && is_div_or_rem {
+        // If the RHS is `NonZero<u*>`, then division or module by zero will never occur.
+        if is_non_zero_u(cx, rhs_ty) && is_div_or_rem {
             return true;
         }
-        // `Saturation` and `Wrapping` can overflow if the RHS is zero in a division or module
+
+        // `Saturation` and `Wrapping` can overflow if the RHS is zero in a division or module.
         if is_sat_or_wrap(lhs_ty) {
             return !is_div_or_rem;
         }

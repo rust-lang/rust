@@ -21,8 +21,8 @@ extern crate proc_macro;
 extern crate rustc_driver as _;
 
 mod dylib;
-mod server;
 mod proc_macros;
+mod server;
 
 use std::{
     collections::{hash_map::Entry, HashMap},

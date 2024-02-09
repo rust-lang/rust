@@ -2,8 +2,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:2:5
    |
 LL |     f1(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
@@ -22,8 +23,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:3:5
    |
 LL |     f2(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'a, 'b> fn(&'a (), &'b ()) -> _`
@@ -42,8 +44,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:4:5
    |
 LL |     f3(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'a> fn(&(), &'a ()) -> _`
@@ -62,8 +65,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:5:5
    |
 LL |     f4(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'r, 'a> fn(&'a (), &'r ()) -> _`
@@ -82,8 +86,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:6:5
    |
 LL |     f5(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'r> fn(&'r (), &'r ()) -> _`
@@ -102,8 +107,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:7:5
    |
 LL |     g1(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'a> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
@@ -122,8 +128,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:8:5
    |
 LL |     g2(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'a> fn(&'a (), for<'a> fn(&'a ())) -> _`
@@ -142,8 +149,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:9:5
    |
 LL |     g3(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'s> fn(&'s (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>) -> _`
@@ -162,8 +170,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:10:5
    |
 LL |     g4(|_: (), _: ()| {});
-   |     ^^ -------------- found signature defined here
-   |     |
+   |     ^^^--------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'a> fn(&'a (), for<'r> fn(&'r ())) -> _`
@@ -182,8 +191,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:11:5
    |
 LL |     h1(|_: (), _: (), _: (), _: ()| {});
-   |     ^^ ---------------------------- found signature defined here
-   |     |
+   |     ^^^----------------------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'a, 'b> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'b (), for<'a, 'b> fn(&'a (), &'b ())) -> _`
@@ -202,8 +212,9 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/anonymous-higher-ranked-lifetime.rs:12:5
    |
 LL |     h2(|_: (), _: (), _: (), _: ()| {});
-   |     ^^ ---------------------------- found signature defined here
-   |     |
+   |     ^^^----------------------------^^^^
+   |     |  |
+   |     |  found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `for<'t0, 'a> fn(&'a (), Box<(dyn for<'a> Fn(&'a ()) + 'static)>, &'t0 (), for<'a, 'b> fn(&'a (), &'b ())) -> _`

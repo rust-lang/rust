@@ -3,6 +3,7 @@ use crate::ty::{self, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 
@@ -130,8 +131,24 @@ pub trait Printer<'tcx>: Sized {
                     parent_args = &args[..generics.parent_count.min(args.len())];
 
                     match key.disambiguated_data.data {
-                        // Closures' own generics are only captures, don't print them.
-                        DefPathData::Closure => {}
+                        DefPathData::Closure => {
+                            // FIXME(async_closures): This is somewhat ugly.
+                            // We need to additionally print the `kind` field of a closure if
+                            // it is desugared from a coroutine-closure.
+                            if let Some(hir::CoroutineKind::Desugared(
+                                _,
+                                hir::CoroutineSource::Closure,
+                            )) = self.tcx().coroutine_kind(def_id)
+                                && args.len() >= parent_args.len() + 1
+                            {
+                                return self.path_generic_args(
+                                    |cx| cx.print_def_path(def_id, parent_args),
+                                    &args[..parent_args.len() + 1][..1],
+                                );
+                            } else {
+                                // Closures' own generics are only captures, don't print them.
+                            }
+                        }
                         // This covers both `DefKind::AnonConst` and `DefKind::InlineConst`.
                         // Anon consts doesn't have their own generics, and inline consts' own
                         // generics are their inferred types, so don't print them.
@@ -259,6 +276,7 @@ fn characteristic_def_id_of_type_cached<'a>(
 
         ty::FnDef(def_id, _)
         | ty::Closure(def_id, _)
+        | ty::CoroutineClosure(def_id, _)
         | ty::Coroutine(def_id, _)
         | ty::CoroutineWitness(def_id, _)
         | ty::Foreign(def_id) => Some(def_id),

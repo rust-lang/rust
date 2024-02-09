@@ -11,7 +11,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{adjusted_display_range_new, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-method
 //
@@ -34,7 +34,7 @@ pub(crate) fn unresolved_method(
             d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
-        adjusted_display_range_new(ctx, d.expr, &|expr| {
+        adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
                 match expr {
                     ast::Expr::MethodCallExpr(it) => it.name_ref(),

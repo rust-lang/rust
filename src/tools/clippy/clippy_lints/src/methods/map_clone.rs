@@ -113,9 +113,15 @@ fn handle_path(
     if let Some(path_def_id) = cx.qpath_res(qpath, arg.hir_id).opt_def_id()
         && match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
     {
-        // FIXME: It would be better to infer the type to check if it's copyable or not
-        // to suggest to use `.copied()` instead of `.cloned()` where applicable.
-        lint_path(cx, e.span, recv.span);
+        // The `copied` and `cloned` methods are only available on `&T` and `&mut T` in `Option`
+        // and `Result`.
+        if let ty::Adt(_, args) = cx.typeck_results().expr_ty(recv).kind()
+            && let args = args.as_slice()
+            && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
+            && ty.is_ref()
+        {
+            lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
+        }
     }
 }
 
@@ -139,17 +145,19 @@ fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
     );
 }
 
-fn lint_path(cx: &LateContext<'_>, replace: Span, root: Span) {
+fn lint_path(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool) {
     let mut applicability = Applicability::MachineApplicable;
+
+    let replacement = if is_copy { "copied" } else { "cloned" };
 
     span_lint_and_sugg(
         cx,
         MAP_CLONE,
         replace,
         "you are explicitly cloning with `.map()`",
-        "consider calling the dedicated `cloned` method",
+        &format!("consider calling the dedicated `{replacement}` method"),
         format!(
-            "{}.cloned()",
+            "{}.{replacement}()",
             snippet_with_applicability(cx, root, "..", &mut applicability),
         ),
         applicability,

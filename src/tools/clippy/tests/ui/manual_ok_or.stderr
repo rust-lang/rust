@@ -17,7 +17,7 @@ error: called `map_or(Err(_), Ok)` on an `Option` value
   --> $DIR/manual_ok_or.rs:14:5
    |
 LL |     foo.map_or(Err("error"), Ok);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try using `ok_or` instead: `foo.ok_or("error")`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `ok_or`: `foo.ok_or("error")`
    |
    = note: `-D clippy::option-map-or-err-ok` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::option_map_or_err_ok)]`

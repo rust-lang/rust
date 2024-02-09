@@ -17,7 +17,7 @@ struct Bar {
 
 // Issue 119267: this should not ICE.
 #[derive(Debug)]
-struct Foo(usize, #[allow(unused)] usize); //~ WARN field `0` is never read
+struct Foo(usize, #[allow(unused)] usize); //~ WARN struct `Foo` is never constructed
 
 fn main() {
     Bar {

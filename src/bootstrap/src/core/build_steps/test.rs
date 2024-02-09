@@ -25,7 +25,6 @@ use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
-use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
@@ -37,23 +36,6 @@ use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
-
-// mir-opt tests have different variants depending on whether a target is 32bit or 64bit, and
-// blessing them requires blessing with each target. To aid developers, when blessing the mir-opt
-// test suite the corresponding target of the opposite pointer size is also blessed.
-//
-// This array serves as the known mappings between 32bit and 64bit targets. If you're developing on
-// a target where a target with the opposite pointer size exists, feel free to add it here.
-const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
-    // (32bit, 64bit)
-    ("i686-unknown-linux-gnu", "x86_64-unknown-linux-gnu"),
-    ("i686-unknown-linux-musl", "x86_64-unknown-linux-musl"),
-    ("i686-pc-windows-msvc", "x86_64-pc-windows-msvc"),
-    ("i686-pc-windows-gnu", "x86_64-pc-windows-gnu"),
-    // ARM Macs don't have a corresponding 32-bit target that they can (easily)
-    // build for, so there is no entry for "aarch64-apple-darwin" here.
-    // Likewise, i686 for macOS is no longer possible to build.
-];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateBootstrap {
@@ -1487,46 +1469,18 @@ impl Step for MirOpt {
             })
         };
 
-        // We use custom logic to bless the mir-opt suite: mir-opt tests have multiple variants
-        // (32bit vs 64bit, and panic=abort vs panic=unwind), and all of them needs to be blessed.
-        // When blessing, we try best-effort to also bless the other variants, to aid developers.
         if builder.config.cmd.bless() {
-            let targets = MIR_OPT_BLESS_TARGET_MAPPING
-                .iter()
-                .filter(|(target_32bit, target_64bit)| {
-                    *target_32bit == &*self.target.triple || *target_64bit == &*self.target.triple
-                })
-                .next()
-                .map(|(target_32bit, target_64bit)| {
-                    let target_32bit = TargetSelection::from_user(target_32bit);
-                    let target_64bit = TargetSelection::from_user(target_64bit);
+            // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
+            // but while we're at it we might as well flex our cross-compilation support. This
+            // selection covers all our tier 1 operating systems and architectures using only tier
+            // 1 targets.
 
-                    // Running compiletest requires a C compiler to be available, but it might not
-                    // have been detected by bootstrap if the target we're testing wasn't in the
-                    // --target flags.
-                    if !builder.cc.borrow().contains_key(&target_32bit) {
-                        utils::cc_detect::find_target(builder, target_32bit);
-                    }
-                    if !builder.cc.borrow().contains_key(&target_64bit) {
-                        utils::cc_detect::find_target(builder, target_64bit);
-                    }
+            for target in ["aarch64-unknown-linux-gnu", "i686-pc-windows-msvc"] {
+                run(TargetSelection::from_user(target));
+            }
 
-                    vec![target_32bit, target_64bit]
-                })
-                .unwrap_or_else(|| {
-                    eprintln!(
-                        "\
-Note that not all variants of mir-opt tests are going to be blessed, as no mapping between
-a 32bit and a 64bit target was found for {target}.
-You can add that mapping by changing MIR_OPT_BLESS_TARGET_MAPPING in src/bootstrap/test.rs",
-                        target = self.target,
-                    );
-                    vec![self.target]
-                });
-
-            for target in targets {
-                run(target);
-
+            for target in ["x86_64-apple-darwin", "i686-unknown-linux-musl"] {
+                let target = TargetSelection::from_user(target);
                 let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
                     compiler: self.compiler,
                     base: target,
@@ -1616,26 +1570,26 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }
 
-        if suite == "mir-opt" {
-            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, target));
-        } else {
-            builder.ensure(compile::Std::new(compiler, target));
-        }
+        // Also provide `rust_test_helpers` for the host.
+        builder.ensure(TestHelpers { target: compiler.host });
 
         // ensure that `libproc_macro` is available on the host.
         builder.ensure(compile::Std::new(compiler, compiler.host));
-
-        // Also provide `rust_test_helpers` for the host.
-        builder.ensure(TestHelpers { target: compiler.host });
 
         // As well as the target, except for plain wasm32, which can't build it
         if suite != "mir-opt" && !target.contains("wasm") && !target.contains("emscripten") {
             builder.ensure(TestHelpers { target });
         }
 
-        builder.ensure(RemoteCopyLibs { compiler, target });
-
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
+
+        if suite == "mir-opt" {
+            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, target));
+        } else {
+            builder.ensure(compile::Std::new(compiler, target));
+        }
+
+        builder.ensure(RemoteCopyLibs { compiler, target });
 
         // compiletest currently has... a lot of arguments, so let's just pass all
         // of them!
@@ -1745,11 +1699,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
         flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));
 
-        if let Some(linker) = builder.linker(target) {
-            cmd.arg("--target-linker").arg(linker);
-        }
-        if let Some(linker) = builder.linker(compiler.host) {
-            cmd.arg("--host-linker").arg(linker);
+        if suite != "mir-opt" {
+            if let Some(linker) = builder.linker(target) {
+                cmd.arg("--target-linker").arg(linker);
+            }
+            if let Some(linker) = builder.linker(compiler.host) {
+                cmd.arg("--host-linker").arg(linker);
+            }
         }
 
         let mut hostflags = flags.clone();
@@ -1936,15 +1892,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--remote-test-client").arg(builder.tool_exe(Tool::RemoteTestClient));
         }
 
-        // Running a C compiler on MSVC requires a few env vars to be set, to be
-        // sure to set them here.
-        //
-        // Note that if we encounter `PATH` we make sure to append to our own `PATH`
-        // rather than stomp over it.
-        if !builder.config.dry_run() && target.is_msvc() {
-            for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
-                if k != "PATH" {
-                    cmd.env(k, v);
+        if suite != "mir-opt" {
+            // Running a C compiler on MSVC requires a few env vars to be set, to be
+            // sure to set them here.
+            //
+            // Note that if we encounter `PATH` we make sure to append to our own `PATH`
+            // rather than stomp over it.
+            if !builder.config.dry_run() && target.is_msvc() {
+                for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
+                    if k != "PATH" {
+                        cmd.env(k, v);
+                    }
                 }
             }
         }

@@ -433,7 +433,7 @@ impl Builder {
     }
 
     pub(crate) fn build(self, db: &RootDatabase) -> CompletionItem {
-        let _p = profile::span("item::Builder::build");
+        let _p = tracing::span!(tracing::Level::INFO, "item::Builder::build").entered();
 
         let label = self.label;
         let mut label_detail = None;

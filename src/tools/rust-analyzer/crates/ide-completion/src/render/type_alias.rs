@@ -10,7 +10,7 @@ pub(crate) fn render_type_alias(
     ctx: RenderContext<'_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
-    let _p = profile::span("render_type_alias");
+    let _p = tracing::span!(tracing::Level::INFO, "render_type_alias").entered();
     render(ctx, type_alias, false)
 }
 
@@ -18,7 +18,7 @@ pub(crate) fn render_type_alias_with_eq(
     ctx: RenderContext<'_>,
     type_alias: hir::TypeAlias,
 ) -> Option<CompletionItem> {
-    let _p = profile::span("render_type_alias_with_eq");
+    let _p = tracing::span!(tracing::Level::INFO, "render_type_alias_with_eq").entered();
     render(ctx, type_alias, true)
 }
 

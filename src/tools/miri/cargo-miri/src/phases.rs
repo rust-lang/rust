@@ -501,11 +501,10 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     // Set missing env vars. We prefer build-time env vars over run-time ones; see
     // <https://github.com/rust-lang/miri/issues/1661> for the kind of issue that fixes.
     for (name, val) in info.env {
-        // `CARGO_MAKEFLAGS` contains information about how to reach the
-        // jobserver, but by the time the program is being run, that jobserver
-        // no longer exists. Hence we shouldn't forward this.
-        // FIXME: Miri builds the final crate without a jobserver.
-        // This may be fixed with github.com/rust-lang/cargo/issues/12597.
+        // `CARGO_MAKEFLAGS` contains information about how to reach the jobserver, but by the time
+        // the program is being run, that jobserver no longer exists (cargo only runs the jobserver
+        // for the build portion of `cargo run`/`cargo test`). Hence we shouldn't forward this.
+        // Also see <https://github.com/rust-lang/rust/pull/113730>.
         if name == "CARGO_MAKEFLAGS" {
             continue;
         }

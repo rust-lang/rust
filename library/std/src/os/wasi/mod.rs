@@ -28,8 +28,7 @@
 //! [`OsStr`]: crate::ffi::OsStr
 //! [`OsString`]: crate::ffi::OsString
 
-#![cfg_attr(not(target_env = "preview2"), stable(feature = "rust1", since = "1.0.0"))]
-#![cfg_attr(target_env = "preview2", unstable(feature = "wasm_preview2", issue = "none"))]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(cfg(target_os = "wasi"))]
 

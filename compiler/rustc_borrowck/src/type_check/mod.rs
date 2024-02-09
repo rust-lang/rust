@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! This pass type-checks the MIR to ensure it is not broken.
 
 use std::rc::Rc;
@@ -152,6 +150,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         universal_region_relations,
         region_bound_pairs,
         normalized_inputs_and_output,
+        known_type_outlives_obligations,
     } = free_region_relations::create(
         infcx,
         param_env,
@@ -176,6 +175,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         body,
         param_env,
         &region_bound_pairs,
+        known_type_outlives_obligations,
         implicit_region_bound,
         &mut borrowck_context,
     );
@@ -211,7 +211,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
                 CustomTypeOp::new(
                     |ocx| {
                         ocx.infcx.register_member_constraints(
-                            param_env,
                             opaque_type_key,
                             decl.hidden_type.ty,
                             decl.hidden_type.span,
@@ -802,6 +801,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         }),
                     };
                 }
+                ty::CoroutineClosure(_, args) => {
+                    return match args.as_coroutine_closure().upvar_tys().get(field.index()) {
+                        Some(&ty) => Ok(ty),
+                        None => Err(FieldAccessError::OutOfRange {
+                            field_count: args.as_coroutine_closure().upvar_tys().len(),
+                        }),
+                    };
+                }
                 ty::Coroutine(_, args) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
@@ -850,6 +857,7 @@ struct TypeChecker<'a, 'tcx> {
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+    known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
@@ -1000,6 +1008,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         body: &'a Body<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
+        known_type_outlives_obligations: &'tcx [ty::PolyTypeOutlivesPredicate<'tcx>],
         implicit_region_bound: ty::Region<'tcx>,
         borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     ) -> Self {
@@ -1010,6 +1019,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_type_annotations: &body.user_type_annotations,
             param_env,
             region_bound_pairs,
+            known_type_outlives_obligations,
             implicit_region_bound,
             borrowck_context,
             reported_errors: Default::default(),
@@ -1099,10 +1109,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
         debug!(?self.user_type_annotations);
+        let tcx = self.tcx();
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
-            self.ascribe_user_type(inferred_ty, annotation, span);
+            if let ty::UserType::TypeOf(def, args) = annotation
+                && let DefKind::InlineConst = tcx.def_kind(def)
+            {
+                self.check_inline_const(inferred_ty, def.expect_local(), args, span);
+            } else {
+                self.ascribe_user_type(inferred_ty, annotation, span);
+            }
         }
     }
 
@@ -1121,6 +1138,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.region_bound_pairs,
             self.implicit_region_bound,
             self.param_env,
+            self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
             category,
@@ -1193,6 +1211,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(ty, v.xform(ty::Variance::Contravariant), a, locations, category)?;
 
         Ok(())
+    }
+
+    fn check_inline_const(
+        &mut self,
+        inferred_ty: Ty<'tcx>,
+        def_id: LocalDefId,
+        args: UserArgs<'tcx>,
+        span: Span,
+    ) {
+        assert!(args.user_self_ty.is_none());
+        let tcx = self.tcx();
+        let const_ty = tcx.type_of(def_id).instantiate(tcx, args.args);
+        if let Err(terr) =
+            self.eq_types(const_ty, inferred_ty, Locations::All(span), ConstraintCategory::Boring)
+        {
+            span_bug!(
+                span,
+                "bad inline const pattern: ({:?} = {:?}) {:?}",
+                const_ty,
+                inferred_ty,
+                terr
+            );
+        }
+        let args = self.infcx.resolve_vars_if_possible(args.args);
+        let predicates = self.prove_closure_bounds(tcx, def_id, args, Locations::All(span));
+        self.normalize_and_prove_instantiated_predicates(
+            def_id.to_def_id(),
+            predicates,
+            Locations::All(span),
+        );
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -1829,6 +1877,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }),
                 }
             }
+            AggregateKind::CoroutineClosure(_, args) => {
+                match args.as_coroutine_closure().upvar_tys().get(field_index.as_usize()) {
+                    Some(ty) => Ok(*ty),
+                    None => Err(FieldAccessError::OutOfRange {
+                        field_count: args.as_coroutine_closure().upvar_tys().len(),
+                    }),
+                }
+            }
             AggregateKind::Array(ty) => Ok(ty),
             AggregateKind::Tuple => {
                 unreachable!("This should have been covered in check_rvalues");
@@ -1851,7 +1907,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let def_id = uv.def;
                     if tcx.def_kind(def_id) == DefKind::InlineConst {
                         let def_id = def_id.expect_local();
-                        let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
+                        let predicates = self.prove_closure_bounds(
+                            tcx,
+                            def_id,
+                            uv.args,
+                            location.to_locations(),
+                        );
                         self.normalize_and_prove_instantiated_predicates(
                             def_id.to_def_id(),
                             predicates,
@@ -1920,6 +1981,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::SizedBound,
                 );
             }
+            &Rvalue::NullaryOp(NullOp::DebugAssertions, _) => {}
 
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
@@ -2427,6 +2489,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 AggregateKind::Tuple => None,
                 AggregateKind::Closure(_, _) => None,
                 AggregateKind::Coroutine(_, _) => None,
+                AggregateKind::CoroutineClosure(_, _) => None,
             },
         }
     }
@@ -2654,9 +2717,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args) => {
-                (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), args, location))
-            }
+            AggregateKind::Closure(def_id, args)
+            | AggregateKind::CoroutineClosure(def_id, args)
+            | AggregateKind::Coroutine(def_id, args) => (
+                def_id,
+                self.prove_closure_bounds(
+                    tcx,
+                    def_id.expect_local(),
+                    args,
+                    location.to_locations(),
+                ),
+            ),
 
             AggregateKind::Array(_) | AggregateKind::Tuple => {
                 (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates::empty())
@@ -2675,7 +2746,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
         args: GenericArgsRef<'tcx>,
-        location: Location,
+        locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
             constraint_conversion::ConstraintConversion::new(
@@ -2684,7 +2755,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.param_env,
-                location.to_locations(),
+                self.known_type_outlives_obligations,
+                locations,
                 DUMMY_SP,                   // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 self.borrowck_context.constraints,
@@ -2697,10 +2769,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
 
         let parent_args = match tcx.def_kind(def_id) {
-            DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => {
-                args.as_coroutine().parent_args()
+            // We don't want to dispatch on 3 different kind of closures here, so take
+            // advantage of the fact that the `parent_args` is the same length as the
+            // `typeck_root_args`.
+            DefKind::Closure => {
+                // FIXME(async_closures): It may be useful to add a debug assert here
+                // to actually call `type_of` and check the `parent_args` are the same
+                // length as the `typeck_root_args`.
+                &args[..typeck_root_args.len()]
             }
-            DefKind::Closure => args.as_closure().parent_args(),
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };
@@ -2710,7 +2787,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let Err(_) = self.eq_args(
             typeck_root_args,
             parent_args,
-            location.to_locations(),
+            locations,
             ConstraintCategory::BoringNoLocation,
         ) {
             span_mirbug!(

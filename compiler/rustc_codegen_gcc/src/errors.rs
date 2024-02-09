@@ -35,7 +35,7 @@ pub(crate) enum PossibleFeature<'a> {
 struct ExitCode(Option<i32>);
 
 impl IntoDiagnosticArg for ExitCode {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         let ExitCode(exit_code) = self;
         match exit_code {
             Some(t) => t.into_diagnostic_arg(),

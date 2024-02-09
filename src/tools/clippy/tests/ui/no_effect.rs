@@ -181,6 +181,8 @@ fn main() {
     //~^ ERROR: binding to `_` prefixed variable with no side-effect
     let _cat = [2, 4, 6, 8][2];
     //~^ ERROR: binding to `_` prefixed variable with no side-effect
+    let _issue_12166 = 42;
+    let underscore_variable_above_can_be_used_dont_lint = _issue_12166;
 
     #[allow(clippy::no_effect)]
     0;

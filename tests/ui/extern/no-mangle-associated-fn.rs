@@ -12,7 +12,7 @@ impl Foo {
     }
 }
 
-trait Bar {
+trait Bar { //~ WARN trait `Bar` is never used
     fn qux() -> u8;
 }
 

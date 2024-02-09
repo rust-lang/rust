@@ -4,8 +4,6 @@
 #![feature(min_specialization)]
 #![feature(let_chains)]
 #![allow(rustc::potential_query_instability, internal_features)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

@@ -1,0 +1,34 @@
+Function name: coverage_attr_closure::GLOBAL_CLOSURE_ON::{closure#0}
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 06, 0f, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 6, 15) to (start + 2, 2)
+
+Function name: coverage_attr_closure::contains_closures_off::{closure#0} (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 1d, 13, 02, 06]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 29, 19) to (start + 2, 6)
+
+Function name: coverage_attr_closure::contains_closures_on
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 0f, 01, 02, 05, 01, 04, 06, 02, 05, 01, 04, 06, 01, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 15, 1) to (start + 2, 5)
+- Code(Counter(0)) at (prev + 4, 6) to (start + 2, 5)
+- Code(Counter(0)) at (prev + 4, 6) to (start + 1, 2)
+
+Function name: coverage_attr_closure::contains_closures_on::{closure#0} (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 11, 13, 02, 06]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 17, 19) to (start + 2, 6)
+

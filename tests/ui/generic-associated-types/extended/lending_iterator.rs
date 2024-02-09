@@ -32,6 +32,7 @@ pub trait LendingIterator {
         Self: for<'q> LendingIterator<Item<'q> = A>,
     {
         <B as FromLendingIterator<A>>::from_iter(self)
+        //[base]~^ ERROR: does not live long enough
     }
 }
 

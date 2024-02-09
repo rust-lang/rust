@@ -17,7 +17,7 @@ pub(crate) fn render_macro(
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
-    let _p = profile::span("render_macro");
+    let _p = tracing::span!(tracing::Level::INFO, "render_macro").entered();
     render(ctx, *kind == PathKind::Use, *has_macro_bang, *has_call_parens, name, macro_)
 }
 
@@ -27,7 +27,7 @@ pub(crate) fn render_macro_pat(
     name: hir::Name,
     macro_: hir::Macro,
 ) -> Builder {
-    let _p = profile::span("render_macro");
+    let _p = tracing::span!(tracing::Level::INFO, "render_macro").entered();
     render(ctx, false, false, false, name, macro_)
 }
 

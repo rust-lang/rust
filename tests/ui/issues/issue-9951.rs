@@ -4,7 +4,7 @@
 #![allow(unused_variables)]
 
 trait Bar {
-  fn noop(&self);
+  fn noop(&self); //~ WARN method `noop` is never used
 }
 impl Bar for u8 {
   fn noop(&self) {}

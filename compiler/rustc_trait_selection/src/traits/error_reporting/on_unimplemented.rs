@@ -6,7 +6,7 @@ use rustc_ast::AttrKind;
 use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
+use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::GenericArgsRef;
@@ -64,39 +64,44 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
-        let trait_ref = self.instantiate_binder_with_placeholders(trait_ref);
-        let trait_self_ty = trait_ref.self_ty();
+        self.enter_forall(trait_ref, |trait_ref| {
+            let trait_self_ty = trait_ref.self_ty();
 
-        let mut self_match_impls = vec![];
-        let mut fuzzy_match_impls = vec![];
+            let mut self_match_impls = vec![];
+            let mut fuzzy_match_impls = vec![];
 
-        self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
-            let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
-            let impl_trait_ref = tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
+            self.tcx.for_each_relevant_impl(trait_ref.def_id, trait_self_ty, |def_id| {
+                let impl_args = self.fresh_args_for_item(obligation.cause.span, def_id);
+                let impl_trait_ref =
+                    tcx.impl_trait_ref(def_id).unwrap().instantiate(tcx, impl_args);
 
-            let impl_self_ty = impl_trait_ref.self_ty();
+                let impl_self_ty = impl_trait_ref.self_ty();
 
-            if self.can_eq(param_env, trait_self_ty, impl_self_ty) {
-                self_match_impls.push((def_id, impl_args));
+                if self.can_eq(param_env, trait_self_ty, impl_self_ty) {
+                    self_match_impls.push((def_id, impl_args));
 
-                if iter::zip(trait_ref.args.types().skip(1), impl_trait_ref.args.types().skip(1))
+                    if iter::zip(
+                        trait_ref.args.types().skip(1),
+                        impl_trait_ref.args.types().skip(1),
+                    )
                     .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
-                {
-                    fuzzy_match_impls.push((def_id, impl_args));
+                    {
+                        fuzzy_match_impls.push((def_id, impl_args));
+                    }
                 }
-            }
-        });
+            });
 
-        let impl_def_id_and_args = if self_match_impls.len() == 1 {
-            self_match_impls[0]
-        } else if fuzzy_match_impls.len() == 1 {
-            fuzzy_match_impls[0]
-        } else {
-            return None;
-        };
+            let impl_def_id_and_args = if self_match_impls.len() == 1 {
+                self_match_impls[0]
+            } else if fuzzy_match_impls.len() == 1 {
+                fuzzy_match_impls[0]
+            } else {
+                return None;
+            };
 
-        tcx.has_attr(impl_def_id_and_args.0, sym::rustc_on_unimplemented)
-            .then_some(impl_def_id_and_args)
+            tcx.has_attr(impl_def_id_and_args.0, sym::rustc_on_unimplemented)
+                .then_some(impl_def_id_and_args)
+        })
     }
 
     /// Used to set on_unimplemented's `ItemContext`

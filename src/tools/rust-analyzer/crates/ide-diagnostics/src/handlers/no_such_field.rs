@@ -129,6 +129,36 @@ mod tests {
     use crate::tests::{check_diagnostics, check_fix, check_no_fix};
 
     #[test]
+    fn dont_work_for_field_with_disabled_cfg() {
+        check_diagnostics(
+            r#"
+struct Test {
+    #[cfg(feature = "hello")]
+    test: u32,
+    other: u32
+}
+
+fn main() {
+    let a = Test {
+        #[cfg(feature = "hello")]
+        test: 1,
+        other: 1
+    };
+
+    let Test {
+        #[cfg(feature = "hello")]
+        test,
+        mut other,
+        ..
+    } = a;
+
+    other += 1;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn no_such_field_diagnostics() {
         check_diagnostics(
             r#"

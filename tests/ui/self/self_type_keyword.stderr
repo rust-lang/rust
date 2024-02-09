@@ -72,11 +72,11 @@ note: unit struct `foo::Self` exists but is inaccessible
 LL |   struct Self;
    |   ^^^^^^^^^^^^ not accessible
 
-error[E0392]: parameter `'Self` is never used
+error[E0392]: lifetime parameter `'Self` is never used
   --> $DIR/self_type_keyword.rs:6:12
    |
 LL | struct Bar<'Self>;
-   |            ^^^^^ unused parameter
+   |            ^^^^^ unused lifetime parameter
    |
    = help: consider removing `'Self`, referring to it in a field, or using a marker such as `PhantomData`
 

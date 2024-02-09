@@ -34,6 +34,43 @@ LL | impl std::ops::AddAssign for &[u8] {
    |
    = note: define and implement a trait or new type instead
 
-error: aborting due to 3 previous errors
+error[E0053]: method `add_assign` has an incompatible type for trait
+  --> $DIR/issue-67535.rs:5:19
+   |
+LL |     fn add_assign(&self, other: ()) -> () {
+   |                   ^^^^^
+   |                   |
+   |                   types differ in mutability
+   |                   help: change the self-receiver type to match the trait: `&mut self`
+   |
+   = note: expected signature `fn(&mut (), ())`
+              found signature `fn(&(), ())`
 
-For more information about this error, try `rustc --explain E0117`.
+error[E0053]: method `add_assign` has an incompatible type for trait
+  --> $DIR/issue-67535.rs:12:19
+   |
+LL |     fn add_assign(&self, other: [(); 1]) -> [(); 1] {
+   |                   ^^^^^
+   |                   |
+   |                   types differ in mutability
+   |                   help: change the self-receiver type to match the trait: `&mut self`
+   |
+   = note: expected signature `fn(&mut _, _)`
+              found signature `fn(&_, _) -> [(); 1]`
+
+error[E0053]: method `add_assign` has an incompatible type for trait
+  --> $DIR/issue-67535.rs:19:19
+   |
+LL |     fn add_assign(&self, other: &[u8]) -> &[u8] {
+   |                   ^^^^^
+   |                   |
+   |                   types differ in mutability
+   |                   help: change the self-receiver type to match the trait: `&mut self`
+   |
+   = note: expected signature `fn(&mut &_, &_)`
+              found signature `fn(&&_, &_) -> &[u8]`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0053, E0117.
+For more information about an error, try `rustc --explain E0053`.

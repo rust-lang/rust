@@ -18,28 +18,6 @@ pub enum CfgAtom {
     KeyValue { key: SmolStr, value: SmolStr },
 }
 
-impl CfgAtom {
-    /// Returns `true` when the atom comes from the target specification.
-    ///
-    /// If this returns `true`, then changing this atom requires changing the compilation target. If
-    /// it returns `false`, the atom might come from a build script or the build system.
-    pub fn is_target_defined(&self) -> bool {
-        match self {
-            CfgAtom::Flag(flag) => matches!(&**flag, "unix" | "windows"),
-            CfgAtom::KeyValue { key, value: _ } => matches!(
-                &**key,
-                "target_arch"
-                    | "target_os"
-                    | "target_env"
-                    | "target_family"
-                    | "target_endian"
-                    | "target_pointer_width"
-                    | "target_vendor" // NOTE: `target_feature` is left out since it can be configured via `-Ctarget-feature`
-            ),
-        }
-    }
-}
-
 impl fmt::Display for CfgAtom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

@@ -64,16 +64,29 @@ pub(super) fn mangle<'tcx>(
         )
         .unwrap();
 
-    if let ty::InstanceDef::ThreadLocalShim(..) = instance.def {
-        let _ = printer.write_str("{{tls-shim}}");
-    }
-
-    if let ty::InstanceDef::VTableShim(..) = instance.def {
-        let _ = printer.write_str("{{vtable-shim}}");
-    }
-
-    if let ty::InstanceDef::ReifyShim(..) = instance.def {
-        let _ = printer.write_str("{{reify-shim}}");
+    match instance.def {
+        ty::InstanceDef::ThreadLocalShim(..) => {
+            printer.write_str("{{tls-shim}}").unwrap();
+        }
+        ty::InstanceDef::VTableShim(..) => {
+            printer.write_str("{{vtable-shim}}").unwrap();
+        }
+        ty::InstanceDef::ReifyShim(..) => {
+            printer.write_str("{{reify-shim}}").unwrap();
+        }
+        // FIXME(async_closures): This shouldn't be needed when we fix
+        // `Instance::ty`/`Instance::def_id`.
+        ty::InstanceDef::ConstructCoroutineInClosureShim { target_kind, .. }
+        | ty::InstanceDef::CoroutineKindShim { target_kind, .. } => match target_kind {
+            ty::ClosureKind::Fn => unreachable!(),
+            ty::ClosureKind::FnMut => {
+                printer.write_str("{{fn-mut-shim}}").unwrap();
+            }
+            ty::ClosureKind::FnOnce => {
+                printer.write_str("{{fn-once-shim}}").unwrap();
+            }
+        },
+        _ => {}
     }
 
     printer.path.finish(hash)
@@ -211,6 +224,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
+            | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
 
             // The `pretty_print_type` formatting of array size depends on
@@ -281,7 +295,11 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
         // Similar to `pretty_path_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
         match self_ty.kind() {
-            ty::FnDef(..) | ty::Alias(..) | ty::Closure(..) | ty::Coroutine(..)
+            ty::FnDef(..)
+            | ty::Alias(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
                 if trait_ref.is_none() =>
             {
                 self.print_type(self_ty)

@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 #[derive(Copy, Clone)]
 struct Test;
 

@@ -14,7 +14,7 @@ extern crate rustc_span;
 
 use rustc_errors::{
     AddToDiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, DiagCtxt,
-    IntoDiagnostic, Level, SubdiagnosticMessage,
+    IntoDiagnostic, Level, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -55,9 +55,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for TranslatableInIntoDiagn
 pub struct UntranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F)
     {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
@@ -67,10 +65,7 @@ impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
 pub struct TranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for TranslatableInAddToDiagnostic {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         diag.note(crate::fluent_generated::no_crate_note);
     }
 }

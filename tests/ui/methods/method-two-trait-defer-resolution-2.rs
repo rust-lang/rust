@@ -14,7 +14,7 @@ trait Foo {
     fn foo(&self) -> isize;
 }
 
-trait MyCopy { fn foo(&self) { } }
+trait MyCopy { fn foo(&self) { } } //~ WARN method `foo` is never used
 impl MyCopy for i32 { }
 
 impl<T:MyCopy> Foo for Vec<T> {

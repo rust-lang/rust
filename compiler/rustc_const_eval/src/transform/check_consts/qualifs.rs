@@ -10,7 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty};
 use rustc_trait_selection::traits::{
-    self, ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
+    ImplSource, Obligation, ObligationCause, ObligationCtxt, SelectionContext,
 };
 
 use super::ConstCx;
@@ -24,7 +24,6 @@ pub fn in_any_value_of_ty<'tcx>(
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
         needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
         needs_non_const_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
-        custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         tainted_by_errors,
     }
 }
@@ -210,35 +209,6 @@ impl Qualif for NeedsNonConstDrop {
         _: GenericArgsRef<'tcx>,
     ) -> bool {
         adt.has_non_const_dtor(cx.tcx)
-    }
-}
-
-/// A constant that cannot be used as part of a pattern in a `match` expression.
-pub struct CustomEq;
-
-impl Qualif for CustomEq {
-    const ANALYSIS_NAME: &'static str = "flow_custom_eq";
-
-    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
-        qualifs.custom_eq
-    }
-
-    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        // If *any* component of a composite data type does not implement `Structural{Partial,}Eq`,
-        // we know that at least some values of that type are not structural-match. I say "some"
-        // because that component may be part of an enum variant (e.g.,
-        // `Option::<NonStructuralMatchTy>::Some`), in which case some values of this type may be
-        // structural-match (`Option::None`).
-        traits::search_for_structural_match_violation(cx.body.span, cx.tcx, ty).is_some()
-    }
-
-    fn in_adt_inherently<'tcx>(
-        cx: &ConstCx<'_, 'tcx>,
-        def: AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> bool {
-        let ty = Ty::new_adt(cx.tcx, def, args);
-        !ty.is_structural_eq_shallow(cx.tcx)
     }
 }
 

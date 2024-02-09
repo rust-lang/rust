@@ -2,10 +2,7 @@ error[E0599]: the method `test` exists for struct `Foo<Enum, CloneEnum>`, but it
   --> $DIR/derive-trait-for-method-call.rs:28:15
    |
 LL | enum Enum {
-   | ---------
-   | |
-   | doesn't satisfy `Enum: Clone`
-   | doesn't satisfy `Enum: Default`
+   | --------- doesn't satisfy `Enum: Clone` or `Enum: Default`
 ...
 LL | enum CloneEnum {
    | -------------- doesn't satisfy `CloneEnum: Default`
@@ -40,10 +37,7 @@ error[E0599]: the method `test` exists for struct `Foo<Struct, CloneStruct>`, bu
   --> $DIR/derive-trait-for-method-call.rs:34:15
    |
 LL | struct Struct {
-   | -------------
-   | |
-   | doesn't satisfy `Struct: Clone`
-   | doesn't satisfy `Struct: Default`
+   | ------------- doesn't satisfy `Struct: Clone` or `Struct: Default`
 ...
 LL | struct CloneStruct {
    | ------------------ doesn't satisfy `CloneStruct: Default`
@@ -85,12 +79,6 @@ LL | struct Foo<X, Y> (X, Y);
 ...
 LL |     let y = x.test();
    |               ^^^^ method cannot be called on `Foo<Vec<Enum>, Instant>` due to unsatisfied trait bounds
-  --> $SRC_DIR/std/src/time.rs:LL:COL
-   |
-   = note: doesn't satisfy `Instant: Default`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-   |
-   = note: doesn't satisfy `Vec<Enum>: Clone`
    |
 note: the following trait bounds were not satisfied:
       `Instant: Default`

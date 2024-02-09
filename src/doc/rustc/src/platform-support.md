@@ -280,6 +280,7 @@ target | std | host | notes
 [`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare ARMv7-A, hardfloat
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARMv7-A Apple WatchOS
 `armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
+[`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare ARMv8-R, hardfloat
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
@@ -360,7 +361,6 @@ target | std | host | notes
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
-[`wasm32-wasi-preview2`](platform-support/wasm32-wasi-preview2.md) | ✓ |  | WebAssembly
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | x86 64-bit tvOS

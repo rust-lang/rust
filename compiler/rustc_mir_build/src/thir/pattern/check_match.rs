@@ -11,7 +11,7 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
+    codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -47,9 +47,18 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     };
     visitor.visit_expr(&thir[expr]);
 
+    let origin = match tcx.def_kind(def_id) {
+        DefKind::AssocFn | DefKind::Fn => "function argument",
+        DefKind::Closure => "closure argument",
+        // other types of MIR don't have function parameters, and we don't need to
+        // categorize those for the irrefutable check.
+        _ if thir.params.is_empty() => "",
+        kind => bug!("unexpected function parameters in THIR: {kind:?} {def_id:?}"),
+    };
+
     for param in thir.params.iter() {
         if let Some(box ref pattern) = param.pat {
-            visitor.check_binding_is_irrefutable(pattern, "function argument", None, None);
+            visitor.check_binding_is_irrefutable(pattern, origin, None, None);
         }
     }
     visitor.error
@@ -282,7 +291,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 err = err.and(check_never_pattern(cx, pat));
             });
             err?;
-            Ok(cx.pattern_arena.alloc(cx.lower_pat(pat)))
+            Ok(self.pattern_arena.alloc(cx.lower_pat(pat)))
         }
     }
 
@@ -379,7 +388,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             typeck_results: self.typeck_results,
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
-            pattern_arena: self.pattern_arena,
             dropless_arena: self.dropless_arena,
             match_lint_level: self.lint_level,
             whole_match_span,
@@ -657,7 +665,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
         // Emit an extra note if the first uncovered witness would be uninhabited
         // if we disregard visibility.
-        let witness_1_is_privately_uninhabited = if self.tcx.features().exhaustive_patterns
+        let witness_1_is_privately_uninhabited = if (self.tcx.features().exhaustive_patterns
+            || self.tcx.features().min_exhaustive_patterns)
             && let Some(witness_1) = witnesses.get(0)
             && let ty::Adt(adt, args) = witness_1.ty().kind()
             && adt.is_enum()

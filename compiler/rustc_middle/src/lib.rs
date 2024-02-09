@@ -30,6 +30,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
+#![feature(const_type_name)]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(coroutines)]
@@ -57,8 +58,10 @@
 #![feature(const_option)]
 #![feature(ptr_alignment_type)]
 #![feature(macro_metavar_expr)]
-#![allow(rustc::potential_query_instability)]
 #![allow(internal_features)]
+#![allow(rustc::potential_query_instability)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
 extern crate bitflags;

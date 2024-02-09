@@ -1335,6 +1335,7 @@ impl ExprCollector<'_> {
                 let args = record_pat_field_list
                     .fields()
                     .filter_map(|f| {
+                        self.check_cfg(&f)?;
                         let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat, binding_list);
                         let name = f.field_name()?.as_name();

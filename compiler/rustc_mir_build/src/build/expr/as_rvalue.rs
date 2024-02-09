@@ -483,6 +483,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     UpvarArgs::Closure(args) => {
                         Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))
                     }
+                    UpvarArgs::CoroutineClosure(args) => {
+                        Box::new(AggregateKind::CoroutineClosure(closure_id.to_def_id(), args))
+                    }
                 };
                 block.and(Rvalue::Aggregate(result, operands))
             }

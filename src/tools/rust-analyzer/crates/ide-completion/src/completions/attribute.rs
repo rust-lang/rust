@@ -25,8 +25,8 @@ use crate::{
 mod cfg;
 mod derive;
 mod lint;
-mod repr;
 mod macro_use;
+mod repr;
 
 pub(crate) use self::derive::complete_derive_path;
 

@@ -5,7 +5,7 @@
 use std::ops::Add;
 
 trait Tr1 { type As1; fn mk(&self) -> Self::As1; }
-trait Tr2<'a> { fn tr2(self) -> &'a Self; }
+trait Tr2<'a> { fn tr2(self) -> &'a Self; } //~ WARN method `tr2` is never used
 
 fn assert_copy<T: Copy>(x: T) { let _x = x; let _x = x; }
 fn assert_static<T: 'static>(_: T) {}

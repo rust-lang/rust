@@ -45,14 +45,14 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo(_: T) where Self: Sized {}
    |                  +++++++++++++++++
 
-error[E0392]: parameter `T` is never used
+error[E0392]: type parameter `T` is never used
   --> $DIR/issue-34373.rs:7:16
    |
 LL | pub struct Foo<T = Box<Trait<DefaultFoo>>>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ unused parameter
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
 
 error: aborting due to 3 previous errors
 

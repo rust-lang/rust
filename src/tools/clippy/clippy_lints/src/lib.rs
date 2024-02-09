@@ -10,7 +10,12 @@
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![allow(clippy::missing_docs_in_private_items, clippy::must_use_candidate)]
+#![allow(
+    clippy::missing_docs_in_private_items,
+    clippy::must_use_candidate,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic,
+)]
 #![warn(trivial_casts, trivial_numeric_casts)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
@@ -574,6 +579,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         warn_on_all_wildcard_imports,
         check_private_items,
         pub_underscore_fields_behavior,
+        ref allowed_duplicate_crates,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -719,7 +725,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(needless_update::NeedlessUpdate));
     store.register_late_pass(|_| Box::new(needless_borrowed_ref::NeedlessBorrowedRef));
     store.register_late_pass(|_| Box::new(borrow_deref_ref::BorrowDerefRef));
-    store.register_late_pass(|_| Box::new(no_effect::NoEffect));
+    store.register_late_pass(|_| Box::<no_effect::NoEffect>::default());
     store.register_late_pass(|_| Box::new(temporary_assignment::TemporaryAssignment));
     store.register_late_pass(move |_| Box::new(transmute::Transmute::new(msrv())));
     store.register_late_pass(move |_| {
@@ -947,6 +953,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(cargo::Cargo {
             ignore_publish: cargo_ignore_publish,
+            allowed_duplicate_crates: allowed_duplicate_crates.clone(),
         })
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));

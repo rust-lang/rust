@@ -14,7 +14,7 @@ impl ProtocolError {
         ProtocolError("disconnected channel".into(), true)
     }
 
-    /// Whether this error occured due to a disconnected channel.
+    /// Whether this error occurred due to a disconnected channel.
     pub fn channel_is_disconnected(&self) -> bool {
         self.1
     }

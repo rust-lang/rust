@@ -3,7 +3,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
-use super::graph::{BasicCoverageBlock, CoverageGraph};
+use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
 use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
@@ -46,13 +46,26 @@ pub(super) fn generate_coverage_spans(
 ) -> Option<CoverageSpans> {
     let mut mappings = vec![];
 
-    let sorted_spans =
-        from_mir::mir_to_initial_sorted_coverage_spans(mir_body, hir_info, basic_coverage_blocks);
-    let coverage_spans = SpansRefiner::refine_sorted_spans(basic_coverage_blocks, sorted_spans);
-    mappings.extend(coverage_spans.into_iter().map(|CoverageSpan { bcb, span, .. }| {
-        // Each span produced by the generator represents an ordinary code region.
-        BcbMapping { kind: BcbMappingKind::Code(bcb), span }
-    }));
+    if hir_info.is_async_fn {
+        // An async function desugars into a function that returns a future,
+        // with the user code wrapped in a closure. Any spans in the desugared
+        // outer function will be unhelpful, so just keep the signature span
+        // and ignore all of the spans in the MIR body.
+        if let Some(span) = hir_info.fn_sig_span_extended {
+            mappings.push(BcbMapping { kind: BcbMappingKind::Code(START_BCB), span });
+        }
+    } else {
+        let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
+            mir_body,
+            hir_info,
+            basic_coverage_blocks,
+        );
+        let coverage_spans = SpansRefiner::refine_sorted_spans(basic_coverage_blocks, sorted_spans);
+        mappings.extend(coverage_spans.into_iter().map(|CoverageSpan { bcb, span, .. }| {
+            // Each span produced by the generator represents an ordinary code region.
+            BcbMapping { kind: BcbMappingKind::Code(bcb), span }
+        }));
+    }
 
     if mappings.is_empty() {
         return None;

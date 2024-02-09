@@ -15,5 +15,5 @@ impl Foo for Ex {
 }
 
 pub fn main() {
-    let _x = Ex;
+    let _x: &dyn Foo<Bar = <Ex as Foo>::Bar> = &Ex;
 }

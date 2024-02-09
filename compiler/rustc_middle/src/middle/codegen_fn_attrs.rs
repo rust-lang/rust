@@ -74,35 +74,32 @@ bitflags! {
         /// `#[used]`: indicates that LLVM can't eliminate this function (but the
         /// linker can!).
         const USED                      = 1 << 9;
-        /// `#[ffi_returns_twice]`, indicates that an extern function can return
-        /// multiple times
-        const FFI_RETURNS_TWICE         = 1 << 10;
         /// `#[track_caller]`: allow access to the caller location
-        const TRACK_CALLER              = 1 << 11;
+        const TRACK_CALLER              = 1 << 10;
         /// #[ffi_pure]: applies clang's `pure` attribute to a foreign function
         /// declaration.
-        const FFI_PURE                  = 1 << 12;
+        const FFI_PURE                  = 1 << 11;
         /// #[ffi_const]: applies clang's `const` attribute to a foreign function
         /// declaration.
-        const FFI_CONST                 = 1 << 13;
+        const FFI_CONST                 = 1 << 12;
         /// #[cmse_nonsecure_entry]: with a TrustZone-M extension, declare a
         /// function as an entry function from Non-Secure code.
-        const CMSE_NONSECURE_ENTRY      = 1 << 14;
+        const CMSE_NONSECURE_ENTRY      = 1 << 13;
         /// `#[coverage(off)]`: indicates that the function should be ignored by
         /// the MIR `InstrumentCoverage` pass and not added to the coverage map
         /// during codegen.
-        const NO_COVERAGE               = 1 << 15;
+        const NO_COVERAGE               = 1 << 14;
         /// `#[used(linker)]`:
         /// indicates that neither LLVM nor the linker will eliminate this function.
-        const USED_LINKER               = 1 << 16;
+        const USED_LINKER               = 1 << 15;
         /// `#[rustc_deallocator]`: a hint to LLVM that the function only deallocates memory.
-        const DEALLOCATOR               = 1 << 17;
+        const DEALLOCATOR               = 1 << 16;
         /// `#[rustc_reallocator]`: a hint to LLVM that the function only reallocates memory.
-        const REALLOCATOR               = 1 << 18;
+        const REALLOCATOR               = 1 << 17;
         /// `#[rustc_allocator_zeroed]`: a hint to LLVM that the function only allocates zeroed memory.
-        const ALLOCATOR_ZEROED          = 1 << 19;
+        const ALLOCATOR_ZEROED          = 1 << 18;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
-        const NO_BUILTINS               = 1 << 20;
+        const NO_BUILTINS               = 1 << 19;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }

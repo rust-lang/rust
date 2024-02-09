@@ -86,7 +86,7 @@ LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops")
    |                             ^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/62411>
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 note: the lint level is defined here
@@ -96,4 +96,21 @@ LL | #![warn(indirect_structural_match)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors; 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: to use a constant of type `NoDerive` in a pattern, `NoDerive` must be annotated with `#[derive(PartialEq)]`
+  --> $DIR/reject_non_structural.rs:98:29
+   |
+LL |     match &Some(NoDerive) { ADDR_OF => dbg!(ADDR_OF), _ => panic!("whoops"), };
+   |                             ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
+   = note: the traits must be derived, manual `impl`s are not sufficient
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+note: the lint level is defined here
+  --> $DIR/reject_non_structural.rs:14:9
+   |
+LL | #![warn(indirect_structural_match)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 

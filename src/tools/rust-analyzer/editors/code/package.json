@@ -1505,6 +1505,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.references.excludeTests": {
+                    "markdownDescription": "Exclude tests from find-all-references.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.rename.allowExternalItems": {
                     "markdownDescription": "Allow renaming of items not belonging to the loaded workspaces.",
                     "default": false,

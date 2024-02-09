@@ -489,6 +489,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     NullOp::OffsetOf(fields) => {
                         layout.offset_of_subfield(&self.ecx, fields.iter()).bytes()
                     }
+                    NullOp::DebugAssertions => return None,
                 };
                 let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
                 let imm = ImmTy::try_from_uint(val, usize_layout)?;
@@ -861,9 +862,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         let tcx = self.tcx;
         if fields.is_empty() {
             let is_zst = match *kind {
-                AggregateKind::Array(..) | AggregateKind::Tuple | AggregateKind::Closure(..) => {
-                    true
-                }
+                AggregateKind::Array(..)
+                | AggregateKind::Tuple
+                | AggregateKind::Closure(..)
+                | AggregateKind::CoroutineClosure(..) => true,
                 // Only enums can be non-ZST.
                 AggregateKind::Adt(did, ..) => tcx.def_kind(did) != DefKind::Enum,
                 // Coroutines are never ZST, as they at least contain the implicit states.
@@ -885,7 +887,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 assert!(!fields.is_empty());
                 (AggregateTy::Tuple, FIRST_VARIANT)
             }
-            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs) => {
+            AggregateKind::Closure(did, substs)
+            | AggregateKind::CoroutineClosure(did, substs)
+            | AggregateKind::Coroutine(did, substs) => {
                 (AggregateTy::Def(did, substs), FIRST_VARIANT)
             }
             AggregateKind::Adt(did, variant_index, substs, _, None) => {
@@ -1228,8 +1232,8 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
         if let Operand::Move(place) = *operand
-            && let Some(local) = place.as_local()
-            && self.reused_locals.contains(local)
+            && !place.is_indirect_first_projection()
+            && self.reused_locals.contains(place.local)
         {
             *operand = Operand::Copy(place);
         }

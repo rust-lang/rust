@@ -2,9 +2,9 @@ error: this match arm has an identical body to the `_` wildcard arm
   --> $DIR/match_same_arms2.rs:15:9
    |
 LL | /         42 => {
-LL | |
 LL | |             foo();
 LL | |             let mut a = 42 + [23].len() as i32;
+LL | |             if true {
 ...  |
 LL | |             a
 LL | |         },
@@ -12,7 +12,7 @@ LL | |         },
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
-  --> $DIR/match_same_arms2.rs:25:9
+  --> $DIR/match_same_arms2.rs:24:9
    |
 LL | /         _ => {
 LL | |             foo();
@@ -122,7 +122,6 @@ LL |           1 => {
    |           ^ help: try merging the arm patterns: `1 | 0`
    |  _________|
    | |
-LL | |
 LL | |             empty!(0);
 LL | |         },
    | |_________^

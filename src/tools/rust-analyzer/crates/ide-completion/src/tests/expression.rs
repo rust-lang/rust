@@ -105,7 +105,7 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
 fn completes_all_the_things_in_fn_body() {
     check(
         r#"
-use non_existant::Unresolved;
+use non_existent::Unresolved;
 mod qualified { pub enum Enum { Variant } }
 
 impl Unit {
@@ -170,7 +170,7 @@ impl Unit {
     );
     check(
         r#"
-use non_existant::Unresolved;
+use non_existent::Unresolved;
 mod qualified { pub enum Enum { Variant } }
 
 impl Unit {

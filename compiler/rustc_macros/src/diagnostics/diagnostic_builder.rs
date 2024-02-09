@@ -209,9 +209,9 @@ impl DiagnosticDeriveVariantBuilder {
                 if path.is_ident("code") {
                     self.code.set_once((), path.span().unwrap());
 
-                    let code = nested.parse::<syn::LitStr>()?;
+                    let code = nested.parse::<syn::Expr>()?;
                     tokens.extend(quote! {
-                        diag.code(#code.to_string());
+                        diag.code(#code);
                     });
                 } else {
                     span_err(path.span().unwrap(), "unknown argument")

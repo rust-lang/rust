@@ -5,6 +5,7 @@
             ty: Coroutine(
                 DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
                 [
+                (),
                 std::future::ResumeTy,
                 (),
                 (),
@@ -22,6 +23,7 @@
             ty: Coroutine(
                 DefId(0:4 ~ async_await[ccf8]::a::{closure#0}),
                 [
+                (),
                 std::future::ResumeTy,
                 (),
                 (),

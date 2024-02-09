@@ -9,17 +9,16 @@ fn simple_examples() {
 
     // Simple
     if true {
-        //~^ ERROR: all if blocks contain the same code at the start
         println!("Hello World!");
         println!("I'm branch nr: 1");
     } else {
         println!("Hello World!");
         println!("I'm branch nr: 2");
     }
+    //~^^^^^^^ ERROR: all if blocks contain the same code at the start
 
     // Else if
     if x == 0 {
-        //~^ ERROR: all if blocks contain the same code at the start
         let y = 9;
         println!("The value y was set to: `{}`", y);
         let _z = y;
@@ -38,6 +37,7 @@ fn simple_examples() {
 
         println!("Ha, Pascal allows you to start the array where you want")
     }
+    //~^^^^^^^^^^^^^^^^^^^ ERROR: all if blocks contain the same code at the start
 
     // Return a value
     let _ = if x == 7 {
@@ -60,7 +60,6 @@ fn simple_but_suggestion_is_invalid() {
     // Can't be automatically moved because used_value_name is getting used again
     let used_value_name = 19;
     if x == 10 {
-        //~^ ERROR: all if blocks contain the same code at the start
         let used_value_name = "Different type";
         println!("Str: {}", used_value_name);
         let _ = 1;
@@ -69,6 +68,7 @@ fn simple_but_suggestion_is_invalid() {
         println!("Str: {}", used_value_name);
         let _ = 2;
     }
+    //~^^^^^^^^^ ERROR: all if blocks contain the same code at the start
     let _ = used_value_name;
 
     // This can be automatically moved as `can_be_overridden` is not used again
@@ -101,11 +101,11 @@ fn check_if_same_than_else_mask() {
     }
 
     if x == 2019 {
-        //~^ ERROR: this `if` has identical blocks
         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
     } else {
         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
     }
+    //~^^^^^ ERROR: this `if` has identical blocks
 }
 
 #[allow(clippy::vec_init_then_push)]

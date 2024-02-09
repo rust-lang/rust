@@ -38,7 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
@@ -55,7 +55,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
                         break hir::PatKind::Path(qpath);
@@ -66,7 +66,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         );
 

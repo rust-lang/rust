@@ -245,3 +245,43 @@ pub fn marks_rev(
     })
     .map(|ctx| ctx.outer_mark(db))
 }
+
+pub(crate) fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
+    use crate::db::{InternMacroCallLookupQuery, InternSyntaxContextLookupQuery};
+    use base_db::salsa::debug::DebugQueryTable;
+
+    let mut s = String::from("Expansions:");
+    let mut entries = InternMacroCallLookupQuery.in_db(db).entries::<Vec<_>>();
+    entries.sort_by_key(|e| e.key);
+    for e in entries {
+        let id = e.key;
+        let expn_data = e.value.as_ref().unwrap();
+        s.push_str(&format!(
+            "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",
+            id,
+            expn_data.kind.file_id(),
+            expn_data.call_site,
+            SyntaxContextId::ROOT, // FIXME expn_data.def_site,
+            expn_data.kind.descr(),
+        ));
+    }
+
+    s.push_str("\n\nSyntaxContexts:\n");
+    let mut entries = InternSyntaxContextLookupQuery.in_db(db).entries::<Vec<_>>();
+    entries.sort_by_key(|e| e.key);
+    for e in entries {
+        struct SyntaxContextDebug<'a>(
+            &'a dyn ExpandDatabase,
+            SyntaxContextId,
+            &'a SyntaxContextData,
+        );
+
+        impl<'a> std::fmt::Debug for SyntaxContextDebug<'a> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.2.fancy_debug(self.1, self.0, f)
+            }
+        }
+        stdx::format_to!(s, "{:?}\n", SyntaxContextDebug(db, e.key, &e.value.unwrap()));
+    }
+    s
+}

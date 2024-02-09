@@ -8,7 +8,13 @@
 #![feature(assert_matches)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::must_use_candidate,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic,
+)]
 // warn on the same lints as `clippy_lints`
 #![warn(trivial_casts, trivial_numeric_casts)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
@@ -177,10 +183,10 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     let hir = cx.tcx.hir();
-    if let Some(Node::Pat(pat)) = cx.tcx.opt_hir_node(hir_id)
+    if let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
         && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
         && let parent = hir.parent_id(hir_id)
-        && let Some(Node::Local(local)) = cx.tcx.opt_hir_node(parent)
+        && let Node::Local(local) = cx.tcx.hir_node(parent)
     {
         return local.init;
     }
@@ -536,7 +542,12 @@ fn find_primitive_impls<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<It
         "f32" => SimplifiedType::Float(FloatTy::F32),
         "f64" => SimplifiedType::Float(FloatTy::F64),
         #[allow(trivial_casts)]
-        _ => return Result::<_, rustc_errors::ErrorGuaranteed>::Ok(&[] as &[_]).into_iter().flatten().copied(),
+        _ => {
+            return Result::<_, rustc_errors::ErrorGuaranteed>::Ok(&[] as &[_])
+                .into_iter()
+                .flatten()
+                .copied();
+        },
     };
 
     tcx.incoherent_impls(ty).into_iter().flatten().copied()
@@ -1322,7 +1333,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     let map = &cx.tcx.hir();
     let enclosing_node = map
         .get_enclosing_scope(hir_id)
-        .and_then(|enclosing_id| cx.tcx.opt_hir_node(enclosing_id));
+        .map(|enclosing_id| cx.tcx.hir_node(enclosing_id));
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
@@ -1712,7 +1723,6 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.map_or(false, |pat| is_refutable(cx, pat)),
         PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
-        PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Or(pats) => {
             // TODO: should be the honest check, that pats is exhaustive set
@@ -1736,7 +1746,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
                 },
             }
         },
-        PatKind::Err(_) => true,
+        PatKind::Lit(..) | PatKind::Range(..) | PatKind::Err(_) => true,
     }
 }
 
@@ -2692,10 +2702,10 @@ impl<'tcx> ExprUseNode<'tcx> {
             )),
             Self::Return(id) => {
                 let hir_id = cx.tcx.local_def_id_to_hir_id(id.def_id);
-                if let Some(Node::Expr(Expr {
+                if let Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
                     ..
-                })) = cx.tcx.opt_hir_node(hir_id)
+                }) = cx.tcx.hir_node(hir_id)
                 {
                     match c.fn_decl.output {
                         FnRetTy::DefaultReturn(_) => None,

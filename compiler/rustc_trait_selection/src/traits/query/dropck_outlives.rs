@@ -48,7 +48,11 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.
         ty::Tuple(tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t)),
+
         ty::Closure(_, args) => trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty()),
+        ty::CoroutineClosure(_, args) => {
+            trivial_dropck_outlives(tcx, args.as_coroutine_closure().tupled_upvars_ty())
+        }
 
         ty::Adt(def, _) => {
             if Some(def.did()) == tcx.lang_items().manually_drop() {
@@ -238,6 +242,22 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             }
             Ok::<_, NoSolution>(())
         })?,
+
+        ty::CoroutineClosure(_, args) => {
+            rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                for ty in args.as_coroutine_closure().upvar_tys() {
+                    dtorck_constraint_for_ty_inner(
+                        tcx,
+                        param_env,
+                        span,
+                        depth + 1,
+                        ty,
+                        constraints,
+                    )?;
+                }
+                Ok::<_, NoSolution>(())
+            })?
+        }
 
         ty::Coroutine(_, args) => {
             // rust-lang/rust#49918: types can be constructed, stored

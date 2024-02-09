@@ -1092,14 +1092,20 @@ pub struct Pin<Ptr> {
     //   - deter downstream users from accessing it (which would be unsound!),
     //   - let the `pin!` macro access it (such a macro requires using struct
     //     literal syntax in order to benefit from lifetime extension).
-    // Long-term, `unsafe` fields or macro hygiene are expected to offer more robust alternatives.
+    //
+    // However, if the `Deref` impl exposes a field with the same name as this
+    // field, then the two will collide, resulting in a confusing error when the
+    // user attempts to access the field through a `Pin<Ptr>`. Therefore, the
+    // name `__pointer` is designed to be unlikely to collide with any other
+    // field. Long-term, macro hygiene is expected to offer a more robust
+    // alternative, alongside `unsafe` fields.
     #[unstable(feature = "unsafe_pin_internals", issue = "none")]
     #[doc(hidden)]
-    pub pointer: Ptr,
+    pub __pointer: Ptr,
 }
 
 // The following implementations aren't derived in order to avoid soundness
-// issues. `&self.pointer` should not be accessible to untrusted trait
+// issues. `&self.__pointer` should not be accessible to untrusted trait
 // implementations.
 //
 // See <https://internals.rust-lang.org/t/unsoundness-in-pin/11311/73> for more details.
@@ -1212,7 +1218,7 @@ impl<Ptr: Deref<Target: Unpin>> Pin<Ptr> {
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const fn into_inner(pin: Pin<Ptr>) -> Ptr {
-        pin.pointer
+        pin.__pointer
     }
 }
 
@@ -1349,7 +1355,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const unsafe fn new_unchecked(pointer: Ptr) -> Pin<Ptr> {
-        Pin { pointer }
+        Pin { __pointer: pointer }
     }
 
     /// Gets a shared reference to the pinned value this [`Pin`] points to.
@@ -1363,7 +1369,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     #[inline(always)]
     pub fn as_ref(&self) -> Pin<&Ptr::Target> {
         // SAFETY: see documentation on this function
-        unsafe { Pin::new_unchecked(&*self.pointer) }
+        unsafe { Pin::new_unchecked(&*self.__pointer) }
     }
 
     /// Unwraps this `Pin<Ptr>`, returning the underlying `Ptr`.
@@ -1388,7 +1394,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin_into_inner", since = "1.39.0")]
     pub const unsafe fn into_inner_unchecked(pin: Pin<Ptr>) -> Ptr {
-        pin.pointer
+        pin.__pointer
     }
 }
 
@@ -1426,7 +1432,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     #[inline(always)]
     pub fn as_mut(&mut self) -> Pin<&mut Ptr::Target> {
         // SAFETY: see documentation on this function
-        unsafe { Pin::new_unchecked(&mut *self.pointer) }
+        unsafe { Pin::new_unchecked(&mut *self.__pointer) }
     }
 
     /// Assigns a new value to the memory location pointed to by the `Pin<Ptr>`.
@@ -1455,7 +1461,7 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     where
         Ptr::Target: Sized,
     {
-        *(self.pointer) = value;
+        *(self.__pointer) = value;
     }
 }
 
@@ -1481,7 +1487,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
         U: ?Sized,
         F: FnOnce(&T) -> &U,
     {
-        let pointer = &*self.pointer;
+        let pointer = &*self.__pointer;
         let new_pointer = func(pointer);
 
         // SAFETY: the safety contract for `new_unchecked` must be
@@ -1511,7 +1517,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn get_ref(self) -> &'a T {
-        self.pointer
+        self.__pointer
     }
 }
 
@@ -1522,7 +1528,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn into_ref(self) -> Pin<&'a T> {
-        Pin { pointer: self.pointer }
+        Pin { __pointer: self.__pointer }
     }
 
     /// Gets a mutable reference to the data inside of this `Pin`.
@@ -1542,7 +1548,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     where
         T: Unpin,
     {
-        self.pointer
+        self.__pointer
     }
 
     /// Gets a mutable reference to the data inside of this `Pin`.
@@ -1560,7 +1566,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     pub const unsafe fn get_unchecked_mut(self) -> &'a mut T {
-        self.pointer
+        self.__pointer
     }
 
     /// Construct a new pin by mapping the interior value.
@@ -1684,21 +1690,21 @@ impl<Ptr: Receiver> Receiver for Pin<Ptr> {}
 #[stable(feature = "pin", since = "1.33.0")]
 impl<Ptr: fmt::Debug> fmt::Debug for Pin<Ptr> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.pointer, f)
+        fmt::Debug::fmt(&self.__pointer, f)
     }
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<Ptr: fmt::Display> fmt::Display for Pin<Ptr> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.pointer, f)
+        fmt::Display::fmt(&self.__pointer, f)
     }
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<Ptr: fmt::Pointer> fmt::Pointer for Pin<Ptr> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&self.pointer, f)
+        fmt::Pointer::fmt(&self.__pointer, f)
     }
 }
 
@@ -1941,16 +1947,16 @@ pub macro pin($value:expr $(,)?) {
     // instead, dropped _at the end of the enscoping block_.
     // For instance,
     // ```rust
-    // let p = Pin { pointer: &mut <temporary> };
+    // let p = Pin { __pointer: &mut <temporary> };
     // ```
     // becomes:
     // ```rust
     // let mut anon = <temporary>;
-    // let p = Pin { pointer: &mut anon };
+    // let p = Pin { __pointer: &mut anon };
     // ```
     // which is *exactly* what we want.
     //
     // See https://doc.rust-lang.org/1.58.1/reference/destructors.html#temporary-lifetime-extension
     // for more info.
-    $crate::pin::Pin::<&mut _> { pointer: &mut { $value } }
+    $crate::pin::Pin::<&mut _> { __pointer: &mut { $value } }
 }

@@ -50,6 +50,9 @@
 //! For coroutines with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+mod by_move_body;
+pub use by_move_body::ByMoveBody;
+
 use crate::abort_unwinding_calls;
 use crate::deref_separator::deref_finder;
 use crate::errors;

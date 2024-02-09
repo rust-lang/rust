@@ -20,14 +20,17 @@ use crate::{
 pub enum RawVisibility {
     /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
     /// equivalent to `pub(self)`.
-    Module(ModPath, VisibilityExplicity),
+    Module(ModPath, VisibilityExplicitness),
     /// `pub`.
     Public,
 }
 
 impl RawVisibility {
     pub(crate) const fn private() -> RawVisibility {
-        RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Implicit)
+        RawVisibility::Module(
+            ModPath::from_kind(PathKind::Super(0)),
+            VisibilityExplicitness::Implicit,
+        )
     }
 
     pub(crate) fn from_ast(
@@ -53,19 +56,19 @@ impl RawVisibility {
                     None => return RawVisibility::private(),
                     Some(path) => path,
                 };
-                RawVisibility::Module(path, VisibilityExplicity::Explicit)
+                RawVisibility::Module(path, VisibilityExplicitness::Explicit)
             }
             ast::VisibilityKind::PubCrate => {
                 let path = ModPath::from_kind(PathKind::Crate);
-                RawVisibility::Module(path, VisibilityExplicity::Explicit)
+                RawVisibility::Module(path, VisibilityExplicitness::Explicit)
             }
             ast::VisibilityKind::PubSuper => {
                 let path = ModPath::from_kind(PathKind::Super(1));
-                RawVisibility::Module(path, VisibilityExplicity::Explicit)
+                RawVisibility::Module(path, VisibilityExplicitness::Explicit)
             }
             ast::VisibilityKind::PubSelf => {
                 let path = ModPath::from_kind(PathKind::Super(0));
-                RawVisibility::Module(path, VisibilityExplicity::Explicit)
+                RawVisibility::Module(path, VisibilityExplicitness::Explicit)
             }
             ast::VisibilityKind::Pub => RawVisibility::Public,
         }
@@ -85,7 +88,7 @@ impl RawVisibility {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Visibility {
     /// Visibility is restricted to a certain module.
-    Module(ModuleId, VisibilityExplicity),
+    Module(ModuleId, VisibilityExplicitness),
     /// Visibility is unrestricted.
     Public,
 }
@@ -206,12 +209,12 @@ impl Visibility {
 
 /// Whether the item was imported through `pub(crate) use` or just `use`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum VisibilityExplicity {
+pub enum VisibilityExplicitness {
     Explicit,
     Implicit,
 }
 
-impl VisibilityExplicity {
+impl VisibilityExplicitness {
     pub fn is_explicit(&self) -> bool {
         matches!(self, Self::Explicit)
     }

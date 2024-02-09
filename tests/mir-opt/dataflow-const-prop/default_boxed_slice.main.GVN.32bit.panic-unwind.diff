@@ -24,29 +24,11 @@
                           debug ptr => _6;
                           scope 11 (inlined NonNull::<[bool; 0]>::new_unchecked) {
                               debug ptr => _6;
-                              let mut _8: *const [bool; 0];
-                              let mut _9: *mut [bool; 0];
+                              let mut _8: bool;
+                              let _9: ();
+                              let mut _10: *mut ();
+                              let mut _11: *const [bool; 0];
                               scope 12 {
-                                  scope 13 (inlined NonNull::<T>::new_unchecked::runtime::<[bool; 0]>) {
-                                      debug ptr => _9;
-                                      scope 14 (inlined std::ptr::mut_ptr::<impl *mut [bool; 0]>::is_null) {
-                                          debug self => _9;
-                                          let mut _10: *mut u8;
-                                          scope 15 {
-                                              scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                  debug ptr => _10;
-                                                  scope 17 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                      debug self => _10;
-                                                      scope 18 {
-                                                          scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                              debug self => _10;
-                                                          }
-                                                      }
-                                                  }
-                                              }
-                                          }
-                                      }
-                                  }
                               }
                           }
                       }
@@ -66,6 +48,7 @@
           StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
+          StorageLive(_9);
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
@@ -75,26 +58,11 @@
 +         _7 = const 1_usize;
 +         _6 = const {0x1 as *mut [bool; 0]};
           StorageDead(_7);
-          StorageLive(_8);
-          StorageLive(_9);
           StorageLive(_10);
--         _8 = _6 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
-+         _8 = const {0x1 as *mut [bool; 0]} as *const [bool; 0] (PointerCoercion(MutToConstPointer));
-          _5 = NonNull::<[bool; 0]> { pointer: _8 };
-          StorageDead(_10);
-          StorageDead(_9);
-          StorageDead(_8);
-          StorageDead(_6);
-          _4 = Unique::<[bool; 0]> { pointer: move _5, _marker: const PhantomData::<[bool; 0]> };
-          StorageDead(_5);
-          _3 = move _4 as std::ptr::Unique<[bool]> (PointerCoercion(Unsize));
-          StorageDead(_4);
-          _2 = Box::<[bool]>(_3, const std::alloc::Global);
-          StorageDead(_3);
-          _1 = A { foo: move _2 };
-          StorageDead(_2);
-          _0 = const ();
-          drop(_1) -> [return: bb1, unwind: bb2];
+          StorageLive(_11);
+          StorageLive(_8);
+          _8 = cfg!(debug_assertions);
+          switchInt(move _8) -> [0: bb4, otherwise: bb3];
       }
   
       bb1: {
@@ -104,6 +72,33 @@
   
       bb2 (cleanup): {
           resume;
+      }
+  
+      bb3: {
+-         _10 = _6 as *mut () (PtrToPtr);
++         _10 = const {0x1 as *mut [bool; 0]} as *mut () (PtrToPtr);
+          _9 = NonNull::<T>::new_unchecked::precondition_check(move _10) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_8);
+-         _11 = _6 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
++         _11 = const {0x1 as *mut [bool; 0]} as *const [bool; 0] (PointerCoercion(MutToConstPointer));
+          _5 = NonNull::<[bool; 0]> { pointer: _11 };
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageDead(_6);
+          _4 = Unique::<[bool; 0]> { pointer: move _5, _marker: const PhantomData::<[bool; 0]> };
+          StorageDead(_5);
+          _3 = move _4 as std::ptr::Unique<[bool]> (PointerCoercion(Unsize));
+          StorageDead(_4);
+          _2 = Box::<[bool]>(_3, const std::alloc::Global);
+          StorageDead(_9);
+          StorageDead(_3);
+          _1 = A { foo: move _2 };
+          StorageDead(_2);
+          _0 = const ();
+          drop(_1) -> [return: bb1, unwind: bb2];
       }
   }
   

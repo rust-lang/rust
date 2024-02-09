@@ -206,7 +206,7 @@ impl server::TokenStream for TokenIdServer {
                     stream: if subtree.token_trees.is_empty() {
                         None
                     } else {
-                        Some(subtree.token_trees.into_iter().collect())
+                        Some(TokenStream { token_trees: subtree.token_trees })
                     },
                     span: bridge::DelimSpan::from_single(subtree.delimiter.open),
                 }),

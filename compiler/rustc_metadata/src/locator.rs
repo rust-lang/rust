@@ -291,7 +291,7 @@ impl fmt::Display for CrateFlavor {
 }
 
 impl IntoDiagnosticArg for CrateFlavor {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         match self {
             CrateFlavor::Rlib => DiagnosticArgValue::Str(Cow::Borrowed("rlib")),
             CrateFlavor::Rmeta => DiagnosticArgValue::Str(Cow::Borrowed("rmeta")),

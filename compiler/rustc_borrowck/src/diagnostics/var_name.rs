@@ -1,6 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-
 use crate::region_infer::RegionInferenceContext;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::{Body, Local};

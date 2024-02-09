@@ -14,14 +14,14 @@ reuse to_reuse::foo {{
     x + self
 }}
 
-trait Trait {
+trait Trait { //~ WARN trait `Trait` is never used
     fn bar(&self, x: i32) -> i32 { x }
 }
 
-struct F;
+struct F; //~ WARN struct `F` is never constructed
 impl Trait for F {}
 
-struct S(F);
+struct S(F); //~ WARN struct `S` is never constructed
 impl Trait for S {
     reuse <F as Trait>::bar {
         #[allow(unused_imports)]

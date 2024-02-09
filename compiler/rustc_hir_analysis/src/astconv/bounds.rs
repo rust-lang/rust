@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::struct_span_code_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -28,6 +28,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let tcx = self.tcx();
         let sized_def_id = tcx.lang_items().sized_trait();
         let mut seen_negative_sized_bound = false;
+        let mut seen_positive_sized_bound = false;
 
         // Try to find an unbound in bounds.
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
@@ -43,6 +44,13 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                             && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
                         {
                             seen_negative_sized_bound = true;
+                        }
+                    }
+                    hir::TraitBoundModifier::None => {
+                        if let Some(sized_def_id) = sized_def_id
+                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+                        {
+                            seen_positive_sized_bound = true;
                         }
                     }
                     _ => {}
@@ -82,11 +90,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             );
         }
 
-        if seen_sized_unbound || seen_negative_sized_bound {
-            // There was in fact a `?Sized` or `!Sized` bound;
+        if seen_sized_unbound || seen_negative_sized_bound || seen_positive_sized_bound {
+            // There was in fact a `?Sized`, `!Sized` or explicit `Sized` bound;
             // we don't need to do anything.
         } else if sized_def_id.is_some() {
-            // There was no `?Sized` or `!Sized` bound;
+            // There was no `?Sized`, `!Sized` or explicit `Sized` bound;
             // add `Sized` if it's available.
             bounds.push_sized(tcx, self_ty, span);
         }
@@ -235,9 +243,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
         path_span: Span,
-        constness: ty::BoundConstness,
         only_self_bounds: OnlySelfBounds,
-        polarity: ty::ImplPolarity,
     ) -> Result<(), ErrorGuaranteed> {
         // Given something like `U: SomeTrait<T = X>`, we want to produce a
         // predicate like `<U as SomeTrait>::T = X`. This is somewhat

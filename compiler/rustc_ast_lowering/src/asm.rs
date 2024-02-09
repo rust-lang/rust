@@ -205,7 +205,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 &sym.qself,
                                 &sym.path,
                                 ParamMode::Optional,
-                                &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                                 None,
                             );
                             hir::InlineAsmOperand::SymStatic { path, def_id }

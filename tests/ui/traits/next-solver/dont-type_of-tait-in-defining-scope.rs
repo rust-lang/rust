@@ -1,6 +1,5 @@
 // revisions: is_send not_send
 // compile-flags: -Znext-solver
-//[is_send] check-pass
 
 #![feature(type_alias_impl_trait)]
 
@@ -14,7 +13,7 @@ fn needs_send<T: Send>() {}
 
 fn test(_: Foo) {
     needs_send::<Foo>();
-    //[not_send]~^ ERROR type annotations needed: cannot satisfy `Foo: Send`
+    //~^ ERROR type annotations needed: cannot satisfy `Foo: Send`
 }
 
 fn defines(_: Foo) {

@@ -4,5 +4,29 @@ error: `~const` can only be applied to `#[const_trait]` traits
 LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                          ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/normalize-tait-in-const.rs:26:5
+   |
+LL |     fun(filter_positive());
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: consider further restricting this bound
+   |
+LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct + ~const std::ops::Fn<(&Alias<'_>,)>>(fun: F) {
+   |                                                                              ++++++++++++++++++++++++++++++++++++
 
+error[E0493]: destructor of `F` cannot be evaluated at compile-time
+  --> $DIR/normalize-tait-in-const.rs:25:79
+   |
+LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
+   |                                                                               ^^^ the destructor for this type cannot be evaluated in constant functions
+LL |     fun(filter_positive());
+LL | }
+   | - value is dropped here
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0015, E0493.
+For more information about an error, try `rustc --explain E0015`.

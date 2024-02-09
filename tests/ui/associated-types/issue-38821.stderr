@@ -2,7 +2,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:17
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -21,7 +21,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:38:1
    |
 LL | pub enum ColumnInsertValue<Col, Expr> where
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -45,7 +45,7 @@ LL | |     Col: Column,
 ...  |
 LL | |     Default(Col),
 LL | | }
-   | |_^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   | |_^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -63,7 +63,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -82,7 +82,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -102,7 +102,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -117,7 +117,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -133,7 +133,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:17
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -153,7 +153,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -172,7 +172,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -192,7 +192,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -207,7 +207,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -223,7 +223,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -239,7 +239,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:10
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -255,7 +255,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18
@@ -271,7 +271,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
   --> $DIR/issue-38821.rs:23:23
    |
 LL | #[derive(Debug, Copy, Clone)]
-   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
+   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
    |
 note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
   --> $DIR/issue-38821.rs:9:18

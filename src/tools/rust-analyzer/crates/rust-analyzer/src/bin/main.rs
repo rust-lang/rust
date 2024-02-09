@@ -7,14 +7,14 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
-mod logger;
 mod rustc_wrapper;
 
-use std::{env, fs, path::PathBuf, process};
+use std::{env, fs, path::PathBuf, process, sync::Arc};
 
 use anyhow::Context;
 use lsp_server::Connection;
 use rust_analyzer::{cli::flags, config::Config, from_json};
+use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use vfs::AbsPathBuf;
 
 #[cfg(feature = "mimalloc")]
@@ -123,25 +123,20 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         None => None,
     };
 
-    logger::LoggerConfig {
-        log_file,
+    let writer = match log_file {
+        Some(file) => BoxMakeWriter::new(Arc::new(file)),
+        None => BoxMakeWriter::new(std::io::stderr),
+    };
+
+    rust_analyzer::tracing::Config {
+        writer,
         // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
         // useful information in there for debugging.
         filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_string()),
-        // The meaning of CHALK_DEBUG I suspected is to tell chalk crates
-        // (i.e. chalk-solve, chalk-ir, chalk-recursive) how to filter tracing
-        // logs. But now we can only have just one filter, which means we have to
-        // merge chalk filter to our main filter (from RA_LOG env).
-        //
-        // The acceptable syntax of CHALK_DEBUG is `target[span{field=value}]=level`.
-        // As the value should only affect chalk crates, we'd better manually
-        // specify the target. And for simplicity, CHALK_DEBUG only accept the value
-        // that specify level.
         chalk_filter: env::var("CHALK_DEBUG").ok(),
+        profile_filter: env::var("RA_PROFILE").ok(),
     }
     .init()?;
-
-    profile::init();
 
     Ok(())
 }

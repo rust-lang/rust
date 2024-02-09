@@ -135,6 +135,7 @@
 #![feature(const_hint_assert_unchecked)]
 #![feature(const_index_range_slice_index)]
 #![feature(const_int_unchecked_arith)]
+#![feature(const_intrinsic_copy)]
 #![feature(const_intrinsic_forget)]
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
@@ -200,7 +201,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(not(bootstrap), feature(is_val_statically_known))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -429,10 +429,6 @@ pub mod primitive;
     deprecated_in_future
 )]
 #[allow(rustdoc::bare_urls)]
-// FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
-// merged. It currently cannot because bootstrap fails as the lint hasn't been defined yet.
-#[allow(clashing_extern_declarations)]
-#[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 
 #[stable(feature = "simd_arch", since = "1.27.0")]

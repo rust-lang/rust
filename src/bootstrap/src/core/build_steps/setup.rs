@@ -14,7 +14,6 @@ use std::str::FromStr;
 use std::{fmt, fs, io};
 
 #[cfg(test)]
-#[path = "../../tests/setup.rs"]
 mod tests;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]

@@ -1,7 +1,6 @@
 // check-pass
 
 #![feature(inline_const_pat)]
-#![allow(incomplete_features)]
 
 fn main() {
     match 1u64 {

@@ -7,7 +7,9 @@ use std::arch::asm;
 //~^ ERROR `#[track_caller]` requires Rust ABI
 #[naked]
 extern "C" fn f() {
-    asm!("", options(noreturn));
+    unsafe {
+        asm!("", options(noreturn));
+    }
 }
 
 struct S;
@@ -17,7 +19,9 @@ impl S {
     //~^ ERROR `#[track_caller]` requires Rust ABI
     #[naked]
     extern "C" fn g() {
-        asm!("", options(noreturn));
+        unsafe {
+            asm!("", options(noreturn));
+        }
     }
 }
 

@@ -154,6 +154,7 @@ fn check_licenses() {
 Apache-2.0
 Apache-2.0 OR BSL-1.0
 Apache-2.0 OR MIT
+Apache-2.0 WITH LLVM-exception
 Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 Apache-2.0/MIT
 BSD-3-Clause

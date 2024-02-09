@@ -628,7 +628,9 @@ fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, args) | ty::Closure(def_id, args) => {
+        ty::FnDef(def_id, args)
+        | ty::Closure(def_id, args)
+        | ty::CoroutineClosure(def_id, args) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
@@ -893,6 +895,10 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
 
         ty::Closure(def_id, args) => {
             ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
+        }
+
+        ty::CoroutineClosure(def_id, args) => {
+            ty = Ty::new_coroutine_closure(tcx, *def_id, transform_args(tcx, args, options));
         }
 
         ty::Coroutine(def_id, args) => {

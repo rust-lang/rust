@@ -2,6 +2,9 @@ error[E0658]: `for` is not allowed in a `const`
   --> $DIR/loop.rs:53:5
    |
 LL | /     for i in 0..4 {
+LL | |
+LL | |
+LL | |
 LL | |         x += i;
 LL | |     }
    | |_____^
@@ -11,9 +14,12 @@ LL | |     }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/loop.rs:57:5
+  --> $DIR/loop.rs:60:5
    |
 LL | /     for i in 0..4 {
+LL | |
+LL | |
+LL | |
 LL | |         x += i;
 LL | |     }
    | |_____^
@@ -22,6 +28,67 @@ LL | |     }
    = help: add `#![feature(const_for)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 2 previous errors
+error[E0015]: cannot convert `std::ops::Range<i32>` into an iterator in constants
+  --> $DIR/loop.rs:53:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
 
-For more information about this error, try `rustc --explain E0658`.
+error[E0658]: mutable references are not allowed in constants
+  --> $DIR/loop.rs:53:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
+  --> $DIR/loop.rs:53:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+
+error[E0015]: cannot convert `std::ops::Range<i32>` into an iterator in constants
+  --> $DIR/loop.rs:60:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+
+error[E0658]: mutable references are not allowed in constants
+  --> $DIR/loop.rs:60:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
+  --> $DIR/loop.rs:60:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0015, E0658.
+For more information about an error, try `rustc --explain E0015`.

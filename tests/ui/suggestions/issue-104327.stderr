@@ -5,7 +5,7 @@ LL |     fn f() {}
    |     --------- `Foo::f` defined here
 ...
 LL |     Foo::f();
-   |     ^^^^^^ cannot call associated function of trait
+   |     ^^^^^^^^ cannot call associated function of trait
    |
 help: use the fully-qualified path to the only available implementation
    |

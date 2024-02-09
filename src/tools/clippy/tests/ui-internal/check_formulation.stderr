@@ -4,7 +4,7 @@ error: non-standard lint formulation
 LL |     /// Check for lint formulations that are correct
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try using `Checks for` instead
+   = help: consider using `Checks for`
    = note: `-D clippy::almost-standard-lint-formulation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::almost_standard_lint_formulation)]`
 
@@ -14,7 +14,7 @@ error: non-standard lint formulation
 LL |     /// Detects uses of incorrect formulations
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try using `Checks for` instead
+   = help: consider using `Checks for`
 
 error: aborting due to 2 previous errors
 

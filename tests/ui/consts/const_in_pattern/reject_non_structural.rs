@@ -100,5 +100,5 @@ fn main() {
     //~| NOTE the traits must be derived
     //~| NOTE StructuralPartialEq.html for details
     //~| WARN previously accepted by the compiler but is being phased out
-    //~| NOTE for more information, see issue #62411
+    //~| NOTE for more information, see
 }

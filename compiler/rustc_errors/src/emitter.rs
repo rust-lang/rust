@@ -17,8 +17,8 @@ use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
     diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
-    FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight,
-    SuggestionStyle, TerminalUrl,
+    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
+    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -193,7 +193,7 @@ pub type DynEmitter = dyn Emitter + DynSend;
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: &Diagnostic);
+    fn emit_diagnostic(&mut self, diag: Diagnostic);
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
@@ -230,17 +230,17 @@ pub trait Emitter: Translate {
     ///
     /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
     ///   we format the `help` suggestion depending on the content of the
-    ///   substitutions. In that case, we return the modified span only.
+    ///   substitutions. In that case, we modify the span and clear the
+    ///   suggestions.
     ///
     /// * If the current `Diagnostic` has multiple suggestions,
-    ///   we return the original `primary_span` and the original suggestions.
-    fn primary_span_formatted<'a>(
+    ///   we leave `primary_span` and the suggestions untouched.
+    fn primary_span_formatted(
         &mut self,
-        diag: &'a Diagnostic,
+        primary_span: &mut MultiSpan,
+        suggestions: &mut Vec<CodeSuggestion>,
         fluent_args: &FluentArgs<'_>,
-    ) -> (MultiSpan, &'a [CodeSuggestion]) {
-        let mut primary_span = diag.span.clone();
-        let suggestions = diag.suggestions.as_deref().unwrap_or(&[]);
+    ) {
         if let Some((sugg, rest)) = suggestions.split_first() {
             let msg = self.translate_message(&sugg.msg, fluent_args).map_err(Report::new).unwrap();
             if rest.is_empty() &&
@@ -287,16 +287,15 @@ pub trait Emitter: Translate {
                 primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
 
                 // We return only the modified primary_span
-                (primary_span, &[])
+                suggestions.clear();
             } else {
                 // if there are multiple suggestions, print them all in full
                 // to be consistent. We could try to figure out if we can
                 // make one (or the first one) inline, but that would give
                 // undue importance to a semi-random suggestion
-                (primary_span, suggestions)
             }
         } else {
-            (primary_span, suggestions)
+            // do nothing
         }
     }
 
@@ -518,16 +517,15 @@ impl Emitter for HumanEmitter {
         self.sm.as_ref()
     }
 
-    fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
         let fluent_args = to_fluent_args(diag.args());
 
-        let mut children = diag.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(diag, &fluent_args);
-        debug!("emit_diagnostic: suggestions={:?}", suggestions);
+        let mut suggestions = diag.suggestions.unwrap_or(vec![]);
+        self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
-            &mut primary_span,
-            &mut children,
+            &mut diag.span,
+            &mut diag.children,
             &diag.level,
             self.macro_backtrace,
         );
@@ -537,9 +535,9 @@ impl Emitter for HumanEmitter {
             &diag.messages,
             &fluent_args,
             &diag.code,
-            &primary_span,
-            &children,
-            suggestions,
+            &diag.span,
+            &diag.children,
+            &suggestions,
             self.track_diagnostics.then_some(&diag.emitted_at),
         );
     }
@@ -558,7 +556,7 @@ impl Emitter for HumanEmitter {
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
     pub fatal_dcx: DiagCtxt,
-    pub fatal_note: Option<String>,
+    pub fatal_note: String,
 }
 
 impl Translate for SilentEmitter {
@@ -576,13 +574,10 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, d: &Diagnostic) {
-        if d.level == Level::Fatal {
-            let mut d = d.clone();
-            if let Some(ref note) = self.fatal_note {
-                d.note(note.clone());
-            }
-            self.fatal_dcx.emit_diagnostic(d);
+    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+        if diag.level == Level::Fatal {
+            diag.note(self.fatal_note.clone());
+            self.fatal_dcx.emit_diagnostic(diag);
         }
     }
 }
@@ -1309,7 +1304,7 @@ impl HumanEmitter {
         msp: &MultiSpan,
         msgs: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<String>,
+        code: &Option<ErrCode>,
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
@@ -1340,9 +1335,9 @@ impl HumanEmitter {
                 buffer.append(0, "[", Style::Level(*level));
                 let code = if let TerminalUrl::Yes = self.terminal_url {
                     let path = "https://doc.rust-lang.org/error_codes";
-                    Cow::Owned(format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07"))
+                    format!("\x1b]8;;{path}/{code}.html\x07{code}\x1b]8;;\x07")
                 } else {
-                    Cow::Borrowed(code)
+                    code.to_string()
                 };
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
@@ -2076,7 +2071,7 @@ impl HumanEmitter {
         level: &Level,
         messages: &[(DiagnosticMessage, Style)],
         args: &FluentArgs<'_>,
-        code: &Option<String>,
+        code: &Option<ErrCode>,
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],
@@ -2118,6 +2113,7 @@ impl HumanEmitter {
                 }
                 if !self.short_message {
                     for child in children {
+                        assert!(child.level.can_be_top_or_sub().1);
                         let span = &child.span;
                         if let Err(err) = self.emit_messages_default_inner(
                             span,

@@ -15,7 +15,7 @@ pub(crate) fn complete_expr_path(
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
     expr_ctx: &ExprCtx,
 ) {
-    let _p = profile::span("complete_expr_path");
+    let _p = tracing::span!(tracing::Level::INFO, "complete_expr_path").entered();
     if !ctx.qualifier_ctx.none() {
         return;
     }

@@ -13,4 +13,5 @@ extern "C" {
 
 fn main() {
     assert_eq!(FOO, 3);
+    //~^ ERROR extern static is unsafe
 }

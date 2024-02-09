@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn try_operator() {
-        // We currently show drop inlay hint for every `?` operator that may potentialy drop something. We probably need to
+        // We currently show drop inlay hint for every `?` operator that may potentially drop something. We probably need to
         // make it configurable as it doesn't seem very useful.
         check_with_config(
             ONLY_DROP_CONFIG,

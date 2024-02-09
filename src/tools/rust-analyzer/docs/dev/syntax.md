@@ -128,7 +128,7 @@ Interior nodes are shared as well (for example in `(1 + 1) * (1 + 1)`).
 Note that, the result of the interning is an `Arc<Node>`.
 That is, it's not an index into interning table, so you don't have to have the table around to do anything with the tree.
 Each tree is fully self-contained (although different trees might share parts).
-Currently, the interner is created per-file, but it will be easy to use a per-thread or per-some-contex one.
+Currently, the interner is created per-file, but it will be easy to use a per-thread or per-some-context one.
 
 We use a `TextSize`, a newtyped `u32`, to store the length of the text.
 

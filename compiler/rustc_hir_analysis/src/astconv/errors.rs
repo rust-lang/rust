@@ -6,11 +6,15 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
-use rustc_errors::{pluralize, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
+use rustc_middle::query::Key;
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -244,7 +248,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.span_suggestion_verbose(
                             assoc_name.span,
                             fluent::hir_analysis_assoc_item_not_found_similar_in_other_trait_with_bound_sugg,
-                            suggested_name.to_string(),
+                            suggested_name,
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -461,22 +465,23 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return err.emit();
         }
 
-        let mut bound_spans = Vec::new();
+        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
 
         let mut bound_span_label = |self_ty: Ty<'_>, obligation: &str, quiet: &str| {
-            let msg = format!(
-                "doesn't satisfy `{}`",
-                if obligation.len() > 50 { quiet } else { obligation }
-            );
+            let msg = format!("`{}`", if obligation.len() > 50 { quiet } else { obligation });
             match &self_ty.kind() {
                 // Point at the type that couldn't satisfy the bound.
-                ty::Adt(def, _) => bound_spans.push((tcx.def_span(def.did()), msg)),
+                ty::Adt(def, _) => {
+                    bound_spans.get_mut_or_insert_default(tcx.def_span(def.did())).push(msg)
+                }
                 // Point at the trait object that couldn't satisfy the bound.
                 ty::Dynamic(preds, _, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
                             ty::ExistentialPredicate::Trait(tr) => {
-                                bound_spans.push((tcx.def_span(tr.def_id), msg.clone()))
+                                bound_spans
+                                    .get_mut_or_insert_default(tcx.def_span(tr.def_id))
+                                    .push(msg.clone());
                             }
                             ty::ExistentialPredicate::Projection(_)
                             | ty::ExistentialPredicate::AutoTrait(_) => {}
@@ -485,7 +490,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 // Point at the closure that couldn't satisfy the bound.
                 ty::Closure(def_id, _) => {
-                    bound_spans.push((tcx.def_span(*def_id), format!("doesn't satisfy `{quiet}`")))
+                    bound_spans
+                        .get_mut_or_insert_default(tcx.def_span(*def_id))
+                        .push(format!("`{quiet}`"));
                 }
                 _ => {}
             }
@@ -554,12 +561,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             format!("associated type cannot be referenced on `{self_ty}` due to unsatisfied trait bounds")
         );
 
-        bound_spans.sort();
-        bound_spans.dedup();
-        for (span, msg) in bound_spans {
+        for (span, mut bounds) in bound_spans {
             if !tcx.sess.source_map().is_span_accessible(span) {
                 continue;
             }
+            bounds.sort();
+            bounds.dedup();
+            let msg = match &bounds[..] {
+                [bound] => format!("doesn't satisfy {bound}"),
+                bounds if bounds.len() > 4 => format!("doesn't satisfy {} bounds", bounds.len()),
+                [bounds @ .., last] => format!("doesn't satisfy {} or {last}", bounds.join(", ")),
+                [] => unreachable!(),
+            };
             err.span_label(span, msg);
         }
         add_def_label(&mut err);
@@ -846,6 +859,56 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         self.set_tainted_by_errors(err.emit());
+    }
+
+    /// On ambiguous associated type, look for an associated function whose name matches the
+    /// extended path and, if found, emit an E0223 error with a structured suggestion.
+    /// e.g. for `String::from::utf8`, suggest `String::from_utf8` (#109195)
+    pub(crate) fn maybe_report_similar_assoc_fn(
+        &self,
+        span: Span,
+        qself_ty: Ty<'tcx>,
+        qself: &hir::Ty<'_>,
+    ) -> Result<(), ErrorGuaranteed> {
+        let tcx = self.tcx();
+        if let Some((_, node)) = tcx.hir().parent_iter(qself.hir_id).skip(1).next()
+            && let hir::Node::Expr(hir::Expr {
+                kind:
+                    hir::ExprKind::Path(hir::QPath::TypeRelative(
+                        hir::Ty {
+                            kind:
+                                hir::TyKind::Path(hir::QPath::TypeRelative(
+                                    _,
+                                    hir::PathSegment { ident: ident2, .. },
+                                )),
+                            ..
+                        },
+                        hir::PathSegment { ident: ident3, .. },
+                    )),
+                ..
+            }) = node
+            && let Some(ty_def_id) = qself_ty.ty_def_id()
+            && let Ok([inherent_impl]) = tcx.inherent_impls(ty_def_id)
+            && let name = format!("{ident2}_{ident3}")
+            && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = tcx
+                .associated_items(inherent_impl)
+                .filter_by_name_unhygienic(Symbol::intern(&name))
+                .next()
+        {
+            let reported =
+                struct_span_code_err!(tcx.dcx(), span, E0223, "ambiguous associated type")
+                    .with_span_suggestion_verbose(
+                        ident2.span.to(ident3.span),
+                        format!("there is an associated function with a similar name: `{name}`"),
+                        name,
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+            self.set_tainted_by_errors(reported);
+            Err(reported)
+        } else {
+            Ok(())
+        }
     }
 }
 

@@ -21,11 +21,11 @@ use hir_def::{
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
+mod borrowck;
 mod eval;
 mod lower;
-mod borrowck;
-mod pretty;
 mod monomorphization;
+mod pretty;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
 pub use eval::{

@@ -15,6 +15,7 @@ use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_errors::{codes::*, struct_span_code_err, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId, LOCAL_CRATE};
@@ -81,7 +82,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     // but there's already an item with the same namespace and same name. Rust gives
     // priority to the not-imported one, so we should, too.
     items.extend(doc.items.values().flat_map(|(item, renamed, import_id)| {
-        // First, lower everything other than imports.
+        // First, lower everything other than glob imports.
         if matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
             return Vec::new();
         }
@@ -147,6 +148,17 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     )
 }
 
+fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
+    if let Some(node) = tcx.opt_hir_node_by_def_id(import_id)
+        && let hir::Node::Item(item) = node
+        && let hir::ItemKind::Use(_, use_kind) = item.kind
+    {
+        use_kind == hir::UseKind::Glob
+    } else {
+        false
+    }
+}
+
 fn generate_item_with_correct_attrs(
     cx: &mut DocContext<'_>,
     kind: ItemKind,
@@ -157,10 +169,17 @@ fn generate_item_with_correct_attrs(
 ) -> Item {
     let target_attrs = inline::load_attrs(cx, def_id);
     let attrs = if let Some(import_id) = import_id {
+        // glob reexports are treated the same as `#[doc(inline)]` items.
+        //
+        // For glob re-exports the item may or may not exist to be re-exported (potentially the cfgs
+        // on the path up until the glob can be removed, and only cfgs on the globbed item itself
+        // matter), for non-inlined re-exports see #85043.
         let is_inline = inline::load_attrs(cx, import_id.to_def_id())
             .lists(sym::doc)
             .get_word_attr(sym::inline)
-            .is_some();
+            .is_some()
+            || (is_glob_import(cx.tcx, import_id)
+                && (cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id)));
         let mut attrs = get_all_import_attributes(cx, import_id, def_id, is_inline);
         add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
         attrs
@@ -1835,7 +1854,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Array(ty, ref length) => {
             let length = match length {
-                hir::ArrayLen::Infer(_, _) => "_".to_string(),
+                hir::ArrayLen::Infer(..) => "_".to_string(),
                 hir::ArrayLen::Body(anon_const) => {
                     // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                     // as we currently do not supply the parent generics to anonymous constants
@@ -2267,11 +2286,12 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Closure(..) => panic!("Closure"),
+        ty::CoroutineClosure(..) => panic!("CoroutineClosure"),
         ty::Coroutine(..) => panic!("Coroutine"),
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),
-        ty::Error(_) => rustc_errors::FatalError.raise(),
+        ty::Error(_) => FatalError.raise(),
     }
 }
 
@@ -2995,7 +3015,7 @@ fn clean_use_statement_inner<'tcx>(
         visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
     if pub_underscore && let Some(ref inline) = inline_attr {
-        rustc_errors::struct_span_code_err!(
+        struct_span_code_err!(
             cx.tcx.dcx(),
             inline.span(),
             E0780,

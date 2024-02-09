@@ -9,6 +9,7 @@ mod apply_change;
 pub mod active_parameter;
 pub mod assists;
 pub mod defs;
+pub mod documentation;
 pub mod famous_defs;
 pub mod helpers;
 pub mod items_locator;
@@ -22,7 +23,6 @@ pub mod symbol_index;
 pub mod traits;
 pub mod ty_filter;
 pub mod use_trivial_constructor;
-pub mod documentation;
 
 pub mod imports {
     pub mod import_assets;
@@ -35,10 +35,10 @@ pub mod generated {
 }
 
 pub mod syntax_helpers {
-    pub mod node_ext;
-    pub mod insert_whitespace_into_node;
     pub mod format_string;
     pub mod format_string_exprs;
+    pub mod insert_whitespace_into_node;
+    pub mod node_ext;
 
     pub use parser::LexedStr;
 }
@@ -414,6 +414,6 @@ impl SnippetCap {
 
 #[cfg(test)]
 mod tests {
-    mod sourcegen_lints;
     mod line_index;
+    mod sourcegen_lints;
 }

@@ -83,6 +83,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
             }
 
+            AsyncClosureCandidate => {
+                let vtable_closure = self.confirm_async_closure_candidate(obligation)?;
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
+            }
+
+            // No nested obligations or confirmation process. The checks that we do in
+            // candidate assembly are sufficient.
+            AsyncFnKindHelperCandidate => ImplSource::Builtin(BuiltinImplSource::Misc, vec![]),
+
             CoroutineCandidate => {
                 let vtable_coroutine = self.confirm_coroutine_candidate(obligation)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_coroutine)
@@ -150,7 +159,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let trait_predicate = self.infcx.shallow_resolve(obligation.predicate);
         let placeholder_trait_predicate =
-            self.infcx.instantiate_binder_with_placeholders(trait_predicate).trait_ref;
+            self.infcx.enter_forall_and_leak_universe(trait_predicate).trait_ref;
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
         let (def_id, args) = match *placeholder_self_ty.kind() {
@@ -393,7 +402,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let trait_ref = self.infcx.instantiate_binder_with_placeholders(poly_trait_ref);
+            let trait_ref = self.infcx.enter_forall_and_leak_universe(poly_trait_ref);
             let trait_obligations: Vec<PredicateObligation<'_>> = self.impl_or_trait_obligations(
                 &cause,
                 obligation.recursion_depth + 1,
@@ -484,7 +493,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         debug!(?obligation, ?index, "confirm_object_candidate");
 
-        let trait_predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let trait_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
         let ty::Dynamic(data, ..) = *self_ty.kind() else {
@@ -682,7 +691,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
-        let output_ty = self.infcx.instantiate_binder_with_placeholders(sig.output());
+        let output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
         let output_ty = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -703,7 +712,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Vec<PredicateObligation<'tcx>> {
         debug!(?obligation, "confirm_trait_alias_candidate");
 
-        let predicate = self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let trait_ref = predicate.trait_ref;
         let trait_def_id = trait_ref.def_id;
         let args = trait_ref.args;
@@ -863,6 +872,49 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_ref =
             self.closure_trait_ref_unnormalized(obligation, args, self.tcx().consts.true_);
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+
+        debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
+
+        Ok(nested)
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn confirm_async_closure_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // Okay to skip binder because the args on closure types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters.
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let ty::CoroutineClosure(closure_def_id, args) = *self_ty.kind() else {
+            bug!("async closure candidate for non-coroutine-closure {:?}", obligation);
+        };
+
+        let trait_ref = args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
+            ty::TraitRef::new(
+                self.tcx(),
+                obligation.predicate.def_id(),
+                [self_ty, sig.tupled_inputs_ty],
+            )
+        });
+
+        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+
+        let goal_kind =
+            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
+        nested.push(obligation.with(
+            self.tcx(),
+            ty::TraitRef::from_lang_item(
+                self.tcx(),
+                LangItem::AsyncFnKindHelper,
+                obligation.cause.span,
+                [
+                    args.as_coroutine_closure().kind_ty(),
+                    Ty::from_closure_kind(self.tcx(), goal_kind),
+                ],
+            ),
+        ));
 
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
 

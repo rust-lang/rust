@@ -61,7 +61,34 @@ error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/issue-78372.rs:12:17
+   |
+LL |     fn foo(self: Smaht<Self, T>);
+   |                  -------------- help: consider changing method `foo`'s `self` parameter to be `&self`: `&Self`
+...
+LL | impl Marker for dyn Foo {}
+   |                 ^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/issue-78372.rs:9:18
+   |
+LL | trait Foo: X<u32> {}
+   |       --- this trait cannot be made into an object...
+LL | trait X<T> {
+LL |     fn foo(self: Smaht<Self, T>);
+   |                  ^^^^^^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
 
-Some errors have detailed explanations: E0378, E0412, E0658.
-For more information about an error, try `rustc --explain E0378`.
+error[E0307]: invalid `self` parameter type: Smaht<Self, T>
+  --> $DIR/issue-78372.rs:9:18
+   |
+LL |     fn foo(self: Smaht<Self, T>);
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must be `Self` or a type that dereferences to it
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0038, E0307, E0378, E0412, E0658.
+For more information about an error, try `rustc --explain E0038`.

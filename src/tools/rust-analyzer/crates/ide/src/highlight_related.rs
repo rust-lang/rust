@@ -55,7 +55,7 @@ pub(crate) fn highlight_related(
     config: HighlightRelatedConfig,
     pos @ FilePosition { offset, file_id }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
-    let _p = profile::span("highlight_related");
+    let _p = tracing::span!(tracing::Level::INFO, "highlight_related").entered();
     let syntax = sema.parse(file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
@@ -519,6 +519,7 @@ mod tests {
                             ReferenceCategory::Read => "read",
                             ReferenceCategory::Write => "write",
                             ReferenceCategory::Import => "import",
+                            ReferenceCategory::Test => "test",
                         }
                         .to_string()
                     }),

@@ -1,9 +1,10 @@
+use std::assert_matches::assert_matches;
+
 use super::errors::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
     ClosureCannotBeStatic, CoroutineTooManyParameters,
     FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    NeverPatternWithBody, NeverPatternWithGuard, NotSupportedForLifetimeBinderAsyncClosure,
-    UnderscoreExprLhsAssign,
+    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
 };
 use super::ResolverAstLoweringExt;
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
@@ -98,7 +99,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         seg,
                         ParamMode::Optional,
                         ParenthesizedGenericArgs::Err,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        None,
+                        // Method calls can't have bound modifiers
                         None,
                     ));
                     let receiver = self.lower_expr(receiver);
@@ -138,13 +141,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Cast(expr, ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =
-                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
                     hir::ExprKind::Cast(expr, ty)
                 }
                 ExprKind::Type(expr, ty) => {
                     let expr = self.lower_expr(expr);
                     let ty =
-                        self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast));
                     hir::ExprKind::Type(expr, ty)
                 }
                 ExprKind::AddrOf(k, m, ohs) => {
@@ -153,7 +156,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Let(pat, scrutinee, span, is_recovered) => {
                     hir::ExprKind::Let(self.arena.alloc(hir::Let {
-                        hir_id: self.next_id(),
                         span: self.lower_span(*span),
                         pat: self.lower_pat(pat),
                         ty: None,
@@ -265,7 +267,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
                     hir::ExprKind::Path(qpath)
@@ -293,7 +295,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
                     self.lower_ty(
                         container,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
                     ),
                     self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
                 ),
@@ -312,7 +314,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &se.qself,
                             &se.path,
                             ParamMode::Optional,
-                            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                             None,
                         )),
                         self.arena
@@ -1027,30 +1029,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
-        if let &ClosureBinder::For { span, .. } = binder {
-            self.dcx().emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
-        }
-
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
+        assert_matches!(
+            coroutine_kind,
+            CoroutineKind::Async { .. },
+            "only async closures are supported currently"
+        );
+
         let body = self.with_new_scopes(fn_decl_span, |this| {
+            let inner_decl =
+                FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
+
             // Transform `async |x: u8| -> X { ... }` into
             // `|x: u8| || -> X { ... }`.
             let body_id = this.lower_body(|this| {
-                let async_ret_ty = if let FnRetTy::Ty(ty) = &decl.output {
-                    let itctx = ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock);
-                    Some(hir::FnRetTy::Return(this.lower_ty(ty, &itctx)))
-                } else {
-                    None
-                };
-
                 let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
-                    decl,
+                    &inner_decl,
                     |this| this.with_new_scopes(fn_decl_span, |this| this.lower_expr_mut(body)),
                     body.span,
                     coroutine_kind,
                     hir::CoroutineSource::Closure,
-                    async_ret_ty,
                 );
 
                 let hir_id = this.lower_node_id(coroutine_kind.closure_id());
@@ -1061,15 +1060,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body_id
         });
 
-        let outer_decl =
-            FnDecl { inputs: decl.inputs.clone(), output: FnRetTy::Default(fn_decl_span) };
-
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
         let fn_decl =
-            self.lower_fn_decl(&outer_decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
+            self.lower_fn_decl(&decl, closure_id, fn_decl_span, FnDeclKind::Closure, None);
 
         let c = self.arena.alloc(hir::Closure {
             def_id: self.local_def_id(closure_id),
@@ -1080,7 +1076,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
-            kind: hir::ClosureKind::Closure,
+            // Lower this as a `CoroutineClosure`. That will ensure that HIR typeck
+            // knows that a `FnDecl` output type like `-> &str` actually means
+            // "coroutine that returns &str", rather than directly returning a `&str`.
+            kind: hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async),
             constness: hir::Constness::NotConst,
         });
         hir::ExprKind::Closure(c)
@@ -1242,7 +1241,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
                     // Destructure like a tuple struct.
@@ -1262,7 +1261,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         None,
                     );
                     // Destructure like a unit struct.
@@ -1287,7 +1286,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &se.qself,
                     &se.path,
                     ParamMode::Optional,
-                    &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 );
                 let fields_omitted = match &se.rest {

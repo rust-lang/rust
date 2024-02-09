@@ -8,9 +8,9 @@ mod context;
 mod item;
 mod render;
 
+mod snippet;
 #[cfg(test)]
 mod tests;
-mod snippet;
 
 use ide_db::{
     base_db::FilePosition,
@@ -236,7 +236,7 @@ pub fn resolve_completion_edits(
     FilePosition { file_id, offset }: FilePosition,
     imports: impl IntoIterator<Item = (String, String)>,
 ) -> Option<Vec<TextEdit>> {
-    let _p = profile::span("resolve_completion_edits");
+    let _p = tracing::span!(tracing::Level::INFO, "resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
 
     let original_file = sema.parse(file_id);

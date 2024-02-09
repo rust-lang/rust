@@ -102,6 +102,15 @@ LL |     let _ = for<'a> |x: &'a _, y, z: _| -> &'a _ {
    |             |
    |             `for<...>` is here
 
-error: aborting due to 15 previous errors
+error: lifetime may not live long enough
+  --> $DIR/implicit-stuff.rs:26:42
+   |
+LL |     let _ = for<'a> |x: &'a ()| -> &() { x };
+   |                 --                 -     ^ returning this value requires that `'a` must outlive `'1`
+   |                 |                  |
+   |                 |                  let's call the lifetime of this reference `'1`
+   |                 lifetime `'a` defined here
+
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0637`.

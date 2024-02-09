@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    Applicability, DecorateLint, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder,
+    codes::*, Applicability, DecorateLint, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder,
     DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -33,7 +33,7 @@ pub(crate) enum ConstMutate {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_transform_unaligned_packed_ref, code = "E0793")]
+#[diag(mir_transform_unaligned_packed_ref, code = E0793)]
 #[note]
 #[note(mir_transform_note_ub)]
 #[help]
@@ -66,7 +66,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for RequiresUnsafe {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::mir_transform_requires_unsafe);
-        diag.code("E0133".to_string());
+        diag.code(E0133);
         diag.span(self.span);
         diag.span_label(self.span, self.details.label());
         let desc = dcx.eagerly_translate_to_string(self.details.label(), [].into_iter());
@@ -125,7 +125,7 @@ impl RequiresUnsafeDetail {
                 diag.arg(
                     "missing_target_features",
                     DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                 );
                 diag.arg("missing_target_features_count", missing.len());
@@ -136,7 +136,7 @@ impl RequiresUnsafeDetail {
                         DiagnosticArgValue::StrListSepByAnd(
                             build_enabled
                                 .iter()
-                                .map(|feature| Cow::from(feature.as_str()))
+                                .map(|feature| Cow::from(feature.to_string()))
                                 .collect(),
                         ),
                     );

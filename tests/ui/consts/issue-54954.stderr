@@ -11,7 +11,7 @@ error[E0790]: cannot call associated function on trait without specifying the co
   --> $DIR/issue-54954.rs:1:24
    |
 LL |   const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
 ...
 LL | /     const fn const_val<T: Sized>() -> usize {
 LL | |

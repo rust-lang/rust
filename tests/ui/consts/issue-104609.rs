@@ -5,6 +5,7 @@ fn foo() {
 
 unsafe fn bar() {
     std::mem::transmute::<_, *mut _>(1_u8);
+    //~^ ERROR: type annotations needed
 }
 
 fn main() {}

@@ -171,6 +171,7 @@ impl<'tcx> InherentCollect<'tcx> {
             }
             ty::FnDef(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Bound(..)

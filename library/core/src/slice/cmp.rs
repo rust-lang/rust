@@ -8,15 +8,15 @@ use super::from_raw_parts;
 use super::memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> PartialEq<[B]> for [A]
+impl<T, U> PartialEq<[U]> for [T]
 where
-    A: PartialEq<B>,
+    T: PartialEq<U>,
 {
-    fn eq(&self, other: &[B]) -> bool {
+    fn eq(&self, other: &[U]) -> bool {
         SlicePartialEq::equal(self, other)
     }
 
-    fn ne(&self, other: &[B]) -> bool {
+    fn ne(&self, other: &[U]) -> bool {
         SlicePartialEq::not_equal(self, other)
     }
 }

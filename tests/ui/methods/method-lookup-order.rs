@@ -1,6 +1,7 @@
 // ignore-tidy-linelength
 
 // run-pass
+#![allow(dead_code)]
 
 // There are five cfg's below. I explored the set of all non-empty combinations
 // of the below five cfg's, which is 2^5 - 1 = 31 combinations.

@@ -861,6 +861,9 @@ where
         let ty = self.place_ty(self.place);
         match ty.kind() {
             ty::Closure(_, args) => self.open_drop_for_tuple(args.as_closure().upvar_tys()),
+            ty::CoroutineClosure(_, args) => {
+                self.open_drop_for_tuple(args.as_coroutine_closure().upvar_tys())
+            }
             // Note that `elaborate_drops` only drops the upvars of a coroutine,
             // and this is ok because `open_drop` here can only be reached
             // within that own coroutine's resume function.

@@ -767,6 +767,15 @@ fn codegen_stmt<'tcx>(
                         NullOp::OffsetOf(fields) => {
                             layout.offset_of_subfield(fx, fields.iter()).bytes()
                         }
+                        NullOp::DebugAssertions => {
+                            let val = fx.tcx.sess.opts.debug_assertions;
+                            let val = CValue::by_val(
+                                fx.bcx.ins().iconst(types::I8, i64::try_from(val).unwrap()),
+                                fx.layout_of(fx.tcx.types.bool),
+                            );
+                            lval.write_cvalue(fx, val);
+                            return;
+                        }
                     };
                     let val = CValue::by_val(
                         fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(val).unwrap()),

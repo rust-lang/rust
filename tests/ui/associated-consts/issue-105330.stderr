@@ -43,7 +43,13 @@ LL | impl TraitWAssocConst for impl Demo {
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error: aborting due to 5 previous errors
+error[E0131]: `main` function is not allowed to have generic parameters
+  --> $DIR/issue-105330.rs:15:8
+   |
+LL | fn main<A: TraitWAssocConst<A=32>>() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `main` cannot have generic parameters
 
-Some errors have detailed explanations: E0404, E0562, E0658.
-For more information about an error, try `rustc --explain E0404`.
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0131, E0404, E0562, E0658.
+For more information about an error, try `rustc --explain E0131`.

@@ -118,16 +118,26 @@ resolve_forward_declared_generic_param =
     .label = defaulted generic parameters cannot be forward declared
 
 resolve_generic_params_from_outer_item =
-    can't use generic parameters from outer item
-    .label = use of generic parameter from outer item
+    can't use {$is_self ->
+        [true] `Self`
+        *[false] generic parameters
+    } from outer item
+    .label = use of {$is_self ->
+        [true] `Self`
+        *[false] generic parameter
+    } from outer item
     .refer_to_type_directly = refer to the type directly here instead
     .suggestion = try introducing a local generic parameter here
+
+resolve_generic_params_from_outer_item_const = a `const` is a separate item from the item that contains it
 
 resolve_generic_params_from_outer_item_const_param = const parameter from outer item
 
 resolve_generic_params_from_outer_item_self_ty_alias = `Self` type implicitly declared here, by this `impl`
 
 resolve_generic_params_from_outer_item_self_ty_param = can't use `Self` here
+
+resolve_generic_params_from_outer_item_static = a `static` is a separate item from the item that contains it
 
 resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
 
@@ -288,6 +298,12 @@ resolve_undeclared_label =
 resolve_underscore_lifetime_name_cannot_be_used_here =
     `'_` cannot be used here
     .note = `'_` is a reserved lifetime name
+
+resolve_unexpected_res_change_ty_to_const_param_sugg =
+    you might have meant to write a const parameter here
+
+resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
+    if you meant to collect the rest of the slice in `{$ident}`, use the at operator
 
 resolve_unreachable_label =
     use of unreachable label `{$name}`

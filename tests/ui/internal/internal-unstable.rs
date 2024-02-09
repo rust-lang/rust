@@ -28,6 +28,14 @@ macro_rules! bar {
     }}
 }
 
+#[allow_internal_unstable(stmt_expr_attributes)]
+macro_rules! internal_attr {
+    ($e: expr) => {
+        #[allow(overflowing_literals)]
+        $e
+    }
+}
+
 fn main() {
     // ok, the instability is contained.
     call_unstable_allow!();
@@ -51,4 +59,6 @@ fn main() {
         #[allow_internal_unstable]
         _ => {}
     }
+
+    assert_eq!(internal_attr!(1e100_f32), f32::INFINITY);
 }

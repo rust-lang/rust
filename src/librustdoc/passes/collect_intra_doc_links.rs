@@ -503,6 +503,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             }
             ty::Alias(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Dynamic(..)

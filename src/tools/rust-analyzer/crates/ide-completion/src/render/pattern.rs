@@ -20,7 +20,7 @@ pub(crate) fn render_struct_pat(
     strukt: hir::Struct,
     local_name: Option<Name>,
 ) -> Option<CompletionItem> {
-    let _p = profile::span("render_struct_pat");
+    let _p = tracing::span!(tracing::Level::INFO, "render_struct_pat").entered();
 
     let fields = strukt.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, strukt)?;
@@ -50,7 +50,7 @@ pub(crate) fn render_variant_pat(
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
 ) -> Option<CompletionItem> {
-    let _p = profile::span("render_variant_pat");
+    let _p = tracing::span!(tracing::Level::INFO, "render_variant_pat").entered();
 
     let fields = variant.fields(ctx.db());
     let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;

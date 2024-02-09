@@ -15,12 +15,13 @@ use crate::{symbol_index::SymbolsDatabase, Change, RootDatabase};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
-        let _p = profile::span("RootDatabase::request_cancellation");
+        let _p =
+            tracing::span!(tracing::Level::INFO, "RootDatabase::request_cancellation").entered();
         self.salsa_runtime_mut().synthetic_write(Durability::LOW);
     }
 
     pub fn apply_change(&mut self, change: Change) {
-        let _p = profile::span("RootDatabase::apply_change");
+        let _p = tracing::span!(tracing::Level::INFO, "RootDatabase::apply_change").entered();
         self.request_cancellation();
         tracing::trace!("apply_change {:?}", change);
         if let Some(roots) = &change.source_change.roots {

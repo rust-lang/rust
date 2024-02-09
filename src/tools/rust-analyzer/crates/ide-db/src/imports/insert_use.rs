@@ -17,6 +17,7 @@ use syntax::{
 use crate::{
     imports::merge_imports::{
         common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_cmp, MergeBehavior,
+        NormalizationStyle,
     },
     RootDatabase,
 };
@@ -38,6 +39,15 @@ pub enum ImportGranularity {
     /// Merge all imports into a single use statement as long as they have the same visibility
     /// and attributes.
     One,
+}
+
+impl From<ImportGranularity> for NormalizationStyle {
+    fn from(granularity: ImportGranularity) -> Self {
+        match granularity {
+            ImportGranularity::One => NormalizationStyle::One,
+            _ => NormalizationStyle::Default,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -184,7 +194,7 @@ fn insert_use_with_alias_option(
     cfg: &InsertUseConfig,
     alias: Option<ast::Rename>,
 ) {
-    let _p = profile::span("insert_use");
+    let _p = tracing::span!(tracing::Level::INFO, "insert_use").entered();
     let mut mb = match cfg.granularity {
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
         ImportGranularity::Module => Some(MergeBehavior::Module),

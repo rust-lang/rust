@@ -1,20 +1,20 @@
 Function name: closure_macro::load_configuration_files
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 1e, 01, 02, 02]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 1d, 01, 02, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 30, 1) to (start + 2, 2)
+- Code(Counter(0)) at (prev + 29, 1) to (start + 2, 2)
 
 Function name: closure_macro::main
-Raw bytes (43): 0x[01, 01, 02, 01, 05, 05, 02, 07, 01, 22, 01, 01, 21, 02, 02, 09, 00, 0f, 05, 00, 12, 00, 13, 02, 00, 12, 00, 13, 05, 00, 54, 00, 55, 02, 02, 09, 02, 0b, 07, 03, 01, 00, 02]
+Raw bytes (43): 0x[01, 01, 02, 01, 05, 05, 02, 07, 01, 21, 01, 01, 21, 02, 02, 09, 00, 0f, 05, 00, 12, 00, 13, 02, 00, 12, 00, 13, 05, 00, 54, 00, 55, 02, 02, 09, 02, 0b, 07, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 7
-- Code(Counter(0)) at (prev + 34, 1) to (start + 1, 33)
+- Code(Counter(0)) at (prev + 33, 1) to (start + 1, 33)
 - Code(Expression(0, Sub)) at (prev + 2, 9) to (start + 0, 15)
     = (c0 - c1)
 - Code(Counter(1)) at (prev + 0, 18) to (start + 0, 19)
@@ -27,10 +27,19 @@ Number of file 0 mappings: 7
     = (c1 + (c0 - c1))
 
 Function name: closure_macro::main::{closure#0}
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 24, 12, 00, 54]
+Raw bytes (35): 0x[01, 01, 03, 01, 05, 05, 0b, 09, 00, 05, 01, 10, 1c, 03, 21, 05, 04, 11, 01, 27, 02, 03, 11, 00, 16, 00, 00, 17, 00, 1e, 07, 02, 09, 00, 0a]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 36, 18) to (start + 0, 84)
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(2), rhs = Zero
+Number of file 0 mappings: 5
+- Code(Counter(0)) at (prev + 16, 28) to (start + 3, 33)
+- Code(Counter(1)) at (prev + 4, 17) to (start + 1, 39)
+- Code(Expression(0, Sub)) at (prev + 3, 17) to (start + 0, 22)
+    = (c0 - c1)
+- Code(Zero) at (prev + 0, 23) to (start + 0, 30)
+- Code(Expression(1, Add)) at (prev + 2, 9) to (start + 0, 10)
+    = (c1 + (c2 + Zero))
 

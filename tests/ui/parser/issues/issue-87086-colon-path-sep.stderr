@@ -64,7 +64,7 @@ LL |     if let Foo::Bar = f() {
    |               ~~
 
 error: expected one of `@` or `|`, found `:`
-  --> $DIR/issue-87086-colon-path-sep.rs:48:16
+  --> $DIR/issue-87086-colon-path-sep.rs:49:16
    |
 LL |         ref qux: Foo::Baz => {}
    |                ^ -------- specifying the type of a pattern isn't supported
@@ -77,7 +77,7 @@ LL |         ref qux::Foo::Baz => {}
    |                ~~
 
 error: expected one of `@` or `|`, found `:`
-  --> $DIR/issue-87086-colon-path-sep.rs:57:16
+  --> $DIR/issue-87086-colon-path-sep.rs:58:16
    |
 LL |         mut qux: Foo::Baz => {}
    |                ^ -------- specifying the type of a pattern isn't supported
@@ -90,7 +90,7 @@ LL |         mut qux::Foo::Baz => {}
    |                ~~
 
 error: expected one of `@` or `|`, found `:`
-  --> $DIR/issue-87086-colon-path-sep.rs:68:12
+  --> $DIR/issue-87086-colon-path-sep.rs:69:12
    |
 LL |         Foo:Bar::Baz => {}
    |            ^-------- specifying the type of a pattern isn't supported
@@ -103,7 +103,7 @@ LL |         Foo::Bar::Baz => {}
    |            ~~
 
 error: expected one of `@` or `|`, found `:`
-  --> $DIR/issue-87086-colon-path-sep.rs:74:12
+  --> $DIR/issue-87086-colon-path-sep.rs:75:12
    |
 LL |         Foo:Bar => {}
    |            ^--- specifying the type of a pattern isn't supported
@@ -115,5 +115,15 @@ help: maybe write a path separator here
 LL |         Foo::Bar => {}
    |            ~~
 
-error: aborting due to 9 previous errors
+warning: irrefutable `if let` pattern
+  --> $DIR/issue-87086-colon-path-sep.rs:40:8
+   |
+LL |     if let Foo:Bar = f() {
+   |        ^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+error: aborting due to 9 previous errors; 1 warning emitted
 

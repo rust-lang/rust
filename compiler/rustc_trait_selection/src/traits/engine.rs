@@ -3,6 +3,7 @@ use std::fmt::Debug;
 
 use super::FulfillmentContext;
 use super::TraitEngine;
+use crate::regions::InferCtxtRegionExt;
 use crate::solve::FulfillmentCtxt as NextFulfillmentCtxt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::NormalizeExt;

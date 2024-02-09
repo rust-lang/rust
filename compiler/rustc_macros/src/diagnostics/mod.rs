@@ -20,7 +20,7 @@ use synstructure::Structure;
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(Diagnostic)]
-/// #[diag(borrowck_move_out_of_borrow, code = "E0505")]
+/// #[diag(borrowck_move_out_of_borrow, code = E0505)]
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,

@@ -30,7 +30,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): #[expect_let] let string = "Hello, world!";
-PRINT-ATTR RE-COLLECTED (DISPLAY): #[expect_let] let string = "Hello, world!" ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -73,7 +72,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): #[expect_my_macro_stmt] my_macro!("{}", string);
-PRINT-ATTR RE-COLLECTED (DISPLAY): #[expect_my_macro_stmt] my_macro! ("{}", string) ;
+PRINT-ATTR RE-COLLECTED (DISPLAY): #[expect_my_macro_stmt] my_macro! ("{}", string);
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -127,7 +126,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): second_make_stmt!(#[allow(dead_code)] struct Bar {});
-PRINT-ATTR RE-COLLECTED (DISPLAY): second_make_stmt! (#[allow(dead_code)] struct Bar {}) ;
+PRINT-ATTR RE-COLLECTED (DISPLAY): second_make_stmt! (#[allow(dead_code)] struct Bar {});
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "second_make_stmt",

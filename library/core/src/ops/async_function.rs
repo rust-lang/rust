@@ -106,3 +106,28 @@ mod impls {
         }
     }
 }
+
+mod internal_implementation_detail {
+    /// A helper trait that is used to enforce that the `ClosureKind` of a goal
+    /// is within the capabilities of a `CoroutineClosure`, and which allows us
+    /// to delay the projection of the tupled upvar types until after upvar
+    /// analysis is complete.
+    ///
+    /// The `Self` type is expected to be the `kind_ty` of the coroutine-closure,
+    /// and thus either `?0` or `i8`/`i16`/`i32` (see docs for `ClosureKind`
+    /// for an explanation of that). The `GoalKind` is also the same type, but
+    /// representing the kind of the trait that the closure is being called with.
+    #[cfg_attr(not(bootstrap), lang = "async_fn_kind_helper")]
+    trait AsyncFnKindHelper<GoalKind> {
+        // Projects a set of closure inputs (arguments), a region, and a set of upvars
+        // (by move and by ref) to the upvars that we expect the coroutine to have
+        // according to the `GoalKind` parameter above.
+        //
+        // The `Upvars` parameter should be the upvars of the parent coroutine-closure,
+        // and the `BorrowedUpvarsAsFnPtr` will be a function pointer that has the shape
+        // `for<'env> fn() -> (&'env T, ...)`. This allows us to represent the binder
+        // of the closure's self-capture, and these upvar types will be instantiated with
+        // the `'closure_env` region provided to the associated type.
+        type Upvars<'closure_env, Inputs, Upvars, BorrowedUpvarsAsFnPtr>;
+    }
+}

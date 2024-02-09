@@ -396,7 +396,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// to the allocation it points to. Supports both shared and mutable references, as the actual
     /// checking is offloaded to a helper closure.
     ///
-    /// If this returns `None`, the size is 0; it can however return `Some` even for size 0.
+    /// Returns `None` if and only if the size is 0.
     fn check_and_deref_ptr<T>(
         &self,
         ptr: Pointer<Option<M::Provenance>>,
@@ -1214,10 +1214,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let size_in_bytes = size.bytes_usize();
             // For particularly large arrays (where this is perf-sensitive) it's common that
             // we're writing a single byte repeatedly. So, optimize that case to a memset.
-            if size_in_bytes == 1 && num_copies >= 1 {
-                // SAFETY: `src_bytes` would be read from anyway by copies below (num_copies >= 1).
-                // Since size_in_bytes = 1, then the `init.no_bytes_init()` check above guarantees
-                // that this read at type `u8` is OK -- it must be an initialized byte.
+            if size_in_bytes == 1 {
+                debug_assert!(num_copies >= 1); // we already handled the zero-sized cases above.
+                // SAFETY: `src_bytes` would be read from anyway by `copy` below (num_copies >= 1).
                 let value = *src_bytes;
                 dest_bytes.write_bytes(value, (size * num_copies).bytes_usize());
             } else if src_alloc_id == dest_alloc_id {

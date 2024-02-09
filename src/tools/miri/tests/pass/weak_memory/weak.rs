@@ -11,6 +11,7 @@ use std::sync::atomic::Ordering::*;
 use std::sync::atomic::{fence, AtomicUsize};
 use std::thread::spawn;
 
+#[allow(dead_code)]
 #[derive(Copy, Clone)]
 struct EvilSend<T>(pub T);
 

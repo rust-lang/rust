@@ -24,4 +24,5 @@ impl<const X: usize> ArrayHolder<X> {
 
 fn main() {
     let mut array = ArrayHolder::new();
+    //~^ ERROR: type annotations needed
 }

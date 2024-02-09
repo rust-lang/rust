@@ -4,7 +4,7 @@
 
 use std::vec;
 
-trait IntoIteratorX {
+trait IntoIteratorX { //~ WARN trait `IntoIteratorX` is never used
     type Item;
     type IntoIter: Iterator<Item=Self::Item>;
 

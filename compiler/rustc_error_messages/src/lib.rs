@@ -3,8 +3,6 @@
 #![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]
@@ -378,7 +376,7 @@ impl From<Cow<'static, str>> for DiagnosticMessage {
     }
 }
 
-/// A workaround for "good path" ICEs when formatting types in disabled lints.
+/// A workaround for good_path_delayed_bug ICEs when formatting types in disabled lints.
 ///
 /// Delays formatting until `.into(): DiagnosticMessage` is used.
 pub struct DelayDm<F>(pub F);

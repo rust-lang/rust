@@ -135,7 +135,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
 
     fn visit_path(&mut self, path: &Path<'tcx>, _: HirId) {
         if let Res::Local(local_id) = path.res
-            && let Some(Node::Pat(pat)) = self.cx.tcx.opt_hir_node(local_id)
+            && let Node::Pat(pat) = self.cx.tcx.hir_node(local_id)
             && let PatKind::Binding(_, local_id, ..) = pat.kind
         {
             self.identifiers.insert(local_id);
@@ -166,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReferenceVisitor<'a, 'tcx> {
                 && let ExprKind::Path(ref path) = expr.kind
                 && let QPath::Resolved(_, path) = path
                 && let Res::Local(local_id) = path.res
-                && let Some(Node::Pat(pat)) = self.cx.tcx.opt_hir_node(local_id)
+                && let Node::Pat(pat) = self.cx.tcx.hir_node(local_id)
                 && let PatKind::Binding(_, local_id, ..) = pat.kind
                 && self.identifiers.contains(&local_id)
             {

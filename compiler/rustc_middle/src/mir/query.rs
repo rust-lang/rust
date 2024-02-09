@@ -189,7 +189,7 @@ pub struct BorrowCheckResult<'tcx> {
 
 /// The result of the `mir_const_qualif` query.
 ///
-/// Each field (except `error_occurred`) corresponds to an implementer of the `Qualif` trait in
+/// Each field (except `tainted_by_errors`) corresponds to an implementer of the `Qualif` trait in
 /// `rustc_const_eval/src/transform/check_consts/qualifs.rs`. See that file for more information on each
 /// `Qualif`.
 #[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
@@ -197,7 +197,6 @@ pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
     pub needs_non_const_drop: bool,
-    pub custom_eq: bool,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 

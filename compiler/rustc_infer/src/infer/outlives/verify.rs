@@ -23,7 +23,7 @@ pub struct VerifyBoundCx<'cx, 'tcx> {
     /// Outside of borrowck the only way to prove `T: '?0` is by
     /// setting  `'?0` to `'empty`.
     implicit_region_bound: Option<ty::Region<'tcx>>,
-    param_env: ty::ParamEnv<'tcx>,
+    caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
 }
 
 impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
@@ -31,9 +31,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
+        caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
     ) -> Self {
-        Self { tcx, region_bound_pairs, implicit_region_bound, param_env }
+        Self { tcx, region_bound_pairs, implicit_region_bound, caller_bounds }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -219,8 +219,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // To start, collect bounds from user environment. Note that
         // parameter environments are already elaborated, so we don't
         // have to worry about that.
-        let c_b = self.param_env.caller_bounds();
-        let param_bounds = self.collect_outlives_from_clause_list(erased_ty, c_b.into_iter());
+        let param_bounds = self.caller_bounds.iter().copied().filter(move |outlives_predicate| {
+            super::test_type_match::can_match_erased_ty(tcx, *outlives_predicate, erased_ty)
+        });
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -306,23 +307,5 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             .filter_map(|p| p.as_type_outlives_clause())
             .filter_map(|p| p.no_bound_vars())
             .map(|OutlivesPredicate(_, r)| r)
-    }
-
-    /// Searches through a predicate list for a predicate `T: 'a`.
-    ///
-    /// Careful: does not elaborate predicates, and just uses `==`
-    /// when comparing `ty` for equality, so `ty` must be something
-    /// that does not involve inference variables and where you
-    /// otherwise want a precise match.
-    fn collect_outlives_from_clause_list(
-        &self,
-        erased_ty: Ty<'tcx>,
-        clauses: impl Iterator<Item = ty::Clause<'tcx>>,
-    ) -> impl Iterator<Item = ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>>
-    {
-        let tcx = self.tcx;
-        clauses.filter_map(|p| p.as_type_outlives_clause()).filter(move |outlives_predicate| {
-            super::test_type_match::can_match_erased_ty(tcx, *outlives_predicate, erased_ty)
-        })
     }
 }

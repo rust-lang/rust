@@ -1,6 +1,6 @@
 use super::{repeat, BorrowedBuf, Cursor, SeekFrom};
 use crate::cmp::{self, min};
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut, DEFAULT_BUF_SIZE};
 use crate::io::{BufRead, BufReader, Read, Seek, Write};
 use crate::mem::MaybeUninit;
 use crate::ops::Deref;
@@ -651,4 +651,33 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
 
         [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
     });
+}
+
+// Issue #120603
+#[test]
+#[should_panic = "read should not return more bytes than there is capacity for in the read buffer"]
+fn read_buf_broken_read() {
+    struct MalformedRead;
+
+    impl Read for MalformedRead {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            // broken length calculation
+            Ok(buf.len() + 1)
+        }
+    }
+
+    let _ = BufReader::new(MalformedRead).fill_buf();
+}
+
+#[test]
+fn read_buf_full_read() {
+    struct FullRead;
+
+    impl Read for FullRead {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            Ok(buf.len())
+        }
+    }
+
+    assert_eq!(BufReader::new(FullRead).fill_buf().unwrap().len(), DEFAULT_BUF_SIZE);
 }

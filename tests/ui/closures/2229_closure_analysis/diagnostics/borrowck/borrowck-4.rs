@@ -15,6 +15,6 @@ fn foo () -> impl FnMut()->() {
     c
 }
 fn main() {
-    let c = foo();
+    let mut c = foo();
     c();
 }

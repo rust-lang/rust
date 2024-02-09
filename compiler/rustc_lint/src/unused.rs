@@ -355,7 +355,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     Some(len) => is_ty_must_use(cx, ty, expr, span)
                         .map(|inner| MustUsePath::Array(Box::new(inner), len)),
                 },
-                ty::Closure(..) => Some(MustUsePath::Closure(span)),
+                ty::Closure(..) | ty::CoroutineClosure(..) => Some(MustUsePath::Closure(span)),
                 ty::Coroutine(def_id, ..) => {
                     // async fn should be treated as "implementor of `Future`"
                     let must_use = if cx.tcx.coroutine_is_async(def_id) {

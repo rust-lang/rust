@@ -6,6 +6,8 @@ LL | unsafe fn foo<A>() {
 LL |     extern "C" {
 LL |         static baz: *const A;
    |                            ^ use of generic parameter from outer item
+   |
+   = note: a `static` is a separate item from the item that contains it
 
 error: aborting due to 1 previous error
 

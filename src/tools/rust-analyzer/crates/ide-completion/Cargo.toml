@@ -14,6 +14,7 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0-pre.1"
 itertools.workspace = true
+tracing.workspace = true
 
 once_cell = "1.17.0"
 smallvec.workspace = true

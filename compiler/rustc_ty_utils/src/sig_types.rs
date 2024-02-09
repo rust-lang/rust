@@ -4,11 +4,11 @@
 use std::ops::ControlFlow;
 
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
 
-pub(crate) trait SpannedTypeVisitor<'tcx> {
+pub trait SpannedTypeVisitor<'tcx> {
     type BreakTy = !;
     fn visit(
         &mut self,
@@ -17,7 +17,7 @@ pub(crate) trait SpannedTypeVisitor<'tcx> {
     ) -> ControlFlow<Self::BreakTy>;
 }
 
-pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
+pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
     visitor: &mut V,
@@ -42,11 +42,10 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         DefKind::TyAlias {..} | DefKind::AssocTy |
         // Walk over the type of the item
         DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
-            let span = match tcx.hir_node_by_def_id(item).ty() {
-                Some(ty) => ty.span,
-                _ => tcx.def_span(item),
-            };
-            visitor.visit(span, tcx.type_of(item).instantiate_identity());
+            if let Some(ty) = tcx.hir_node_by_def_id(item).ty() {
+                // Associated types in traits don't necessarily have a type that we can visit
+                visitor.visit(ty.span, tcx.type_of(item).instantiate_identity())?;
+            }
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }
@@ -59,7 +58,16 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // Look at field types
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
             let span = tcx.def_ident_span(item).unwrap();
-            visitor.visit(span, tcx.type_of(item).instantiate_identity());
+            let ty = tcx.type_of(item).instantiate_identity();
+            visitor.visit(span, ty);
+            let ty::Adt(def, args) = ty.kind() else {
+                span_bug!(span, "invalid type for {kind:?}: {:#?}", ty.kind())
+            };
+            for field in def.all_fields() {
+                let span = tcx.def_ident_span(field.did).unwrap();
+                let ty = field.ty(tcx, args);
+                visitor.visit(span, ty);
+            }
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }
@@ -89,7 +97,6 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             }
         }
         | DefKind::Variant
-        | DefKind::ForeignTy
         | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Ctor(_, _)
@@ -103,6 +110,7 @@ pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // These don't have any types.
         | DefKind::ExternCrate
         | DefKind::ForeignMod
+        | DefKind::ForeignTy
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Mod

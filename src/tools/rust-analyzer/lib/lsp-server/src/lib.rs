@@ -6,11 +6,11 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-mod msg;
-mod stdio;
 mod error;
-mod socket;
+mod msg;
 mod req_queue;
+mod socket;
+mod stdio;
 
 use std::{
     io,

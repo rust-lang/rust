@@ -79,6 +79,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
             ty::Closure(..) => {
                 return ControlFlow::Break(ty);
             }
+            ty::CoroutineClosure(..) => {
+                return ControlFlow::Break(ty);
+            }
             ty::Coroutine(..) | ty::CoroutineWitness(..) => {
                 return ControlFlow::Break(ty);
             }

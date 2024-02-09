@@ -11,25 +11,25 @@
 #![allow(incomplete_features)]
 
 trait Default {
-   type Id;
+    type Id;
 }
 
 impl<T> Default for T {
-   default type Id = T;
+    default type Id = T; //[next]~ ERROR type annotations needed
 }
 
 trait Overlap {
-   type Assoc;
+    type Assoc;
 }
 
 impl Overlap for u32 {
-   type Assoc = usize;
+    type Assoc = usize;
 }
 
 impl Overlap for <u32 as Default>::Id {
-   //[coherence]~^ ERROR conflicting implementations of trait `Overlap` for type `u32`
-   //[next]~^^ ERROR conflicting implementations of trait `Overlap` for type `u32`
-   type Assoc = Box<usize>;
+    //[coherence]~^ ERROR conflicting implementations of trait `Overlap` for type `u32`
+    //[next]~^^ ERROR conflicting implementations of trait `Overlap` for type `u32`
+    type Assoc = Box<usize>;
 }
 
 fn main() {}

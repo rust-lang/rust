@@ -134,7 +134,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     /// Checks whether two blocks are the same.
     #[expect(clippy::similar_names)]
     fn eq_block(&mut self, left: &Block<'_>, right: &Block<'_>) -> bool {
-        use TokenKind::{BlockComment, LineComment, Semi, Whitespace};
+        use TokenKind::{Semi, Whitespace};
         if left.stmts.len() != right.stmts.len() {
             return false;
         }
@@ -177,7 +177,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 return false;
             }
             if !eq_span_tokens(self.inner.cx, lstart..lstmt_span.lo, rstart..rstmt_span.lo, |t| {
-                !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi)
+                !matches!(t, Whitespace | Semi)
             }) {
                 return false;
             }
@@ -212,7 +212,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             return false;
         }
         eq_span_tokens(self.inner.cx, lstart..lend, rstart..rend, |t| {
-            !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi)
+            !matches!(t, Whitespace | Semi)
         })
     }
 

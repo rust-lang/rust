@@ -174,6 +174,9 @@
 // revisions: armv7r_none_eabihf
 // [armv7r_none_eabihf] compile-flags: --target armv7r-none-eabihf
 // [armv7r_none_eabihf] needs-llvm-components: arm
+// revisions: armv8r_none_eabihf
+// [armv8r_none_eabihf] compile-flags: --target armv8r-none-eabihf
+// [armv8r_none_eabihf] needs-llvm-components: arm
 // FIXME: disabled since it fails on CI saying the csky component is missing
 /*
     revisions: csky_unknown_linux_gnuabiv2
@@ -489,9 +492,6 @@
 // revisions: wasm64_unknown_unknown
 // [wasm64_unknown_unknown] compile-flags: --target wasm64-unknown-unknown
 // [wasm64_unknown_unknown] needs-llvm-components: webassembly
-// revisions: wasm32_wasi_preview2
-// [wasm32_wasi_preview2] compile-flags: --target wasm32-wasi-preview2
-// [wasm32_wasi_preview2] needs-llvm-components: webassembly
 // revisions: x86_64_fortanix_unknown_sgx
 // [x86_64_fortanix_unknown_sgx] compile-flags: --target x86_64-fortanix-unknown-sgx
 // [x86_64_fortanix_unknown_sgx] needs-llvm-components: x86

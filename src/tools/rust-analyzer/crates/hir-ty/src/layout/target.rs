@@ -2,6 +2,7 @@
 
 use base_db::CrateId;
 use hir_def::layout::TargetDataLayout;
+use rustc_abi::{AlignFromBytesError, TargetDataLayoutErrors};
 use triomphe::Arc;
 
 use crate::db::HirDatabase;
@@ -9,15 +10,40 @@ use crate::db::HirDatabase;
 pub fn target_data_layout_query(
     db: &dyn HirDatabase,
     krate: CrateId,
-) -> Option<Arc<TargetDataLayout>> {
+) -> Result<Arc<TargetDataLayout>, Arc<str>> {
     let crate_graph = db.crate_graph();
-    let target_layout = crate_graph[krate].target_layout.as_ref().ok()?;
-    let res = TargetDataLayout::parse_from_llvm_datalayout_string(target_layout);
-    if let Err(_e) = &res {
-        // FIXME: Print the error here once it implements debug/display
-        // also logging here is somewhat wrong, but unfortunately this is the earliest place we can
-        // parse that doesn't impose a dependency to the rust-abi crate for project-model
-        tracing::error!("Failed to parse target data layout for {krate:?}");
+    let res = crate_graph[krate].target_layout.as_deref();
+    match res {
+        Ok(it) => match TargetDataLayout::parse_from_llvm_datalayout_string(it) {
+            Ok(it) => Ok(Arc::new(it)),
+            Err(e) => {
+                Err(match e {
+                    TargetDataLayoutErrors::InvalidAddressSpace { addr_space, cause, err } => {
+                        format!(
+                            r#"invalid address space `{addr_space}` for `{cause}` in "data-layout": {err}"#
+                        )
+                    }
+                    TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => format!(r#"invalid {kind} `{bit}` for `{cause}` in "data-layout": {err}"#),
+                    TargetDataLayoutErrors::MissingAlignment { cause } => format!(r#"missing alignment for `{cause}` in "data-layout""#),
+                    TargetDataLayoutErrors::InvalidAlignment { cause, err } => format!(
+                        r#"invalid alignment for `{cause}` in "data-layout": `{align}` is {err_kind}"#,
+                        align = err.align(),
+                        err_kind = match err {
+                            AlignFromBytesError::NotPowerOfTwo(_) => "not a power of two",
+                            AlignFromBytesError::TooLarge(_) => "too large",
+                        }
+                    ),
+                    TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
+                        format!(r#"inconsistent target specification: "data-layout" claims architecture is {dl}-endian, while "target-endian" is `{target}`"#)
+                    }
+                    TargetDataLayoutErrors::InconsistentTargetPointerWidth {
+                        pointer_size,
+                        target,
+                    } => format!(r#"inconsistent target specification: "data-layout" claims pointers are {pointer_size}-bit, while "target-pointer-width" is `{target}`"#),
+                    TargetDataLayoutErrors::InvalidBitsSize { err } => err,
+                }.into())
+            }
+        },
+        Err(e) => Err(Arc::from(&**e)),
     }
-    res.ok().map(Arc::new)
 }

@@ -1,9 +1,3 @@
-error: `report_selection_error` did not emit an error
-  --> $DIR/eagerly-emit.rs:7:11
-   |
-LL | fn f() -> impl Foo {
-   |           ^^^^^^^^
-
 error: trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
@@ -11,7 +5,7 @@ error[E0277]: the trait bound `i32: Foo` is not satisfied
    |
 LL | fn f() -> impl Foo {
    |           ^^^^^^^^ the trait `Foo` is not implemented for `i32`
-...
+LL |
 LL |     1i32
    |     ---- return type was inferred to be `i32` here
    |
@@ -21,8 +15,6 @@ help: this trait has no implementations, consider adding one
 LL | trait Foo {}
    | ^^^^^^^^^
 
-error: expected fulfillment errors
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

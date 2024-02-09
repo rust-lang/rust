@@ -239,13 +239,13 @@ The primary goal of `onEnter` is to handle automatic indentation when opening a 
 This is not yet implemented.
 The secondary goal is to handle fixing up syntax, like continuing doc strings and comments, and escaping `\n` in string literals.
 
-As proper cursor positioning is raison-d'etat for `onEnter`, it uses `SnippetTextEdit`.
+As proper cursor positioning is raison d'être for `onEnter`, it uses `SnippetTextEdit`.
 
 ### Unresolved Question
 
 * How to deal with synchronicity of the request?
   One option is to require the client to block until the server returns the response.
-  Another option is to do a OT-style merging of edits from client and server.
+  Another option is to do a operational transforms style merging of edits from client and server.
   A third option is to do a record-replay: client applies heuristic on enter immediately, then applies all user's keypresses.
   When the server is ready with the response, the client rollbacks all the changes and applies the recorded actions on top of the correct response.
 * How to deal with multiple carets?

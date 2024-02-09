@@ -3,7 +3,7 @@ use std::num::NonZeroU32;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{
-    error_code, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, IntoDiagnostic, Level, MultiSpan,
+    codes::*, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, IntoDiagnostic, Level, MultiSpan,
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
@@ -19,9 +19,7 @@ pub struct FeatureGateError {
 impl<'a> IntoDiagnostic<'a> for FeatureGateError {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
-        DiagnosticBuilder::new(dcx, level, self.explain)
-            .with_span(self.span)
-            .with_code(error_code!(E0658))
+        DiagnosticBuilder::new(dcx, level, self.explain).with_span(self.span).with_code(E0658)
     }
 }
 

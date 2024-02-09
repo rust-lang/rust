@@ -218,7 +218,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &delegation.qself,
             &delegation.path,
             ParamMode::Optional,
-            &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
             None,
         );
         let block = delegation.body.as_deref();

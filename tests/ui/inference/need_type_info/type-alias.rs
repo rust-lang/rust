@@ -15,7 +15,7 @@ fn direct_alias() {
 
 type IndirectAlias<T> = Ty<Box<T>>;
 fn indirect_alias() {
-    IndirectAlias::new();
+    IndirectAlias::new(); //~ ERROR: type annotations needed
     // FIXME: This should also emit an error.
     //
     // Added it separately as `type-alias-indirect.rs`

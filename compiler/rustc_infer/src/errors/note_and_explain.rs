@@ -1,6 +1,6 @@
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessage};
+use rustc_errors::{AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessageOp};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -108,7 +108,7 @@ pub enum SuffixKind {
 }
 
 impl IntoDiagnosticArg for PrefixKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::RefValidFor => "ref_valid_for",
@@ -130,7 +130,7 @@ impl IntoDiagnosticArg for PrefixKind {
 }
 
 impl IntoDiagnosticArg for SuffixKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::Continues => "continues",
@@ -160,10 +160,7 @@ impl RegionExplanation<'_> {
 }
 
 impl AddToDiagnostic for RegionExplanation<'_> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F) {
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);
         diag.arg("desc_kind", self.desc.kind);

@@ -1,4 +1,4 @@
-//! Proc Macro Expander stub
+//! Proc Macro Expander stuff
 
 use core::fmt;
 use std::{panic::RefUnwindSafe, sync};

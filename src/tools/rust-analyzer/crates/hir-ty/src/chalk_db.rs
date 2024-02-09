@@ -689,7 +689,7 @@ pub(crate) fn impl_datum_query(
     krate: CrateId,
     impl_id: ImplId,
 ) -> Arc<ImplDatum> {
-    let _p = profile::span("impl_datum");
+    let _p = tracing::span!(tracing::Level::INFO, "impl_datum").entered();
     debug!("impl_datum {:?}", impl_id);
     let impl_: hir_def::ImplId = from_chalk(db, impl_id);
     impl_def_datum(db, krate, impl_id, impl_)

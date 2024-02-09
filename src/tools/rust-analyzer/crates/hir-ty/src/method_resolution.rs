@@ -143,7 +143,8 @@ pub struct TraitImpls {
 
 impl TraitImpls {
     pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile::span("trait_impls_in_crate_query").detail(|| format!("{krate:?}"));
+        let _p =
+            tracing::span!(tracing::Level::INFO, "trait_impls_in_crate_query", ?krate).entered();
         let mut impls = FxHashMap::default();
 
         Self::collect_def_map(db, &mut impls, &db.crate_def_map(krate));
@@ -155,7 +156,7 @@ impl TraitImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
-        let _p = profile::span("trait_impls_in_block_query");
+        let _p = tracing::span!(tracing::Level::INFO, "trait_impls_in_block_query").entered();
         let mut impls = FxHashMap::default();
 
         Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
@@ -171,7 +172,8 @@ impl TraitImpls {
         db: &dyn HirDatabase,
         krate: CrateId,
     ) -> Arc<[Arc<Self>]> {
-        let _p = profile::span("trait_impls_in_deps_query").detail(|| format!("{krate:?}"));
+        let _p =
+            tracing::span!(tracing::Level::INFO, "trait_impls_in_deps_query", ?krate).entered();
         let crate_graph = db.crate_graph();
 
         Arc::from_iter(
@@ -272,7 +274,8 @@ pub struct InherentImpls {
 
 impl InherentImpls {
     pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile::span("inherent_impls_in_crate_query").detail(|| format!("{krate:?}"));
+        let _p =
+            tracing::span!(tracing::Level::INFO, "inherent_impls_in_crate_query", ?krate).entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let crate_def_map = db.crate_def_map(krate);
@@ -286,7 +289,7 @@ impl InherentImpls {
         db: &dyn HirDatabase,
         block: BlockId,
     ) -> Option<Arc<Self>> {
-        let _p = profile::span("inherent_impls_in_block_query");
+        let _p = tracing::span!(tracing::Level::INFO, "inherent_impls_in_block_query").entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
         let block_def_map = db.block_def_map(block);
@@ -359,7 +362,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
     krate: CrateId,
     fp: TyFingerprint,
 ) -> SmallVec<[CrateId; 2]> {
-    let _p = profile::span("inherent_impl_crates_query");
+    let _p = tracing::span!(tracing::Level::INFO, "inherent_impl_crates_query").entered();
     let mut res = SmallVec::new();
     let crate_graph = db.crate_graph();
 

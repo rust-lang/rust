@@ -2,12 +2,12 @@
 
 #![deny(unused)]
 
-trait Trt {}
+pub trait Trt {}
 pub struct Str {}
 impl Trt for Str {}
 
 macro_rules! check_impl {
-    ($struct:ident,$trait:ident) => {
+    ($struct:ident, $trait:ident) => {
         const _ : () = {
             use std::marker::PhantomData;
             struct ImplementsTrait<T: $trait>(PhantomData<T>);

@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 

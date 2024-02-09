@@ -303,6 +303,66 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
     }
 
+    fn consider_builtin_async_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        goal_kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx> {
+        if goal.predicate.polarity != ty::ImplPolarity::Positive {
+            return Err(NoSolution);
+        }
+
+        let tcx = ecx.tcx();
+        let (tupled_inputs_and_output_and_coroutine, nested_preds) =
+            structural_traits::extract_tupled_inputs_and_output_from_async_callable(
+                tcx,
+                goal.predicate.self_ty(),
+                goal_kind,
+                // This region doesn't matter because we're throwing away the coroutine type
+                tcx.lifetimes.re_static,
+            )?;
+        let output_is_sized_pred =
+            tupled_inputs_and_output_and_coroutine.map_bound(|(_, output, _)| {
+                ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
+            });
+
+        let pred = tupled_inputs_and_output_and_coroutine
+            .map_bound(|(inputs, _, _)| {
+                ty::TraitRef::new(tcx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+            })
+            .to_predicate(tcx);
+        // A built-in `AsyncFn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
+        Self::consider_implied_clause(
+            ecx,
+            goal,
+            pred,
+            [goal.with(tcx, output_is_sized_pred)]
+                .into_iter()
+                .chain(nested_preds.into_iter().map(|pred| goal.with(tcx, pred))),
+        )
+    }
+
+    fn consider_builtin_async_fn_kind_helper_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let [closure_fn_kind_ty, goal_kind_ty] = **goal.predicate.trait_ref.args else {
+            bug!();
+        };
+
+        let Some(closure_kind) = closure_fn_kind_ty.expect_ty().to_opt_closure_kind() else {
+            // We don't need to worry about the self type being an infer var.
+            return Err(NoSolution);
+        };
+        let goal_kind = goal_kind_ty.expect_ty().to_opt_closure_kind().unwrap();
+        if closure_kind.extends(goal_kind) {
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
+        }
+    }
+
     fn consider_builtin_tuple_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -490,53 +550,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.evaluate_added_goals_and_make_canonical_response(certainty)
     }
 
-    fn consider_unsize_to_dyn_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
-        ecx.probe(|_| ProbeKind::UnsizeAssembly).enter(|ecx| {
-            let a_ty = goal.predicate.self_ty();
-            // We need to normalize the b_ty since it's destructured as a `dyn Trait`.
-            let Some(b_ty) =
-                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
-            else {
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
-            };
-
-            let ty::Dynamic(b_data, b_region, ty::Dyn) = *b_ty.kind() else {
-                return Err(NoSolution);
-            };
-
-            let tcx = ecx.tcx();
-
-            // Can only unsize to an object-safe trait.
-            if b_data.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
-                return Err(NoSolution);
-            }
-
-            // Check that the type implements all of the predicates of the trait object.
-            // (i.e. the principal, all of the associated types match, and any auto traits)
-            ecx.add_goals(
-                GoalSource::ImplWhereBound,
-                b_data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
-            );
-
-            // The type must be `Sized` to be unsized.
-            if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
-                ecx.add_goal(
-                    GoalSource::ImplWhereBound,
-                    goal.with(tcx, ty::TraitRef::new(tcx, sized_def_id, [a_ty])),
-                );
-            } else {
-                return Err(NoSolution);
-            }
-
-            // The type must outlive the lifetime of the `dyn` we're unsizing into.
-            ecx.add_goal(GoalSource::Misc, goal.with(tcx, ty::OutlivesPredicate(a_ty, b_region)));
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
-    }
-
     /// ```ignore (builtin impl example)
     /// trait Trait {
     ///     fn foo(&self);
@@ -588,8 +601,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                     goal, a_data, a_region, b_data, b_region,
                 ),
 
-                // `T` -> `dyn Trait` unsizing is handled separately in `consider_unsize_to_dyn_candidate`
-                (_, &ty::Dynamic(..)) => vec![],
+                // `T` -> `dyn Trait` unsizing.
+                (_, &ty::Dynamic(b_region, b_data, ty::Dyn)) => result_to_single(
+                    ecx.consider_builtin_unsize_to_dyn_candidate(goal, b_region, b_data),
+                    BuiltinImplSource::Misc,
+                ),
 
                 // `[T; N]` -> `[T]` unsizing
                 (&ty::Array(a_elem_ty, ..), &ty::Slice(b_elem_ty)) => result_to_single(
@@ -689,6 +705,42 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
 
         responses
+    }
+
+    fn consider_builtin_unsize_to_dyn_candidate(
+        &mut self,
+        goal: Goal<'tcx, (Ty<'tcx>, Ty<'tcx>)>,
+        b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+        b_region: ty::Region<'tcx>,
+    ) -> QueryResult<'tcx> {
+        let tcx = self.tcx();
+        let Goal { predicate: (a_ty, _), .. } = goal;
+
+        // Can only unsize to an object-safe trait.
+        if b_data.principal_def_id().is_some_and(|def_id| !tcx.check_is_object_safe(def_id)) {
+            return Err(NoSolution);
+        }
+
+        // Check that the type implements all of the predicates of the trait object.
+        // (i.e. the principal, all of the associated types match, and any auto traits)
+        self.add_goals(
+            GoalSource::ImplWhereBound,
+            b_data.iter().map(|pred| goal.with(tcx, pred.with_self_ty(tcx, a_ty))),
+        );
+
+        // The type must be `Sized` to be unsized.
+        if let Some(sized_def_id) = tcx.lang_items().sized_trait() {
+            self.add_goal(
+                GoalSource::ImplWhereBound,
+                goal.with(tcx, ty::TraitRef::new(tcx, sized_def_id, [a_ty])),
+            );
+        } else {
+            return Err(NoSolution);
+        }
+
+        // The type must outlive the lifetime of the `dyn` we're unsizing into.
+        self.add_goal(GoalSource::Misc, goal.with(tcx, ty::OutlivesPredicate(a_ty, b_region)));
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
     fn consider_builtin_upcast_to_principal(
@@ -958,7 +1010,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
-            | ty::Closure(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -996,14 +1049,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     fn probe_and_evaluate_goal_for_constituent_tys(
         &mut self,
         goal: Goal<'tcx, TraitPredicate<'tcx>>,
-        constituent_tys: impl Fn(&EvalCtxt<'_, 'tcx>, Ty<'tcx>) -> Result<Vec<Ty<'tcx>>, NoSolution>,
+        constituent_tys: impl Fn(
+            &EvalCtxt<'_, 'tcx>,
+            Ty<'tcx>,
+        ) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution>,
     ) -> QueryResult<'tcx> {
         self.probe_misc_candidate("constituent tys").enter(|ecx| {
             ecx.add_goals(
                 GoalSource::ImplWhereBound,
                 constituent_tys(ecx, goal.predicate.self_ty())?
                     .into_iter()
-                    .map(|ty| goal.with(ecx.tcx(), goal.predicate.with_self_ty(ecx.tcx(), ty)))
+                    .map(|ty| {
+                        ecx.enter_forall(ty, |ty| {
+                            goal.with(ecx.tcx(), goal.predicate.with_self_ty(ecx.tcx(), ty))
+                        })
+                    })
                     .collect::<Vec<_>>(),
             );
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

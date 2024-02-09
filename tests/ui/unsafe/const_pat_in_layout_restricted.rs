@@ -2,7 +2,6 @@
 // unsafe because they're within a pattern for a layout constrained stuct.
 // check-pass
 
-#![allow(incomplete_features)]
 #![feature(rustc_attrs)]
 #![feature(inline_const_pat)]
 

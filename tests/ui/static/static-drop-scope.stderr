@@ -6,36 +6,16 @@ LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                            |
    |                                                            the destructor for this type cannot be evaluated in statics
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/static-drop-scope.rs:7:60
-   |
-LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                      ------^^^^^^^^-
-   |                                                      |     |       |
-   |                                                      |     |       temporary value is freed at the end of this statement
-   |                                                      |     creates a temporary value which is freed while still in use
-   |                                                      using this value as a static requires that borrow lasts for `'static`
-
 error[E0493]: destructor of `WithDtor` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:11:59
+  --> $DIR/static-drop-scope.rs:10:59
    |
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                           ^^^^^^^^- value is dropped here
    |                                                           |
    |                                                           the destructor for this type cannot be evaluated in constants
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/static-drop-scope.rs:11:59
-   |
-LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                     ------^^^^^^^^-
-   |                                                     |     |       |
-   |                                                     |     |       temporary value is freed at the end of this statement
-   |                                                     |     creates a temporary value which is freed while still in use
-   |                                                     using this value as a constant requires that borrow lasts for `'static`
-
 error[E0493]: destructor of `(WithDtor, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:15:28
+  --> $DIR/static-drop-scope.rs:13:28
    |
 LL | static EARLY_DROP_S: i32 = (WithDtor, 0).1;
    |                            ^^^^^^^^^^^^^ - value is dropped here
@@ -43,7 +23,7 @@ LL | static EARLY_DROP_S: i32 = (WithDtor, 0).1;
    |                            the destructor for this type cannot be evaluated in statics
 
 error[E0493]: destructor of `(WithDtor, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:18:27
+  --> $DIR/static-drop-scope.rs:16:27
    |
 LL | const EARLY_DROP_C: i32 = (WithDtor, 0).1;
    |                           ^^^^^^^^^^^^^ - value is dropped here
@@ -51,7 +31,7 @@ LL | const EARLY_DROP_C: i32 = (WithDtor, 0).1;
    |                           the destructor for this type cannot be evaluated in constants
 
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:21:24
+  --> $DIR/static-drop-scope.rs:19:24
    |
 LL | const fn const_drop<T>(_: T) {}
    |                        ^      - value is dropped here
@@ -59,7 +39,7 @@ LL | const fn const_drop<T>(_: T) {}
    |                        the destructor for this type cannot be evaluated in constant functions
 
 error[E0493]: destructor of `(T, ())` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:25:5
+  --> $DIR/static-drop-scope.rs:23:5
    |
 LL |     (x, ()).1
    |     ^^^^^^^ the destructor for this type cannot be evaluated in constant functions
@@ -68,7 +48,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructor of `(Option<WithDtor>, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:29:34
+  --> $DIR/static-drop-scope.rs:27:34
    |
 LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
    |                                  ^^^^^^^^^^^^^^^^^^^ - value is dropped here
@@ -76,14 +56,13 @@ LL | const EARLY_DROP_C_OPTION: i32 = (Some(WithDtor), 0).1;
    |                                  the destructor for this type cannot be evaluated in constants
 
 error[E0493]: destructor of `(Option<WithDtor>, i32)` cannot be evaluated at compile-time
-  --> $DIR/static-drop-scope.rs:34:43
+  --> $DIR/static-drop-scope.rs:32:43
    |
 LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
    |                                           ^^^^^^^^^^^ - value is dropped here
    |                                           |
    |                                           the destructor for this type cannot be evaluated in constants
 
-error: aborting due to 10 previous errors
+error: aborting due to 8 previous errors
 
-Some errors have detailed explanations: E0493, E0716.
-For more information about an error, try `rustc --explain E0493`.
+For more information about this error, try `rustc --explain E0493`.

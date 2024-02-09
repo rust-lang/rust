@@ -7,6 +7,13 @@ LL | impl Overlap for u32 {
 LL | impl Overlap for <u32 as Default>::Id {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/specialization-default-items-drop-coherence.rs:18:23
+   |
+LL |     default type Id = T;
+   |                       ^ cannot infer type for associated type `<T as Default>::Id`
 
-For more information about this error, try `rustc --explain E0119`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0282.
+For more information about an error, try `rustc --explain E0119`.

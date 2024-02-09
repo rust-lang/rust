@@ -1,5 +1,5 @@
 warning: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:37:14
+  --> $DIR/expect_tool_lint_rfc_2383.rs:33:14
    |
 LL |     #[expect(dead_code)]
    |              ^^^^^^^^^
@@ -7,10 +7,10 @@ LL |     #[expect(dead_code)]
    = note: `#[warn(unfulfilled_lint_expectations)]` on by default
 
 warning: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:43:18
+  --> $DIR/expect_tool_lint_rfc_2383.rs:39:18
    |
-LL |         #[expect(illegal_floating_point_literal_pattern)]
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         #[expect(invalid_nan_comparisons)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: 2 warnings emitted
 

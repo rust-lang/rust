@@ -6,8 +6,6 @@
 #![feature(proc_macro_span)]
 #![feature(proc_macro_tracked_env)]
 #![allow(rustc::default_hash_types)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 use synstructure::decl_derive;

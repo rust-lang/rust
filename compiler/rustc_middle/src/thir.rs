@@ -674,7 +674,7 @@ impl<'tcx> Pat<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for Pat<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         format!("{self}").into_diagnostic_arg()
     }
 }
@@ -1038,7 +1038,6 @@ impl<'tcx> PatRangeBoundary<'tcx> {
                 a.partial_cmp(&b)
             }
             ty::Int(ity) => {
-                use rustc_middle::ty::layout::IntegerExt;
                 let size = rustc_target::abi::Integer::from_int_ty(&tcx, *ity).size();
                 let a = size.sign_extend(a) as i128;
                 let b = size.sign_extend(b) as i128;

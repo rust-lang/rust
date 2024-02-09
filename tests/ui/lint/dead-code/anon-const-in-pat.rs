@@ -1,6 +1,5 @@
 // check-pass
 #![feature(inline_const_pat)]
-#![allow(incomplete_features)]
 #![deny(dead_code)]
 
 const fn one() -> i32 {

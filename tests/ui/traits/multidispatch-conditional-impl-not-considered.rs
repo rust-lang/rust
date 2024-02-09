@@ -6,7 +6,7 @@
 
 use std::cell::RefCell;
 
-trait Foo {
+trait Foo { //~ WARN trait `Foo` is never used
     fn foo(&self) {}
 }
 

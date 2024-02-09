@@ -356,9 +356,6 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
         to_add.push(AttributeKind::Cold.create_attr(cx.llcx));
     }
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_RETURNS_TWICE) {
-        to_add.push(AttributeKind::ReturnsTwice.create_attr(cx.llcx));
-    }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
         to_add.push(MemoryEffects::ReadOnly.create_attr(cx.llcx));
     }

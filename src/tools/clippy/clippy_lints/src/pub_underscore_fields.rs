@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
         };
 
         let is_visible = |field: &FieldDef<'_>| match self.behavior {
-            PubUnderscoreFieldsBehaviour::PublicallyExported => cx.effective_visibilities.is_reachable(field.def_id),
+            PubUnderscoreFieldsBehaviour::PubliclyExported => cx.effective_visibilities.is_reachable(field.def_id),
             PubUnderscoreFieldsBehaviour::AllPubFields => {
                 // If there is a visibility span then the field is marked pub in some way.
                 !field.vis_span.is_empty()

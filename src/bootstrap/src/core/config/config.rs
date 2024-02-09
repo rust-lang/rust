@@ -3,10 +3,6 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
-#[cfg(test)]
-#[path = "../../tests/config.rs"]
-mod tests;
-
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
@@ -1203,7 +1199,7 @@ impl Config {
         Self::parse_inner(args, get_toml)
     }
 
-    fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
+    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 

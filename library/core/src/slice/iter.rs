@@ -87,12 +87,13 @@ unsafe impl<T: Sync> Send for Iter<'_, T> {}
 impl<'a, T> Iter<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a [T]) -> Self {
-        let ptr = slice.as_ptr();
+        let len = slice.len();
+        let ptr: NonNull<T> = NonNull::from(slice).cast();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            let end_or_len = if T::IS_ZST { invalid(slice.len()) } else { ptr.add(slice.len()) };
+            let end_or_len = if T::IS_ZST { invalid(len) } else { ptr.as_ptr().add(len) };
 
-            Self { ptr: NonNull::new_unchecked(ptr as *mut T), end_or_len, _marker: PhantomData }
+            Self { ptr, end_or_len, _marker: PhantomData }
         }
     }
 
@@ -208,7 +209,8 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 impl<'a, T> IterMut<'a, T> {
     #[inline]
     pub(super) fn new(slice: &'a mut [T]) -> Self {
-        let ptr = slice.as_mut_ptr();
+        let len = slice.len();
+        let ptr: NonNull<T> = NonNull::from(slice).cast();
         // SAFETY: There are several things here:
         //
         // `ptr` has been obtained by `slice.as_ptr()` where `slice` is a valid
@@ -226,10 +228,9 @@ impl<'a, T> IterMut<'a, T> {
         // See the `next_unchecked!` and `is_empty!` macros as well as the
         // `post_inc_start` method for more information.
         unsafe {
-            let end_or_len =
-                if T::IS_ZST { invalid_mut(slice.len()) } else { ptr.add(slice.len()) };
+            let end_or_len = if T::IS_ZST { invalid_mut(len) } else { ptr.as_ptr().add(len) };
 
-            Self { ptr: NonNull::new_unchecked(ptr), end_or_len, _marker: PhantomData }
+            Self { ptr, end_or_len, _marker: PhantomData }
         }
     }
 
@@ -3248,26 +3249,26 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for IterMut<'a, T> {
 
 /// An iterator over slice in (non-overlapping) chunks separated by a predicate.
 ///
-/// This struct is created by the [`group_by`] method on [slices].
+/// This struct is created by the [`chunk_by`] method on [slices].
 ///
-/// [`group_by`]: slice::group_by
+/// [`chunk_by`]: slice::chunk_by
 /// [slices]: slice
-#[unstable(feature = "slice_group_by", issue = "80552")]
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct GroupBy<'a, T: 'a, P> {
+pub struct ChunkBy<'a, T: 'a, P> {
     slice: &'a [T],
     predicate: P,
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> GroupBy<'a, T, P> {
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> ChunkBy<'a, T, P> {
     pub(super) fn new(slice: &'a [T], predicate: P) -> Self {
-        GroupBy { slice, predicate }
+        ChunkBy { slice, predicate }
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> Iterator for GroupBy<'a, T, P>
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> Iterator for ChunkBy<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
 {
@@ -3300,8 +3301,8 @@ where
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> DoubleEndedIterator for GroupBy<'a, T, P>
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> DoubleEndedIterator for ChunkBy<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
 {
@@ -3322,39 +3323,39 @@ where
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> FusedIterator for GroupBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> FusedIterator for ChunkBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupBy<'a, T, P> {
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for ChunkBy<'a, T, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GroupBy").field("slice", &self.slice).finish()
+        f.debug_struct("ChunkBy").field("slice", &self.slice).finish()
     }
 }
 
 /// An iterator over slice in (non-overlapping) mutable chunks separated
 /// by a predicate.
 ///
-/// This struct is created by the [`group_by_mut`] method on [slices].
+/// This struct is created by the [`chunk_by_mut`] method on [slices].
 ///
-/// [`group_by_mut`]: slice::group_by_mut
+/// [`chunk_by_mut`]: slice::chunk_by_mut
 /// [slices]: slice
-#[unstable(feature = "slice_group_by", issue = "80552")]
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct GroupByMut<'a, T: 'a, P> {
+pub struct ChunkByMut<'a, T: 'a, P> {
     slice: &'a mut [T],
     predicate: P,
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> GroupByMut<'a, T, P> {
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> ChunkByMut<'a, T, P> {
     pub(super) fn new(slice: &'a mut [T], predicate: P) -> Self {
-        GroupByMut { slice, predicate }
+        ChunkByMut { slice, predicate }
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> Iterator for GroupByMut<'a, T, P>
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> Iterator for ChunkByMut<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
 {
@@ -3388,8 +3389,8 @@ where
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> DoubleEndedIterator for GroupByMut<'a, T, P>
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> DoubleEndedIterator for ChunkByMut<'a, T, P>
 where
     P: FnMut(&T, &T) -> bool,
 {
@@ -3411,12 +3412,12 @@ where
     }
 }
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a, P> FusedIterator for GroupByMut<'a, T, P> where P: FnMut(&T, &T) -> bool {}
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a, P> FusedIterator for ChunkByMut<'a, T, P> where P: FnMut(&T, &T) -> bool {}
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupByMut<'a, T, P> {
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for ChunkByMut<'a, T, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GroupByMut").field("slice", &self.slice).finish()
+        f.debug_struct("ChunkByMut").field("slice", &self.slice).finish()
     }
 }

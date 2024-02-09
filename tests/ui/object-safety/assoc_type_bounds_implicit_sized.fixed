@@ -1,4 +1,5 @@
 // run-rustfix
+#![allow(dead_code)]
 trait TraitWithAType {
     type Item: ?Sized;
 }

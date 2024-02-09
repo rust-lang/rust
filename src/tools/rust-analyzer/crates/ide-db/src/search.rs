@@ -134,6 +134,7 @@ pub enum ReferenceCategory {
     // FIXME: Some day should be able to search in doc comments. Would probably
     // need to switch from enum to bitflags then?
     // DocComment
+    Test,
 }
 
 /// Generally, `search_scope` returns files that might contain references for the element.
@@ -273,7 +274,7 @@ impl IntoIterator for SearchScope {
 
 impl Definition {
     fn search_scope(&self, db: &RootDatabase) -> SearchScope {
-        let _p = profile::span("search_scope");
+        let _p = tracing::span!(tracing::Level::INFO, "search_scope").entered();
 
         if let Definition::BuiltinType(_) = self {
             return SearchScope::crate_graph(db);
@@ -303,14 +304,18 @@ impl Definition {
                 DefWithBody::InTypeConst(_) => return SearchScope::empty(),
             };
             return match def {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
                 None => SearchScope::single_file(file_id),
             };
         }
 
         if let Definition::SelfType(impl_) = self {
             return match impl_.source(db).map(|src| src.syntax().cloned()) {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
                 None => SearchScope::single_file(file_id),
             };
         }
@@ -327,7 +332,9 @@ impl Definition {
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
-                Some(def) => SearchScope::file_range(def.as_ref().original_file_range_full(db)),
+                Some(def) => SearchScope::file_range(
+                    def.as_ref().original_file_range_with_macro_call_body(db),
+                ),
                 None => SearchScope::single_file(file_id),
             };
         }
@@ -435,7 +442,7 @@ impl<'a> FindUsages<'a> {
     }
 
     pub fn search(&self, sink: &mut dyn FnMut(FileId, FileReference) -> bool) {
-        let _p = profile::span("FindUsages:search");
+        let _p = tracing::span!(tracing::Level::INFO, "FindUsages:search").entered();
         let sema = self.sema;
 
         let search_scope = {
@@ -743,7 +750,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::NameRef(name_ref.clone()),
-                    category: ReferenceCategory::new(&def, name_ref),
+                    category: ReferenceCategory::new(self.sema, &def, name_ref),
                 };
                 sink(file_id, reference)
             }
@@ -759,7 +766,7 @@ impl<'a> FindUsages<'a> {
                 let reference = FileReference {
                     range,
                     name: FileReferenceNode::NameRef(name_ref.clone()),
-                    category: ReferenceCategory::new(&def, name_ref),
+                    category: ReferenceCategory::new(self.sema, &def, name_ref),
                 };
                 sink(file_id, reference)
             }
@@ -769,7 +776,7 @@ impl<'a> FindUsages<'a> {
                     let reference = FileReference {
                         range,
                         name: FileReferenceNode::NameRef(name_ref.clone()),
-                        category: ReferenceCategory::new(&def, name_ref),
+                        category: ReferenceCategory::new(self.sema, &def, name_ref),
                     };
                     sink(file_id, reference)
                 } else {
@@ -783,10 +790,10 @@ impl<'a> FindUsages<'a> {
                 let local = Definition::Local(local);
                 let access = match self.def {
                     Definition::Field(_) if field == self.def => {
-                        ReferenceCategory::new(&field, name_ref)
+                        ReferenceCategory::new(self.sema, &field, name_ref)
                     }
                     Definition::Local(_) if local == self.def => {
-                        ReferenceCategory::new(&local, name_ref)
+                        ReferenceCategory::new(self.sema, &local, name_ref)
                     }
                     _ => return false,
                 };
@@ -871,7 +878,15 @@ fn def_to_ty(sema: &Semantics<'_, RootDatabase>, def: &Definition) -> Option<hir
 }
 
 impl ReferenceCategory {
-    fn new(def: &Definition, r: &ast::NameRef) -> Option<ReferenceCategory> {
+    fn new(
+        sema: &Semantics<'_, RootDatabase>,
+        def: &Definition,
+        r: &ast::NameRef,
+    ) -> Option<ReferenceCategory> {
+        if is_name_ref_in_test(sema, r) {
+            return Some(ReferenceCategory::Test);
+        }
+
         // Only Locals and Fields have accesses for now.
         if !matches!(def, Definition::Local(_) | Definition::Field(_)) {
             return is_name_ref_in_import(r).then_some(ReferenceCategory::Import);
@@ -909,4 +924,11 @@ fn is_name_ref_in_import(name_ref: &ast::NameRef) -> bool {
         .and_then(ast::PathSegment::cast)
         .and_then(|it| it.parent_path().top_path().syntax().parent())
         .map_or(false, |it| it.kind() == SyntaxKind::USE_TREE)
+}
+
+fn is_name_ref_in_test(sema: &Semantics<'_, RootDatabase>, name_ref: &ast::NameRef) -> bool {
+    name_ref.syntax().ancestors().any(|node| match ast::Fn::cast(node) {
+        Some(it) => sema.to_def(&it).map_or(false, |func| func.is_test(sema.db)),
+        None => false,
+    })
 }

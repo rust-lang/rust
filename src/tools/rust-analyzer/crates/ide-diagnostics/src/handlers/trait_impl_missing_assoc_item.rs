@@ -25,7 +25,7 @@ pub(crate) fn trait_impl_missing_assoc_item(
         format!("not all trait items implemented, missing: {missing}"),
         adjusted_display_range::<ast::Impl>(
             ctx,
-            InFile { file_id: d.file_id, value: d.impl_.syntax_node_ptr() },
+            InFile { file_id: d.file_id, value: d.impl_ },
             &|impl_| impl_.trait_().map(|t| t.syntax().text_range()),
         ),
     )

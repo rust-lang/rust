@@ -1,8 +1,9 @@
 {
     "editor.formatOnSave": true,
 
-    // source for rustc_* is not included in the rust-src component; disable the errors about this
+    // in case rustc.source is disabled for performance reasons; disable the errors about this
     "rust-analyzer.diagnostics.disabled": ["unresolved-extern-crate", "unresolved-macro-call"],
+    "rust-analyzer.rustc.source": "discover",
     "rust-analyzer.imports.granularity.enforce": true,
     "rust-analyzer.imports.granularity.group": "module",
     "rust-analyzer.imports.prefix": "crate",

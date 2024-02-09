@@ -2,30 +2,36 @@
 #![allow(incomplete_features)]
 
 trait Foo: PartialEq<i32> + std::fmt::Debug + Send + Sync {
+    #[allow(dead_code)]
     fn a(&self) -> i32 {
         10
     }
 
+    #[allow(dead_code)]
     fn z(&self) -> i32 {
         11
     }
 
+    #[allow(dead_code)]
     fn y(&self) -> i32 {
         12
     }
 }
 
 trait Bar: Foo {
+    #[allow(dead_code)]
     fn b(&self) -> i32 {
         20
     }
 
+    #[allow(dead_code)]
     fn w(&self) -> i32 {
         21
     }
 }
 
 trait Baz: Bar {
+    #[allow(dead_code)]
     fn c(&self) -> i32 {
         30
     }

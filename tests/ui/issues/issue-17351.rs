@@ -1,7 +1,7 @@
 // run-pass
 // pretty-expanded FIXME #23616
 
-trait Str { fn foo(&self) {} }
+trait Str { fn foo(&self) {} } //~ WARN method `foo` is never used
 impl Str for str {}
 impl<'a, S: ?Sized> Str for &'a S where S: Str {}
 

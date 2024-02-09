@@ -1,11 +1,13 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
+use crate::mem::transmute;
+
 use crate::fmt;
 use crate::marker::PhantomData;
 use crate::ptr;
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
-/// which provides customized wakeup behavior.
+/// or a [`LocalWaker`] which provides customized wakeup behavior.
 ///
 /// [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
 ///
@@ -33,9 +35,18 @@ impl RawWaker {
     /// The value of this pointer will get passed to all functions that are part
     /// of the `vtable` as the first parameter.
     ///
+    /// It is important to consider that the `data` pointer must point to a
+    /// thread safe type such as an `[Arc]<T: Send + Sync>`
+    /// when used to construct a [`Waker`]. This restriction is lifted when
+    /// constructing a [`LocalWaker`], which allows using types that do not implement
+    /// <code>[Send] + [Sync]</code> like `[Rc]<T>`.
+    ///
     /// The `vtable` customizes the behavior of a `Waker` which gets created
     /// from a `RawWaker`. For each operation on the `Waker`, the associated
     /// function in the `vtable` of the underlying `RawWaker` will be called.
+    ///
+    /// [`Arc`]: std::sync::Arc
+    /// [`Rc`]: std::rc::Rc
     #[inline]
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -60,6 +71,21 @@ impl RawWaker {
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.vtable
     }
+
+    #[unstable(feature = "noop_waker", issue = "98286")]
+    const NOOP: RawWaker = {
+        const VTABLE: RawWakerVTable = RawWakerVTable::new(
+            // Cloning just returns a new no-op raw waker
+            |_| RawWaker::NOOP,
+            // `wake` does nothing
+            |_| {},
+            // `wake_by_ref` does nothing
+            |_| {},
+            // Dropping does nothing as we don't allocate anything
+            |_| {},
+        );
+        RawWaker::new(ptr::null(), &VTABLE)
+    };
 }
 
 /// A virtual function pointer table (vtable) that specifies the behavior
@@ -73,11 +99,19 @@ impl RawWaker {
 /// [`RawWaker`] implementation. Calling one of the contained functions using
 /// any other `data` pointer will cause undefined behavior.
 ///
-/// These functions must all be thread-safe (even though [`RawWaker`] is
-/// <code>\![Send] + \![Sync]</code>)
-/// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
-/// arbitrary threads or invoked by `&` reference. For example, this means that if the
-/// `clone` and `drop` functions manage a reference count, they must do so atomically.
+/// # Thread safety
+/// If the [`RawWaker`] will be used to construct a [`Waker`] then
+/// these functions must all be thread-safe (even though [`RawWaker`] is
+/// <code>\![Send] + \![Sync]</code>). This is because [`Waker`] is <code>[Send] + [Sync]</code>,
+/// and it may be moved to arbitrary threads or invoked by `&` reference. For example,
+/// this means that if the `clone` and `drop` functions manage a reference count,
+/// they must do so atomically.
+///
+/// However, if the [`RawWaker`] will be used to construct a [`LocalWaker`] instead, then
+/// these functions don't need to be thread safe. This means that <code>\![Send] + \![Sync]</code>
+///  data can be stored in the data pointer, and reference counting does not need any atomic
+/// synchronization. This is because [`LocalWaker`] is not thread safe itself, so it cannot
+/// be sent across threads.
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RawWakerVTable {
@@ -117,16 +151,22 @@ impl RawWakerVTable {
     /// Creates a new `RawWakerVTable` from the provided `clone`, `wake`,
     /// `wake_by_ref`, and `drop` functions.
     ///
-    /// These functions must all be thread-safe (even though [`RawWaker`] is
-    /// <code>\![Send] + \![Sync]</code>)
-    /// because [`Waker`] is <code>[Send] + [Sync]</code>, and thus wakers may be moved to
-    /// arbitrary threads or invoked by `&` reference. For example, this means that if the
-    /// `clone` and `drop` functions manage a reference count, they must do so atomically.
+    /// If the [`RawWaker`] will be used to construct a [`Waker`] then
+    /// these functions must all be thread-safe (even though [`RawWaker`] is
+    /// <code>\![Send] + \![Sync]</code>). This is because [`Waker`] is <code>[Send] + [Sync]</code>,
+    /// and it may be moved to arbitrary threads or invoked by `&` reference. For example,
+    /// this means that if the `clone` and `drop` functions manage a reference count,
+    /// they must do so atomically.
     ///
+    /// However, if the [`RawWaker`] will be used to construct a [`LocalWaker`] instead, then
+    /// these functions don't need to be thread safe. This means that <code>\![Send] + \![Sync]</code>
+    /// data can be stored in the data pointer, and reference counting does not need any atomic
+    /// synchronization. This is because [`LocalWaker`] is not thread safe itself, so it cannot
+    /// be sent across threads.
     /// # `clone`
     ///
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
-    /// the [`Waker`] in which the [`RawWaker`] is stored gets cloned.
+    /// the [`Waker`]/[`LocalWaker`] in which the [`RawWaker`] is stored gets cloned.
     ///
     /// The implementation of this function must retain all resources that are
     /// required for this additional instance of a [`RawWaker`] and associated
@@ -152,7 +192,7 @@ impl RawWakerVTable {
     ///
     /// # `drop`
     ///
-    /// This function gets called when a [`Waker`] gets dropped.
+    /// This function gets called when a [`Waker`]/[`LocalWaker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
@@ -178,6 +218,7 @@ impl RawWakerVTable {
 #[lang = "Context"]
 pub struct Context<'a> {
     waker: &'a Waker,
+    local_waker: &'a LocalWaker,
     // Ensure we future-proof against variance changes by forcing
     // the lifetime to be invariant (argument-position lifetimes
     // are contravariant while return-position lifetimes are
@@ -195,16 +236,23 @@ impl<'a> Context<'a> {
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
-        Context { waker, _marker: PhantomData, _marker2: PhantomData }
+        ContextBuilder::from_waker(waker).build()
     }
 
     /// Returns a reference to the [`Waker`] for the current task.
+    #[inline]
+    #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    #[must_use]
-    #[inline]
     pub const fn waker(&self) -> &'a Waker {
         &self.waker
+    }
+    /// Returns a reference to the [`LocalWaker`] for the current task.
+    #[inline]
+    #[unstable(feature = "local_waker", issue = "118959")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const fn local_waker(&self) -> &'a LocalWaker {
+        &self.local_waker
     }
 }
 
@@ -212,6 +260,72 @@ impl<'a> Context<'a> {
 impl fmt::Debug for Context<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Context").field("waker", &self.waker).finish()
+    }
+}
+
+/// A Builder used to construct a `Context` instance
+/// with support for `LocalWaker`.
+///
+/// # Examples
+/// ```
+/// #![feature(local_waker)]
+/// #![feature(noop_waker)]
+/// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
+/// use std::future::Future;
+///
+/// let local_waker = LocalWaker::noop();
+/// let waker = Waker::noop();
+///
+/// let mut cx = ContextBuilder::from_waker(&waker)
+///     .local_waker(&local_waker)
+///     .build();
+///
+/// let mut future = std::pin::pin!(async { 20 });
+/// let poll = future.as_mut().poll(&mut cx);
+/// assert_eq!(poll, Poll::Ready(20));
+///
+/// ```
+#[unstable(feature = "local_waker", issue = "118959")]
+#[derive(Debug)]
+pub struct ContextBuilder<'a> {
+    waker: &'a Waker,
+    local_waker: &'a LocalWaker,
+    // Ensure we future-proof against variance changes by forcing
+    // the lifetime to be invariant (argument-position lifetimes
+    // are contravariant while return-position lifetimes are
+    // covariant).
+    _marker: PhantomData<fn(&'a ()) -> &'a ()>,
+    // Ensure `Context` is `!Send` and `!Sync` in order to allow
+    // for future `!Send` and / or `!Sync` fields.
+    _marker2: PhantomData<*mut ()>,
+}
+
+impl<'a> ContextBuilder<'a> {
+    /// Create a ContextBuilder from a Waker.
+    #[inline]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    #[unstable(feature = "local_waker", issue = "118959")]
+    pub const fn from_waker(waker: &'a Waker) -> Self {
+        // SAFETY: LocalWaker is just Waker without thread safety
+        let local_waker = unsafe { transmute(waker) };
+        Self { waker: waker, local_waker, _marker: PhantomData, _marker2: PhantomData }
+    }
+
+    /// This method is used to set the value for the local waker on `Context`.
+    #[inline]
+    #[unstable(feature = "local_waker", issue = "118959")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const fn local_waker(self, local_waker: &'a LocalWaker) -> Self {
+        Self { local_waker, ..self }
+    }
+
+    /// Builds the `Context`.
+    #[inline]
+    #[unstable(feature = "local_waker", issue = "118959")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const fn build(self) -> Context<'a> {
+        let ContextBuilder { waker, local_waker, _marker, _marker2 } = self;
+        Context { waker, local_waker, _marker, _marker2 }
     }
 }
 
@@ -354,25 +468,8 @@ impl Waker {
     #[must_use]
     #[unstable(feature = "noop_waker", issue = "98286")]
     pub const fn noop() -> &'static Waker {
-        // Ideally all this data would be explicitly `static` because it is used by reference and
-        // only ever needs one copy. But `const fn`s (and `const` items) cannot refer to statics,
-        // even though their values can be promoted to static. (That might change; see #119618.)
-        // An alternative would be a `pub static NOOP: &Waker`, but associated static items are not
-        // currently allowed either, and making it non-associated would be unergonomic.
-        const VTABLE: RawWakerVTable = RawWakerVTable::new(
-            // Cloning just returns a new no-op raw waker
-            |_| RAW,
-            // `wake` does nothing
-            |_| {},
-            // `wake_by_ref` does nothing
-            |_| {},
-            // Dropping does nothing as we don't allocate anything
-            |_| {},
-        );
-        const RAW: RawWaker = RawWaker::new(ptr::null(), &VTABLE);
-        const WAKER_REF: &Waker = &Waker { waker: RAW };
-
-        WAKER_REF
+        const WAKER: &Waker = &Waker { waker: RawWaker::NOOP };
+        WAKER
     }
 
     /// Get a reference to the underlying [`RawWaker`].
@@ -425,3 +522,222 @@ impl fmt::Debug for Waker {
             .finish()
     }
 }
+
+/// A `LocalWaker` is analogous to a [`Waker`], but it does not implement [`Send`] or [`Sync`].
+///
+/// This handle encapsulates a [`RawWaker`] instance, which defines the
+/// executor-specific wakeup behavior.
+///
+/// Local wakers can be requested from a `Context` with the [`local_waker`] method.
+///
+/// The typical life of a `LocalWaker` is that it is constructed by an executor, wrapped in a
+/// [`Context`] using [`ContextBuilder`], then passed to [`Future::poll()`]. Then, if the future chooses to return
+/// [`Poll::Pending`], it must also store the waker somehow and call [`LocalWaker::wake()`] when
+/// the future should be polled again.
+///
+/// Implements [`Clone`], but neither [`Send`] nor [`Sync`]; therefore, a local waker may
+/// not be moved to other threads. In general, when deciding to use wakers or local wakers,
+/// local wakers are preferable unless the waker needs to be sent across threads. This is because
+/// wakers can incur in additional cost related to memory synchronization.
+///
+/// Note that it is preferable to use `local_waker.clone_from(&new_waker)` instead
+/// of `*local_waker = new_waker.clone()`, as the former will avoid cloning the waker
+/// unnecessarily if the two wakers [wake the same task](Self::will_wake).
+///
+/// # Examples
+/// Usage of a local waker to implement a future analogous to `std::thread::yield_now()`.
+/// ```
+/// #![feature(local_waker)]
+/// use std::future::{Future, poll_fn};
+/// use std::task::Poll;
+///
+/// // a future that returns pending once.
+/// fn yield_now() -> impl Future<Output=()> + Unpin {
+///     let mut yielded = false;
+///     poll_fn(move |cx| {
+///         if !yielded {
+///             yielded = true;
+///             cx.local_waker().wake_by_ref();
+///             return Poll::Pending;
+///         }
+///         return Poll::Ready(())
+///     })
+/// }
+///
+/// # async fn __() {
+/// yield_now().await;
+/// # }
+/// ```
+///
+/// [`Future::poll()`]: core::future::Future::poll
+/// [`Poll::Pending`]: core::task::Poll::Pending
+/// [`local_waker`]: core::task::Context::local_waker
+#[unstable(feature = "local_waker", issue = "118959")]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
+pub struct LocalWaker {
+    waker: RawWaker,
+}
+
+#[unstable(feature = "local_waker", issue = "118959")]
+impl Unpin for LocalWaker {}
+
+impl LocalWaker {
+    /// Wake up the task associated with this `LocalWaker`.
+    ///
+    /// As long as the executor keeps running and the task is not finished, it is
+    /// guaranteed that each invocation of [`wake()`](Self::wake) (or
+    /// [`wake_by_ref()`](Self::wake_by_ref)) will be followed by at least one
+    /// [`poll()`] of the task to which this `LocalWaker` belongs. This makes
+    /// it possible to temporarily yield to other tasks while running potentially
+    /// unbounded processing loops.
+    ///
+    /// Note that the above implies that multiple wake-ups may be coalesced into a
+    /// single [`poll()`] invocation by the runtime.
+    ///
+    /// Also note that yielding to competing tasks is not guaranteed: it is the
+    /// executor’s choice which task to run and the executor may choose to run the
+    /// current task again.
+    ///
+    /// [`poll()`]: crate::future::Future::poll
+    #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn wake(self) {
+        // The actual wakeup call is delegated through a virtual function call
+        // to the implementation which is defined by the executor.
+        let wake = self.waker.vtable.wake;
+        let data = self.waker.data;
+
+        // Don't call `drop` -- the waker will be consumed by `wake`.
+        crate::mem::forget(self);
+
+        // SAFETY: This is safe because `Waker::from_raw` is the only way
+        // to initialize `wake` and `data` requiring the user to acknowledge
+        // that the contract of `RawWaker` is upheld.
+        unsafe { (wake)(data) };
+    }
+
+    /// Wake up the task associated with this `LocalWaker` without consuming the `LocalWaker`.
+    ///
+    /// This is similar to [`wake()`](Self::wake), but may be slightly less efficient in
+    /// the case where an owned `Waker` is available. This method should be preferred to
+    /// calling `waker.clone().wake()`.
+    #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn wake_by_ref(&self) {
+        // The actual wakeup call is delegated through a virtual function call
+        // to the implementation which is defined by the executor.
+
+        // SAFETY: see `wake`
+        unsafe { (self.waker.vtable.wake_by_ref)(self.waker.data) }
+    }
+
+    /// Returns `true` if this `LocalWaker` and another `LocalWaker` would awake the same task.
+    ///
+    /// This function works on a best-effort basis, and may return false even
+    /// when the `Waker`s would awaken the same task. However, if this function
+    /// returns `true`, it is guaranteed that the `Waker`s will awaken the same task.
+    ///
+    /// This function is primarily used for optimization purposes — for example,
+    /// this type's [`clone_from`](Self::clone_from) implementation uses it to
+    /// avoid cloning the waker when they would wake the same task anyway.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn will_wake(&self, other: &LocalWaker) -> bool {
+        self.waker == other.waker
+    }
+
+    /// Creates a new `LocalWaker` from [`RawWaker`].
+    ///
+    /// The behavior of the returned `LocalWaker` is undefined if the contract defined
+    /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
+    /// Therefore this method is unsafe.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const unsafe fn from_raw(waker: RawWaker) -> LocalWaker {
+        Self { waker }
+    }
+
+    /// Creates a new `LocalWaker` that does nothing when `wake` is called.
+    ///
+    /// This is mostly useful for writing tests that need a [`Context`] to poll
+    /// some futures, but are not expecting those futures to wake the waker or
+    /// do not need to do anything specific if it happens.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(local_waker)]
+    /// #![feature(noop_waker)]
+    ///
+    /// use std::future::Future;
+    /// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
+    ///
+    /// let mut cx = ContextBuilder::from_waker(Waker::noop())
+    ///     .local_waker(LocalWaker::noop())
+    ///     .build();
+    ///
+    /// let mut future = Box::pin(async { 10 });
+    /// assert_eq!(future.as_mut().poll(&mut cx), Poll::Ready(10));
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "noop_waker", issue = "98286")]
+    pub const fn noop() -> &'static LocalWaker {
+        const WAKER: &LocalWaker = &LocalWaker { waker: RawWaker::NOOP };
+        WAKER
+    }
+
+    /// Get a reference to the underlying [`RawWaker`].
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_getters", issue = "96992")]
+    pub fn as_raw(&self) -> &RawWaker {
+        &self.waker
+    }
+}
+#[unstable(feature = "local_waker", issue = "118959")]
+impl Clone for LocalWaker {
+    #[inline]
+    fn clone(&self) -> Self {
+        LocalWaker {
+            // SAFETY: This is safe because `Waker::from_raw` is the only way
+            // to initialize `clone` and `data` requiring the user to acknowledge
+            // that the contract of [`RawWaker`] is upheld.
+            waker: unsafe { (self.waker.vtable.clone)(self.waker.data) },
+        }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        if !self.will_wake(source) {
+            *self = source.clone();
+        }
+    }
+}
+
+#[unstable(feature = "local_waker", issue = "118959")]
+impl AsRef<LocalWaker> for Waker {
+    fn as_ref(&self) -> &LocalWaker {
+        // SAFETY: LocalWaker is just Waker without thread safety
+        unsafe { transmute(self) }
+    }
+}
+
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl fmt::Debug for LocalWaker {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let vtable_ptr = self.waker.vtable as *const RawWakerVTable;
+        f.debug_struct("LocalWaker")
+            .field("data", &self.waker.data)
+            .field("vtable", &vtable_ptr)
+            .finish()
+    }
+}
+
+#[unstable(feature = "local_waker", issue = "118959")]
+impl !Send for LocalWaker {}
+#[unstable(feature = "local_waker", issue = "118959")]
+impl !Sync for LocalWaker {}

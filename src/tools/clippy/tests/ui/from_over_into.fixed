@@ -89,4 +89,12 @@ fn msrv_1_41() {
     }
 }
 
+fn issue_12138() {
+    struct Hello;
+
+    impl From<Hello> for () {
+        fn from(val: Hello) {}
+    }
+}
+
 fn main() {}

@@ -537,6 +537,22 @@ impl AsciiChar {
     }
 }
 
+macro_rules! into_int_impl {
+    ($($ty:ty)*) => {
+        $(
+            #[unstable(feature = "ascii_char", issue = "110998")]
+            impl From<AsciiChar> for $ty {
+                #[inline]
+                fn from(chr: AsciiChar) -> $ty {
+                    chr as u8 as $ty
+                }
+            }
+        )*
+    }
+}
+
+into_int_impl!(u8 u16 u32 u64 u128 char);
+
 impl [AsciiChar] {
     /// Views this slice of ASCII characters as a UTF-8 `str`.
     #[unstable(feature = "ascii_char", issue = "110998")]

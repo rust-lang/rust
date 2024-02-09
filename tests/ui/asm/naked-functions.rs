@@ -81,13 +81,15 @@ pub extern "C" fn missing_assembly() {
 #[naked]
 pub extern "C" fn too_many_asm_blocks() {
     //~^ ERROR naked functions must contain a single asm block
-    asm!("");
-    //~^ ERROR asm in naked functions must use `noreturn` option
-    asm!("");
-    //~^ ERROR asm in naked functions must use `noreturn` option
-    asm!("");
-    //~^ ERROR asm in naked functions must use `noreturn` option
-    asm!("", options(noreturn));
+    unsafe {
+        asm!("");
+        //~^ ERROR asm in naked functions must use `noreturn` option
+        asm!("");
+        //~^ ERROR asm in naked functions must use `noreturn` option
+        asm!("");
+        //~^ ERROR asm in naked functions must use `noreturn` option
+        asm!("", options(noreturn));
+    }
 }
 
 pub fn outer(x: u32) -> extern "C" fn(usize) -> usize {

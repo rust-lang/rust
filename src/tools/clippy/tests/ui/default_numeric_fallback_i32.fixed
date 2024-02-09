@@ -216,4 +216,44 @@ mod type_already_inferred {
     }
 }
 
+mod issue12159 {
+    #![allow(non_upper_case_globals, clippy::exhaustive_structs)]
+    pub struct Foo;
+
+    static F: i32 = 1;
+    impl Foo {
+        const LIFE_u8: u8 = 42;
+        const LIFE_i8: i8 = 42;
+        const LIFE_u16: u16 = 42;
+        const LIFE_i16: i16 = 42;
+        const LIFE_u32: u32 = 42;
+        const LIFE_i32: i32 = 42;
+        const LIFE_u64: u64 = 42;
+        const LIFE_i64: i64 = 42;
+        const LIFE_u128: u128 = 42;
+        const LIFE_i128: i128 = 42;
+        const LIFE_usize: usize = 42;
+        const LIFE_isize: isize = 42;
+        const LIFE_f32: f32 = 42.;
+        const LIFE_f64: f64 = 42.;
+
+        const fn consts() {
+            const LIFE_u8: u8 = 42;
+            const LIFE_i8: i8 = 42;
+            const LIFE_u16: u16 = 42;
+            const LIFE_i16: i16 = 42;
+            const LIFE_u32: u32 = 42;
+            const LIFE_i32: i32 = 42;
+            const LIFE_u64: u64 = 42;
+            const LIFE_i64: i64 = 42;
+            const LIFE_u128: u128 = 42;
+            const LIFE_i128: i128 = 42;
+            const LIFE_usize: usize = 42;
+            const LIFE_isize: isize = 42;
+            const LIFE_f32: f32 = 42.;
+            const LIFE_f64: f64 = 42.;
+        }
+    }
+}
+
 fn main() {}

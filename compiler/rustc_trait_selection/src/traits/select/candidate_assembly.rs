@@ -117,10 +117,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_iterator_candidates(obligation, &mut candidates);
                 } else if lang_items.async_iterator_trait() == Some(def_id) {
                     self.assemble_async_iterator_candidates(obligation, &mut candidates);
+                } else if lang_items.async_fn_kind_helper() == Some(def_id) {
+                    self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
                 }
 
+                // FIXME: Put these into `else if` blocks above, since they're built-in.
                 self.assemble_closure_candidates(obligation, &mut candidates);
+                self.assemble_async_closure_candidates(obligation, &mut candidates);
                 self.assemble_fn_pointer_candidates(obligation, &mut candidates);
+
                 self.assemble_candidates_from_impls(obligation, &mut candidates);
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
@@ -306,11 +311,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        match *obligation.self_ty().skip_binder().kind() {
-            ty::Closure(def_id, closure_args) => {
+        let self_ty = obligation.self_ty().skip_binder();
+        match *self_ty.kind() {
+            ty::Closure(def_id, _) => {
                 let is_const = self.tcx().is_const_fn_raw(def_id);
                 debug!(?kind, ?obligation, "assemble_unboxed_candidates");
-                match self.infcx.closure_kind(closure_args) {
+                match self.infcx.closure_kind(self_ty) {
                     Some(closure_kind) => {
                         debug!(?closure_kind, "assemble_unboxed_candidates");
                         if closure_kind.extends(kind) {
@@ -331,6 +337,61 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 candidates.ambiguous = true;
             }
             _ => {}
+        }
+    }
+
+    fn assemble_async_closure_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let Some(goal_kind) =
+            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id())
+        else {
+            return;
+        };
+
+        match *obligation.self_ty().skip_binder().kind() {
+            ty::CoroutineClosure(_, args) => {
+                if let Some(closure_kind) =
+                    args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
+                    && !closure_kind.extends(goal_kind)
+                {
+                    return;
+                }
+                candidates.vec.push(AsyncClosureCandidate);
+            }
+            ty::Infer(ty::TyVar(_)) => {
+                candidates.ambiguous = true;
+            }
+            _ => {}
+        }
+    }
+
+    fn assemble_async_fn_kind_helper_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = obligation.self_ty().skip_binder();
+        let target_kind_ty = obligation.predicate.skip_binder().trait_ref.args.type_at(1);
+
+        // `to_opt_closure_kind` is kind of ICEy when it sees non-int types.
+        if !(self_ty.is_integral() || self_ty.is_ty_var()) {
+            return;
+        }
+        if !(target_kind_ty.is_integral() || self_ty.is_ty_var()) {
+            return;
+        }
+
+        // Check that the self kind extends the goal kind. If it does,
+        // then there's nothing else to check.
+        if let Some(closure_kind) = self_ty.to_opt_closure_kind()
+            && let Some(goal_kind) = target_kind_ty.to_opt_closure_kind()
+        {
+            if closure_kind.extends(goal_kind) {
+                candidates.vec.push(AsyncFnKindHelperCandidate);
+            }
         }
     }
 
@@ -488,7 +549,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Slice(_)
                 | ty::RawPtr(_)
                 | ty::Ref(_, _, _)
-                | ty::Closure(_, _)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
                 | ty::Never
@@ -623,7 +685,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Ref(..)
                 | ty::FnDef(..)
                 | ty::FnPtr(_)
-                | ty::Closure(_, _)
+                | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Coroutine(..)
                 | ty::Never
                 | ty::Tuple(_)
@@ -665,64 +728,63 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx.probe(|_snapshot| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-            let placeholder_trait_predicate =
-                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
-
-            let self_ty = placeholder_trait_predicate.self_ty();
-            let principal_trait_ref = match self_ty.kind() {
-                ty::Dynamic(data, ..) => {
-                    if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
-                        debug!(
-                            "assemble_candidates_from_object_ty: matched builtin bound, \
+            self.infcx.enter_forall(poly_trait_predicate, |placeholder_trait_predicate| {
+                let self_ty = placeholder_trait_predicate.self_ty();
+                let principal_trait_ref = match self_ty.kind() {
+                    ty::Dynamic(data, ..) => {
+                        if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
+                            debug!(
+                                "assemble_candidates_from_object_ty: matched builtin bound, \
                              pushing candidate"
-                        );
-                        candidates.vec.push(BuiltinObjectCandidate);
-                        return;
-                    }
-
-                    if let Some(principal) = data.principal() {
-                        if !self.infcx.tcx.features().object_safe_for_dispatch {
-                            principal.with_self_ty(self.tcx(), self_ty)
-                        } else if self.tcx().check_is_object_safe(principal.def_id()) {
-                            principal.with_self_ty(self.tcx(), self_ty)
-                        } else {
+                            );
+                            candidates.vec.push(BuiltinObjectCandidate);
                             return;
                         }
-                    } else {
-                        // Only auto trait bounds exist.
+
+                        if let Some(principal) = data.principal() {
+                            if !self.infcx.tcx.features().object_safe_for_dispatch {
+                                principal.with_self_ty(self.tcx(), self_ty)
+                            } else if self.tcx().check_is_object_safe(principal.def_id()) {
+                                principal.with_self_ty(self.tcx(), self_ty)
+                            } else {
+                                return;
+                            }
+                        } else {
+                            // Only auto trait bounds exist.
+                            return;
+                        }
+                    }
+                    ty::Infer(ty::TyVar(_)) => {
+                        debug!("assemble_candidates_from_object_ty: ambiguous");
+                        candidates.ambiguous = true; // could wind up being an object type
                         return;
                     }
-                }
-                ty::Infer(ty::TyVar(_)) => {
-                    debug!("assemble_candidates_from_object_ty: ambiguous");
-                    candidates.ambiguous = true; // could wind up being an object type
-                    return;
-                }
-                _ => return,
-            };
+                    _ => return,
+                };
 
-            debug!(?principal_trait_ref, "assemble_candidates_from_object_ty");
+                debug!(?principal_trait_ref, "assemble_candidates_from_object_ty");
 
-            // Count only those upcast versions that match the trait-ref
-            // we are looking for. Specifically, do not only check for the
-            // correct trait, but also the correct type parameters.
-            // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
-            // but `Foo` is declared as `trait Foo: Bar<u32>`.
-            let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
-                .enumerate()
-                .filter(|&(_, upcast_trait_ref)| {
-                    self.infcx.probe(|_| {
-                        self.match_normalize_trait_ref(
-                            obligation,
-                            upcast_trait_ref,
-                            placeholder_trait_predicate.trait_ref,
-                        )
-                        .is_ok()
+                // Count only those upcast versions that match the trait-ref
+                // we are looking for. Specifically, do not only check for the
+                // correct trait, but also the correct type parameters.
+                // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
+                // but `Foo` is declared as `trait Foo: Bar<u32>`.
+                let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
+                    .enumerate()
+                    .filter(|&(_, upcast_trait_ref)| {
+                        self.infcx.probe(|_| {
+                            self.match_normalize_trait_ref(
+                                obligation,
+                                upcast_trait_ref,
+                                placeholder_trait_predicate.trait_ref,
+                            )
+                            .is_ok()
+                        })
                     })
-                })
-                .map(|(idx, _)| ObjectCandidate(idx));
+                    .map(|(idx, _)| ObjectCandidate(idx));
 
-            candidates.vec.extend(candidate_supertraits);
+                candidates.vec.extend(candidate_supertraits);
+            })
         })
     }
 
@@ -1000,6 +1062,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Array(..)
             | ty::Slice(_)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::Tuple(_)
             | ty::CoroutineWitness(..) => {
@@ -1076,7 +1139,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
@@ -1139,6 +1203,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
