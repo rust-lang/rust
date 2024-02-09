@@ -1092,24 +1092,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let desugar_kind = match itctx {
-                    // We are in the return position:
-                    //
-                    //     fn foo() -> impl Iterator<Item: Debug>
-                    //
-                    // so desugar to
-                    //
-                    //     fn foo() -> impl Iterator<Item = impl Debug>
-                    ImplTraitContext::ReturnPositionOpaqueTy { .. }
-                    | ImplTraitContext::TypeAliasesOpaqueTy { .. } => DesugarKind::ImplTrait,
-
-                    // We are in the argument position, but within a dyn type:
+                    // in an argument, RPIT, or TAIT, if we are within a dyn type:
                     //
                     //     fn foo(x: dyn Iterator<Item: Debug>)
                     //
-                    // so desugar to
+                    // then desugar to:
                     //
                     //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    ImplTraitContext::Universal if self.is_in_dyn_type => DesugarKind::ImplTrait,
+                    //
+                    // This is because dyn traits must have all of their associated types specified.
+                    ImplTraitContext::ReturnPositionOpaqueTy { .. }
+                    | ImplTraitContext::TypeAliasesOpaqueTy { .. }
+                    | ImplTraitContext::Universal
+                        if self.is_in_dyn_type =>
+                    {
+                        DesugarKind::ImplTrait
+                    }
 
                     ImplTraitContext::Disallowed(position) if self.is_in_dyn_type => {
                         DesugarKind::Error(position)

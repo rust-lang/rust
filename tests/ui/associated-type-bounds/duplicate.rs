@@ -251,13 +251,10 @@ where
 trait TRA1 {
     type A: Iterator<Item: Copy, Item: Send>;
     //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
-    //~| ERROR `<<Self as TRA1>::A as Iterator>::Item` cannot be sent between threads safely
-    //~| ERROR the trait bound `<<Self as TRA1>::A as Iterator>::Item: Copy` is not satisfied
 }
 trait TRA2 {
     type A: Iterator<Item: Copy, Item: Copy>;
     //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
-    //~| ERROR the trait bound `<<Self as TRA2>::A as Iterator>::Item: Copy` is not satisfied
 }
 trait TRA3 {
     type A: Iterator<Item: 'static, Item: 'static>;

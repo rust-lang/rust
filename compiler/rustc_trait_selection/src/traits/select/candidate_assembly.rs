@@ -6,13 +6,16 @@
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 
+use std::ops::ControlFlow;
+
 use hir::def_id::DefId;
 use hir::LangItem;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -158,11 +161,50 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => return,
         }
 
-        let result = self
-            .infcx
-            .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
+        self.infcx.probe(|_| {
+            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+            let placeholder_trait_predicate =
+                self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
+            debug!(?placeholder_trait_predicate);
 
-        candidates.vec.extend(result.into_iter().map(|idx| ProjectionCandidate(idx)));
+            // The bounds returned by `item_bounds` may contain duplicates after
+            // normalization, so try to deduplicate when possible to avoid
+            // unnecessary ambiguity.
+            let mut distinct_normalized_bounds = FxHashSet::default();
+            self.for_each_item_bound::<!>(
+                placeholder_trait_predicate.self_ty(),
+                |selcx, bound, idx| {
+                    let Some(bound) = bound.as_trait_clause() else {
+                        return ControlFlow::Continue(());
+                    };
+                    if bound.polarity() != placeholder_trait_predicate.polarity {
+                        return ControlFlow::Continue(());
+                    }
+
+                    selcx.infcx.probe(|_| {
+                        match selcx.match_normalize_trait_ref(
+                            obligation,
+                            bound.to_poly_trait_ref(),
+                            placeholder_trait_predicate.trait_ref,
+                        ) {
+                            Ok(None) => {
+                                candidates.vec.push(ProjectionCandidate(idx));
+                            }
+                            Ok(Some(normalized_trait))
+                                if distinct_normalized_bounds.insert(normalized_trait) =>
+                            {
+                                candidates.vec.push(ProjectionCandidate(idx));
+                            }
+                            _ => {}
+                        }
+                    });
+
+                    ControlFlow::Continue(())
+                },
+                // On ambiguity.
+                || candidates.ambiguous = true,
+            );
+        });
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
