@@ -372,7 +372,7 @@ impl<N> FileItemTreeId<N> {
 
 impl<N> Clone for FileItemTreeId<N> {
     fn clone(&self) -> Self {
-        Self(self.0)
+        *self
     }
 }
 impl<N> Copy for FileItemTreeId<N> {}
