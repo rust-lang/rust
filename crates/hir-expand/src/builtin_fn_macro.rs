@@ -515,7 +515,7 @@ fn concat_bytes_expand(
             tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                 let token = ast::make::tokens::literal(&lit.to_string());
                 match token.kind() {
-                    syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
+                    syntax::SyntaxKind::BYTE => bytes.push(token.text().to_owned()),
                     syntax::SyntaxKind::BYTE_STRING => {
                         let components = unquote_byte_string(lit).unwrap_or_default();
                         components.into_iter().for_each(|it| bytes.push(it.to_string()));
@@ -570,7 +570,7 @@ fn concat_bytes_expand_subtree(
                 let lit = ast::make::tokens::literal(&lit.to_string());
                 match lit.kind() {
                     syntax::SyntaxKind::BYTE | syntax::SyntaxKind::INT_NUMBER => {
-                        bytes.push(lit.text().to_string())
+                        bytes.push(lit.text().to_owned())
                     }
                     _ => {
                         return Err(mbe::ExpandError::UnexpectedToken.into());
@@ -749,7 +749,7 @@ fn env_expand(
         // We cannot use an empty string here, because for
         // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
         // `include!("foo.rs"), which might go to infinite loop
-        "UNRESOLVED_ENV_VAR".to_string()
+        "UNRESOLVED_ENV_VAR".to_owned()
     });
     let expanded = quote! {span => #s };
 
