@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;

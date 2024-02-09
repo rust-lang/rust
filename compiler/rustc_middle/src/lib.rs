@@ -58,8 +58,10 @@
 #![feature(const_option)]
 #![feature(ptr_alignment_type)]
 #![feature(macro_metavar_expr)]
-#![allow(rustc::potential_query_instability)]
 #![allow(internal_features)]
+#![allow(rustc::potential_query_instability)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
 extern crate bitflags;

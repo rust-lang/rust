@@ -6,8 +6,6 @@
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![allow(rustc::potential_query_instability, unused_parens)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]
