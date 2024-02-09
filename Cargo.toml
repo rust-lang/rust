@@ -168,7 +168,6 @@ new_ret_no_self = "allow"
 useless_asref = "allow"
 
 ## Following lints should be tackled at some point
-borrowed_box = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"
 wrong_self_convention = "allow"
