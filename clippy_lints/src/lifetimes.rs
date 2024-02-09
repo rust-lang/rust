@@ -285,7 +285,7 @@ fn elision_suggestions(
             .iter()
             .filter(|usage| named_lifetime(usage).map_or(false, |id| elidable_lts.contains(&id)))
             .map(|usage| {
-                match cx.tcx.hir().get_parent(usage.hir_id) {
+                match cx.tcx.parent_hir_node(usage.hir_id) {
                     Node::Ty(Ty {
                         kind: TyKind::Ref(..), ..
                     }) => {
