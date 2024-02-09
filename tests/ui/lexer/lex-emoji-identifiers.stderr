@@ -40,12 +40,13 @@ error: identifiers cannot contain emoji: `folded🙏🏿`
 LL |     let folded🙏🏿 = "modifier sequence";
    |         ^^^^^^^^^^
 
-warning: identifier contains an uncommon Unicode codepoint: '\u{fe0f}'
+warning: identifier contains an uncommon character: '\u{fe0f}'
   --> $DIR/lex-emoji-identifiers.rs:6:9
    |
 LL |     let key1️⃣ = "keycap sequence";
    |         ^^^^
    |
+   = note: this character is included in the Unicode general security profile
    = note: `#[warn(uncommon_codepoints)]` on by default
 
 error: aborting due to 7 previous errors; 1 warning emitted
