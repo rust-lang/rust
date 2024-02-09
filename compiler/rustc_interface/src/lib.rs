@@ -4,8 +4,6 @@
 #![feature(let_chains)]
 #![feature(thread_spawn_unchecked)]
 #![feature(try_blocks)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
