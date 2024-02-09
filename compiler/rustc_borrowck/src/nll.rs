@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! The entry point of the NLL borrow checker.
 
 use polonius_engine::{Algorithm, Output};

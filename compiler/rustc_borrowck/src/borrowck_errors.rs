@@ -1,3 +1,6 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_errors::{codes::*, struct_span_code_err, DiagCtxt, DiagnosticBuilder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;

@@ -14,6 +14,8 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]

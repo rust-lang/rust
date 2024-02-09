@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use crate::places_conflict;
 use crate::AccessDepth;
