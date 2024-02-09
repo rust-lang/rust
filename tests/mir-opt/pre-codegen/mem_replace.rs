@@ -1,7 +1,8 @@
 // skip-filecheck
-// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2 -Zinline-mir
 // only-64bit
 // ignore-debug the standard library debug assertions leak into this test
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![crate_type = "lib"]
 

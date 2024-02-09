@@ -56,7 +56,7 @@
 
 use crate::marker::DiscriminantKind;
 use crate::marker::Tuple;
-use crate::mem;
+use crate::mem::{self, align_of};
 
 pub mod mir;
 pub mod simd;
@@ -2569,6 +2569,17 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     #[cfg(not(bootstrap))]
     pub fn is_val_statically_known<T: Copy>(arg: T) -> bool;
+
+    #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub(crate) fn debug_assertions() -> bool;
+}
+
+#[cfg(bootstrap)]
+#[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
+pub(crate) const fn debug_assertions() -> bool {
+    cfg!(debug_assertions)
 }
 
 // FIXME: Seems using `unstable` here completely ignores `rustc_allow_const_fn_unstable`
@@ -2587,10 +2598,27 @@ pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
 /// and only at runtime.
 ///
-/// This macro should be called as `assert_unsafe_precondition!([Generics](name: Type) => Expression)`
-/// where the names specified will be moved into the macro as captured variables, and defines an item
-/// to call `const_eval_select` on. The tokens inside the square brackets are used to denote generics
-/// for the function declarations and can be omitted if there is no generics.
+/// This macro should be called as
+/// `assert_unsafe_precondition!((expr => name: Type, expr => name: Type) => Expression)`
+/// where each `expr` will be evaluated and passed in as function argument `name: Type`. Then all
+/// those arguments are passed to a function via [`const_eval_select`].
+///
+/// These checks are behind a condition which is evaluated at codegen time, not expansion time like
+/// [`debug_assert`]. This means that a standard library built with optimizations and debug
+/// assertions disabled will have these checks optimized out of its monomorphizations, but if a
+/// a caller of the standard library has debug assertions enabled and monomorphizes an expansion of
+/// this macro, that monomorphization will contain the check.
+///
+/// Since these checks cannot be optimized out in MIR, some care must be taken in both call and
+/// implementation to mitigate their compile-time overhead. The runtime function that we
+/// [`const_eval_select`] to is monomorphic, `#[inline(never)]`, and `#[rustc_nounwind]`. That
+/// combination of properties ensures that the code for the checks is only compiled once, and has a
+/// minimal impact on the caller's code size.
+///
+/// Caller should also introducing any other `let` bindings or any code outside this macro in order
+/// to call it. Since the precompiled standard library is built with full debuginfo and these
+/// variables cannot be optimized out in MIR, an innocent-looking `let` can produce enough
+/// debuginfo to have a measurable compile-time impact on debug builds.
 ///
 /// # Safety
 ///
@@ -2604,26 +2632,24 @@ pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 ///
 /// So in a sense it is UB if this macro is useful, but we expect callers of `unsafe fn` to make
 /// the occasional mistake, and this check should help them figure things out.
-#[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
+#[allow_internal_unstable(const_eval_select, delayed_debug_assertions)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr $(,)?) => {
-        if cfg!(debug_assertions) {
-            // allow non_snake_case to allow capturing const generics
-            #[allow(non_snake_case)]
-            #[inline(always)]
-            fn runtime$(<$($tt)*>)?($($i:$ty),*) {
+    ($message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
+        {
+            #[inline(never)]
+            #[rustc_nounwind]
+            fn precondition_check($($name:$ty),*) {
                 if !$e {
-                    // don't unwind to reduce impact on code size
                     ::core::panicking::panic_nounwind(
-                        concat!("unsafe precondition(s) violated: ", $name)
+                        concat!("unsafe precondition(s) violated: ", $message)
                     );
                 }
             }
-            #[allow(non_snake_case)]
-            #[inline]
-            const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
+            const fn comptime($(_:$ty),*) {}
 
-            ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
+            if ::core::intrinsics::debug_assertions() {
+                ::core::intrinsics::const_eval_select(($($arg,)*), comptime, precondition_check);
+            }
         }
     };
 }
@@ -2632,19 +2658,33 @@ pub(crate) use assert_unsafe_precondition;
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 #[inline]
-pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
-    !ptr.is_null() && ptr.is_aligned()
+pub(crate) fn is_aligned_and_not_null(ptr: *const (), align: usize) -> bool {
+    !ptr.is_null() && ptr.is_aligned_to(align)
 }
 
-/// Checks whether an allocation of `len` instances of `T` exceeds
-/// the maximum allowed allocation size.
 #[inline]
-pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
-    let max_len = const {
-        let size = crate::mem::size_of::<T>();
-        if size == 0 { usize::MAX } else { isize::MAX as usize / size }
-    };
+pub(crate) fn is_valid_allocation_size(size: usize, len: usize) -> bool {
+    let max_len = if size == 0 { usize::MAX } else { isize::MAX as usize / size };
     len <= max_len
+}
+
+pub(crate) fn is_nonoverlapping_mono(
+    src: *const (),
+    dst: *const (),
+    size: usize,
+    count: usize,
+) -> bool {
+    let src_usize = src.addr();
+    let dst_usize = dst.addr();
+    let Some(size) = size.checked_mul(count) else {
+        crate::panicking::panic_nounwind(
+            "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
+        )
+    };
+    let diff = src_usize.abs_diff(dst_usize);
+    // If the absolute distance between the ptrs is at least as big as the size of the buffer,
+    // they do not overlap.
+    diff >= size
 }
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
@@ -2653,9 +2693,12 @@ pub(crate) fn is_valid_allocation_size<T>(len: usize) -> bool {
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
-    let size = mem::size_of::<T>()
-        .checked_mul(count)
-        .expect("is_nonoverlapping: `size_of::<T>() * count` overflows a usize");
+    let Some(size) = mem::size_of::<T>().checked_mul(count) else {
+        // Use panic_nounwind instead of Option::expect, so that this function is nounwind.
+        crate::panicking::panic_nounwind(
+            "is_nonoverlapping: `size_of::<T>() * count` overflows a usize",
+        )
+    };
     let diff = src_usize.abs_diff(dst_usize);
     // If the absolute distance between the ptrs is at least as big as the size of the buffer,
     // they do not overlap.
@@ -2766,10 +2809,16 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         assert_unsafe_precondition!(
             "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
             and the specified memory ranges do not overlap",
-            [T](src: *const T, dst: *mut T, count: usize) =>
-            is_aligned_and_not_null(src)
-                && is_aligned_and_not_null(dst)
-                && is_nonoverlapping(src, dst, count)
+            (
+                src: *const () = src as *const (),
+                dst: *mut () = dst as *mut (),
+                size: usize = size_of::<T>(),
+                align: usize = align_of::<T>(),
+                count: usize = count,
+            ) =>
+            is_aligned_and_not_null(src, align)
+                && is_aligned_and_not_null(dst, align)
+                && is_nonoverlapping_mono(src, dst, size, count)
         );
         copy_nonoverlapping(src, dst, count)
     }
@@ -2859,9 +2908,15 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe {
         assert_unsafe_precondition!(
-            "ptr::copy requires that both pointer arguments are aligned and non-null",
-            [T](src: *const T, dst: *mut T) =>
-            is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)
+            "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
+            and the specified memory ranges do not overlap",
+            (
+                src: *const () = src as *const (),
+                dst: *mut () = dst as *mut (),
+                align: usize = align_of::<T>(),
+            ) =>
+            is_aligned_and_not_null(src, align)
+                && is_aligned_and_not_null(dst, align)
         );
         copy(src, dst, count)
     }
@@ -2934,7 +2989,10 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     unsafe {
         assert_unsafe_precondition!(
             "ptr::write_bytes requires that the destination pointer is aligned and non-null",
-            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+            (
+                addr: *const () = dst as *const (),
+                align: usize = align_of::<T>(),
+            ) => is_aligned_and_not_null(addr, align)
         );
         write_bytes(dst, val, count)
     }

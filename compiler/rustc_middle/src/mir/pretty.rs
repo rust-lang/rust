@@ -907,6 +907,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
                     NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
                     NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
+                    NullOp::DebugAssertions => write!(fmt, "cfg!(debug_assertions)"),
                 }
             }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {

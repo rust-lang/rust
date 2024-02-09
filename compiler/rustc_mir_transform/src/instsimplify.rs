@@ -2,10 +2,12 @@
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use rustc_middle::mir::*;
+use rustc_middle::ty::layout;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::FieldIdx;
+use rustc_target::spec::abi::Abi;
 
 pub struct InstSimplify;
 
@@ -38,6 +40,7 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
                 block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
+            ctx.simplify_nounwind_call(block.terminator.as_mut().unwrap());
             simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());
         }
     }
@@ -250,6 +253,28 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
             ))),
         });
         terminator.kind = TerminatorKind::Goto { target: destination_block };
+    }
+
+    fn simplify_nounwind_call(&self, terminator: &mut Terminator<'tcx>) {
+        let TerminatorKind::Call { func, unwind, .. } = &mut terminator.kind else {
+            return;
+        };
+
+        let Some((def_id, _)) = func.const_fn_def() else {
+            return;
+        };
+
+        let body_ty = self.tcx.type_of(def_id).skip_binder();
+        let body_abi = match body_ty.kind() {
+            ty::FnDef(..) => body_ty.fn_sig(self.tcx).abi(),
+            ty::Closure(..) => Abi::RustCall,
+            ty::Coroutine(..) => Abi::Rust,
+            _ => bug!("unexpected body ty: {:?}", body_ty),
+        };
+
+        if !layout::fn_can_unwind(self.tcx, Some(def_id), body_abi) {
+            *unwind = UnwindAction::Unreachable;
+        }
     }
 
     fn simplify_intrinsic_assert(
