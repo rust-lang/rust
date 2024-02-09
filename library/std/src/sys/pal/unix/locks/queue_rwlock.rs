@@ -133,21 +133,20 @@ const QUEUE_LOCKED: usize = 4;
 const SINGLE: usize = 8;
 const MASK: usize = !(QUEUE_LOCKED | QUEUED | LOCKED);
 
-/// Returns a closure that changes the state to the lock state corresponding to
-/// the lock mode indicated in `write`.
+/// Marks the state as write-locked, if possible.
 #[inline]
-fn lock(write: bool) -> impl Fn(State) -> Option<State> {
-    move |state| {
-        if write {
-            let state = state.wrapping_byte_add(LOCKED);
-            if state.addr() & LOCKED == LOCKED { Some(state) } else { None }
-        } else {
-            if state.addr() & QUEUED == 0 && state.addr() != LOCKED {
-                Some(invalid_mut(state.addr().checked_add(SINGLE)? | LOCKED))
-            } else {
-                None
-            }
-        }
+fn write_lock(state: State) -> Option<State> {
+    let state = state.wrapping_byte_add(LOCKED);
+    if state.addr() & LOCKED == LOCKED { Some(state) } else { None }
+}
+
+/// Marks the state as read-locked, if possible.
+#[inline]
+fn read_lock(state: State) -> Option<State> {
+    if state.addr() & QUEUED == 0 && state.addr() != LOCKED {
+        Some(invalid_mut(state.addr().checked_add(SINGLE)? | LOCKED))
+    } else {
+        None
     }
 }
 
@@ -241,7 +240,7 @@ impl Drop for PanicGuard {
     }
 }
 
-/// Find the tail of the queue beginning with `head`, caching the result in `head`.
+/// Add backlinks to the queue, returning the tail.
 ///
 /// May be called from multiple threads at the same time, while the queue is not
 /// modified (this happens when unlocking multiple readers).
@@ -252,7 +251,7 @@ impl Drop for PanicGuard {
 /// last removal.
 /// * The part of the queue starting with `head` must not be modified during this
 /// call.
-unsafe fn find_tail(head: NonNull<Node>) -> NonNull<Node> {
+unsafe fn add_backlinks_and_find_tail(head: NonNull<Node>) -> NonNull<Node> {
     let mut current = head;
     let tail = loop {
         let c = unsafe { current.as_ref() };
@@ -287,7 +286,7 @@ impl RwLock {
 
     #[inline]
     pub fn try_read(&self) -> bool {
-        self.state.fetch_update(Acquire, Relaxed, lock(false)).is_ok()
+        self.state.fetch_update(Acquire, Relaxed, read_lock).is_ok()
     }
 
     #[inline]
@@ -316,7 +315,7 @@ impl RwLock {
 
     #[cold]
     fn lock_contended(&self, write: bool) {
-        let update = lock(write);
+        let update = if write { write_lock } else { read_lock };
         let mut node = Node::new(write);
         let mut state = self.state.load(Relaxed);
         let mut count = 0;
@@ -428,7 +427,7 @@ impl RwLock {
         // all queue-lock owners will observe the set `LOCKED` bit. Because they
         // do not modify the queue while there is a lock owner, the queue will
         // not be removed from here.
-        let tail = unsafe { find_tail(to_node(state)).as_ref() };
+        let tail = unsafe { add_backlinks_and_find_tail(to_node(state)).as_ref() };
         // The lock count is stored in the `next` field of `tail`.
         // Decrement it, making sure to observe all changes made to the queue
         // by the other lock owners by using acquire-release ordering.
@@ -482,8 +481,7 @@ impl RwLock {
         debug_assert_eq!(state.addr() & (QUEUED | QUEUE_LOCKED), QUEUED | QUEUE_LOCKED);
 
         loop {
-            // Find the last node in the linked list.
-            let tail = unsafe { find_tail(to_node(state)) };
+            let tail = unsafe { add_backlinks_and_find_tail(to_node(state)) };
 
             if state.addr() & LOCKED == LOCKED {
                 // Another thread has locked the lock. Leave waking up waiters
