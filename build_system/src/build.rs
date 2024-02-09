@@ -1,5 +1,5 @@
 use crate::config::{Channel, ConfigInfo};
-use crate::utils::{get_gcc_path, run_command, run_command_with_output_and_env, walk_dir};
+use crate::utils::{run_command, run_command_with_output_and_env, walk_dir};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -8,17 +8,12 @@ use std::path::Path;
 #[derive(Default)]
 struct BuildArg {
     flags: Vec<String>,
-    gcc_path: String,
     config_info: ConfigInfo,
 }
 
 impl BuildArg {
     fn new() -> Result<Option<Self>, String> {
-        let gcc_path = get_gcc_path()?;
-        let mut build_arg = Self {
-            gcc_path,
-            ..Default::default()
-        };
+        let mut build_arg = Self::default();
         // We skip binary name and the `build` command.
         let mut args = std::env::args().skip(2);
 
@@ -169,7 +164,8 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     fs::create_dir_all(&sysroot_src_path).map_err(|error| {
         format!(
             "Failed to create directory `{}`: {:?}",
-            sysroot_src_path.display(), error
+            sysroot_src_path.display(),
+            error
         )
     })?;
     run_command(
@@ -188,8 +184,14 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
-    env.insert("LD_LIBRARY_PATH".to_string(), args.gcc_path.clone());
-    env.insert("LIBRARY_PATH".to_string(), args.gcc_path.clone());
+    env.insert(
+        "LD_LIBRARY_PATH".to_string(),
+        args.config_info.gcc_path.clone(),
+    );
+    env.insert(
+        "LIBRARY_PATH".to_string(),
+        args.config_info.gcc_path.clone(),
+    );
 
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
     if args.config_info.channel == Channel::Release {
@@ -205,7 +207,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     }
     run_command_with_output_and_env(&command, None, Some(&env))?;
 
-    args.config_info.setup(&mut env, Some(&args.gcc_path))?;
+    args.config_info.setup(&mut env, None)?;
 
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");
@@ -227,6 +229,7 @@ pub fn run() -> Result<(), String> {
         Some(args) => args,
         None => return Ok(()),
     };
+    args.config_info.setup_gcc_path(None)?;
     build_codegen(&mut args)?;
     Ok(())
 }

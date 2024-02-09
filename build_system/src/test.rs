@@ -1,7 +1,7 @@
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    get_gcc_path, get_toolchain, git_clone, remove_file, run_command, run_command_with_env,
+    get_toolchain, git_clone, remove_file, run_command, run_command_with_env,
     run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
 };
 
@@ -109,7 +109,7 @@ fn show_usage() {
 struct TestArg {
     no_default_features: bool,
     build_only: bool,
-    gcc_path: String,
+    gcc_path: Option<String>,
     runners: BTreeSet<String>,
     flags: Vec<String>,
     backend: Option<String>,
@@ -181,12 +181,10 @@ impl TestArg {
                 }
             }
 
-            test_arg.gcc_path = if use_system_gcc {
+            if use_system_gcc {
                 println!("Using system GCC");
-                "gcc".to_string()
-            } else {
-                get_gcc_path()?
-            };
+                test_arg.gcc_path = Some("gcc".to_string());
+            }
         }
         match (test_arg.current_part, test_arg.nb_parts) {
             (Some(_), Some(_)) | (None, None) => {}
@@ -488,7 +486,8 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 }
 
 fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
-    let toolchain = format!("+{channel}-{host}",
+    let toolchain = format!(
+        "+{channel}-{host}",
         channel = get_toolchain()?, // May also include date
         host = args.config_info.host_triple
     );
@@ -527,7 +526,12 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
         }
     })?;
     let rustc = String::from_utf8(
-        run_command_with_env(&[&"rustup", &toolchain, &"which", &"rustc"], rust_dir, Some(env))?.stdout,
+        run_command_with_env(
+            &[&"rustup", &toolchain, &"which", &"rustc"],
+            rust_dir,
+            Some(env),
+        )?
+        .stdout,
     )
     .map_err(|error| format!("Failed to retrieve rustc path: {:?}", error))
     .and_then(|rustc| {
@@ -1162,8 +1166,15 @@ pub fn run() -> Result<(), String> {
     };
     let mut env: HashMap<String, String> = std::env::vars().collect();
 
-    env.insert("LD_LIBRARY_PATH".to_string(), args.gcc_path.clone());
-    env.insert("LIBRARY_PATH".to_string(), args.gcc_path.clone());
+    args.config_info.setup_gcc_path(None)?;
+    env.insert(
+        "LIBRARY_PATH".to_string(),
+        args.config_info.gcc_path.clone(),
+    );
+    env.insert(
+        "LD_LIBRARY_PATH".to_string(),
+        args.config_info.gcc_path.clone(),
+    );
 
     build_if_no_backend(&env, &args)?;
     if args.build_only {
@@ -1171,7 +1182,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    args.config_info.setup(&mut env, Some(&args.gcc_path))?;
+    args.config_info.setup(&mut env, args.gcc_path.as_deref())?;
 
     if args.runners.is_empty() {
         run_all(&env, &args)?;

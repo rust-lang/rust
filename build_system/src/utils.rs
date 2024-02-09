@@ -248,38 +248,6 @@ pub fn get_toolchain() -> Result<String, String> {
     }
 }
 
-pub fn get_gcc_path() -> Result<String, String> {
-    let content = match fs::read_to_string("gcc_path") {
-        Ok(content) => content,
-        Err(_) => {
-            return Err(
-                "Please put the path to your custom build of libgccjit in the file \
-                   `gcc_path`, see Readme.md for details"
-                    .into(),
-            )
-        }
-    };
-    match content
-        .split('\n')
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty())
-        .next()
-    {
-        Some(gcc_path) => {
-            let path = Path::new(gcc_path);
-            if !path.exists() {
-                Err(format!(
-                    "Path `{}` contained in the `gcc_path` file doesn't exist",
-                    gcc_path,
-                ))
-            } else {
-                Ok(gcc_path.into())
-            }
-        }
-        None => Err("No path found in `gcc_path` file".into()),
-    }
-}
-
 pub struct CloneResult {
     pub ran_clone: bool,
     pub repo_name: String,

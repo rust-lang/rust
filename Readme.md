@@ -49,17 +49,27 @@ $ make check-jit
 $ make check-jit RUNTESTFLAGS="-v -v -v jit.exp=jit.dg/test-asm.cc"
 ```
 
-**Put the path to your custom build of libgccjit in the file `gcc_path`.**
+**Put the path to your custom build of libgccjit in the file `config.toml`.**
+
+If you followed the instructions exactly as written (ie, you have created a `gcc-build` folder
+where gcc is built), the only thing you need to do is:
 
 ```bash
-$ dirname $(readlink -f `find . -name libgccjit.so`) > gcc_path
+$ cp config.example.toml config.toml
+```
+
+But if you did something different, you also need to set the `gcc-path` value in `config.toml` with
+the result of this command:
+
+```bash
+$ dirname $(readlink -f `find . -name libgccjit.so`)
 ```
 
 Then you can run commands like this:
 
 ```bash
 $ ./y.sh prepare # download and patch sysroot src and install hyperfine for benchmarking
-$ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) ./y.sh build --release --features master
+$ ./y.sh build --release --features master
 ```
 
 To run the tests:
@@ -100,7 +110,7 @@ error: failed to copy bitcode to object file: No such file or directory (os erro
 > You should prefer using the Cargo method.
 
 ```bash
-$ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) rustc +$(cat $CG_GCCJIT_DIR/rust-toolchain | grep 'channel' | cut -d '=' -f 2 | sed 's/"//g' | sed 's/ //g') -Cpanic=abort -Zcodegen-backend=$CG_GCCJIT_DIR/target/release/librustc_codegen_gcc.so --sysroot $CG_GCCJIT_DIR/build_sysroot/sysroot my_crate.rs
+$ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(cat $CG_GCCJIT_DIR/rust-toolchain | grep 'channel' | cut -d '=' -f 2 | sed 's/"//g' | sed 's/ //g') -Cpanic=abort -Zcodegen-backend=$CG_GCCJIT_DIR/target/release/librustc_codegen_gcc.so --sysroot $CG_GCCJIT_DIR/build_sysroot/sysroot my_crate.rs
 ```
 
 ## Env vars
@@ -322,7 +332,7 @@ generate it in [gimple.md](./doc/gimple.md).
 #### Configuring rustc_codegen_gcc
 
  * Run `./y.sh prepare --cross` so that the sysroot is patched for the cross-compiling case.
- * Set the path to the cross-compiling libgccjit in `gcc_path`.
+ * Set the path to the cross-compiling libgccjit in `gcc-path` (in `config.toml`).
  * Make sure you have the linker for your target (for instance `m68k-unknown-linux-gnu-gcc`) in your `$PATH`. Currently, the linker name is hardcoded as being `$TARGET-gcc`. Specify the target when building the sysroot: `./y.sh build --target-triple m68k-unknown-linux-gnu`.
  * Build your project by specifying the target: `OVERWRITE_TARGET_TRIPLE=m68k-unknown-linux-gnu ../y.sh cargo build --target m68k-unknown-linux-gnu`.
 
@@ -338,4 +348,4 @@ If you get the following error:
 /usr/bin/ld: unrecognised emulation mode: m68kelf
 ```
 
-Make sure you set `gcc_path` to the install directory.
+Make sure you set `gcc-path` (in `config.toml`) to the install directory.
