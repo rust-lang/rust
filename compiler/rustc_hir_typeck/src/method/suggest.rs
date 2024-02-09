@@ -23,6 +23,7 @@ use rustc_hir::PatKind::Binding;
 use rustc_hir::PathSegment;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::{
+    self,
     type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
     RegionVariableOrigin,
 };
@@ -1234,7 +1235,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             label_span_not_found(&mut err);
         }
 
-        let confusable_suggested = self.confusable_method_name(&mut err, rcvr_ty, item_name, None);
+        let confusable_suggested = self.confusable_method_name(
+            &mut err,
+            rcvr_ty,
+            item_name,
+            args.map(|args| {
+                args.iter()
+                    .map(|expr| {
+                        self.node_ty_opt(expr.hir_id).unwrap_or_else(|| {
+                            self.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span: expr.span,
+                            })
+                        })
+                    })
+                    .collect()
+            }),
+        );
 
         // Don't suggest (for example) `expr.field.clone()` if `expr.clone()`
         // can't be called due to `typeof(expr): Clone` not holding.
@@ -1421,9 +1438,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
-        args: Option<Vec<Ty<'tcx>>>,
+        call_args: Option<Vec<Ty<'tcx>>>,
     ) -> Option<Symbol> {
-        if let ty::Adt(adt, _) = rcvr_ty.kind() {
+        if let ty::Adt(adt, adt_args) = rcvr_ty.kind() {
             for inherent_impl_did in self.tcx.inherent_impls(adt.did()).into_iter().flatten() {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
@@ -1432,27 +1449,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.get_attr(inherent_method.def_id, sym::rustc_confusables)
                         && let Some(candidates) = parse_confusables(attr)
                         && candidates.contains(&item_name.name)
+                        && let ty::AssocKind::Fn = inherent_method.kind
                     {
-                        let mut matches_args = args.is_none();
-                        if let ty::AssocKind::Fn = inherent_method.kind
-                            && let Some(ref args) = args
-                        {
-                            let fn_sig =
-                                self.tcx.fn_sig(inherent_method.def_id).instantiate_identity();
-                            matches_args = fn_sig
-                                .inputs()
-                                .skip_binder()
+                        let args =
+                            ty::GenericArgs::identity_for_item(self.tcx, inherent_method.def_id)
+                                .rebase_onto(
+                                    self.tcx,
+                                    inherent_method.container_id(self.tcx),
+                                    adt_args,
+                                );
+                        let fn_sig =
+                            self.tcx.fn_sig(inherent_method.def_id).instantiate(self.tcx, args);
+                        let fn_sig = self.instantiate_binder_with_fresh_vars(
+                            item_name.span,
+                            infer::FnCall,
+                            fn_sig,
+                        );
+                        if let Some(ref args) = call_args
+                            && fn_sig.inputs()[1..]
                                 .iter()
-                                .skip(1)
                                 .zip(args.into_iter())
-                                .all(|(expected, found)| self.can_coerce(*expected, *found));
-                        }
-                        if matches_args {
+                                .all(|(expected, found)| self.can_coerce(*expected, *found))
+                            && fn_sig.inputs()[1..].len() == args.len()
+                        {
                             err.span_suggestion_verbose(
                                 item_name.span,
                                 format!("you might have meant to use `{}`", inherent_method.name),
                                 inherent_method.name,
                                 Applicability::MaybeIncorrect,
+                            );
+                            return Some(inherent_method.name);
+                        } else if let None = call_args {
+                            err.span_note(
+                                self.tcx.def_span(inherent_method.def_id),
+                                format!(
+                                    "you might have meant to use method `{}`",
+                                    inherent_method.name,
+                                ),
                             );
                             return Some(inherent_method.name);
                         }

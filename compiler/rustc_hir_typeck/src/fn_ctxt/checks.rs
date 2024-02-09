@@ -1,7 +1,11 @@
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
+use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
+use crate::method::probe::IsSuggestion;
+use crate::method::probe::Mode::MethodCall;
+use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
@@ -532,25 +536,111 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let callee_ty = callee_expr
             .and_then(|callee_expr| self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr));
 
+        // Obtain another method on `Self` that have similar name.
+        let similar_assoc = |call_name: Ident| -> Option<(ty::AssocItem, ty::FnSig<'_>)> {
+            if let Some(callee_ty) = callee_ty
+                && let Ok(Some(assoc)) = self.probe_op(
+                    call_name.span,
+                    MethodCall,
+                    Some(call_name),
+                    None,
+                    IsSuggestion(true),
+                    callee_ty.peel_refs(),
+                    callee_expr.unwrap().hir_id,
+                    TraitsInScope,
+                    |mut ctxt| ctxt.probe_for_similar_candidate(),
+                )
+                && let ty::AssocKind::Fn = assoc.kind
+                && assoc.fn_has_self_parameter
+            {
+                let fn_sig =
+                    if let ty::Adt(_, args) = callee_ty.peel_refs().kind() {
+                        let args = ty::GenericArgs::identity_for_item(tcx, assoc.def_id)
+                            .rebase_onto(tcx, assoc.container_id(tcx), args);
+                        tcx.fn_sig(assoc.def_id).instantiate(tcx, args)
+                    } else {
+                        tcx.fn_sig(assoc.def_id).instantiate_identity()
+                    };
+                let fn_sig =
+                    self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
+                Some((assoc, fn_sig));
+            }
+            None
+        };
+
         let suggest_confusable = |err: &mut Diagnostic| {
             if let Some(call_name) = call_ident
                 && let Some(callee_ty) = callee_ty
             {
-                // FIXME: check in the following order
-                //        - methods marked as `rustc_confusables` with the provided arguments (done)
-                //        - methods marked as `rustc_confusables` with the right number of arguments
-                //        - methods marked as `rustc_confusables` (done)
-                //        - methods with the same argument type/count and short levenshtein distance
-                //        - methods with short levenshtein distance
-                //        - methods with the same argument type/count
+                let input_types: Vec<Ty<'_>> = provided_arg_tys.iter().map(|(ty, _)| *ty).collect();
+                // Check for other methods in the following order
+                //  - methods marked as `rustc_confusables` with the provided arguments
+                //  - methods with the same argument type/count and short levenshtein distance
+                //  - methods marked as `rustc_confusables` (done)
+                //  - methods with short levenshtein distance
+
+                // Look for commonly confusable method names considering arguments.
                 self.confusable_method_name(
                     err,
                     callee_ty.peel_refs(),
                     call_name,
-                    Some(provided_arg_tys.iter().map(|(ty, _)| *ty).collect()),
+                    Some(input_types.clone()),
                 )
                 .or_else(|| {
+                    // Look for method names with short levenshtein distance, considering arguments.
+                    if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                        && fn_sig.inputs()[1..]
+                            .iter()
+                            .zip(input_types.iter())
+                            .all(|(expected, found)| self.can_coerce(*expected, *found))
+                        && fn_sig.inputs()[1..].len() == input_types.len()
+                    {
+                        err.span_suggestion_verbose(
+                            call_name.span,
+                            format!("you might have meant to use `{}`", assoc.name),
+                            assoc.name,
+                            Applicability::MaybeIncorrect,
+                        );
+                        return Some(assoc.name);
+                    }
+                    None
+                })
+                .or_else(|| {
+                    // Look for commonly confusable method names disregarding arguments.
                     self.confusable_method_name(err, callee_ty.peel_refs(), call_name, None)
+                })
+                .or_else(|| {
+                    // Look for similarly named methods with levenshtein distance with the right
+                    // number of arguments.
+                    if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                        && fn_sig.inputs()[1..].len() == input_types.len()
+                    {
+                        err.span_note(
+                            tcx.def_span(assoc.def_id),
+                            format!(
+                                "there's is a method with similar name `{}`, but the arguments \
+                                 don't match",
+                                assoc.name,
+                            ),
+                        );
+                        return Some(assoc.name);
+                    }
+                    None
+                })
+                .or_else(|| {
+                    // Fallthrough: look for similarly named methods with levenshtein distance.
+                    if let Some((assoc, _)) = similar_assoc(call_name) {
+                        err.span_note(
+                            tcx.def_span(assoc.def_id),
+                            format!(
+                                "there's is a method with similar name `{}`, but their argument \
+                                 count doesn't match",
+                                assoc.name,
+                            ),
+                        );
+                        return Some(assoc.name);
+                    }
+                    None
                 });
             }
         };
