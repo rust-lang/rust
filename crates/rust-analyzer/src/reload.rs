@@ -83,7 +83,7 @@ impl GlobalState {
         }
         if self.config.linked_or_discovered_projects() != old_config.linked_or_discovered_projects()
         {
-            self.fetch_workspaces_queue.request_op("linked projects changed".to_string(), false)
+            self.fetch_workspaces_queue.request_op("linked projects changed".to_owned(), false)
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -440,8 +440,8 @@ impl GlobalState {
                     .collect(),
             };
             let registration = lsp_types::Registration {
-                id: "workspace/didChangeWatchedFiles".to_string(),
-                method: "workspace/didChangeWatchedFiles".to_string(),
+                id: "workspace/didChangeWatchedFiles".to_owned(),
+                method: "workspace/didChangeWatchedFiles".to_owned(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
             self.send_request::<lsp_types::request::RegisterCapability>(

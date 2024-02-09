@@ -373,7 +373,7 @@ fn find_marks(set: &mut HashSet<String>, text: &str, mark: &str) {
                 text = stripped_text.trim_start();
                 if let Some(idx2) = text.find(|c: char| !(c.is_alphanumeric() || c == '_')) {
                     let mark_text = &text[..idx2];
-                    set.insert(mark_text.to_string());
+                    set.insert(mark_text.to_owned());
                     text = &text[idx2..];
                 }
             }

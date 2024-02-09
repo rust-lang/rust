@@ -245,7 +245,7 @@ fn completion_item(
 ) {
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let ref_match = item.ref_match();
-    let lookup = item.lookup().to_string();
+    let lookup = item.lookup().to_owned();
 
     let mut additional_text_edits = Vec::new();
 
@@ -367,7 +367,7 @@ pub(crate) fn signature_help(
             let params = call_info
                 .parameter_labels()
                 .map(|label| lsp_types::ParameterInformation {
-                    label: lsp_types::ParameterLabel::Simple(label.to_string()),
+                    label: lsp_types::ParameterLabel::Simple(label.to_owned()),
                     documentation: None,
                 })
                 .collect::<Vec<_>>();
@@ -1498,7 +1498,7 @@ pub(crate) mod command {
 
     pub(crate) fn run_single(runnable: &lsp_ext::Runnable, title: &str) -> lsp_types::Command {
         lsp_types::Command {
-            title: title.to_string(),
+            title: title.to_owned(),
             command: "rust-analyzer.runSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
@@ -1608,7 +1608,7 @@ fn main() {
     }
 }"#;
 
-        let (analysis, file_id) = Analysis::from_single_file(text.to_string());
+        let (analysis, file_id) = Analysis::from_single_file(text.to_owned());
         let folds = analysis.folding_ranges(file_id).unwrap();
         assert_eq!(folds.len(), 4);
 

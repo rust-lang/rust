@@ -134,7 +134,7 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         writer,
         // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
         // useful information in there for debugging.
-        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_string()),
+        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
         chalk_filter: env::var("CHALK_DEBUG").ok(),
         profile_filter: env::var("RA_PROFILE").ok(),
     }
@@ -224,7 +224,7 @@ fn run_server() -> anyhow::Result<()> {
                 MessageType, ShowMessageParams,
             };
             let not = lsp_server::Notification::new(
-                ShowMessage::METHOD.to_string(),
+                ShowMessage::METHOD.to_owned(),
                 ShowMessageParams { typ: MessageType::WARNING, message: e.to_string() },
             );
             connection.sender.send(lsp_server::Message::Notification(not)).unwrap();
