@@ -908,7 +908,7 @@ fn filter_unnecessary_bounds(
         }
     }
 
-    let starting_nodes = necessary_params.iter().map(|param| param_map[param]);
+    let starting_nodes = necessary_params.iter().flat_map(|param| param_map.get(param).copied());
     let reachable = graph.compute_reachable_nodes(starting_nodes);
 
     // Not pretty, but effective. If only there were `Vec::retain_index()`...
