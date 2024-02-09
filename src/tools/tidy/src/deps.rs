@@ -568,7 +568,7 @@ fn check_runtime_license_exceptions(
             // which notably does not include the `wasm` feature which pulls in
             // this dependency. In the compiler, however, the `wasm` feature is
             // enabled. This exception is intended to be here so long as the
-            // `EXCEPTIONS` below contains `wasmparser`, but once that goes away
+            // `EXCEPTIONS` above contains `wasmparser`, but once that goes away
             // this can be removed.
             if pkg.name == "wasmparser"
                 && pkg.license.as_deref() == Some("Apache-2.0 WITH LLVM-exception")
