@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-
 use crate::base::ast::NestedMetaItem;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};

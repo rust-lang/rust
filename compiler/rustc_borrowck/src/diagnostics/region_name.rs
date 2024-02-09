@@ -1,3 +1,6 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use std::fmt::{self, Display};
 use std::iter;
 
