@@ -16,13 +16,31 @@ error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id == _`
 LL |     fn intu(&self) -> &Self::Id {
    |                       ^^^^^^^^^ cannot satisfy `<T as Default>::Id == _`
 
+error[E0284]: type annotations needed: cannot satisfy `T <: <T as Default>::Id`
+  --> $DIR/specialization-transmute.rs:18:9
+   |
+LL |         self
+   |         ^^^^ cannot satisfy `T <: <T as Default>::Id`
+
+error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
+  --> $DIR/specialization-transmute.rs:28:13
+   |
+LL |     let s = transmute::<u8, Option<NonZeroU8>>(0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `<u8 as Default>::Id == Option<NonZero<u8>>`
+   |
+note: required by a bound in `transmute`
+  --> $DIR/specialization-transmute.rs:22:25
+   |
+LL | fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
+   |                         ^^^^^^ required by this bound in `transmute`
+
 error[E0282]: type annotations needed
   --> $DIR/specialization-transmute.rs:14:23
    |
 LL |     default type Id = T;
    |                       ^ cannot infer type for associated type `<T as Default>::Id`
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0282, E0284.
 For more information about an error, try `rustc --explain E0282`.
