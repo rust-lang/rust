@@ -170,7 +170,6 @@ useless_asref = "allow"
 ## Following lints should be tackled at some point
 borrowed_box = "allow"
 derived_hash_with_manual_eq = "allow"
-forget_non_drop = "allow"
 needless_doctest_main = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"
