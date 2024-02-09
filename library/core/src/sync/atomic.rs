@@ -2119,7 +2119,16 @@ macro_rules! atomic_int {
         /// This type has the same in-memory representation as the underlying
         /// integer type, [`
         #[doc = $s_int_type]
-        /// `]. For more about the differences between atomic types and
+        /// `].
+        #[doc = if_not_8_bit! {
+            $int_type,
+            concat!(
+                "However, the alignment of this type is always equal to its ",
+                "size, even on targets where [`", $s_int_type, "`] has a ",
+                "lesser alignment."
+            )
+        }]
+        /// For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
         ///
