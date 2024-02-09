@@ -673,7 +673,7 @@ impl ReferenceConversion {
     pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> ast::Type {
         let ty = match self.conversion {
             ReferenceConversionType::Copy => self.ty.display(db).to_string(),
-            ReferenceConversionType::AsRefStr => "&str".to_string(),
+            ReferenceConversionType::AsRefStr => "&str".to_owned(),
             ReferenceConversionType::AsRefSlice => {
                 let type_argument_name =
                     self.ty.type_arguments().next().unwrap().display(db).to_string();

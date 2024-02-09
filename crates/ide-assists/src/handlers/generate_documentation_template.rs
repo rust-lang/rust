@@ -416,9 +416,9 @@ fn arguments_from_params(param_list: &ast::ParamList) -> String {
                 true => format!("&mut {name}"),
                 false => name.to_string(),
             },
-            None => "_".to_string(),
+            None => "_".to_owned(),
         },
-        _ => "_".to_string(),
+        _ => "_".to_owned(),
     });
     args_iter.format(", ").to_string()
 }

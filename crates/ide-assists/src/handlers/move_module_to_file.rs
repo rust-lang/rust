@@ -75,7 +75,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             let contents = {
                 let items = module_items.dedent(IndentLevel(1)).to_string();
                 let mut items =
-                    items.trim_start_matches('{').trim_end_matches('}').trim().to_string();
+                    items.trim_start_matches('{').trim_end_matches('}').trim().to_owned();
                 if !items.is_empty() {
                     items.push('\n');
                 }

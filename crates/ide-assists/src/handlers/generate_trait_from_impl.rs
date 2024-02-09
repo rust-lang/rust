@@ -118,7 +118,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             let arg_list = if let Some(genpars) = impl_ast.generic_param_list() {
                 genpars.to_generic_args().to_string()
             } else {
-                "".to_string()
+                "".to_owned()
             };
 
             if let Some(snippet_cap) = ctx.config.snippet_cap {
