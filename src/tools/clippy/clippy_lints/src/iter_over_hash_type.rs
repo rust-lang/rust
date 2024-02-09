@@ -34,7 +34,7 @@ declare_clippy_lint! {
     ///         let value = &my_map[key];
     ///     }
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.76.0"]
     pub ITER_OVER_HASH_TYPE,
     restriction,
     "iterating over unordered hash-based types (`HashMap` and `HashSet`)"

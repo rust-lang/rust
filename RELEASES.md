@@ -7,7 +7,6 @@ Language
 --------
 - [Document Rust ABI compatibility between various types](https://github.com/rust-lang/rust/pull/115476/)
 - [Also: guarantee that char and u32 are ABI-compatible](https://github.com/rust-lang/rust/pull/118032/)
-- [Warn against ambiguous wide pointer comparisons](https://github.com/rust-lang/rust/pull/117758/)
 - [Add lint `ambiguous_wide_pointer_comparisons` that supersedes `clippy::vtable_address_comparisons`](https://github.com/rust-lang/rust/pull/117758)
 
 <a id="1.76.0-Compiler"></a>

@@ -11,9 +11,16 @@ if [[ ${OS} == "Windows" ]]; then
 else
 	desired_sysroot=/tmp
 fi
+# Set --sysroot in command line
 sysroot=$(./target/debug/clippy-driver --sysroot $desired_sysroot --print sysroot)
 test "$sysroot" = $desired_sysroot
 
+# Set --sysroot in arg_file.txt and pass @arg_file.txt to command line
+echo "--sysroot=$desired_sysroot" > arg_file.txt
+sysroot=$(./target/debug/clippy-driver @arg_file.txt --print sysroot)
+test "$sysroot" = $desired_sysroot
+
+# Setting SYSROOT in command line
 sysroot=$(SYSROOT=$desired_sysroot ./target/debug/clippy-driver --print sysroot)
 test "$sysroot" = $desired_sysroot
 
@@ -22,6 +29,14 @@ test "$sysroot" = $desired_sysroot
     cd rustc_tools_util
     touch src/lib.rs
     SYSROOT=/tmp RUSTFLAGS="--sysroot=$(rustc --print sysroot)" ../target/debug/cargo-clippy clippy --verbose
+)
+
+# Check that the --sysroot argument is only passed once via arg_file.txt (SYSROOT is ignored)
+(  
+    echo "fn main() {}" > target/driver_test.rs
+    echo "--sysroot="$(./target/debug/clippy-driver --print sysroot)"" > arg_file.txt
+    echo "--verbose" >> arg_file.txt
+    SYSROOT=/tmp ./target/debug/clippy-driver @arg_file.txt ./target/driver_test.rs
 )
 
 # Make sure this isn't set - clippy-driver should cope without it

@@ -1073,18 +1073,23 @@ impl<T> Option<T> {
         }
     }
 
-    /// Calls the provided closure with a reference to the contained value (if [`Some`]).
+    /// Calls a function with a reference to the contained value if [`Some`].
+    ///
+    /// Returns the original option.
     ///
     /// # Examples
     ///
     /// ```
-    /// let v = vec![1, 2, 3, 4, 5];
+    /// let list = vec![1, 2, 3];
     ///
-    /// // prints "got: 4"
-    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {x}"));
+    /// // prints "got: 2"
+    /// let x = list
+    ///     .get(1)
+    ///     .inspect(|x| println!("got: {x}"))
+    ///     .expect("list should be long enough");
     ///
     /// // prints nothing
-    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
+    /// list.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
     #[stable(feature = "result_option_inspect", since = "1.76.0")]

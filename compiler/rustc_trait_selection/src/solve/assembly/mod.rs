@@ -8,7 +8,7 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{
-    CandidateSource, CanonicalResponse, Certainty, Goal, QueryResult,
+    CandidateSource, CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult,
 };
 use rustc_middle::traits::BuiltinImplSource;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
@@ -276,25 +276,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
-        let dummy_candidate = |this: &mut EvalCtxt<'_, 'tcx>, certainty| {
-            let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-            let result = this.evaluate_added_goals_and_make_canonical_response(certainty).unwrap();
-            let mut dummy_probe = this.inspect.new_probe();
-            dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result: Ok(result) });
-            this.inspect.finish_probe(dummy_probe);
-            vec![Candidate { source, result }]
-        };
-
         let Some(normalized_self_ty) =
             self.try_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
             debug!("overflow while evaluating self type");
-            return dummy_candidate(self, Certainty::OVERFLOW);
+            return self.forced_ambiguity(MaybeCause::Overflow);
         };
 
         if normalized_self_ty.is_ty_var() {
             debug!("self type has been normalized to infer");
-            return dummy_candidate(self, Certainty::AMBIGUOUS);
+            return self.forced_ambiguity(MaybeCause::Ambiguity);
         }
 
         let goal =
@@ -315,9 +306,24 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         self.assemble_param_env_candidates(goal, &mut candidates);
 
-        self.assemble_coherence_unknowable_candidates(goal, &mut candidates);
+        match self.solver_mode() {
+            SolverMode::Normal => self.discard_impls_shadowed_by_env(goal, &mut candidates),
+            SolverMode::Coherence => {
+                self.assemble_coherence_unknowable_candidates(goal, &mut candidates)
+            }
+        }
 
         candidates
+    }
+
+    fn forced_ambiguity(&mut self, cause: MaybeCause) -> Vec<Candidate<'tcx>> {
+        let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
+        let certainty = Certainty::Maybe(cause);
+        let result = self.evaluate_added_goals_and_make_canonical_response(certainty).unwrap();
+        let mut dummy_probe = self.inspect.new_probe();
+        dummy_probe.probe_kind(ProbeKind::TraitCandidate { source, result: Ok(result) });
+        self.inspect.finish_probe(dummy_probe);
+        vec![Candidate { source, result }]
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -779,6 +785,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    /// In coherence we have to not only care about all impls we know about, but
+    /// also consider impls which may get added in a downstream or sibling crate
+    /// or which an upstream impl may add in a minor release.
+    ///
+    /// To do so we add an ambiguous candidate in case such an unknown impl could
+    /// apply to the current goal.
     #[instrument(level = "debug", skip_all)]
     fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
         &mut self,
@@ -786,11 +798,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         candidates: &mut Vec<Candidate<'tcx>>,
     ) {
         let tcx = self.tcx();
-        match self.solver_mode() {
-            SolverMode::Normal => return,
-            SolverMode::Coherence => {}
-        };
-
         let result = self.probe_misc_candidate("coherence unknowable").enter(|ecx| {
             let trait_ref = goal.predicate.trait_ref(tcx);
             #[derive(Debug)]
@@ -820,6 +827,51 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    /// If there's a where-bound for the current goal, do not use any impl candidates
+    /// to prove the current goal. Most importantly, if there is a where-bound which does
+    /// not specify any associated types, we do not allow normalizing the associated type
+    /// by using an impl, even if it would apply.
+    ///
+    ///  <https://github.com/rust-lang/trait-system-refactor-initiative/issues/76>
+    // FIXME(@lcnr): The current structure here makes me unhappy and feels ugly. idk how
+    // to improve this however. However, this should make it fairly straightforward to refine
+    // the filtering going forward, so it seems alright-ish for now.
+    fn discard_impls_shadowed_by_env<G: GoalKind<'tcx>>(
+        &mut self,
+        goal: Goal<'tcx, G>,
+        candidates: &mut Vec<Candidate<'tcx>>,
+    ) {
+        let tcx = self.tcx();
+        let trait_goal: Goal<'tcx, ty::TraitPredicate<'tcx>> =
+            goal.with(tcx, goal.predicate.trait_ref(tcx));
+        let mut trait_candidates_from_env = Vec::new();
+        self.assemble_param_env_candidates(trait_goal, &mut trait_candidates_from_env);
+        self.assemble_alias_bound_candidates(trait_goal, &mut trait_candidates_from_env);
+        if !trait_candidates_from_env.is_empty() {
+            let trait_env_result = self.merge_candidates(trait_candidates_from_env);
+            match trait_env_result.unwrap().value.certainty {
+                // If proving the trait goal succeeds by using the env,
+                // we freely drop all impl candidates.
+                //
+                // FIXME(@lcnr): It feels like this could easily hide
+                // a forced ambiguity candidate added earlier.
+                // This feels dangerous.
+                Certainty::Yes => {
+                    candidates.retain(|c| match c.source {
+                        CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_) => false,
+                        CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => true,
+                    });
+                }
+                // If it is still ambiguous we instead just force the whole goal
+                // to be ambig and wait for inference constraints. See
+                // tests/ui/traits/next-solver/env-shadows-impls/ambig-env-no-shadow.rs
+                Certainty::Maybe(cause) => {
+                    *candidates = self.forced_ambiguity(cause);
+                }
+            }
+        }
+    }
+
     /// If there are multiple ways to prove a trait or projection goal, we have
     /// to somehow try to merge the candidates into one. If that fails, we return
     /// ambiguity.
@@ -832,34 +884,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let responses = candidates.iter().map(|c| c.result).collect::<Vec<_>>();
         if let Some(result) = self.try_merge_responses(&responses) {
             return Ok(result);
+        } else {
+            self.flounder(&responses)
         }
-
-        // We then check whether we should prioritize `ParamEnv` candidates.
-        //
-        // Doing so is incomplete and would therefore be unsound during coherence.
-        match self.solver_mode() {
-            SolverMode::Coherence => (),
-            // Prioritize `ParamEnv` candidates only if they do not guide inference.
-            //
-            // This is still incomplete as we may add incorrect region bounds.
-            SolverMode::Normal => {
-                let param_env_responses = candidates
-                    .iter()
-                    .filter(|c| {
-                        matches!(
-                            c.source,
-                            CandidateSource::ParamEnv(_) | CandidateSource::AliasBound
-                        )
-                    })
-                    .map(|c| c.result)
-                    .collect::<Vec<_>>();
-                if let Some(result) = self.try_merge_responses(&param_env_responses) {
-                    // We strongly prefer alias and param-env bounds here, even if they affect inference.
-                    // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/11.
-                    return Ok(result);
-                }
-            }
-        }
-        self.flounder(&responses)
     }
 }

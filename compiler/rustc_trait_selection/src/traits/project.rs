@@ -1935,10 +1935,11 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // Integers and floats are always Sized, and so have unit type metadata.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
-                        // type parameters, opaques, and unnormalized projections have pointer
-                        // metadata if they're known (e.g. by the param_env) to be sized
+                        // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata` if able.
+                        // Otherwise, type parameters, opaques, and unnormalized projections have
+                        // unit metadata if they're known (e.g. by the param_env) to be sized.
                         ty::Param(_) | ty::Alias(..)
-                            if selcx.infcx.predicate_must_hold_modulo_regions(
+                            if self_ty != tail || selcx.infcx.predicate_must_hold_modulo_regions(
                                 &obligation.with(
                                     selcx.tcx(),
                                     ty::TraitRef::from_lang_item(selcx.tcx(), LangItem::Sized, obligation.cause.span(),[self_ty]),
@@ -2312,7 +2313,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         assert_eq!(metadata_def_id, item_def_id);
 
         let mut obligations = Vec::new();
-        let (metadata_ty, check_is_sized) = self_ty.ptr_metadata_ty(tcx, |ty| {
+        let normalize = |ty| {
             normalize_with_depth_to(
                 selcx,
                 obligation.param_env,
@@ -2321,16 +2322,27 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 ty,
                 &mut obligations,
             )
+        };
+        let metadata_ty = self_ty.ptr_metadata_ty_or_tail(tcx, normalize).unwrap_or_else(|tail| {
+            if tail == self_ty {
+                // This is the "fallback impl" for type parameters, unnormalizable projections
+                // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
+                let sized_predicate = ty::TraitRef::from_lang_item(
+                    tcx,
+                    LangItem::Sized,
+                    obligation.cause.span(),
+                    [self_ty],
+                );
+                obligations.push(obligation.with(tcx, sized_predicate));
+                tcx.types.unit
+            } else {
+                // We know that `self_ty` has the same metadata as `tail`. This allows us
+                // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
+                Ty::new_projection(tcx, metadata_def_id, [tail])
+            }
         });
-        if check_is_sized {
-            let sized_predicate = ty::TraitRef::from_lang_item(
-                tcx,
-                LangItem::Sized,
-                obligation.cause.span(),
-                [self_ty],
-            );
-            obligations.push(obligation.with(tcx, sized_predicate));
-        }
         (metadata_ty.into(), obligations)
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);

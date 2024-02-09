@@ -2279,12 +2279,12 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns the type of metadata for (potentially fat) pointers to this type,
-    /// and a boolean signifying if this is conditional on this type being `Sized`.
-    pub fn ptr_metadata_ty(
+    /// or the struct tail if the metadata type cannot be determined.
+    pub fn ptr_metadata_ty_or_tail(
         self,
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-    ) -> (Ty<'tcx>, bool) {
+    ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let tail = tcx.struct_tail_with_normalize(self, normalize, || {});
         match tail.kind() {
             // Sized types
@@ -2307,31 +2307,47 @@ impl<'tcx> Ty<'tcx> {
             | ty::Error(_)
             // Extern types have metadata = ().
             | ty::Foreign(..)
-            // `dyn*` has no metadata
+            // `dyn*` has metadata = ().
             | ty::Dynamic(_, _, ty::DynStar)
-            // If returned by `struct_tail_without_normalization` this is a unit struct
+            // If returned by `struct_tail_with_normalize` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
-            // If returned by `struct_tail_without_normalization` this is the empty tuple,
+            // If returned by `struct_tail_with_normalize` this is the empty tuple,
             // a.k.a. unit type, which is Sized
-            | ty::Tuple(..) => (tcx.types.unit, false),
+            | ty::Tuple(..) => Ok(tcx.types.unit),
 
-            ty::Str | ty::Slice(_) => (tcx.types.usize, false),
+            ty::Str | ty::Slice(_) => Ok(tcx.types.usize),
+
             ty::Dynamic(_, _, ty::Dyn) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
-                (tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]), false)
-            },
+                Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]))
+            }
 
-            // type parameters only have unit metadata if they're sized, so return true
-            // to make sure we double check this during confirmation
-            ty::Param(_) |  ty::Alias(..) => (tcx.types.unit, true),
+            // We don't know the metadata of `self`, but it must be equal to the
+            // metadata of `tail`.
+            ty::Param(_) | ty::Alias(..) => Err(tail),
 
             ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
             | ty::Placeholder(..)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
-            }
+            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(
+                "`ptr_metadata_ty_or_tail` applied to unexpected type: {self:?} (tail = {tail:?})"
+            ),
+        }
+    }
+
+    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    /// Causes an ICE if the metadata type cannot be determined.
+    pub fn ptr_metadata_ty(
+        self,
+        tcx: TyCtxt<'tcx>,
+        normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        match self.ptr_metadata_ty_or_tail(tcx, normalize) {
+            Ok(metadata) => metadata,
+            Err(tail) => bug!(
+                "`ptr_metadata_ty` failed to get metadata for type: {self:?} (tail = {tail:?})"
+            ),
         }
     }
 
