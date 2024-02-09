@@ -99,7 +99,6 @@ mod prettify;
 mod promote_consts;
 mod ref_prop;
 mod remove_noop_landing_pads;
-mod remove_storage_markers;
 mod remove_uninit_drops;
 mod remove_unneeded_drops;
 mod remove_zsts;
@@ -578,8 +577,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &lower_slice_len::LowerSliceLenCalls,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
-            // Code from other crates may have storage markers, so this needs to happen after inlining.
-            &remove_storage_markers::RemoveStorageMarkers,
             // Inlining and substitution may introduce ZST and useless drops.
             &remove_zsts::RemoveZsts,
             &remove_unneeded_drops::RemoveUnneededDrops,

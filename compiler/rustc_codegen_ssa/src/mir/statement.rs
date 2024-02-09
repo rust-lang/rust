@@ -1,5 +1,6 @@
 use rustc_middle::mir;
 use rustc_middle::mir::NonDivergingIntrinsic;
+use rustc_middle::ty::layout::HasTyCtxt;
 
 use super::FunctionCx;
 use super::LocalRef;
@@ -49,20 +50,26 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // experimenting with what kind of information we can emit to LLVM without hurting
                 // perf here
             }
-            mir::StatementKind::StorageLive(local) => {
+            mir::StatementKind::StorageLive(local)
+                if bx.cx().tcx().sess.emit_lifetime_markers() =>
+            {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_live(bx);
                 } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
                     cg_indirect_place.storage_live(bx);
                 }
             }
-            mir::StatementKind::StorageDead(local) => {
+            mir::StatementKind::StorageLive(_) => (),
+            mir::StatementKind::StorageDead(local)
+                if bx.cx().tcx().sess.emit_lifetime_markers() =>
+            {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
                     cg_place.storage_dead(bx);
                 } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
                     cg_indirect_place.storage_dead(bx);
                 }
             }
+            mir::StatementKind::StorageDead(_) => (),
             mir::StatementKind::Coverage(box ref coverage) => {
                 self.codegen_coverage(bx, coverage, statement.source_info.scope);
             }
