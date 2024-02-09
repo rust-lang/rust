@@ -1638,12 +1638,11 @@ impl Step for Assemble {
         }
 
         // Build enzyme
-        let enzyme_install = Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }));
-        //let enzyme_install = if builder.config.llvm_enzyme {
-        //    Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }))
-        //} else {
-        //    None
-        //};
+        let enzyme_install = if builder.config.llvm_enzyme {
+            Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }))
+        } else {
+            None
+        };
 
         if let Some(enzyme_install) = enzyme_install {
             let src_lib = enzyme_install.join("build/Enzyme/LLVMEnzyme-17.so");
