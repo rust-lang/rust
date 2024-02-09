@@ -1,0 +1,19 @@
+error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: Trait`
+  --> $DIR/normalize-param-env-4.rs:18:26
+   |
+LL |     <T as Trait>::Assoc: Trait,
+   |                          ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`normalize_param_env_4`)
+
+error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc well-formed`
+  --> $DIR/normalize-param-env-4.rs:18:26
+   |
+LL |     <T as Trait>::Assoc: Trait,
+   |                          ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`normalize_param_env_4`)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.
