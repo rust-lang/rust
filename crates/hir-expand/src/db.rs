@@ -61,7 +61,7 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
 
-    #[salsa::invoke(AstIdMap::ast_id_map)]
+    #[salsa::invoke(AstIdMap::new)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     /// Main public API -- parses a hir file, not caring whether it's a real

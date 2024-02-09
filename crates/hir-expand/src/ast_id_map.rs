@@ -155,7 +155,7 @@ impl PartialEq for AstIdMap {
 impl Eq for AstIdMap {}
 
 impl AstIdMap {
-    pub(crate) fn ast_id_map(
+    pub(crate) fn new(
         db: &dyn ExpandDatabase,
         file_id: span::HirFileId,
     ) -> triomphe::Arc<AstIdMap> {
