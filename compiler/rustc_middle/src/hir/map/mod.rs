@@ -82,7 +82,7 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
         }
 
         // There are nodes that do not have entries, so we need to skip them.
-        let parent_id = self.map.parent_id(self.current_id);
+        let parent_id = self.map.tcx.parent_hir_id(self.current_id);
 
         if parent_id == self.current_id {
             self.current_id = CRATE_HIR_ID;
@@ -239,22 +239,6 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().def_path_hash(def_id)
     }
 
-    pub fn opt_parent_id(self, id: HirId) -> Option<HirId> {
-        Some(self.tcx.parent_hir_id(id))
-    }
-
-    pub fn parent_id(self, hir_id: HirId) -> HirId {
-        self.tcx.parent_hir_id(hir_id)
-    }
-
-    pub fn get_parent(self, hir_id: HirId) -> Node<'hir> {
-        self.tcx.parent_hir_node(hir_id)
-    }
-
-    pub fn find_parent(self, hir_id: HirId) -> Option<Node<'hir>> {
-        Some(self.tcx.parent_hir_node(hir_id))
-    }
-
     pub fn get_if_local(self, id: DefId) -> Option<Node<'hir>> {
         id.as_local()
             .and_then(|id| Some(self.tcx.hir_node(self.tcx.opt_local_def_id_to_hir_id(id)?)))
@@ -309,14 +293,13 @@ impl<'hir> Map<'hir> {
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
-        let parent = self.parent_id(hir_id);
+        let parent = self.tcx.parent_hir_id(hir_id);
         assert!(is_body_owner(self.tcx.hir_node(parent), hir_id), "{hir_id:?}");
         parent
     }
 
     pub fn body_owner_def_id(self, BodyId { hir_id }: BodyId) -> LocalDefId {
-        let parent = self.parent_id(hir_id);
-        associated_body(self.tcx.hir_node(parent)).unwrap().0
+        associated_body(self.tcx.parent_hir_node(hir_id)).unwrap().0
     }
 
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
@@ -574,8 +557,8 @@ impl<'hir> Map<'hir> {
 
     /// Checks if the node is left-hand side of an assignment.
     pub fn is_lhs(self, id: HirId) -> bool {
-        match self.find_parent(id) {
-            Some(Node::Expr(expr)) => match expr.kind {
+        match self.tcx.parent_hir_node(id) {
+            Node::Expr(expr) => match expr.kind {
                 ExprKind::Assign(lhs, _rhs, _span) => lhs.hir_id == id,
                 _ => false,
             },
@@ -798,7 +781,7 @@ impl<'hir> Map<'hir> {
             Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::span`.
-            Node::Ctor(..) => match self.find_parent(id)? {
+            Node::Ctor(..) => match self.tcx.parent_hir_node(id) {
                 Node::Item(item) => Some(item.ident),
                 Node::Variant(variant) => Some(variant.ident),
                 _ => unreachable!(),
@@ -930,7 +913,7 @@ impl<'hir> Map<'hir> {
                 ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
                 _ => named_span(item.span, item.ident, None),
             },
-            Node::Ctor(_) => return self.span(self.parent_id(hir_id)),
+            Node::Ctor(_) => return self.span(self.tcx.parent_hir_id(hir_id)),
             Node::Expr(Expr {
                 kind: ExprKind::Closure(Closure { fn_decl_span, .. }),
                 span,
@@ -973,7 +956,7 @@ impl<'hir> Map<'hir> {
             Node::PatField(field) => field.span,
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
-            Node::Ctor(..) => self.span_with_body(self.parent_id(hir_id)),
+            Node::Ctor(..) => self.span_with_body(self.tcx.parent_hir_id(hir_id)),
             Node::Lifetime(lifetime) => lifetime.ident.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
@@ -1006,7 +989,7 @@ impl<'hir> Map<'hir> {
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
     pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
-        match self.get_parent(anon_const) {
+        match self.tcx.parent_hir_node(anon_const) {
             Node::GenericParam(GenericParam {
                 def_id: param_id,
                 kind: GenericParamKind::Const { .. },
@@ -1031,7 +1014,7 @@ impl<'hir> Map<'hir> {
             _ => None,
         }?;
 
-        match self.find_parent(expr.hir_id)? {
+        match self.tcx.parent_hir_node(expr.hir_id) {
             Node::ExprField(field) => {
                 if field.ident.name == local.name && field.is_shorthand {
                     return Some(local.name);

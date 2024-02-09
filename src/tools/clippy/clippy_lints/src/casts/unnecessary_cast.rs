@@ -65,7 +65,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Path(qpath) = inner.kind
         && let QPath::Resolved(None, Path { res, .. }) = qpath
         && let Res::Local(hir_id) = res
-        && let parent = cx.tcx.hir().get_parent(*hir_id)
+        && let parent = cx.tcx.parent_hir_node(*hir_id)
         && let Node::Local(local) = parent
     {
         if let Some(ty) = local.ty

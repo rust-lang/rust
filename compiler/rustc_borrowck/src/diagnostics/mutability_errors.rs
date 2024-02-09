@@ -944,7 +944,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
         let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
-        let fn_call_id = hir.parent_id(closure_id);
+        let fn_call_id = self.infcx.tcx.parent_hir_id(closure_id);
         let node = self.infcx.tcx.hir_node(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
@@ -1034,7 +1034,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let InstanceDef::Item(def_id) = source.instance
             && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) = hir.get_if_local(def_id)
             && let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind
-            && let Some(Node::Expr(expr)) = hir.find_parent(*hir_id)
+            && let Node::Expr(expr) = self.infcx.tcx.parent_hir_node(*hir_id)
         {
             let mut cur_expr = expr;
             while let ExprKind::MethodCall(path_segment, recv, _, _) = cur_expr.kind {

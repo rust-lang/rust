@@ -51,7 +51,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.features().generic_const_exprs {
-                let parent_node = tcx.hir().get_parent(hir_id);
+                let parent_node = tcx.parent_hir_node(hir_id);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
                     && constant.hir_id == hir_id
                 {
@@ -113,7 +113,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     Some(parent_def_id.to_def_id())
                 }
             } else {
-                let parent_node = tcx.hir().get_parent(hir_id);
+                let parent_node = tcx.parent_hir_node(hir_id);
                 match parent_node {
                     // HACK(eddyb) this provides the correct generics for repeat
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit

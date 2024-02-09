@@ -344,7 +344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_decl_span = if let hir::Node::Expr(hir::Expr {
             kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
             ..
-        }) = hir.get_parent(hir_id)
+        }) = self.tcx.parent_hir_node(hir_id)
         {
             fn_decl_span
         } else if let Some((
@@ -366,11 +366,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Actually need to unwrap one more layer of HIR to get to
             // the _real_ closure...
-            let async_closure = hir.parent_id(parent_hir_id);
             if let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
-            }) = self.tcx.hir_node(async_closure)
+            }) = self.tcx.parent_hir_node(parent_hir_id)
             {
                 fn_decl_span
             } else {
@@ -398,8 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         callee_expr: &'tcx hir::Expr<'tcx>,
     ) -> bool {
-        let hir_id = self.tcx.hir().parent_id(call_expr.hir_id);
-        let parent_node = self.tcx.hir_node(hir_id);
+        let parent_node = self.tcx.parent_hir_node(call_expr.hir_id);
         if let (
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Array(_), .. }),
             hir::ExprKind::Tup(exp),

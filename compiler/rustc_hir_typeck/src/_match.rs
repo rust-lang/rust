@@ -287,7 +287,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
-        let hir_id = self.tcx.hir().parent_id(self.tcx.hir().parent_id(then_expr.hir_id));
+        let hir_id = self.tcx.parent_hir_id(self.tcx.parent_hir_id(then_expr.hir_id));
         let ret_reason = self.maybe_get_coercion_reason(hir_id, if_span);
         let cause = self.cause(if_span, ObligationCauseCode::IfExpressionWithNoElse);
         let mut error = false;
@@ -396,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let node = self.tcx.hir_node(hir_id);
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
-            let parent = self.tcx.hir().get_parent(self.tcx.hir().parent_id(block.hir_id));
+            let parent = self.tcx.parent_hir_node(self.tcx.parent_hir_id(block.hir_id));
             if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
                 (&block.expr, parent)
             {

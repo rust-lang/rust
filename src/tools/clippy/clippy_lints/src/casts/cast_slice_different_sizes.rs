@@ -67,25 +67,20 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv
 }
 
 fn is_child_of_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let map = cx.tcx.hir();
-    if let Some(parent_id) = map.opt_parent_id(expr.hir_id) {
-        let parent = cx.tcx.hir_node(parent_id);
-        let expr = match parent {
-            Node::Block(block) => {
-                if let Some(parent_expr) = block.expr {
-                    parent_expr
-                } else {
-                    return false;
-                }
-            },
-            Node::Expr(expr) => expr,
-            _ => return false,
-        };
+    let parent = cx.tcx.parent_hir_node(expr.hir_id);
+    let expr = match parent {
+        Node::Block(block) => {
+            if let Some(parent_expr) = block.expr {
+                parent_expr
+            } else {
+                return false;
+            }
+        },
+        Node::Expr(expr) => expr,
+        _ => return false,
+    };
 
-        matches!(expr.kind, ExprKind::Cast(..))
-    } else {
-        false
-    }
+    matches!(expr.kind, ExprKind::Cast(..))
 }
 
 /// Returns the type T of the pointed to *const [T] or *mut [T] and the mutability of the slice if
