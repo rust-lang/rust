@@ -91,11 +91,12 @@
 //!
 //! Access to the queue is controlled by the `QUEUE_LOCKED` bit, which threads
 //! try to set both after enqueuing themselves to eagerly add backlinks to the
-//! queue and after unlocking the lock to wake the next waiter(s). This is done
-//! atomically at the same time as the enqueuing/unlocking operation. The thread
-//! releasing the `QUEUE_LOCK` bit will check the state of the lock and wake up
-//! waiters as appropriate. This guarantees forward-progress even if the unlocking
-//! thread could not acquire the queue lock.
+//! queue, which drastically improves performance, and after unlocking the lock
+//! to wake the next waiter(s). This is done atomically at the same time as the
+//! enqueuing/unlocking operation. The thread releasing the `QUEUE_LOCK` bit
+//! will check the state of the lock and wake up waiters as appropriate. This
+//! guarantees forward-progress even if the unlocking thread could not acquire
+//! the queue lock.
 //!
 //! ## Memory orderings
 //!
@@ -358,7 +359,7 @@ impl RwLock {
                 } else {
                     // Otherwise, the tail of the queue is not known.
                     node.tail.set(None);
-                    // Try locking the queue to fully link it.
+                    // Try locking the queue to eagerly add backlinks.
                     next = next.map_addr(|addr| addr | QUEUE_LOCKED);
                 }
 
