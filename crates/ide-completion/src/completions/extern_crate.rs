@@ -46,7 +46,7 @@ mod other_mod {}
 
         let completion_list = completion_list_no_kw(case);
 
-        assert_eq!("md other_crate_a\n".to_string(), completion_list);
+        assert_eq!("md other_crate_a\n".to_owned(), completion_list);
     }
 
     #[test]
@@ -66,6 +66,6 @@ mod other_mod {}
 
         let completion_list = completion_list_no_kw(case);
 
-        assert_eq!("md other_crate_a\n".to_string(), completion_list);
+        assert_eq!("md other_crate_a\n".to_owned(), completion_list);
     }
 }

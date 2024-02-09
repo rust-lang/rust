@@ -140,7 +140,7 @@ fn render_pat(
         StructKind::Record => {
             render_record_as_pat(ctx.db(), ctx.snippet_cap(), fields, name, fields_omitted)
         }
-        StructKind::Unit => name.to_string(),
+        StructKind::Unit => name.to_owned(),
     };
 
     let needs_ascription = matches!(

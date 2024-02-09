@@ -326,7 +326,7 @@ fn build_postfix_snippet_builder<'ctx>(
         delete_range: TextRange,
     ) -> impl Fn(&str, &str, &str) -> Builder + 'ctx {
         move |label, detail, snippet| {
-            let edit = TextEdit::replace(delete_range, snippet.to_string());
+            let edit = TextEdit::replace(delete_range, snippet.to_owned());
             let mut item =
                 CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
             item.detail(detail).snippet_edit(cap, edit);

@@ -553,7 +553,7 @@ impl Builder {
         self.detail = detail.map(Into::into);
         if let Some(detail) = &self.detail {
             if never!(detail.contains('\n'), "multiline detail:\n{}", detail) {
-                self.detail = Some(detail.split('\n').next().unwrap().to_string());
+                self.detail = Some(detail.split('\n').next().unwrap().to_owned());
             }
         }
         self
