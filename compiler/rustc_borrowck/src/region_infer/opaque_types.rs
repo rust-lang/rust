@@ -418,6 +418,8 @@ fn check_opaque_type_parameter_valid(
                 .into_iter()
                 .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
                 .collect();
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            #[allow(rustc::untranslatable_diagnostic)]
             return Err(tcx
                 .dcx()
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
