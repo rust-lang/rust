@@ -146,7 +146,7 @@ where
             }
             parser::Step::Enter { kind } => tree_sink.start_node(kind),
             parser::Step::Exit => tree_sink.finish_node(),
-            parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
+            parser::Step::Error { msg } => tree_sink.error(msg.to_owned()),
         }
     }
     tree_sink.finish()
