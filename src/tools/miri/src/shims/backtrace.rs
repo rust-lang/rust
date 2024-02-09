@@ -2,7 +2,7 @@ use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_span::{BytePos, Loc, Symbol};
+use rustc_span::{hygiene, BytePos, Loc, Symbol};
 use rustc_target::{abi::Size, spec::abi::Abi};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -45,12 +45,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
-            let mut span = frame.current_span();
-            // Match the behavior of runtime backtrace spans
-            // by using a non-macro span in our backtrace. See `FunctionCx::debug_loc`.
-            if span.from_expansion() && !tcx.sess.opts.unstable_opts.debug_macros {
-                span = rustc_span::hygiene::walk_chain(span, frame.body.span.ctxt())
-            }
+            // Match behavior of debuginfo (`FunctionCx::adjusted_span_and_dbg_scope`).
+            let span = hygiene::walk_chain_collapsed(frame.current_span(), frame.body.span);
             data.push((frame.instance, span.lo()));
         }
 
