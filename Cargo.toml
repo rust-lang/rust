@@ -37,6 +37,7 @@ tempfile = "3.7.1"
 [dev-dependencies]
 lang_tester = "0.3.9"
 tempfile = "3.1.0"
+boml = "0.3.1"
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.
