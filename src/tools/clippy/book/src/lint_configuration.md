@@ -151,6 +151,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_try_fold`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold)
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`iter_kv_map`](https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map)
+* [`manual_c_str_literals`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_c_str_literals)
 
 
 ## `cognitive-complexity-threshold`
@@ -826,5 +827,37 @@ exported visibility, or whether they are marked as "pub".
 ---
 **Affected lints:**
 * [`pub_underscore_fields`](https://rust-lang.github.io/rust-clippy/master/index.html#pub_underscore_fields)
+
+
+## `allow-comparison-to-zero`
+Don't lint when comparing the result of a modulo operation to zero.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`modulo_arithmetic`](https://rust-lang.github.io/rust-clippy/master/index.html#modulo_arithmetic)
+
+
+## `allowed-wildcard-imports`
+List of path segments allowed to have wildcard imports.
+
+#### Example
+
+```toml
+allowed-wildcard-imports = [ "utils", "common" ]
+```
+
+#### Noteworthy
+
+1. This configuration has no effects if used with `warn_on_all_wildcard_imports = true`.
+2. Paths with any segment that containing the word 'prelude'
+are already allowed by default.
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`wildcard_imports`](https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports)
 
 

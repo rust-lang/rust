@@ -27,6 +27,7 @@ impl AsRef<str> for X {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for X {
     fn to_string(&self) -> String {
         self.0.to_string()
@@ -265,6 +266,7 @@ mod issue_8507 {
         }
     }
 
+    #[allow(clippy::to_string_trait_impl)]
     impl ToString for Y {
         fn to_string(&self) -> String {
             self.0.to_string()
@@ -338,6 +340,7 @@ mod issue_9317 {
 
     struct Bytes {}
 
+    #[allow(clippy::to_string_trait_impl)]
     impl ToString for Bytes {
         fn to_string(&self) -> String {
             "123".to_string()

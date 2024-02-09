@@ -4,8 +4,10 @@ use clippy_utils::ty::needs_ordered_drop;
 use rustc_ast::Mutability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, ByRef, ExprKind, HirId, Local, Node, Pat, PatKind, QPath};
+use rustc_hir_typeck::expr_use_visitor::PlaceBase;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::UpvarCapture;
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::DesugaringKind;
@@ -69,6 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             // the local is user-controlled
             && !in_external_macro(cx.sess(), local.span)
             && !is_from_proc_macro(cx, expr)
+            && !is_by_value_closure_capture(cx, local.hir_id, binding_id)
         {
             span_lint_and_help(
                 cx,
@@ -80,6 +83,29 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             );
         }
     }
+}
+
+/// Checks if the enclosing body is a closure and if the given local is captured by value.
+///
+/// In those cases, the redefinition may be necessary to force a move:
+/// ```
+/// fn assert_static<T: 'static>(_: T) {}
+///
+/// let v = String::new();
+/// let closure = || {
+///   let v = v; // <- removing this redefinition makes `closure` no longer `'static`
+///   dbg!(&v);
+/// };
+/// assert_static(closure);
+/// ```
+fn is_by_value_closure_capture(cx: &LateContext<'_>, redefinition: HirId, root_variable: HirId) -> bool {
+    let closure_def_id = cx.tcx.hir().enclosing_body_owner(redefinition);
+
+    cx.tcx.is_closure_or_coroutine(closure_def_id.to_def_id())
+        && cx.tcx.closure_captures(closure_def_id).iter().any(|c| {
+            matches!(c.info.capture_kind, UpvarCapture::ByValue)
+                && matches!(c.place.base, PlaceBase::Upvar(upvar) if upvar.var_path.hir_id == root_variable)
+        })
 }
 
 /// Find the annotation of a binding introduced by a pattern, or `None` if it's not introduced.

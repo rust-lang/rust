@@ -24,9 +24,11 @@ use rustc_session::EarlyDiagCtxt;
 use rustc_span::symbol::Symbol;
 
 use std::env;
+use std::fs::read_to_string;
 use std::ops::Deref;
 use std::path::Path;
 use std::process::exit;
+use std::string::ToString;
 
 use anstream::println;
 
@@ -190,12 +192,31 @@ pub fn main() {
 
     exit(rustc_driver::catch_with_exit_code(move || {
         let mut orig_args: Vec<String> = env::args().collect();
-        let has_sysroot_arg = arg_value(&orig_args, "--sysroot", |_| true).is_some();
+
+        let has_sysroot_arg = |args: &mut [String]| -> bool {
+            if arg_value(args, "--sysroot", |_| true).is_some() {
+                return true;
+            }
+            // https://doc.rust-lang.org/rustc/command-line-arguments.html#path-load-command-line-flags-from-a-path
+            // Beside checking for existence of `--sysroot` on the command line, we need to
+            // check for the arg files that are prefixed with @ as well to be consistent with rustc
+            for arg in args.iter() {
+                if let Some(arg_file_path) = arg.strip_prefix('@') {
+                    if let Ok(arg_file) = read_to_string(arg_file_path) {
+                        let split_arg_file: Vec<String> = arg_file.lines().map(ToString::to_string).collect();
+                        if arg_value(&split_arg_file, "--sysroot", |_| true).is_some() {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
+        };
 
         let sys_root_env = std::env::var("SYSROOT").ok();
         let pass_sysroot_env_if_given = |args: &mut Vec<String>, sys_root_env| {
             if let Some(sys_root) = sys_root_env {
-                if !has_sysroot_arg {
+                if !has_sysroot_arg(args) {
                     args.extend(vec!["--sysroot".into(), sys_root]);
                 }
             };

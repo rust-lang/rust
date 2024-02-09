@@ -201,12 +201,12 @@ fn never_loop_expr<'tcx>(
                 })
             })
         },
-        ExprKind::Block(b, l) => {
-            if l.is_some() {
+        ExprKind::Block(b, _) => {
+            if b.targeted_by_break {
                 local_labels.push((b.hir_id, false));
             }
             let ret = never_loop_block(cx, b, local_labels, main_loop_id);
-            let jumped_to = l.is_some() && local_labels.pop().unwrap().1;
+            let jumped_to = b.targeted_by_break && local_labels.pop().unwrap().1;
             match ret {
                 NeverLoopResult::Diverging if jumped_to => NeverLoopResult::Normal,
                 _ => ret,
