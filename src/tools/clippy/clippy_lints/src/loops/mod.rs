@@ -672,7 +672,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.76.0"]
     pub INFINITE_LOOP,
     restriction,
     "possibly unintended infinite loop"

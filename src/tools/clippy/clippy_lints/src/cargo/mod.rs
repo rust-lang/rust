@@ -1,5 +1,6 @@
 mod common_metadata;
 mod feature_name;
+mod lint_groups_priority;
 mod multiple_crate_versions;
 mod wildcard_dependencies;
 
@@ -165,6 +166,43 @@ declare_clippy_lint! {
     "wildcard dependencies being used"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for lint groups with the same priority as lints in the `Cargo.toml`
+    /// [`[lints]` table](https://doc.rust-lang.org/cargo/reference/manifest.html#the-lints-section).
+    ///
+    /// This lint will be removed once [cargo#12918](https://github.com/rust-lang/cargo/issues/12918)
+    /// is resolved.
+    ///
+    /// ### Why is this bad?
+    /// The order of lints in the `[lints]` is ignored, to have a lint override a group the
+    /// `priority` field needs to be used, otherwise the sort order is undefined.
+    ///
+    /// ### Known problems
+    /// Does not check lints inherited using `lints.workspace = true`
+    ///
+    /// ### Example
+    /// ```toml
+    /// # Passed as `--allow=clippy::similar_names --warn=clippy::pedantic`
+    /// # which results in `similar_names` being `warn`
+    /// [lints.clippy]
+    /// pedantic = "warn"
+    /// similar_names = "allow"
+    /// ```
+    /// Use instead:
+    /// ```toml
+    /// # Passed as `--warn=clippy::pedantic --allow=clippy::similar_names`
+    /// # which results in `similar_names` being `allow`
+    /// [lints.clippy]
+    /// pedantic = { level = "warn", priority = -1 }
+    /// similar_names = "allow"
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub LINT_GROUPS_PRIORITY,
+    correctness,
+    "a lint group in `Cargo.toml` at the same priority as a lint"
+}
+
 pub struct Cargo {
     pub allowed_duplicate_crates: FxHashSet<String>,
     pub ignore_publish: bool,
@@ -175,7 +213,8 @@ impl_lint_pass!(Cargo => [
     REDUNDANT_FEATURE_NAMES,
     NEGATIVE_FEATURE_NAMES,
     MULTIPLE_CRATE_VERSIONS,
-    WILDCARD_DEPENDENCIES
+    WILDCARD_DEPENDENCIES,
+    LINT_GROUPS_PRIORITY,
 ]);
 
 impl LateLintPass<'_> for Cargo {
@@ -187,6 +226,8 @@ impl LateLintPass<'_> for Cargo {
             WILDCARD_DEPENDENCIES,
         ];
         static WITH_DEPS_LINTS: &[&Lint] = &[MULTIPLE_CRATE_VERSIONS];
+
+        lint_groups_priority::check(cx);
 
         if !NO_DEPS_LINTS
             .iter()

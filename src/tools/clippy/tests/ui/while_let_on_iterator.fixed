@@ -406,7 +406,7 @@ fn issue_8113() {
 fn fn_once_closure() {
     let mut it = 0..10;
     (|| {
-        for x in it {
+        for x in it.by_ref() {
             if x % 2 == 0 {
                 break;
             }
@@ -441,7 +441,19 @@ fn fn_once_closure() {
                 break;
             }
         }
-    })
+    });
+
+    trait MySpecialFnMut: FnOnce() {}
+    impl<T: FnOnce()> MySpecialFnMut for T {}
+    fn f4(_: impl MySpecialFnMut) {}
+    let mut it = 0..10;
+    f4(|| {
+        for x in it {
+            if x % 2 == 0 {
+                break;
+            }
+        }
+    });
 }
 
 fn main() {
