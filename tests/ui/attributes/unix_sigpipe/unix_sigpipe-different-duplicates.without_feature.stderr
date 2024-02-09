@@ -1,0 +1,25 @@
+error[E0658]: the `#[unix_sigpipe = "sig_ign"]` attribute is an experimental feature
+  --> $DIR/unix_sigpipe-different-duplicates.rs:6:1
+   |
+LL | #[unix_sigpipe = "sig_ign"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #97889 <https://github.com/rust-lang/rust/issues/97889> for more information
+   = help: add `#![feature(unix_sigpipe)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: multiple `unix_sigpipe` attributes
+  --> $DIR/unix_sigpipe-different-duplicates.rs:6:1
+   |
+LL | #[unix_sigpipe = "sig_ign"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/unix_sigpipe-different-duplicates.rs:5:1
+   |
+LL | #[unix_sigpipe = "sig_dfl"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

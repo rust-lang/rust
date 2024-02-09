@@ -1,7 +1,7 @@
-error[E0658]: the `#[unix_sigpipe]` attribute is an experimental feature
-  --> $DIR/feature-gate-unix_sigpipe.rs:3:1
+error[E0658]: the `#[unix_sigpipe = "sig_ign"]` attribute is an experimental feature
+  --> $DIR/unix_sigpipe-sig_ign.rs:8:1
    |
-LL | #[unix_sigpipe = "inherit"]
+LL | #[unix_sigpipe = "sig_ign"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #97889 <https://github.com/rust-lang/rust/issues/97889> for more information

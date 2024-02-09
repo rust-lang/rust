@@ -1,5 +1,5 @@
 error: `unix_sigpipe` attribute can only be used on `fn main()`
-  --> $DIR/unix_sigpipe-start.rs:5:1
+  --> $DIR/unix_sigpipe-start.rs:7:1
    |
 LL | #[unix_sigpipe = "sig_dfl"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^

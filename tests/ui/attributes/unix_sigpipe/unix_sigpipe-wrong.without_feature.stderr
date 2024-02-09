@@ -1,0 +1,8 @@
+error: the only valid variant of the `unix_sigpipe` attribute is `#[unix_sigpipe = "sig_dfl"]`
+  --> $DIR/unix_sigpipe-wrong.rs:5:1
+   |
+LL | #[unix_sigpipe = "wrong"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

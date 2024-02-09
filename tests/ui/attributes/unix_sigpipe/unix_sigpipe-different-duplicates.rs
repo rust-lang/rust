@@ -1,5 +1,8 @@
-#![feature(unix_sigpipe)]
+//@ revisions: with_feature without_feature
 
-#[unix_sigpipe = "sig_ign"]
-#[unix_sigpipe = "inherit"] //~ error: multiple `unix_sigpipe` attributes
+#![cfg_attr(with_feature, feature(unix_sigpipe))]
+
+#[unix_sigpipe = "sig_dfl"]
+#[unix_sigpipe = "sig_ign"] //[without_feature]~ the `#[unix_sigpipe = "sig_ign"]` attribute is an experimental feature
+//~^ error: multiple `unix_sigpipe` attributes
 fn main() {}

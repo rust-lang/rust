@@ -1,7 +1,8 @@
+//@ revisions: with_feature without_feature
 //@ run-pass
 //@ aux-build:sigpipe-utils.rs
 
-#![feature(unix_sigpipe)]
+#![cfg_attr(with_feature, feature(unix_sigpipe))]
 #![feature(rustc_attrs)]
 
 #[unix_sigpipe = "sig_dfl"]

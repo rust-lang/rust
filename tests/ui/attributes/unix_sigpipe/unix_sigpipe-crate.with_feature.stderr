@@ -1,5 +1,5 @@
 error: `unix_sigpipe` attribute cannot be used at crate level
-  --> $DIR/unix_sigpipe-crate.rs:2:1
+  --> $DIR/unix_sigpipe-crate.rs:4:1
    |
 LL | #![unix_sigpipe = "sig_dfl"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
