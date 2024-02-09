@@ -219,7 +219,7 @@ pub struct ItemLoc<N: ItemTreeModItemNode> {
 
 impl<N: ItemTreeModItemNode> Clone for ItemLoc<N> {
     fn clone(&self) -> Self {
-        Self { container: self.container, id: self.id }
+        *self
     }
 }
 
@@ -248,7 +248,7 @@ pub struct AssocItemLoc<N: ItemTreeModItemNode> {
 
 impl<N: ItemTreeModItemNode> Clone for AssocItemLoc<N> {
     fn clone(&self) -> Self {
-        Self { container: self.container, id: self.id }
+        *self
     }
 }
 
