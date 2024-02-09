@@ -175,6 +175,28 @@ impl<'tcx> TyCtxt<'tcx> {
         self.opt_hir_node_by_def_id(id)
             .unwrap_or_else(|| bug!("couldn't find HIR node for def id {id:?}"))
     }
+
+    /// Returns `HirId` of the parent HIR node of node with this `hir_id`.
+    /// Returns the same `hir_id` if and only if `hir_id == CRATE_HIR_ID`.
+    ///
+    /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
+    pub fn parent_hir_id(self, hir_id: HirId) -> HirId {
+        let HirId { owner, local_id } = hir_id;
+        if local_id == ItemLocalId::from_u32(0) {
+            self.hir_owner_parent(owner)
+        } else {
+            let parent_local_id = self.hir_owner_nodes(owner).nodes[local_id].parent;
+            // HIR indexing should have checked that.
+            debug_assert_ne!(parent_local_id, local_id);
+            HirId { owner, local_id: parent_local_id }
+        }
+    }
+
+    /// Returns parent HIR node of node with this `hir_id`.
+    /// Returns HIR node of the same `hir_id` if and only if `hir_id == CRATE_HIR_ID`.
+    pub fn parent_hir_node(self, hir_id: HirId) -> Node<'tcx> {
+        self.hir_node(self.parent_hir_id(hir_id))
+    }
 }
 
 impl<'hir> Map<'hir> {
@@ -217,37 +239,20 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions_untracked().def_path_hash(def_id)
     }
 
-    /// Finds the id of the parent node to this one.
-    ///
-    /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
     pub fn opt_parent_id(self, id: HirId) -> Option<HirId> {
-        if id.local_id == ItemLocalId::from_u32(0) {
-            // FIXME: This function never returns `None` right now, and the parent chain end is
-            // determined by checking for `parent(id) == id`. This function should return `None`
-            // for the crate root instead.
-            Some(self.tcx.hir_owner_parent(id.owner))
-        } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner);
-            let node = &owner.nodes[id.local_id];
-            let hir_id = HirId { owner: id.owner, local_id: node.parent };
-            // HIR indexing should have checked that.
-            debug_assert_ne!(id.local_id, node.parent);
-            Some(hir_id)
-        }
+        Some(self.tcx.parent_hir_id(id))
     }
 
-    #[track_caller]
     pub fn parent_id(self, hir_id: HirId) -> HirId {
-        self.opt_parent_id(hir_id)
-            .unwrap_or_else(|| bug!("No parent for node {}", self.node_to_string(hir_id)))
+        self.tcx.parent_hir_id(hir_id)
     }
 
     pub fn get_parent(self, hir_id: HirId) -> Node<'hir> {
-        self.tcx.hir_node(self.parent_id(hir_id))
+        self.tcx.parent_hir_node(hir_id)
     }
 
     pub fn find_parent(self, hir_id: HirId) -> Option<Node<'hir>> {
-        Some(self.tcx.hir_node(self.opt_parent_id(hir_id)?))
+        Some(self.tcx.parent_hir_node(hir_id))
     }
 
     pub fn get_if_local(self, id: DefId) -> Option<Node<'hir>> {
