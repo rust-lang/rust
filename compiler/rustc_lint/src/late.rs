@@ -368,10 +368,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     if late_module_passes.is_empty() {
         late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
     } else {
-        let mut passes: Vec<_> = late_module_passes
-            .iter()
-            .map(|mk_pass| (mk_pass)(tcx))
-            .collect();
+        let mut passes: Vec<_> = late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
         passes.push(Box::new(builtin_lints));
         let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
         late_lint_mod_inner(tcx, module_def_id, context, pass);
