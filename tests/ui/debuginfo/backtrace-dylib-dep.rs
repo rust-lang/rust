@@ -27,6 +27,7 @@ macro_rules! pos {
     };
 }
 
+#[collapse_debuginfo(yes)]
 macro_rules! check {
     ($($pos:expr),*) => ({
         verify(&[$($pos,)* pos!()]);

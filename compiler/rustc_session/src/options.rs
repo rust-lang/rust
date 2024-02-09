@@ -1358,10 +1358,20 @@ mod parse {
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
     ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                *slot = if bool_arg.unwrap() {
+                    CollapseMacroDebuginfo::Yes
+                } else {
+                    CollapseMacroDebuginfo::No
+                };
+                return true;
+            }
+        }
+
         *slot = match v {
-            Some("no") => CollapseMacroDebuginfo::No,
             Some("external") => CollapseMacroDebuginfo::External,
-            Some("yes") => CollapseMacroDebuginfo::Yes,
             _ => return false,
         };
         true
@@ -1460,6 +1470,9 @@ options! {
         "choose the code model to use (`rustc --print code-models` for details)"),
     codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
+    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
+        parse_collapse_macro_debuginfo, [TRACKED],
+        "set option to collapse debuginfo for macros"),
     control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1607,9 +1620,6 @@ options! {
         "show all expected values in check-cfg diagnostics (default: no)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
-    collapse_macro_debuginfo: CollapseMacroDebuginfo = (CollapseMacroDebuginfo::Unspecified,
-        parse_collapse_macro_debuginfo, [TRACKED],
-        "set option to collapse debuginfo for macros"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
         "combine CGUs into a single one"),
     coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],
@@ -1620,8 +1630,6 @@ options! {
         "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
-    debug_macros: bool = (false, parse_bool, [TRACKED],
-        "emit line numbers debug info inside macros (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],

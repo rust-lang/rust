@@ -1,11 +1,9 @@
 //@ ignore-lldb
-#![feature(collapse_debuginfo)]
 
-// Test that line numbers are not replaced with those of the outermost expansion site when the
-// `collapse_debuginfo` is active and `-Zdebug-macros` is provided, despite `#[collapse_debuginfo]`
-// being used.
+// Test that line numbers are not replaced with those of the outermost expansion site when
+// `-C collapse-macro-debuginfo=false` is passed, despite `#[collapse_debuginfo]` being used.
 
-//@ compile-flags:-g -Zdebug-macros
+//@ compile-flags:-g -C collapse-macro-debuginfo=false
 
 // === GDB TESTS ===================================================================================
 
@@ -37,7 +35,7 @@ fn four() {
     println!("four");
 }
 
-#[collapse_debuginfo]
+#[collapse_debuginfo(yes)]
 macro_rules! outer {
     ($b:block) => {
         one(); // #loc1
@@ -46,7 +44,7 @@ macro_rules! outer {
     };
 }
 
-#[collapse_debuginfo]
+#[collapse_debuginfo(yes)]
 macro_rules! inner {
     () => {
         two(); // #loc2
