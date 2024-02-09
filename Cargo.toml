@@ -180,5 +180,4 @@ print_stdout = "warn"
 print_stderr = "warn"
 
 rc_buffer = "warn"
-# FIXME enable this, we use this pattern a lot so its annoying work ...
-# str_to_string = "warn"
+str_to_string = "warn"
