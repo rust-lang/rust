@@ -675,16 +675,32 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                         ))),
                     )
                 }
-                ty::CoroutineClosure(did, _args) => {
-                    // FIXME(async_closures): Recover the proper error signature
-                    let inputs = tcx
-                        .closure_user_provided_sig(did.expect_local())
-                        .value
-                        .skip_binder()
-                        .inputs();
-
-                    let err = Ty::new_error(tcx, guar);
-                    (inputs.iter().map(|_| err).collect(), err, None)
+                ty::CoroutineClosure(did, args) => {
+                    let args = args.as_coroutine_closure();
+                    let sig = tcx.liberate_late_bound_regions(
+                        def_id.to_def_id(),
+                        args.coroutine_closure_sig(),
+                    );
+                    let self_ty = match args.kind() {
+                        ty::ClosureKind::Fn => {
+                            Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, closure_ty)
+                        }
+                        ty::ClosureKind::FnMut => {
+                            Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, closure_ty)
+                        }
+                        ty::ClosureKind::FnOnce => closure_ty,
+                    };
+                    (
+                        [self_ty].into_iter().chain(sig.tupled_inputs_ty.tuple_fields()).collect(),
+                        sig.to_coroutine(
+                            tcx,
+                            args.parent_args(),
+                            args.kind_ty(),
+                            tcx.coroutine_for_closure(*did),
+                            Ty::new_error(tcx, guar),
+                        ),
+                        None,
+                    )
                 }
                 ty::Error(_) => (vec![closure_ty, closure_ty], closure_ty, None),
                 kind => {
