@@ -170,7 +170,7 @@ fn make_ty(ty: &hir::Type, db: &dyn HirDatabase, module: hir::Module) -> ast::Ty
     let ty_str = match ty.as_adt() {
         Some(adt) => adt.name(db).display(db.upcast()).to_string(),
         None => {
-            ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_string())
+            ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_owned())
         }
     };
 

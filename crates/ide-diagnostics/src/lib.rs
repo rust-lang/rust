@@ -563,7 +563,7 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
     assert!(!id.contains(' '));
     Assist {
         id: AssistId(id, AssistKind::QuickFix),
-        label: Label::new(label.to_string()),
+        label: Label::new(label.to_owned()),
         group: None,
         target,
         source_change: None,

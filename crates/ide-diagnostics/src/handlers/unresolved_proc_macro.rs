@@ -27,7 +27,7 @@ pub(crate) fn unresolved_proc_macro(
 
     let not_expanded_message = match &d.macro_name {
         Some(name) => format!("proc macro `{name}` not expanded"),
-        None => "proc macro not expanded".to_string(),
+        None => "proc macro not expanded".to_owned(),
     };
     let severity = if config_enabled { Severity::Error } else { Severity::WeakWarning };
     let def_map = ctx.sema.db.crate_def_map(d.krate);
