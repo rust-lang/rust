@@ -1,5 +1,4 @@
-// check-fail
-// known-bug: #89196
+// check-pass
 
 // Should pass, but we normalize and check bounds before we resolve the generics
 // of the function (which we know because of the return type).

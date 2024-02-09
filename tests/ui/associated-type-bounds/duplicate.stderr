@@ -7,7 +7,7 @@ LL | struct SI1<T: Iterator<Item: Copy, Item: Send>> {
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:267:40
+  --> $DIR/duplicate.rs:264:40
    |
 LL | type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
    |                            ----------  ^^^^^^^^^^ re-bound here
@@ -15,7 +15,7 @@ LL | type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
    |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:269:44
+  --> $DIR/duplicate.rs:266:44
    |
 LL | type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
    |                                ----------  ^^^^^^^^^^ re-bound here
@@ -23,7 +23,7 @@ LL | type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
    |                                `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:271:43
+  --> $DIR/duplicate.rs:268:43
    |
 LL | type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
    |                            -------------  ^^^^^^^^^^^^^ re-bound here
@@ -523,7 +523,7 @@ LL |     type A: Iterator<Item: Copy, Item: Send>;
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:258:34
+  --> $DIR/duplicate.rs:256:34
    |
 LL |     type A: Iterator<Item: Copy, Item: Copy>;
    |                      ----------  ^^^^^^^^^^ re-bound here
@@ -531,7 +531,7 @@ LL |     type A: Iterator<Item: Copy, Item: Copy>;
    |                      `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:263:37
+  --> $DIR/duplicate.rs:260:37
    |
 LL |     type A: Iterator<Item: 'static, Item: 'static>;
    |                      -------------  ^^^^^^^^^^^^^ re-bound here
@@ -631,41 +631,7 @@ LL |     Self: Iterator<Item: 'static, Item: 'static>,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0277]: the trait bound `<<Self as TRA1>::A as Iterator>::Item: Copy` is not satisfied
-  --> $DIR/duplicate.rs:252:28
-   |
-LL |     type A: Iterator<Item: Copy, Item: Send>;
-   |                            ^^^^ the trait `Copy` is not implemented for `<<Self as TRA1>::A as Iterator>::Item`
-   |
-help: consider further restricting the associated type
-   |
-LL | trait TRA1 where <<Self as TRA1>::A as Iterator>::Item: Copy {
-   |            +++++++++++++++++++++++++++++++++++++++++++++++++
+error: aborting due to 75 previous errors
 
-error[E0277]: `<<Self as TRA1>::A as Iterator>::Item` cannot be sent between threads safely
-  --> $DIR/duplicate.rs:252:40
-   |
-LL |     type A: Iterator<Item: Copy, Item: Send>;
-   |                                        ^^^^ `<<Self as TRA1>::A as Iterator>::Item` cannot be sent between threads safely
-   |
-   = help: the trait `Send` is not implemented for `<<Self as TRA1>::A as Iterator>::Item`
-help: consider further restricting the associated type
-   |
-LL | trait TRA1 where <<Self as TRA1>::A as Iterator>::Item: Send {
-   |            +++++++++++++++++++++++++++++++++++++++++++++++++
-
-error[E0277]: the trait bound `<<Self as TRA2>::A as Iterator>::Item: Copy` is not satisfied
-  --> $DIR/duplicate.rs:258:28
-   |
-LL |     type A: Iterator<Item: Copy, Item: Copy>;
-   |                            ^^^^ the trait `Copy` is not implemented for `<<Self as TRA2>::A as Iterator>::Item`
-   |
-help: consider further restricting the associated type
-   |
-LL | trait TRA2 where <<Self as TRA2>::A as Iterator>::Item: Copy {
-   |            +++++++++++++++++++++++++++++++++++++++++++++++++
-
-error: aborting due to 78 previous errors
-
-Some errors have detailed explanations: E0277, E0282, E0719.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0282, E0719.
+For more information about an error, try `rustc --explain E0282`.

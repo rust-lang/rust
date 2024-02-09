@@ -40,6 +40,7 @@ use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
 use std::collections::BTreeMap;
+use std::ops::ControlFlow;
 
 pub use rustc_middle::traits::Reveal;
 
@@ -1614,32 +1615,44 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
     debug!("assemble_candidates_from_trait_def(..)");
+    let mut ambiguous = false;
+    selcx.for_each_item_bound(
+        obligation.predicate.self_ty(),
+        |selcx, clause, _| {
+            let Some(clause) = clause.as_projection_clause() else {
+                return ControlFlow::Continue(());
+            };
 
-    let tcx = selcx.tcx();
-    // Check whether the self-type is itself a projection.
-    // If so, extract what we know from the trait and try to come up with a good answer.
-    let bounds = match *obligation.predicate.self_ty().kind() {
-        // Excluding IATs and type aliases here as they don't have meaningful item bounds.
-        ty::Alias(ty::Projection | ty::Opaque, ref data) => {
-            tcx.item_bounds(data.def_id).instantiate(tcx, data.args)
-        }
-        ty::Infer(ty::TyVar(_)) => {
-            // If the self-type is an inference variable, then it MAY wind up
-            // being a projected type, so induce an ambiguity.
-            candidate_set.mark_ambiguous();
-            return;
-        }
-        _ => return,
-    };
+            let is_match =
+                selcx.infcx.probe(|_| selcx.match_projection_projections(obligation, clause, true));
 
-    assemble_candidates_from_predicates(
-        selcx,
-        obligation,
-        candidate_set,
-        ProjectionCandidate::TraitDef,
-        bounds.iter(),
-        true,
+            match is_match {
+                ProjectionMatchesProjection::Yes => {
+                    candidate_set.push_candidate(ProjectionCandidate::TraitDef(clause));
+
+                    if !obligation.predicate.has_non_region_infer() {
+                        // HACK: Pick the first trait def candidate for a fully
+                        // inferred predicate. This is to allow duplicates that
+                        // differ only in normalization.
+                        return ControlFlow::Break(());
+                    }
+                }
+                ProjectionMatchesProjection::Ambiguous => {
+                    candidate_set.mark_ambiguous();
+                }
+                ProjectionMatchesProjection::No => {}
+            }
+
+            ControlFlow::Continue(())
+        },
+        // `ProjectionCandidateSet` is borrowed in the above closure,
+        // so just mark ambiguous outside of the closure.
+        || ambiguous = true,
     );
+
+    if ambiguous {
+        candidate_set.mark_ambiguous();
+    }
 }
 
 /// In the case of a trait object like
