@@ -57,11 +57,7 @@ impl<'tcx> Checker<'tcx> {
     where
         F: FnMut(TyCtxt<'tcx>, LocalDefId) -> Result<(), ErrorGuaranteed>,
     {
-        let mut res = Ok(());
-        if Some(self.trait_def_id) == trait_def_id {
-            res = res.and(f(self.tcx, self.impl_def_id));
-        }
-        res
+        if Some(self.trait_def_id) == trait_def_id { f(self.tcx, self.impl_def_id) } else { Ok(()) }
     }
 }
 
