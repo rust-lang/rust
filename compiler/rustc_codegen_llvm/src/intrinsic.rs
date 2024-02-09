@@ -1985,10 +1985,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         match in_elem.kind() {
             ty::RawPtr(p) => {
-                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                assert!(!check_sized); // we are in codegen, so we shouldn't see these types
                 require!(
                     metadata.is_unit(),
                     InvalidMonomorphization::CastFatPointer { span, name, ty: in_elem }
@@ -2000,10 +1999,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
         match out_elem.kind() {
             ty::RawPtr(p) => {
-                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                assert!(!check_sized); // we are in codegen, so we shouldn't see these types
                 require!(
                     metadata.is_unit(),
                     InvalidMonomorphization::CastFatPointer { span, name, ty: out_elem }
