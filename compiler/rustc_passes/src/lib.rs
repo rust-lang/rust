@@ -10,7 +10,6 @@
 #![allow(internal_features)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
-#![feature(min_specialization)]
 #![feature(try_blocks)]
 
 #[macro_use]
