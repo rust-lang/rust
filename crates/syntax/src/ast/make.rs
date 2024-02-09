@@ -249,11 +249,11 @@ pub fn impl_(
     let gen_params = generic_params.map_or_else(String::new, |it| it.to_string());
 
     let body_newline =
-        if where_clause.is_some() && body.is_none() { "\n".to_string() } else { String::new() };
+        if where_clause.is_some() && body.is_none() { "\n".to_owned() } else { String::new() };
 
     let where_clause = match where_clause {
         Some(pr) => format!("\n{pr}\n"),
-        None => " ".to_string(),
+        None => " ".to_owned(),
     };
 
     let body = match body {
@@ -291,13 +291,13 @@ pub fn impl_trait(
 
     let body_newline =
         if (ty_where_clause.is_some() || trait_where_clause.is_some()) && body.is_none() {
-            "\n".to_string()
+            "\n".to_owned()
         } else {
             String::new()
         };
 
     let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
-        .map_or_else(|| " ".to_string(), |wc| format!("\n{}\n", wc));
+        .map_or_else(|| " ".to_owned(), |wc| format!("\n{}\n", wc));
 
     let body = match body {
         Some(bd) => bd.iter().map(|elem| elem.to_string()).join(""),
@@ -378,7 +378,7 @@ pub fn use_tree(
     alias: Option<ast::Rename>,
     add_star: bool,
 ) -> ast::UseTree {
-    let mut buf = "use ".to_string();
+    let mut buf = "use ".to_owned();
     buf += &path.syntax().to_string();
     if let Some(use_tree_list) = use_tree_list {
         format_to!(buf, "::{use_tree_list}");
@@ -444,7 +444,7 @@ pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "{\n".to_string();
+    let mut buf = "{\n".to_owned();
     for stmt in stmts.into_iter() {
         format_to!(buf, "    {stmt}\n");
     }
@@ -459,7 +459,7 @@ pub fn async_move_block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "async move {\n".to_string();
+    let mut buf = "async move {\n".to_owned();
     for stmt in stmts.into_iter() {
         format_to!(buf, "    {stmt}\n");
     }
@@ -482,7 +482,7 @@ pub fn hacky_block_expr(
     elements: impl IntoIterator<Item = crate::SyntaxElement>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "{\n".to_string();
+    let mut buf = "{\n".to_owned();
     for node_or_token in elements.into_iter() {
         match node_or_token {
             rowan::NodeOrToken::Node(n) => format_to!(buf, "    {n}\n"),

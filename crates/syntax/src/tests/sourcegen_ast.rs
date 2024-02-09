@@ -573,7 +573,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
         tokens:
             "Whitespace Comment String ByteString CString IntNumber FloatNumber Char Byte Ident"
                 .split_ascii_whitespace()
-                .map(|it| it.to_string())
+                .map(|it| it.to_owned())
                 .collect::<Vec<_>>(),
         ..Default::default()
     };
@@ -816,7 +816,7 @@ fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str
         }
     }
     if to_remove.len() == methods.len() {
-        node.traits.push(trait_name.to_string());
+        node.traits.push(trait_name.to_owned());
         node.remove_field(to_remove);
     }
 }
