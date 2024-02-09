@@ -13,6 +13,45 @@ pub enum DiffMode {
     Reverse,
 }
 
+pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
+    match mode {
+        DiffMode::Inactive => false,
+        DiffMode::Source => false,
+        DiffMode::Forward => {
+            // Doesn't recognize all illegal cases (insufficient information)
+            activity != DiffActivity::Active && activity != DiffActivity::ActiveOnly
+                && activity != DiffActivity::Duplicated && activity != DiffActivity::DuplicatedOnly
+        }
+        DiffMode::Reverse => {
+            // Doesn't recognize all illegal cases (insufficient information)
+            activity != DiffActivity::Duplicated && activity != DiffActivity::DuplicatedOnly
+             && activity != DiffActivity::Dual && activity != DiffActivity::DualOnly
+        }
+    }
+}
+
+pub fn valid_input_activities(mode: DiffMode, activity_vec: &[DiffActivity]) -> bool {
+    for &activity in activity_vec {
+        let valid = match mode {
+            DiffMode::Inactive => false,
+            DiffMode::Source => false,
+            DiffMode::Forward => {
+                // These are the only valid cases
+                activity == DiffActivity::Dual || activity == DiffActivity::DualOnly || activity == DiffActivity::Const
+            }
+            DiffMode::Reverse => {
+                // These are the only valid cases
+                activity == DiffActivity::Active || activity == DiffActivity::ActiveOnly || activity == DiffActivity::Const
+                    || activity == DiffActivity::Duplicated || activity == DiffActivity::DuplicatedOnly
+            }
+        };
+        if !valid {
+            return false;
+        }
+    }
+    true
+}
+
 #[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum DiffActivity {
