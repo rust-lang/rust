@@ -4,8 +4,6 @@ use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics;
-#[cfg(bootstrap)]
-use crate::marker::StructuralEq;
 use crate::marker::StructuralPartialEq;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
 use crate::str::FromStr;
@@ -580,10 +578,6 @@ macro_rules! nonzero_integer {
 
         #[$stability]
         impl Eq for $Ty {}
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        #[cfg(bootstrap)]
-        impl StructuralEq for $Ty {}
 
         #[$stability]
         impl PartialOrd for $Ty {

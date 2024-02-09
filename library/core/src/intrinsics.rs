@@ -947,7 +947,7 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_stable(feature = "const_assume", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_assume", since = "1.77.0")]
     #[rustc_nounwind]
     pub fn assume(b: bool);
 
@@ -2567,7 +2567,6 @@ extern "rust-intrinsic" {
     /// matter what*.
     #[rustc_const_unstable(feature = "is_val_statically_known", issue = "none")]
     #[rustc_nounwind]
-    #[cfg(not(bootstrap))]
     pub fn is_val_statically_known<T: Copy>(arg: T) -> bool;
 
     #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
@@ -2580,14 +2579,6 @@ extern "rust-intrinsic" {
 #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
 pub(crate) const fn debug_assertions() -> bool {
     cfg!(debug_assertions)
-}
-
-// FIXME: Seems using `unstable` here completely ignores `rustc_allow_const_fn_unstable`
-// and thus compiling stage0 core doesn't work.
-#[rustc_const_stable(feature = "is_val_statically_known", since = "0.0.0")]
-#[cfg(bootstrap)]
-pub const unsafe fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
-    false
 }
 
 // Some functions are defined here because they accidentally got made

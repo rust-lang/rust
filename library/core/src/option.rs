@@ -2154,7 +2154,6 @@ impl<T: PartialEq> PartialEq for Option<T> {
 ///
 /// Once that's fixed, `Option` should go back to deriving `PartialEq`, as
 /// it used to do before <https://github.com/rust-lang/rust/pull/103556>.
-/// The comment regarding this trait on the `newtype_index` macro should be removed if this is done.
 #[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 #[doc(hidden)]
 pub trait SpecOptionPartialEq: Sized {

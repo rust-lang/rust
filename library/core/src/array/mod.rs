@@ -576,7 +576,7 @@ impl<T, const N: usize> [T; N] {
     /// // We can still access the original array: it has not been moved.
     /// assert_eq!(strings.len(), 3);
     /// ```
-    #[stable(feature = "array_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "array_methods", since = "1.77.0")]
     pub fn each_ref(&self) -> [&T; N] {
         from_trusted_iterator(self.iter())
     }
@@ -595,7 +595,7 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(float_refs, [&mut 0.0, &mut 2.7, &mut -1.0]);
     /// assert_eq!(floats, [0.0, 2.7, -1.0]);
     /// ```
-    #[stable(feature = "array_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "array_methods", since = "1.77.0")]
     pub fn each_mut(&mut self) -> [&mut T; N] {
         from_trusted_iterator(self.iter_mut())
     }

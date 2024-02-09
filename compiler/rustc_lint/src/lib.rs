@@ -34,7 +34,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
-#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
+#![feature(trait_upcasting)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![allow(internal_features)]

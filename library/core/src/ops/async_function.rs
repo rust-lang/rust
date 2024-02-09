@@ -8,7 +8,7 @@ use crate::marker::Tuple;
 #[rustc_paren_sugar]
 #[fundamental]
 #[must_use = "async closures are lazy and do nothing unless called"]
-#[cfg_attr(not(bootstrap), lang = "async_fn")]
+#[lang = "async_fn"]
 pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
     /// Future returned by [`AsyncFn::async_call`].
     #[unstable(feature = "async_fn_traits", issue = "none")]
@@ -28,7 +28,7 @@ pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
 #[rustc_paren_sugar]
 #[fundamental]
 #[must_use = "async closures are lazy and do nothing unless called"]
-#[cfg_attr(not(bootstrap), lang = "async_fn_mut")]
+#[lang = "async_fn_mut"]
 pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
     /// Future returned by [`AsyncFnMut::async_call_mut`].
     #[unstable(feature = "async_fn_traits", issue = "none")]
@@ -48,7 +48,7 @@ pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
 #[rustc_paren_sugar]
 #[fundamental]
 #[must_use = "async closures are lazy and do nothing unless called"]
-#[cfg_attr(not(bootstrap), lang = "async_fn_once")]
+#[lang = "async_fn_once"]
 pub trait AsyncFnOnce<Args: Tuple> {
     /// Future returned by [`AsyncFnOnce::async_call_once`].
     #[unstable(feature = "async_fn_traits", issue = "none")]
