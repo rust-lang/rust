@@ -835,7 +835,7 @@ fn handle_result(
         // Ignore LF and CRLF difference for Windows.
         if !string_eq_ignore_newline_repr(&fmt_text, &text) {
             if std::env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0") {
-                std::fs::write(file_name, fmt_text).unwrap();
+                std::fs::write(target, fmt_text).unwrap();
                 continue;
             }
             let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);
