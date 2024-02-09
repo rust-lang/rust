@@ -779,6 +779,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    /// In coherence we have to not only care about all impls we know about, but
+    /// also consider impls which may get added in a downstream or sibling crate
+    /// or which an upstream impl may add in a minor release.
+    ///
+    /// To do so we add an ambiguous candidate in case such an unknown impl could
+    /// apply to the current goal.
     #[instrument(level = "debug", skip_all)]
     fn assemble_coherence_unknowable_candidates<G: GoalKind<'tcx>>(
         &mut self,
