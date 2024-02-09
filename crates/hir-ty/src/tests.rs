@@ -100,7 +100,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             if only_types {
                 types.insert(file_range, expected);
             } else if expected.starts_with("type: ") {
-                types.insert(file_range, expected.trim_start_matches("type: ").to_string());
+                types.insert(file_range, expected.trim_start_matches("type: ").to_owned());
             } else if expected.starts_with("expected") {
                 mismatches.insert(file_range, expected);
             } else if expected.starts_with("adjustments:") {
@@ -110,7 +110,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                         .trim_start_matches("adjustments:")
                         .trim()
                         .split(',')
-                        .map(|it| it.trim().to_string())
+                        .map(|it| it.trim().to_owned())
                         .filter(|it| !it.is_empty())
                         .collect(),
                 );
@@ -331,7 +331,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         });
         for (node, ty) in &types {
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.value.clone()) {
-                (self_param.name().unwrap().syntax().text_range(), "self".to_string())
+                (self_param.name().unwrap().syntax().text_range(), "self".to_owned())
             } else {
                 (node.value.text_range(), node.value.text().to_string().replace('\n', " "))
             };

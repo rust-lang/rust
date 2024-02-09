@@ -304,7 +304,7 @@ impl Evaluator<'_> {
         use LangItem::*;
         let mut args = args.iter();
         match it {
-            BeginPanic => Err(MirEvalError::Panic("<unknown-panic-payload>".to_string())),
+            BeginPanic => Err(MirEvalError::Panic("<unknown-panic-payload>".to_owned())),
             PanicFmt => {
                 let message = (|| {
                     let resolver = self
