@@ -47,13 +47,13 @@ jobs:
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
 
     - name: Setup path to libgccjit
-      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
+      run: echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
 
     - name: Set env
       run: |
-        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+        echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
