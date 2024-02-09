@@ -672,7 +672,7 @@ impl ItemScope {
             format_to!(
                 buf,
                 "{}:",
-                name.map_or("_".to_string(), |name| name.display(db).to_string())
+                name.map_or("_".to_owned(), |name| name.display(db).to_string())
             );
 
             if let Some((.., i)) = def.types {
