@@ -1,7 +1,7 @@
 //! Bounds are restrictions applied to some types after they've been converted into the
 //! `ty` form from the HIR.
 
-use rustc_hir::LangItem;
+use rustc_hir::{def::DefKind, LangItem};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::{def_id::DefId, Span};
 
@@ -54,15 +54,54 @@ impl<'tcx> Bounds<'tcx> {
                 .to_predicate(tcx),
             span,
         ));
-        // For `T: ~const Tr` or `T: const Tr`, we need to add an additional bound on the
-        // associated type of `<T as Tr>` and make sure that the effect is compatible.
-        if let Some(compat_val) = match constness {
+        if let Some(compat_val) = match (tcx.def_kind(defining_def_id), constness) {
             // TODO: do we need `T: const Trait` anymore?
-            ty::BoundConstness::Const => Some(tcx.consts.false_),
-            ty::BoundConstness::ConstIfConst => {
+            (_, ty::BoundConstness::Const) => Some(tcx.consts.false_),
+            // body owners that can have trait bounds
+            (DefKind::Const | DefKind::Fn | DefKind::AssocFn, ty::BoundConstness::ConstIfConst) => {
                 Some(tcx.expected_host_effect_param_for_body(defining_def_id))
             }
-            ty::BoundConstness::NotConst => None,
+
+            (_, ty::BoundConstness::NotConst) => None,
+
+            // if the defining_def_id is a trait, we wire it differently than others by equating the effects.
+            (
+                kind @ (DefKind::Trait | DefKind::Impl { of_trait: true }),
+                ty::BoundConstness::ConstIfConst,
+            ) => {
+                let trait_we_are_in = if let DefKind::Trait = kind {
+                    ty::TraitRef::identity(tcx, defining_def_id)
+                } else {
+                    tcx.impl_trait_ref(defining_def_id).unwrap().instantiate_identity()
+                };
+                // create a new projection type `<T as TraitForBound>::Effects`
+                let assoc = tcx.associated_type_for_effects(trait_ref.def_id()).unwrap();
+                let self_ty = Ty::new_projection(tcx, assoc, trait_ref.skip_binder().args);
+                // we might have `~const Tr` where `Tr` isn't a `#[const_trait]`.
+                let Some(assoc_def) = tcx.associated_type_for_effects(trait_we_are_in.def_id)
+                else {
+                    tcx.dcx().span_delayed_bug(
+                        span,
+                        "`~const` bound trait has no effect param yet no errors encountered?",
+                    );
+                    return;
+                };
+                let fx_ty_trait_we_are_in =
+                    Ty::new_projection(tcx, assoc_def, trait_we_are_in.args);
+                // make `<T as TraitForBound>::Effects: EffectsEq<<Self as TraitWeAreIn>::Effects>`
+                let new_trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::EffectsEq, Some(span)),
+                    [self_ty, fx_ty_trait_we_are_in],
+                );
+                self.clauses.push((trait_ref.rebind(new_trait_ref).to_predicate(tcx), span));
+                return;
+            }
+            // probably illegal in this position.
+            (_, ty::BoundConstness::ConstIfConst) => {
+                tcx.dcx().span_delayed_bug(span, "invalid `~const` encountered");
+                return;
+            }
         } {
             // create a new projection type `<T as Tr>::Effects`
             let assoc = tcx.associated_type_for_effects(trait_ref.def_id()).unwrap();

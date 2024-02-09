@@ -1015,6 +1015,7 @@ pub trait FnPtr: Copy + Clone {
 )]
 #[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
 #[cfg(not(bootstrap))]
+// TODO docs
 pub mod effects {
     #[lang = "EffectsNoRuntime"]
     pub struct NoRuntime;
@@ -1029,4 +1030,10 @@ pub mod effects {
     impl Compat<false> for NoRuntime {}
     impl Compat<true> for Runtime {}
     impl<const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
+
+    #[lang = "EffectsEq"]
+    pub trait EffectsEq<T: ?Sized> {}
+    impl EffectsEq<NoRuntime> for NoRuntime {}
+    impl EffectsEq<Maybe> for Maybe {}
+    impl EffectsEq<Runtime> for Runtime {}
 }

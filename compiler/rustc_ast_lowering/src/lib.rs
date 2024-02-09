@@ -140,14 +140,19 @@ struct LoweringContext<'a, 'hir> {
     generics_def_id_map: Vec<LocalDefIdMap<LocalDefId>>,
 
     host_param_id: Option<LocalDefId>,
+    ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
+    fn new(
+        tcx: TyCtxt<'hir>,
+        resolver: &'a mut ResolverAstLowering,
+        ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
+    ) -> Self {
         Self {
             // Pseudo-globals.
             tcx,
-            resolver: resolver,
+            resolver,
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -183,6 +188,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
             generics_def_id_map: Default::default(),
             host_param_id: None,
+            ast_index,
         }
     }
 

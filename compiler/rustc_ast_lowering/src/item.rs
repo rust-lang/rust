@@ -55,7 +55,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::OwnerNode<'hir>,
     ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver);
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver, self.ast_index);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
@@ -596,10 +596,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let constness = match parent_item.kind {
             hir::ItemKind::Impl(impl_) => {
                 self.is_in_trait_impl = impl_.of_trait.is_some();
-                match impl_.constness {
-                    // TODO bad span
-                    hir::Constness::Const => Const::Yes(impl_.self_ty.span),
-                    hir::Constness::NotConst => Const::No,
+                // N.B. the impl should always lower to methods that have `const host: bool` params if the trait
+                // is const. It doesn't matter whether the `impl` itself is const. Disallowing const fn from
+                // calling non-const impls are done through associated types.
+                if let Some(def_id) = impl_.of_trait.and_then(|tr| tr.trait_def_id()) {
+                    if let Some(local_def) = def_id.as_local() {
+                        match &self.ast_index[local_def] {
+                            AstOwner::Item(ast::Item { attrs, .. }) => attrs
+                                .iter()
+                                .find(|attr| attr.has_name(sym::const_trait))
+                                .map_or(Const::No, |attr| Const::Yes(attr.span)),
+                            _ => Const::No,
+                        }
+                    } else {
+                        self.tcx
+                            .get_attr(def_id, sym::const_trait)
+                            .map_or(Const::No, |attr| Const::Yes(attr.span))
+                    }
+                } else {
+                    Const::No
                 }
             }
             hir::ItemKind::Trait(_, _, _, _, _) => parent_hir

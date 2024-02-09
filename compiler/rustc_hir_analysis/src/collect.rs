@@ -1532,6 +1532,7 @@ fn impl_trait_header(
                 tcx.is_const_trait_impl_raw(def_id.to_def_id()),
                 ast_trait_ref,
             ) {
+                // TODO this is wrong
                 // we have a const impl, but for a trait without `#[const_trait]`, so
                 // without the host param. If we continue with the HIR trait ref, we get
                 // ICEs for generic arg count mismatch. We do a little HIR editing to

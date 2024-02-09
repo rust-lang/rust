@@ -193,6 +193,7 @@ symbols! {
         DoubleEndedIterator,
         Duration,
         EffectsCompat,
+        EffectsEq,
         EffectsMaybe,
         EffectsNoRuntime,
         EffectsRuntime,
