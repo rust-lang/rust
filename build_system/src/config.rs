@@ -23,12 +23,8 @@ impl Channel {
     }
 }
 
-fn failed_config_parsing(err: &str) -> Result<ConfigFile, String> {
-    Err(format!(
-        "Failed to parse `{}`: {}",
-        ConfigFile::CONFIG_FILE,
-        err
-    ))
+fn failed_config_parsing(config_file: &str, err: &str) -> Result<ConfigFile, String> {
+    Err(format!("Failed to parse `{}`: {}", config_file, err))
 }
 
 #[derive(Default)]
@@ -38,13 +34,12 @@ pub struct ConfigFile {
 }
 
 impl ConfigFile {
-    pub const CONFIG_FILE: &'static str = "config.toml";
-
-    pub fn new() -> Result<Self, String> {
-        let content = fs::read_to_string(Self::CONFIG_FILE).map_err(|_| {
+    pub fn new(config_file: Option<&str>) -> Result<Self, String> {
+        let config_file = config_file.unwrap_or("config.toml");
+        let content = fs::read_to_string(config_file).map_err(|_| {
             format!(
                 "Failed to read `{}`. Take a look at `Readme.md` to see how to set up the project",
-                Self::CONFIG_FILE,
+                config_file,
             )
         })?;
         let toml = Toml::parse(&content).map_err(|err| {
@@ -61,19 +56,23 @@ impl ConfigFile {
                     config.gcc_path = Some(value.as_str().to_string())
                 }
                 ("gcc-path", _) => {
-                    return failed_config_parsing("Expected a string for `gcc-path`")
+                    return failed_config_parsing(config_file, "Expected a string for `gcc-path`")
                 }
                 ("download-gccjit", TomlValue::Boolean(value)) => {
                     config.download_gccjit = Some(*value)
                 }
                 ("download-gccjit", _) => {
-                    return failed_config_parsing("Expected a boolean for `download-gccjit`")
+                    return failed_config_parsing(
+                        config_file,
+                        "Expected a boolean for `download-gccjit`",
+                    )
                 }
-                _ => return failed_config_parsing(&format!("Unknown key `{}`", key)),
+                _ => return failed_config_parsing(config_file, &format!("Unknown key `{}`", key)),
             }
         }
         if config.gcc_path.is_none() && config.download_gccjit.is_none() {
             return failed_config_parsing(
+                config_file,
                 "At least one of `gcc-path` or `download-gccjit` value must be set",
             );
         }
@@ -104,6 +103,7 @@ pub struct ConfigInfo {
     pub cg_backend_path: String,
     pub sysroot_path: String,
     pub gcc_path: String,
+    config_file: Option<String>,
 }
 
 impl ConfigInfo {
@@ -135,6 +135,14 @@ impl ConfigInfo {
                 }
                 _ => return Err("Expected a value after `--out-dir`, found nothing".to_string()),
             },
+            "--config-file" => match args.next() {
+                Some(arg) if !arg.is_empty() => {
+                    self.config_file = Some(arg.to_string());
+                }
+                _ => {
+                    return Err("Expected a value after `--config-file`, found nothing".to_string())
+                }
+            },
             "--release-sysroot" => self.sysroot_release_channel = true,
             "--release" => self.channel = Channel::Release,
             "--sysroot-panic-abort" => self.sysroot_panic_abort = true,
@@ -152,12 +160,15 @@ impl ConfigInfo {
     }
 
     pub fn setup_gcc_path(&mut self, override_gcc_path: Option<&str>) -> Result<(), String> {
-        let ConfigFile { gcc_path, .. } = ConfigFile::new()?;
+        let ConfigFile { gcc_path, .. } = ConfigFile::new(self.config_file.as_deref())?;
 
         self.gcc_path = match override_gcc_path {
             Some(path) => {
                 if gcc_path.is_some() {
-                    println!("overriding setting from `{}`", ConfigFile::CONFIG_FILE);
+                    println!(
+                        "overriding setting from `{}`",
+                        self.config_file.as_deref().unwrap_or("config.toml")
+                    );
                 }
                 path.to_string()
             }
@@ -168,7 +179,7 @@ impl ConfigInfo {
                     None => {
                         return Err(format!(
                             "missing `gcc-path` value from `{}`",
-                            ConfigFile::CONFIG_FILE
+                            self.config_file.as_deref().unwrap_or("config.toml"),
                         ))
                     }
                 }
@@ -363,7 +374,8 @@ impl ConfigInfo {
     --out-dir              : Location where the files will be generated
     --release              : Build in release mode
     --release-sysroot      : Build sysroot in release mode
-    --sysroot-panic-abort  : Build the sysroot without unwinding support."
+    --sysroot-panic-abort  : Build the sysroot without unwinding support
+    --config-file          : Location of the config file to be used"
         );
     }
 }
