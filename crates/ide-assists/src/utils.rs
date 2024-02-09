@@ -1,12 +1,10 @@
 //! Assorted functions shared by several assists.
 
-use std::ops;
-
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
 use ide_db::{
     famous_defs::FamousDefs, path_transform::PathTransform,
-    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
+    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
@@ -217,43 +215,6 @@ pub fn add_trait_assoc_items_to_impl(
     first_item.unwrap()
 }
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum Cursor<'a> {
-    Replace(&'a SyntaxNode),
-    Before(&'a SyntaxNode),
-}
-
-impl<'a> Cursor<'a> {
-    fn node(self) -> &'a SyntaxNode {
-        match self {
-            Cursor::Replace(node) | Cursor::Before(node) => node,
-        }
-    }
-}
-
-pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor<'_>) -> String {
-    assert!(cursor.node().ancestors().any(|it| it == *node));
-    let range = cursor.node().text_range() - node.text_range().start();
-    let range: ops::Range<usize> = range.into();
-
-    let mut placeholder = cursor.node().to_string();
-    escape(&mut placeholder);
-    let tab_stop = match cursor {
-        Cursor::Replace(placeholder) => format!("${{0:{placeholder}}}"),
-        Cursor::Before(placeholder) => format!("$0{placeholder}"),
-    };
-
-    let mut buf = node.to_string();
-    buf.replace_range(range, &tab_stop);
-    return buf;
-
-    fn escape(buf: &mut String) {
-        stdx::replace(buf, '{', r"\{");
-        stdx::replace(buf, '}', r"\}");
-        stdx::replace(buf, '$', r"\$");
-    }
-}
-
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
     node.children_with_tokens()
         .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
@@ -445,15 +406,6 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     false
 }
 
-/// Find the start of the `impl` block for the given `ast::Impl`.
-//
-// FIXME: this partially overlaps with `find_struct_impl`
-pub(crate) fn find_impl_block_start(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
-    buf.push('\n');
-    let start = impl_def.assoc_item_list().and_then(|it| it.l_curly_token())?.text_range().end();
-    Some(start)
-}
-
 /// Find the end of the `impl` block for the given `ast::Impl`.
 //
 // FIXME: this partially overlaps with `find_struct_impl`
@@ -470,6 +422,7 @@ pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Opti
 
 /// Generates the surrounding `impl Type { <code> }` including type and lifetime
 /// parameters.
+// FIXME: migrate remaining uses to `generate_impl`
 pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
     generate_impl_text_inner(adt, None, true, code)
 }
@@ -478,6 +431,7 @@ pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
 /// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
+// FIXME: migrate remaining uses to `generate_trait_impl`
 pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
     generate_impl_text_inner(adt, Some(trait_text), true, code)
 }
@@ -486,6 +440,7 @@ pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &
 /// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
+// FIXME: migrate remaining uses to `generate_trait_impl_intransitive`
 pub(crate) fn generate_trait_impl_text_intransitive(
     adt: &ast::Adt,
     trait_text: &str,
@@ -516,7 +471,7 @@ fn generate_impl_text_inner(
                         // Add the current trait to `bounds` if the trait is transitive,
                         // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
                         if trait_is_transitive {
-                            bounds.push(make::type_bound(trait_));
+                            bounds.push(make::type_bound_text(trait_));
                         }
                     };
                     // `{ty_param}: {bounds}`
@@ -574,6 +529,101 @@ fn generate_impl_text_inner(
     buf
 }
 
+/// Generates the corresponding `impl Type {}` including type and lifetime
+/// parameters.
+pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
+    generate_impl_inner(adt, None, true)
+}
+
+/// Generates the corresponding `impl <trait> for Type {}` including type
+/// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
+///
+/// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
+pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
+    generate_impl_inner(adt, Some(trait_), true)
+}
+
+/// Generates the corresponding `impl <trait> for Type {}` including type
+/// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
+///
+/// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
+pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
+    generate_impl_inner(adt, Some(trait_), false)
+}
+
+fn generate_impl_inner(
+    adt: &ast::Adt,
+    trait_: Option<ast::Type>,
+    trait_is_transitive: bool,
+) -> ast::Impl {
+    // Ensure lifetime params are before type & const params
+    let generic_params = adt.generic_param_list().map(|generic_params| {
+        let lifetime_params =
+            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
+        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
+            match param {
+                ast::TypeOrConstParam::Type(param) => {
+                    let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
+                    param.remove_default();
+                    let mut bounds =
+                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
+                    if let Some(trait_) = &trait_ {
+                        // Add the current trait to `bounds` if the trait is transitive,
+                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
+                        if trait_is_transitive {
+                            bounds.push(make::type_bound(trait_.clone()));
+                        }
+                    };
+                    // `{ty_param}: {bounds}`
+                    let param =
+                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    ast::GenericParam::TypeParam(param)
+                }
+                ast::TypeOrConstParam::Const(param) => {
+                    let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
+                    param.remove_default();
+                    ast::GenericParam::ConstParam(param)
+                }
+            }
+        });
+
+        make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
+    });
+    let generic_args =
+        generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
+    let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
+
+    let impl_ = match trait_ {
+        Some(trait_) => make::impl_trait(
+            false,
+            None,
+            None,
+            generic_params,
+            generic_args,
+            false,
+            trait_,
+            ty,
+            None,
+            adt.where_clause(),
+            None,
+        ),
+        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), None),
+    }
+    .clone_for_update();
+
+    // Copy any cfg attrs from the original adt
+    let cfg_attrs = adt
+        .attrs()
+        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
+    for attr in cfg_attrs {
+        impl_.add_attr(attr.clone_for_update());
+    }
+
+    impl_
+}
+
 pub(crate) fn add_method_to_adt(
     builder: &mut SourceChangeBuilder,
     adt: &ast::Adt,
@@ -620,8 +670,8 @@ enum ReferenceConversionType {
 }
 
 impl ReferenceConversion {
-    pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> String {
-        match self.conversion {
+    pub(crate) fn convert_type(&self, db: &dyn HirDatabase) -> ast::Type {
+        let ty = match self.conversion {
             ReferenceConversionType::Copy => self.ty.display(db).to_string(),
             ReferenceConversionType::AsRefStr => "&str".to_string(),
             ReferenceConversionType::AsRefSlice => {
@@ -647,21 +697,25 @@ impl ReferenceConversion {
                     type_arguments.next().unwrap().display(db).to_string();
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
-        }
+        };
+
+        make::ty(&ty)
     }
 
-    pub(crate) fn getter(&self, field_name: String) -> String {
+    pub(crate) fn getter(&self, field_name: String) -> ast::Expr {
+        let expr = make::expr_field(make::ext::expr_self(), &field_name);
+
         match self.conversion {
-            ReferenceConversionType::Copy => format!("self.{field_name}"),
+            ReferenceConversionType::Copy => expr,
             ReferenceConversionType::AsRefStr
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
             | ReferenceConversionType::Result => {
                 if self.impls_deref {
-                    format!("&self.{field_name}")
+                    make::expr_ref(expr, false)
                 } else {
-                    format!("self.{field_name}.as_ref()")
+                    make::expr_method_call(expr, make::name_ref("as_ref"), make::arg_list([]))
                 }
             }
         }

@@ -1513,9 +1513,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> Ctx<T> {
-    $0
-}
+impl<T: Clone> Ctx<T> {$0}
 "#####,
     )
 }
@@ -1603,7 +1601,9 @@ struct Ctx<T: Clone> {
 }
 
 impl<T: Clone> Ctx<T> {
-    fn $0new(data: T) -> Self { Self { data } }
+    fn $0new(data: T) -> Self {
+        Self { data }
+    }
 }
 "#####,
     )
@@ -1702,9 +1702,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> $0 for Ctx<T> {
-
-}
+impl<T: Clone> ${0:_} for Ctx<T> {}
 "#####,
     )
 }

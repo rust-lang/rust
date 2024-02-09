@@ -68,6 +68,9 @@ pub mod ext {
     pub fn expr_ty_new(ty: &ast::Type) -> ast::Expr {
         expr_from_text(&format!("{ty}::new()"))
     }
+    pub fn expr_self() -> ast::Expr {
+        expr_from_text("self")
+    }
 
     pub fn zero_number() -> ast::Expr {
         expr_from_text("0")
@@ -236,23 +239,20 @@ fn merge_where_clause(
 
 pub fn impl_(
     generic_params: Option<ast::GenericParamList>,
-    generic_args: Option<ast::GenericParamList>,
+    generic_args: Option<ast::GenericArgList>,
     path_type: ast::Type,
     where_clause: Option<ast::WhereClause>,
     body: Option<Vec<either::Either<ast::Attr, ast::AssocItem>>>,
 ) -> ast::Impl {
-    let (gen_params, tr_gen_args) = match (generic_params, generic_args) {
-        (None, None) => (String::new(), String::new()),
-        (None, Some(args)) => (String::new(), args.to_generic_args().to_string()),
-        (Some(params), None) => (params.to_string(), params.to_generic_args().to_string()),
-        (Some(params), Some(args)) => match merge_gen_params(Some(params.clone()), Some(args)) {
-            Some(merged) => (params.to_string(), merged.to_generic_args().to_string()),
-            None => (params.to_string(), String::new()),
-        },
-    };
+    let gen_args = generic_args.map_or_else(String::new, |it| it.to_string());
+
+    let gen_params = generic_params.map_or_else(String::new, |it| it.to_string());
+
+    let body_newline =
+        if where_clause.is_some() && body.is_none() { "\n".to_string() } else { String::new() };
 
     let where_clause = match where_clause {
-        Some(pr) => pr.to_string(),
+        Some(pr) => format!("\n{pr}\n"),
         None => " ".to_string(),
     };
 
@@ -261,7 +261,9 @@ pub fn impl_(
         None => String::new(),
     };
 
-    ast_from_text(&format!("impl{gen_params} {path_type}{tr_gen_args}{where_clause}{{{}}}", body))
+    ast_from_text(&format!(
+        "impl{gen_params} {path_type}{gen_args}{where_clause}{{{body_newline}{body}}}"
+    ))
 }
 
 pub fn impl_trait(
@@ -282,12 +284,17 @@ pub fn impl_trait(
     let trait_gen_args = trait_gen_args.map(|args| args.to_string()).unwrap_or_default();
     let type_gen_args = type_gen_args.map(|args| args.to_string()).unwrap_or_default();
 
-    let gen_params = match merge_gen_params(trait_gen_params, type_gen_params) {
-        Some(pars) => pars.to_string(),
-        None => String::new(),
-    };
+    let gen_params = merge_gen_params(trait_gen_params, type_gen_params)
+        .map_or_else(String::new, |it| it.to_string());
 
     let is_negative = if is_negative { "! " } else { "" };
+
+    let body_newline =
+        if (ty_where_clause.is_some() || trait_where_clause.is_some()) && body.is_none() {
+            "\n".to_string()
+        } else {
+            String::new()
+        };
 
     let where_clause = merge_where_clause(ty_where_clause, trait_where_clause)
         .map_or_else(|| " ".to_string(), |wc| format!("\n{}\n", wc));
@@ -297,7 +304,7 @@ pub fn impl_trait(
         None => String::new(),
     };
 
-    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{}}}" , body))
+    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body_newline}{body}}}"))
 }
 
 pub fn impl_trait_type(bounds: ast::TypeBoundList) -> ast::ImplTraitType {
@@ -903,7 +910,12 @@ pub fn trait_(
     ast_from_text(&text)
 }
 
-pub fn type_bound(bound: &str) -> ast::TypeBound {
+// FIXME: remove when no one depends on `generate_impl_text_inner`
+pub fn type_bound_text(bound: &str) -> ast::TypeBound {
+    ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
+}
+
+pub fn type_bound(bound: ast::Type) -> ast::TypeBound {
     ast_from_text(&format!("fn f<T: {bound}>() {{ }}"))
 }
 

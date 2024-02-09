@@ -161,13 +161,13 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     Some(impl_def) => edit.make_mut(impl_def),
                     None => {
                         let name = &strukt_name.to_string();
-                        let params = strukt.generic_param_list();
-                        let ty_params = params;
+                        let ty_params = strukt.generic_param_list();
+                        let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
                         let where_clause = strukt.where_clause();
 
                         let impl_def = make::impl_(
                             ty_params,
-                            None,
+                            ty_args,
                             make::ty_path(make::ext::ident_path(name)),
                             where_clause,
                             None,
