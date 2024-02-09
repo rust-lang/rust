@@ -1,4 +1,6 @@
 use super::alloc::*;
+use super::time::*;
+use crate::time::Duration;
 
 #[test]
 fn align() {
@@ -18,4 +20,22 @@ fn align() {
             }
         }
     }
+}
+
+#[test]
+fn epoch() {
+    let t = r_efi::system::Time {
+        year: 1970,
+        month: 1,
+        day: 1,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        nanosecond: 0,
+        timezone: r_efi::efi::UNSPECIFIED_TIMEZONE,
+        daylight: 0,
+        pad1: 0,
+        pad2: 0,
+    };
+    assert_eq!(system_time_internal::uefi_time_to_duration(t), Duration::new(0, 0));
 }
