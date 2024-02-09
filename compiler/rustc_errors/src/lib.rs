@@ -428,10 +428,14 @@ pub struct DiagCtxt {
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
 
-    /// The number of lint errors that have been emitted, including duplicates.
-    lint_err_count: usize,
-    /// The number of non-lint errors that have been emitted, including duplicates.
-    err_count: usize,
+    /// The error guarantees from all emitted errors. The length gives the error count.
+    err_guars: Vec<ErrorGuaranteed>,
+    /// The error guarantee from all emitted lint errors. The length gives the
+    /// lint error count.
+    lint_err_guars: Vec<ErrorGuaranteed>,
+    /// The delayed bugs and their error guarantees.
+    delayed_bugs: Vec<(DelayedDiagnostic, ErrorGuaranteed)>,
+    good_path_delayed_bugs: Vec<DelayedDiagnostic>,
 
     /// The number of stashed errors. Unlike the other counts, this can go up
     /// and down, so it doesn't guarantee anything.
@@ -447,8 +451,6 @@ struct DiagCtxtInner {
     has_printed: bool,
 
     emitter: Box<DynEmitter>,
-    delayed_bugs: Vec<DelayedDiagnostic>,
-    good_path_delayed_bugs: Vec<DelayedDiagnostic>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
     /// This is used for the `good_path_delayed_bugs` check.
     suppressed_expected_diag: bool,
@@ -560,7 +562,7 @@ impl Drop for DiagCtxtInner {
     fn drop(&mut self) {
         self.emit_stashed_diagnostics();
 
-        if !self.has_errors() {
+        if self.err_guars.is_empty() {
             self.flush_delayed(DelayedBugKind::Normal)
         }
 
@@ -604,15 +606,15 @@ impl DiagCtxt {
         Self {
             inner: Lock::new(DiagCtxtInner {
                 flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
-                lint_err_count: 0,
-                err_count: 0,
+                err_guars: Vec::new(),
+                lint_err_guars: Vec::new(),
+                delayed_bugs: Vec::new(),
+                good_path_delayed_bugs: Vec::new(),
                 stashed_err_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
                 has_printed: false,
                 emitter,
-                delayed_bugs: Vec::new(),
-                good_path_delayed_bugs: Vec::new(),
                 suppressed_expected_diag: false,
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
@@ -661,14 +663,14 @@ impl DiagCtxt {
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
         let mut inner = self.inner.borrow_mut();
-        inner.lint_err_count = 0;
-        inner.err_count = 0;
         inner.stashed_err_count = 0;
         inner.deduplicated_err_count = 0;
         inner.deduplicated_warn_count = 0;
         inner.has_printed = false;
 
         // actually free the underlying memory (which `clear` would not do)
+        inner.err_guars = Default::default();
+        inner.lint_err_guars = Default::default();
         inner.delayed_bugs = Default::default();
         inner.good_path_delayed_bugs = Default::default();
         inner.taught_diagnostics = Default::default();
@@ -932,7 +934,7 @@ impl DiagCtxt {
     /// This excludes lint errors, delayed bugs, and stashed errors.
     #[inline]
     pub fn err_count(&self) -> usize {
-        self.inner.borrow().err_count
+        self.inner.borrow().err_guars.len()
     }
 
     /// This excludes normal errors, lint errors and delayed bugs. Unless
@@ -946,36 +948,19 @@ impl DiagCtxt {
 
     /// This excludes lint errors, delayed bugs, and stashed errors.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors().then(|| {
-            // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
-            #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_error_guaranteed()
-        })
+        self.inner.borrow().has_errors()
     }
 
     /// This excludes delayed bugs and stashed errors. Unless absolutely
     /// necessary, prefer `has_errors` to this method.
     pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        let inner = self.inner.borrow();
-        let result = inner.has_errors() || inner.lint_err_count > 0;
-        result.then(|| {
-            // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
-            #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_error_guaranteed()
-        })
+        self.inner.borrow().has_errors_or_lint_errors()
     }
 
     /// This excludes stashed errors. Unless absolutely necessary, prefer
     /// `has_errors` or `has_errors_or_lint_errors` to this method.
     pub fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        let inner = self.inner.borrow();
-        let result =
-            inner.has_errors() || inner.lint_err_count > 0 || !inner.delayed_bugs.is_empty();
-        result.then(|| {
-            // FIXME(nnethercote) find a way to store an `ErrorGuaranteed`.
-            #[allow(deprecated)]
-            ErrorGuaranteed::unchecked_error_guaranteed()
-        })
+        self.inner.borrow().has_errors_or_lint_errors_or_delayed_bugs()
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
@@ -1055,7 +1040,7 @@ impl DiagCtxt {
     pub fn abort_if_errors(&self) {
         let mut inner = self.inner.borrow_mut();
         inner.emit_stashed_diagnostics();
-        if inner.has_errors() {
+        if !inner.err_guars.is_empty() {
             FatalError.raise();
         }
     }
@@ -1175,8 +1160,21 @@ impl DiagCtxt {
     ) {
         let mut inner = self.inner.borrow_mut();
 
+        // This "error" is an odd duck.
+        // - It's only produce with JSON output.
+        // - It's not emitted the usual way, via `emit_diagnostic`.
+        // - The `$message_type` field is "unused_externs" rather than the usual
+        //   "diagnosic".
+        //
+        // We count it as a lint error because it has a lint level. The value
+        // of `loud` (which comes from "unused-externs" or
+        // "unused-externs-silent"), also affects whether it's treated like a
+        // hard error or not.
         if loud && lint_level.is_error() {
-            inner.lint_err_count += 1;
+            // This `unchecked_error_guaranteed` is valid. It is where the
+            // `ErrorGuaranteed` for unused_extern errors originates.
+            #[allow(deprecated)]
+            inner.lint_err_guars.push(ErrorGuaranteed::unchecked_error_guaranteed());
             inner.panic_if_treat_err_as_bug();
         }
 
@@ -1236,7 +1234,7 @@ impl DiagCtxt {
 impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) {
-        let has_errors = self.has_errors();
+        let has_errors = !self.err_guars.is_empty();
         for (_, diag) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
@@ -1298,9 +1296,13 @@ impl DiagCtxtInner {
                 // when an error is first emitted, also), but maybe there's a case
                 // in which that's not sound? otherwise this is really inefficient.
                 let backtrace = std::backtrace::Backtrace::capture();
-                self.delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
+                // This `unchecked_error_guaranteed` is valid. It is where the
+                // `ErrorGuaranteed` for delayed bugs originates.
                 #[allow(deprecated)]
-                return Some(ErrorGuaranteed::unchecked_error_guaranteed());
+                let guar = ErrorGuaranteed::unchecked_error_guaranteed();
+                self.delayed_bugs
+                    .push((DelayedDiagnostic::with_backtrace(diagnostic, backtrace), guar));
+                return Some(guar);
             }
             GoodPathDelayedBug => {
                 let backtrace = std::backtrace::Backtrace::capture();
@@ -1334,7 +1336,6 @@ impl DiagCtxtInner {
                 !self.emitted_diagnostics.insert(diagnostic_hash)
             };
 
-            let level = diagnostic.level;
             let is_error = diagnostic.is_error();
             let is_lint = diagnostic.is_lint.is_some();
 
@@ -1373,17 +1374,17 @@ impl DiagCtxtInner {
             }
 
             if is_error {
+                // This `unchecked_error_guaranteed` is valid. It is where the
+                // `ErrorGuaranteed` for errors and lint errors originates.
+                #[allow(deprecated)]
+                let guar = ErrorGuaranteed::unchecked_error_guaranteed();
+                guaranteed = Some(guar);
                 if is_lint {
-                    self.lint_err_count += 1;
+                    self.lint_err_guars.push(guar);
                 } else {
-                    self.err_count += 1;
+                    self.err_guars.push(guar);
                 }
                 self.panic_if_treat_err_as_bug();
-            }
-
-            #[allow(deprecated)]
-            if level == Level::Error {
-                guaranteed = Some(ErrorGuaranteed::unchecked_error_guaranteed());
             }
         });
 
@@ -1391,18 +1392,29 @@ impl DiagCtxtInner {
     }
 
     fn treat_err_as_bug(&self) -> bool {
-        self.flags.treat_err_as_bug.is_some_and(|c| self.err_count + self.lint_err_count >= c.get())
+        self.flags
+            .treat_err_as_bug
+            .is_some_and(|c| self.err_guars.len() + self.lint_err_guars.len() >= c.get())
     }
 
     // Use this one before incrementing `err_count`.
     fn treat_next_err_as_bug(&self) -> bool {
         self.flags
             .treat_err_as_bug
-            .is_some_and(|c| self.err_count + self.lint_err_count + 1 >= c.get())
+            .is_some_and(|c| self.err_guars.len() + self.lint_err_guars.len() + 1 >= c.get())
     }
 
-    fn has_errors(&self) -> bool {
-        self.err_count > 0
+    fn has_errors(&self) -> Option<ErrorGuaranteed> {
+        self.err_guars.get(0).copied()
+    }
+
+    fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
+        self.has_errors().or_else(|| self.lint_err_guars.get(0).copied())
+    }
+
+    fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.has_errors_or_lint_errors()
+            .or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
     fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
@@ -1412,7 +1424,7 @@ impl DiagCtxtInner {
     fn flush_delayed(&mut self, kind: DelayedBugKind) {
         let (bugs, note1) = match kind {
             DelayedBugKind::Normal => (
-                std::mem::take(&mut self.delayed_bugs),
+                std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect(),
                 "no errors encountered even though delayed bugs were created",
             ),
             DelayedBugKind::GoodPath => (
@@ -1477,7 +1489,7 @@ impl DiagCtxtInner {
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
             let n = self.flags.treat_err_as_bug.map(|c| c.get()).unwrap();
-            assert_eq!(n, self.err_count + self.lint_err_count);
+            assert_eq!(n, self.err_guars.len() + self.lint_err_guars.len());
             if n == 1 {
                 panic!("aborting due to `-Z treat-err-as-bug=1`");
             } else {
