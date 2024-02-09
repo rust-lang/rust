@@ -5,11 +5,11 @@
 //use crate::util::check_autodiff;
 
 use crate::errors;
-use rustc_ast::FnRetTy;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::*;
+use rustc_ast::FnRetTy;
 use rustc_ast::{self as ast, FnHeader, FnSig, Generics, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_ast::{BindingAnnotation, ByRef};
 use rustc_ast::{Fn, ItemKind, PatKind, Stmt, TyKind, Unsafe};

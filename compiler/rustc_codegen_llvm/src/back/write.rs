@@ -702,7 +702,6 @@ pub(crate) unsafe fn enzyme_ad(
     diag_handler: &DiagCtxt,
     item: AutoDiffItem,
 ) -> Result<(), FatalError> {
-    dbg!("cg_llvm enzyme_ad");
     let autodiff_mode = item.attrs.mode;
     let rust_name = item.source;
     let rust_name2 = &item.target;
@@ -743,6 +742,7 @@ pub(crate) unsafe fn enzyme_ad(
     };
     let src_num_args = llvm::LLVMCountParams(src_fnc);
     let target_num_args = llvm::LLVMCountParams(target_fnc);
+    // A really simple check
     assert!(src_num_args <= target_num_args);
 
     // create enzyme typetrees
@@ -820,7 +820,6 @@ pub(crate) unsafe fn differentiate(
     _typetrees: FxHashMap<String, DiffTypeTree>,
     _config: &ModuleConfig,
 ) -> Result<(), FatalError> {
-    dbg!("cg_llvm differentiate");
     dbg!(&diff_items);
 
     let llmod = module.module_llvm.llmod();

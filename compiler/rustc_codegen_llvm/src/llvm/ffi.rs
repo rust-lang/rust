@@ -936,7 +936,6 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         _ => panic!("Invalid return activity"),
     };
 
-    //assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
 
     dbg!(&fnc);
@@ -971,7 +970,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         input_activity.len(), // constant arguments
         type_analysis,        // type analysis struct
         primary_ret as u8,
-        diff_ret as u8,                   //0
+        diff_ret as u8,                           //0
         CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
         1,                                        // vector mode width
         1,                                        // free memory

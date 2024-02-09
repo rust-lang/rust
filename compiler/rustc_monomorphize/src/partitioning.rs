@@ -258,10 +258,6 @@ where
         //if visibility == Visibility::Hidden && can_be_internalized {
         let autodiff_active =
             characteristic_def_id.map(|x| cx.tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
-        if autodiff_active {
-            dbg!("place_mono_items: autodiff_active");
-            dbg!(&mono_item);
-        }
 
         if !autodiff_active && visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
@@ -1188,7 +1184,6 @@ fn collect_and_partition_mono_items(
                     }
                     _ => None,
                 });
-            println!("source: {:?}", source);
 
             source.map(|inst| {
                 println!("source_id: {:?}", inst.def_id());
