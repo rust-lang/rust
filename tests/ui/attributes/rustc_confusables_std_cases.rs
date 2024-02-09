@@ -17,6 +17,8 @@ fn main() {
     x.size(); //~ ERROR E0599
     //~^ HELP you might have meant to use `len`
     //~| HELP there is a method with a similar name
+    x.append(42); //~ ERROR E0308
+    //~^ HELP you might have meant to use `push`
     String::new().push(""); //~ ERROR E0308
     //~^ HELP you might have meant to use `push_str`
     String::new().append(""); //~ ERROR E0599
