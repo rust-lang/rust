@@ -1,5 +1,5 @@
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:6:20
+  --> $DIR/unnecessary_fold.rs:10:20
    |
 LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
@@ -7,89 +7,98 @@ LL |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
    = note: `-D clippy::unnecessary-fold` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fold)]`
 
+error: redundant closure
+  --> $DIR/unnecessary_fold.rs:12:32
+   |
+LL |     let _ = (0..3).fold(false, |acc, x| is_any(acc, x));
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `is_any`
+   |
+   = note: `-D clippy::redundant-closure` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
+
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:8:20
+  --> $DIR/unnecessary_fold.rs:14:20
    |
 LL |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `all(|x| x > 2)`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:10:25
+  --> $DIR/unnecessary_fold.rs:16:25
    |
 LL |     let _: i32 = (0..3).fold(0, |acc, x| acc + x);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `sum()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:12:25
+  --> $DIR/unnecessary_fold.rs:18:25
    |
 LL |     let _: i32 = (0..3).fold(1, |acc, x| acc * x);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `product()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:17:41
+  --> $DIR/unnecessary_fold.rs:23:41
    |
 LL |     let _: bool = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:47:10
+  --> $DIR/unnecessary_fold.rs:53:10
    |
 LL |         .fold(false, |acc, x| acc || x > 2);
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:58:33
+  --> $DIR/unnecessary_fold.rs:64:33
    |
 LL |         assert_eq!(map.values().fold(0, |x, y| x + y), 0);
    |                                 ^^^^^^^^^^^^^^^^^^^^^ help: try: `sum::<i32>()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:61:30
+  --> $DIR/unnecessary_fold.rs:67:30
    |
 LL |         let _ = map.values().fold(0, |x, y| x + y);
    |                              ^^^^^^^^^^^^^^^^^^^^^ help: try: `sum::<i32>()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:62:30
+  --> $DIR/unnecessary_fold.rs:68:30
    |
 LL |         let _ = map.values().fold(1, |x, y| x * y);
    |                              ^^^^^^^^^^^^^^^^^^^^^ help: try: `product::<i32>()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:63:35
+  --> $DIR/unnecessary_fold.rs:69:35
    |
 LL |         let _: i32 = map.values().fold(0, |x, y| x + y);
    |                                   ^^^^^^^^^^^^^^^^^^^^^ help: try: `sum()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:64:35
+  --> $DIR/unnecessary_fold.rs:70:35
    |
 LL |         let _: i32 = map.values().fold(1, |x, y| x * y);
    |                                   ^^^^^^^^^^^^^^^^^^^^^ help: try: `product()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:65:31
+  --> $DIR/unnecessary_fold.rs:71:31
    |
 LL |         anything(map.values().fold(0, |x, y| x + y));
    |                               ^^^^^^^^^^^^^^^^^^^^^ help: try: `sum::<i32>()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:66:31
+  --> $DIR/unnecessary_fold.rs:72:31
    |
 LL |         anything(map.values().fold(1, |x, y| x * y));
    |                               ^^^^^^^^^^^^^^^^^^^^^ help: try: `product::<i32>()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:67:26
+  --> $DIR/unnecessary_fold.rs:73:26
    |
 LL |         num(map.values().fold(0, |x, y| x + y));
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: try: `sum()`
 
 error: this `.fold` can be written more succinctly using another method
-  --> $DIR/unnecessary_fold.rs:68:26
+  --> $DIR/unnecessary_fold.rs:74:26
    |
 LL |         num(map.values().fold(1, |x, y| x * y));
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: try: `product()`
 
-error: aborting due to 15 previous errors
+error: aborting due to 16 previous errors
 

@@ -99,7 +99,6 @@ fn check_fold_with_op(
             cx,
             UNNECESSARY_FOLD,
             fold_span.with_hi(expr.span.hi()),
-            // TODO #2371 don't suggest e.g., .any(|x| f(x)) if we can suggest .any(f)
             "this `.fold` can be written more succinctly using another method",
             "try",
             sugg,

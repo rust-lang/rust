@@ -1000,35 +1000,6 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
     }
 }
 
-/// Checks if the type is a type parameter implementing `FnOnce`, but not `FnMut`.
-pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tcx [ty::Clause<'_>]) -> bool {
-    let ty::Param(ty) = *ty.kind() else {
-        return false;
-    };
-    let lang = tcx.lang_items();
-    let (Some(fn_once_id), Some(fn_mut_id), Some(fn_id)) = (lang.fn_once_trait(), lang.fn_mut_trait(), lang.fn_trait())
-    else {
-        return false;
-    };
-    predicates
-        .iter()
-        .try_fold(false, |found, p| {
-            if let ty::ClauseKind::Trait(p) = p.kind().skip_binder()
-                && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
-                && ty.index == self_ty.index
-            {
-                // This should use `super_traits_of`, but that's a private function.
-                if p.trait_ref.def_id == fn_once_id {
-                    return Some(true);
-                } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
-                    return None;
-                }
-            }
-            Some(found)
-        })
-        .unwrap_or(false)
-}
-
 /// Comes up with an "at least" guesstimate for the type's size, not taking into
 /// account the layout of type parameters.
 pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {

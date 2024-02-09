@@ -2,6 +2,7 @@ use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::get_parent_expr;
 use clippy_utils::sugg::Sugg;
+use hir::Param;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
@@ -13,6 +14,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
+use rustc_span::ExpnKind;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -89,7 +91,12 @@ fn find_innermost_closure<'tcx>(
     cx: &LateContext<'tcx>,
     mut expr: &'tcx hir::Expr<'tcx>,
     mut steps: usize,
-) -> Option<(&'tcx hir::Expr<'tcx>, &'tcx hir::FnDecl<'tcx>, ty::Asyncness)> {
+) -> Option<(
+    &'tcx hir::Expr<'tcx>,
+    &'tcx hir::FnDecl<'tcx>,
+    ty::Asyncness,
+    &'tcx [Param<'tcx>],
+)> {
     let mut data = None;
 
     while let hir::ExprKind::Closure(closure) = expr.kind
@@ -110,6 +117,7 @@ fn find_innermost_closure<'tcx>(
             } else {
                 ty::Asyncness::No
             },
+            body.params,
         ));
         steps -= 1;
     }
@@ -152,7 +160,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             // without this check, we'd end up linting twice.
             && !matches!(recv.kind, hir::ExprKind::Call(..))
             && let (full_expr, call_depth) = get_parent_call_exprs(cx, expr)
-            && let Some((body, fn_decl, coroutine_kind)) = find_innermost_closure(cx, recv, call_depth)
+            && let Some((body, fn_decl, coroutine_kind, params)) = find_innermost_closure(cx, recv, call_depth)
+            // outside macros we lint properly. Inside macros, we lint only ||() style closures.
+            && (!matches!(expr.span.ctxt().outer_expn_data().kind, ExpnKind::Macro(_, _)) || params.is_empty())
         {
             span_lint_and_then(
                 cx,
