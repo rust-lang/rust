@@ -53,10 +53,11 @@ struct Checker<'tcx> {
 }
 
 impl<'tcx> Checker<'tcx> {
-    fn check<F>(&self, trait_def_id: Option<DefId>, f: F) -> Result<(), ErrorGuaranteed>
-    where
-        F: FnOnce(TyCtxt<'tcx>, LocalDefId) -> Result<(), ErrorGuaranteed>,
-    {
+    fn check(
+        &self,
+        trait_def_id: Option<DefId>,
+        f: impl FnOnce(TyCtxt<'tcx>, LocalDefId) -> Result<(), ErrorGuaranteed>,
+    ) -> Result<(), ErrorGuaranteed> {
         if Some(self.trait_def_id) == trait_def_id { f(self.tcx, self.impl_def_id) } else { Ok(()) }
     }
 }
