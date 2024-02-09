@@ -163,4 +163,13 @@ fn issue_5794() {
     if !(a == 12) {} //~ ERROR: this boolean expression can be simplified
     if !(12 != a) {} //~ ERROR: this boolean expression can be simplified
     if !(a != 12) {} //~ ERROR: this boolean expression can be simplified
+
+    let b = true;
+    let c = false;
+    if !b == true {} //~ ERROR: this boolean expression can be simplified
+    if !b != true {} //~ ERROR: this boolean expression can be simplified
+    if true == !b {} //~ ERROR: this boolean expression can be simplified
+    if true != !b {} //~ ERROR: this boolean expression can be simplified
+    if !b == !c {} //~ ERROR: this boolean expression can be simplified
+    if !b != !c {} //~ ERROR: this boolean expression can be simplified
 }
