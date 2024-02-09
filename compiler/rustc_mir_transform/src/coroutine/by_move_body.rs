@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir, MirPass};
-use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceDef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_target::abi::FieldIdx;
 
 pub struct ByMoveBody;
@@ -23,7 +23,10 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             return;
         };
         let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
-        let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!() };
+        if coroutine_ty.references_error() {
+            return;
+        }
+        let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
 
         let coroutine_kind = args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap();
         if coroutine_kind == ty::ClosureKind::FnOnce {
