@@ -1,10 +1,8 @@
 //! Implementation of "implicit drop" inlay hints:
-//! ```no_run
-//! fn main() {
-//!     let x = vec![2];
-//!     if some_condition() {
-//!         /* drop(x) */return;
-//!     }
+//! ```ignore
+//! let x = vec![2];
+//! if some_condition() {
+//!     /* drop(x) */return;
 //! }
 //! ```
 use hir::{

@@ -228,7 +228,7 @@ impl MemoryMap {
         &self,
         mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
     ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
-        let mut transform = |(addr, val): (&usize, &Box<[u8]>)| {
+        let mut transform = |(addr, val): (&usize, &[u8])| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
             f(val, align).map(|it| (addr, it))
@@ -240,7 +240,9 @@ impl MemoryMap {
                 map.insert(addr, val);
                 map
             }),
-            MemoryMap::Complex(cm) => cm.memory.iter().map(transform).collect(),
+            MemoryMap::Complex(cm) => {
+                cm.memory.iter().map(|(addr, val)| transform((addr, val))).collect()
+            }
         }
     }
 

@@ -264,7 +264,7 @@ impl GenericParamsCollector {
                 self.add_where_predicate_from_bound(
                     lower_ctx,
                     bound,
-                    lifetimes.as_ref(),
+                    lifetimes.as_deref(),
                     target.clone(),
                 );
             }
@@ -275,14 +275,14 @@ impl GenericParamsCollector {
         &mut self,
         lower_ctx: &LowerCtx<'_>,
         bound: ast::TypeBound,
-        hrtb_lifetimes: Option<&Box<[Name]>>,
+        hrtb_lifetimes: Option<&[Name]>,
         target: Either<TypeRef, LifetimeRef>,
     ) {
         let bound = TypeBound::from_ast(lower_ctx, bound);
         let predicate = match (target, bound) {
             (Either::Left(type_ref), bound) => match hrtb_lifetimes {
                 Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
-                    lifetimes: hrtb_lifetimes.clone(),
+                    lifetimes: hrtb_lifetimes.to_vec().into_boxed_slice(),
                     target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
                     bound: Interned::new(bound),
                 },

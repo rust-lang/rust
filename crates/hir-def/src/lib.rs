@@ -721,6 +721,9 @@ impl Clone for Box<dyn OpaqueInternableThing> {
 pub struct InTypeConstId(salsa::InternId);
 impl_intern!(InTypeConstId, InTypeConstLoc, intern_in_type_const, lookup_intern_in_type_const);
 
+// We would like to set `derive(PartialEq)`
+// but the compiler complains about that `.expected_ty` does not implement the `Copy` trait.
+#[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(Debug, Hash, Eq, Clone)]
 pub struct InTypeConstLoc {
     pub id: AstId<ast::ConstArg>,
