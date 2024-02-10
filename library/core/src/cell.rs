@@ -237,9 +237,9 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
-use crate::intrinsics::is_nonoverlapping;
+use crate::intrinsics;
 use crate::marker::{PhantomData, Unsize};
-use crate::mem;
+use crate::mem::{self, size_of};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
 use crate::ptr::{self, NonNull};
 
@@ -435,11 +435,15 @@ impl<T> Cell<T> {
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn swap(&self, other: &Self) {
+        fn is_nonoverlapping<T>(src: *const T, dst: *const T) -> bool {
+            intrinsics::is_nonoverlapping(src.cast(), dst.cast(), size_of::<T>(), 1)
+        }
+
         if ptr::eq(self, other) {
             // Swapping wouldn't change anything.
             return;
         }
-        if !is_nonoverlapping(self, other, 1) {
+        if !is_nonoverlapping(self, other) {
             // See <https://github.com/rust-lang/rust/issues/80778> for why we need to stop here.
             panic!("`Cell::swap` on overlapping non-identical `Cell`s");
         }
