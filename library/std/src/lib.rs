@@ -263,6 +263,10 @@
 #![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
 #![cfg_attr(target_os = "xous", feature(slice_ptr_len))]
 #![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
+#![cfg_attr(
+    all(any(target_arch = "x86_64", target_arch = "x86"), target_os = "uefi"),
+    feature(stdarch_x86_has_cpuid)
+)]
 //
 // Language features:
 // tidy-alphabetical-start
