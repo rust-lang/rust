@@ -134,11 +134,6 @@ help: skipping check for `const_mut_refs` feature
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:40:49
-   |
-LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references_err.rs:47:44
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
@@ -148,11 +143,6 @@ help: skipping check that does not even have a feature gate
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    |                                            ^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:50:36
-   |
-LL | static mut MUTABLE_REF: &mut i32 = &mut 42;
-   |                                    ^^^^^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references_err.rs:51:45
    |

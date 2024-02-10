@@ -1,52 +1,52 @@
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:5:29
    |
 LL | struct S1 { f: dyn Iterator<Item: Copy> }
    |                             ^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:7:33
    |
 LL | struct S2 { f: Box<dyn Iterator<Item: Copy>> }
    |                                 ^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:9:29
    |
 LL | struct S3 { f: dyn Iterator<Item: 'static> }
    |                             ^^^^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:12:26
    |
 LL | enum E1 { V(dyn Iterator<Item: Copy>) }
    |                          ^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:14:30
    |
 LL | enum E2 { V(Box<dyn Iterator<Item: Copy>>) }
    |                              ^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:16:26
    |
 LL | enum E3 { V(dyn Iterator<Item: 'static>) }
    |                          ^^^^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:19:41
    |
 LL | union U1 { f: ManuallyDrop<dyn Iterator<Item: Copy>> }
    |                                         ^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:21:45
    |
 LL | union U2 { f: ManuallyDrop<Box<dyn Iterator<Item: Copy>>> }
    |                                             ^^^^^^^^^^
 
-error: associated type bounds are only allowed in where clauses and function signatures, not in field types
+error: associated type bounds are not allowed in `dyn` types
   --> $DIR/inside-adt.rs:23:41
    |
 LL | union U3 { f: ManuallyDrop<dyn Iterator<Item: 'static>> }

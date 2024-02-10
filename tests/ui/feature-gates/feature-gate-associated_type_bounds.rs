@@ -42,31 +42,20 @@ type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
 
 fn _apit(_: impl Tr1<As1: Copy>) {}
 //~^ ERROR associated type bounds are unstable
-fn _apit_dyn(_: &dyn Tr1<As1: Copy>) {}
-//~^ ERROR associated type bounds are unstable
 
 fn _rpit() -> impl Tr1<As1: Copy> { S1 }
-//~^ ERROR associated type bounds are unstable
-
-fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
 //~^ ERROR associated type bounds are unstable
 
 const _cdef: impl Tr1<As1: Copy> = S1;
 //~^ ERROR associated type bounds are unstable
 //~| ERROR `impl Trait` is not allowed in const types
-// FIXME: uncomment when `impl_trait_in_bindings` feature is fixed.
-// const _cdef_dyn: &dyn Tr1<As1: Copy> = &S1;
 
 static _sdef: impl Tr1<As1: Copy> = S1;
 //~^ ERROR associated type bounds are unstable
 //~| ERROR `impl Trait` is not allowed in static types
-// FIXME: uncomment when `impl_trait_in_bindings` feature is fixed.
-// static _sdef_dyn: &dyn Tr1<As1: Copy> = &S1;
 
 fn main() {
     let _: impl Tr1<As1: Copy> = S1;
     //~^ ERROR associated type bounds are unstable
     //~| ERROR `impl Trait` is not allowed in the type of variable bindings
-    // FIXME: uncomment when `impl_trait_in_bindings` feature is fixed.
-    // let _: &dyn Tr1<As1: Copy> = &S1;
 }
