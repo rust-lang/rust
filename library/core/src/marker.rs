@@ -1025,11 +1025,11 @@ pub mod effects {
     pub struct Runtime;
 
     #[lang = "EffectsCompat"]
-    pub trait Compat<const RUNTIME: bool> {}
+    pub trait Compat<#[rustc_runtime] const RUNTIME: bool = true> {}
 
     impl Compat<false> for NoRuntime {}
     impl Compat<true> for Runtime {}
-    impl<const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
+    impl<#[rustc_runtime] const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
 
     #[lang = "EffectsEq"]
     pub trait EffectsEq<T: ?Sized> {}

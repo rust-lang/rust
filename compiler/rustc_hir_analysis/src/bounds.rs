@@ -75,14 +75,20 @@ impl<'tcx> Bounds<'tcx> {
                     tcx.impl_trait_ref(defining_def_id).unwrap().instantiate_identity()
                 };
                 // create a new projection type `<T as TraitForBound>::Effects`
-                let assoc = tcx.associated_type_for_effects(trait_ref.def_id()).unwrap();
+                let Some(assoc) = tcx.associated_type_for_effects(trait_ref.def_id()) else {
+                    tcx.dcx().span_delayed_bug(
+                        span,
+                        "`~const` trait bound has no effect assoc yet no errors encountered?",
+                    );
+                    return;
+                };
                 let self_ty = Ty::new_projection(tcx, assoc, trait_ref.skip_binder().args);
                 // we might have `~const Tr` where `Tr` isn't a `#[const_trait]`.
                 let Some(assoc_def) = tcx.associated_type_for_effects(trait_we_are_in.def_id)
                 else {
                     tcx.dcx().span_delayed_bug(
                         span,
-                        "`~const` bound trait has no effect param yet no errors encountered?",
+                        "`~const` trait bound has no effect assoc yet no errors encountered?",
                     );
                     return;
                 };
@@ -104,7 +110,13 @@ impl<'tcx> Bounds<'tcx> {
             }
         } {
             // create a new projection type `<T as Tr>::Effects`
-            let assoc = tcx.associated_type_for_effects(trait_ref.def_id()).unwrap();
+            let Some(assoc) = tcx.associated_type_for_effects(trait_ref.def_id()) else {
+                tcx.dcx().span_delayed_bug(
+                    span,
+                    "`~const` trait bound has no effect assoc yet no errors encountered?",
+                );
+                return;
+            };
             let self_ty = Ty::new_projection(tcx, assoc, trait_ref.skip_binder().args);
             // make `<T as Tr>::Effects: Compat<runtime>`
             let new_trait_ref = ty::TraitRef::new(

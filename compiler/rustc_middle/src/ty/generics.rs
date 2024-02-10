@@ -12,7 +12,7 @@ use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
 pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, synthetic: bool },
-    Const { has_default: bool, is_host_effect: bool },
+    Const { has_default: bool, is_host_effect: bool, synthetic: bool },
 }
 
 impl GenericParamDefKind {

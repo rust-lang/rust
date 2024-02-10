@@ -1600,12 +1600,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }),
                         )),
                     )),
+                    // FIXME(effects) we might not need a default.
                     default: Some(hir::AnonConst {
                         def_id: anon_const,
                         hir_id: const_id,
                         body: const_body,
                     }),
                     is_host_effect: true,
+                    synthetic: true,
                 },
                 colon_span: None,
                 pure_wrt_drop: false,

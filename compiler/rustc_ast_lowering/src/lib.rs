@@ -2076,7 +2076,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param: &GenericParam,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = self.lower_generic_param_kind(param, source);
+        let (name, kind) = self.lower_generic_param_kind(
+            param,
+            source,
+            attr::contains_name(&param.attrs, sym::rustc_runtime),
+        );
 
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
@@ -2096,6 +2100,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         param: &GenericParam,
         source: hir::GenericParamSource,
+        is_host_effect: bool,
     ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
         match &param.kind {
             GenericParamKind::Lifetime => {
@@ -2161,7 +2166,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default, is_host_effect: false },
+                    hir::GenericParamKind::Const { ty, default, is_host_effect, synthetic: false },
                 )
             }
         }
