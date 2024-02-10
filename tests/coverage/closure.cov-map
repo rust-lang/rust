@@ -33,20 +33,16 @@ Number of file 0 mappings: 24
 - Code(Expression(1, Add)) at (prev + 1, 5) to (start + 3, 2)
     = (c1 + (c0 - c1))
 
-Function name: closure::main::{closure#0}
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 28, 05, 02, 14, 05, 02, 15, 02, 0a, 02, 02, 0a, 00, 0b, 07, 01, 09, 01, 06]
+Function name: closure::main::{closure#0} (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 28, 05, 02, 14, 00, 02, 15, 02, 0a, 00, 02, 0a, 00, 0b, 00, 01, 09, 01, 06]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
-- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of expressions: 0
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 40, 5) to (start + 2, 20)
-- Code(Counter(1)) at (prev + 2, 21) to (start + 2, 10)
-- Code(Expression(0, Sub)) at (prev + 2, 10) to (start + 0, 11)
-    = (c0 - c1)
-- Code(Expression(1, Add)) at (prev + 1, 9) to (start + 1, 6)
-    = (c1 + (c0 - c1))
+- Code(Zero) at (prev + 40, 5) to (start + 2, 20)
+- Code(Zero) at (prev + 2, 21) to (start + 2, 10)
+- Code(Zero) at (prev + 2, 10) to (start + 0, 11)
+- Code(Zero) at (prev + 1, 9) to (start + 1, 6)
 
 Function name: closure::main::{closure#10} (unused)
 Raw bytes (10): 0x[01, 01, 00, 01, 00, 9b, 01, 07, 00, 21]
@@ -148,20 +144,16 @@ Number of file 0 mappings: 6
 - Code(Expression(0, Add)) at (prev + 2, 9) to (start + 0, 10)
     = (c1 + (c0 - c1))
 
-Function name: closure::main::{closure#18}
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 19, 0d, 02, 1c, 05, 02, 1d, 02, 12, 02, 02, 12, 00, 13, 07, 01, 11, 01, 0e]
+Function name: closure::main::{closure#18} (unused)
+Raw bytes (24): 0x[01, 01, 00, 04, 00, 19, 0d, 02, 1c, 00, 02, 1d, 02, 12, 00, 02, 12, 00, 13, 00, 01, 11, 01, 0e]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
-- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of expressions: 0
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 25, 13) to (start + 2, 28)
-- Code(Counter(1)) at (prev + 2, 29) to (start + 2, 18)
-- Code(Expression(0, Sub)) at (prev + 2, 18) to (start + 0, 19)
-    = (c0 - c1)
-- Code(Expression(1, Add)) at (prev + 1, 17) to (start + 1, 14)
-    = (c1 + (c0 - c1))
+- Code(Zero) at (prev + 25, 13) to (start + 2, 28)
+- Code(Zero) at (prev + 2, 29) to (start + 2, 18)
+- Code(Zero) at (prev + 2, 18) to (start + 0, 19)
+- Code(Zero) at (prev + 1, 17) to (start + 1, 14)
 
 Function name: closure::main::{closure#19}
 Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 43, 0d, 02, 1c, 05, 02, 1d, 02, 12, 02, 02, 12, 00, 13, 07, 01, 11, 01, 0e]
