@@ -53,7 +53,7 @@ pub fn check_legal_trait_for_method_call(
         };
         return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
     }
-    tcx.coherent_trait(trait_id)
+    tcx.ensure().coherent_trait(trait_id)
 }
 
 #[derive(Debug)]
