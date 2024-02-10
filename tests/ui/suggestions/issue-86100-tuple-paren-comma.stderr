@@ -41,6 +41,8 @@ LL |     let _s = S { _s: ("abc".to_string()) };
    |
    = note: expected tuple `(String,)`
              found struct `String`
+note: the method to_string is defined here
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
 help: use a trailing comma to create a tuple with one element
    |
 LL |     let _s = S { _s: ("abc".to_string(),) };

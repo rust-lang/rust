@@ -14,6 +14,8 @@ note: `HashSet<Day>` does not implement `Clone`, so `&HashSet<Day>` was cloned i
 LL |             let mut x: HashSet<Day> = v.clone();
    |                                       ^
    = help: `Clone` is not implemented because the trait bound `Day: Clone` is not satisfied
+note: the method clone is defined here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: consider annotating `Day` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]

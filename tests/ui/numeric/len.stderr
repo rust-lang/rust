@@ -6,6 +6,8 @@ LL |     test(array.len());
    |     |
    |     arguments to this function are incorrect
    |
+note: the method len is defined here
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 note: function defined here
   --> $DIR/len.rs:6:4
    |

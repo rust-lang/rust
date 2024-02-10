@@ -25,6 +25,11 @@ note: calling an async function returns a future
    |
 LL |     hello()
    |     ^^^^^^^
+note: the function hello is defined here
+  --> $DIR/issue-90027-async-fn-return-suggestion.rs:3:1
+   |
+LL | async fn hello() {
+   | ^^^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |     hello().await

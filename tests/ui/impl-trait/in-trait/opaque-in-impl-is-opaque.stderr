@@ -11,6 +11,11 @@ LL |     let x: &str = ().bar();
    |
    = note: expected reference `&str`
             found opaque type `impl std::fmt::Display`
+note: the method bar is defined here
+  --> $DIR/opaque-in-impl-is-opaque.rs:4:5
+   |
+LL |     fn bar(&self) -> impl Display;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

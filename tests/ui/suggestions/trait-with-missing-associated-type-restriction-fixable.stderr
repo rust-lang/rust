@@ -8,6 +8,11 @@ LL |         qux(x.func())
    |
    = note:         expected type `usize`
            found associated type `<impl Trait as Trait>::A`
+note: the method func is defined here
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:7:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -28,6 +33,11 @@ LL |         qux(x.func())
    |
    = note:         expected type `usize`
            found associated type `<T as Trait>::A`
+note: the method func is defined here
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:7:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -48,6 +58,11 @@ LL |     qux(x.func())
    |
    = note:         expected type `usize`
            found associated type `<impl Trait as Trait>::A`
+note: the method func is defined here
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:7:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -68,6 +83,11 @@ LL |     qux(x.func())
    |
    = note:         expected type `usize`
            found associated type `<T as Trait>::A`
+note: the method func is defined here
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:7:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -88,6 +108,11 @@ LL |     qux(x.func())
    |
    = note:         expected type `usize`
            found associated type `<impl Trait<i32> as Trait<i32>>::A`
+note: the method func is defined here
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:7:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -108,6 +133,11 @@ LL |     qux(x.func())
    |
    = note:         expected type `usize`
            found associated type `<T as Trait<i32>>::A`
+note: the method func is defined here
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:7:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |
@@ -128,6 +158,11 @@ LL |     qux(x.func())
    |
    = note:         expected type `usize`
            found associated type `<T as Trait>::A`
+note: the method func is defined here
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:7:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:41:4
    |

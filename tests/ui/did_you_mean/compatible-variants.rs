@@ -8,6 +8,7 @@ struct Foo {
 }
 
 fn f() {}
+//~^ HELP consider changing f's return type
 
 fn a() -> Option<()> {
     while false {

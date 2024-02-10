@@ -32,6 +32,11 @@ note: calling an async function returns a future
    |
 LL |     dummy()
    |     ^^^^^^^
+note: the function dummy is defined here
+  --> $DIR/suggest-missing-await.rs:18:1
+   |
+LL | async fn dummy() {}
+   | ^^^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |     dummy().await

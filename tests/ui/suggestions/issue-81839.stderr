@@ -11,6 +11,11 @@ LL | |         _ => cx.answer_str("hi"),
 LL | |     }
    | |_____- `match` arms have incompatible types
    |
+note: the method answer_str is defined here
+  --> $DIR/auxiliary/issue-81839.rs:6:5
+   |
+LL |     pub async fn answer_str(&self, _s: &str) -> Test {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider removing this semicolon
    |
 LL -             cx.answer_str("hi");

@@ -1,6 +1,8 @@
 // edition:2018
 
 fn dummy() -> i32 { 42 }
+//~^ NOTE the function dummy is defined here
+//~| HELP consider changing dummy's return type
 
 fn extra_semicolon() {
     let _ = match true { //~ NOTE `match` arms have incompatible types
@@ -14,8 +16,11 @@ fn extra_semicolon() {
 }
 
 async fn async_dummy() {}
+//~^ NOTE the function async_dummy is defined here
 
 async fn async_dummy2() {}
+//~^ NOTE the function async_dummy2 is defined here
+//~| NOTE the function async_dummy2 is defined here
 
 async fn async_extra_semicolon_same() {
     let _ = match true { //~ NOTE `match` arms have incompatible types

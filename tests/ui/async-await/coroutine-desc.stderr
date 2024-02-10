@@ -25,6 +25,11 @@ LL |     fun(one(), two());
    |
    = help: consider `await`ing on both `Future`s
    = note: distinct uses of `impl Trait` result in different opaque types
+note: the function two is defined here
+  --> $DIR/coroutine-desc.rs:6:1
+   |
+LL | async fn two() {}
+   | ^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/coroutine-desc.rs:8:4
    |

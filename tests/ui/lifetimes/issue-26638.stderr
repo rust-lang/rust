@@ -56,6 +56,8 @@ LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.ne
    |
    = note: expected reference `&str`
                    found enum `Option<&str>`
+note: the method next is defined here
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider using `Option::expect` to unwrap the `Option<&str>` value, panicking if the value is an `Option::None`
    |
 LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.next().expect("REASON") }

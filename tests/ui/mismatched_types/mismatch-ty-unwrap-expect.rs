@@ -1,4 +1,3 @@
-// run-rustfix
 #![allow(unused, dead_code)]
 
 fn func() -> Option<i32> {

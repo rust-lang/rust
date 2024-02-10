@@ -10,6 +10,7 @@ fn clone_thing(nc: &NotClone) -> NotClone {
     //~^ ERROR mismatched type
     //~| NOTE `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
     //~| NOTE expected `NotClone`, found `&NotClone`
+    //~| NOTE the method clone is defined here
 }
 
 fn clone_thing2(nc: &NotClone) -> NotClone {
@@ -18,6 +19,7 @@ fn clone_thing2(nc: &NotClone) -> NotClone {
     //~| NOTE expected due to this
     //~| NOTE `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
     //~| NOTE expected `NotClone`, found `&NotClone`
+    //~| NOTE the method clone is defined here
     nc
 }
 

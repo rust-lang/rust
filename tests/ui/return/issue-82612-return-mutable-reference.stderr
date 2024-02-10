@@ -10,6 +10,8 @@ LL | |         }
    |
    = note:      expected unit type `()`
            found mutable reference `&mut V`
+note: the method get_or_insert_with is defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
 help: consider using a semicolon here
    |
 LL |             value.get_or_insert_with(func);

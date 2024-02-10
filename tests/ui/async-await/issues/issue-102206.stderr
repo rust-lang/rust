@@ -6,6 +6,11 @@ LL |     std::mem::size_of_val(foo());
    |     |
    |     arguments to this function are incorrect
    |
+note: the function foo is defined here
+  --> $DIR/issue-102206.rs:3:1
+   |
+LL | async fn foo() {}
+   | ^^^^^^^^^^^^^^
 note: function defined here
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 help: consider borrowing here

@@ -25,3 +25,5 @@ fn main() -> Result<(), ()> {
 
 fn a<F>(f: F) -> Result<(), ()> where F: FnMut() { Ok(()) }
 fn b() -> i32 { 42 }
+//~^ NOTE: the function b is defined here
+//~| HELP: consider changing b's return type

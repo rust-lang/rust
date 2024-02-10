@@ -12,6 +12,8 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     nc.clone()
    |     ^^
+note: the method clone is defined here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -19,7 +21,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:16:24
+  --> $DIR/explain_clone_autoref.rs:17:24
    |
 LL |     let nc: NotClone = nc.clone();
    |             --------   ^^^^^^^^^^ expected `NotClone`, found `&NotClone`
@@ -27,10 +29,12 @@ LL |     let nc: NotClone = nc.clone();
    |             expected due to this
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:16:24
+  --> $DIR/explain_clone_autoref.rs:17:24
    |
 LL |     let nc: NotClone = nc.clone();
    |                        ^^
+note: the method clone is defined here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: consider annotating `NotClone` with `#[derive(Clone)]`
    |
 LL + #[derive(Clone)]
@@ -38,7 +42,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:28:5
+  --> $DIR/explain_clone_autoref.rs:30:5
    |
 LL | fn clone_thing3(nc: &NotClone) -> NotClone {
    |                                   -------- expected `NotClone` because of return type
@@ -47,7 +51,7 @@ LL |     nc
    |     ^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:26:14
+  --> $DIR/explain_clone_autoref.rs:28:14
    |
 LL |     let nc = nc.clone();
    |              ^^
@@ -58,7 +62,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:38:5
+  --> $DIR/explain_clone_autoref.rs:40:5
    |
 LL | fn clone_thing4(nc: &NotClone) -> NotClone {
    |                                   -------- expected `NotClone` because of return type
@@ -67,7 +71,7 @@ LL |     nc2
    |     ^^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:35:14
+  --> $DIR/explain_clone_autoref.rs:37:14
    |
 LL |     let nc = nc.clone();
    |              ^^
@@ -78,7 +82,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:57:5
+  --> $DIR/explain_clone_autoref.rs:59:5
    |
 LL | fn clone_thing5(nc: &NotClone) -> NotClone {
    |                                   -------- expected `NotClone` because of return type
@@ -87,7 +91,7 @@ LL |     nc3
    |     ^^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:52:14
+  --> $DIR/explain_clone_autoref.rs:54:14
    |
 LL |     let nc = nc.clone();
    |              ^^
@@ -98,7 +102,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:67:5
+  --> $DIR/explain_clone_autoref.rs:69:5
    |
 LL | fn clone_thing6(nc: &NotClone) -> NotClone {
    |                                   -------- expected `NotClone` because of return type
@@ -107,7 +111,7 @@ LL |     ret
    |     ^^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:64:21
+  --> $DIR/explain_clone_autoref.rs:66:21
    |
 LL |     let (ret, _) = (nc.clone(), 1);
    |                     ^^
@@ -118,7 +122,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:76:5
+  --> $DIR/explain_clone_autoref.rs:78:5
    |
 LL | fn clone_thing7(nc: Vec<&NotClone>) -> NotClone {
    |                                        -------- expected `NotClone` because of return type
@@ -127,7 +131,7 @@ LL |     ret
    |     ^^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:74:15
+  --> $DIR/explain_clone_autoref.rs:76:15
    |
 LL |     let ret = nc[0].clone();
    |               ^^^^^
@@ -138,7 +142,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:88:5
+  --> $DIR/explain_clone_autoref.rs:90:5
    |
 LL | fn clone_thing8(nc: &NotClone) -> NotClone {
    |                                   -------- expected `NotClone` because of return type
@@ -147,7 +151,7 @@ LL |     ret
    |     ^^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:84:17
+  --> $DIR/explain_clone_autoref.rs:86:17
    |
 LL |         let a = nc.clone();
    |                 ^^
@@ -158,7 +162,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:98:5
+  --> $DIR/explain_clone_autoref.rs:100:5
    |
 LL | fn clone_thing9(nc: &NotClone) -> NotClone {
    |                                   -------- expected `NotClone` because of return type
@@ -167,7 +171,7 @@ LL |     ret
    |     ^^^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:95:17
+  --> $DIR/explain_clone_autoref.rs:97:17
    |
 LL |     let cl = || nc.clone();
    |                 ^^
@@ -178,13 +182,13 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:110:6
+  --> $DIR/explain_clone_autoref.rs:112:6
    |
 LL |     (a, b)
    |      ^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:105:17
+  --> $DIR/explain_clone_autoref.rs:107:17
    |
 LL |         let a = nc.clone();
    |                 ^^
@@ -195,13 +199,13 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:110:9
+  --> $DIR/explain_clone_autoref.rs:112:9
    |
 LL |     (a, b)
    |         ^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:107:13
+  --> $DIR/explain_clone_autoref.rs:109:13
    |
 LL |         (a, nc.clone())
    |             ^^
@@ -212,7 +216,7 @@ LL | struct NotClone;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/explain_clone_autoref.rs:126:5
+  --> $DIR/explain_clone_autoref.rs:128:5
    |
 LL | fn clone_thing11(nc: &NotClone) -> NotClone {
    |                                    -------- expected `NotClone` because of return type
@@ -221,7 +225,7 @@ LL |     a
    |     ^ expected `NotClone`, found `&NotClone`
    |
 note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
-  --> $DIR/explain_clone_autoref.rs:121:17
+  --> $DIR/explain_clone_autoref.rs:123:17
    |
 LL |         let a = nc.clone();
    |                 ^^

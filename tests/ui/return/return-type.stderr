@@ -6,6 +6,11 @@ LL |     foo(4 as usize)
    |
    = note: expected unit type `()`
                  found struct `S<usize>`
+note: the function foo is defined here
+  --> $DIR/return-type.rs:5:1
+   |
+LL | fn foo<T>(x: T) -> S<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider using a semicolon here
    |
 LL |     foo(4 as usize);
@@ -14,6 +19,10 @@ help: try adding a return type
    |
 LL | fn bar() -> S<usize> {
    |          +++++++++++
+help: consider changing foo's return type
+   |
+LL | fn foo<T>(x: T) -> () {
+   |                    ~~
 
 error: aborting due to 1 previous error
 

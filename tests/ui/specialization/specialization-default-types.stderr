@@ -33,6 +33,11 @@ LL |     Example::generate(t)
            found associated type `<T as Example>::Output`
    = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: the method Example is defined here
+  --> $DIR/specialization-default-types.rs:9:5
+   |
+LL |     fn generate(self) -> Self::Output;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

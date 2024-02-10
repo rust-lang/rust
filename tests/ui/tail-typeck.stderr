@@ -6,10 +6,19 @@ LL | fn f() -> isize { return g(); }
    |           |
    |           expected `isize` because of return type
    |
+note: the function g is defined here
+  --> $DIR/tail-typeck.rs:5:1
+   |
+LL | fn g() -> usize { return 0; }
+   | ^^^^^^^^^^^^^^^
 help: you can convert a `usize` to an `isize` and panic if the converted value doesn't fit
    |
 LL | fn f() -> isize { return g().try_into().unwrap(); }
    |                             ++++++++++++++++++++
+help: consider changing g's return type
+   |
+LL | fn g() -> isize { return 0; }
+   |           ~~~~~
 
 error: aborting due to 1 previous error
 

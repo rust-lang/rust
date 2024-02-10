@@ -8,10 +8,19 @@ LL |     let x : char = last(y);
    |
    = note: expected type `char`
               found enum `Option<_>`
+note: the function last is defined here
+  --> $DIR/tag-that-dare-not-speak-its-name.rs:5:1
+   |
+LL | fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider using `Option::expect` to unwrap the `Option<_>` value, panicking if the value is an `Option::None`
    |
 LL |     let x : char = last(y).expect("REASON");
    |                           +++++++++++++++++
+help: consider changing last's return type
+   |
+LL | fn last<T>(v: Vec<&T> ) -> char {
+   |                            ~~~~
 
 error: aborting due to 1 previous error
 

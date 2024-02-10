@@ -10,6 +10,8 @@ LL |     expecting_null_mut(ptr::null());
    |
    = note: expected raw pointer `*mut u8`
               found raw pointer `*const _`
+note: the function ptr is defined here
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: function defined here
   --> $DIR/ptr-null-mutability-suggestions.rs:6:4
    |

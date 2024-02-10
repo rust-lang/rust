@@ -1,6 +1,6 @@
 fn foo(_f: impl Fn()) {}
 
-fn bar() -> i32 {
+fn bar() -> i32 { //~ HELP consider changing bar's return type
     1
 }
 

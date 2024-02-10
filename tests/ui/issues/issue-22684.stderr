@@ -5,6 +5,12 @@ LL |     let _: () = foo::Foo.bar();
    |            --   ^^^^^^^^^^^^^^ expected `()`, found `bool`
    |            |
    |            expected due to this
+   |
+note: the method bar is defined here
+  --> $DIR/issue-22684.rs:8:9
+   |
+LL |         fn bar(&self) -> bool { true }
+   |         ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

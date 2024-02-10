@@ -62,6 +62,8 @@ LL |     x.lock().unwrap()
    |
    = note: expected type `i32`
             found struct `MutexGuard<'_, &i32>`
+note: the method unwrap is defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
 help: consider dereferencing the type
    |
 LL |     **x.lock().unwrap()

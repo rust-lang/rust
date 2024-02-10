@@ -8,6 +8,11 @@ LL |   let x: isize = noexporttypelib::foo();
    |
    = note: expected type `isize`
               found enum `Option<isize>`
+note: the function noexporttypelib is defined here
+  --> $DIR/auxiliary/noexporttypelib.rs:2:1
+   |
+LL | pub fn foo() -> oint { Some(3) }
+   | ^^^^^^^^^^^^^^^^^^^^
 help: consider using `Option::expect` to unwrap the `Option<isize>` value, panicking if the value is an `Option::None`
    |
 LL |   let x: isize = noexporttypelib::foo().expect("REASON");

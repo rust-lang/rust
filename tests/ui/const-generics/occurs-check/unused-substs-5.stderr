@@ -5,6 +5,12 @@ LL |     x = q::<_, N>(x);
    |         ^^^^^^^^^^^^- help: try using a conversion method: `.to_vec()`
    |         |
    |         cyclic type of infinite size
+   |
+note: the function q is defined here
+  --> $DIR/unused-substs-5.rs:5:1
+   |
+LL | fn q<T, const N: usize>(_: T) -> [u8; N + 1] {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

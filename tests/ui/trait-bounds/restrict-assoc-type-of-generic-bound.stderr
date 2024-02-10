@@ -10,6 +10,11 @@ LL |     return a.bar();
    |
    = note: expected type parameter `B`
              found associated type `<A as MyTrait>::T`
+note: the method bar is defined here
+  --> $DIR/restrict-assoc-type-of-generic-bound.rs:5:5
+   |
+LL |     fn bar(self) -> Self::T;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider further restricting this bound
    |
 LL | pub fn foo<A: MyTrait<T = B>, B>(a: A) -> B {

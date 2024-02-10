@@ -6,10 +6,19 @@ LL |     let x: u16 = foo();
    |            |
    |            expected due to this
    |
+note: the function foo is defined here
+  --> $DIR/numeric-cast-2.rs:1:1
+   |
+LL | fn foo() -> i32 {
+   | ^^^^^^^^^^^^^^^
 help: you can convert an `i32` to a `u16` and panic if the converted value doesn't fit
    |
 LL |     let x: u16 = foo().try_into().unwrap();
    |                       ++++++++++++++++++++
+help: consider changing foo's return type
+   |
+LL | fn foo() -> u16 {
+   |             ~~~
 
 error[E0308]: mismatched types
   --> $DIR/numeric-cast-2.rs:7:18
