@@ -14,6 +14,8 @@ static TEST_BAD: () = {
 };
 
 // Make sure we catch taking a reference to thread-local storage.
+// The actual pointer depends on the thread, so even just taking a reference already does not make
+// sense at compile-time.
 static TEST_BAD_REF: () = {
     unsafe { let _val = &A; }
     //~^ ERROR could not evaluate static initializer

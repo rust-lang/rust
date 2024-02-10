@@ -801,7 +801,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
             UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
             UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
-            UnsupportedOpInfo::ReadExternStatic(_) => const_eval_read_extern_static,
+            UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
         }
     }
     fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, builder: &mut DiagnosticBuilder<'_, G>) {
@@ -820,7 +820,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 builder.arg("ptr", ptr);
             }
-            ThreadLocalStatic(did) | ReadExternStatic(did) => {
+            ThreadLocalStatic(did) | ExternStatic(did) => {
                 builder.arg("did", format!("{did:?}"));
             }
         }

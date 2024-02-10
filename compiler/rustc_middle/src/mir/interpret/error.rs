@@ -466,7 +466,7 @@ pub enum UnsupportedOpInfo {
     /// Accessing thread local statics
     ThreadLocalStatic(DefId),
     /// Accessing an unsupported extern static.
-    ReadExternStatic(DefId),
+    ExternStatic(DefId),
 }
 
 /// Error information for when the program exhausted the resources granted to it
