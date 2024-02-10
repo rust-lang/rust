@@ -525,6 +525,23 @@ mod dist {
     }
 
     #[test]
+    fn llvm_out_behaviour() {
+        let mut config = configure(&["A"], &["B"]);
+        config.llvm_from_ci = true;
+        let build = Build::new(config.clone());
+
+        let target = TargetSelection::from_user("A");
+        assert!(build.llvm_out(target).ends_with("ci-llvm"));
+        let target = TargetSelection::from_user("B");
+        assert!(build.llvm_out(target).ends_with("llvm"));
+
+        config.llvm_from_ci = false;
+        let build = Build::new(config.clone());
+        let target = TargetSelection::from_user("A");
+        assert!(build.llvm_out(target).ends_with("llvm"));
+    }
+
+    #[test]
     fn build_with_empty_host() {
         let config = configure(&[], &["C"]);
         let build = Build::new(config);
