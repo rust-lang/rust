@@ -226,6 +226,7 @@ mod missing_trait_methods;
 mod mixed_read_write_in_expression;
 mod module_style;
 mod multi_assignments;
+mod multiple_bound_locations;
 mod multiple_unsafe_ops_per_block;
 mod mut_key;
 mod mut_mut;
@@ -1111,6 +1112,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     });
     store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(msrv())));
     store.register_late_pass(|_| Box::new(to_string_trait_impl::ToStringTraitImpl));
+    store.register_early_pass(|| Box::new(multiple_bound_locations::MultipleBoundLocations));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

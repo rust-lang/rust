@@ -5430,6 +5430,7 @@ Released 2018-09-13
 [`modulo_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#modulo_arithmetic
 [`modulo_one`]: https://rust-lang.github.io/rust-clippy/master/index.html#modulo_one
 [`multi_assignments`]: https://rust-lang.github.io/rust-clippy/master/index.html#multi_assignments
+[`multiple_bound_locations`]: https://rust-lang.github.io/rust-clippy/master/index.html#multiple_bound_locations
 [`multiple_crate_versions`]: https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
 [`multiple_inherent_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#multiple_inherent_impl
 [`multiple_unsafe_ops_per_block`]: https://rust-lang.github.io/rust-clippy/master/index.html#multiple_unsafe_ops_per_block
