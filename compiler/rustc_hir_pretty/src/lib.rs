@@ -2,8 +2,6 @@
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
 #![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 use rustc_ast as ast;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
@@ -23,7 +21,7 @@ use std::cell::Cell;
 use std::vec;
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
-    to_string(&map, |s| s.print_node(map.find(hir_id).unwrap()))
+    to_string(&map, |s| s.print_node(map.hir_node(hir_id)))
 }
 
 pub enum AnnNode<'a> {
@@ -117,6 +115,13 @@ impl<'a> State<'a> {
             Node::Ctor(..) => panic!("cannot print isolated Ctor"),
             Node::Local(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
+            Node::WhereBoundPredicate(pred) => {
+                self.print_formal_generic_params(pred.bound_generic_params);
+                self.print_type(pred.bounded_ty);
+                self.print_bounds(":", pred.bounds);
+            }
+            Node::ArrayLenInfer(_) => self.word("_"),
+            Node::Err(_) => self.word("/*ERROR*/"),
         }
     }
 }

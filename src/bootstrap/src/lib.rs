@@ -90,10 +90,6 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
     // (Some(Mode::Std), "target_os", Some(&[])),
-    // #[cfg(bootstrap)] zkvm
-    (Some(Mode::Std), "target_os", Some(&["zkvm"])),
-    // #[cfg(bootstrap)] risc0
-    (Some(Mode::Std), "target_vendor", Some(&["risc0"])),
     (Some(Mode::Std), "target_arch", Some(&["spirv", "nvptx", "xtensa"])),
     /* Extra names used by dependencies */
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.

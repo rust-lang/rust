@@ -2060,7 +2060,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let node = self
                     .tcx
                     .opt_local_def_id_to_hir_id(self.tcx.hir().get_parent_item(call_expr.hir_id))
-                    .and_then(|hir_id| self.tcx.opt_hir_node(hir_id));
+                    .map(|hir_id| self.tcx.hir_node(hir_id));
                 match node {
                     Some(hir::Node::Item(item)) => call_finder.visit_item(item),
                     Some(hir::Node::TraitItem(item)) => call_finder.visit_trait_item(item),

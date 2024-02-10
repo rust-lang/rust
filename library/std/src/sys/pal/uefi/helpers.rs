@@ -146,3 +146,11 @@ pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> Option<NonNull<T>
     let system_handle = uefi::env::try_image_handle()?;
     open_protocol(system_handle, protocol_guid).ok()
 }
+
+/// Get RuntimeServices
+pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>> {
+    let system_table: NonNull<r_efi::efi::SystemTable> =
+        crate::os::uefi::env::try_system_table()?.cast();
+    let runtime_services = unsafe { (*system_table.as_ptr()).runtime_services };
+    NonNull::new(runtime_services)
+}

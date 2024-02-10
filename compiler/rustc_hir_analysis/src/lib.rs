@@ -55,7 +55,9 @@ This API is completely unstable and subject to change.
 
 */
 
+#![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
@@ -169,11 +171,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.sess.time("coherence_checking", || {
         // Check impls constrain their parameters
-        let mut res =
+        let res =
             tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-            res = res.and(tcx.ensure().coherent_trait(trait_def_id));
+            let _ = tcx.ensure().coherent_trait(trait_def_id);
         }
         // these queries are executed for side-effects (error reporting):
         res.and(tcx.ensure().crate_inherent_impls(()))
@@ -209,7 +211,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.ensure().check_unused_traits(());
 
-    if let Some(reported) = tcx.dcx().has_errors() { Err(reported) } else { Ok(()) }
+    Ok(())
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

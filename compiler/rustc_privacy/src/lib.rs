@@ -5,8 +5,6 @@
 #![feature(associated_type_defaults)]
 #![feature(try_blocks)]
 #![feature(let_chains)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -21,7 +19,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, PatKind};
+use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgs;
@@ -98,9 +96,6 @@ trait DefIdVisitor<'tcx> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<Self::BreakTy> {
-        self.skeleton().visit_projection_ty(projection)
-    }
     fn visit_predicates(
         &mut self,
         predicates: ty::GenericPredicates<'tcx>,
@@ -172,6 +167,10 @@ where
     V: DefIdVisitor<'tcx> + ?Sized,
 {
     type BreakTy = V::BreakTy;
+
+    fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
+        self.visit_clause(p.as_clause().unwrap())
+    }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
@@ -1076,6 +1075,14 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     }
 }
 
+impl<'tcx> rustc_ty_utils::sig_types::SpannedTypeVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
+    type BreakTy = ();
+    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<()> {
+        self.span = span;
+        value.visit_with(&mut self.skeleton())
+    }
+}
+
 impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let old_maybe_typeck_results =
@@ -1086,18 +1093,15 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
         self.span = hir_ty.span;
-        if let Some(typeck_results) = self.maybe_typeck_results {
-            // Types in bodies.
-            if self.visit(typeck_results.node_type(hir_ty.hir_id)).is_break() {
-                return;
-            }
-        } else {
-            // Types in signatures.
-            // FIXME: This is very ineffective. Ideally each HIR type should be converted
-            // into a semantic type only once and the result should be cached somehow.
-            if self.visit(rustc_hir_analysis::hir_ty_to_ty(self.tcx, hir_ty)).is_break() {
-                return;
-            }
+        if self
+            .visit(
+                self.maybe_typeck_results
+                    .unwrap_or_else(|| span_bug!(hir_ty.span, "`hir::Ty` outside of a body"))
+                    .node_type(hir_ty.hir_id),
+            )
+            .is_break()
+        {
+            return;
         }
 
         intravisit::walk_ty(self, hir_ty);
@@ -1105,54 +1109,18 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
         self.span = inf.span;
-        if let Some(typeck_results) = self.maybe_typeck_results {
-            if let Some(ty) = typeck_results.node_type_opt(inf.hir_id) {
-                if self.visit(ty).is_break() {
-                    return;
-                }
-            } else {
-                // FIXME: check types of const infers here.
+        if let Some(ty) = self
+            .maybe_typeck_results
+            .unwrap_or_else(|| span_bug!(inf.span, "`hir::InferArg` outside of a body"))
+            .node_type_opt(inf.hir_id)
+        {
+            if self.visit(ty).is_break() {
+                return;
             }
         } else {
-            span_bug!(self.span, "`hir::InferArg` outside of a body");
+            // FIXME: check types of const infers here.
         }
         intravisit::walk_inf(self, inf);
-    }
-
-    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) {
-        self.span = trait_ref.path.span;
-        if self.maybe_typeck_results.is_some() {
-            // Privacy of traits in bodies is checked as a part of trait object types.
-        } else {
-            let bounds = rustc_hir_analysis::hir_trait_to_predicates(
-                self.tcx,
-                trait_ref,
-                // NOTE: This isn't really right, but the actual type doesn't matter here. It's
-                // just required by `ty::TraitRef`.
-                self.tcx.types.never,
-            );
-
-            for (clause, _) in bounds.clauses() {
-                match clause.kind().skip_binder() {
-                    ty::ClauseKind::Trait(trait_predicate) => {
-                        if self.visit_trait(trait_predicate.trait_ref).is_break() {
-                            return;
-                        }
-                    }
-                    ty::ClauseKind::Projection(proj_predicate) => {
-                        let term = self.visit(proj_predicate.term);
-                        if term.is_break()
-                            || self.visit_projection_ty(proj_predicate.projection_ty).is_break()
-                        {
-                            return;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        intravisit::walk_trait_ref(self, trait_ref);
     }
 
     // Check types of expressions
@@ -1727,7 +1695,26 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     // inferred types of expressions and patterns.
     let span = tcx.def_span(module_def_id);
     let mut visitor = TypePrivacyVisitor { tcx, module_def_id, maybe_typeck_results: None, span };
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut visitor);
+
+    let module = tcx.hir_module_items(module_def_id);
+    for def_id in module.definitions() {
+        rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
+
+        if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id) {
+            visitor.visit_nested_body(body_id);
+        }
+    }
+
+    for id in module.items() {
+        if let ItemKind::Impl(i) = tcx.hir().item(id).kind {
+            if let Some(item) = i.of_trait {
+                let trait_ref = tcx.impl_trait_ref(id.owner_id.def_id).unwrap();
+                let trait_ref = trait_ref.instantiate_identity();
+                visitor.span = item.path.span;
+                visitor.visit_def_id(trait_ref.def_id, "trait", &trait_ref.print_only_trait_path());
+            }
+        }
+    }
 }
 
 fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {

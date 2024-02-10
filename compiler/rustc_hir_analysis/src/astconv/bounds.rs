@@ -243,9 +243,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
         path_span: Span,
-        constness: ty::BoundConstness,
         only_self_bounds: OnlySelfBounds,
-        polarity: ty::ImplPolarity,
     ) -> Result<(), ErrorGuaranteed> {
         // Given something like `U: SomeTrait<T = X>`, we want to produce a
         // predicate like `<U as SomeTrait>::T = X`. This is somewhat

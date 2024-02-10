@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! This pass type-checks the MIR to ensure it is not broken.
 
 use std::rc::Rc;
@@ -213,7 +211,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
                 CustomTypeOp::new(
                     |ocx| {
                         ocx.infcx.register_member_constraints(
-                            param_env,
                             opaque_type_key,
                             decl.hidden_type.ty,
                             decl.hidden_type.span,
@@ -1984,6 +1981,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::SizedBound,
                 );
             }
+            &Rvalue::NullaryOp(NullOp::DebugAssertions, _) => {}
 
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);

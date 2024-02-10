@@ -27,7 +27,6 @@ pub mod net;
 #[cfg(target_os = "l4re")]
 pub use self::l4re::net;
 pub mod os;
-pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;

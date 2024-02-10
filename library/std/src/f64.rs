@@ -114,7 +114,7 @@ impl f64 {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "round_ties_even", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f64 {
         unsafe { intrinsics::rintf64(self) }

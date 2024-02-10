@@ -448,12 +448,34 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             );
                         }
                     }
-                    let msg = "an `as` expression can only be used to convert between primitive \
-                               types or to coerce to a specific trait object";
+
+                    let (msg, note) = if let ty::Adt(adt, _) = self.expr_ty.kind()
+                        && adt.is_enum()
+                        && self.cast_ty.is_numeric()
+                    {
+                        (
+                            "an `as` expression can be used to convert enum types to numeric \
+                             types only if the enum type is unit-only or field-less",
+                            Some(
+                                "see https://doc.rust-lang.org/reference/items/enumerations.html#casting for more information",
+                            ),
+                        )
+                    } else {
+                        (
+                            "an `as` expression can only be used to convert between primitive \
+                             types or to coerce to a specific trait object",
+                            None,
+                        )
+                    };
+
                     if label {
                         err.span_label(self.span, msg);
                     } else {
                         err.note(msg);
+                    }
+
+                    if let Some(note) = note {
+                        err.note(note);
                     }
                 } else {
                     err.span_label(self.span, "invalid cast");

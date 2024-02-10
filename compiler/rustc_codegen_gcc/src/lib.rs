@@ -27,8 +27,6 @@
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;

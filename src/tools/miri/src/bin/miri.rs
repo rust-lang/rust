@@ -2,7 +2,9 @@
 #![allow(
     clippy::manual_range_contains,
     clippy::useless_format,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic,
 )]
 
 extern crate rustc_data_structures;

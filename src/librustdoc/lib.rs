@@ -18,7 +18,9 @@
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
+#![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
+#![allow(rustc::untranslatable_diagnostic)]
 
 extern crate thin_vec;
 #[macro_use]

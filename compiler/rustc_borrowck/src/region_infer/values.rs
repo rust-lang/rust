@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::SparseBitMatrix;

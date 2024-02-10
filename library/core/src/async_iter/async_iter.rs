@@ -47,7 +47,7 @@ pub trait AsyncIterator {
     /// Rust's usual rules apply: calls must never cause undefined behavior
     /// (memory corruption, incorrect use of `unsafe` functions, or the like),
     /// regardless of the async iterator's state.
-    #[cfg_attr(not(bootstrap), lang = "async_iterator_poll_next")]
+    #[lang = "async_iterator_poll_next"]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
 
     /// Returns the bounds on the remaining length of the async iterator.
@@ -145,7 +145,7 @@ pub trait IntoAsyncIterator {
     type IntoAsyncIter: AsyncIterator<Item = Self::Item>;
 
     /// Converts `self` into an async iterator
-    #[cfg_attr(not(bootstrap), lang = "into_async_iter_into_iter")]
+    #[lang = "into_async_iter_into_iter"]
     fn into_async_iter(self) -> Self::IntoAsyncIter;
 }
 

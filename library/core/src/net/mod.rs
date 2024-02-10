@@ -9,7 +9,7 @@
 //! * [`SocketAddr`] represents socket addresses of either IPv4 or IPv6; [`SocketAddrV4`]
 //!   and [`SocketAddrV6`] are respectively IPv4 and IPv6 socket addresses
 
-#![stable(feature = "ip_in_core", since = "CURRENT_RUSTC_VERSION")]
+#![stable(feature = "ip_in_core", since = "1.77.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::ip_addr::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};

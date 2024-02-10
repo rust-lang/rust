@@ -1,0 +1,35 @@
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`normalize_param_env_2`)
+note: the requirement `<() as A<T>>::Assoc: A<T>` appears on the `impl`'s method `f` but not on the corresponding trait's method
+  --> $DIR/normalize-param-env-2.rs:12:8
+   |
+LL | trait A<T> {
+   |       - in this trait
+...
+LL |     fn f()
+   |        ^ this trait's method doesn't have the requirement `<() as A<T>>::Assoc: A<T>`
+
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`normalize_param_env_2`)
+
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc well-formed`
+  --> $DIR/normalize-param-env-2.rs:24:22
+   |
+LL |         Self::Assoc: A<T>,
+   |                      ^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`normalize_param_env_2`)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

@@ -63,14 +63,6 @@ macro_rules! tuple_impls {
 
         maybe_tuple_doc! {
             $($T)+ @
-            #[unstable(feature = "structural_match", issue = "31434")]
-            #[cfg(bootstrap)]
-            impl<$($T),+> crate::marker::StructuralEq for ($($T,)+)
-            {}
-        }
-
-        maybe_tuple_doc! {
-            $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: PartialOrd),+> PartialOrd for ($($T,)+)
             where

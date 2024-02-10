@@ -1,11 +1,14 @@
-error: method `foo` should be async because the method from the trait is async
+error: method should be `async` or return a future, but it is synchronous
   --> $DIR/fn-not-async-err.rs:10:5
    |
-LL |     async fn foo(&self) -> i32;
-   |     --------------------------- required because the trait method is async
-...
 LL |     fn foo(&self) -> i32 {
    |     ^^^^^^^^^^^^^^^^^^^^
+   |
+note: this method is `async` so it expects a future to be returned
+  --> $DIR/fn-not-async-err.rs:6:5
+   |
+LL |     async fn foo(&self) -> i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

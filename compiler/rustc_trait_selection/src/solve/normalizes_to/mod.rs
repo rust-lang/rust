@@ -491,6 +491,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
+        let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+        assert_eq!(metadata_def_id, goal.predicate.def_id());
         ecx.probe_misc_candidate("builtin pointee").enter(|ecx| {
             let metadata_ty = match goal.predicate.self_ty().kind() {
                 ty::Bool
@@ -522,7 +524,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 }
 
                 ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                    // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
+                    // This is the "fallback impl" for type parameters, unnormalizable projections
+                    // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                    // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                    // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
                     let sized_predicate = ty::TraitRef::from_lang_item(
                         tcx,
                         LangItem::Sized,
@@ -536,30 +541,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
                 ty::Adt(def, args) if def.is_struct() => match def.non_enum_variant().tail_opt() {
                     None => tcx.types.unit,
-                    Some(field_def) => {
-                        let self_ty = field_def.ty(tcx, args);
-                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
-                        ecx.add_goal(
-                            GoalSource::Misc,
-                            goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),
-                        );
-                        return ecx
-                            .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    Some(tail_def) => {
+                        let tail_ty = tail_def.ty(tcx, args);
+                        Ty::new_projection(tcx, metadata_def_id, [tail_ty])
                     }
                 },
                 ty::Adt(_, _) => tcx.types.unit,
 
                 ty::Tuple(elements) => match elements.last() {
                     None => tcx.types.unit,
-                    Some(&self_ty) => {
-                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
-                        ecx.add_goal(
-                            GoalSource::Misc,
-                            goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),
-                        );
-                        return ecx
-                            .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
-                    }
+                    Some(&tail_ty) => Ty::new_projection(tcx, metadata_def_id, [tail_ty]),
                 },
 
                 ty::Infer(

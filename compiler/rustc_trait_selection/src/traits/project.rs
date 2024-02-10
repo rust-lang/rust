@@ -40,6 +40,7 @@ use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
 use std::collections::BTreeMap;
+use std::ops::ControlFlow;
 
 pub use rustc_middle::traits::Reveal;
 
@@ -250,8 +251,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
     let infcx = selcx.infcx;
     let r = infcx.commit_if_ok(|_snapshot| {
         let old_universe = infcx.universe();
-        let placeholder_predicate =
-            infcx.instantiate_binder_with_placeholders(obligation.predicate);
+        let placeholder_predicate = infcx.enter_forall_and_leak_universe(obligation.predicate);
         let new_universe = infcx.universe();
 
         let placeholder_obligation = obligation.with(infcx.tcx, placeholder_predicate);
@@ -1615,32 +1615,44 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
     candidate_set: &mut ProjectionCandidateSet<'tcx>,
 ) {
     debug!("assemble_candidates_from_trait_def(..)");
+    let mut ambiguous = false;
+    selcx.for_each_item_bound(
+        obligation.predicate.self_ty(),
+        |selcx, clause, _| {
+            let Some(clause) = clause.as_projection_clause() else {
+                return ControlFlow::Continue(());
+            };
 
-    let tcx = selcx.tcx();
-    // Check whether the self-type is itself a projection.
-    // If so, extract what we know from the trait and try to come up with a good answer.
-    let bounds = match *obligation.predicate.self_ty().kind() {
-        // Excluding IATs and type aliases here as they don't have meaningful item bounds.
-        ty::Alias(ty::Projection | ty::Opaque, ref data) => {
-            tcx.item_bounds(data.def_id).instantiate(tcx, data.args)
-        }
-        ty::Infer(ty::TyVar(_)) => {
-            // If the self-type is an inference variable, then it MAY wind up
-            // being a projected type, so induce an ambiguity.
-            candidate_set.mark_ambiguous();
-            return;
-        }
-        _ => return,
-    };
+            let is_match =
+                selcx.infcx.probe(|_| selcx.match_projection_projections(obligation, clause, true));
 
-    assemble_candidates_from_predicates(
-        selcx,
-        obligation,
-        candidate_set,
-        ProjectionCandidate::TraitDef,
-        bounds.iter(),
-        true,
+            match is_match {
+                ProjectionMatchesProjection::Yes => {
+                    candidate_set.push_candidate(ProjectionCandidate::TraitDef(clause));
+
+                    if !obligation.predicate.has_non_region_infer() {
+                        // HACK: Pick the first trait def candidate for a fully
+                        // inferred predicate. This is to allow duplicates that
+                        // differ only in normalization.
+                        return ControlFlow::Break(());
+                    }
+                }
+                ProjectionMatchesProjection::Ambiguous => {
+                    candidate_set.mark_ambiguous();
+                }
+                ProjectionMatchesProjection::No => {}
+            }
+
+            ControlFlow::Continue(())
+        },
+        // `ProjectionCandidateSet` is borrowed in the above closure,
+        // so just mark ambiguous outside of the closure.
+        || ambiguous = true,
     );
+
+    if ambiguous {
+        candidate_set.mark_ambiguous();
+    }
 }
 
 /// In the case of a trait object like
@@ -1936,10 +1948,11 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // Integers and floats are always Sized, and so have unit type metadata.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
-                        // type parameters, opaques, and unnormalized projections have pointer
-                        // metadata if they're known (e.g. by the param_env) to be sized
+                        // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata` if able.
+                        // Otherwise, type parameters, opaques, and unnormalized projections have
+                        // unit metadata if they're known (e.g. by the param_env) to be sized.
                         ty::Param(_) | ty::Alias(..)
-                            if selcx.infcx.predicate_must_hold_modulo_regions(
+                            if self_ty != tail || selcx.infcx.predicate_must_hold_modulo_regions(
                                 &obligation.with(
                                     selcx.tcx(),
                                     ty::TraitRef::from_lang_item(selcx.tcx(), LangItem::Sized, obligation.cause.span(),[self_ty]),
@@ -2313,7 +2326,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         assert_eq!(metadata_def_id, item_def_id);
 
         let mut obligations = Vec::new();
-        let (metadata_ty, check_is_sized) = self_ty.ptr_metadata_ty(tcx, |ty| {
+        let normalize = |ty| {
             normalize_with_depth_to(
                 selcx,
                 obligation.param_env,
@@ -2322,16 +2335,27 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
                 ty,
                 &mut obligations,
             )
+        };
+        let metadata_ty = self_ty.ptr_metadata_ty_or_tail(tcx, normalize).unwrap_or_else(|tail| {
+            if tail == self_ty {
+                // This is the "fallback impl" for type parameters, unnormalizable projections
+                // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
+                let sized_predicate = ty::TraitRef::from_lang_item(
+                    tcx,
+                    LangItem::Sized,
+                    obligation.cause.span(),
+                    [self_ty],
+                );
+                obligations.push(obligation.with(tcx, sized_predicate));
+                tcx.types.unit
+            } else {
+                // We know that `self_ty` has the same metadata as `tail`. This allows us
+                // to prove predicates like `Wrapper<Tail>::Metadata == Tail::Metadata`.
+                Ty::new_projection(tcx, metadata_def_id, [tail])
+            }
         });
-        if check_is_sized {
-            let sized_predicate = ty::TraitRef::from_lang_item(
-                tcx,
-                LangItem::Sized,
-                obligation.cause.span(),
-                [self_ty],
-            );
-            obligations.push(obligation.with(tcx, sized_predicate));
-        }
         (metadata_ty.into(), obligations)
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);

@@ -163,10 +163,6 @@ impl Lifetime {
             (LifetimeSuggestionPosition::Normal, self.ident.span)
         }
     }
-
-    pub fn is_static(&self) -> bool {
-        self.res == LifetimeName::Static
-    }
 }
 
 /// A `Path` is essentially Rust's notion of a name; for instance,
@@ -835,7 +831,7 @@ pub struct OwnerNodes<'tcx> {
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
     // used.
-    pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
+    pub nodes: IndexVec<ItemLocalId, ParentedNode<'tcx>>,
     /// Content of local bodies.
     pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
 }
@@ -843,9 +839,8 @@ pub struct OwnerNodes<'tcx> {
 impl<'tcx> OwnerNodes<'tcx> {
     pub fn node(&self) -> OwnerNode<'tcx> {
         use rustc_index::Idx;
-        let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
-        let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
-        node
+        // Indexing must ensure it is an OwnerNode.
+        self.nodes[ItemLocalId::new(0)].node.as_owner().unwrap()
     }
 }
 
@@ -860,9 +855,7 @@ impl fmt::Debug for OwnerNodes<'_> {
                     .nodes
                     .iter_enumerated()
                     .map(|(id, parented_node)| {
-                        let parented_node = parented_node.as_ref().map(|node| node.parent);
-
-                        debug_fn(move |f| write!(f, "({id:?}, {parented_node:?})"))
+                        debug_fn(move |f| write!(f, "({id:?}, {:?})", parented_node.parent))
                     })
                     .collect::<Vec<_>>(),
             )
@@ -3351,13 +3344,15 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    pub fn span(&self) -> Span {
+    // Span by reference to pass to `Node::Err`.
+    #[allow(rustc::pass_by_value)]
+    pub fn span(&self) -> &'hir Span {
         match self {
             OwnerNode::Item(Item { span, .. })
             | OwnerNode::ForeignItem(ForeignItem { span, .. })
             | OwnerNode::ImplItem(ImplItem { span, .. })
-            | OwnerNode::TraitItem(TraitItem { span, .. }) => *span,
-            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => *inner_span,
+            | OwnerNode::TraitItem(TraitItem { span, .. }) => span,
+            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => inner_span,
         }
     }
 
@@ -3486,17 +3481,19 @@ pub enum Node<'hir> {
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
     Local(&'hir Local<'hir>),
-
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
     Ctor(&'hir VariantData<'hir>),
-
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam<'hir>),
-
     Crate(&'hir Mod<'hir>),
-
     Infer(&'hir InferArg),
+    WhereBoundPredicate(&'hir WhereBoundPredicate<'hir>),
+    // FIXME: Merge into `Node::Infer`.
+    ArrayLenInfer(&'hir InferArg),
+    // Span by reference to minimize `Node`'s size
+    #[allow(rustc::pass_by_value)]
+    Err(&'hir Span),
 }
 
 impl<'hir> Node<'hir> {
@@ -3541,7 +3538,10 @@ impl<'hir> Node<'hir> {
             | Node::Crate(..)
             | Node::Ty(..)
             | Node::TraitRef(..)
-            | Node::Infer(..) => None,
+            | Node::Infer(..)
+            | Node::WhereBoundPredicate(..)
+            | Node::ArrayLenInfer(..)
+            | Node::Err(..) => None,
         }
     }
 

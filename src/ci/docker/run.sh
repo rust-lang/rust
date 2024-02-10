@@ -72,8 +72,12 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       # Include cache version. Can be used to manually bust the Docker cache.
       echo "2" >> $hash_key
 
+      echo "Image input"
+      cat $hash_key
+
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
+      echo "Image input checksum ${cksum}"
     fi
 
     dockerfile="$docker_dir/$image/Dockerfile"
@@ -84,9 +88,6 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         context="$script_dir"
     fi
     echo "::group::Building docker image for $image"
-    echo "Image input"
-    cat $hash_key
-    echo "Image input checksum ${cksum}"
 
     # Print docker version
     docker --version

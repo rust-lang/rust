@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! The entry point of the NLL borrow checker.
 
 use polonius_engine::{Algorithm, Output};
@@ -184,7 +182,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let (closure_region_requirements, nll_errors) =
-        regioncx.solve(infcx, param_env, body, polonius_output.clone());
+        regioncx.solve(infcx, body, polonius_output.clone());
 
     if !nll_errors.is_empty() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.
