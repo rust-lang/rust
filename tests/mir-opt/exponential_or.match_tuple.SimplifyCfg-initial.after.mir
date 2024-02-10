@@ -19,7 +19,8 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
 
     bb0: {
         PlaceMention(_1);
-        switchInt((_1.0: u32)) -> [1: bb2, 4: bb2, otherwise: bb1];
+        _2 = discriminant((_1.2: std::option::Option<i32>));
+        switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
     }
 
     bb1: {
@@ -28,12 +29,11 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
     }
 
     bb2: {
-        _2 = discriminant((_1.2: std::option::Option<i32>));
-        switchInt(move _2) -> [0: bb4, 1: bb3, otherwise: bb1];
+        switchInt((((_1.2: std::option::Option<i32>) as Some).0: i32)) -> [1: bb3, 8: bb3, otherwise: bb1];
     }
 
     bb3: {
-        switchInt((((_1.2: std::option::Option<i32>) as Some).0: i32)) -> [1: bb4, 8: bb4, otherwise: bb1];
+        switchInt((_1.0: u32)) -> [1: bb4, 4: bb4, otherwise: bb1];
     }
 
     bb4: {

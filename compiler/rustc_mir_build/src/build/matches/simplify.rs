@@ -59,22 +59,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //
         // final bindings: [6, 7, 4, 5, 1, 2, 3]
         let mut accumulated_bindings = mem::take(candidate_bindings);
-        // Repeatedly simplify match pairs until fixed point is reached
+        let mut simplified_match_pairs = Vec::new();
+        // Repeatedly simplify match pairs until we're left with only unsimplifiable ones.
         loop {
-            let mut changed = false;
             for match_pair in mem::take(match_pairs) {
-                match self.simplify_match_pair(
+                if let Err(match_pair) = self.simplify_match_pair(
                     match_pair,
                     candidate_bindings,
                     candidate_ascriptions,
                     match_pairs,
                 ) {
-                    Ok(()) => {
-                        changed = true;
-                    }
-                    Err(match_pair) => {
-                        match_pairs.push(match_pair);
-                    }
+                    simplified_match_pairs.push(match_pair);
                 }
             }
 
@@ -83,14 +78,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             mem::swap(candidate_bindings, &mut accumulated_bindings);
             candidate_bindings.clear();
 
-            if !changed {
-                // If we were not able to simplify anymore, done.
+            if match_pairs.is_empty() {
                 break;
             }
         }
 
         // Store computed bindings back in `candidate_bindings`.
         mem::swap(candidate_bindings, &mut accumulated_bindings);
+        // Store simplified match pairs back in `match_pairs`.
+        mem::swap(match_pairs, &mut simplified_match_pairs);
 
         // Move or-patterns to the end, because they can result in us
         // creating additional candidates, so we want to test them as
