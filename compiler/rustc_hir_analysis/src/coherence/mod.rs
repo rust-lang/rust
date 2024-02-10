@@ -10,7 +10,7 @@ use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::ErrorGuaranteed;
+use rustc_span::{sym, ErrorGuaranteed};
 use rustc_trait_selection::traits;
 
 mod builtin;
@@ -70,7 +70,11 @@ fn enforce_trait_manually_implementable(
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable =
         tcx.trait_def(trait_def_id).specialization_kind
     {
-        if !tcx.features().specialization && !tcx.features().min_specialization {
+        if !tcx.features().specialization
+            && !tcx.features().min_specialization
+            && !impl_header_span.allows_unstable(sym::specialization)
+            && !impl_header_span.allows_unstable(sym::min_specialization)
+        {
             return Err(tcx.dcx().emit_err(errors::SpecializationTrait { span: impl_header_span }));
         }
     }
