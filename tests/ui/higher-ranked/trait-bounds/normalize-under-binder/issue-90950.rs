@@ -1,5 +1,4 @@
-// check-fail
-// known-bug: #90950
+// check-pass
 
 trait Yokeable<'a>: 'static {
     type Output: 'a;

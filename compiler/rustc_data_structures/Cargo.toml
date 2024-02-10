@@ -11,7 +11,7 @@ either = "1.0"
 elsa = "=1.7.1"
 ena = "0.14.2"
 indexmap = { version = "2.0.0" }
-jobserver_crate = { version = "0.1.27", package = "jobserver" }
+jobserver_crate = { version = "0.1.28", package = "jobserver" }
 libc = "0.2"
 measureme = "11"
 rustc-hash = "1.1.0"

@@ -4,7 +4,7 @@ use std::fmt;
 
 use serde::{Serialize, Serializer};
 
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorOf, DefKind};
 use rustc_span::hygiene::MacroKind;
 
 use crate::clean;
@@ -115,7 +115,15 @@ impl<'a> From<&'a clean::Item> for ItemType {
 
 impl From<DefKind> for ItemType {
     fn from(other: DefKind) -> Self {
-        match other {
+        Self::from_def_kind(other, None)
+    }
+}
+
+impl ItemType {
+    /// Depending on the parent kind, some variants have a different translation (like a `Method`
+    /// becoming a `TyMethod`).
+    pub(crate) fn from_def_kind(kind: DefKind, parent_kind: Option<DefKind>) -> Self {
+        match kind {
             DefKind::Enum => Self::Enum,
             DefKind::Fn => Self::Function,
             DefKind::Mod => Self::Module,
@@ -131,30 +139,35 @@ impl From<DefKind> for ItemType {
                 MacroKind::Attr => ItemType::ProcAttribute,
                 MacroKind::Derive => ItemType::ProcDerive,
             },
-            DefKind::ForeignTy
-            | DefKind::Variant
-            | DefKind::AssocTy
-            | DefKind::TyParam
+            DefKind::ForeignTy => Self::ForeignType,
+            DefKind::Variant => Self::Variant,
+            DefKind::Field => Self::StructField,
+            DefKind::AssocTy => Self::AssocType,
+            DefKind::AssocFn => {
+                if let Some(DefKind::Trait) = parent_kind {
+                    Self::TyMethod
+                } else {
+                    Self::Method
+                }
+            }
+            DefKind::Ctor(CtorOf::Struct, _) => Self::Struct,
+            DefKind::Ctor(CtorOf::Variant, _) => Self::Variant,
+            DefKind::AssocConst => Self::AssocConst,
+            DefKind::TyParam
             | DefKind::ConstParam
-            | DefKind::Ctor(..)
-            | DefKind::AssocFn
-            | DefKind::AssocConst
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::AnonConst
             | DefKind::InlineConst
             | DefKind::OpaqueTy
-            | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::Closure => Self::ForeignType,
         }
     }
-}
 
-impl ItemType {
     pub(crate) fn as_str(&self) -> &'static str {
         match *self {
             ItemType::Module => "mod",

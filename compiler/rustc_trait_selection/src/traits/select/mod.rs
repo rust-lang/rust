@@ -52,6 +52,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
+use std::ops::ControlFlow;
 
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -1592,71 +1593,41 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.selection_cache.insert((param_env, pred), dep_node, candidate);
     }
 
-    /// Matches a predicate against the bounds of its self type.
-    ///
-    /// Given an obligation like `<T as Foo>::Bar: Baz` where the self type is
-    /// a projection, look at the bounds of `T::Bar`, see if we can find a
-    /// `Baz` bound. We return indexes into the list returned by
-    /// `tcx.item_bounds` for any applicable bounds.
-    #[instrument(level = "debug", skip(self), ret)]
-    fn match_projection_obligation_against_definition_bounds(
+    /// Looks at the item bounds of the projection or opaque type.
+    /// If this is a nested rigid projection, such as
+    /// `<<T as Tr1>::Assoc as Tr2>::Assoc`, consider the item bounds
+    /// on both `Tr1::Assoc` and `Tr2::Assoc`, since we may encounter
+    /// relative bounds on both via the `associated_type_bounds` feature.
+    pub(super) fn for_each_item_bound<T>(
         &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-    ) -> smallvec::SmallVec<[usize; 2]> {
-        let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-        let placeholder_trait_predicate =
-            self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
-        debug!(?placeholder_trait_predicate);
-
-        let tcx = self.infcx.tcx;
-        let (def_id, args) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                (def_id, args)
-            }
-            _ => {
-                span_bug!(
-                    obligation.cause.span,
-                    "match_projection_obligation_against_definition_bounds() called \
-                     but self-ty is not a projection: {:?}",
-                    placeholder_trait_predicate.trait_ref.self_ty()
-                );
-            }
-        };
-        let bounds = tcx.item_bounds(def_id).instantiate(tcx, args);
-
-        // The bounds returned by `item_bounds` may contain duplicates after
-        // normalization, so try to deduplicate when possible to avoid
-        // unnecessary ambiguity.
-        let mut distinct_normalized_bounds = FxHashSet::default();
-
-        bounds
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, bound)| {
-                let bound_predicate = bound.kind();
-                if let ty::ClauseKind::Trait(pred) = bound_predicate.skip_binder() {
-                    let bound = bound_predicate.rebind(pred.trait_ref);
-                    if self.infcx.probe(|_| {
-                        match self.match_normalize_trait_ref(
-                            obligation,
-                            bound,
-                            placeholder_trait_predicate.trait_ref,
-                        ) {
-                            Ok(None) => true,
-                            Ok(Some(normalized_trait))
-                                if distinct_normalized_bounds.insert(normalized_trait) =>
-                            {
-                                true
-                            }
-                            _ => false,
-                        }
-                    }) {
-                        return Some(idx);
-                    }
+        mut self_ty: Ty<'tcx>,
+        mut for_each: impl FnMut(&mut Self, ty::Clause<'tcx>, usize) -> ControlFlow<T, ()>,
+        on_ambiguity: impl FnOnce(),
+    ) -> ControlFlow<T, ()> {
+        let mut idx = 0;
+        loop {
+            let (kind, alias_ty) = match *self_ty.kind() {
+                ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
+                ty::Infer(ty::TyVar(_)) => {
+                    on_ambiguity();
+                    return ControlFlow::Continue(());
                 }
-                None
-            })
-            .collect()
+                _ => return ControlFlow::Continue(()),
+            };
+
+            for bound in
+                self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
+            {
+                for_each(self, bound, idx)?;
+                idx += 1;
+            }
+
+            if kind == ty::Projection {
+                self_ty = alias_ty.self_ty();
+            } else {
+                return ControlFlow::Continue(());
+            }
+        }
     }
 
     /// Equates the trait in `obligation` with trait bound. If the two traits
