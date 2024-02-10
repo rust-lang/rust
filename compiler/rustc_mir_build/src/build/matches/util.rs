@@ -1,6 +1,5 @@
-use crate::build::expr::as_place::PlaceBase;
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::matches::MatchPair;
+use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
+use crate::build::matches::{MatchPair, TestCase};
 use crate::build::Builder;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -118,16 +117,23 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         }
 
         let mut subpairs = Vec::new();
-        match pattern.kind {
-            PatKind::Constant { .. }
-            | PatKind::Range(_)
-            | PatKind::Or { .. }
-            | PatKind::Never
-            | PatKind::Wild
-            | PatKind::Error(_) => {}
+        let test_case = match pattern.kind {
+            PatKind::Never | PatKind::Wild | PatKind::Error(_) => TestCase::Irrefutable,
+            PatKind::Or { .. } => TestCase::Or,
+
+            PatKind::Range(ref range) => {
+                if range.is_full_range(cx.tcx) == Some(true) {
+                    TestCase::Irrefutable
+                } else {
+                    TestCase::Range(range)
+                }
+            }
+
+            PatKind::Constant { value } => TestCase::Constant { value },
 
             PatKind::AscribeUserType { ref subpattern, .. } => {
                 subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
+                TestCase::Irrefutable
             }
 
             PatKind::Binding { ref subpattern, .. } => {
@@ -135,32 +141,65 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
                     // this is the `x @ P` case; have to keep matching against `P` now
                     subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
                 }
+                TestCase::Irrefutable
             }
 
             PatKind::InlineConstant { subpattern: ref pattern, .. } => {
                 subpairs.push(MatchPair::new(place.clone(), pattern, cx));
+                TestCase::Irrefutable
             }
 
-            PatKind::Slice { ref prefix, ref slice, ref suffix }
-            | PatKind::Array { ref prefix, ref slice, ref suffix } => {
+            PatKind::Array { ref prefix, ref slice, ref suffix } => {
                 cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+                TestCase::Irrefutable
+            }
+            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
+                cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+
+                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                    TestCase::Irrefutable
+                } else {
+                    TestCase::Slice {
+                        len: prefix.len() + suffix.len(),
+                        variable_length: slice.is_some(),
+                    }
+                }
             }
 
-            PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
+            PatKind::Variant { adt_def, variant_index, args, ref subpatterns } => {
                 let downcast_place = place.clone().downcast(adt_def, variant_index); // `(x as Variant)`
                 subpairs = cx.field_match_pairs(downcast_place, subpatterns);
+
+                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
+                    i == variant_index || {
+                        (cx.tcx.features().exhaustive_patterns
+                            || cx.tcx.features().min_exhaustive_patterns)
+                            && !v
+                                .inhabited_predicate(cx.tcx, adt_def)
+                                .instantiate(cx.tcx, args)
+                                .apply_ignore_module(cx.tcx, cx.param_env)
+                    }
+                }) && (adt_def.did().is_local()
+                    || !adt_def.is_variant_list_non_exhaustive());
+                if irrefutable {
+                    TestCase::Irrefutable
+                } else {
+                    TestCase::Variant { adt_def, variant_index }
+                }
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 subpairs = cx.field_match_pairs(place.clone(), subpatterns);
+                TestCase::Irrefutable
             }
 
             PatKind::Deref { ref subpattern } => {
                 let place_builder = place.clone().deref();
                 subpairs.push(MatchPair::new(place_builder, subpattern, cx));
+                TestCase::Irrefutable
             }
-        }
+        };
 
-        MatchPair { place, pattern, subpairs }
+        MatchPair { place, test_case, subpairs, pattern }
     }
 }

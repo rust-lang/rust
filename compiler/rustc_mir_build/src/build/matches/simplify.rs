@@ -13,7 +13,7 @@
 //! testing a value against a constant.
 
 use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
+use crate::build::matches::{Ascription, Binding, Candidate, MatchPair, TestCase};
 use crate::build::Builder;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::thir::{self, *};
@@ -128,14 +128,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ascriptions: &mut Vec<Ascription<'tcx>>,
         match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
+        // Collect bindings and ascriptions.
         match match_pair.pattern.kind {
-            PatKind::Leaf { .. }
-            | PatKind::Deref { .. }
-            | PatKind::Array { .. }
-            | PatKind::Never
-            | PatKind::Wild
-            | PatKind::Error(_) => {}
-
             PatKind::AscribeUserType {
                 ascription: thir::Ascription { ref annotation, variance },
                 ..
@@ -203,47 +197,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatKind::Constant { .. } => {
-                // FIXME normalize patterns when possible
-                return Err(match_pair);
-            }
-
-            PatKind::Range(ref range) => {
-                if range.is_full_range(self.tcx) != Some(true) {
-                    return Err(match_pair);
-                }
-            }
-
-            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                if !(prefix.is_empty() && slice.is_some() && suffix.is_empty()) {
-                    self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
-                    return Err(match_pair);
-                }
-            }
-
-            PatKind::Variant { adt_def, args, variant_index, subpatterns: _ } => {
-                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
-                    i == variant_index || {
-                        (self.tcx.features().exhaustive_patterns
-                            || self.tcx.features().min_exhaustive_patterns)
-                            && !v
-                                .inhabited_predicate(self.tcx, adt_def)
-                                .instantiate(self.tcx, args)
-                                .apply_ignore_module(self.tcx, self.param_env)
-                    }
-                }) && (adt_def.did().is_local()
-                    || !adt_def.is_variant_list_non_exhaustive());
-                if !irrefutable {
-                    self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
-                    return Err(match_pair);
-                }
-            }
-
-            PatKind::Or { .. } => return Err(match_pair),
+            _ => {}
         }
 
-        // Simplifiable pattern; we replace it with its subpairs.
-        match_pairs.append(&mut match_pair.subpairs);
-        Ok(())
+        if let TestCase::Irrefutable = match_pair.test_case {
+            // Simplifiable pattern; we replace it with its subpairs.
+            match_pairs.append(&mut match_pair.subpairs);
+            Ok(())
+        } else {
+            // Unsimplifiable pattern; we recursively simplify its subpairs.
+            self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
+            Err(match_pair)
+        }
     }
 }
