@@ -190,6 +190,8 @@ codegen_ssa_no_module_named =
 
 codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
+codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
+
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}
 
