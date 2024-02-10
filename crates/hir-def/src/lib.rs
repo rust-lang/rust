@@ -87,7 +87,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
-use span::Span;
+use span::{FileId, Span};
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 
@@ -891,6 +891,39 @@ impl_from!(
     ConstId
     for GenericDefId
 );
+
+impl GenericDefId {
+    fn file_id_and_params_of(
+        self,
+        db: &dyn DefDatabase,
+    ) -> (HirFileId, Option<ast::GenericParamList>) {
+        fn file_id_and_params_of_item_loc<Loc>(
+            db: &dyn DefDatabase,
+            def: impl for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = Loc>,
+        ) -> (HirFileId, Option<ast::GenericParamList>)
+        where
+            Loc: src::HasSource,
+            Loc::Value: ast::HasGenericParams,
+        {
+            let src = def.lookup(db).source(db);
+            (src.file_id, ast::HasGenericParams::generic_param_list(&src.value))
+        }
+
+        match self {
+            GenericDefId::FunctionId(it) => file_id_and_params_of_item_loc(db, it),
+            GenericDefId::TypeAliasId(it) => file_id_and_params_of_item_loc(db, it),
+            GenericDefId::ConstId(_) => (FileId::BOGUS.into(), None),
+            GenericDefId::AdtId(AdtId::StructId(it)) => file_id_and_params_of_item_loc(db, it),
+            GenericDefId::AdtId(AdtId::UnionId(it)) => file_id_and_params_of_item_loc(db, it),
+            GenericDefId::AdtId(AdtId::EnumId(it)) => file_id_and_params_of_item_loc(db, it),
+            GenericDefId::TraitId(it) => file_id_and_params_of_item_loc(db, it),
+            GenericDefId::TraitAliasId(it) => file_id_and_params_of_item_loc(db, it),
+            GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
+            // We won't be using this ID anyway
+            GenericDefId::EnumVariantId(_) => (FileId::BOGUS.into(), None),
+        }
+    }
+}
 
 impl From<AssocItemId> for GenericDefId {
     fn from(item: AssocItemId) -> Self {
