@@ -8,7 +8,7 @@
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(never_type)]
 #![feature(option_get_or_insert_default)]
 #![feature(round_char_boundary)]
