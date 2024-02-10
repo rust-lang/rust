@@ -814,9 +814,8 @@ impl HirDisplay for Ty {
 
                             // Don't count Sized but count when it absent
                             // (i.e. when explicit ?Sized bound is set).
-                            let default_sized = SizedByDefault::Sized {
-                                anchor: func.lookup(db.upcast()).module(db.upcast()).krate(),
-                            };
+                            let default_sized =
+                                SizedByDefault::Sized { anchor: func.krate(db.upcast()) };
                             let sized_bounds = bounds
                                 .skip_binders()
                                 .iter()
@@ -1025,7 +1024,7 @@ impl HirDisplay for Ty {
                         let data =
                             (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                         let bounds = data.substitute(Interner, &parameters);
-                        let krate = func.lookup(db.upcast()).module(db.upcast()).krate();
+                        let krate = func.krate(db.upcast());
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
@@ -1191,7 +1190,7 @@ impl HirDisplay for Ty {
                         let data =
                             (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                         let bounds = data.substitute(Interner, &opaque_ty.substitution);
-                        let krate = func.lookup(db.upcast()).module(db.upcast()).krate();
+                        let krate = func.krate(db.upcast());
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",

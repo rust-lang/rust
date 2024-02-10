@@ -21,13 +21,13 @@ use crate::{
     db::DefDatabase,
     dyn_map::{keys, DynMap},
     expander::Expander,
-    item_tree::{ItemTree, ItemTreeModItemNode},
+    item_tree::ItemTree,
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     src::{HasChildSource, HasSource},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
-    AdtId, AssocItemLoc, ConstParamId, GenericDefId, HasModule, ItemLoc, LifetimeParamId,
-    LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
+    AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId,
+    LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).

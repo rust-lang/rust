@@ -14,11 +14,11 @@ use crate::{
         DynMap,
     },
     item_scope::ItemScope,
-    item_tree::ItemTreeModItemNode,
+    item_tree::ItemTreeNode,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, AssocItemLoc, DefWithBodyId, EnumId, FieldId, ImplId, ItemLoc, Lookup,
-    MacroId, ModuleDefId, ModuleId, TraitId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, FieldId, ImplId, ItemTreeLoc, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -61,13 +61,9 @@ impl ChildBySource for ImplId {
 
 fn add_assoc_item(db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId, item: AssocItemId) {
     match item {
-        AssocItemId::FunctionId(func) => {
-            insert_assoc_item_loc(db, res, file_id, func, keys::FUNCTION)
-        }
-        AssocItemId::ConstId(konst) => insert_assoc_item_loc(db, res, file_id, konst, keys::CONST),
-        AssocItemId::TypeAliasId(ty) => {
-            insert_assoc_item_loc(db, res, file_id, ty, keys::TYPE_ALIAS)
-        }
+        AssocItemId::FunctionId(func) => insert_item_loc(db, res, file_id, func, keys::FUNCTION),
+        AssocItemId::ConstId(konst) => insert_item_loc(db, res, file_id, konst, keys::CONST),
+        AssocItemId::TypeAliasId(ty) => insert_item_loc(db, res, file_id, ty, keys::TYPE_ALIAS),
     }
 }
 
@@ -87,7 +83,7 @@ impl ChildBySource for ItemScope {
             .for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::EXTERN_CRATE));
         self.use_decls().for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::USE));
         self.unnamed_consts(db)
-            .for_each(|konst| insert_assoc_item_loc(db, res, file_id, konst, keys::CONST));
+            .for_each(|konst| insert_item_loc(db, res, file_id, konst, keys::CONST));
         self.attr_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
                 res[keys::ATTR_MACRO_CALL].insert(ast_id.to_node(db.upcast()), call_id);
@@ -132,17 +128,13 @@ impl ChildBySource for ItemScope {
             }
             match item {
                 ModuleDefId::FunctionId(id) => {
-                    insert_assoc_item_loc(db, map, file_id, id, keys::FUNCTION)
+                    insert_item_loc(db, map, file_id, id, keys::FUNCTION)
                 }
-                ModuleDefId::ConstId(id) => {
-                    insert_assoc_item_loc(db, map, file_id, id, keys::CONST)
-                }
+                ModuleDefId::ConstId(id) => insert_item_loc(db, map, file_id, id, keys::CONST),
                 ModuleDefId::TypeAliasId(id) => {
-                    insert_assoc_item_loc(db, map, file_id, id, keys::TYPE_ALIAS)
+                    insert_item_loc(db, map, file_id, id, keys::TYPE_ALIAS)
                 }
-                ModuleDefId::StaticId(id) => {
-                    insert_assoc_item_loc(db, map, file_id, id, keys::STATIC)
-                }
+                ModuleDefId::StaticId(id) => insert_item_loc(db, map, file_id, id, keys::STATIC),
                 ModuleDefId::TraitId(id) => insert_item_loc(db, map, file_id, id, keys::TRAIT),
                 ModuleDefId::TraitAliasId(id) => {
                     insert_item_loc(db, map, file_id, id, keys::TRAIT_ALIAS)
@@ -215,36 +207,20 @@ impl ChildBySource for DefWithBodyId {
     }
 }
 
-fn insert_item_loc<ID, N>(
+fn insert_item_loc<ID, N, Data>(
     db: &dyn DefDatabase,
     res: &mut DynMap,
     file_id: HirFileId,
     id: ID,
     key: Key<N::Source, ID>,
 ) where
-    ID: for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = ItemLoc<N>> + 'static,
-    N: ItemTreeModItemNode,
+    ID: for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = Data> + 'static,
+    Data: ItemTreeLoc<Id = N>,
+    N: ItemTreeNode,
     N::Source: 'static,
 {
     let loc = id.lookup(db);
-    if loc.id.file_id() == file_id {
-        res[key].insert(loc.source(db).value, id)
-    }
-}
-
-fn insert_assoc_item_loc<ID, N>(
-    db: &dyn DefDatabase,
-    res: &mut DynMap,
-    file_id: HirFileId,
-    id: ID,
-    key: Key<N::Source, ID>,
-) where
-    ID: for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<N>> + 'static,
-    N: ItemTreeModItemNode,
-    N::Source: 'static,
-{
-    let loc = id.lookup(db);
-    if loc.id.file_id() == file_id {
+    if loc.item_tree_id().file_id() == file_id {
         res[key].insert(loc.source(db).value, id)
     }
 }

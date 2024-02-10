@@ -44,7 +44,7 @@ use hir_def::{
     data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
-    item_tree::ItemTreeModItemNode,
+    item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
@@ -1768,7 +1768,7 @@ pub struct Function {
 
 impl Function {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.lookup(db.upcast()).module(db.upcast()).into()
+        self.id.module(db.upcast()).into()
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1909,8 +1909,7 @@ impl Function {
         {
             return None;
         }
-        let loc = self.id.lookup(db.upcast());
-        let def_map = db.crate_def_map(HasModule::krate(&loc, db.upcast()));
+        let def_map = db.crate_def_map(HasModule::krate(&self.id, db.upcast()));
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
 
@@ -2119,7 +2118,7 @@ pub struct Const {
 
 impl Const {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
+        Module { id: self.id.module(db.upcast()) }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
@@ -2174,7 +2173,7 @@ pub struct Static {
 
 impl Static {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
+        Module { id: self.id.module(db.upcast()) }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -2293,7 +2292,7 @@ impl TypeAlias {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
+        Module { id: self.id.module(db.upcast()) }
     }
 
     pub fn type_ref(self, db: &dyn HirDatabase) -> Option<TypeRef> {
@@ -2566,15 +2565,15 @@ impl AsAssocItem for DefWithBody {
     }
 }
 
-fn as_assoc_item<'db, ID, DEF, AST>(
+fn as_assoc_item<'db, ID, DEF, LOC>(
     db: &(dyn HirDatabase + 'db),
     ctor: impl FnOnce(DEF) -> AssocItem,
     id: ID,
 ) -> Option<AssocItem>
 where
-    ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<AST>>,
+    ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
-    AST: ItemTreeModItemNode,
+    LOC: ItemTreeNode,
 {
     match id.lookup(db.upcast()).container {
         ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
