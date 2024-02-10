@@ -43,6 +43,7 @@
 extern crate tracing;
 
 mod async_fn_in_trait;
+mod autorefs;
 pub mod builtin;
 mod context;
 mod deref_into_dyn_supertrait;
@@ -88,6 +89,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
 use async_fn_in_trait::AsyncFnInTrait;
+use autorefs::*;
 use builtin::*;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
@@ -192,6 +194,7 @@ late_lint_methods!(
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
             InvalidReferenceCasting: InvalidReferenceCasting,
+            ImplicitAutorefs: ImplicitAutorefs,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             UnitBindings: UnitBindings,
