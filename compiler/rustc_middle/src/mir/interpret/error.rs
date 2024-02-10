@@ -356,6 +356,8 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
     UninhabitedEnumVariantRead(VariantIdx),
+    /// Trying to set discriminant to the niched variant, but the value does not match.
+    InvalidNichedEnumVariantWritten { enum_ty: Ty<'tcx> },
     /// ABI-incompatible argument types.
     AbiMismatchArgument { caller_ty: Ty<'tcx>, callee_ty: Ty<'tcx> },
     /// ABI-incompatible return types.
