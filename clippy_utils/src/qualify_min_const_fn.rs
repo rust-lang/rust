@@ -389,7 +389,6 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
         })
 }
 
-#[expect(clippy::similar_names)] // bit too pedantic
 fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
     // FIXME(effects, fee1-dead) revert to const destruct once it works again
     #[expect(unused)]
