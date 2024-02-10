@@ -1326,7 +1326,7 @@ fn suggest_impl_trait<'tcx>(
 fn impl_trait_header(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> Option<(ty::EarlyBinder<ty::TraitRef<'_>>, ty::ImplPolarity)> {
+) -> Option<ty::EarlyBinder<ty::ImplTraitHeader<'_>>> {
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir().expect_item(def_id);
     let impl_ = item.expect_impl();
@@ -1336,7 +1336,7 @@ fn impl_trait_header(
         .map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id).instantiate_identity();
 
-            let impl_trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
+            let trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
                 tcx,
                 tcx.is_const_trait_impl_raw(def_id.to_def_id()),
                 ast_trait_ref,
@@ -1362,7 +1362,10 @@ fn impl_trait_header(
             } else {
                 icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
             };
-            (ty::EarlyBinder::bind(impl_trait_ref), polarity_of_impl(tcx, def_id,  impl_, item.span))
+            ty::EarlyBinder::bind(ty::ImplTraitHeader {
+                trait_ref,
+                polarity: polarity_of_impl(tcx, def_id,  impl_, item.span)
+            })
         })
 }
 

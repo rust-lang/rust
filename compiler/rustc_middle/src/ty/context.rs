@@ -2315,7 +2315,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: impl IntoQueryParam<DefId>,
     ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.0)
+        Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
     }
 }
 
