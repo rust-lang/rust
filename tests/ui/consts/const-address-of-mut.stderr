@@ -18,18 +18,8 @@ LL | static B: () = { let mut x = 2; &raw mut x; };
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: raw mutable pointers are not allowed in statics
-  --> $DIR/const-address-of-mut.rs:7:37
-   |
-LL | static mut C: () = { let mut x = 2; &raw mut x; };
-   |                                     ^^^^^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: raw mutable pointers are not allowed in constant functions
-  --> $DIR/const-address-of-mut.rs:11:13
+  --> $DIR/const-address-of-mut.rs:9:13
    |
 LL |     let y = &raw mut x;
    |             ^^^^^^^^^^
@@ -38,6 +28,6 @@ LL |     let y = &raw mut x;
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
