@@ -96,7 +96,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
     pub(in crate::build) fn new(
         mut place: PlaceBuilder<'tcx>,
         pattern: &'pat Pat<'tcx>,
-        cx: &Builder<'_, 'tcx>,
+        cx: &mut Builder<'_, 'tcx>,
     ) -> MatchPair<'pat, 'tcx> {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
@@ -116,6 +116,51 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         if may_need_cast {
             place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
-        MatchPair { place, pattern, subpairs: Vec::new() }
+
+        let mut subpairs = Vec::new();
+        match pattern.kind {
+            PatKind::Constant { .. }
+            | PatKind::Range(_)
+            | PatKind::Or { .. }
+            | PatKind::Never
+            | PatKind::Wild
+            | PatKind::Error(_) => {}
+
+            PatKind::AscribeUserType { ref subpattern, .. } => {
+                subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
+            }
+
+            PatKind::Binding { ref subpattern, .. } => {
+                if let Some(subpattern) = subpattern.as_ref() {
+                    // this is the `x @ P` case; have to keep matching against `P` now
+                    subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
+                }
+            }
+
+            PatKind::InlineConstant { subpattern: ref pattern, .. } => {
+                subpairs.push(MatchPair::new(place.clone(), pattern, cx));
+            }
+
+            PatKind::Slice { ref prefix, ref slice, ref suffix }
+            | PatKind::Array { ref prefix, ref slice, ref suffix } => {
+                cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+            }
+
+            PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
+                let downcast_place = place.clone().downcast(adt_def, variant_index); // `(x as Variant)`
+                subpairs = cx.field_match_pairs(downcast_place, subpatterns);
+            }
+
+            PatKind::Leaf { ref subpatterns } => {
+                subpairs = cx.field_match_pairs(place.clone(), subpatterns);
+            }
+
+            PatKind::Deref { ref subpattern } => {
+                let place_builder = place.clone().deref();
+                subpairs.push(MatchPair::new(place_builder, subpattern, cx));
+            }
+        }
+
+        MatchPair { place, pattern, subpairs }
     }
 }

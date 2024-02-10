@@ -131,11 +131,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ascriptions: &mut Vec<Ascription<'tcx>>,
         match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        assert!(match_pair.subpairs.is_empty(), "mustn't simplify a match pair twice");
         match match_pair.pattern.kind {
+            PatKind::Leaf { .. }
+            | PatKind::Deref { .. }
+            | PatKind::Array { .. }
+            | PatKind::Never
+            | PatKind::Wild
+            | PatKind::Error(_) => {}
+
             PatKind::AscribeUserType {
-                ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance },
+                ..
             } => {
                 // Apply the type ascription to the value at `match_pair.place`
                 if let Some(source) = match_pair.place.try_to_place(self) {
@@ -145,15 +151,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         variance,
                     });
                 }
-
-                match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
-
-                Ok(())
-            }
-
-            PatKind::Wild | PatKind::Error(_) => {
-                // nothing left to do
-                Ok(())
             }
 
             PatKind::Binding {
@@ -162,7 +159,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 mode,
                 var,
                 ty: _,
-                ref subpattern,
+                subpattern: _,
                 is_primary: _,
             } => {
                 if let Some(source) = match_pair.place.try_to_place(self) {
@@ -173,24 +170,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         binding_mode: mode,
                     });
                 }
-
-                if let Some(subpattern) = subpattern.as_ref() {
-                    // this is the `x @ P` case; have to keep matching against `P` now
-                    match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
-                }
-
-                Ok(())
-            }
-
-            PatKind::Never => {
-                // A never pattern acts like a load from the place.
-                // FIXME(never_patterns): load from the place
-                Ok(())
-            }
-
-            PatKind::Constant { .. } => {
-                // FIXME normalize patterns when possible
-                Err(match_pair)
             }
 
             PatKind::InlineConstant { subpattern: ref pattern, def } => {
@@ -225,38 +204,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         variance: ty::Contravariant,
                     });
                 }
-                match_pairs.push(MatchPair::new(match_pair.place, pattern, self));
+            }
 
-                Ok(())
+            PatKind::Constant { .. } => {
+                // FIXME normalize patterns when possible
+                return Err(match_pair);
             }
 
             PatKind::Range(ref range) => {
-                if let Some(true) = range.is_full_range(self.tcx) {
-                    // Irrefutable pattern match.
-                    return Ok(());
+                if range.is_full_range(self.tcx) != Some(true) {
+                    return Err(match_pair);
                 }
-                Err(match_pair)
             }
 
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    // irrefutable
-                    self.prefix_slice_suffix(match_pairs, &match_pair.place, prefix, slice, suffix);
-                    Ok(())
-                } else {
-                    self.prefix_slice_suffix(
-                        &mut match_pair.subpairs,
-                        &match_pair.place,
-                        prefix,
-                        slice,
-                        suffix,
-                    );
+                if !(prefix.is_empty() && slice.is_some() && suffix.is_empty()) {
                     self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
-                    Err(match_pair)
+                    return Err(match_pair);
                 }
             }
 
-            PatKind::Variant { adt_def, args, variant_index, ref subpatterns } => {
+            PatKind::Variant { adt_def, args, variant_index, subpatterns: _ } => {
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
                         (self.tcx.features().exhaustive_patterns
@@ -268,36 +236,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
-                if irrefutable {
-                    let place_builder = match_pair.place.downcast(adt_def, variant_index);
-                    match_pairs.extend(self.field_match_pairs(place_builder, subpatterns));
-                    Ok(())
-                } else {
-                    let downcast_place = match_pair.place.clone().downcast(adt_def, variant_index); // `(x as Variant)`
-                    match_pair.subpairs = self.field_match_pairs(downcast_place, subpatterns);
+                if !irrefutable {
                     self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
-                    Err(match_pair)
+                    return Err(match_pair);
                 }
             }
 
-            PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                self.prefix_slice_suffix(match_pairs, &match_pair.place, prefix, slice, suffix);
-                Ok(())
-            }
-
-            PatKind::Leaf { ref subpatterns } => {
-                // tuple struct, match subpats (if any)
-                match_pairs.extend(self.field_match_pairs(match_pair.place, subpatterns));
-                Ok(())
-            }
-
-            PatKind::Deref { ref subpattern } => {
-                let place_builder = match_pair.place.deref();
-                match_pairs.push(MatchPair::new(place_builder, subpattern, self));
-                Ok(())
-            }
-
-            PatKind::Or { .. } => Err(match_pair),
+            PatKind::Or { .. } => return Err(match_pair),
         }
+
+        // Simplifiable pattern; we replace it with its subpairs.
+        match_pairs.append(&mut match_pair.subpairs);
+        Ok(())
     }
 }
