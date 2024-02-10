@@ -70,7 +70,11 @@ use std::{
     panic::{RefUnwindSafe, UnwindSafe},
 };
 
-use base_db::{impl_intern_key, salsa, CrateId, Edition};
+use base_db::{
+    impl_intern_key,
+    salsa::{self, impl_intern_value_trivial},
+    CrateId, Edition,
+};
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     builtin_attr_macro::BuiltinAttrExpander,
@@ -171,6 +175,7 @@ pub trait ItemTreeLoc {
 macro_rules! impl_intern {
     ($id:ident, $loc:ident, $intern:ident, $lookup:ident) => {
         impl_intern_key!($id);
+        impl_intern_value_trivial!($loc);
         impl_intern_lookup!(DefDatabase, $id, $loc, $intern, $lookup);
     };
 }
@@ -490,6 +495,7 @@ pub struct TypeOrConstParamId {
     pub parent: GenericDefId,
     pub local_id: LocalTypeOrConstParamId,
 }
+impl_intern_value_trivial!(TypeOrConstParamId);
 
 /// A TypeOrConstParamId with an invariant that it actually belongs to a type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -551,6 +557,7 @@ pub struct LifetimeParamId {
     pub local_id: LocalLifetimeParamId,
 }
 pub type LocalLifetimeParamId = Idx<generics::LifetimeParamData>;
+impl_intern_value_trivial!(LifetimeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ItemContainerId {

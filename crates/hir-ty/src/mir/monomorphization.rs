@@ -19,7 +19,7 @@ use triomphe::Arc;
 
 use crate::{
     consteval::{intern_const_scalar, unknown_const},
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosure},
     from_placeholder_idx,
     infer::normalize,
     utils::{generics, Generics},
@@ -315,7 +315,7 @@ pub fn monomorphized_mir_body_for_closure_query(
     subst: Substitution,
     trait_env: Arc<crate::TraitEnvironment>,
 ) -> Result<Arc<MirBody>, MirLowerError> {
-    let (owner, _) = db.lookup_intern_closure(closure.into());
+    let InternedClosure(owner, _) = db.lookup_intern_closure(closure.into());
     let generics = owner.as_generic_def_id().map(|g_def| generics(db.upcast(), g_def));
     let filler = &mut Filler { db, subst: &subst, trait_env, generics, owner };
     let body = db.mir_body_for_closure(closure)?;

@@ -8,6 +8,7 @@ use crate::plumbing::QueryStorageMassOps;
 use crate::plumbing::QueryStorageOps;
 use crate::revision::Revision;
 use crate::Query;
+use crate::QueryTable;
 use crate::{Database, DatabaseKeyIndex, QueryDb};
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
@@ -24,10 +25,11 @@ const INTERN_DURABILITY: Durability = Durability::HIGH;
 pub struct InternedStorage<Q>
 where
     Q: Query,
+    Q::Key: InternValue,
     Q::Value: InternKey,
 {
     group_index: u16,
-    tables: RwLock<InternTables<Q::Key>>,
+    tables: RwLock<InternTables<MappedKey<Q>, Q::Key>>,
 }
 
 /// Storage for the looking up interned things.
@@ -35,17 +37,17 @@ pub struct LookupInternedStorage<Q, IQ>
 where
     Q: Query,
     Q::Key: InternKey,
-    Q::Value: Eq + Hash,
+    Q::Value: InternValue,
 {
     phantom: std::marker::PhantomData<(Q::Key, IQ)>,
 }
 
-struct InternTables<K> {
+struct InternTables<K, V> {
     /// Map from the key to the corresponding intern-index.
     map: FxHashMap<K, InternId>,
 
     /// For each valid intern-index, stores the interned value.
-    values: Vec<Arc<Slot<K>>>,
+    values: Vec<Arc<Slot<V>>>,
 }
 
 /// Trait implemented for the "key" that results from a
@@ -69,13 +71,62 @@ impl InternKey for InternId {
     }
 }
 
+/// Trait implemented for the "value" that is being interned.
+pub trait InternValue {
+    /// They key used to intern this value by.
+    type Key: Eq + Hash + Debug + Clone;
+    /// Maps the value to a key that will be used to intern it.
+    fn into_key(&self) -> Self::Key;
+    /// Calls the given function with the key that was used to intern this value.
+    ///
+    /// This is mainly used to prevent frequent cloning of the key when doing a lookup.
+    #[inline]
+    fn with_key<F: FnOnce(&Self::Key) -> T, T>(&self, f: F) -> T {
+        f(&self.into_key())
+    }
+}
+
+impl<A: InternValue + Eq + Hash + Debug + Clone, B: InternValue + Eq + Hash + Debug + Clone>
+    InternValue for (A, B)
+{
+    type Key = Self;
+    #[inline]
+    fn into_key(&self) -> Self::Key {
+        self.clone()
+    }
+    #[inline]
+    fn with_key<F: FnOnce(&Self::Key) -> T, T>(&self, f: F) -> T {
+        f(self)
+    }
+}
+
+/// Implement [`InternValue`] trivially, that is without actually mapping at all.
+#[macro_export]
+macro_rules! impl_intern_value_trivial {
+    ($($ty:ty),*) => {
+        $(
+            impl $crate::InternValue for $ty {
+                type Key = $ty;
+                #[inline]
+                fn into_key(&self) -> Self::Key {
+                    self.clone()
+                }
+                #[inline]
+                fn with_key<F: FnOnce(&Self::Key) -> T, T>(&self, f: F) -> T {
+                    f(self)
+                }
+            }
+        )*
+    };
+}
+impl_intern_value_trivial!(String);
 #[derive(Debug)]
-struct Slot<K> {
+struct Slot<V> {
     /// DatabaseKeyIndex for this slot.
     database_key_index: DatabaseKeyIndex,
 
     /// Value that was interned.
-    value: K,
+    value: V,
 
     /// When was this intern'd?
     ///
@@ -86,27 +137,28 @@ struct Slot<K> {
 impl<Q> std::panic::RefUnwindSafe for InternedStorage<Q>
 where
     Q: Query,
+    Q::Key: InternValue,
     Q::Key: std::panic::RefUnwindSafe,
     Q::Value: InternKey,
     Q::Value: std::panic::RefUnwindSafe,
 {
 }
 
-impl<K: Debug + Hash + Eq> InternTables<K> {
+impl<K: Debug + Hash + Eq, V> InternTables<K, V> {
     /// Returns the slot for the given key.
-    fn slot_for_key(&self, key: &K) -> Option<(Arc<Slot<K>>, InternId)> {
+    fn slot_for_key(&self, key: &K) -> Option<(Arc<Slot<V>>, InternId)> {
         let &index = self.map.get(key)?;
         Some((self.slot_for_index(index), index))
     }
 
     /// Returns the slot at the given index.
-    fn slot_for_index(&self, index: InternId) -> Arc<Slot<K>> {
+    fn slot_for_index(&self, index: InternId) -> Arc<Slot<V>> {
         let slot = &self.values[index.as_usize()];
         slot.clone()
     }
 }
 
-impl<K> Default for InternTables<K>
+impl<K, V> Default for InternTables<K, V>
 where
     K: Eq + Hash,
 {
@@ -115,29 +167,26 @@ where
     }
 }
 
+type MappedKey<Q> = <<Q as Query>::Key as InternValue>::Key;
+
 impl<Q> InternedStorage<Q>
 where
     Q: Query,
-    Q::Key: Eq + Hash + Clone,
+    Q::Key: InternValue,
     Q::Value: InternKey,
 {
-    /// If `key` has already been interned, returns its slot. Otherwise, creates a new slot.
+    /// Creates a new slot.
     fn intern_index(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        key: &Q::Key,
+        mapped_key: MappedKey<Q>,
+        insert: impl FnOnce(Q::Value) -> Q::Key,
     ) -> (Arc<Slot<Q::Key>>, InternId) {
-        if let Some(i) = self.intern_check(key) {
-            return i;
-        }
-
-        let owned_key1 = key.to_owned();
-        let owned_key2 = owned_key1.clone();
         let revision_now = db.salsa_runtime().current_revision();
 
         let mut tables = self.tables.write();
         let tables = &mut *tables;
-        let entry = match tables.map.entry(owned_key1) {
+        let entry = match tables.map.entry(mapped_key) {
             Entry::Vacant(entry) => entry,
             Entry::Occupied(entry) => {
                 // Somebody inserted this key while we were waiting
@@ -146,7 +195,6 @@ where
                 // have already done so!
                 let index = *entry.get();
                 let slot = &tables.values[index.as_usize()];
-                debug_assert_eq!(owned_key2, slot.value);
                 return (slot.clone(), index);
             }
         };
@@ -157,19 +205,22 @@ where
                 query_index: Q::QUERY_INDEX,
                 key_index: index.as_u32(),
             };
-            Arc::new(Slot { database_key_index, value: owned_key2, interned_at: revision_now })
+            Arc::new(Slot {
+                database_key_index,
+                value: insert(Q::Value::from_intern_id(index)),
+                interned_at: revision_now,
+            })
         };
 
-        let (slot, index);
-        index = InternId::from(tables.values.len());
-        slot = create_slot(index);
+        let index = InternId::from(tables.values.len());
+        let slot = create_slot(index);
         tables.values.push(slot.clone());
         entry.insert(index);
 
         (slot, index)
     }
 
-    fn intern_check(&self, key: &Q::Key) -> Option<(Arc<Slot<Q::Key>>, InternId)> {
+    fn intern_check(&self, key: &MappedKey<Q>) -> Option<(Arc<Slot<Q::Key>>, InternId)> {
         self.tables.read().slot_for_key(key)
     }
 
@@ -178,11 +229,32 @@ where
     fn lookup_value(&self, index: InternId) -> Arc<Slot<Q::Key>> {
         self.tables.read().slot_for_index(index)
     }
+
+    fn fetch_or_insert(
+        &self,
+        db: &<Q as QueryDb<'_>>::DynDb,
+        key: MappedKey<Q>,
+        insert: impl FnOnce(Q::Value) -> Q::Key,
+    ) -> Q::Value {
+        db.unwind_if_cancelled();
+        let (slot, index) = match self.intern_check(&key) {
+            Some(i) => i,
+            None => self.intern_index(db, key, insert),
+        };
+        let changed_at = slot.interned_at;
+        db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
+            slot.database_key_index,
+            INTERN_DURABILITY,
+            changed_at,
+        );
+        <Q::Value>::from_intern_id(index)
+    }
 }
 
 impl<Q> QueryStorageOps<Q> for InternedStorage<Q>
 where
     Q: Query,
+    Q::Key: InternValue,
     Q::Value: InternKey,
 {
     const CYCLE_STRATEGY: crate::plumbing::CycleRecoveryStrategy = CycleRecoveryStrategy::Panic;
@@ -220,7 +292,11 @@ where
 
     fn fetch(&self, db: &<Q as QueryDb<'_>>::DynDb, key: &Q::Key) -> Q::Value {
         db.unwind_if_cancelled();
-        let (slot, index) = self.intern_index(db, key);
+
+        let (slot, index) = match key.with_key(|key| self.intern_check(key)) {
+            Some(i) => i,
+            None => self.intern_index(db, key.into_key(), |_| key.clone()),
+        };
         let changed_at = slot.interned_at;
         db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
             slot.database_key_index,
@@ -241,9 +317,12 @@ where
         let tables = self.tables.read();
         tables
             .map
-            .iter()
-            .map(|(key, index)| {
-                TableEntry::new(key.clone(), Some(<Q::Value>::from_intern_id(*index)))
+            .values()
+            .map(|index| {
+                TableEntry::new(
+                    tables.values[index.as_usize()].value.clone(),
+                    Some(<Q::Value>::from_intern_id(*index)),
+                )
             })
             .collect()
     }
@@ -252,6 +331,7 @@ where
 impl<Q> QueryStorageMassOps for InternedStorage<Q>
 where
     Q: Query,
+    Q::Key: InternValue,
     Q::Value: InternKey,
 {
     fn purge(&self) {
@@ -296,7 +376,7 @@ impl<Q, IQ> QueryStorageOps<Q> for LookupInternedStorage<Q, IQ>
 where
     Q: Query,
     Q::Key: InternKey,
-    Q::Value: Eq + Hash,
+    Q::Value: InternValue,
     IQ: Query<Key = Q::Value, Value = Q::Key, Storage = InternedStorage<IQ>>,
     for<'d> Q: EqualDynDb<'d, IQ>,
 {
@@ -360,9 +440,12 @@ where
         let tables = interned_storage.tables.read();
         tables
             .map
-            .iter()
-            .map(|(key, index)| {
-                TableEntry::new(<Q::Key>::from_intern_id(*index), Some(key.clone()))
+            .values()
+            .map(|index| {
+                TableEntry::new(
+                    <Q::Key>::from_intern_id(*index),
+                    Some(tables.values[index.as_usize()].value.clone()),
+                )
             })
             .collect()
     }
@@ -372,7 +455,7 @@ impl<Q, IQ> QueryStorageMassOps for LookupInternedStorage<Q, IQ>
 where
     Q: Query,
     Q::Key: InternKey,
-    Q::Value: Eq + Hash,
+    Q::Value: InternValue,
     IQ: Query<Key = Q::Value, Value = Q::Key>,
 {
     fn purge(&self) {}
@@ -406,4 +489,20 @@ where
 {
     fn is_static<T: 'static>() {}
     is_static::<Slot<K>>();
+}
+
+impl<'me, Q> QueryTable<'me, Q>
+where
+    Q: Query<Storage = InternedStorage<Q>>,
+    Q::Key: InternValue,
+    Q::Value: InternKey,
+{
+    /// Fetches the intern id for the given key or inserts it if it does not exist.
+    pub fn get_or_insert(
+        &self,
+        key: MappedKey<Q>,
+        insert: impl FnOnce(Q::Value) -> Q::Key,
+    ) -> Q::Value {
+        self.storage.fetch_or_insert(self.db, key, insert)
+    }
 }

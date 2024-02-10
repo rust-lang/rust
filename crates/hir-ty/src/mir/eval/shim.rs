@@ -178,7 +178,7 @@ impl Evaluator<'_> {
                     not_supported!("wrong arg count for clone");
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
-                let (closure_owner, _) = self.db.lookup_intern_closure((*id).into());
+                let InternedClosure(closure_owner, _) = self.db.lookup_intern_closure((*id).into());
                 let infer = self.db.infer(closure_owner);
                 let (captures, _) = infer.closure_info(id);
                 let layout = self.layout(&self_ty)?;

@@ -51,6 +51,7 @@ use std::{
     hash::{BuildHasherDefault, Hash},
 };
 
+use base_db::salsa::impl_intern_value_trivial;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
@@ -586,6 +587,7 @@ pub enum ImplTraitId {
     ReturnTypeImplTrait(hir_def::FunctionId, RpitId),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
+impl_intern_value_trivial!(ImplTraitId);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ReturnTypeImplTraits {

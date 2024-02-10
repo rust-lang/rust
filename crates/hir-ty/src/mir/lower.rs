@@ -25,7 +25,7 @@ use triomphe::Arc;
 
 use crate::{
     consteval::ConstEvalError,
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosure},
     display::HirDisplay,
     infer::{CaptureKind, CapturedItem, TypeMismatch},
     inhabitedness::is_ty_uninhabited_from,
@@ -1977,7 +1977,7 @@ pub fn mir_body_for_closure_query(
     db: &dyn HirDatabase,
     closure: ClosureId,
 ) -> Result<Arc<MirBody>> {
-    let (owner, expr) = db.lookup_intern_closure(closure.into());
+    let InternedClosure(owner, expr) = db.lookup_intern_closure(closure.into());
     let body = db.body(owner);
     let infer = db.infer(owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
