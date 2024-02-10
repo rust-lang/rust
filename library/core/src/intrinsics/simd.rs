@@ -204,7 +204,7 @@ extern "platform-intrinsic" {
     ///
     /// `T` must be a vector.
     ///
-    /// `V` must be a vector with the same element type as `T` and the same length as `IDX`.
+    /// `U` must be a vector with the same element type as `T` and the same length as `IDX`.
     ///
     /// Returns a new vector such that element `i` is selected from `xy[IDX[i]]`, where `xy`
     /// is the concatenation of `x` and `y`. It is a compile-time error if `IDX[i]` is out-of-bounds
@@ -485,24 +485,24 @@ extern "platform-intrinsic" {
     /// `T` must be a vector of integers.
     pub fn simd_cttz<T>(x: T) -> T;
 
-    /// Round up each element to the next highest integer.
+    /// Round up each element to the next highest integer-valued float.
     ///
     /// `T` must be a vector of floats.
     pub fn simd_ceil<T>(x: T) -> T;
 
-    /// Round down each element to the next lowest integer.
+    /// Round down each element to the next lowest integer-valued float.
     ///
     /// `T` must be a vector of floats.
     pub fn simd_floor<T>(x: T) -> T;
 
-    /// Round each element to the closest integer.
-    /// Ties are resolving by rounding away from 0.
+    /// Round each element to the closest integer-valued float.
+    /// Ties are resolved by rounding away from 0.
     ///
     /// `T` must be a vector of floats.
     pub fn simd_round<T>(x: T) -> T;
 
-    /// Return the integer part of each element.
-    /// This means that non-integer numbers are always truncated towards zero.
+    /// Return the integer part of each element as an integer-valued float.
+    /// In other words, non-integer values are truncated towards zero.
     ///
     /// `T` must be a vector of floats.
     pub fn simd_trunc<T>(x: T) -> T;
