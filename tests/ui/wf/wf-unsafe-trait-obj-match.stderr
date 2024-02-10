@@ -30,8 +30,8 @@ LL | trait Trait: Sized {}
    |       |
    |       this trait cannot be made into an object...
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `Trait` for this new enum and using it instead:
-             S
              R
+             S
    = note: required for the cast from `&S` to `&dyn Trait`
 
 error[E0038]: the trait `Trait` cannot be made into an object
@@ -52,8 +52,8 @@ LL | trait Trait: Sized {}
    |       |
    |       this trait cannot be made into an object...
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `Trait` for this new enum and using it instead:
-             S
              R
+             S
    = note: required for the cast from `&R` to `&dyn Trait`
 
 error: aborting due to 3 previous errors

@@ -65,44 +65,67 @@ pub trait AsyncFnOnce<Args: Tuple> {
 
 mod impls {
     use super::{AsyncFn, AsyncFnMut, AsyncFnOnce};
-    use crate::future::Future;
     use crate::marker::Tuple;
 
     #[unstable(feature = "async_fn_traits", issue = "none")]
-    impl<F: Fn<A>, A: Tuple> AsyncFn<A> for F
+    impl<A: Tuple, F: ?Sized> AsyncFn<A> for &F
     where
-        <F as FnOnce<A>>::Output: Future,
+        F: AsyncFn<A>,
     {
-        type CallFuture<'a> = <F as FnOnce<A>>::Output where Self: 'a;
+        type CallFuture<'a> = F::CallFuture<'a> where Self: 'a;
 
         extern "rust-call" fn async_call(&self, args: A) -> Self::CallFuture<'_> {
-            self.call(args)
+            F::async_call(*self, args)
         }
     }
 
     #[unstable(feature = "async_fn_traits", issue = "none")]
-    impl<F: FnMut<A>, A: Tuple> AsyncFnMut<A> for F
+    impl<A: Tuple, F: ?Sized> AsyncFnMut<A> for &F
     where
-        <F as FnOnce<A>>::Output: Future,
+        F: AsyncFn<A>,
     {
-        type CallMutFuture<'a> = <F as FnOnce<A>>::Output where Self: 'a;
+        type CallMutFuture<'a> = F::CallFuture<'a> where Self: 'a;
 
         extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallMutFuture<'_> {
-            self.call_mut(args)
+            F::async_call(*self, args)
         }
     }
 
     #[unstable(feature = "async_fn_traits", issue = "none")]
-    impl<F: FnOnce<A>, A: Tuple> AsyncFnOnce<A> for F
+    impl<'a, A: Tuple, F: ?Sized> AsyncFnOnce<A> for &'a F
     where
-        <F as FnOnce<A>>::Output: Future,
+        F: AsyncFn<A>,
     {
-        type CallOnceFuture = <F as FnOnce<A>>::Output;
-
-        type Output = <<F as FnOnce<A>>::Output as Future>::Output;
+        type Output = F::Output;
+        type CallOnceFuture = F::CallFuture<'a>;
 
         extern "rust-call" fn async_call_once(self, args: A) -> Self::CallOnceFuture {
-            self.call_once(args)
+            F::async_call(self, args)
+        }
+    }
+
+    #[unstable(feature = "async_fn_traits", issue = "none")]
+    impl<A: Tuple, F: ?Sized> AsyncFnMut<A> for &mut F
+    where
+        F: AsyncFnMut<A>,
+    {
+        type CallMutFuture<'a> = F::CallMutFuture<'a> where Self: 'a;
+
+        extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallMutFuture<'_> {
+            F::async_call_mut(*self, args)
+        }
+    }
+
+    #[unstable(feature = "async_fn_traits", issue = "none")]
+    impl<'a, A: Tuple, F: ?Sized> AsyncFnOnce<A> for &'a mut F
+    where
+        F: AsyncFnMut<A>,
+    {
+        type Output = F::Output;
+        type CallOnceFuture = F::CallMutFuture<'a>;
+
+        extern "rust-call" fn async_call_once(self, args: A) -> Self::CallOnceFuture {
+            F::async_call_mut(self, args)
         }
     }
 }

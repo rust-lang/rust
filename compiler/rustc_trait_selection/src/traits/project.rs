@@ -2087,7 +2087,9 @@ fn confirm_select_candidate<'cx, 'tcx>(
             } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
                 confirm_async_iterator_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
-                if obligation.predicate.self_ty().is_closure() {
+                if obligation.predicate.self_ty().is_closure()
+                    || obligation.predicate.self_ty().is_coroutine_closure()
+                {
                     confirm_closure_candidate(selcx, obligation, data)
                 } else {
                     confirm_fn_pointer_candidate(selcx, obligation, data)
@@ -2410,11 +2412,75 @@ fn confirm_closure_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
+    let tcx = selcx.tcx();
     let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
-    let ty::Closure(_, args) = self_ty.kind() else {
-        unreachable!("expected closure self type for closure candidate, found {self_ty}")
+    let closure_sig = match *self_ty.kind() {
+        ty::Closure(_, args) => args.as_closure().sig(),
+
+        // Construct a "normal" `FnOnce` signature for coroutine-closure. This is
+        // basically duplicated with the `AsyncFnOnce::CallOnce` confirmation, but
+        // I didn't see a good way to unify those.
+        ty::CoroutineClosure(def_id, args) => {
+            let args = args.as_coroutine_closure();
+            let kind_ty = args.kind_ty();
+            args.coroutine_closure_sig().map_bound(|sig| {
+                // If we know the kind and upvars, use that directly.
+                // Otherwise, defer to `AsyncFnKindHelper::Upvars` to delay
+                // the projection, like the `AsyncFn*` traits do.
+                let output_ty = if let Some(_) = kind_ty.to_opt_closure_kind() {
+                    sig.to_coroutine_given_kind_and_upvars(
+                        tcx,
+                        args.parent_args(),
+                        tcx.coroutine_for_closure(def_id),
+                        ty::ClosureKind::FnOnce,
+                        tcx.lifetimes.re_static,
+                        args.tupled_upvars_ty(),
+                        args.coroutine_captures_by_ref_ty(),
+                    )
+                } else {
+                    let async_fn_kind_trait_def_id =
+                        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+                    let upvars_projection_def_id = tcx
+                        .associated_items(async_fn_kind_trait_def_id)
+                        .filter_by_name_unhygienic(sym::Upvars)
+                        .next()
+                        .unwrap()
+                        .def_id;
+                    let tupled_upvars_ty = Ty::new_projection(
+                        tcx,
+                        upvars_projection_def_id,
+                        [
+                            ty::GenericArg::from(kind_ty),
+                            Ty::from_closure_kind(tcx, ty::ClosureKind::FnOnce).into(),
+                            tcx.lifetimes.re_static.into(),
+                            sig.tupled_inputs_ty.into(),
+                            args.tupled_upvars_ty().into(),
+                            args.coroutine_captures_by_ref_ty().into(),
+                        ],
+                    );
+                    sig.to_coroutine(
+                        tcx,
+                        args.parent_args(),
+                        Ty::from_closure_kind(tcx, ty::ClosureKind::FnOnce),
+                        tcx.coroutine_for_closure(def_id),
+                        tupled_upvars_ty,
+                    )
+                };
+                tcx.mk_fn_sig(
+                    [sig.tupled_inputs_ty],
+                    output_ty,
+                    sig.c_variadic,
+                    sig.unsafety,
+                    sig.abi,
+                )
+            })
+        }
+
+        _ => {
+            unreachable!("expected closure self type for closure candidate, found {self_ty}");
+        }
     };
-    let closure_sig = args.as_closure().sig();
+
     let Normalized { value: closure_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -2470,126 +2536,171 @@ fn confirm_callable_candidate<'cx, 'tcx>(
 fn confirm_async_closure_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    mut nested: Vec<PredicateObligation<'tcx>>,
+    nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
-    let ty::CoroutineClosure(def_id, args) = *self_ty.kind() else {
-        unreachable!(
-            "expected coroutine-closure self type for coroutine-closure candidate, found {self_ty}"
-        )
-    };
-    let args = args.as_coroutine_closure();
-    let kind_ty = args.kind_ty();
-
     let tcx = selcx.tcx();
+    let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
+
     let goal_kind =
         tcx.async_fn_trait_kind_from_def_id(obligation.predicate.trait_def_id(tcx)).unwrap();
-
-    let async_fn_kind_helper_trait_def_id =
-        tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
-    nested.push(obligation.with(
-        tcx,
-        ty::TraitRef::new(
-            tcx,
-            async_fn_kind_helper_trait_def_id,
-            [kind_ty, Ty::from_closure_kind(tcx, goal_kind)],
-        ),
-    ));
-
     let env_region = match goal_kind {
         ty::ClosureKind::Fn | ty::ClosureKind::FnMut => obligation.predicate.args.region_at(2),
         ty::ClosureKind::FnOnce => tcx.lifetimes.re_static,
     };
+    let item_name = tcx.item_name(obligation.predicate.def_id);
 
-    let upvars_projection_def_id = tcx
-        .associated_items(async_fn_kind_helper_trait_def_id)
-        .filter_by_name_unhygienic(sym::Upvars)
-        .next()
-        .unwrap()
-        .def_id;
+    let poly_cache_entry = match *self_ty.kind() {
+        ty::CoroutineClosure(def_id, args) => {
+            let args = args.as_coroutine_closure();
+            let kind_ty = args.kind_ty();
+            let sig = args.coroutine_closure_sig().skip_binder();
 
-    // FIXME(async_closures): Confirmation is kind of a mess here. Ideally,
-    // we'd short-circuit when we know that the goal_kind >= closure_kind, and not
-    // register a nested predicate or create a new projection ty here. But I'm too
-    // lazy to make this more efficient atm, and we can always tweak it later,
-    // since all this does is make the solver do more work.
-    //
-    // The code duplication due to the different length args is kind of weird, too.
-    //
-    // See the logic in `structural_traits` in the new solver to understand a bit
-    // more clearly how this *should* look.
-    let poly_cache_entry = args.coroutine_closure_sig().map_bound(|sig| {
-        let (projection_ty, term) = match tcx.item_name(obligation.predicate.def_id) {
-            sym::CallOnceFuture => {
-                let tupled_upvars_ty = Ty::new_projection(
+            let term = match item_name {
+                sym::CallOnceFuture | sym::CallMutFuture | sym::CallFuture => {
+                    if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+                        if !closure_kind.extends(goal_kind) {
+                            bug!("we should not be confirming if the closure kind is not met");
+                        }
+                        sig.to_coroutine_given_kind_and_upvars(
+                            tcx,
+                            args.parent_args(),
+                            tcx.coroutine_for_closure(def_id),
+                            goal_kind,
+                            env_region,
+                            args.tupled_upvars_ty(),
+                            args.coroutine_captures_by_ref_ty(),
+                        )
+                    } else {
+                        let async_fn_kind_trait_def_id =
+                            tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+                        let upvars_projection_def_id = tcx
+                            .associated_items(async_fn_kind_trait_def_id)
+                            .filter_by_name_unhygienic(sym::Upvars)
+                            .next()
+                            .unwrap()
+                            .def_id;
+                        // When we don't know the closure kind (and therefore also the closure's upvars,
+                        // which are computed at the same time), we must delay the computation of the
+                        // generator's upvars. We do this using the `AsyncFnKindHelper`, which as a trait
+                        // goal functions similarly to the old `ClosureKind` predicate, and ensures that
+                        // the goal kind <= the closure kind. As a projection `AsyncFnKindHelper::Upvars`
+                        // will project to the right upvars for the generator, appending the inputs and
+                        // coroutine upvars respecting the closure kind.
+                        // N.B. No need to register a `AsyncFnKindHelper` goal here, it's already in `nested`.
+                        let tupled_upvars_ty = Ty::new_projection(
+                            tcx,
+                            upvars_projection_def_id,
+                            [
+                                ty::GenericArg::from(kind_ty),
+                                Ty::from_closure_kind(tcx, goal_kind).into(),
+                                env_region.into(),
+                                sig.tupled_inputs_ty.into(),
+                                args.tupled_upvars_ty().into(),
+                                args.coroutine_captures_by_ref_ty().into(),
+                            ],
+                        );
+                        sig.to_coroutine(
+                            tcx,
+                            args.parent_args(),
+                            Ty::from_closure_kind(tcx, goal_kind),
+                            tcx.coroutine_for_closure(def_id),
+                            tupled_upvars_ty,
+                        )
+                    }
+                }
+                sym::Output => sig.return_ty,
+                name => bug!("no such associated type: {name}"),
+            };
+            let projection_ty = match item_name {
+                sym::CallOnceFuture | sym::Output => ty::AliasTy::new(
                     tcx,
-                    upvars_projection_def_id,
+                    obligation.predicate.def_id,
+                    [self_ty, sig.tupled_inputs_ty],
+                ),
+                sym::CallMutFuture | sym::CallFuture => ty::AliasTy::new(
+                    tcx,
+                    obligation.predicate.def_id,
+                    [ty::GenericArg::from(self_ty), sig.tupled_inputs_ty.into(), env_region.into()],
+                ),
+                name => bug!("no such associated type: {name}"),
+            };
+
+            args.coroutine_closure_sig()
+                .rebind(ty::ProjectionPredicate { projection_ty, term: term.into() })
+        }
+        ty::FnDef(..) | ty::FnPtr(..) => {
+            let bound_sig = self_ty.fn_sig(tcx);
+            let sig = bound_sig.skip_binder();
+
+            let term = match item_name {
+                sym::CallOnceFuture | sym::CallMutFuture | sym::CallFuture => sig.output(),
+                sym::Output => {
+                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                    let future_output_def_id = tcx
+                        .associated_items(future_trait_def_id)
+                        .filter_by_name_unhygienic(sym::Output)
+                        .next()
+                        .unwrap()
+                        .def_id;
+                    Ty::new_projection(tcx, future_output_def_id, [sig.output()])
+                }
+                name => bug!("no such associated type: {name}"),
+            };
+            let projection_ty = match item_name {
+                sym::CallOnceFuture | sym::Output => ty::AliasTy::new(
+                    tcx,
+                    obligation.predicate.def_id,
+                    [self_ty, Ty::new_tup(tcx, sig.inputs())],
+                ),
+                sym::CallMutFuture | sym::CallFuture => ty::AliasTy::new(
+                    tcx,
+                    obligation.predicate.def_id,
                     [
-                        ty::GenericArg::from(kind_ty),
-                        Ty::from_closure_kind(tcx, goal_kind).into(),
+                        ty::GenericArg::from(self_ty),
+                        Ty::new_tup(tcx, sig.inputs()).into(),
                         env_region.into(),
-                        sig.tupled_inputs_ty.into(),
-                        args.tupled_upvars_ty().into(),
-                        args.coroutine_captures_by_ref_ty().into(),
                     ],
-                );
-                let coroutine_ty = sig.to_coroutine(
+                ),
+                name => bug!("no such associated type: {name}"),
+            };
+
+            bound_sig.rebind(ty::ProjectionPredicate { projection_ty, term: term.into() })
+        }
+        ty::Closure(_, args) => {
+            let args = args.as_closure();
+            let bound_sig = args.sig();
+            let sig = bound_sig.skip_binder();
+
+            let term = match item_name {
+                sym::CallOnceFuture | sym::CallMutFuture | sym::CallFuture => sig.output(),
+                sym::Output => {
+                    let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                    let future_output_def_id = tcx
+                        .associated_items(future_trait_def_id)
+                        .filter_by_name_unhygienic(sym::Output)
+                        .next()
+                        .unwrap()
+                        .def_id;
+                    Ty::new_projection(tcx, future_output_def_id, [sig.output()])
+                }
+                name => bug!("no such associated type: {name}"),
+            };
+            let projection_ty = match item_name {
+                sym::CallOnceFuture | sym::Output => {
+                    ty::AliasTy::new(tcx, obligation.predicate.def_id, [self_ty, sig.inputs()[0]])
+                }
+                sym::CallMutFuture | sym::CallFuture => ty::AliasTy::new(
                     tcx,
-                    args.parent_args(),
-                    Ty::from_closure_kind(tcx, goal_kind),
-                    tcx.coroutine_for_closure(def_id),
-                    tupled_upvars_ty,
-                );
-                (
-                    ty::AliasTy::new(
-                        tcx,
-                        obligation.predicate.def_id,
-                        [self_ty, sig.tupled_inputs_ty],
-                    ),
-                    coroutine_ty.into(),
-                )
-            }
-            sym::CallMutFuture | sym::CallFuture => {
-                let tupled_upvars_ty = Ty::new_projection(
-                    tcx,
-                    upvars_projection_def_id,
-                    [
-                        ty::GenericArg::from(kind_ty),
-                        Ty::from_closure_kind(tcx, goal_kind).into(),
-                        env_region.into(),
-                        sig.tupled_inputs_ty.into(),
-                        args.tupled_upvars_ty().into(),
-                        args.coroutine_captures_by_ref_ty().into(),
-                    ],
-                );
-                let coroutine_ty = sig.to_coroutine(
-                    tcx,
-                    args.parent_args(),
-                    Ty::from_closure_kind(tcx, goal_kind),
-                    tcx.coroutine_for_closure(def_id),
-                    tupled_upvars_ty,
-                );
-                (
-                    ty::AliasTy::new(
-                        tcx,
-                        obligation.predicate.def_id,
-                        [
-                            ty::GenericArg::from(self_ty),
-                            sig.tupled_inputs_ty.into(),
-                            env_region.into(),
-                        ],
-                    ),
-                    coroutine_ty.into(),
-                )
-            }
-            sym::Output => (
-                ty::AliasTy::new(tcx, obligation.predicate.def_id, [self_ty, sig.tupled_inputs_ty]),
-                sig.return_ty.into(),
-            ),
-            name => bug!("no such associated type: {name}"),
-        };
-        ty::ProjectionPredicate { projection_ty, term }
-    });
+                    obligation.predicate.def_id,
+                    [ty::GenericArg::from(self_ty), sig.inputs()[0].into(), env_region.into()],
+                ),
+                name => bug!("no such associated type: {name}"),
+            };
+
+            bound_sig.rebind(ty::ProjectionPredicate { projection_ty, term: term.into() })
+        }
+        _ => bug!("expected callable type for AsyncFn candidate"),
+    };
 
     confirm_param_env_candidate(selcx, obligation, poly_cache_entry, true)
         .with_addl_obligations(nested)

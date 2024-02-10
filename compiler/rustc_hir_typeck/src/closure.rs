@@ -56,11 +56,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // It's always helpful for inference if we know the kind of
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
-        let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => {
-                self.deduce_closure_signature(self.try_structurally_resolve_type(expr_span, ty))
-            }
-            None => (None, None),
+        let (expected_sig, expected_kind) = match closure.kind {
+            hir::ClosureKind::Closure => match expected.to_option(self) {
+                Some(ty) => {
+                    self.deduce_closure_signature(self.try_structurally_resolve_type(expr_span, ty))
+                }
+                None => (None, None),
+            },
+            // We don't want to deduce a signature from `Fn` bounds for coroutines
+            // or coroutine-closures, because the former does not implement `Fn`
+            // ever, and the latter's signature doesn't correspond to the coroutine
+            // type that it returns.
+            hir::ClosureKind::Coroutine(_) | hir::ClosureKind::CoroutineClosure(_) => (None, None),
         };
 
         let ClosureSignatures { bound_sig, mut liberated_sig } =
