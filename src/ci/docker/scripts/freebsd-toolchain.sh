@@ -5,8 +5,8 @@ set -eux
 
 arch=$1
 binutils_version=2.40
-freebsd_version=12.3
-triple=$arch-unknown-freebsd12
+freebsd_version=13.2
+triple=$arch-unknown-freebsd13
 sysroot=/usr/local/$triple
 
 hide_output() {
@@ -59,7 +59,7 @@ done
 
 # Originally downloaded from:
 # URL=https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
-URL=https://ci-mirrors.rust-lang.org/rustc/2022-05-06-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
+URL=https://ci-mirrors.rust-lang.org/rustc/2024-02-18-freebsd-${freebsd_version}-${freebsd_arch}-base.txz
 curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 
 # Clang can do cross-builds out of the box, if we give it the right
@@ -68,7 +68,7 @@ curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 # there might be other problems.)
 #
 # The --target option is last because the cross-build of LLVM uses
-# --target without an OS version ("-freebsd" vs. "-freebsd12").  This
+# --target without an OS version ("-freebsd" vs. "-freebsd13").  This
 # makes Clang default to libstdc++ (which no longer exists), and also
 # controls other features, like GNU-style symbol table hashing and
 # anything predicated on the version number in the __FreeBSD__
