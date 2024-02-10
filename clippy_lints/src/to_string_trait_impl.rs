@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -53,6 +54,8 @@ impl<'tcx> LateLintPass<'tcx> for ToStringTraitImpl {
         }) = it.kind
             && let Some(trait_did) = trait_ref.trait_def_id()
             && cx.tcx.is_diagnostic_item(sym::ToString, trait_did)
+            && let Some(display_did) = cx.tcx.get_diagnostic_item(sym::Display)
+            && !implements_trait(cx, cx.tcx.type_of(it.owner_id).instantiate_identity(), display_did, &[])
         {
             span_lint_and_help(
                 cx,
