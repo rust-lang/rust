@@ -15,6 +15,7 @@ use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
+use rustc_serialize::leb128;
 use rustc_session::Session;
 use rustc_span::sym;
 use rustc_target::abi::Endian;
@@ -420,10 +421,9 @@ pub enum MetadataPosition {
 ///   it's not in an allowlist of otherwise well known dwarf section names to
 ///   go into the final artifact.
 ///
-/// * WebAssembly - we actually don't have any container format for this
-///   target. WebAssembly doesn't support the `dylib` crate type anyway so
-///   there's no need for us to support this at this time. Consequently the
-///   metadata bytes are simply stored as-is into an rlib.
+/// * WebAssembly - this uses wasm files themselves as the object file format
+///   so an empty file with no linking metadata but a single custom section is
+///   created holding our metadata.
 ///
 /// * COFF - Windows-like targets create an object with a section that has
 ///   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
@@ -438,22 +438,13 @@ pub fn create_wrapper_file(
     data: &[u8],
 ) -> (Vec<u8>, MetadataPosition) {
     let Some(mut file) = create_object_file(sess) else {
-        // This is used to handle all "other" targets. This includes targets
-        // in two categories:
-        //
-        // * Some targets don't have support in the `object` crate just yet
-        //   to write an object file. These targets are likely to get filled
-        //   out over time.
-        //
-        // * Targets like WebAssembly don't support dylibs, so the purpose
-        //   of putting metadata in object files, to support linking rlibs
-        //   into dylibs, is moot.
-        //
-        // In both of these cases it means that linking into dylibs will
-        // not be supported by rustc. This doesn't matter for targets like
-        // WebAssembly and for targets not supported by the `object` crate
-        // yet it means that work will need to be done in the `object` crate
-        // to add a case above.
+        if sess.target.is_like_wasm {
+            return (create_metadata_file_for_wasm(data, &section_name), MetadataPosition::First);
+        }
+
+        // Targets using this branch don't have support implemented here yet or
+        // they're not yet implemented in the `object` crate and will likely
+        // fill out this module over time.
         return (data.to_vec(), MetadataPosition::Last);
     };
     let section = if file.format() == BinaryFormat::Xcoff {
@@ -532,6 +523,9 @@ pub fn create_compressed_metadata_file(
     packed_metadata.extend(metadata.raw_data());
 
     let Some(mut file) = create_object_file(sess) else {
+        if sess.target.is_like_wasm {
+            return create_metadata_file_for_wasm(&packed_metadata, b".rustc");
+        }
         return packed_metadata.to_vec();
     };
     if file.format() == BinaryFormat::Xcoff {
@@ -623,4 +617,58 @@ pub fn create_compressed_metadata_file_for_xcoff(
     });
     file.append_section_data(section, data, 1);
     file.write().unwrap()
+}
+
+/// Creates a simple WebAssembly object file, which is itself a wasm module,
+/// that contains a custom section of the name `section_name` with contents
+/// `data`.
+///
+/// NB: the `object` crate does not yet have support for writing the the wasm
+/// object file format. The format is simple enough that for now an extra crate
+/// from crates.io (such as `wasm-encoder`). The file format is:
+///
+/// * 4-byte header "\0asm"
+/// * 4-byte version number - 1u32 in little-endian format
+/// * concatenated sections, which for this object is always "custom sections"
+///
+/// Custom sections are then defined by:
+/// * 1-byte section identifier - 0 for a custom section
+/// * leb-encoded section length (size of the contents beneath this bullet)
+///   * leb-encoded custom section name length
+///   * custom section name
+///   * section contents
+///
+/// One custom section, `linking`, is added here in accordance with
+/// <https://github.com/WebAssembly/tool-conventions/blob/main/Linking.md>
+/// which is required to inform LLD that this is an object file but it should
+/// otherwise basically ignore it if it otherwise looks at it. The linking
+/// section currently is defined by a single version byte (2) and then further
+/// sections, but we have no more sections, so it's just the byte "2".
+///
+/// The next custom section is the one we're interested in.
+pub fn create_metadata_file_for_wasm(data: &[u8], section_name: &[u8]) -> Vec<u8> {
+    let mut bytes = b"\0asm\x01\0\0\0".to_vec();
+
+    let mut append_custom_section = |section_name: &[u8], data: &[u8]| {
+        let mut section_name_len = [0; leb128::max_leb128_len::<usize>()];
+        let off = leb128::write_usize_leb128(&mut section_name_len, section_name.len());
+        let section_name_len = &section_name_len[..off];
+
+        let mut section_len = [0; leb128::max_leb128_len::<usize>()];
+        let off = leb128::write_usize_leb128(
+            &mut section_len,
+            data.len() + section_name_len.len() + section_name.len(),
+        );
+        let section_len = &section_len[..off];
+
+        bytes.push(0u8);
+        bytes.extend_from_slice(section_len);
+        bytes.extend_from_slice(section_name_len);
+        bytes.extend_from_slice(section_name);
+        bytes.extend_from_slice(data);
+    };
+
+    append_custom_section(b"linking", &[2]);
+    append_custom_section(section_name, data);
+    bytes
 }
