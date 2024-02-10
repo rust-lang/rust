@@ -1,5 +1,5 @@
 warning: trait `Meow` is never used
-  --> $DIR/type-alias-generic-param.rs:8:7
+  --> $DIR/type-alias-generic-param.rs:7:7
    |
 LL | trait Meow {
    |       ^^^^

@@ -4,7 +4,7 @@
 // known-bug: unknown
 // edition:2018
 
-#![feature(impl_trait_in_assoc_type, inherent_associated_types)]
+#![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
 
 use std::future::Future;

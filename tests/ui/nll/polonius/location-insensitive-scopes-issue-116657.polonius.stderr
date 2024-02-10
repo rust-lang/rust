@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `call`
-  --> $DIR/location-insensitive-scopes-issue-116657.rs:18:1
+  --> $DIR/location-insensitive-scopes-issue-116657.rs:16:1
    |
 LL |     fn call(x: Self) -> Self::Output;
    |     --------------------------------- `call` from trait
@@ -8,7 +8,7 @@ LL | impl<T: PlusOne> Callable for T {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
 
 error: unconstrained opaque type
-  --> $DIR/location-insensitive-scopes-issue-116657.rs:22:19
+  --> $DIR/location-insensitive-scopes-issue-116657.rs:20:19
    |
 LL |     type Output = impl PlusOne;
    |                   ^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     type Output = impl PlusOne;
    = note: `Output` must be used in combination with a concrete type within the same impl
 
 error[E0700]: hidden type for `impl PlusOne` captures lifetime that does not appear in bounds
-  --> $DIR/location-insensitive-scopes-issue-116657.rs:28:5
+  --> $DIR/location-insensitive-scopes-issue-116657.rs:26:5
    |
 LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne {
    |         --                     ------------ opaque type defined here

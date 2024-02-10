@@ -1,7 +1,5 @@
 //! Check that we cannot instantiate a hidden type from another assoc type.
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait Trait: Sized {
     type Assoc;
     type Foo;

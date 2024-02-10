@@ -120,14 +120,7 @@ impl<'a> PostExpansionVisitor<'a> {
         impl Visitor<'_> for ImplTraitVisitor<'_> {
             fn visit_ty(&mut self, ty: &ast::Ty) {
                 if let ast::TyKind::ImplTrait(..) = ty.kind {
-                    if self.in_associated_ty {
-                        gate!(
-                            &self.vis,
-                            impl_trait_in_assoc_type,
-                            ty.span,
-                            "`impl Trait` in associated types is unstable"
-                        );
-                    } else {
+                    if !self.in_associated_ty {
                         gate!(
                             &self.vis,
                             type_alias_impl_trait,

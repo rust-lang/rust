@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, type_alias_impl_trait, impl_trait_in_assoc_type)]
+#![feature(rustc_attrs, type_alias_impl_trait)]
 #![allow(internal_features)]
 #![rustc_variance_of_opaques]
 

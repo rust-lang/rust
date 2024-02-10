@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(impl_trait_in_assoc_type)]
-
 pub trait Stream {
     type Item;
 }

@@ -2,10 +2,9 @@
 
 // Regression test for an ICE: https://github.com/rust-lang/rust/issues/119916
 
-#![feature(impl_trait_in_assoc_type)]
 #![feature(type_alias_impl_trait)]
 
-// `impl_trait_in_assoc_type` example from the bug report.
+// Example from the bug report.
 pub trait StreamConsumer {
     type BarrierStream;
     fn execute() -> Self::BarrierStream;

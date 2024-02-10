@@ -3,8 +3,6 @@
 
 // check-pass
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait Trait: Sized {
     type Assoc;
     fn foo();

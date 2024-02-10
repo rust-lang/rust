@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:15:30
+  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:13:30
    |
 LL |     type Assoc = impl std::fmt::Debug;
    |                  -------------------- the expected opaque type
@@ -12,13 +12,13 @@ LL |         let x: Self::Assoc = 42;
    = note: expected opaque type `<() as Trait>::Assoc`
                      found type `{integer}`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:14:8
+  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:12:8
    |
 LL |     fn foo() {
    |        ^^^
 
 error[E0308]: mismatched types
-  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:31:30
+  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:29:30
    |
 LL |     type Assoc = impl std::fmt::Debug;
    |                  -------------------- the expected opaque type
@@ -31,7 +31,7 @@ LL |         let x: Self::Assoc = 42;
    = note: expected opaque type `<() as Trait2>::Assoc`
                      found type `{integer}`
 note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:30:11
+  --> $DIR/impl_trait_in_trait_defined_outside_trait.rs:28:11
    |
 LL |     const FOO: () = {
    |           ^^^

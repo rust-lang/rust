@@ -1,5 +1,5 @@
 error[E0210]: type parameter `F` must be used as the type parameter for some local type (e.g., `MyStruct<F>`)
-  --> $DIR/incoherent-assoc-imp-trait.rs:10:6
+  --> $DIR/incoherent-assoc-imp-trait.rs:9:6
    |
 LL | impl<F> FnOnce<()> for &F {
    |      ^ type parameter `F` must be used as the type parameter for some local type

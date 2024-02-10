@@ -1,11 +1,11 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-88595.rs:21:23
+  --> $DIR/issue-88595.rs:19:23
    |
 LL |     fn a(&'a self) -> Self::B<'a> {}
    |                       ^^^^^^^^^^^ generic argument `'a` used twice
    |
 note: for this opaque type
-  --> $DIR/issue-88595.rs:19:18
+  --> $DIR/issue-88595.rs:17:18
    |
 LL |     type B<'b> = impl Clone;
    |                  ^^^^^^^^^^

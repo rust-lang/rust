@@ -1,5 +1,3 @@
-#![feature(impl_trait_in_assoc_type)]
-
 trait X {
     type I;
     fn f() -> Self::I;

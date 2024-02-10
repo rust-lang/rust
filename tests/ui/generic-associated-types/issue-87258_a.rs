@@ -1,5 +1,3 @@
-#![feature(impl_trait_in_assoc_type)]
-
 // See https://github.com/rust-lang/rust/issues/87258#issuecomment-883293367
 
 trait Trait1 {}

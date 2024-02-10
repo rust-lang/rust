@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `<() as Foo>::Assoc<'b, 'a>` captures lifetime that does not appear in bounds
-  --> $DIR/in-assoc-ty-early-bound.rs:11:60
+  --> $DIR/in-assoc-ty-early-bound.rs:9:60
    |
 LL |     type Assoc<'a, 'b> = impl Sized;
    |                          ---------- opaque type defined here

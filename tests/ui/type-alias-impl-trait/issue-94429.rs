@@ -1,4 +1,4 @@
-#![feature(impl_trait_in_assoc_type, coroutine_trait, coroutines)]
+#![feature(coroutine_trait, coroutines)]
 use std::ops::Coroutine;
 
 trait Runnable {

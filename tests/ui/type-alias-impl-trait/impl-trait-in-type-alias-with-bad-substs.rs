@@ -1,5 +1,3 @@
-#![feature(impl_trait_in_assoc_type)]
-
 // We weren't checking that the trait and impl generics line up in the
 // normalization-shortcut code in `OpaqueTypeCollector`.
 

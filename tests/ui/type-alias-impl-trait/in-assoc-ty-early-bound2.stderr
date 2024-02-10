@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `<() as Foo>::Assoc<'a>` captures lifetime that does not appear in bounds
-  --> $DIR/in-assoc-ty-early-bound2.rs:15:20
+  --> $DIR/in-assoc-ty-early-bound2.rs:13:20
    |
 LL |     type Assoc<'a> = impl Sized;
    |                      ---------- opaque type defined here
@@ -10,7 +10,7 @@ LL |             let _: Self::Assoc<'a> = x;
    |                    ^^^^^^^^^^^^^^^
 
 error: unconstrained opaque type
-  --> $DIR/in-assoc-ty-early-bound2.rs:9:22
+  --> $DIR/in-assoc-ty-early-bound2.rs:7:22
    |
 LL |     type Assoc<'a> = impl Sized;
    |                      ^^^^^^^^^^

@@ -1,5 +1,3 @@
-#![feature(impl_trait_in_assoc_type)]
-
 trait Foo<T> {
     type Assoc;
 

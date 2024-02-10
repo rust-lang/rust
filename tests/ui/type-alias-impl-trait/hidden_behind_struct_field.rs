@@ -3,7 +3,6 @@
 //! for making the function a defining use. It doesn't matter
 //! if the opaque type is actually used in the field.
 
-#![feature(impl_trait_in_assoc_type)]
 // check-pass
 
 use std::marker::PhantomData;

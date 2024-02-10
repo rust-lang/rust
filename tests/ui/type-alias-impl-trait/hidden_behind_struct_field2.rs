@@ -2,8 +2,6 @@
 //! as defined by a method if the opaque type is
 //! only indirectly mentioned in a struct field.
 
-#![feature(impl_trait_in_assoc_type)]
-
 struct Bar;
 
 trait Trait: Sized {

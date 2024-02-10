@@ -2,8 +2,6 @@
 
 // check-pass
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait MyTrait {
     type AssocType: Send;
     fn ret(&self) -> Self::AssocType;

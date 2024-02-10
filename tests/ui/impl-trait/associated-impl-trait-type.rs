@@ -1,4 +1,3 @@
-#![feature(impl_trait_in_assoc_type)]
 // build-pass (FIXME(62277): could be check-pass?)
 
 trait Bar {}

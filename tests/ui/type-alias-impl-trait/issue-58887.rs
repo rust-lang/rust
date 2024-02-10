@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait UnwrapItemsExt {
     type Iter;
     fn unwrap_items(self) -> Self::Iter;

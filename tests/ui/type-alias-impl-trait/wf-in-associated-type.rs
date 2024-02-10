@@ -6,8 +6,6 @@
 // [pass_next] check-pass
 // [fail] check-fail
 
-#![feature(impl_trait_in_assoc_type)]
-
 // The hidden type here (`&'a T`) requires proving `T: 'a`.
 // We know it holds because of implied bounds from the impl header.
 #[cfg(any(pass, pass_next))]

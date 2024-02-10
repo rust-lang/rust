@@ -1,8 +1,6 @@
 // Tests that we don't allow unconstrained lifetime parameters in impls when
 // the lifetime is used in an associated opaque type.
 
-#![feature(impl_trait_in_assoc_type)]
-
 trait UnwrapItemsExt {
     type Iter;
     fn unwrap_items(self) -> Self::Iter;
