@@ -24,7 +24,7 @@
 #![feature(option_take_if)]
 #![feature(never_type)]
 #![feature(type_alias_impl_trait)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
