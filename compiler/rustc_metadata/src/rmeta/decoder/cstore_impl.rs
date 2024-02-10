@@ -250,6 +250,7 @@ provide! { tcx, def_id, other, cdata,
     asyncness => { table_direct }
     fn_arg_names => { table }
     coroutine_kind => { table_direct }
+    coroutine_for_closure => { table }
     trait_def => { table }
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {
