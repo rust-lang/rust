@@ -2,7 +2,7 @@ error[E0599]: no method named `trait_method` found for struct `FooStruct` in the
   --> $DIR/issue-56175.rs:5:33
    |
 LL |     reexported_trait::FooStruct.trait_method();
-   |                                 ^^^^^^^^^^^^ method not found in `FooStruct`
+   |                                 ^^^^^^^^^^^^
    |
   ::: $DIR/auxiliary/reexported-trait.rs:3:12
    |
@@ -14,12 +14,16 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
    |
 LL + use reexported_trait::Trait;
    |
+help: there is a method with a similar name
+   |
+LL |     reexported_trait::FooStruct.trait_method_b();
+   |                                 ~~~~~~~~~~~~~~
 
 error[E0599]: no method named `trait_method_b` found for struct `FooStruct` in the current scope
   --> $DIR/issue-56175.rs:7:33
    |
 LL |     reexported_trait::FooStruct.trait_method_b();
-   |                                 ^^^^^^^^^^^^^^ method not found in `FooStruct`
+   |                                 ^^^^^^^^^^^^^^
    |
   ::: $DIR/auxiliary/reexported-trait.rs:7:12
    |
@@ -31,6 +35,10 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
    |
 LL + use reexported_trait::TraitBRename;
    |
+help: there is a method with a similar name
+   |
+LL |     reexported_trait::FooStruct.trait_method();
+   |                                 ~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

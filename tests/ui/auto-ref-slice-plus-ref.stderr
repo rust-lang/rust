@@ -2,7 +2,7 @@ error[E0599]: no method named `test_mut` found for struct `Vec<{integer}>` in th
   --> $DIR/auto-ref-slice-plus-ref.rs:7:7
    |
 LL |     a.test_mut();
-   |       ^^^^^^^^ help: there is a method with a similar name: `get_mut`
+   |       ^^^^^^^^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
@@ -10,6 +10,8 @@ note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
    |
 LL | trait MyIter {
    | ^^^^^^^^^^^^
+help: there is a method `get_mut` with a similar name, but with different arguments
+  --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 
 error[E0599]: no method named `test` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:8:7

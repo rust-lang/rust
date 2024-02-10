@@ -553,14 +553,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let ty::AssocKind::Fn = assoc.kind
                 && assoc.fn_has_self_parameter
             {
-                let fn_sig =
-                    if let ty::Adt(_, args) = callee_ty.peel_refs().kind() {
-                        let args = ty::GenericArgs::identity_for_item(tcx, assoc.def_id)
-                            .rebase_onto(tcx, assoc.container_id(tcx), args);
-                        tcx.fn_sig(assoc.def_id).instantiate(tcx, args)
-                    } else {
-                        tcx.fn_sig(assoc.def_id).instantiate_identity()
-                    };
+                let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
+                let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
                 let fn_sig =
                     self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
                 Some((assoc, fn_sig));

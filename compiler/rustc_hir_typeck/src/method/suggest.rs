@@ -1359,27 +1359,89 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && Some(similar_candidate.name) != confusable_suggested
             {
                 let def_kind = similar_candidate.kind.as_def_kind();
-                // Methods are defined within the context of a struct and their first parameter is always self,
-                // which represents the instance of the struct the method is being called on
-                // Associated functions don’t take self as a parameter and
-                // they are not methods because they don’t have an instance of the struct to work with.
-                if def_kind == DefKind::AssocFn && similar_candidate.fn_has_self_parameter {
-                    err.span_suggestion(
-                        span,
-                        "there is a method with a similar name",
-                        similar_candidate.name,
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
+                let an = self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id);
+                // Methods are defined within the context of a struct and their first parameter
+                // is always `self`, which represents the instance of the struct the method is
+                // being called on Associated functions don’t take self as a parameter and they are
+                // not methods because they don’t have an instance of the struct to work with.
+                if def_kind == DefKind::AssocFn {
+                    let ty_args = self.infcx.fresh_args_for_item(span, similar_candidate.def_id);
+                    let fn_sig = tcx.fn_sig(similar_candidate.def_id).instantiate(tcx, ty_args);
+                    let fn_sig =
+                        self.instantiate_binder_with_fresh_vars(span, infer::FnCall, fn_sig);
+                    if similar_candidate.fn_has_self_parameter {
+                        if let Some(args) = args
+                            && fn_sig.inputs()[1..].len() == args.len()
+                        {
+                            // We found a method with the same number of arguments as the method
+                            // call expression the user wrote.
+                            err.span_suggestion(
+                                span,
+                                format!("there is {an} method with a similar name"),
+                                similar_candidate.name,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            // We found a method but either the expression is not a method call or
+                            // the argument count didn't match.
+                            err.span_help(
+                                tcx.def_span(similar_candidate.def_id),
+                                format!(
+                                    "there is {an} method `{}` with a similar name{}",
+                                    similar_candidate.name,
+                                    if let None = args {
+                                        ""
+                                    } else {
+                                        ", but with different arguments"
+                                    },
+                                ),
+                            );
+                        }
+                    } else if let Some(args) = args
+                        && fn_sig.inputs().len() == args.len()
+                    {
+                        // We have fn call expression and the argument count match the associated
+                        // function we found.
+                        err.span_suggestion(
+                            span,
+                            format!(
+                                "there is {an} {} with a similar name",
+                                self.tcx.def_kind_descr(def_kind, similar_candidate.def_id)
+                            ),
+                            similar_candidate.name,
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.span_help(
+                            tcx.def_span(similar_candidate.def_id),
+                            format!(
+                                "there is {an} {} `{}` with a similar name",
+                                self.tcx.def_kind_descr(def_kind, similar_candidate.def_id),
+                                similar_candidate.name,
+                            ),
+                        );
+                    }
+                } else if let Mode::Path = mode {
+                    // We have an associated item syntax and we found something that isn't an fn.
                     err.span_suggestion(
                         span,
                         format!(
-                            "there is {} {} with a similar name",
-                            self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id),
+                            "there is {an} {} with a similar name",
                             self.tcx.def_kind_descr(def_kind, similar_candidate.def_id)
                         ),
                         similar_candidate.name,
                         Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    // The expression is a function or method call, but the item we found is an
+                    // associated const or type.
+                    err.span_help(
+                        tcx.def_span(similar_candidate.def_id),
+                        format!(
+                            "there is {an} {} `{}` with a similar name",
+                            self.tcx.def_kind_descr(def_kind, similar_candidate.def_id),
+                            similar_candidate.name,
+                        ),
                     );
                 }
             }
