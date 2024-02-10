@@ -6,6 +6,7 @@
 
 use either::Either;
 use hir_expand::{attrs::collect_attrs, HirFileId};
+use syntax::ast;
 
 use crate::{
     db::DefDatabase,
@@ -17,8 +18,9 @@ use crate::{
     item_tree::ItemTreeNode,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, FieldId, ImplId, ItemTreeLoc, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId, ItemTreeLoc,
+    LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
+    VariantId,
 };
 
 pub trait ChildBySource {
@@ -56,14 +58,6 @@ impl ChildBySource for ImplId {
         data.items.iter().for_each(|&item| {
             add_assoc_item(db, res, file_id, item);
         });
-    }
-}
-
-fn add_assoc_item(db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId, item: AssocItemId) {
-    match item {
-        AssocItemId::FunctionId(func) => insert_item_loc(db, res, file_id, func, keys::FUNCTION),
-        AssocItemId::ConstId(konst) => insert_item_loc(db, res, file_id, konst, keys::CONST),
-        AssocItemId::TypeAliasId(ty) => insert_item_loc(db, res, file_id, ty, keys::TYPE_ALIAS),
     }
 }
 
@@ -118,14 +112,6 @@ impl ChildBySource for ItemScope {
             file_id: HirFileId,
             item: ModuleDefId,
         ) {
-            macro_rules! insert {
-                ($map:ident[$key:path].$insert:ident($id:ident)) => {{
-                    let loc = $id.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        $map[$key].$insert(loc.source(db).value, $id)
-                    }
-                }};
-            }
             match item {
                 ModuleDefId::FunctionId(id) => {
                     insert_item_loc(db, map, file_id, id, keys::FUNCTION)
@@ -145,9 +131,13 @@ impl ChildBySource for ItemScope {
                     AdtId::EnumId(id) => insert_item_loc(db, map, file_id, id, keys::ENUM),
                 },
                 ModuleDefId::MacroId(id) => match id {
-                    MacroId::Macro2Id(id) => insert!(map[keys::MACRO2].insert(id)),
-                    MacroId::MacroRulesId(id) => insert!(map[keys::MACRO_RULES].insert(id)),
-                    MacroId::ProcMacroId(id) => insert!(map[keys::PROC_MACRO].insert(id)),
+                    MacroId::Macro2Id(id) => insert_item_loc(db, map, file_id, id, keys::MACRO2),
+                    MacroId::MacroRulesId(id) => {
+                        insert_item_loc(db, map, file_id, id, keys::MACRO_RULES)
+                    }
+                    MacroId::ProcMacroId(id) => {
+                        insert_item_loc(db, map, file_id, id, keys::PROC_MACRO)
+                    }
                 },
                 ModuleDefId::ModuleId(_)
                 | ModuleDefId::EnumVariantId(_)
@@ -207,6 +197,40 @@ impl ChildBySource for DefWithBodyId {
     }
 }
 
+impl ChildBySource for GenericDefId {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+        let (gfile_id, generic_params_list) = self.file_id_and_params_of(db);
+        if gfile_id != file_id {
+            return;
+        }
+
+        let generic_params = db.generic_params(*self);
+        let mut toc_idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
+        let lts_idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
+
+        // For traits the first type index is `Self`, skip it.
+        if let GenericDefId::TraitId(_) = *self {
+            toc_idx_iter.next().unwrap(); // advance_by(1);
+        }
+
+        if let Some(generic_params_list) = generic_params_list {
+            for (local_id, ast_param) in
+                toc_idx_iter.zip(generic_params_list.type_or_const_params())
+            {
+                let id = TypeOrConstParamId { parent: *self, local_id };
+                match ast_param {
+                    ast::TypeOrConstParam::Type(a) => res[keys::TYPE_PARAM].insert(a, id),
+                    ast::TypeOrConstParam::Const(a) => res[keys::CONST_PARAM].insert(a, id),
+                }
+            }
+            for (local_id, ast_param) in lts_idx_iter.zip(generic_params_list.lifetime_params()) {
+                let id = LifetimeParamId { parent: *self, local_id };
+                res[keys::LIFETIME_PARAM].insert(ast_param, id);
+            }
+        }
+    }
+}
+
 fn insert_item_loc<ID, N, Data>(
     db: &dyn DefDatabase,
     res: &mut DynMap,
@@ -222,5 +246,13 @@ fn insert_item_loc<ID, N, Data>(
     let loc = id.lookup(db);
     if loc.item_tree_id().file_id() == file_id {
         res[key].insert(loc.source(db).value, id)
+    }
+}
+
+fn add_assoc_item(db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId, item: AssocItemId) {
+    match item {
+        AssocItemId::FunctionId(func) => insert_item_loc(db, res, file_id, func, keys::FUNCTION),
+        AssocItemId::ConstId(konst) => insert_item_loc(db, res, file_id, konst, keys::CONST),
+        AssocItemId::TypeAliasId(ty) => insert_item_loc(db, res, file_id, ty, keys::TYPE_ALIAS),
     }
 }

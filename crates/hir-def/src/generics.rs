@@ -3,31 +3,27 @@
 //! generic parameters. See also the `Generics` type and the `generics_of` query
 //! in rustc.
 
-use base_db::FileId;
 use either::Either;
 use hir_expand::{
     name::{AsName, Name},
-    ExpandResult, HirFileId, InFile,
+    ExpandResult,
 };
 use intern::Interned;
-use la_arena::{Arena, ArenaMap, Idx};
+use la_arena::{Arena, Idx};
 use once_cell::unsync::Lazy;
 use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
 use triomphe::Arc;
 
 use crate::{
-    child_by_source::ChildBySource,
     db::DefDatabase,
-    dyn_map::{keys, DynMap},
     expander::Expander,
-    item_tree::ItemTree,
+    item_tree::{GenericsItemTreeNode, ItemTree},
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
-    src::{HasChildSource, HasSource},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
-    AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId,
-    LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
+    AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LocalTypeOrConstParamId, Lookup,
+    TypeOrConstParamId, TypeParamId,
 };
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
@@ -418,13 +414,18 @@ impl GenericParams {
                 })
             }
         };
-        macro_rules! id_to_generics {
-            ($id:ident) => {{
-                let id = $id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                enabled_params(&item.generic_params, &tree)
-            }};
+        fn id_to_generics<Id: GenericsItemTreeNode>(
+            db: &dyn DefDatabase,
+            id: impl for<'db> Lookup<
+                Database<'db> = dyn DefDatabase + 'db,
+                Data = impl ItemTreeLoc<Id = Id>,
+            >,
+            enabled_params: impl Fn(&Interned<GenericParams>, &ItemTree) -> Interned<GenericParams>,
+        ) -> Interned<GenericParams> {
+            let id = id.lookup(db).item_tree_id();
+            let tree = id.item_tree(db);
+            let item = &tree[id.value];
+            enabled_params(item.generic_params(), &tree)
         }
 
         match def {
@@ -457,13 +458,13 @@ impl GenericParams {
                     Interned::new(generic_params.finish())
                 }
             }
-            GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics!(id),
-            GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics!(id),
-            GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics!(id),
-            GenericDefId::TraitId(id) => id_to_generics!(id),
-            GenericDefId::TraitAliasId(id) => id_to_generics!(id),
-            GenericDefId::TypeAliasId(id) => id_to_generics!(id),
-            GenericDefId::ImplId(id) => id_to_generics!(id),
+            GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics(db, id, enabled_params),
+            GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics(db, id, enabled_params),
+            GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics(db, id, enabled_params),
+            GenericDefId::TraitId(id) => id_to_generics(db, id, enabled_params),
+            GenericDefId::TraitAliasId(id) => id_to_generics(db, id, enabled_params),
+            GenericDefId::TypeAliasId(id) => id_to_generics(db, id, enabled_params),
+            GenericDefId::ImplId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
                 Interned::new(GenericParams {
                     type_or_consts: Default::default(),
@@ -505,132 +506,5 @@ impl GenericParams {
             )
             .then(|| id)
         })
-    }
-}
-
-fn file_id_and_params_of(
-    db: &dyn DefDatabase,
-    def: GenericDefId,
-) -> (HirFileId, Option<ast::GenericParamList>) {
-    match def {
-        GenericDefId::FunctionId(it) => file_id_and_params_of_item_loc(db, it),
-        GenericDefId::TypeAliasId(it) => file_id_and_params_of_item_loc(db, it),
-        GenericDefId::ConstId(_) => (FileId::BOGUS.into(), None),
-        GenericDefId::AdtId(AdtId::StructId(it)) => file_id_and_params_of_item_loc(db, it),
-        GenericDefId::AdtId(AdtId::UnionId(it)) => file_id_and_params_of_item_loc(db, it),
-        GenericDefId::AdtId(AdtId::EnumId(it)) => file_id_and_params_of_item_loc(db, it),
-        GenericDefId::TraitId(it) => file_id_and_params_of_item_loc(db, it),
-        GenericDefId::TraitAliasId(it) => file_id_and_params_of_item_loc(db, it),
-        GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
-        // We won't be using this ID anyway
-        GenericDefId::EnumVariantId(_) => (FileId::BOGUS.into(), None),
-    }
-}
-
-fn file_id_and_params_of_item_loc<Loc>(
-    db: &dyn DefDatabase,
-    def: impl for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = Loc>,
-) -> (HirFileId, Option<ast::GenericParamList>)
-where
-    Loc: HasSource,
-    Loc::Value: HasGenericParams,
-{
-    let src = def.lookup(db).source(db);
-    (src.file_id, src.value.generic_param_list())
-}
-
-impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
-    type Value = Either<ast::TypeOrConstParam, ast::TraitOrAlias>;
-    fn child_source(
-        &self,
-        db: &dyn DefDatabase,
-    ) -> InFile<ArenaMap<LocalTypeOrConstParamId, Self::Value>> {
-        let generic_params = db.generic_params(*self);
-        let mut idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
-
-        let (file_id, generic_params_list) = file_id_and_params_of(db, *self);
-
-        let mut params = ArenaMap::default();
-
-        // For traits and trait aliases the first type index is `Self`, we need to add it before
-        // the other params.
-        match *self {
-            GenericDefId::TraitId(id) => {
-                let trait_ref = id.lookup(db).source(db).value;
-                let idx = idx_iter.next().unwrap();
-                params.insert(idx, Either::Right(ast::TraitOrAlias::Trait(trait_ref)));
-            }
-            GenericDefId::TraitAliasId(id) => {
-                let alias = id.lookup(db).source(db).value;
-                let idx = idx_iter.next().unwrap();
-                params.insert(idx, Either::Right(ast::TraitOrAlias::TraitAlias(alias)));
-            }
-            _ => {}
-        }
-
-        if let Some(generic_params_list) = generic_params_list {
-            for (idx, ast_param) in idx_iter.zip(generic_params_list.type_or_const_params()) {
-                params.insert(idx, Either::Left(ast_param));
-            }
-        }
-
-        InFile::new(file_id, params)
-    }
-}
-
-impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
-    type Value = ast::LifetimeParam;
-    fn child_source(
-        &self,
-        db: &dyn DefDatabase,
-    ) -> InFile<ArenaMap<LocalLifetimeParamId, Self::Value>> {
-        let generic_params = db.generic_params(*self);
-        let idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
-
-        let (file_id, generic_params_list) = file_id_and_params_of(db, *self);
-
-        let mut params = ArenaMap::default();
-
-        if let Some(generic_params_list) = generic_params_list {
-            for (idx, ast_param) in idx_iter.zip(generic_params_list.lifetime_params()) {
-                params.insert(idx, ast_param);
-            }
-        }
-
-        InFile::new(file_id, params)
-    }
-}
-
-impl ChildBySource for GenericDefId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let (gfile_id, generic_params_list) = file_id_and_params_of(db, *self);
-        if gfile_id != file_id {
-            return;
-        }
-
-        let generic_params = db.generic_params(*self);
-        let mut toc_idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
-        let lts_idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
-
-        // For traits the first type index is `Self`, skip it.
-        if let GenericDefId::TraitId(_) = *self {
-            toc_idx_iter.next().unwrap(); // advance_by(1);
-        }
-
-        if let Some(generic_params_list) = generic_params_list {
-            for (local_id, ast_param) in
-                toc_idx_iter.zip(generic_params_list.type_or_const_params())
-            {
-                let id = TypeOrConstParamId { parent: *self, local_id };
-                match ast_param {
-                    ast::TypeOrConstParam::Type(a) => res[keys::TYPE_PARAM].insert(a, id),
-                    ast::TypeOrConstParam::Const(a) => res[keys::CONST_PARAM].insert(a, id),
-                }
-            }
-            for (local_id, ast_param) in lts_idx_iter.zip(generic_params_list.lifetime_params()) {
-                let id = LifetimeParamId { parent: *self, local_id };
-                res[keys::LIFETIME_PARAM].insert(ast_param, id);
-            }
-        }
     }
 }
