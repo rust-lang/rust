@@ -140,7 +140,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                     )
                                 }
                                 ty::PredicateKind::Subtype(pred) => {
-                                    let (a, b) = infcx.instantiate_binder_with_placeholders(
+                                    let (a, b) = infcx.enter_forall_and_leak_universe(
                                         goal.predicate.kind().rebind((pred.a, pred.b)),
                                     );
                                     let expected_found = ExpectedFound::new(true, a, b);
@@ -150,7 +150,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                     )
                                 }
                                 ty::PredicateKind::Coerce(pred) => {
-                                    let (a, b) = infcx.instantiate_binder_with_placeholders(
+                                    let (a, b) = infcx.enter_forall_and_leak_universe(
                                         goal.predicate.kind().rebind((pred.a, pred.b)),
                                     );
                                     let expected_found = ExpectedFound::new(false, a, b);

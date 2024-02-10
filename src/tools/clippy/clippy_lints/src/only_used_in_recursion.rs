@@ -252,7 +252,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 {
                     (
                         trait_item_id,
-                        FnKind::ImplTraitFn(cx.tcx.erase_regions(trait_ref.args) as *const _ as usize),
+                        FnKind::ImplTraitFn(std::ptr::from_ref(cx.tcx.erase_regions(trait_ref.args)) as usize),
                         usize::from(sig.decl.implicit_self.has_implicit_self()),
                     )
                 } else {
@@ -390,7 +390,6 @@ fn has_matching_args(kind: FnKind, args: GenericArgsRef<'_>) -> bool {
             GenericArgKind::Type(ty) => matches!(*ty.kind(), ty::Param(ty) if ty.index as usize == idx),
             GenericArgKind::Const(c) => matches!(c.kind(), ConstKind::Param(c) if c.index as usize == idx),
         }),
-        #[allow(trivial_casts)]
-        FnKind::ImplTraitFn(expected_args) => args as *const _ as usize == expected_args,
+        FnKind::ImplTraitFn(expected_args) => std::ptr::from_ref(args) as usize == expected_args,
     }
 }

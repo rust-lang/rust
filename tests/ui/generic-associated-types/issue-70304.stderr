@@ -27,7 +27,21 @@ LL |     type Cursor<'a>: DocCursor<'a>;
    = note: this bound is currently required to ensure that impls have maximum flexibility
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: aborting due to 3 previous errors
+error[E0597]: `doc` does not live long enough
+  --> $DIR/issue-70304.rs:54:59
+   |
+LL |     let doc = create_doc();
+   |         --- binding `doc` declared here
+LL |     let lexer: Lexer<'_, DocCursorImpl<'_>> = Lexer::from(&doc);
+   |                                               ------------^^^^-
+   |                                               |           |
+   |                                               |           borrowed value does not live long enough
+   |                                               argument requires that `doc` is borrowed for `'static`
+LL |
+LL | }
+   | - `doc` dropped here while still borrowed
 
-Some errors have detailed explanations: E0106, E0637.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0106, E0597, E0637.
 For more information about an error, try `rustc --explain E0106`.

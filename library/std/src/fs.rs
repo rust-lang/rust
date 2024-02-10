@@ -428,7 +428,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_create_new", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_create_new", since = "1.77.0")]
     pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().read(true).write(true).create_new(true).open(path.as_ref())
     }

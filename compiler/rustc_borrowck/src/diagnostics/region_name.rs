@@ -1,6 +1,10 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use std::fmt::{self, Display};
 use std::iter;
 
+use rustc_data_structures::fx::IndexEntry;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -14,7 +18,7 @@ use crate::{universal_regions::DefiningTy, MirBorrowckCtxt};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct RegionName {
     /// The name of the region (interned).
     pub(crate) name: Symbol,
@@ -25,7 +29,7 @@ pub(crate) struct RegionName {
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
 /// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get `Static`.
 /// This helps to print the right kinds of diagnostics.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was instantiated at the def site (not an HRTB).
     NamedEarlyParamRegion(Span),
@@ -42,7 +46,7 @@ pub(crate) enum RegionNameSource {
     /// The region corresponding to the return type of a closure.
     AnonRegionFromOutput(RegionNameHighlight, &'static str),
     /// The region from a type yielded by a coroutine.
-    AnonRegionFromYieldTy(Span, String),
+    AnonRegionFromYieldTy(Span, Symbol),
     /// An anonymous region from an async fn.
     AnonRegionFromAsyncFn(Span),
     /// An anonymous region from an impl self type or trait
@@ -51,7 +55,7 @@ pub(crate) enum RegionNameSource {
 
 /// Describes what to highlight to explain to the user that we're giving an anonymous region a
 /// synthesized name, and how to highlight it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum RegionNameHighlight {
     /// The anonymous region corresponds to a reference that was found by traversing the type in the HIR.
     MatchedHirTy(Span),
@@ -59,11 +63,11 @@ pub(crate) enum RegionNameHighlight {
     MatchedAdtAndSegment(Span),
     /// The anonymous region corresponds to a region where the type annotation is completely missing
     /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
-    CannotMatchHirTy(Span, String),
+    CannotMatchHirTy(Span, Symbol),
     /// The anonymous region corresponds to a region where the type annotation is completely missing
     /// from the code, and *even if* we print out the full name of the type, the region name won't
     /// be included. This currently occurs for opaque types like `impl Future`.
-    Occluded(Span, String),
+    Occluded(Span, Symbol),
 }
 
 impl RegionName {
@@ -247,25 +251,28 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         assert!(self.regioncx.universal_regions().is_universal_region(fr));
 
-        if let Some(value) = self.region_names.try_borrow_mut().unwrap().get(&fr) {
-            return Some(value.clone());
+        match self.region_names.borrow_mut().entry(fr) {
+            IndexEntry::Occupied(precomputed_name) => Some(*precomputed_name.get()),
+            IndexEntry::Vacant(slot) => {
+                let new_name = self
+                    .give_name_from_error_region(fr)
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_arguments(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_upvars(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_output(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_yield_ty(fr))
+                    .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
+                    .or_else(|| {
+                        self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr)
+                    });
+
+                if let Some(new_name) = new_name {
+                    slot.insert(new_name);
+                }
+                debug!("give_region_a_name: gave name {:?}", new_name);
+
+                new_name
+            }
         }
-
-        let value = self
-            .give_name_from_error_region(fr)
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_arguments(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_upvars(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_output(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_yield_ty(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_impl_signature(fr))
-            .or_else(|| self.give_name_if_anonymous_region_appears_in_arg_position_impl_trait(fr));
-
-        if let Some(value) = &value {
-            self.region_names.try_borrow_mut().unwrap().insert(fr, value.clone());
-        }
-
-        debug!("give_region_a_name: gave name {:?}", value);
-        value
     }
 
     /// Checks for the case where `fr` maps to something that the
@@ -457,9 +464,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         );
         if type_name.contains(&format!("'{counter}")) {
             // Only add a label if we can confirm that a region was labelled.
-            RegionNameHighlight::CannotMatchHirTy(span, type_name)
+            RegionNameHighlight::CannotMatchHirTy(span, Symbol::intern(&type_name))
         } else {
-            RegionNameHighlight::Occluded(span, type_name)
+            RegionNameHighlight::Occluded(span, Symbol::intern(&type_name))
         }
     }
 
@@ -888,7 +895,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         Some(RegionName {
             name: self.synthesize_region_name(),
-            source: RegionNameSource::AnonRegionFromYieldTy(yield_span, type_name),
+            source: RegionNameSource::AnonRegionFromYieldTy(yield_span, Symbol::intern(&type_name)),
         })
     }
 
@@ -980,7 +987,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             Some(RegionName {
                 name: region_name,
                 source: RegionNameSource::AnonRegionFromArgument(
-                    RegionNameHighlight::CannotMatchHirTy(arg_span, arg_name?.to_string()),
+                    RegionNameHighlight::CannotMatchHirTy(arg_span, arg_name?),
                 ),
             })
         } else {

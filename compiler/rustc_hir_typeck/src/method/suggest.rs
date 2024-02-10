@@ -230,7 +230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = kind
                             && let hir::def::Res::Local(hir_id) = path.res
-                            && let Some(hir::Node::Pat(b)) = self.tcx.opt_hir_node(hir_id)
+                            && let hir::Node::Pat(b) = self.tcx.hir_node(hir_id)
                             && let Some(hir::Node::Param(p)) = self.tcx.hir().find_parent(b.hir_id)
                             && let Some(node) = self.tcx.hir().find_parent(p.hir_id)
                             && let Some(decl) = node.fn_decl()
@@ -2017,7 +2017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         visitor.visit_body(body);
 
         let parent = self.tcx.hir().parent_id(seg1.hir_id);
-        if let Some(Node::Expr(call_expr)) = self.tcx.opt_hir_node(parent)
+        if let Node::Expr(call_expr) = self.tcx.hir_node(parent)
             && let Some(expr) = visitor.result
             && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
         {
@@ -3251,7 +3251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let parent = self.tcx.hir().parent_id(expr.hir_id);
-        if let Some(Node::Expr(call_expr)) = self.tcx.opt_hir_node(parent)
+        if let Node::Expr(call_expr) = self.tcx.hir_node(parent)
             && let hir::ExprKind::MethodCall(
                 hir::PathSegment { ident: method_name, .. },
                 self_expr,

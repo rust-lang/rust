@@ -1,4 +1,5 @@
 use crate::cell::UnsafeCell;
+use crate::io::Error;
 use crate::mem::{forget, MaybeUninit};
 use crate::sys::cvt_nz;
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
@@ -103,8 +104,24 @@ impl Mutex {
 
     #[inline]
     pub unsafe fn lock(&self) {
+        #[cold]
+        #[inline(never)]
+        fn fail(r: i32) -> ! {
+            let error = Error::from_raw_os_error(r);
+            panic!("failed to lock mutex: {error}");
+        }
+
         let r = libc::pthread_mutex_lock(raw(self));
-        debug_assert_eq!(r, 0);
+        // As we set the mutex type to `PTHREAD_MUTEX_NORMAL` above, we expect
+        // the lock call to never fail. Unfortunately however, some platforms
+        // (Solaris) do not conform to the standard, and instead always provide
+        // deadlock detection. How kind of them! Unfortunately that means that
+        // we need to check the error code here. To save us from UB on other
+        // less well-behaved platforms in the future, we do it even on "good"
+        // platforms like macOS. See #120147 for more context.
+        if r != 0 {
+            fail(r)
+        }
     }
 
     #[inline]

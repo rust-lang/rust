@@ -489,6 +489,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     NullOp::OffsetOf(fields) => {
                         layout.offset_of_subfield(&self.ecx, fields.iter()).bytes()
                     }
+                    NullOp::DebugAssertions => return None,
                 };
                 let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
                 let imm = ImmTy::try_from_uint(val, usize_layout)?;
@@ -1231,8 +1232,8 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
         if let Operand::Move(place) = *operand
-            && let Some(local) = place.as_local()
-            && self.reused_locals.contains(local)
+            && !place.is_indirect_first_projection()
+            && self.reused_locals.contains(place.local)
         {
             *operand = Operand::Copy(place);
         }

@@ -1,6 +1,6 @@
 fn foo(s: &i32) -> &i32 {
     let xs;
-    xs
+    xs //~ ERROR: isn't initialized
 }
 fn main() {
     let y;

@@ -556,7 +556,7 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clippy"
-version = "0.1.77"
+version = "0.1.78"
 dependencies = [
  "anstream",
  "clippy_config",
@@ -584,7 +584,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.77"
+version = "0.1.78"
 dependencies = [
  "rustc-semver",
  "serde",
@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.77"
+version = "0.1.78"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.0",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.77"
+version = "0.1.78"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -1003,7 +1003,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.77"
+version = "0.1.78"
 dependencies = [
  "itertools",
  "quote",
@@ -2090,9 +2090,9 @@ dependencies = [
 
 [[package]]
 name = "jobserver"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c37f63953c4c63420ed5fd3d6d398c719489b9f872b9fa683262f8edd363c7d"
+checksum = "ab46a6e9526ddef3ae7f787c06f0f2600639ba80ea3eade3d8e670a2230f51d6"
 dependencies = [
  "libc",
 ]
@@ -4374,6 +4374,7 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
+ "rustc_ty_utils",
  "tracing",
 ]
 

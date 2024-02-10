@@ -1,5 +1,8 @@
 //! Print diagnostics to explain why values are borrowed.
 
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -87,7 +90,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     if let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind
                         && let [hir::PathSegment { ident, args: None, .. }] = p.segments
                         && let hir::def::Res::Local(hir_id) = p.res
-                        && let Some(hir::Node::Pat(pat)) = tcx.opt_hir_node(hir_id)
+                        && let hir::Node::Pat(pat) = tcx.hir_node(hir_id)
                     {
                         err.span_label(pat.span, format!("binding `{ident}` declared here"));
                     }

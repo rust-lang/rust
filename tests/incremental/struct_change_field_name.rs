@@ -6,6 +6,7 @@
 // [cfail2] compile-flags: -Z query-dep-graph -Z assert-incr-state=loaded
 
 #![feature(rustc_attrs)]
+#![allow(unused_variables)]
 
 #[cfg(rpass1)]
 pub struct X {

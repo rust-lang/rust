@@ -41,7 +41,7 @@ pub fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
-) {
+) -> Result<(), ErrorGuaranteed> {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
@@ -51,8 +51,9 @@ pub fn check_legal_trait_for_method_call(
         } else {
             errors::ExplicitDestructorCallSugg::Empty(span)
         };
-        tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg });
+        return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
     }
+    tcx.coherent_trait(trait_id)
 }
 
 #[derive(Debug)]

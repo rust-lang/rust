@@ -1,5 +1,5 @@
 use super::potentially_plural_count;
-use crate::errors::LifetimesOrBoundsMismatchOnTrait;
+use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
@@ -10,7 +10,7 @@ use rustc_hir::{GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::util;
+use rustc_infer::traits::{util, FulfillmentError};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::util::ExplicitSelf;
@@ -74,7 +74,6 @@ fn check_method_is_structurally_compatible<'tcx>(
     compare_generic_param_kinds(tcx, impl_m, trait_m, delay)?;
     compare_number_of_method_arguments(tcx, impl_m, trait_m, delay)?;
     compare_synthetic_generics(tcx, impl_m, trait_m, delay)?;
-    compare_asyncness(tcx, impl_m, trait_m, delay)?;
     check_region_bounds_on_impl_item(tcx, impl_m, trait_m, delay)?;
     Ok(())
 }
@@ -414,36 +413,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
     }
 }
 
-fn compare_asyncness<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_m: ty::AssocItem,
-    trait_m: ty::AssocItem,
-    delay: bool,
-) -> Result<(), ErrorGuaranteed> {
-    if tcx.asyncness(trait_m.def_id).is_async() {
-        match tcx.fn_sig(impl_m.def_id).skip_binder().skip_binder().output().kind() {
-            ty::Alias(ty::Opaque, ..) => {
-                // allow both `async fn foo()` and `fn foo() -> impl Future`
-            }
-            ty::Error(_) => {
-                // We don't know if it's ok, but at least it's already an error.
-            }
-            _ => {
-                return Err(tcx
-                    .dcx()
-                    .create_err(crate::errors::AsyncTraitImplShouldBeAsync {
-                        span: tcx.def_span(impl_m.def_id),
-                        method_name: trait_m.name,
-                        trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
-                    })
-                    .emit_unless(delay));
-            }
-        };
-    }
-
-    Ok(())
-}
-
 /// Given a method def-id in an impl, compare the method signature of the impl
 /// against the trait that it's implementing. In doing so, infer the hidden types
 /// that this method's signature provides to satisfy each return-position `impl Trait`
@@ -695,8 +664,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
-        return Err(reported);
+        if let Err(guar) = try_report_async_mismatch(tcx, infcx, &errors, trait_m, impl_m, impl_sig)
+        {
+            return Err(guar);
+        }
+
+        let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(guar);
     }
 
     // Finally, resolve all regions. This catches wily misuses of
@@ -1990,6 +1964,10 @@ pub(super) fn check_type_bounds<'tcx>(
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
+    // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
+    // other `Foo` impls are incoherent.
+    tcx.ensure().coherent_trait(impl_trait_ref.def_id)?;
+
     let param_env = tcx.param_env(impl_ty.def_id);
     debug!(?param_env);
 
@@ -2247,4 +2225,48 @@ fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
         ty::AssocKind::Fn => "method",
         ty::AssocKind::Type => "type",
     }
+}
+
+/// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,
+/// and extract a better error if so.
+fn try_report_async_mismatch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    errors: &[FulfillmentError<'tcx>],
+    trait_m: ty::AssocItem,
+    impl_m: ty::AssocItem,
+    impl_sig: ty::FnSig<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    if !tcx.asyncness(trait_m.def_id).is_async() {
+        return Ok(());
+    }
+
+    let ty::Alias(ty::Projection, ty::AliasTy { def_id: async_future_def_id, .. }) =
+        *tcx.fn_sig(trait_m.def_id).skip_binder().skip_binder().output().kind()
+    else {
+        bug!("expected `async fn` to return an RPITIT");
+    };
+
+    for error in errors {
+        if let traits::BindingObligation(def_id, _) = *error.root_obligation.cause.code()
+            && def_id == async_future_def_id
+            && let Some(proj) = error.root_obligation.predicate.to_opt_poly_projection_pred()
+            && let Some(proj) = proj.no_bound_vars()
+            && infcx.can_eq(
+                error.root_obligation.param_env,
+                proj.term.ty().unwrap(),
+                impl_sig.output(),
+            )
+        {
+            // FIXME: We should suggest making the fn `async`, but extracting
+            // the right span is a bit difficult.
+            return Err(tcx.sess.dcx().emit_err(MethodShouldReturnFuture {
+                span: tcx.def_span(impl_m.def_id),
+                method_name: trait_m.name,
+                trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
+            }));
+        }
+    }
+
+    Ok(())
 }

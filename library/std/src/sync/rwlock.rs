@@ -408,7 +408,7 @@ impl<T: ?Sized> RwLock<T> {
     /// assert_eq!(*guard, 1);
     /// ```
     #[inline]
-    #[stable(feature = "mutex_unpoison", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "mutex_unpoison", since = "1.77.0")]
     pub fn clear_poison(&self) {
         self.poison.clear();
     }

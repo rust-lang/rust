@@ -20,7 +20,7 @@ use crate::solve::EvalCtxt;
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
-) -> Result<Vec<Ty<'tcx>>, NoSolution> {
+) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     let tcx = ecx.tcx();
     match *ty.kind() {
         ty::Uint(_)
@@ -34,7 +34,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         | ty::Char => Ok(vec![]),
 
         // Treat `str` like it's defined as `struct str([u8]);`
-        ty::Str => Ok(vec![Ty::new_slice(tcx, tcx.types.u8)]),
+        ty::Str => Ok(vec![ty::Binder::dummy(Ty::new_slice(tcx, tcx.types.u8))]),
 
         ty::Dynamic(..)
         | ty::Param(..)
@@ -47,46 +47,48 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         }
 
         ty::RawPtr(ty::TypeAndMut { ty: element_ty, .. }) | ty::Ref(_, element_ty, _) => {
-            Ok(vec![element_ty])
+            Ok(vec![ty::Binder::dummy(element_ty)])
         }
 
-        ty::Array(element_ty, _) | ty::Slice(element_ty) => Ok(vec![element_ty]),
+        ty::Array(element_ty, _) | ty::Slice(element_ty) => Ok(vec![ty::Binder::dummy(element_ty)]),
 
         ty::Tuple(tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            Ok(tys.iter().collect())
+            Ok(tys.iter().map(ty::Binder::dummy).collect())
         }
 
-        ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
+        ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
 
-        ty::CoroutineClosure(_, args) => Ok(vec![args.as_coroutine_closure().tupled_upvars_ty()]),
+        ty::CoroutineClosure(_, args) => {
+            Ok(vec![ty::Binder::dummy(args.as_coroutine_closure().tupled_upvars_ty())])
+        }
 
         ty::Coroutine(_, args) => {
             let coroutine_args = args.as_coroutine();
-            Ok(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()])
+            Ok(vec![
+                ty::Binder::dummy(coroutine_args.tupled_upvars_ty()),
+                ty::Binder::dummy(coroutine_args.witness()),
+            ])
         }
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
             .coroutine_hidden_types(def_id)
-            .map(|bty| {
-                ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
-                    tcx,
-                    bty.instantiate(tcx, args),
-                ))
-            })
+            .map(|bty| replace_erased_lifetimes_with_bound_vars(tcx, bty.instantiate(tcx, args)))
             .collect()),
 
         // For `PhantomData<T>`, we pass `T`.
-        ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![args.type_at(0)]),
+        ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![ty::Binder::dummy(args.type_at(0))]),
 
-        ty::Adt(def, args) => Ok(def.all_fields().map(|f| f.ty(tcx, args)).collect()),
+        ty::Adt(def, args) => {
+            Ok(def.all_fields().map(|f| ty::Binder::dummy(f.ty(tcx, args))).collect())
+        }
 
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(vec![tcx.type_of(def_id).instantiate(tcx, args)])
+            Ok(vec![ty::Binder::dummy(tcx.type_of(def_id).instantiate(tcx, args))])
         }
     }
 }
@@ -116,7 +118,7 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
 pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
-) -> Result<Vec<Ty<'tcx>>, NoSolution> {
+) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     match *ty.kind() {
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
@@ -150,11 +152,11 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
             bug!("unexpected type `{ty}`")
         }
 
-        ty::Tuple(tys) => Ok(tys.to_vec()),
+        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
 
         ty::Adt(def, args) => {
             let sized_crit = def.sized_constraint(ecx.tcx());
-            Ok(sized_crit.iter_instantiated(ecx.tcx(), args).collect())
+            Ok(sized_crit.iter_instantiated(ecx.tcx(), args).map(ty::Binder::dummy).collect())
         }
     }
 }
@@ -163,7 +165,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
 pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
-) -> Result<Vec<Ty<'tcx>>, NoSolution> {
+) -> Result<Vec<ty::Binder<'tcx, Ty<'tcx>>>, NoSolution> {
     match *ty.kind() {
         ty::FnDef(..) | ty::FnPtr(_) | ty::Error(_) => Ok(vec![]),
 
@@ -194,9 +196,9 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             bug!("unexpected type `{ty}`")
         }
 
-        ty::Tuple(tys) => Ok(tys.to_vec()),
+        ty::Tuple(tys) => Ok(tys.iter().map(ty::Binder::dummy).collect()),
 
-        ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
+        ty::Closure(_, args) => Ok(vec![ty::Binder::dummy(args.as_closure().tupled_upvars_ty())]),
 
         ty::CoroutineClosure(..) => Err(NoSolution),
 
@@ -205,7 +207,10 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             Movability::Movable => {
                 if ecx.tcx().features().coroutine_clone {
                     let coroutine = args.as_coroutine();
-                    Ok(vec![coroutine.tupled_upvars_ty(), coroutine.witness()])
+                    Ok(vec![
+                        ty::Binder::dummy(coroutine.tupled_upvars_ty()),
+                        ty::Binder::dummy(coroutine.witness()),
+                    ])
                 } else {
                     Err(NoSolution)
                 }
@@ -216,10 +221,10 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
             .tcx()
             .coroutine_hidden_types(def_id)
             .map(|bty| {
-                ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
+                replace_erased_lifetimes_with_bound_vars(
                     ecx.tcx(),
                     bty.instantiate(ecx.tcx(), args),
-                ))
+                )
             })
             .collect()),
     }

@@ -11,7 +11,7 @@ note: the lint level is defined here
    |
 LL | #![deny(bare_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^
-help: use `dyn`
+help: if this is an object-safe trait, use `dyn`
    |
 LL | fn ord_prefer_dot(s: String) -> dyn Ord {
    |                                 +++

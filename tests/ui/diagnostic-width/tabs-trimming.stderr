@@ -7,6 +7,18 @@ LL | ...   v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Lon
    |       |       pattern doesn't bind `v`
    |       variable not in all patterns
 
-error: aborting due to 1 previous error
+error[E0381]: used binding `v` is possibly-uninitialized
+  --> $DIR/tabs-trimming.rs:9:67
+   |
+LL | ...   v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Long text here: TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...
+   |       -                                                          ^ `v` used here but it is possibly-uninitialized
+   |       |
+   |       binding initialized here in some conditions
+   |       binding declared here but left uninitialized
+   |
+   = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0408`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0381, E0408.
+For more information about an error, try `rustc --explain E0381`.

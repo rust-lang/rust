@@ -173,6 +173,8 @@ impl Step for Std {
         {
             builder.info("WARNING: Using a potentially old libstd. This may not behave well.");
 
+            builder.ensure(StartupObjects { compiler, target });
+
             self.copy_extra_objects(builder, &compiler, target);
 
             builder.ensure(StdLink::from_std(self, compiler));

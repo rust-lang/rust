@@ -672,17 +672,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let val = match null_op {
                     mir::NullOp::SizeOf => {
                         assert!(bx.cx().type_is_sized(ty));
-                        layout.size.bytes()
+                        let val = layout.size.bytes();
+                        bx.cx().const_usize(val)
                     }
                     mir::NullOp::AlignOf => {
                         assert!(bx.cx().type_is_sized(ty));
-                        layout.align.abi.bytes()
+                        let val = layout.align.abi.bytes();
+                        bx.cx().const_usize(val)
                     }
                     mir::NullOp::OffsetOf(fields) => {
-                        layout.offset_of_subfield(bx.cx(), fields.iter()).bytes()
+                        let val = layout.offset_of_subfield(bx.cx(), fields.iter()).bytes();
+                        bx.cx().const_usize(val)
+                    }
+                    mir::NullOp::DebugAssertions => {
+                        let val = bx.tcx().sess.opts.debug_assertions;
+                        bx.cx().const_bool(val)
                     }
                 };
-                let val = bx.cx().const_usize(val);
                 let tcx = self.cx.tcx();
                 OperandRef {
                     val: OperandValue::Immediate(val),

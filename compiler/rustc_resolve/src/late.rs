@@ -23,6 +23,7 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
+use rustc_metadata::creader::CStore;
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
@@ -1645,7 +1646,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
-                    let res = self.create_fresh_lifetime(lifetime.id, lifetime.ident, binder);
+                    let res = self.create_fresh_lifetime(lifetime.ident, binder);
                     self.record_lifetime_res(lifetime.id, res, elision_candidate);
                     return;
                 }
@@ -1737,7 +1738,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn create_fresh_lifetime(&mut self, id: NodeId, ident: Ident, binder: NodeId) -> LifetimeRes {
+    fn create_fresh_lifetime(&mut self, ident: Ident, binder: NodeId) -> LifetimeRes {
         debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
         debug!(?ident.span);
 
@@ -1758,7 +1759,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn resolve_elided_lifetimes_in_path(
         &mut self,
-        path_id: NodeId,
         partial_res: PartialRes,
         path: &[Segment],
         source: PathSource<'_>,
@@ -1891,7 +1891,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         // Group all suggestions into the first record.
                         let mut candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
                         for id in node_ids {
-                            let res = self.create_fresh_lifetime(id, ident, binder);
+                            let res = self.create_fresh_lifetime(ident, binder);
                             self.record_lifetime_res(
                                 id,
                                 res,
@@ -3941,7 +3941,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         if record_partial_res == RecordPartialRes::Yes {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
             self.r.record_partial_res(node_id, partial_res);
-            self.resolve_elided_lifetimes_in_path(node_id, partial_res, path, source, path_span);
+            self.resolve_elided_lifetimes_in_path(partial_res, path, source, path_span);
         }
 
         partial_res
@@ -4547,14 +4547,20 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 if let Some(res) = res
                     && let Some(def_id) = res.opt_def_id()
                     && !def_id.is_local()
-                    && self.r.tcx.crate_types().contains(&CrateType::ProcMacro)
-                    && matches!(
-                        self.r.tcx.sess.opts.resolve_doc_links,
-                        ResolveDocLinks::ExportedMetadata
-                    )
                 {
-                    // Encoding foreign def ids in proc macro crate metadata will ICE.
-                    return None;
+                    if self.r.tcx.crate_types().contains(&CrateType::ProcMacro)
+                        && matches!(
+                            self.r.tcx.sess.opts.resolve_doc_links,
+                            ResolveDocLinks::ExportedMetadata
+                        )
+                    {
+                        // Encoding foreign def ids in proc macro crate metadata will ICE.
+                        return None;
+                    }
+                    // Doc paths should be resolved speculatively and should not produce any
+                    // diagnostics, but if they are indeed resolved, then we need to keep the
+                    // corresponding crate alive.
+                    CStore::from_tcx_mut(self.r.tcx).set_used_recursively(def_id.krate);
                 }
                 res
             });

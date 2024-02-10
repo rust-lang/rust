@@ -9,6 +9,8 @@ use rustc_middle::ty::{self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, Ty
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
+use crate::errors::TypeofReservedKeywordUsed;
+
 use super::bad_placeholder;
 use super::ItemCtxt;
 pub use opaque::test_opaque_hidden_types;
@@ -39,8 +41,18 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         {
             return tcx.types.usize;
         }
-        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), .. }) if e.hir_id == hir_id => {
-            return tcx.typeck(def_id).node_type(e.hir_id);
+        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), span, .. }) if e.hir_id == hir_id => {
+            let ty = tcx.typeck(def_id).node_type(e.hir_id);
+            let ty = tcx.fold_regions(ty, |r, _| {
+                if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
+            });
+            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false) {
+                (ty, Some((span, Applicability::MachineApplicable)))
+            } else {
+                (ty, None)
+            };
+            tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
+            return ty;
         }
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
         | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
@@ -508,6 +520,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             | GenericParamKind::Const { ty, .. } => icx.to_ty(ty),
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
+
+        Node::ArrayLenInfer(_) => tcx.types.usize,
 
         x => {
             bug!("unexpected sort of node in type_of(): {:?}", x);

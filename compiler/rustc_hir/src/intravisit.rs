@@ -108,8 +108,8 @@ impl<'a> FnKind<'a> {
 
 /// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
 pub trait Map<'hir> {
-    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
-    fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
+    /// Retrieves the `Node` corresponding to `id`.
+    fn hir_node(&self, hir_id: HirId) -> Node<'hir>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -119,7 +119,7 @@ pub trait Map<'hir> {
 
 // Used when no map is actually available, forcing manual implementation of nested visitors.
 impl<'hir> Map<'hir> for ! {
-    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+    fn hir_node(&self, _: HirId) -> Node<'hir> {
         *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
@@ -669,6 +669,7 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
 
 pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen) {
     match len {
+        // FIXME: Use `visit_infer` here.
         ArrayLen::Infer(InferArg { hir_id, span: _ }) => visitor.visit_id(*hir_id),
         ArrayLen::Body(c) => visitor.visit_anon_const(c),
     }

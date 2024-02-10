@@ -12,8 +12,6 @@
 #![feature(let_chains)]
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

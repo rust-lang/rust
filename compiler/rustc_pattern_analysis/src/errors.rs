@@ -1,4 +1,4 @@
-use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
+use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessageOp};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
@@ -62,10 +62,7 @@ pub struct Overlap<'tcx> {
 }
 
 impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         let Overlap { span, range } = self;
 
         // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`

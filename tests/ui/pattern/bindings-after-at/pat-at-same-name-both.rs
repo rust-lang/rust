@@ -10,7 +10,7 @@ fn main() {
     match Ok(0) {
         Ok(a @ b @ a)
         //~^ ERROR identifier `a` is bound more than once in the same pattern
-        | Err(a @ b @ a)
+        | Err(a @ b @ a) //~ ERROR cannot assign twice to immutable variable `a`
         //~^ ERROR identifier `a` is bound more than once in the same pattern
         => {}
     }
@@ -20,7 +20,7 @@ fn main() {
     //~| ERROR identifier `a` is bound more than once in the same pattern
     let ref a @ ref a = ();
     //~^ ERROR identifier `a` is bound more than once in the same pattern
-    let ref mut a @ ref mut a = ();
+    let ref mut a @ ref mut a = (); //~ ERROR cannot borrow value as mutable more than once at a time
     //~^ ERROR identifier `a` is bound more than once in the same pattern
 
     let a @ (Ok(a) | Err(a)) = Ok(());
