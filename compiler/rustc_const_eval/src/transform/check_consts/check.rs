@@ -449,33 +449,25 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(_, BorrowKind::Mut { .. }, place) => {
-                let ty = place.ty(self.body, self.tcx).ty;
-                let is_allowed = match ty.kind() {
-                    // Inside a `static mut`, `&mut [...]` is allowed.
-                    ty::Array(..) | ty::Slice(_)
-                        if self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut) =>
-                    {
-                        true
-                    }
-
-                    // FIXME(ecstaticmorse): We could allow `&mut []` inside a const context given
-                    // that this is merely a ZST and it is already eligible for promotion.
-                    // This may require an RFC?
-                    /*
-                    ty::Array(_, len) if len.try_eval_target_usize(cx.tcx, cx.param_env) == Some(0)
-                        => true,
-                    */
-                    _ => false,
-                };
+            Rvalue::Ref(_, BorrowKind::Mut { .. }, place)
+            | Rvalue::AddressOf(Mutability::Mut, place) => {
+                // Inside mutable statics, we allow arbitrary mutable references.
+                // We've allowed `static mut FOO = &mut [elements];` for a long time (the exact
+                // reasons why are lost to history), and there is no reason to restrict that to
+                // arrays and slices.
+                let is_allowed =
+                    self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
                 if !is_allowed {
-                    self.check_mut_borrow(place.local, hir::BorrowKind::Ref)
+                    self.check_mut_borrow(
+                        place.local,
+                        if matches!(rvalue, Rvalue::Ref(..)) {
+                            hir::BorrowKind::Ref
+                        } else {
+                            hir::BorrowKind::Raw
+                        },
+                    );
                 }
-            }
-
-            Rvalue::AddressOf(Mutability::Mut, place) => {
-                self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake, place)
