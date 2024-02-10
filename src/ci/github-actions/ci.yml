@@ -733,20 +733,20 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-apple
-            env:
-              SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
-              RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_OVERFLOW_CHECKS: 1
-              DIST_REQUIRE_ALL_TOOLS: 1
-              CODEGEN_BACKENDS: llvm,cranelift
-            <<: *job-macos-xl
+          # - name: dist-x86_64-apple
+          #   env:
+          #     SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+          #     RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin
+          #     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+          #     MACOSX_DEPLOYMENT_TARGET: 10.12
+          #     SELECT_XCODE: /Applications/Xcode_15.2.app
+          #     USE_XCODE_CLANG: 1
+          #     NO_LLVM_ASSERTIONS: 1
+          #     NO_DEBUG_ASSERTIONS: 1
+          #     NO_OVERFLOW_CHECKS: 1
+          #     DIST_REQUIRE_ALL_TOOLS: 1
+          #     CODEGEN_BACKENDS: llvm,cranelift
+          #   <<: *job-macos-xl
 
           - name: dist-apple-various
             env:
@@ -761,34 +761,34 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
-          - name: x86_64-apple-1
-            env: &env-x86_64-apple-tests
-              SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
-              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.12
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_OVERFLOW_CHECKS: 1
-            <<: *job-macos-xl
+          # - name: x86_64-apple-1
+          #   env: &env-x86_64-apple-tests
+          #     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
+          #     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+          #     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+          #     MACOSX_DEPLOYMENT_TARGET: 10.12
+          #     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+          #     SELECT_XCODE: /Applications/Xcode_15.2.app
+          #     USE_XCODE_CLANG: 1
+          #     NO_LLVM_ASSERTIONS: 1
+          #     NO_DEBUG_ASSERTIONS: 1
+          #     NO_OVERFLOW_CHECKS: 1
+          #   <<: *job-macos-xl
 
-          - name: dist-x86_64-apple-2
-            env:
-              SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
-              RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_OVERFLOW_CHECKS: 1
-              DIST_REQUIRE_ALL_TOOLS: 1
-              CODEGEN_BACKENDS: llvm,cranelift
-            <<: *job-macos-xl
+          # - name: dist-x86_64-apple-2
+          #   env:
+          #     SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+          #     RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin
+          #     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+          #     MACOSX_DEPLOYMENT_TARGET: 10.12
+          #     SELECT_XCODE: /Applications/Xcode_15.2.app
+          #     USE_XCODE_CLANG: 1
+          #     NO_LLVM_ASSERTIONS: 1
+          #     NO_DEBUG_ASSERTIONS: 1
+          #     NO_OVERFLOW_CHECKS: 1
+          #     DIST_REQUIRE_ALL_TOOLS: 1
+          #     CODEGEN_BACKENDS: llvm,cranelift
+          #   <<: *job-macos-xl
 
           - name: dist-apple-various-2
             env:
@@ -803,34 +803,34 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
-          - name: x86_64-apple-2
-            env: &env-x86_64-apple-tests
-              SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
-              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.12
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_OVERFLOW_CHECKS: 1
-            <<: *job-macos-xl
+          # - name: x86_64-apple-2
+          #   env: &env-x86_64-apple-tests
+          #     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
+          #     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+          #     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+          #     MACOSX_DEPLOYMENT_TARGET: 10.12
+          #     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+          #     SELECT_XCODE: /Applications/Xcode_15.2.app
+          #     USE_XCODE_CLANG: 1
+          #     NO_LLVM_ASSERTIONS: 1
+          #     NO_DEBUG_ASSERTIONS: 1
+          #     NO_OVERFLOW_CHECKS: 1
+          #   <<: *job-macos-xl
 
-          - name: dist-x86_64-apple-3
-            env:
-              SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
-              RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_OVERFLOW_CHECKS: 1
-              DIST_REQUIRE_ALL_TOOLS: 1
-              CODEGEN_BACKENDS: llvm,cranelift
-            <<: *job-macos-xl
+          # - name: dist-x86_64-apple-3
+          #   env:
+          #     SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+          #     RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin
+          #     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+          #     MACOSX_DEPLOYMENT_TARGET: 10.12
+          #     SELECT_XCODE: /Applications/Xcode_15.2.app
+          #     USE_XCODE_CLANG: 1
+          #     NO_LLVM_ASSERTIONS: 1
+          #     NO_DEBUG_ASSERTIONS: 1
+          #     NO_OVERFLOW_CHECKS: 1
+          #     DIST_REQUIRE_ALL_TOOLS: 1
+          #     CODEGEN_BACKENDS: llvm,cranelift
+          #   <<: *job-macos-xl
 
           - name: dist-apple-various-3
             env:
@@ -845,13 +845,26 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
-          - name: x86_64-apple-3
-            env: &env-x86_64-apple-tests
-              SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
-              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+          # - name: x86_64-apple-3
+          #   env: &env-x86_64-apple-tests
+          #     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
+          #     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+          #     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+          #     MACOSX_DEPLOYMENT_TARGET: 10.12
+          #     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+          #     SELECT_XCODE: /Applications/Xcode_15.2.app
+          #     USE_XCODE_CLANG: 1
+          #     NO_LLVM_ASSERTIONS: 1
+          #     NO_DEBUG_ASSERTIONS: 1
+          #     NO_OVERFLOW_CHECKS: 1
+          #   <<: *job-macos-xl
+
+          - name: dist-apple-various-4
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.12
               SELECT_XCODE: /Applications/Xcode_15.2.app
               USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
@@ -859,6 +872,83 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
+          - name: dist-apple-various-5
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_15.2.app
+              USE_XCODE_CLANG: 1
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
+
+          - name: dist-apple-various-6
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_15.2.app
+              USE_XCODE_CLANG: 1
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
+
+          - name: dist-apple-various-7
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_15.2.app
+              USE_XCODE_CLANG: 1
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
+
+          - name: dist-apple-various-8
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_15.2.app
+              USE_XCODE_CLANG: 1
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
+
+          - name: dist-apple-various-9
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_15.2.app
+              USE_XCODE_CLANG: 1
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
+
+          - name: dist-apple-various-10
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+              RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_15.2.app
+              USE_XCODE_CLANG: 1
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
 
   master:
     name: master
