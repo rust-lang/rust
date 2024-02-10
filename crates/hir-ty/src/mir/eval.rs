@@ -25,7 +25,7 @@ use triomphe::Arc;
 
 use crate::{
     consteval::{intern_const_scalar, try_const_usize, ConstEvalError},
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosure},
     display::{ClosureStyle, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
@@ -647,7 +647,7 @@ impl Evaluator<'_> {
             ty.clone(),
             self.db,
             |c, subst, f| {
-                let (def, _) = self.db.lookup_intern_closure(c.into());
+                let InternedClosure(def, _) = self.db.lookup_intern_closure(c.into());
                 let infer = self.db.infer(def);
                 let (captures, _) = infer.closure_info(&c);
                 let parent_subst = ClosureSubst(subst).parent_subst();

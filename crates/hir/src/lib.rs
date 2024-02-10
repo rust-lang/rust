@@ -62,6 +62,7 @@ use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, Ma
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
+    db::InternedClosure,
     diagnostics::BodyValidationDiagnostic,
     known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
@@ -4499,7 +4500,7 @@ impl Callable {
 }
 
 fn closure_source(db: &dyn HirDatabase, closure: ClosureId) -> Option<ast::ClosureExpr> {
-    let (owner, expr_id) = db.lookup_intern_closure(closure.into());
+    let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure.into());
     let (_, source_map) = db.body_with_source_map(owner);
     let ast = source_map.expr_syntax(expr_id).ok()?;
     let root = ast.file_syntax(db.upcast());

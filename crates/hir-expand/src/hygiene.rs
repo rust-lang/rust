@@ -7,9 +7,10 @@
 
 use std::iter;
 
+use base_db::salsa::{self, InternValue};
 use span::{MacroCallId, Span, SyntaxContextId};
 
-use crate::db::ExpandDatabase;
+use crate::db::{ExpandDatabase, InternSyntaxContextQuery};
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct SyntaxContextData {
@@ -20,6 +21,14 @@ pub struct SyntaxContextData {
     pub opaque: SyntaxContextId,
     /// This context, but with all transparent expansions filtered away.
     pub opaque_and_semitransparent: SyntaxContextId,
+}
+
+impl InternValue for SyntaxContextData {
+    type Key = (SyntaxContextId, Option<MacroCallId>, Transparency);
+
+    fn into_key(&self) -> Self::Key {
+        (self.parent, self.outer_expn, self.outer_transparency)
+    }
 }
 
 impl std::fmt::Debug for SyntaxContextData {
@@ -149,38 +158,36 @@ fn apply_mark_internal(
     transparency: Transparency,
 ) -> SyntaxContextId {
     let syntax_context_data = db.lookup_intern_syntax_context(ctxt);
-    let mut opaque = handle_self_ref(ctxt, syntax_context_data.opaque);
-    let mut opaque_and_semitransparent =
-        handle_self_ref(ctxt, syntax_context_data.opaque_and_semitransparent);
+    let mut opaque = syntax_context_data.opaque;
+    let mut opaque_and_semitransparent = syntax_context_data.opaque_and_semitransparent;
 
     if transparency >= Transparency::Opaque {
         let parent = opaque;
-        // Unlike rustc, with salsa we can't prefetch the to be allocated ID to create cycles with
-        // salsa when interning, so we use a sentinel value that effectively means the current
-        // syntax context.
-        let new_opaque = SyntaxContextId::SELF_REF;
-        opaque = db.intern_syntax_context(SyntaxContextData {
-            outer_expn: call_id,
-            outer_transparency: transparency,
-            parent,
-            opaque: new_opaque,
-            opaque_and_semitransparent: new_opaque,
-        });
+        opaque = salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
+            (parent, call_id, transparency),
+            |new_opaque| SyntaxContextData {
+                outer_expn: call_id,
+                outer_transparency: transparency,
+                parent,
+                opaque: new_opaque,
+                opaque_and_semitransparent: new_opaque,
+            },
+        );
     }
 
     if transparency >= Transparency::SemiTransparent {
         let parent = opaque_and_semitransparent;
-        // Unlike rustc, with salsa we can't prefetch the to be allocated ID to create cycles with
-        // salsa when interning, so we use a sentinel value that effectively means the current
-        // syntax context.
-        let new_opaque_and_semitransparent = SyntaxContextId::SELF_REF;
-        opaque_and_semitransparent = db.intern_syntax_context(SyntaxContextData {
-            outer_expn: call_id,
-            outer_transparency: transparency,
-            parent,
-            opaque,
-            opaque_and_semitransparent: new_opaque_and_semitransparent,
-        });
+        opaque_and_semitransparent =
+            salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
+                (parent, call_id, transparency),
+                |new_opaque_and_semitransparent| SyntaxContextData {
+                    outer_expn: call_id,
+                    outer_transparency: transparency,
+                    parent,
+                    opaque,
+                    opaque_and_semitransparent: new_opaque_and_semitransparent,
+                },
+            );
     }
 
     let parent = ctxt;
@@ -201,20 +208,12 @@ pub trait SyntaxContextExt {
     fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)>;
 }
 
-#[inline(always)]
-fn handle_self_ref(p: SyntaxContextId, n: SyntaxContextId) -> SyntaxContextId {
-    match n {
-        SyntaxContextId::SELF_REF => p,
-        _ => n,
-    }
-}
-
 impl SyntaxContextExt for SyntaxContextId {
     fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> Self {
-        handle_self_ref(self, db.lookup_intern_syntax_context(self).opaque_and_semitransparent)
+        db.lookup_intern_syntax_context(self).opaque_and_semitransparent
     }
     fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> Self {
-        handle_self_ref(self, db.lookup_intern_syntax_context(self).opaque)
+        db.lookup_intern_syntax_context(self).opaque
     }
     fn parent_ctxt(self, db: &dyn ExpandDatabase) -> Self {
         db.lookup_intern_syntax_context(self).parent

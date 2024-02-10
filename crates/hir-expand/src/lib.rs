@@ -30,7 +30,7 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{CrateId, Edition, FileId};
+use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
 use either::Either;
 use span::{FileRange, HirFileIdRepr, Span, SyntaxContextId};
 use syntax::{
@@ -176,6 +176,7 @@ pub struct MacroCallLoc {
     pub kind: MacroCallKind,
     pub call_site: Span,
 }
+impl_intern_value_trivial!(MacroCallLoc);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {

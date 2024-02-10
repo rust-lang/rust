@@ -10,7 +10,10 @@ use std::{
     iter,
 };
 
-use base_db::{salsa::Cycle, CrateId};
+use base_db::{
+    salsa::{impl_intern_value_trivial, Cycle},
+    CrateId,
+};
 use chalk_ir::{
     cast::Cast, fold::Shift, fold::TypeFoldable, interner::HasInterner, Mutability, Safety,
 };
@@ -1809,6 +1812,7 @@ pub enum CallableDefId {
     StructId(StructId),
     EnumVariantId(EnumVariantId),
 }
+impl_intern_value_trivial!(CallableDefId);
 impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
 impl From<CallableDefId> for ModuleDefId {
     fn from(def: CallableDefId) -> ModuleDefId {
