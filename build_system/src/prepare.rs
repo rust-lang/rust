@@ -152,7 +152,7 @@ fn clone_and_setup<F>(repo_url: &str, checkout_commit: &str, extra: Option<F>) -
 where
     F: Fn(&Path) -> Result<(), String>,
 {
-    let clone_result = git_clone(repo_url, None)?;
+    let clone_result = git_clone(repo_url, None, false)?;
     if !clone_result.ran_clone {
         println!("`{}` has already been cloned", clone_result.repo_name);
     }
