@@ -50,9 +50,10 @@ struct C<F>(F);
 
 impl<F> C<F> {
     fn foo(_f: F) -> Self
-        where F: std::fmt::Display
+    where
+        F: std::fmt::Display,
     {
-       todo!()
+        todo!()
     }
 }
 
