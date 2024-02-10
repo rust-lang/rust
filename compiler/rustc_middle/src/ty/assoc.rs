@@ -34,7 +34,6 @@ pub struct AssocItem {
     /// provides additional information about its source.
     pub opt_rpitit_info: Option<ty::ImplTraitInTraitData>,
 
-    // TODO: is this necessary
     pub is_effects_desugaring: bool,
 }
 

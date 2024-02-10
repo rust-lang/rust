@@ -236,6 +236,9 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
                 }
             });
 
+            // TODO deduplicate
+            trait_assoc_ty.explicit_item_bounds(ty::EarlyBinder::bind(&[]));
+
             // There are no inferred outlives for the synthesized associated type.
             trait_assoc_ty.inferred_outlives_of(&[]);
 
@@ -310,6 +313,8 @@ fn associated_type_for_effects(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<De
                     host_effect_index: parent_generics.host_effect_index,
                 }
             });
+
+            impl_assoc_ty.explicit_item_bounds(ty::EarlyBinder::bind(&[]));
 
             // There are no inferred outlives for the synthesized associated type.
             impl_assoc_ty.inferred_outlives_of(&[]);
