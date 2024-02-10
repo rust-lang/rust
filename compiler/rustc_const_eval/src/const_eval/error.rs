@@ -17,7 +17,7 @@ use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, MachineStopTy
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrKind {
-    ConstAccessesStatic,
+    ConstAccessesMutGlobal,
     ModifiedGlobal,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
@@ -28,7 +28,7 @@ impl MachineStopType for ConstEvalErrKind {
         use crate::fluent_generated::*;
         use ConstEvalErrKind::*;
         match self {
-            ConstAccessesStatic => const_eval_const_accesses_static,
+            ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
             ModifiedGlobal => const_eval_modified_global,
             Panic { .. } => const_eval_panic,
             AssertFailure(x) => x.diagnostic_message(),
@@ -37,7 +37,7 @@ impl MachineStopType for ConstEvalErrKind {
     fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagnosticArgName, DiagnosticArgValue)) {
         use ConstEvalErrKind::*;
         match *self {
-            ConstAccessesStatic | ModifiedGlobal => {}
+            ConstAccessesMutGlobal | ModifiedGlobal => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
                 adder("msg".into(), msg.into_diagnostic_arg());
