@@ -1157,14 +1157,13 @@ impl str {
     ///
     /// Returns `false` if it does not.
     ///
-    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
-    /// function or closure that determines if a character matches.
+    /// The [pattern] can be a `&str`, in which case this function will return true if
+    /// the `&str` is a prefix of this string slice.
     ///
-    /// Note that there is a footgun to this method when using a slice of [`char`]s.
-    /// Some users may expect that a slice of chars will behave similarly to a `&str` with this method.
-    /// That is not currently the case. When you pass a slice of [`char`]s to this method, it will return true
-    /// if any of the [`char`]s in the slice is the first [`char`] of this string slice. It does not work for
-    /// sequentially comparing a slice of [`char`]s to a string slice. See the second example below.
+    /// The [pattern] can also be a [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    /// These will only be checked against the first character of this string slice.
+    /// Look at the second example below regarding behavior for slices of [`char`]s.
     ///
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
