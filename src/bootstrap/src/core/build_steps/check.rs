@@ -4,7 +4,9 @@ use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo,
 };
 use crate::core::build_steps::tool::{prepare_tool_cargo, SourceType};
-use crate::core::builder::{crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::core::builder::{
+    self, crate_description, Alias, Builder, Kind, RunConfig, ShouldRun, Step,
+};
 use crate::core::config::TargetSelection;
 use crate::utils::cache::Interned;
 use crate::INTERNER;
@@ -110,14 +112,15 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
-        let mut cargo = builder.cargo(
+        let mut cargo = builder::Cargo::new(
+            builder,
             compiler,
             Mode::Std,
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
-            false,
         );
+
         std_cargo(builder, target, compiler.stage, &mut cargo);
         if matches!(builder.config.cmd, Subcommand::Fix { .. }) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
@@ -163,13 +166,13 @@ impl Step for Std {
         // since we initialize with an empty sysroot.
         //
         // Currently only the "libtest" tree of crates does this.
-        let mut cargo = builder.cargo(
+        let mut cargo = builder::Cargo::new(
+            builder,
             compiler,
             Mode::Std,
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
-            false,
         );
 
         // If we're not in stage 0, tests and examples will fail to compile
@@ -258,14 +261,15 @@ impl Step for Rustc {
             builder.ensure(Std::new(target));
         }
 
-        let mut cargo = builder.cargo(
+        let mut cargo = builder::Cargo::new(
+            builder,
             compiler,
             Mode::Rustc,
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
-            false,
         );
+
         rustc_cargo(builder, &mut cargo, target, compiler.stage);
 
         // For ./x.py clippy, don't run with --all-targets because
@@ -335,14 +339,15 @@ impl Step for CodegenBackend {
 
         builder.ensure(Rustc::new(target, builder));
 
-        let mut cargo = builder.cargo(
+        let mut cargo = builder::Cargo::new(
+            builder,
             compiler,
             Mode::Codegen,
             SourceType::InTree,
             target,
             cargo_subcommand(builder.kind),
-            false,
         );
+
         cargo
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
