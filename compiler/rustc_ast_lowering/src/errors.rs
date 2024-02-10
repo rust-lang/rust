@@ -94,11 +94,12 @@ pub struct MisplacedImplTrait<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_misplaced_assoc_ty_binding)]
-pub struct MisplacedAssocTyBinding<'a> {
+#[diag(ast_lowering_assoc_ty_binding_in_dyn)]
+pub struct MisplacedAssocTyBinding {
     #[primary_span]
     pub span: Span,
-    pub position: DiagnosticArgFromDisplay<'a>,
+    #[suggestion(code = " = impl", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Option<Span>,
 }
 
 #[derive(Diagnostic, Clone, Copy)]
