@@ -40,7 +40,12 @@ error[E0599]: no method named `baz` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:29:7
    |
 LL |     x.baz();
-   |       ^^^ help: there is a method with a similar name: `bar`
+   |       ^^^
+   |
+help: there is a method with a similar name
+   |
+LL |     x.bar();
+   |       ~~~
 
 error[E0599]: no function or associated item named `from_str` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:30:18

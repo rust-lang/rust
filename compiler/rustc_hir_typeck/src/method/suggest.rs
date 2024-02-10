@@ -1375,7 +1375,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         {
                             // We found a method with the same number of arguments as the method
                             // call expression the user wrote.
-                            err.span_suggestion(
+                            err.span_suggestion_verbose(
                                 span,
                                 format!("there is {an} method with a similar name"),
                                 similar_candidate.name,
@@ -1402,7 +1402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         // We have fn call expression and the argument count match the associated
                         // function we found.
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             span,
                             format!(
                                 "there is {an} {} with a similar name",
@@ -1423,7 +1423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 } else if let Mode::Path = mode {
                     // We have an associated item syntax and we found something that isn't an fn.
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         span,
                         format!(
                             "there is {an} {} with a similar name",
