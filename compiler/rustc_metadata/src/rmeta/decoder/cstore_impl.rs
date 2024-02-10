@@ -215,7 +215,7 @@ provide! { tcx, def_id, other, cdata,
     variances_of => { table }
     fn_sig => { table }
     codegen_fn_attrs => { table }
-    impl_trait_ref => { table }
+    impl_trait_header => { table }
     const_param_default => { table }
     object_lifetime_default => { table }
     thir_abstract_const => { table }

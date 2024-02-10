@@ -462,9 +462,9 @@ impl AddTypeParameterToImpl<u32> for Bar<u32> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,generics_of,impl_trait_ref", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,generics_of,impl_trait_header", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,generics_of,impl_trait_ref", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,generics_of,impl_trait_header", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl<TTT> AddTypeParameterToImpl<TTT> for Bar<TTT> {
     #[rustc_clean(
@@ -493,9 +493,9 @@ impl ChangeSelfTypeOfImpl for u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="opt_hir_owner_nodes,impl_trait_ref", cfg="cfail2")]
+#[rustc_clean(except="opt_hir_owner_nodes,impl_trait_header", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="opt_hir_owner_nodes,impl_trait_ref", cfg="cfail5")]
+#[rustc_clean(except="opt_hir_owner_nodes,impl_trait_header", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl ChangeSelfTypeOfImpl for u64 {
     #[rustc_clean(except="fn_sig,typeck,optimized_mir", cfg="cfail2")]
