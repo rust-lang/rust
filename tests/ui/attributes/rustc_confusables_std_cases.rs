@@ -16,7 +16,7 @@ fn main() {
     //~^ HELP you might have meant to use `len`
     x.size(); //~ ERROR E0599
     //~^ HELP you might have meant to use `len`
-    //~| HELP there is a method with a similar name
+    //~| HELP there is a method `resize` with a similar name
     x.append(42); //~ ERROR E0308
     //~^ HELP you might have meant to use `push`
     String::new().push(""); //~ ERROR E0308

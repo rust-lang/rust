@@ -48,14 +48,12 @@ error[E0599]: no method named `size` found for struct `Vec<{integer}>` in the cu
 LL |     x.size();
    |       ^^^^
    |
+help: there is a method `resize` with a similar name, but with different arguments
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 help: you might have meant to use `len`
    |
 LL |     x.len();
    |       ~~~
-help: there is a method with a similar name
-   |
-LL |     x.resize();
-   |       ~~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/rustc_confusables_std_cases.rs:20:14

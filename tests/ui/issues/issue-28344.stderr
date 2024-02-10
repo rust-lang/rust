@@ -22,10 +22,10 @@ error[E0599]: no function or associated item named `bitor` found for trait objec
   --> $DIR/issue-28344.rs:4:25
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-   |                         ^^^^^
-   |                         |
-   |                         function or associated item not found in `dyn BitXor<_>`
-   |                         help: there is a method with a similar name: `bitxor`
+   |                         ^^^^^ function or associated item not found in `dyn BitXor<_>`
+   |
+help: there is a method `bitxor` with a similar name, but with different arguments
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-28344.rs:10:13
@@ -50,10 +50,10 @@ error[E0599]: no function or associated item named `bitor` found for trait objec
   --> $DIR/issue-28344.rs:10:21
    |
 LL |     let g = BitXor::bitor;
-   |                     ^^^^^
-   |                     |
-   |                     function or associated item not found in `dyn BitXor<_>`
-   |                     help: there is a method with a similar name: `bitxor`
+   |                     ^^^^^ function or associated item not found in `dyn BitXor<_>`
+   |
+help: there is a method `bitxor` with a similar name, but with different arguments
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
 
 error: aborting due to 4 previous errors; 2 warnings emitted
 
