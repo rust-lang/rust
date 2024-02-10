@@ -197,7 +197,6 @@ trait ResolverAstLoweringExt {
     fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
-    fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId);
 }
 
 impl ResolverAstLoweringExt for ResolverAstLowering {
@@ -255,11 +254,6 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
     /// should appear at the enclosing `PolyTraitRef`.
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
         self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
-    }
-
-    fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId) {
-        let lifetimes = self.extra_lifetime_params_map.remove(&from).unwrap_or_default();
-        self.extra_lifetime_params_map.insert(to, lifetimes);
     }
 }
 
