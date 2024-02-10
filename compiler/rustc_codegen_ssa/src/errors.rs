@@ -122,6 +122,12 @@ pub struct NoNatvisDirectory {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_no_saved_object_file)]
+pub struct NoSavedObjectFile<'a> {
+    pub cgu_name: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
 pub struct CopyPathBuf {
     pub source_file: PathBuf,
