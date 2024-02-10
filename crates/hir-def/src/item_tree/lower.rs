@@ -658,7 +658,7 @@ impl<'a> Ctx<'a> {
 
     fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
         let vis =
-            RawVisibility::from_ast_with_span_map(self.db, item.visibility(), self.span_map());
+            RawVisibility::from_opt_ast_with_span_map(self.db, item.visibility(), self.span_map());
         self.data().vis.alloc(vis)
     }
 

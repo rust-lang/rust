@@ -248,6 +248,7 @@ impl Resolver {
             RawVisibility::Public => Some(Visibility::Public),
         }
     }
+
     pub fn resolve_path_in_value_ns(
         &self,
         db: &dyn DefDatabase,
