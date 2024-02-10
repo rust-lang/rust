@@ -356,7 +356,6 @@ impl AttrsWithOwner {
             AttrDefId::FieldId(it) => {
                 return db.fields_attrs(it.parent)[it.local_id].clone();
             }
-            // FIXME: DRY this up
             AttrDefId::EnumVariantId(it) => {
                 let id = it.lookup(db).id;
                 let tree = id.item_tree(db);

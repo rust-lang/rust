@@ -986,17 +986,13 @@ impl VariantId {
 }
 
 pub trait HasModule {
+    /// Returns the enclosing module this thing is defined within.
     fn module(&self, db: &dyn DefDatabase) -> ModuleId;
-}
-
-impl HasModule for ItemContainerId {
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        match *self {
-            ItemContainerId::ModuleId(it) => it,
-            ItemContainerId::ImplId(it) => it.lookup(db).container,
-            ItemContainerId::TraitId(it) => it.lookup(db).container,
-            ItemContainerId::ExternBlockId(it) => it.lookup(db).container,
-        }
+    /// Returns the crate this thing is defined within.
+    #[inline]
+    #[doc(alias = "crate")]
+    fn krate(&self, db: &dyn DefDatabase) -> CrateId {
+        self.module(db).krate
     }
 }
 
@@ -1007,22 +1003,70 @@ impl<N: ItemTreeModItemNode> HasModule for AssocItemLoc<N> {
     }
 }
 
-impl HasModule for AdtId {
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        match self {
-            AdtId::StructId(it) => it.lookup(db).container,
-            AdtId::UnionId(it) => it.lookup(db).container,
-            AdtId::EnumId(it) => it.lookup(db).container,
-        }
-    }
-}
-
-impl HasModule for EnumId {
+impl<N, ItemId> HasModule for ItemId
+where
+    N: ItemTreeModItemNode,
+    ItemId: for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = ItemLoc<N>> + Copy,
+{
     #[inline]
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         self.lookup(db).container
     }
 }
+
+// Technically this does not overlap with the above, but rustc currently forbids this, hence why we
+// need to write the 3 impls manually instead
+// impl<N, ItemId> HasModule for ItemId
+// where
+//     N: ItemTreeModItemNode,
+//     ItemId: for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<N>> + Copy,
+// {
+//     #[inline]
+//     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+//         self.lookup(db).container.module(db)
+//     }
+// }
+
+// region: manual-assoc-has-module-impls
+#[inline]
+fn module_for_assoc_item_loc<'db>(
+    db: &(dyn 'db + DefDatabase),
+    id: impl Lookup<
+        Database<'db> = dyn DefDatabase + 'db,
+        Data = AssocItemLoc<impl ItemTreeModItemNode>,
+    >,
+) -> ModuleId {
+    id.lookup(db).container.module(db)
+}
+
+impl HasModule for FunctionId {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        module_for_assoc_item_loc(db, *self)
+    }
+}
+
+impl HasModule for ConstId {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        module_for_assoc_item_loc(db, *self)
+    }
+}
+
+impl HasModule for StaticId {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        module_for_assoc_item_loc(db, *self)
+    }
+}
+
+impl HasModule for TypeAliasId {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        module_for_assoc_item_loc(db, *self)
+    }
+}
+// endregion: manual-assoc-has-module-impls
 
 impl HasModule for EnumVariantId {
     #[inline]
@@ -1031,46 +1075,81 @@ impl HasModule for EnumVariantId {
     }
 }
 
-impl HasModule for ExternCrateId {
+impl HasModule for MacroRulesId {
     #[inline]
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         self.lookup(db).container
     }
 }
 
+impl HasModule for Macro2Id {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.lookup(db).container
+    }
+}
+
+impl HasModule for ProcMacroId {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.lookup(db).container.into()
+    }
+}
+
+impl HasModule for ItemContainerId {
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        match *self {
+            ItemContainerId::ModuleId(it) => it,
+            ItemContainerId::ImplId(it) => it.module(db),
+            ItemContainerId::TraitId(it) => it.module(db),
+            ItemContainerId::ExternBlockId(it) => it.module(db),
+        }
+    }
+}
+
+impl HasModule for AdtId {
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        match *self {
+            AdtId::StructId(it) => it.module(db),
+            AdtId::UnionId(it) => it.module(db),
+            AdtId::EnumId(it) => it.module(db),
+        }
+    }
+}
+
 impl HasModule for VariantId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        match self {
-            VariantId::EnumVariantId(it) => it.lookup(db).parent.module(db),
-            VariantId::StructId(it) => it.lookup(db).container,
-            VariantId::UnionId(it) => it.lookup(db).container,
+        match *self {
+            VariantId::EnumVariantId(it) => it.module(db),
+            VariantId::StructId(it) => it.module(db),
+            VariantId::UnionId(it) => it.module(db),
         }
     }
 }
 
 impl HasModule for MacroId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        match self {
-            MacroId::MacroRulesId(it) => it.lookup(db).container,
-            MacroId::Macro2Id(it) => it.lookup(db).container,
-            MacroId::ProcMacroId(it) => it.lookup(db).container.into(),
+        match *self {
+            MacroId::MacroRulesId(it) => it.module(db),
+            MacroId::Macro2Id(it) => it.module(db),
+            MacroId::ProcMacroId(it) => it.module(db),
         }
     }
 }
 
 impl HasModule for TypeOwnerId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        match self {
-            TypeOwnerId::FunctionId(it) => it.lookup(db).module(db),
-            TypeOwnerId::StaticId(it) => it.lookup(db).module(db),
-            TypeOwnerId::ConstId(it) => it.lookup(db).module(db),
-            TypeOwnerId::InTypeConstId(it) => it.lookup(db).owner.module(db),
+        match *self {
+            TypeOwnerId::FunctionId(it) => it.module(db),
+            TypeOwnerId::StaticId(it) => it.module(db),
+            TypeOwnerId::ConstId(it) => it.module(db),
             TypeOwnerId::AdtId(it) => it.module(db),
-            TypeOwnerId::TraitId(it) => it.lookup(db).container,
-            TypeOwnerId::TraitAliasId(it) => it.lookup(db).container,
-            TypeOwnerId::TypeAliasId(it) => it.lookup(db).module(db),
-            TypeOwnerId::ImplId(it) => it.lookup(db).container,
-            TypeOwnerId::EnumVariantId(it) => it.lookup(db).parent.module(db),
+            TypeOwnerId::TraitId(it) => it.module(db),
+            TypeOwnerId::TraitAliasId(it) => it.module(db),
+            TypeOwnerId::TypeAliasId(it) => it.module(db),
+            TypeOwnerId::ImplId(it) => it.module(db),
+            TypeOwnerId::EnumVariantId(it) => it.module(db),
+            TypeOwnerId::InTypeConstId(it) => it.lookup(db).owner.module(db),
         }
     }
 }
@@ -1078,10 +1157,10 @@ impl HasModule for TypeOwnerId {
 impl HasModule for DefWithBodyId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         match self {
-            DefWithBodyId::FunctionId(it) => it.lookup(db).module(db),
-            DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
-            DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
-            DefWithBodyId::VariantId(it) => it.lookup(db).parent.module(db),
+            DefWithBodyId::FunctionId(it) => it.module(db),
+            DefWithBodyId::StaticId(it) => it.module(db),
+            DefWithBodyId::ConstId(it) => it.module(db),
+            DefWithBodyId::VariantId(it) => it.module(db),
             DefWithBodyId::InTypeConstId(it) => it.lookup(db).owner.module(db),
         }
     }
@@ -1090,29 +1169,15 @@ impl HasModule for DefWithBodyId {
 impl HasModule for GenericDefId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         match self {
-            GenericDefId::FunctionId(it) => it.lookup(db).module(db),
+            GenericDefId::FunctionId(it) => it.module(db),
             GenericDefId::AdtId(it) => it.module(db),
-            GenericDefId::TraitId(it) => it.lookup(db).container,
-            GenericDefId::TraitAliasId(it) => it.lookup(db).container,
-            GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
-            GenericDefId::ImplId(it) => it.lookup(db).container,
-            GenericDefId::EnumVariantId(it) => it.lookup(db).parent.lookup(db).container,
-            GenericDefId::ConstId(it) => it.lookup(db).module(db),
+            GenericDefId::TraitId(it) => it.module(db),
+            GenericDefId::TraitAliasId(it) => it.module(db),
+            GenericDefId::TypeAliasId(it) => it.module(db),
+            GenericDefId::ImplId(it) => it.module(db),
+            GenericDefId::EnumVariantId(it) => it.module(db),
+            GenericDefId::ConstId(it) => it.module(db),
         }
-    }
-}
-
-impl HasModule for TypeAliasId {
-    #[inline]
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        self.lookup(db).module(db)
-    }
-}
-
-impl HasModule for TraitId {
-    #[inline]
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
-        self.lookup(db).container
     }
 }
 
@@ -1123,14 +1188,14 @@ impl ModuleDefId {
     pub fn module(&self, db: &dyn DefDatabase) -> Option<ModuleId> {
         Some(match self {
             ModuleDefId::ModuleId(id) => *id,
-            ModuleDefId::FunctionId(id) => id.lookup(db).module(db),
+            ModuleDefId::FunctionId(id) => id.module(db),
             ModuleDefId::AdtId(id) => id.module(db),
-            ModuleDefId::EnumVariantId(id) => id.lookup(db).parent.module(db),
-            ModuleDefId::ConstId(id) => id.lookup(db).container.module(db),
-            ModuleDefId::StaticId(id) => id.lookup(db).module(db),
-            ModuleDefId::TraitId(id) => id.lookup(db).container,
-            ModuleDefId::TraitAliasId(id) => id.lookup(db).container,
-            ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db),
+            ModuleDefId::EnumVariantId(id) => id.module(db),
+            ModuleDefId::ConstId(id) => id.module(db),
+            ModuleDefId::StaticId(id) => id.module(db),
+            ModuleDefId::TraitId(id) => id.module(db),
+            ModuleDefId::TraitAliasId(id) => id.module(db),
+            ModuleDefId::TypeAliasId(id) => id.module(db),
             ModuleDefId::MacroId(id) => id.module(db),
             ModuleDefId::BuiltinType(_) => return None,
         })
@@ -1139,31 +1204,28 @@ impl ModuleDefId {
 
 impl AttrDefId {
     pub fn krate(&self, db: &dyn DefDatabase) -> CrateId {
-        match self {
+        match *self {
             AttrDefId::ModuleId(it) => it.krate,
-            AttrDefId::FieldId(it) => it.parent.module(db).krate,
-            AttrDefId::AdtId(it) => it.module(db).krate,
-            AttrDefId::FunctionId(it) => it.lookup(db).module(db).krate,
-            AttrDefId::EnumVariantId(it) => it.lookup(db).parent.module(db).krate,
-            AttrDefId::StaticId(it) => it.lookup(db).module(db).krate,
-            AttrDefId::ConstId(it) => it.lookup(db).module(db).krate,
-            AttrDefId::TraitId(it) => it.lookup(db).container.krate,
-            AttrDefId::TraitAliasId(it) => it.lookup(db).container.krate,
-            AttrDefId::TypeAliasId(it) => it.lookup(db).module(db).krate,
-            AttrDefId::ImplId(it) => it.lookup(db).container.krate,
-            AttrDefId::ExternBlockId(it) => it.lookup(db).container.krate,
-            AttrDefId::GenericParamId(it) => {
-                match it {
-                    GenericParamId::TypeParamId(it) => it.parent(),
-                    GenericParamId::ConstParamId(it) => it.parent(),
-                    GenericParamId::LifetimeParamId(it) => it.parent,
-                }
-                .module(db)
-                .krate
+            AttrDefId::FieldId(it) => it.parent.krate(db),
+            AttrDefId::AdtId(it) => it.krate(db),
+            AttrDefId::FunctionId(it) => it.krate(db),
+            AttrDefId::EnumVariantId(it) => it.krate(db),
+            AttrDefId::StaticId(it) => it.krate(db),
+            AttrDefId::ConstId(it) => it.krate(db),
+            AttrDefId::TraitId(it) => it.krate(db),
+            AttrDefId::TraitAliasId(it) => it.krate(db),
+            AttrDefId::TypeAliasId(it) => it.krate(db),
+            AttrDefId::ImplId(it) => it.krate(db),
+            AttrDefId::ExternBlockId(it) => it.krate(db),
+            AttrDefId::GenericParamId(it) => match it {
+                GenericParamId::TypeParamId(it) => it.parent(),
+                GenericParamId::ConstParamId(it) => it.parent(),
+                GenericParamId::LifetimeParamId(it) => it.parent,
             }
-            AttrDefId::MacroId(it) => it.module(db).krate,
-            AttrDefId::ExternCrateId(it) => it.lookup(db).container.krate,
-            AttrDefId::UseId(it) => it.lookup(db).container.krate,
+            .krate(db),
+            AttrDefId::MacroId(it) => it.krate(db),
+            AttrDefId::ExternCrateId(it) => it.krate(db),
+            AttrDefId::UseId(it) => it.krate(db),
         }
     }
 }

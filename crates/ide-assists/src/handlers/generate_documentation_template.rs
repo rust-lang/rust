@@ -364,7 +364,7 @@ fn is_in_trait_impl(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> bool {
     ctx.sema
         .to_def(ast_func)
         .and_then(|hir_func| hir_func.as_assoc_item(ctx.db()))
-        .and_then(|assoc_item| assoc_item.containing_trait_impl(ctx.db()))
+        .and_then(|assoc_item| assoc_item.implemented_trait(ctx.db()))
         .is_some()
 }
 
@@ -373,7 +373,7 @@ fn is_in_trait_def(ast_func: &ast::Fn, ctx: &AssistContext<'_>) -> bool {
     ctx.sema
         .to_def(ast_func)
         .and_then(|hir_func| hir_func.as_assoc_item(ctx.db()))
-        .and_then(|assoc_item| assoc_item.containing_trait(ctx.db()))
+        .and_then(|assoc_item| assoc_item.container_trait(ctx.db()))
         .is_some()
 }
 
