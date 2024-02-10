@@ -112,7 +112,7 @@ impl<'a> RenderContext<'a> {
         };
         is_assoc_deprecated
             || assoc
-                .containing_trait_or_trait_impl(db)
+                .container_or_implemented_trait(db)
                 .map(|trait_| self.is_deprecated(trait_))
                 .unwrap_or(false)
     }

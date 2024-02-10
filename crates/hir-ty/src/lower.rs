@@ -1225,7 +1225,7 @@ impl<'a> TyLoweringContext<'a> {
                 .collect();
 
             if !ctx.unsized_types.borrow().contains(&self_ty) {
-                let krate = func.lookup(ctx.db.upcast()).module(ctx.db.upcast()).krate();
+                let krate = func.krate(ctx.db.upcast());
                 let sized_trait = ctx
                     .db
                     .lang_item(krate, LangItem::Sized)
@@ -1824,11 +1824,10 @@ impl CallableDefId {
     pub fn krate(self, db: &dyn HirDatabase) -> CrateId {
         let db = db.upcast();
         match self {
-            CallableDefId::FunctionId(f) => f.lookup(db).module(db),
-            CallableDefId::StructId(s) => s.lookup(db).container,
-            CallableDefId::EnumVariantId(e) => e.module(db),
+            CallableDefId::FunctionId(f) => f.krate(db),
+            CallableDefId::StructId(s) => s.krate(db),
+            CallableDefId::EnumVariantId(e) => e.krate(db),
         }
-        .krate()
     }
 }
 

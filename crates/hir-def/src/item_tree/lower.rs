@@ -13,7 +13,7 @@ use crate::{
 
 use super::*;
 
-fn id<N: ItemTreeModItemNode>(index: Idx<N>) -> FileItemTreeId<N> {
+fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
     FileItemTreeId(index)
 }
 
@@ -267,7 +267,7 @@ impl<'a> Ctx<'a> {
             if let Some(data) = self.lower_variant(&variant) {
                 let idx = self.data().variants.alloc(data);
                 self.add_attrs(
-                    FileItemTreeId(idx).into(),
+                    id(idx).into(),
                     RawAttrs::new(self.db.upcast(), &variant, self.span_map()),
                 );
             }

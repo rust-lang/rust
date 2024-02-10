@@ -44,7 +44,7 @@ use hir_def::{
     data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
-    item_tree::ItemTreeModItemNode,
+    item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
@@ -1768,7 +1768,7 @@ pub struct Function {
 
 impl Function {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.lookup(db.upcast()).module(db.upcast()).into()
+        self.id.module(db.upcast()).into()
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -1909,8 +1909,7 @@ impl Function {
         {
             return None;
         }
-        let loc = self.id.lookup(db.upcast());
-        let def_map = db.crate_def_map(loc.krate(db).into());
+        let def_map = db.crate_def_map(HasModule::krate(&self.id, db.upcast()));
         def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
 
@@ -2119,7 +2118,7 @@ pub struct Const {
 
 impl Const {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
+        Module { id: self.id.module(db.upcast()) }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
@@ -2174,7 +2173,7 @@ pub struct Static {
 
 impl Static {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
+        Module { id: self.id.module(db.upcast()) }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
@@ -2293,7 +2292,7 @@ impl TypeAlias {
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).module(db.upcast()) }
+        Module { id: self.id.module(db.upcast()) }
     }
 
     pub fn type_ref(self, db: &dyn HirDatabase) -> Option<TypeRef> {
@@ -2516,11 +2515,13 @@ pub enum AssocItem {
     Const(Const),
     TypeAlias(TypeAlias),
 }
+
 #[derive(Debug, Clone)]
 pub enum AssocItemContainer {
     Trait(Trait),
     Impl(Impl),
 }
+
 pub trait AsAssocItem {
     fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem>;
 }
@@ -2530,16 +2531,19 @@ impl AsAssocItem for Function {
         as_assoc_item(db, AssocItem::Function, self.id)
     }
 }
+
 impl AsAssocItem for Const {
     fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
         as_assoc_item(db, AssocItem::Const, self.id)
     }
 }
+
 impl AsAssocItem for TypeAlias {
     fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
         as_assoc_item(db, AssocItem::TypeAlias, self.id)
     }
 }
+
 impl AsAssocItem for ModuleDef {
     fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
         match self {
@@ -2550,6 +2554,7 @@ impl AsAssocItem for ModuleDef {
         }
     }
 }
+
 impl AsAssocItem for DefWithBody {
     fn as_assoc_item(self, db: &dyn HirDatabase) -> Option<AssocItem> {
         match self {
@@ -2560,16 +2565,15 @@ impl AsAssocItem for DefWithBody {
     }
 }
 
-fn as_assoc_item<'db, ID, DEF, CTOR, AST>(
+fn as_assoc_item<'db, ID, DEF, LOC>(
     db: &(dyn HirDatabase + 'db),
-    ctor: CTOR,
+    ctor: impl FnOnce(DEF) -> AssocItem,
     id: ID,
 ) -> Option<AssocItem>
 where
-    ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<AST>>,
+    ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<LOC>>,
     DEF: From<ID>,
-    CTOR: FnOnce(DEF) -> AssocItem,
-    AST: ItemTreeModItemNode,
+    LOC: ItemTreeNode,
 {
     match id.lookup(db.upcast()).container {
         ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
@@ -2609,24 +2613,31 @@ impl AssocItem {
         }
     }
 
-    pub fn containing_trait(self, db: &dyn HirDatabase) -> Option<Trait> {
+    pub fn container_trait(self, db: &dyn HirDatabase) -> Option<Trait> {
         match self.container(db) {
             AssocItemContainer::Trait(t) => Some(t),
             _ => None,
         }
     }
 
-    pub fn containing_trait_impl(self, db: &dyn HirDatabase) -> Option<Trait> {
+    pub fn implemented_trait(self, db: &dyn HirDatabase) -> Option<Trait> {
         match self.container(db) {
             AssocItemContainer::Impl(i) => i.trait_(db),
             _ => None,
         }
     }
 
-    pub fn containing_trait_or_trait_impl(self, db: &dyn HirDatabase) -> Option<Trait> {
+    pub fn container_or_implemented_trait(self, db: &dyn HirDatabase) -> Option<Trait> {
         match self.container(db) {
             AssocItemContainer::Trait(t) => Some(t),
             AssocItemContainer::Impl(i) => i.trait_(db),
+        }
+    }
+
+    pub fn implementing_ty(self, db: &dyn HirDatabase) -> Option<Type> {
+        match self.container(db) {
+            AssocItemContainer::Impl(i) => Some(i.self_ty(db)),
+            _ => None,
         }
     }
 
@@ -3321,7 +3332,7 @@ impl Impl {
     }
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        db.impl_data(self.id).items.iter().map(|it| (*it).into()).collect()
+        db.impl_data(self.id).items.iter().map(|&it| it.into()).collect()
     }
 
     pub fn is_negative(self, db: &dyn HirDatabase) -> bool {
@@ -3677,7 +3688,7 @@ impl Type {
             .and_then(|it| {
                 let into_future_fn = it.as_function()?;
                 let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
-                let into_future_trait = assoc_item.containing_trait_or_trait_impl(db)?;
+                let into_future_trait = assoc_item.container_or_implemented_trait(db)?;
                 Some(into_future_trait.id)
             })
             .or_else(|| {

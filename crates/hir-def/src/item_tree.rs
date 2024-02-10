@@ -337,20 +337,15 @@ from_attrs!(
     LifetimeParamData(Idx<LifetimeParamData>),
 );
 
-/// Trait implemented by all item nodes in the item tree.
-pub trait ItemTreeModItemNode: Clone {
-    type Source: AstIdNode + Into<ast::Item>;
+/// Trait implemented by all nodes in the item tree.
+pub trait ItemTreeNode: Clone {
+    type Source: AstIdNode;
 
     fn ast_id(&self) -> FileAstId<Self::Source>;
 
     /// Looks up an instance of `Self` in an item tree.
     fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
-
-    /// Downcasts a `ModItem` to a `FileItemTreeId` specific to this type.
-    fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>>;
-
-    /// Upcasts a `FileItemTreeId` to a generic `ModItem`.
-    fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem;
+    fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner;
 }
 
 pub struct FileItemTreeId<N>(Idx<N>);
@@ -495,7 +490,7 @@ macro_rules! mod_items {
         )+
 
         $(
-            impl ItemTreeModItemNode for $typ {
+            impl ItemTreeNode for $typ {
                 type Source = $ast;
 
                 fn ast_id(&self) -> FileAstId<Self::Source> {
@@ -506,15 +501,8 @@ macro_rules! mod_items {
                     &tree.data().$fld[index]
                 }
 
-                fn id_from_mod_item(mod_item: ModItem) -> Option<FileItemTreeId<Self>> {
-                    match mod_item {
-                        ModItem::$typ(id) => Some(id),
-                        _ => None,
-                    }
-                }
-
-                fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem {
-                    ModItem::$typ(id)
+                fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner {
+                    AttrOwner::ModItem(ModItem::$typ(id))
                 }
             }
 
@@ -578,17 +566,26 @@ impl Index<RawVisibilityId> for ItemTree {
     }
 }
 
-impl<N: ItemTreeModItemNode> Index<FileItemTreeId<N>> for ItemTree {
+impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
         N::lookup(self, id.index())
     }
 }
 
-impl Index<FileItemTreeId<Variant>> for ItemTree {
-    type Output = Variant;
-    fn index(&self, id: FileItemTreeId<Variant>) -> &Variant {
-        &self[id.index()]
+impl ItemTreeNode for Variant {
+    type Source = ast::Variant;
+
+    fn ast_id(&self) -> FileAstId<Self::Source> {
+        self.ast_id
+    }
+
+    fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self {
+        &tree.data().variants[index]
+    }
+
+    fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner {
+        AttrOwner::Variant(id)
     }
 }
 
@@ -1027,7 +1024,7 @@ impl AssocItem {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variant {
     pub name: Name,
     pub fields: Fields,

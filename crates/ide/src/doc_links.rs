@@ -668,7 +668,7 @@ fn get_assoc_item_fragment(db: &dyn HirDatabase, assoc_item: hir::AssocItem) -> 
     Some(match assoc_item {
         AssocItem::Function(function) => {
             let is_trait_method =
-                function.as_assoc_item(db).and_then(|assoc| assoc.containing_trait(db)).is_some();
+                function.as_assoc_item(db).and_then(|assoc| assoc.container_trait(db)).is_some();
             // This distinction may get more complicated when specialization is available.
             // Rustdoc makes this decision based on whether a method 'has defaultness'.
             // Currently this is only the case for provided trait methods.

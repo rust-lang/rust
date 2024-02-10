@@ -509,45 +509,34 @@ impl GenericParams {
 }
 
 fn file_id_and_params_of(
-    def: GenericDefId,
     db: &dyn DefDatabase,
+    def: GenericDefId,
 ) -> (HirFileId, Option<ast::GenericParamList>) {
     match def {
-        GenericDefId::FunctionId(it) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
-        GenericDefId::AdtId(AdtId::StructId(it)) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
-        GenericDefId::AdtId(AdtId::UnionId(it)) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
-        GenericDefId::AdtId(AdtId::EnumId(it)) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
-        GenericDefId::TraitId(it) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
-        GenericDefId::TraitAliasId(it) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
-        GenericDefId::TypeAliasId(it) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
-        GenericDefId::ImplId(it) => {
-            let src = it.lookup(db).source(db);
-            (src.file_id, src.value.generic_param_list())
-        }
+        GenericDefId::FunctionId(it) => file_id_and_params_of_item_loc(db, it),
+        GenericDefId::TypeAliasId(it) => file_id_and_params_of_item_loc(db, it),
+        GenericDefId::ConstId(_) => (FileId::BOGUS.into(), None),
+        GenericDefId::AdtId(AdtId::StructId(it)) => file_id_and_params_of_item_loc(db, it),
+        GenericDefId::AdtId(AdtId::UnionId(it)) => file_id_and_params_of_item_loc(db, it),
+        GenericDefId::AdtId(AdtId::EnumId(it)) => file_id_and_params_of_item_loc(db, it),
+        GenericDefId::TraitId(it) => file_id_and_params_of_item_loc(db, it),
+        GenericDefId::TraitAliasId(it) => file_id_and_params_of_item_loc(db, it),
+        GenericDefId::ImplId(it) => file_id_and_params_of_item_loc(db, it),
         // We won't be using this ID anyway
-        GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => (FileId::BOGUS.into(), None),
+        GenericDefId::EnumVariantId(_) => (FileId::BOGUS.into(), None),
     }
+}
+
+fn file_id_and_params_of_item_loc<Loc>(
+    db: &dyn DefDatabase,
+    def: impl for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = Loc>,
+) -> (HirFileId, Option<ast::GenericParamList>)
+where
+    Loc: HasSource,
+    Loc::Value: HasGenericParams,
+{
+    let src = def.lookup(db).source(db);
+    (src.file_id, src.value.generic_param_list())
 }
 
 impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
@@ -559,7 +548,7 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
         let generic_params = db.generic_params(*self);
         let mut idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
 
-        let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
+        let (file_id, generic_params_list) = file_id_and_params_of(db, *self);
 
         let mut params = ArenaMap::default();
 
@@ -598,7 +587,7 @@ impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
         let generic_params = db.generic_params(*self);
         let idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
 
-        let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
+        let (file_id, generic_params_list) = file_id_and_params_of(db, *self);
 
         let mut params = ArenaMap::default();
 
@@ -614,7 +603,7 @@ impl HasChildSource<LocalLifetimeParamId> for GenericDefId {
 
 impl ChildBySource for GenericDefId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let (gfile_id, generic_params_list) = file_id_and_params_of(*self, db);
+        let (gfile_id, generic_params_list) = file_id_and_params_of(db, *self);
         if gfile_id != file_id {
             return;
         }
