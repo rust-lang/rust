@@ -674,8 +674,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             trait_segment.infer_args,
             Some(self_ty),
-            // TODO remove this
-            ty::BoundConstness::NotConst,
+            constness,
         );
 
         let tcx = self.tcx();
