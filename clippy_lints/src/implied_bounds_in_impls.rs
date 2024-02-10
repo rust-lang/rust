@@ -61,7 +61,7 @@ fn emit_lint(
     implied_bindings: &[rustc_hir::TypeBinding<'_>],
     bound: &ImplTraitBound<'_>,
 ) {
-    let implied_by = snippet(cx, bound.impl_trait_bound_span, "..");
+    let implied_by = snippet(cx, bound.span, "..");
 
     span_lint_and_then(
         cx,
@@ -101,7 +101,7 @@ fn emit_lint(
                     ([.., arg], [.., binding]) => arg.span().max(binding.span).shrink_to_hi(),
                     ([.., arg], []) => arg.span().shrink_to_hi(),
                     ([], [.., binding]) => binding.span.shrink_to_hi(),
-                    ([], []) => bound.impl_trait_bound_span.shrink_to_hi(),
+                    ([], []) => bound.span.shrink_to_hi(),
                 };
 
                 let mut associated_tys_sugg = if needs_angle_brackets {
@@ -223,8 +223,9 @@ fn is_same_generics<'tcx>(
 
 struct ImplTraitBound<'tcx> {
     /// The span of the bound in the `impl Trait` type
-    impl_trait_bound_span: Span,
-    /// The predicates defined in the trait referenced by this bound
+    span: Span,
+    /// The predicates defined in the trait referenced by this bound. This also contains the actual
+    /// supertrait bounds
     predicates: &'tcx [(ty::Clause<'tcx>, Span)],
     /// The `DefId` of the trait being referenced by this bound
     trait_def_id: DefId,
@@ -257,13 +258,41 @@ fn collect_supertrait_bounds<'tcx>(cx: &LateContext<'tcx>, opaque_ty: &OpaqueTy<
                     args: path.args.map_or([].as_slice(), |p| p.args),
                     bindings: path.args.map_or([].as_slice(), |p| p.bindings),
                     trait_def_id,
-                    impl_trait_bound_span: bound.span(),
+                    span: bound.span(),
                 })
             } else {
                 None
             }
         })
         .collect()
+}
+
+/// Given a bound in an `impl Trait` type, looks for a trait in the set of supertraits (previously
+/// collected in [`collect_supertrait_bounds`]) that matches (same trait and generic arguments).
+fn find_bound_in_supertraits<'a, 'tcx>(
+    cx: &LateContext<'tcx>,
+    trait_def_id: DefId,
+    args: &'tcx [GenericArg<'tcx>],
+    bounds: &'a [ImplTraitBound<'tcx>],
+) -> Option<&'a ImplTraitBound<'tcx>> {
+    bounds.iter().find(|bound| {
+        bound.predicates.iter().any(|(clause, _)| {
+            if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
+                && tr.def_id() == trait_def_id
+            {
+                is_same_generics(
+                    cx.tcx,
+                    tr.trait_ref.args,
+                    bound.args,
+                    args,
+                    bound.trait_def_id,
+                    trait_def_id,
+                )
+            } else {
+                false
+            }
+        })
+    })
 }
 
 fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
@@ -287,24 +316,7 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                 && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
                 && let implied_bindings = path.args.map_or([].as_slice(), |a| a.bindings)
                 && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
-                && let Some(bound) = supertraits.iter().find(|bound| {
-                    bound.predicates.iter().any(|(clause, _)| {
-                        if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
-                            && tr.def_id() == def_id
-                        {
-                            is_same_generics(
-                                cx.tcx,
-                                tr.trait_ref.args,
-                                bound.args,
-                                implied_args,
-                                bound.trait_def_id,
-                                def_id,
-                            )
-                        } else {
-                            false
-                        }
-                    })
-                })
+                && let Some(bound) = find_bound_in_supertraits(cx, def_id, implied_args, &supertraits)
             {
                 emit_lint(cx, poly_trait, opaque_ty, index, implied_bindings, bound);
             }
