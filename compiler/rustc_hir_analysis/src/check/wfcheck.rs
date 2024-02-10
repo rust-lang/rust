@@ -245,9 +245,9 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(impl_) => {
-            let is_auto = tcx
-                .impl_trait_ref(def_id)
-                .is_some_and(|trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
+            let header = tcx.impl_trait_header(def_id);
+            let is_auto = header
+                .is_some_and(|header| tcx.trait_is_auto(header.skip_binder().trait_ref.def_id));
             let mut res = Ok(());
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
@@ -259,11 +259,12 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     .emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match tcx.impl_polarity(def_id) {
-                ty::ImplPolarity::Positive => {
+            match header.map(|h| h.skip_binder().polarity) {
+                // `None` means this is an inherent impl
+                Some(ty::ImplPolarity::Positive) | None => {
                     res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
                 }
-                ty::ImplPolarity::Negative => {
+                Some(ty::ImplPolarity::Negative) => {
                     let ast::ImplPolarity::Negative(span) = impl_.polarity else {
                         bug!("impl_polarity query disagrees with impl's polarity in AST");
                     };
@@ -280,7 +281,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                         .emit());
                     }
                 }
-                ty::ImplPolarity::Reservation => {
+                Some(ty::ImplPolarity::Reservation) => {
                     // FIXME: what amount of WF checking do we need for reservation impls?
                 }
             }

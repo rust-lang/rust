@@ -168,6 +168,8 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
         }
     }
 
+    let impl1_trait_header = tcx.impl_trait_header(impl1_def_id).unwrap().instantiate_identity();
+
     // We determine whether there's a subset relationship by:
     //
     // - replacing bound vars with placeholders in impl1,
@@ -181,21 +183,25 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     // See RFC 1210 for more details and justification.
 
     // Currently we do not allow e.g., a negative impl to specialize a positive one
-    if tcx.impl_polarity(impl1_def_id) != tcx.impl_polarity(impl2_def_id) {
+    if impl1_trait_header.polarity != tcx.impl_polarity(impl2_def_id) {
         return false;
     }
 
     // create a parameter environment corresponding to a (placeholder) instantiation of impl1
     let penv = tcx.param_env(impl1_def_id);
-    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap().instantiate_identity();
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
     let infcx = tcx.infer_ctxt().build();
 
     // Attempt to prove that impl2 applies, given all of the above.
-    fulfill_implication(&infcx, penv, impl1_trait_ref, impl1_def_id, impl2_def_id, |_, _| {
-        ObligationCause::dummy()
-    })
+    fulfill_implication(
+        &infcx,
+        penv,
+        impl1_trait_header.trait_ref,
+        impl1_def_id,
+        impl2_def_id,
+        |_, _| ObligationCause::dummy(),
+    )
     .is_ok()
 }
 

@@ -1347,18 +1347,17 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let polarity = tcx.impl_polarity(item.owner_id);
-    if matches!(polarity, ty::ImplPolarity::Negative) {
+    let Some(impl_) = tcx.impl_trait_header(item.owner_id) else {
+        return;
+    };
+
+    if matches!(impl_.skip_binder().polarity, ty::ImplPolarity::Negative) {
         return;
     }
 
     if tcx.generics_of(item.owner_id).own_requires_monomorphization() {
         return;
     }
-
-    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
-        return;
-    };
 
     // Lifetimes never affect trait selection, so we are allowed to eagerly
     // instantiate an instance of an impl method if the impl (and method,
@@ -1376,7 +1375,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
     };
     let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = trait_ref.instantiate(tcx, impl_args);
+    let trait_ref = impl_.instantiate(tcx, impl_args).trait_ref;
 
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl
