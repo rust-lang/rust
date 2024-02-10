@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![warn(clippy::unsafe_derive_deserialize)]
 #![allow(unused, clippy::missing_safety_doc)]
 

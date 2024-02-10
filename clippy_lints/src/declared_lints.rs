@@ -38,7 +38,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS_INFO,
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
-    crate::allow_attributes::ALLOW_ATTRIBUTES_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
     crate::arc_with_non_send_sync::ARC_WITH_NON_SEND_SYNC_INFO,
@@ -49,6 +48,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::assertions_on_result_states::ASSERTIONS_ON_RESULT_STATES_INFO,
     crate::assigning_clones::ASSIGNING_CLONES_INFO,
     crate::async_yields_async::ASYNC_YIELDS_ASYNC_INFO,
+    crate::attrs::ALLOW_ATTRIBUTES_INFO,
     crate::attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON_INFO,
     crate::attrs::BLANKET_CLIPPY_RESTRICTION_LINTS_INFO,
     crate::attrs::DEPRECATED_CFG_ATTR_INFO,
