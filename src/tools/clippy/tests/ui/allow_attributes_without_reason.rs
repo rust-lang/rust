@@ -1,5 +1,4 @@
 //@aux-build:proc_macros.rs
-#![feature(lint_reasons)]
 #![deny(clippy::allow_attributes_without_reason)]
 #![allow(unfulfilled_lint_expectations, clippy::duplicated_attributes)]
 
@@ -41,4 +40,16 @@ pub fn trigger_fp_result() -> Result<(), &'static str> {
     Ok(())?;
     Err("asdf")?;
     Ok(())
+}
+
+#[clippy::msrv = "1.81"]
+fn msrv_1_81() {
+    #[allow(unused)]
+    let _ = 1;
+}
+
+#[clippy::msrv = "1.80"]
+fn msrv_1_80() {
+    #[allow(unused)]
+    let _ = 1;
 }
