@@ -1590,13 +1590,11 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
-        let impl_trait_ref1 = self.impl_trait_ref(def_id1).unwrap();
-        let impl_trait_ref2 = self.impl_trait_ref(def_id2).unwrap();
+        let impl_trait_ref1 = self.impl_trait_ref(def_id1).unwrap().instantiate_identity();
+        let impl_trait_ref2 = self.impl_trait_ref(def_id2).unwrap().instantiate_identity();
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if impl_trait_ref1.instantiate_identity().references_error()
-            || impl_trait_ref2.instantiate_identity().references_error()
-        {
+        if impl_trait_ref1.references_error() || impl_trait_ref2.references_error() {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
 
@@ -1615,9 +1613,8 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let is_marker_overlap = {
-            let is_marker_impl = |trait_ref: EarlyBinder<TraitRef<'_>>| -> bool {
-                self.trait_def(trait_ref.skip_binder().def_id).is_marker
-            };
+            let is_marker_impl =
+                |trait_ref: TraitRef<'_>| -> bool { self.trait_def(trait_ref.def_id).is_marker };
             is_marker_impl(impl_trait_ref1) && is_marker_impl(impl_trait_ref2)
         };
 
