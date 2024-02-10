@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 // build-pass
 // only-x86
 // only-windows
