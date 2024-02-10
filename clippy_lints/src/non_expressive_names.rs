@@ -131,6 +131,14 @@ const ALLOWED_TO_BE_SIMILAR: &[&[&str]] = &[
     &["iter", "item"],
 ];
 
+/// Characters that look visually similar
+const SIMILAR_CHARS: &[(char, char)] = &[('l', 'i'), ('l', '1'), ('i', '1'), ('u', 'v')];
+
+/// Return true if two characters are visually similar
+fn chars_are_similar(a: char, b: char) -> bool {
+    a == b || SIMILAR_CHARS.contains(&(a, b)) || SIMILAR_CHARS.contains(&(b, a))
+}
+
 struct SimilarNamesNameVisitor<'a, 'tcx, 'b>(&'b mut SimilarNamesLocalVisitor<'a, 'tcx>);
 
 impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
@@ -219,6 +227,16 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             }
 
             let existing_str = existing_name.interned.as_str();
+
+            // The first char being different is usually enough to set identifiers apart, as long
+            // as the characters aren't too similar.
+            if !chars_are_similar(
+                interned_name.chars().next().expect("len >= 1"),
+                existing_str.chars().next().expect("len >= 1"),
+            ) {
+                continue;
+            }
+
             let dissimilar = match existing_name.len.cmp(&count) {
                 Ordering::Greater => existing_name.len - count != 1 || levenstein_not_1(interned_name, existing_str),
                 Ordering::Less => count - existing_name.len != 1 || levenstein_not_1(existing_str, interned_name),
