@@ -21,7 +21,7 @@ LL |            (y: T) {
    |                ^ use of generic parameter from outer item
 
 error[E0401]: can't use `Self` from outer item
-  --> $DIR/E0401.rs:24:25
+  --> $DIR/E0401.rs:22:25
    |
 LL | impl<T> Iterator for A<T> {
    | ---- `Self` type implicitly declared here, by this `impl`
@@ -32,45 +32,6 @@ LL |         fn helper(sel: &Self) -> u8 {
    |                         use of `Self` from outer item
    |                         refer to the type directly here instead
 
-error[E0283]: type annotations needed
-  --> $DIR/E0401.rs:11:5
-   |
-LL |     bfnr(x);
-   |     ^^^^ cannot infer type of the type parameter `V` declared on the function `bfnr`
-   |
-   = note: cannot satisfy `_: Baz<_>`
-note: required by a bound in `bfnr`
-  --> $DIR/E0401.rs:4:19
-   |
-LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
-   |                   ^^^^^^ required by this bound in `bfnr`
-help: consider specifying the generic arguments
-   |
-LL |     bfnr::<U, V, W>(x);
-   |         +++++++++++
+error: aborting due to 3 previous errors
 
-error[E0283]: type annotations needed
-  --> $DIR/E0401.rs:11:5
-   |
-LL |     bfnr(x);
-   |     ^^^^ cannot infer type of the type parameter `W` declared on the function `bfnr`
-   |
-   = note: multiple `impl`s satisfying `_: Fn()` found in the following crates: `alloc`, `core`:
-           - impl<A, F> Fn<A> for &F
-             where A: Tuple, F: Fn<A>, F: ?Sized;
-           - impl<Args, F, A> Fn<Args> for Box<F, A>
-             where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
-note: required by a bound in `bfnr`
-  --> $DIR/E0401.rs:4:30
-   |
-LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
-   |                              ^^^^ required by this bound in `bfnr`
-help: consider specifying the generic arguments
-   |
-LL |     bfnr::<U, V, W>(x);
-   |         +++++++++++
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0283, E0401.
-For more information about an error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0401`.
