@@ -69,17 +69,7 @@ LL | fn _apit(_: impl Tr1<As1: Copy>) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:45:26
-   |
-LL | fn _apit_dyn(_: &dyn Tr1<As1: Copy>) {}
-   |                          ^^^^^^^^^
-   |
-   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
-   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:48:24
+  --> $DIR/feature-gate-associated_type_bounds.rs:46:24
    |
 LL | fn _rpit() -> impl Tr1<As1: Copy> { S1 }
    |                        ^^^^^^^^^
@@ -89,17 +79,7 @@ LL | fn _rpit() -> impl Tr1<As1: Copy> { S1 }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:51:31
-   |
-LL | fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
-   |                               ^^^^^^^^^
-   |
-   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
-   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:54:23
+  --> $DIR/feature-gate-associated_type_bounds.rs:49:23
    |
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |                       ^^^^^^^^^
@@ -109,7 +89,7 @@ LL | const _cdef: impl Tr1<As1: Copy> = S1;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:60:24
+  --> $DIR/feature-gate-associated_type_bounds.rs:53:24
    |
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |                        ^^^^^^^^^
@@ -119,7 +99,7 @@ LL | static _sdef: impl Tr1<As1: Copy> = S1;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: associated type bounds are unstable
-  --> $DIR/feature-gate-associated_type_bounds.rs:67:21
+  --> $DIR/feature-gate-associated_type_bounds.rs:58:21
    |
 LL |     let _: impl Tr1<As1: Copy> = S1;
    |                     ^^^^^^^^^
@@ -129,7 +109,7 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in const types
-  --> $DIR/feature-gate-associated_type_bounds.rs:54:14
+  --> $DIR/feature-gate-associated_type_bounds.rs:49:14
    |
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |              ^^^^^^^^^^^^^^^^^^^
@@ -137,7 +117,7 @@ LL | const _cdef: impl Tr1<As1: Copy> = S1;
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in static types
-  --> $DIR/feature-gate-associated_type_bounds.rs:60:15
+  --> $DIR/feature-gate-associated_type_bounds.rs:53:15
    |
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |               ^^^^^^^^^^^^^^^^^^^
@@ -145,14 +125,14 @@ LL | static _sdef: impl Tr1<As1: Copy> = S1;
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/feature-gate-associated_type_bounds.rs:67:12
+  --> $DIR/feature-gate-associated_type_bounds.rs:58:12
    |
 LL |     let _: impl Tr1<As1: Copy> = S1;
    |            ^^^^^^^^^^^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
-error: aborting due to 16 previous errors
+error: aborting due to 14 previous errors
 
 Some errors have detailed explanations: E0562, E0658.
 For more information about an error, try `rustc --explain E0562`.
