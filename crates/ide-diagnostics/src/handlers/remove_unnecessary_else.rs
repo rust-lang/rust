@@ -90,7 +90,7 @@ mod tests {
     use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
 
     fn check_diagnostics_with_needless_return_disabled(ra_fixture: &str) {
-        check_diagnostics_with_disabled(ra_fixture, std::iter::once("needless_return".to_string()));
+        check_diagnostics_with_disabled(ra_fixture, std::iter::once("needless_return".to_owned()));
     }
 
     #[test]

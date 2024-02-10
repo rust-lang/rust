@@ -184,12 +184,12 @@ pub(super) fn add_call_parens<'b>(
                         }
                         None => {
                             let name = match param.ty().as_adt() {
-                                None => "_".to_string(),
+                                None => "_".to_owned(),
                                 Some(adt) => adt
                                     .name(ctx.db)
                                     .as_text()
                                     .map(|s| to_lower_snake_case(s.as_str()))
-                                    .unwrap_or_else(|| "_".to_string()),
+                                    .unwrap_or_else(|| "_".to_owned()),
                             };
                             f(&format_args!("${{{}:{name}}}", index + offset))
                         }

@@ -140,7 +140,7 @@ fn foo(x: usize) -> u8 {
     } //^^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_string()),
+            std::iter::once("remove-unnecessary-else".to_owned()),
         );
     }
 
@@ -309,7 +309,7 @@ fn foo(x: usize) -> u8 {
     }
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_string()),
+            std::iter::once("remove-unnecessary-else".to_owned()),
         );
         check_fix(
             r#"

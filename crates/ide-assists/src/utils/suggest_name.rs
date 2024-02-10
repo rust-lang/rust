@@ -77,7 +77,7 @@ pub(crate) fn for_unique_generic_name(
             p => p.to_string(),
         })
         .collect::<FxHashSet<_>>();
-    let mut name = name.to_string();
+    let mut name = name.to_owned();
     let base_len = name.len();
     let mut count = 0;
     while param_names.contains(&name) {
@@ -165,7 +165,7 @@ pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>)
         }
     }
 
-    "var_name".to_string()
+    "var_name".to_owned()
 }
 
 fn normalize(name: &str) -> Option<String> {

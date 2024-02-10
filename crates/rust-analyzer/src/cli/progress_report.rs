@@ -92,7 +92,7 @@ impl<'a> ProgressReport<'a> {
 
         let _ = io::stdout().write(output.as_bytes());
         let _ = io::stdout().flush();
-        self.text = text.to_string();
+        self.text = text.to_owned();
     }
 
     fn set_value(&mut self, value: f32) {

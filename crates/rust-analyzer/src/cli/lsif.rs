@@ -104,12 +104,12 @@ impl LsifManager<'_> {
         let result_set_id =
             self.add_vertex(lsif::Vertex::PackageInformation(lsif::PackageInformation {
                 name: pi.name,
-                manager: "cargo".to_string(),
+                manager: "cargo".to_owned(),
                 uri: None,
                 content: None,
                 repository: pi.repo.map(|url| lsif::Repository {
                     url,
-                    r#type: "git".to_string(),
+                    r#type: "git".to_owned(),
                     commit_id: None,
                 }),
                 version: pi.version,
@@ -148,7 +148,7 @@ impl LsifManager<'_> {
         let path = self.vfs.file_path(id);
         let path = path.as_path().unwrap();
         let doc_id = self.add_vertex(lsif::Vertex::Document(lsif::Document {
-            language_id: "rust".to_string(),
+            language_id: "rust".to_owned(),
             uri: lsp_types::Url::from_file_path(path).unwrap(),
         }));
         self.file_map.insert(id, doc_id);
@@ -175,7 +175,7 @@ impl LsifManager<'_> {
         if let Some(moniker) = token.moniker {
             let package_id = self.get_package_id(moniker.package_information);
             let moniker_id = self.add_vertex(lsif::Vertex::Moniker(lsp_types::Moniker {
-                scheme: "rust-analyzer".to_string(),
+                scheme: "rust-analyzer".to_owned(),
                 identifier: moniker.identifier.to_string(),
                 unique: lsp_types::UniquenessLevel::Scheme,
                 kind: Some(match moniker.kind {
@@ -313,7 +313,7 @@ impl flags::Lsif {
             project_root: lsp_types::Url::from_file_path(path).unwrap(),
             position_encoding: lsif::Encoding::Utf16,
             tool_info: Some(lsp_types::lsif::ToolInfo {
-                name: "rust-analyzer".to_string(),
+                name: "rust-analyzer".to_owned(),
                 args: vec![],
                 version: Some(version().to_string()),
             }),

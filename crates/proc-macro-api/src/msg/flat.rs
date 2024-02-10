@@ -419,7 +419,7 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
         let table = &mut self.text;
         *self.string_table.entry(text).or_insert_with(|| {
             let idx = table.len();
-            table.push(text.to_string());
+            table.push(text.to_owned());
             idx as u32
         })
     }

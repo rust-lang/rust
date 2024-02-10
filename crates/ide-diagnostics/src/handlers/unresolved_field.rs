@@ -65,7 +65,7 @@ fn method_fix(
     let FileRange { range, file_id } = ctx.sema.original_range_opt(expr.syntax())?;
     Some(vec![Assist {
         id: AssistId("expected-field-found-method-call-fix", AssistKind::QuickFix),
-        label: Label::new("Use parentheses to call the method".to_string()),
+        label: Label::new("Use parentheses to call the method".to_owned()),
         group: None,
         target: range,
         source_change: Some(SourceChange::from_text_edit(

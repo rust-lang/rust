@@ -632,9 +632,9 @@ fn main() {{}}
     server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
             uri: uri.clone(),
-            language_id: "rust".to_string(),
+            language_id: "rust".to_owned(),
             version: 0,
-            text: "/// Docs\nfn foo() {}".to_string(),
+            text: "/// Docs\nfn foo() {}".to_owned(),
         },
     });
     let expected = json!({
@@ -682,9 +682,9 @@ fn main() {{}}
         server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: server.doc_id(&format!("src/m{i}.rs")).uri,
-                language_id: "rust".to_string(),
+                language_id: "rust".to_owned(),
                 version: 0,
-                text: "/// Docs\nfn foo() {}".to_string(),
+                text: "/// Docs\nfn foo() {}".to_owned(),
             },
         });
     }
@@ -1078,15 +1078,15 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/old_file.rs").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/new_file.rs").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/old_file.rs").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/new_file.rs").to_str().unwrap().to_owned(),
             }],
         },
         json!({
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_string().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1113,8 +1113,8 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/from_mod/mod.rs").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/from_mod/foo.rs").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/from_mod/mod.rs").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/from_mod/foo.rs").to_str().unwrap().to_owned(),
             }],
         },
         json!(null),
@@ -1124,8 +1124,8 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/to_mod/foo.rs").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/to_mod/mod.rs").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/to_mod/foo.rs").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/to_mod/mod.rs").to_str().unwrap().to_owned(),
             }],
         },
         json!(null),
@@ -1135,15 +1135,15 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/old_folder").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/new_folder").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/old_folder").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/new_folder").to_str().unwrap().to_owned(),
             }],
         },
         json!({
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_string().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1164,7 +1164,7 @@ use crate::old_folder::nested::foo as bar;
             },
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").to_str().unwrap().to_string().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [

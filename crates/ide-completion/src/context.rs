@@ -665,7 +665,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
-            let edit = Indel::insert(offset, COMPLETION_MARKER.to_string());
+            let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
             parse.reparse(&edit).tree()
         };
 

@@ -19,7 +19,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
         for source in d.local.sources(ctx.sema.db) {
             let Some(ast) = source.name() else { continue };
             // FIXME: macros
-            edit_builder.insert(ast.value.syntax().text_range().start(), "mut ".to_string());
+            edit_builder.insert(ast.value.syntax().text_range().start(), "mut ".to_owned());
         }
         let edit = edit_builder.finish();
         Some(vec![fix(
@@ -448,7 +448,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_string()),
+            std::iter::once("remove-unnecessary-else".to_owned()),
         );
         check_diagnostics_with_disabled(
             r#"
@@ -463,7 +463,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_string()),
+            std::iter::once("remove-unnecessary-else".to_owned()),
         );
     }
 

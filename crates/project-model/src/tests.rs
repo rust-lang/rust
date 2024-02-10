@@ -129,7 +129,7 @@ fn get_fake_sysroot() -> Sysroot {
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
-    let mut root = "$ROOT$".to_string();
+    let mut root = "$ROOT$".to_owned();
     replace_root(&mut root, true);
     let path = Path::new(&root);
     let base = AbsPath::assert(path);

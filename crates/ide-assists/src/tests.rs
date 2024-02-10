@@ -474,7 +474,7 @@ pub fn test_some_range(a: int) -> bool {
             &db,
             &cfg,
             AssistResolveStrategy::Single(SingleResolve {
-                assist_id: "SOMETHING_MISMATCHING".to_string(),
+                assist_id: "SOMETHING_MISMATCHING".to_owned(),
                 assist_kind: AssistKind::RefactorExtract,
             }),
             frange,
@@ -520,7 +520,7 @@ pub fn test_some_range(a: int) -> bool {
             &db,
             &cfg,
             AssistResolveStrategy::Single(SingleResolve {
-                assist_id: "extract_variable".to_string(),
+                assist_id: "extract_variable".to_owned(),
                 assist_kind: AssistKind::RefactorExtract,
             }),
             frange,

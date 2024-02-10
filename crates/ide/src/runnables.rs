@@ -72,7 +72,7 @@ impl Runnable {
             RunnableKind::Bench { test_id } => format!("bench {test_id}"),
             RunnableKind::DocTest { test_id, .. } => format!("doctest {test_id}"),
             RunnableKind::Bin => {
-                target.map_or_else(|| "run binary".to_string(), |t| format!("run {t}"))
+                target.map_or_else(|| "run binary".to_owned(), |t| format!("run {t}"))
             }
         }
     }

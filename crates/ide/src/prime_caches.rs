@@ -105,7 +105,7 @@ pub(crate) fn parallel_prime_caches(
             work_sender
                 .send((
                     crate_id,
-                    graph[crate_id].display_name.as_deref().unwrap_or_default().to_string(),
+                    graph[crate_id].display_name.as_deref().unwrap_or_default().to_owned(),
                 ))
                 .ok();
         }

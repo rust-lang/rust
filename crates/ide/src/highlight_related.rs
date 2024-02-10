@@ -521,7 +521,7 @@ mod tests {
                             ReferenceCategory::Import => "import",
                             ReferenceCategory::Test => "test",
                         }
-                        .to_string()
+                        .to_owned()
                     }),
                 )
             })

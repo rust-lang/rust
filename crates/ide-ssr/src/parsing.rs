@@ -152,7 +152,7 @@ impl FromStr for SsrRule {
             .next()
             .ok_or_else(|| SsrError("Cannot find delimiter `==>>`".into()))?
             .trim()
-            .to_string();
+            .to_owned();
         if it.next().is_some() {
             return Err(SsrError("More than one delimiter found".into()));
         }

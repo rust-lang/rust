@@ -15,7 +15,7 @@ fn sourcegen_assists_docs() {
         let mut buf = "
 use super::check_doc_test;
 "
-        .to_string();
+        .to_owned();
         for assist in assists.iter() {
             for (idx, section) in assist.sections.iter().enumerate() {
                 let test_id =
@@ -101,7 +101,7 @@ impl Assist {
                 let mut assist = Assist { id, location, sections: Vec::new() };
 
                 while lines.peek().is_some() {
-                    let doc = take_until(lines.by_ref(), "```").trim().to_string();
+                    let doc = take_until(lines.by_ref(), "```").trim().to_owned();
                     assert!(
                         (doc.chars().next().unwrap().is_ascii_uppercase() && doc.ends_with('.'))
                             || !assist.sections.is_empty(),

@@ -115,7 +115,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     let trailing_ws = if prev_ws.is_some_and(|it| it.text().starts_with('\n')) {
                         format!("\n{indent_to}")
                     } else {
-                        " ".to_string()
+                        " ".to_owned()
                     };
 
                     ted::insert_all_raw(

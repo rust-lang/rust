@@ -31,7 +31,7 @@ mod tests {
     #[test]
     fn empty_body() {
         let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("syntax-error".to_string());
+        config.disabled.insert("syntax-error".to_owned());
         check_diagnostics_with_config(
             config,
             r#"

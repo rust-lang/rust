@@ -388,7 +388,7 @@ impl GlobalState {
         params: R::Params,
         handler: ReqHandler,
     ) {
-        let request = self.req_queue.outgoing.register(R::METHOD.to_string(), params, handler);
+        let request = self.req_queue.outgoing.register(R::METHOD.to_owned(), params, handler);
         self.send(request.into());
     }
 
@@ -405,7 +405,7 @@ impl GlobalState {
         &self,
         params: N::Params,
     ) {
-        let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
+        let not = lsp_server::Notification::new(N::METHOD.to_owned(), params);
         self.send(not.into());
     }
 

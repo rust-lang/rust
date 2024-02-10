@@ -336,11 +336,11 @@ impl<S> Subtree<S> {
                     };
                     match (it, last) {
                         (Leaf::Ident(_), Some(&TokenTree::Leaf(Leaf::Ident(_)))) => {
-                            " ".to_string() + &s
+                            " ".to_owned() + &s
                         }
                         (Leaf::Punct(_), Some(TokenTree::Leaf(Leaf::Punct(punct)))) => {
                             if punct.spacing == Spacing::Alone {
-                                " ".to_string() + &s
+                                " ".to_owned() + &s
                             } else {
                                 s
                             }

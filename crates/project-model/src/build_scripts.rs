@@ -322,7 +322,7 @@ impl WorkspaceBuildScripts {
                 let mut deserializer = serde_json::Deserializer::from_str(line);
                 deserializer.disable_recursion_limit();
                 let message = Message::deserialize(&mut deserializer)
-                    .unwrap_or_else(|_| Message::TextLine(line.to_string()));
+                    .unwrap_or_else(|_| Message::TextLine(line.to_owned()));
 
                 match message {
                     Message::BuildScriptExecuted(mut message) => {
@@ -356,7 +356,7 @@ impl WorkspaceBuildScripts {
                                 if let Some(out_dir) =
                                     out_dir.as_os_str().to_str().map(|s| s.to_owned())
                                 {
-                                    data.envs.push(("OUT_DIR".to_string(), out_dir));
+                                    data.envs.push(("OUT_DIR".to_owned(), out_dir));
                                 }
                                 data.out_dir = Some(out_dir);
                                 data.cfgs = cfgs;
@@ -396,7 +396,7 @@ impl WorkspaceBuildScripts {
 
         let errors = if !output.status.success() {
             let errors = errors.into_inner();
-            Some(if errors.is_empty() { "cargo check failed".to_string() } else { errors })
+            Some(if errors.is_empty() { "cargo check failed".to_owned() } else { errors })
         } else {
             None
         };
@@ -490,7 +490,7 @@ impl WorkspaceBuildScripts {
 
 // FIXME: Find a better way to know if it is a dylib.
 fn is_dylib(path: &Utf8Path) -> bool {
-    match path.extension().map(|e| e.to_string().to_lowercase()) {
+    match path.extension().map(|e| e.to_owned().to_lowercase()) {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }

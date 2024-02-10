@@ -95,7 +95,7 @@ impl Project<'_> {
                 writer: TestWriter::default(),
                 // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
                 // useful information in there for debugging.
-                filter: std::env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_string()),
+                filter: std::env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
                 chalk_filter: std::env::var("CHALK_DEBUG").ok(),
                 profile_filter: std::env::var("RA_PROFILE").ok(),
             };
@@ -193,7 +193,7 @@ impl Server {
         let (connection, client) = Connection::memory();
 
         let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("test server".to_string())
+            .name("test server".to_owned())
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
 
@@ -210,7 +210,7 @@ impl Server {
         N: lsp_types::notification::Notification,
         N::Params: Serialize,
     {
-        let r = Notification::new(N::METHOD.to_string(), params);
+        let r = Notification::new(N::METHOD.to_owned(), params);
         self.send_notification(r)
     }
 
@@ -274,7 +274,7 @@ impl Server {
         let id = self.req_id.get();
         self.req_id.set(id.wrapping_add(1));
 
-        let r = Request::new(id.into(), R::METHOD.to_string(), params);
+        let r = Request::new(id.into(), R::METHOD.to_owned(), params);
         self.send_request_(r)
     }
     fn send_request_(&self, r: Request) -> Value {

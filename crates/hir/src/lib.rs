@@ -1933,7 +1933,7 @@ impl Function {
         };
         let (result, output) = interpret_mir(db, body, false, None);
         let mut text = match result {
-            Ok(_) => "pass".to_string(),
+            Ok(_) => "pass".to_owned(),
             Err(e) => {
                 let mut r = String::new();
                 _ = e.pretty_print(&mut r, db, &span_formatter);

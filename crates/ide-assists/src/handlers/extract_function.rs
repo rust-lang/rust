@@ -244,7 +244,7 @@ fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef
 
     let default_name = "fun_name";
 
-    let mut name = default_name.to_string();
+    let mut name = default_name.to_owned();
     let mut counter = 0;
     while names_in_scope.contains(&name) {
         counter += 1;
@@ -1949,7 +1949,7 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
 }
 
 fn format_type(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> String {
-    ty.display_source_code(ctx.db(), module.into(), true).ok().unwrap_or_else(|| "_".to_string())
+    ty.display_source_code(ctx.db(), module.into(), true).ok().unwrap_or_else(|| "_".to_owned())
 }
 
 fn make_ty(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> ast::Type {
