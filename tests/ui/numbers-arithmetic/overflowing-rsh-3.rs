@@ -1,4 +1,3 @@
-// build-fail
 // compile-flags: -C debug-assertions
 
 #![deny(arithmetic_overflow)]

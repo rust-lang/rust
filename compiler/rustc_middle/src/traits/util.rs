@@ -60,3 +60,9 @@ impl<'tcx> Iterator for Elaborator<'tcx> {
         }
     }
 }
+
+/// Used as an error type to signal that an item may have an invalid body, because its
+/// where bounds are trivially not satisfyable.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(HashStable, Encodable, Decodable)]
+pub struct HasImpossiblePredicates;

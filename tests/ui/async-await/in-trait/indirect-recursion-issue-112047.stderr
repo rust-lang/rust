@@ -1,5 +1,5 @@
 error[E0733]: recursion in an async fn requires boxing
-  --> $DIR/indirect-recursion-issue-112047.rs:34:5
+  --> $DIR/indirect-recursion-issue-112047.rs:31:5
    |
 LL |     async fn second(self) {
    |     ^^^^^^^^^^^^^^^^^^^^^

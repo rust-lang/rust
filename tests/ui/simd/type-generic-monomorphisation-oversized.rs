@@ -1,5 +1,3 @@
-// build-fail
-
 #![feature(repr_simd, platform_intrinsics)]
 
 // error-pattern:monomorphising SIMD type `Simd<65536>` of length greater than 32768

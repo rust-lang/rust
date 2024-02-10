@@ -426,10 +426,11 @@ where
                 }
             }
         }
-        _ => assert!(
-            start == Bound::Unbounded && end == Bound::Unbounded,
-            "nonscalar layout for layout_scalar_valid_range type: {st:#?}",
-        ),
+        _ => {
+            if start != Bound::Unbounded || end != Bound::Unbounded {
+                return None;
+            }
+        }
     }
 
     Some(st)

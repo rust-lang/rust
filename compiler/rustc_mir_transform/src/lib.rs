@@ -38,6 +38,7 @@ use rustc_middle::mir::{
     SourceInfo, Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::query::Providers;
+use rustc_middle::traits::util::HasImpossiblePredicates;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::{source_map::Spanned, sym, DUMMY_SP};
 use rustc_trait_selection::traits;
@@ -140,6 +141,7 @@ pub fn provide(providers: &mut Providers) {
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
+        const_prop_lint,
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         ..*providers
@@ -396,28 +398,11 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     body
 }
 
-/// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
-/// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
-/// end up missing the source MIR due to stealing happening.
-fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    if tcx.is_coroutine(def.to_def_id()) {
-        tcx.ensure_with_value().mir_coroutine_witnesses(def);
-    }
-    let mir_borrowck = tcx.mir_borrowck(def);
-
-    let is_fn_like = tcx.def_kind(def).is_fn_like();
-    if is_fn_like {
-        // Do not compute the mir call graph without said call graph actually being used.
-        if pm::should_run_pass(tcx, &inline::Inline) {
-            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
-        }
-    }
-
+fn const_prop_lint(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), HasImpossiblePredicates> {
     let (body, _) = tcx.mir_promoted(def);
-    let mut body = body.steal();
-    if let Some(error_reported) = mir_borrowck.tainted_by_errors {
-        body.tainted_by_errors = Some(error_reported);
-    }
+    let body = body.borrow();
+
+    let mir_borrowck = tcx.mir_borrowck(def);
 
     // Check if it's even possible to satisfy the 'where' clauses
     // for this item.
@@ -453,6 +438,40 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         .iter()
         .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
     if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
+        Err(HasImpossiblePredicates)
+    } else {
+        if mir_borrowck.tainted_by_errors.is_none() && body.tainted_by_errors.is_none() {
+            const_prop_lint::ConstPropLint.run_lint(tcx, &body);
+        }
+        Ok(())
+    }
+}
+
+/// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
+/// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
+/// end up missing the source MIR due to stealing happening.
+fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
+    if tcx.is_coroutine(def.to_def_id()) {
+        tcx.ensure_with_value().mir_coroutine_witnesses(def);
+    }
+    let mir_borrowck = tcx.mir_borrowck(def);
+    let has_impossible_predicates = tcx.const_prop_lint(def);
+
+    let is_fn_like = tcx.def_kind(def).is_fn_like();
+    if is_fn_like {
+        // Do not compute the mir call graph without said call graph actually being used.
+        if pm::should_run_pass(tcx, &inline::Inline) {
+            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
+        }
+    }
+
+    let (body, _) = tcx.mir_promoted(def);
+    let mut body = body.steal();
+    if let Some(error_reported) = mir_borrowck.tainted_by_errors {
+        body.tainted_by_errors = Some(error_reported);
+    }
+
+    if let Err(HasImpossiblePredicates) = has_impossible_predicates {
         trace!("found unsatisfiable predicates for {:?}", body.source);
         // Clear the body to only contain a single `unreachable` statement.
         let bbs = body.basic_blocks.as_mut();
@@ -536,7 +555,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &coroutine::StateTransform,
         &add_retag::AddRetag,
-        &Lint(const_prop_lint::ConstPropLint),
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }

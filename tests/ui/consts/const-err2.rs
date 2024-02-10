@@ -7,8 +7,6 @@
 //[opt]compile-flags: -O
 //[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
-// build-fail
-
 #![feature(rustc_attrs)]
 
 fn black_box<T>(_: T) {

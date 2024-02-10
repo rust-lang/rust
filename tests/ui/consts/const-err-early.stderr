@@ -4,11 +4,39 @@ error[E0080]: evaluation of constant value failed
 LL | pub const A: i8 = -i8::MIN;
    |                   ^^^^^^^^ attempt to negate `i8::MIN`, which would overflow
 
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:8:14
+   |
+LL |     let _a = A;
+   |              ^
+
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:8:14
+   |
+LL |     let _a = A;
+   |              ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-err-early.rs:2:19
    |
 LL | pub const B: u8 = 200u8 + 200u8;
    |                   ^^^^^^^^^^^^^ attempt to compute `200_u8 + 200_u8`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:9:14
+   |
+LL |     let _b = B;
+   |              ^
+
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:9:14
+   |
+LL |     let _b = B;
+   |              ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-err-early.rs:3:19
@@ -16,11 +44,39 @@ error[E0080]: evaluation of constant value failed
 LL | pub const C: u8 = 200u8 * 4;
    |                   ^^^^^^^^^ attempt to compute `200_u8 * 4_u8`, which would overflow
 
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:10:14
+   |
+LL |     let _c = C;
+   |              ^
+
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:10:14
+   |
+LL |     let _c = C;
+   |              ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-err-early.rs:4:19
    |
 LL | pub const D: u8 = 42u8 - (42u8 + 1);
    |                   ^^^^^^^^^^^^^^^^^ attempt to compute `42_u8 - 43_u8`, which would overflow
+
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:11:14
+   |
+LL |     let _d = D;
+   |              ^
+
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:11:14
+   |
+LL |     let _d = D;
+   |              ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-err-early.rs:5:19
@@ -28,6 +84,28 @@ error[E0080]: evaluation of constant value failed
 LL | pub const E: u8 = [5u8][1];
    |                   ^^^^^^^^ index out of bounds: the length is 1 but the index is 1
 
-error: aborting due to 5 previous errors
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:12:14
+   |
+LL |     let _e = E;
+   |              ^
+
+note: erroneous constant encountered
+  --> $DIR/const-err-early.rs:12:14
+   |
+LL |     let _e = E;
+   |              ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: this operation will panic at runtime
+  --> $DIR/const-err-early.rs:13:14
+   |
+LL |     let _e = [6u8][1];
+   |              ^^^^^^^^ index out of bounds: the length is 1 but the index is 1
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
