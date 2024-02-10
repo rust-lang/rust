@@ -913,7 +913,9 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
     let object = load_from_incr_comp_dir(
         cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name)),
-        module.source.saved_files.get("o").expect("no saved object file in work product"),
+        module.source.saved_files.get("o").unwrap_or_else(|| {
+            cgcx.create_dcx().emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
+        }),
     );
     let dwarf_object =
         module.source.saved_files.get("dwo").as_ref().and_then(|saved_dwarf_object_file| {
