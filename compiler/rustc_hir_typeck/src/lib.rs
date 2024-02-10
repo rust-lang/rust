@@ -5,7 +5,7 @@
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![feature(box_patterns)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(control_flow_enum)]
 
 #[macro_use]
