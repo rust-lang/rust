@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(lint_reasons)]
-
 #![warn(unused)]
 
 // This expect attribute should catch all lint triggers

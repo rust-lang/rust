@@ -3,7 +3,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNFULFILLED_LINT_EXPECTATIONS;
 use rustc_session::lint::LintExpectationId;
-use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -11,10 +10,6 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
-    if !tcx.features().active(sym::lint_reasons) {
-        return;
-    }
-
     let lint_expectations = tcx.lint_expectations(());
     let fulfilled_expectations = tcx.dcx().steal_fulfilled_expectation_ids();
 

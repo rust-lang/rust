@@ -12,7 +12,7 @@
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
+#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
