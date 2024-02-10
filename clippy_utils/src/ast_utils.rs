@@ -2,7 +2,7 @@
 //!
 //! - The `eq_foobar` functions test for semantic equality but ignores `NodeId`s and `Span`s.
 
-#![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
+#![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::{both, over};
 use rustc_ast::ptr::P;
@@ -296,7 +296,7 @@ pub fn eq_item<K>(l: &Item<K>, r: &Item<K>, mut eq_kind: impl FnMut(&K, &K) -> b
     eq_id(l.ident, r.ident) && over(&l.attrs, &r.attrs, eq_attr) && eq_vis(&l.vis, &r.vis) && eq_kind(&l.kind, &r.kind)
 }
 
-#[expect(clippy::too_many_lines)] // Just a big match statement
+#[expect(clippy::similar_names, clippy::too_many_lines)] // Just a big match statement
 pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     use ItemKind::*;
     match (l, r) {
