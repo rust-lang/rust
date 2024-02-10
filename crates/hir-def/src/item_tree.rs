@@ -347,6 +347,9 @@ pub trait ItemTreeNode: Clone {
     fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
     fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner;
 }
+pub trait GenericsItemTreeNode: ItemTreeNode {
+    fn generic_params(&self) -> &Interned<GenericParams>;
+}
 
 pub struct FileItemTreeId<N>(Idx<N>);
 
@@ -473,7 +476,7 @@ impl<N> Hash for ItemTreeId<N> {
 }
 
 macro_rules! mod_items {
-    ( $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {
+    ( $( $typ:ident $(<$generic_params:ident>)? in $fld:ident -> $ast:ty ),+ $(,)? ) => {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
         pub enum ModItem {
             $(
@@ -513,6 +516,14 @@ macro_rules! mod_items {
                     &self.data().$fld[index]
                 }
             }
+
+            $(
+                impl GenericsItemTreeNode for $typ {
+                    fn generic_params(&self) -> &Interned<GenericParams> {
+                        &self.$generic_params
+                    }
+                }
+            )?
         )+
     };
 }
@@ -521,16 +532,16 @@ mod_items! {
     Use in uses -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
     ExternBlock in extern_blocks -> ast::ExternBlock,
-    Function in functions -> ast::Fn,
-    Struct in structs -> ast::Struct,
-    Union in unions -> ast::Union,
-    Enum in enums -> ast::Enum,
+    Function<explicit_generic_params> in functions -> ast::Fn,
+    Struct<generic_params> in structs -> ast::Struct,
+    Union<generic_params> in unions -> ast::Union,
+    Enum<generic_params> in enums -> ast::Enum,
     Const in consts -> ast::Const,
     Static in statics -> ast::Static,
-    Trait in traits -> ast::Trait,
-    TraitAlias in trait_aliases -> ast::TraitAlias,
-    Impl in impls -> ast::Impl,
-    TypeAlias in type_aliases -> ast::TypeAlias,
+    Trait<generic_params> in traits -> ast::Trait,
+    TraitAlias<generic_params> in trait_aliases -> ast::TraitAlias,
+    Impl<generic_params> in impls -> ast::Impl,
+    TypeAlias<generic_params> in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
     MacroRules in macro_rules -> ast::MacroRules,

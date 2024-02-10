@@ -18,11 +18,11 @@ use triomphe::Arc;
 use crate::{
     db::DefDatabase,
     expander::Expander,
-    item_tree::ItemTree,
+    item_tree::{GenericsItemTreeNode, ItemTree},
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRef},
-    AdtId, ConstParamId, GenericDefId, HasModule, LocalTypeOrConstParamId, Lookup,
+    AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LocalTypeOrConstParamId, Lookup,
     TypeOrConstParamId, TypeParamId,
 };
 
@@ -414,13 +414,18 @@ impl GenericParams {
                 })
             }
         };
-        macro_rules! id_to_generics {
-            ($id:ident) => {{
-                let id = $id.lookup(db).id;
-                let tree = id.item_tree(db);
-                let item = &tree[id.value];
-                enabled_params(&item.generic_params, &tree)
-            }};
+        fn id_to_generics<Id: GenericsItemTreeNode>(
+            db: &dyn DefDatabase,
+            id: impl for<'db> Lookup<
+                Database<'db> = dyn DefDatabase + 'db,
+                Data = impl ItemTreeLoc<Id = Id>,
+            >,
+            enabled_params: impl Fn(&Interned<GenericParams>, &ItemTree) -> Interned<GenericParams>,
+        ) -> Interned<GenericParams> {
+            let id = id.lookup(db).item_tree_id();
+            let tree = id.item_tree(db);
+            let item = &tree[id.value];
+            enabled_params(item.generic_params(), &tree)
         }
 
         match def {
@@ -453,13 +458,13 @@ impl GenericParams {
                     Interned::new(generic_params.finish())
                 }
             }
-            GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics!(id),
-            GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics!(id),
-            GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics!(id),
-            GenericDefId::TraitId(id) => id_to_generics!(id),
-            GenericDefId::TraitAliasId(id) => id_to_generics!(id),
-            GenericDefId::TypeAliasId(id) => id_to_generics!(id),
-            GenericDefId::ImplId(id) => id_to_generics!(id),
+            GenericDefId::AdtId(AdtId::StructId(id)) => id_to_generics(db, id, enabled_params),
+            GenericDefId::AdtId(AdtId::EnumId(id)) => id_to_generics(db, id, enabled_params),
+            GenericDefId::AdtId(AdtId::UnionId(id)) => id_to_generics(db, id, enabled_params),
+            GenericDefId::TraitId(id) => id_to_generics(db, id, enabled_params),
+            GenericDefId::TraitAliasId(id) => id_to_generics(db, id, enabled_params),
+            GenericDefId::TypeAliasId(id) => id_to_generics(db, id, enabled_params),
+            GenericDefId::ImplId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {
                 Interned::new(GenericParams {
                     type_or_consts: Default::default(),

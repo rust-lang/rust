@@ -28,7 +28,8 @@ use crate::{
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
-    AdtId, AttrDefId, GenericParamId, ItemTreeLoc, LocalFieldId, Lookup, MacroId, VariantId,
+    AdtId, AttrDefId, GenericParamId, HasModule, ItemTreeLoc, LocalFieldId, Lookup, MacroId,
+    VariantId,
 };
 
 /// Desugared attributes of an item post `cfg_attr` expansion.

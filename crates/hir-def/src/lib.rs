@@ -103,114 +103,6 @@ use crate::{
     },
 };
 
-/// A `ModuleId` that is always a crate's root module.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CrateRootModuleId {
-    krate: CrateId,
-}
-
-impl CrateRootModuleId {
-    pub fn def_map(&self, db: &dyn DefDatabase) -> Arc<DefMap> {
-        db.crate_def_map(self.krate)
-    }
-
-    pub fn krate(self) -> CrateId {
-        self.krate
-    }
-}
-
-impl PartialEq<ModuleId> for CrateRootModuleId {
-    fn eq(&self, other: &ModuleId) -> bool {
-        other.block.is_none() && other.local_id == DefMap::ROOT && self.krate == other.krate
-    }
-}
-impl PartialEq<CrateRootModuleId> for ModuleId {
-    fn eq(&self, other: &CrateRootModuleId) -> bool {
-        other == self
-    }
-}
-
-impl From<CrateRootModuleId> for ModuleId {
-    fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
-        ModuleId { krate, block: None, local_id: DefMap::ROOT }
-    }
-}
-
-impl From<CrateRootModuleId> for ModuleDefId {
-    fn from(value: CrateRootModuleId) -> Self {
-        ModuleDefId::ModuleId(value.into())
-    }
-}
-
-impl From<CrateId> for CrateRootModuleId {
-    fn from(krate: CrateId) -> Self {
-        CrateRootModuleId { krate }
-    }
-}
-
-impl TryFrom<ModuleId> for CrateRootModuleId {
-    type Error = ();
-
-    fn try_from(ModuleId { krate, block, local_id }: ModuleId) -> Result<Self, Self::Error> {
-        if block.is_none() && local_id == DefMap::ROOT {
-            Ok(CrateRootModuleId { krate })
-        } else {
-            Err(())
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ModuleId {
-    krate: CrateId,
-    /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the
-    /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
-    /// `DefMap` of `krate`.
-    block: Option<BlockId>,
-    /// The module's ID in its originating `DefMap`.
-    pub local_id: LocalModuleId,
-}
-
-impl ModuleId {
-    pub fn def_map(self, db: &dyn DefDatabase) -> Arc<DefMap> {
-        match self.block {
-            Some(block) => db.block_def_map(block),
-            None => db.crate_def_map(self.krate),
-        }
-    }
-
-    pub fn krate(self) -> CrateId {
-        self.krate
-    }
-
-    pub fn name(self, db: &dyn DefDatabase) -> Option<Name> {
-        let def_map = self.def_map(db);
-        let parent = def_map[self.local_id].parent?;
-        def_map[parent].children.iter().find_map(|(name, module_id)| {
-            if *module_id == self.local_id {
-                Some(name.clone())
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn containing_module(self, db: &dyn DefDatabase) -> Option<ModuleId> {
-        self.def_map(db).containing_module(self.local_id)
-    }
-
-    pub fn containing_block(self) -> Option<BlockId> {
-        self.block
-    }
-
-    pub fn is_block_module(self) -> bool {
-        self.block.is_some() && self.local_id == DefMap::ROOT
-    }
-}
-
-/// An ID of a module, **local** to a `DefMap`.
-pub type LocalModuleId = Idx<nameres::ModuleData>;
-
 #[derive(Debug)]
 pub struct ItemLoc<N: ItemTreeNode> {
     pub container: ModuleId,
@@ -323,35 +215,6 @@ impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
 impl_loc!(EnumLoc, id: Enum, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumVariantId(salsa::InternId);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumVariantLoc {
-    pub id: ItemTreeId<Variant>,
-    pub parent: EnumId,
-    pub index: u32,
-}
-impl_intern!(EnumVariantId, EnumVariantLoc, intern_enum_variant, lookup_intern_enum_variant);
-impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FieldId {
-    pub parent: VariantId,
-    pub local_id: LocalFieldId,
-}
-
-pub type LocalFieldId = Idx<data::adt::FieldData>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TupleId(pub u32);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TupleFieldId {
-    pub tuple: TupleId,
-    pub index: u32,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
 type ConstLoc = AssocItemLoc<Const>;
 impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
@@ -406,13 +269,16 @@ impl_intern!(ExternBlockId, ExternBlockLoc, intern_extern_block, lookup_intern_e
 impl_loc!(ExternBlockLoc, id: ExternBlock, container: ModuleId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroExpander {
-    Declarative,
-    BuiltIn(BuiltinFnLikeExpander),
-    BuiltInAttr(BuiltinAttrExpander),
-    BuiltInDerive(BuiltinDeriveExpander),
-    BuiltInEager(EagerExpander),
+pub struct EnumVariantId(salsa::InternId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EnumVariantLoc {
+    pub id: ItemTreeId<Variant>,
+    pub parent: EnumId,
+    pub index: u32,
 }
+impl_intern!(EnumVariantId, EnumVariantLoc, intern_enum_variant, lookup_intern_enum_variant);
+impl_loc!(EnumVariantLoc, id: Variant, parent: EnumId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Macro2Id(salsa::InternId);
@@ -448,6 +314,14 @@ bitflags::bitflags! {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacroExpander {
+    Declarative,
+    BuiltIn(BuiltinFnLikeExpander),
+    BuiltInAttr(BuiltinAttrExpander),
+    BuiltInDerive(BuiltinDeriveExpander),
+    BuiltInEager(EagerExpander),
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ProcMacroId(salsa::InternId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -470,6 +344,146 @@ pub struct BlockLoc {
     module: ModuleId,
 }
 impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
+
+/// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
+/// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct ConstBlockId(salsa::InternId);
+impl_intern!(ConstBlockId, ConstBlockLoc, intern_anonymous_const, lookup_intern_anonymous_const);
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone)]
+pub struct ConstBlockLoc {
+    /// The parent of the anonymous const block.
+    pub parent: DefWithBodyId,
+    /// The root expression of this const block in the parent body.
+    pub root: hir::ExprId,
+}
+
+/// A `ModuleId` that is always a crate's root module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CrateRootModuleId {
+    krate: CrateId,
+}
+
+impl CrateRootModuleId {
+    pub fn def_map(&self, db: &dyn DefDatabase) -> Arc<DefMap> {
+        db.crate_def_map(self.krate)
+    }
+
+    pub fn krate(self) -> CrateId {
+        self.krate
+    }
+}
+
+impl PartialEq<ModuleId> for CrateRootModuleId {
+    fn eq(&self, other: &ModuleId) -> bool {
+        other.block.is_none() && other.local_id == DefMap::ROOT && self.krate == other.krate
+    }
+}
+
+impl From<CrateId> for CrateRootModuleId {
+    fn from(krate: CrateId) -> Self {
+        CrateRootModuleId { krate }
+    }
+}
+
+impl TryFrom<ModuleId> for CrateRootModuleId {
+    type Error = ();
+
+    fn try_from(ModuleId { krate, block, local_id }: ModuleId) -> Result<Self, Self::Error> {
+        if block.is_none() && local_id == DefMap::ROOT {
+            Ok(CrateRootModuleId { krate })
+        } else {
+            Err(())
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ModuleId {
+    krate: CrateId,
+    /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the
+    /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
+    /// `DefMap` of `krate`.
+    block: Option<BlockId>,
+    /// The module's ID in its originating `DefMap`.
+    pub local_id: LocalModuleId,
+}
+
+impl ModuleId {
+    pub fn def_map(self, db: &dyn DefDatabase) -> Arc<DefMap> {
+        match self.block {
+            Some(block) => db.block_def_map(block),
+            None => db.crate_def_map(self.krate),
+        }
+    }
+
+    pub fn krate(self) -> CrateId {
+        self.krate
+    }
+
+    pub fn name(self, db: &dyn DefDatabase) -> Option<Name> {
+        let def_map = self.def_map(db);
+        let parent = def_map[self.local_id].parent?;
+        def_map[parent].children.iter().find_map(|(name, module_id)| {
+            if *module_id == self.local_id {
+                Some(name.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn containing_module(self, db: &dyn DefDatabase) -> Option<ModuleId> {
+        self.def_map(db).containing_module(self.local_id)
+    }
+
+    pub fn containing_block(self) -> Option<BlockId> {
+        self.block
+    }
+
+    pub fn is_block_module(self) -> bool {
+        self.block.is_some() && self.local_id == DefMap::ROOT
+    }
+}
+
+impl PartialEq<CrateRootModuleId> for ModuleId {
+    fn eq(&self, other: &CrateRootModuleId) -> bool {
+        other == self
+    }
+}
+
+impl From<CrateRootModuleId> for ModuleId {
+    fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
+        ModuleId { krate, block: None, local_id: DefMap::ROOT }
+    }
+}
+
+impl From<CrateRootModuleId> for ModuleDefId {
+    fn from(value: CrateRootModuleId) -> Self {
+        ModuleDefId::ModuleId(value.into())
+    }
+}
+
+/// An ID of a module, **local** to a `DefMap`.
+pub type LocalModuleId = Idx<nameres::ModuleData>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FieldId {
+    pub parent: VariantId,
+    pub local_id: LocalFieldId,
+}
+
+pub type LocalFieldId = Idx<data::adt::FieldData>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TupleId(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TupleFieldId {
+    pub tuple: TupleId,
+    pub index: u32,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeOrConstParamId {
@@ -610,20 +624,6 @@ impl_from!(
     BuiltinType
     for ModuleDefId
 );
-
-/// Id of the anonymous const block expression and patterns. This is very similar to `ClosureId` and
-/// shouldn't be a `DefWithBodyId` since its type inference is dependent on its parent.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct ConstBlockId(salsa::InternId);
-impl_intern!(ConstBlockId, ConstBlockLoc, intern_anonymous_const, lookup_intern_anonymous_const);
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
-pub struct ConstBlockLoc {
-    /// The parent of the anonymous const block.
-    pub parent: DefWithBodyId,
-    /// The root expression of this const block in the parent body.
-    pub root: hir::ExprId,
-}
 
 /// Something that holds types, required for the current const arg lowering implementation as they
 /// need to be able to query where they are defined.
@@ -1257,6 +1257,34 @@ impl HasModule for GenericDefId {
     }
 }
 
+impl HasModule for AttrDefId {
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        match self {
+            AttrDefId::ModuleId(it) => *it,
+            AttrDefId::FieldId(it) => it.parent.module(db),
+            AttrDefId::AdtId(it) => it.module(db),
+            AttrDefId::FunctionId(it) => it.module(db),
+            AttrDefId::EnumVariantId(it) => it.module(db),
+            AttrDefId::StaticId(it) => it.module(db),
+            AttrDefId::ConstId(it) => it.module(db),
+            AttrDefId::TraitId(it) => it.module(db),
+            AttrDefId::TraitAliasId(it) => it.module(db),
+            AttrDefId::TypeAliasId(it) => it.module(db),
+            AttrDefId::ImplId(it) => it.module(db),
+            AttrDefId::ExternBlockId(it) => it.module(db),
+            AttrDefId::GenericParamId(it) => match it {
+                GenericParamId::TypeParamId(it) => it.parent(),
+                GenericParamId::ConstParamId(it) => it.parent(),
+                GenericParamId::LifetimeParamId(it) => it.parent,
+            }
+            .module(db),
+            AttrDefId::MacroId(it) => it.module(db),
+            AttrDefId::ExternCrateId(it) => it.module(db),
+            AttrDefId::UseId(it) => it.module(db),
+        }
+    }
+}
+
 impl ModuleDefId {
     /// Returns the module containing `self` (or `self`, if `self` is itself a module).
     ///
@@ -1275,34 +1303,6 @@ impl ModuleDefId {
             ModuleDefId::MacroId(id) => id.module(db),
             ModuleDefId::BuiltinType(_) => return None,
         })
-    }
-}
-
-impl AttrDefId {
-    pub fn krate(&self, db: &dyn DefDatabase) -> CrateId {
-        match *self {
-            AttrDefId::ModuleId(it) => it.krate,
-            AttrDefId::FieldId(it) => it.parent.krate(db),
-            AttrDefId::AdtId(it) => it.krate(db),
-            AttrDefId::FunctionId(it) => it.krate(db),
-            AttrDefId::EnumVariantId(it) => it.krate(db),
-            AttrDefId::StaticId(it) => it.krate(db),
-            AttrDefId::ConstId(it) => it.krate(db),
-            AttrDefId::TraitId(it) => it.krate(db),
-            AttrDefId::TraitAliasId(it) => it.krate(db),
-            AttrDefId::TypeAliasId(it) => it.krate(db),
-            AttrDefId::ImplId(it) => it.krate(db),
-            AttrDefId::ExternBlockId(it) => it.krate(db),
-            AttrDefId::GenericParamId(it) => match it {
-                GenericParamId::TypeParamId(it) => it.parent(),
-                GenericParamId::ConstParamId(it) => it.parent(),
-                GenericParamId::LifetimeParamId(it) => it.parent,
-            }
-            .krate(db),
-            AttrDefId::MacroId(it) => it.krate(db),
-            AttrDefId::ExternCrateId(it) => it.krate(db),
-            AttrDefId::UseId(it) => it.krate(db),
-        }
     }
 }
 
