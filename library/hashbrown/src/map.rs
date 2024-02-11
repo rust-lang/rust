@@ -6805,7 +6805,7 @@ mod test_map {
         assert_eq!(m2.len(), 2);
     }
 
-    thread_local! { static DROP_VECTOR: RefCell<Vec<i32>> = RefCell::new(Vec::new()) }
+    thread_local! { static DROP_VECTOR: RefCell<Vec<i32>> = const { RefCell::new(Vec::new()) } }
 
     #[derive(Hash, PartialEq, Eq)]
     struct Droppable {
@@ -8524,7 +8524,7 @@ mod test_map {
     #[test]
     #[should_panic = "panic in clone"]
     fn test_clone_from_memory_leaks() {
-        use ::alloc::vec::Vec;
+        use alloc::vec::Vec;
 
         struct CheckedClone {
             panic_in_clone: bool,
