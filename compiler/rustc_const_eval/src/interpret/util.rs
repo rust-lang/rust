@@ -34,6 +34,7 @@ where
             match *ty.kind() {
                 ty::Param(_) => ControlFlow::Break(FoundParam),
                 ty::Closure(def_id, args)
+                | ty::CoroutineClosure(def_id, args, ..)
                 | ty::Coroutine(def_id, args, ..)
                 | ty::FnDef(def_id, args) => {
                     let instance = ty::InstanceDef::Item(def_id);
