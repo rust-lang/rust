@@ -2749,14 +2749,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         arg_idx: Option<usize>,
     ) -> Option<Ty<'tcx>> {
         let tcx = self.tcx();
-        let hir = tcx.hir();
-
         let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), ident, .. }) =
             tcx.hir_node(fn_hir_id)
         else {
             return None;
         };
-        let i = hir.get_parent(fn_hir_id).expect_item().expect_impl();
+        let i = tcx.parent_hir_node(fn_hir_id).expect_item().expect_impl();
 
         let trait_ref =
             self.instantiate_mono_trait_ref(i.of_trait.as_ref()?, self.ast_ty_to_ty(i.self_ty));

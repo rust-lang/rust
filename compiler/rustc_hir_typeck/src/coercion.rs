@@ -1594,7 +1594,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id, ..) => {
-                        let parent_id = fcx.tcx.hir().parent_id(blk_id);
+                        let parent_id = fcx.tcx.parent_hir_id(blk_id);
                         err = self.report_return_mismatched_types(
                             cause,
                             expected,
@@ -1785,7 +1785,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     ) -> DiagnosticBuilder<'a> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
-        let parent_id = fcx.tcx.hir().parent_id(id);
+        let parent_id = fcx.tcx.parent_hir_id(id);
         let parent = fcx.tcx.hir_node(parent_id);
         if let Some(expr) = expression
             && let hir::Node::Expr(hir::Expr {

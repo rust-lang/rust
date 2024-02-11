@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         if let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows()) {
             // search for `let foo = vec![_]` expressions where all uses of `foo`
             // adjust to slices or call a method that exist on slices (e.g. len)
-            if let Node::Local(local) = cx.tcx.hir().get_parent(expr.hir_id)
+            if let Node::Local(local) = cx.tcx.parent_hir_node(expr.hir_id)
                 // for now ignore locals with type annotations.
                 // this is to avoid compile errors when doing the suggestion here: let _: Vec<_> = vec![..];
                 && local.ty.is_none()
@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             }
             // if the local pattern has a specified type, do not lint.
             else if let Some(_) = higher::VecArgs::hir(cx, expr)
-                && let Node::Local(local) = cx.tcx.hir().get_parent(expr.hir_id)
+                && let Node::Local(local) = cx.tcx.parent_hir_node(expr.hir_id)
                 && local.ty.is_some()
             {
                 let span = expr.span.ctxt().outer_expn_data().call_site;

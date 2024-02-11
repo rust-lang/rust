@@ -65,10 +65,10 @@ pub fn report_object_safety_error<'tcx>(
         && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
     {
         let mut hir_id = hir_id;
-        while let hir::Node::Ty(ty) = tcx.hir().get_parent(hir_id) {
+        while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
             hir_id = ty.hir_id;
         }
-        if tcx.hir().get_parent(hir_id).fn_sig().is_some() {
+        if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
             // Do not suggest `impl Trait` when dealing with things like super-traits.
             err.span_suggestion_verbose(
                 ty.span.until(trait_ref.span),

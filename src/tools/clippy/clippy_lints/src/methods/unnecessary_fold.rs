@@ -16,7 +16,7 @@ use super::UNNECESSARY_FOLD;
 /// Changing `fold` to `sum` needs it sometimes when the return type can't be
 /// inferred. This checks for some common cases where it can be safely omitted
 fn needs_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    let parent = cx.tcx.hir().get_parent(expr.hir_id);
+    let parent = cx.tcx.parent_hir_node(expr.hir_id);
 
     // some common cases where turbofish isn't needed:
     // - assigned to a local variable with a type annotation

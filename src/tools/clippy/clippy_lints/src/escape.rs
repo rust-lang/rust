@@ -131,7 +131,7 @@ fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
         _ => return false,
     }
 
-    matches!(tcx.hir().find_parent(id), Some(Node::Param(_)))
+    matches!(tcx.parent_hir_node(id), Node::Param(_))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
@@ -156,8 +156,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             let map = &self.cx.tcx.hir();
             if is_argument(self.cx.tcx, cmt.hir_id) {
                 // Skip closure arguments
-                let parent_id = map.parent_id(cmt.hir_id);
-                if let Some(Node::Expr(..)) = map.find_parent(parent_id) {
+                let parent_id = self.cx.tcx.parent_hir_id(cmt.hir_id);
+                if let Node::Expr(..) = self.cx.tcx.parent_hir_node(parent_id) {
                     return;
                 }
 

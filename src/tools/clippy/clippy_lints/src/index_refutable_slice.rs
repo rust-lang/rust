@@ -242,12 +242,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
             } = *self;
 
             if let Some(use_info) = slice_lint_info.get_mut(&local_id)
-                // Check if this is even a local we're interested in
-
-                && let map = cx.tcx.hir()
-
                 // Checking for slice indexing
-                && let parent_id = map.parent_id(expr.hir_id)
+                && let parent_id = cx.tcx.parent_hir_id(expr.hir_id)
                 && let hir::Node::Expr(parent_expr) = cx.tcx.hir_node(parent_id)
                 && let hir::ExprKind::Index(_, index_expr, _) = parent_expr.kind
                 && let Some(Constant::Int(index_value)) = constant(cx, cx.typeck_results(), index_expr)
@@ -255,11 +251,10 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
                 && index_value < max_suggested_slice
 
                 // Make sure that this slice index is read only
-                && let maybe_addrof_id = map.parent_id(parent_id)
-                && let hir::Node::Expr(maybe_addrof_expr) = cx.tcx.hir_node(maybe_addrof_id)
+                && let hir::Node::Expr(maybe_addrof_expr) = cx.tcx.parent_hir_node(parent_id)
                 && let hir::ExprKind::AddrOf(_kind, hir::Mutability::Not, _inner_expr) = maybe_addrof_expr.kind
             {
-                use_info.index_use.push((index_value, map.span(parent_expr.hir_id)));
+                use_info.index_use.push((index_value, cx.tcx.hir().span(parent_expr.hir_id)));
                 return;
             }
 
