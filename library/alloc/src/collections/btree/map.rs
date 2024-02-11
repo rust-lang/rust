@@ -2525,13 +2525,13 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Returns a [`Cursor`] pointing at the gap before the smallest key
     /// greater than the given bound.
     ///
-    /// Passing [`Bound::Included(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
     /// gap before the smallest key greater than or equal to `x`.
     ///
-    /// Passing [`Bound::Excluded(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
     /// gap before the smallest key greater than `x`.
     ///
-    /// Passing [`Bound::Unbounded`] will return a cursor pointing to the
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap before the smallest key in the map.
     ///
     /// # Examples
@@ -2578,13 +2578,13 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Returns a [`CursorMut`] pointing at the gap before the smallest key
     /// greater than the given bound.
     ///
-    /// Passing [`Bound::Included(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
     /// gap before the smallest key greater than or equal to `x`.
     ///
-    /// Passing [`Bound::Excluded(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
     /// gap before the smallest key greater than `x`.
     ///
-    /// Passing [`Bound::Unbounded`] will return a cursor pointing to the
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap before the smallest key in the map.
     ///
     /// # Examples
@@ -2648,13 +2648,13 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Returns a [`Cursor`] pointing at the gap after the greatest key
     /// smaller than the given bound.
     ///
-    /// Passing [`Bound::Included(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
     /// gap after the greatest key smaller than or equal to `x`.
     ///
-    /// Passing [`Bound::Excluded(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
     /// gap after the greatest key smaller than `x`.
     ///
-    /// Passing [`Bound::Unbounded`] will return a cursor pointing to the
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap after the greatest key in the map.
     ///
     /// # Examples
@@ -2701,13 +2701,13 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Returns a [`CursorMut`] pointing at the gap after the greatest key
     /// smaller than the given bound.
     ///
-    /// Passing [`Bound::Included(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Included(x)` will return a cursor pointing to the
     /// gap after the greatest key smaller than or equal to `x`.
     ///
-    /// Passing [`Bound::Excluded(x)`] will return a cursor pointing to the
+    /// Passing `Bound::Excluded(x)` will return a cursor pointing to the
     /// gap after the greatest key smaller than `x`.
     ///
-    /// Passing [`Bound::Unbounded`] will return a cursor pointing to the
+    /// Passing `Bound::Unbounded` will return a cursor pointing to the
     /// gap after the greatest key in the map.
     ///
     /// # Examples
