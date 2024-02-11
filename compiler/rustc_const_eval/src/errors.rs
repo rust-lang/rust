@@ -56,21 +56,9 @@ pub(crate) struct UnstableInStable {
 
 #[derive(Diagnostic)]
 #[diag(const_eval_thread_local_access, code = E0625)]
-pub(crate) struct NonConstOpErr {
+pub(crate) struct ThreadLocalAccessErr {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_static_access, code = E0013)]
-#[help]
-pub(crate) struct StaticAccessErr {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    #[help(const_eval_teach_help)]
-    pub teach: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -623,6 +611,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
+            ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
+            ConstRefToExtern => const_eval_validation_const_ref_to_extern,
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             NullFnPtr => const_eval_validation_null_fn_ptr,
@@ -777,6 +767,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             NullPtr { .. }
             | PtrToStatic { .. }
             | MutableRefInConst
+            | ConstRefToMutable
+            | ConstRefToExtern
             | MutableRefToImmutable
             | NullFnPtr
             | NeverVal

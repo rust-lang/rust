@@ -872,17 +872,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Closure(closure_def_id, args) = *self_ty.kind() else {
-            bug!("closure candidate for non-closure {:?}", obligation);
+        let trait_ref = match *self_ty.kind() {
+            ty::Closure(_, args) => {
+                self.closure_trait_ref_unnormalized(obligation, args, self.tcx().consts.true_)
+            }
+            ty::CoroutineClosure(_, args) => {
+                args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, sig.tupled_inputs_ty],
+                    )
+                })
+            }
+            _ => {
+                bug!("closure candidate for non-closure {:?}", obligation);
+            }
         };
 
-        let trait_ref =
-            self.closure_trait_ref_unnormalized(obligation, args, self.tcx().consts.true_);
-        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
-
-        debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
-
-        Ok(nested)
+        self.confirm_poly_trait_refs(obligation, trait_ref)
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -890,40 +898,86 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // Okay to skip binder because the args on closure types never
-        // touch bound regions, they just capture the in-scope
-        // type/region parameters.
+        let tcx = self.tcx();
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::CoroutineClosure(closure_def_id, args) = *self_ty.kind() else {
-            bug!("async closure candidate for non-coroutine-closure {:?}", obligation);
+
+        let mut nested = vec![];
+        let (trait_ref, kind_ty) = match *self_ty.kind() {
+            ty::CoroutineClosure(_, args) => {
+                let args = args.as_coroutine_closure();
+                let trait_ref = args.coroutine_closure_sig().map_bound(|sig| {
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, sig.tupled_inputs_ty],
+                    )
+                });
+                (trait_ref, args.kind_ty())
+            }
+            ty::FnDef(..) | ty::FnPtr(..) => {
+                let sig = self_ty.fn_sig(tcx);
+                let trait_ref = sig.map_bound(|sig| {
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, Ty::new_tup(tcx, sig.inputs())],
+                    )
+                });
+                // We must additionally check that the return type impls `Future`.
+                let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                nested.push(obligation.with(
+                    tcx,
+                    sig.map_bound(|sig| {
+                        ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()])
+                    }),
+                ));
+                (trait_ref, Ty::from_closure_kind(tcx, ty::ClosureKind::Fn))
+            }
+            ty::Closure(_, args) => {
+                let sig = args.as_closure().sig();
+                let trait_ref = sig.map_bound(|sig| {
+                    ty::TraitRef::new(
+                        self.tcx(),
+                        obligation.predicate.def_id(),
+                        [self_ty, sig.inputs()[0]],
+                    )
+                });
+                // We must additionally check that the return type impls `Future`.
+                let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
+                nested.push(obligation.with(
+                    tcx,
+                    sig.map_bound(|sig| {
+                        ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()])
+                    }),
+                ));
+                (trait_ref, Ty::from_closure_kind(tcx, ty::ClosureKind::Fn))
+            }
+            _ => bug!("expected callable type for AsyncFn candidate"),
         };
 
-        let trait_ref = args.as_coroutine_closure().coroutine_closure_sig().map_bound(|sig| {
-            ty::TraitRef::new(
-                self.tcx(),
-                obligation.predicate.def_id(),
-                [self_ty, sig.tupled_inputs_ty],
-            )
-        });
-
-        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        nested.extend(self.confirm_poly_trait_refs(obligation, trait_ref)?);
 
         let goal_kind =
             self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
-        nested.push(obligation.with(
-            self.tcx(),
-            ty::TraitRef::from_lang_item(
-                self.tcx(),
-                LangItem::AsyncFnKindHelper,
-                obligation.cause.span,
-                [
-                    args.as_coroutine_closure().kind_ty(),
-                    Ty::from_closure_kind(self.tcx(), goal_kind),
-                ],
-            ),
-        ));
 
-        debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
+        // If we have not yet determiend the `ClosureKind` of the closure or coroutine-closure,
+        // then additionally register an `AsyncFnKindHelper` goal which will fail if the kind
+        // is constrained to an insufficient type later on.
+        if let Some(closure_kind) = self.infcx.shallow_resolve(kind_ty).to_opt_closure_kind() {
+            if !closure_kind.extends(goal_kind) {
+                return Err(SelectionError::Unimplemented);
+            }
+        } else {
+            nested.push(obligation.with(
+                self.tcx(),
+                ty::TraitRef::from_lang_item(
+                    self.tcx(),
+                    LangItem::AsyncFnKindHelper,
+                    obligation.cause.span,
+                    [kind_ty, Ty::from_closure_kind(self.tcx(), goal_kind)],
+                ),
+            ));
+        }
 
         Ok(nested)
     }

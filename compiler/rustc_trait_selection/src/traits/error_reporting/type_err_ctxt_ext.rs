@@ -2993,7 +2993,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             (s, " +")
         } else {
-            (span.shrink_to_hi(), ":")
+            (param.name.ident().span.shrink_to_hi(), ":")
         };
         err.span_suggestion_verbose(
             span,

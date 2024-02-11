@@ -582,6 +582,7 @@ symbols! {
         const_raw_ptr_deref,
         const_raw_ptr_to_usize_cast,
         const_refs_to_cell,
+        const_refs_to_static,
         const_trait,
         const_trait_bound_opt_out,
         const_trait_impl,

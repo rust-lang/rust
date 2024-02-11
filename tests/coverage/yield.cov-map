@@ -1,9 +1,9 @@
 Function name: yield::main
-Raw bytes (106): 0x[01, 01, 0b, 05, 09, 0d, 11, 22, 15, 0d, 11, 11, 15, 22, 15, 0d, 11, 22, 15, 0d, 11, 19, 1d, 25, 29, 10, 01, 07, 01, 01, 16, 01, 06, 0b, 00, 2e, 0d, 01, 27, 00, 29, 03, 01, 0e, 00, 34, 0d, 02, 0b, 00, 2e, 22, 01, 22, 00, 27, 1e, 00, 2c, 00, 2e, 13, 01, 0e, 00, 34, 1e, 03, 09, 00, 16, 1e, 07, 0b, 00, 2e, 21, 01, 27, 00, 29, 27, 01, 0e, 00, 34, 21, 02, 0b, 00, 2e, 2d, 01, 27, 00, 29, 2b, 01, 0e, 00, 34, 2d, 02, 01, 00, 02]
+Raw bytes (106): 0x[01, 01, 0b, 05, 00, 0d, 11, 22, 15, 0d, 11, 11, 15, 22, 15, 0d, 11, 22, 15, 0d, 11, 19, 1d, 25, 29, 10, 01, 07, 01, 01, 16, 01, 06, 0b, 00, 2e, 0d, 01, 27, 00, 29, 03, 01, 0e, 00, 34, 0d, 02, 0b, 00, 2e, 22, 01, 22, 00, 27, 1e, 00, 2c, 00, 2e, 13, 01, 0e, 00, 34, 1e, 03, 09, 00, 16, 1e, 07, 0b, 00, 2e, 21, 01, 27, 00, 29, 27, 01, 0e, 00, 34, 21, 02, 0b, 00, 2e, 2d, 01, 27, 00, 29, 2b, 01, 0e, 00, 34, 2d, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 11
-- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 0 operands: lhs = Counter(1), rhs = Zero
 - expression 1 operands: lhs = Counter(3), rhs = Counter(4)
 - expression 2 operands: lhs = Expression(8, Sub), rhs = Counter(5)
 - expression 3 operands: lhs = Counter(3), rhs = Counter(4)
@@ -19,7 +19,7 @@ Number of file 0 mappings: 16
 - Code(Counter(0)) at (prev + 6, 11) to (start + 0, 46)
 - Code(Counter(3)) at (prev + 1, 39) to (start + 0, 41)
 - Code(Expression(0, Add)) at (prev + 1, 14) to (start + 0, 52)
-    = (c1 + c2)
+    = (c1 + Zero)
 - Code(Counter(3)) at (prev + 2, 11) to (start + 0, 46)
 - Code(Expression(8, Sub)) at (prev + 1, 34) to (start + 0, 39)
     = (c3 - c4)

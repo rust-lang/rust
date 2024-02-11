@@ -197,7 +197,6 @@ trait ResolverAstLoweringExt {
     fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
-    fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId);
 }
 
 impl ResolverAstLoweringExt for ResolverAstLowering {
@@ -255,11 +254,6 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
     /// should appear at the enclosing `PolyTraitRef`.
     fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
         self.extra_lifetime_params_map.remove(&id).unwrap_or_default()
-    }
-
-    fn remap_extra_lifetime_params(&mut self, from: NodeId, to: NodeId) {
-        let lifetimes = self.extra_lifetime_params_map.remove(&from).unwrap_or_default();
-        self.extra_lifetime_params_map.insert(to, lifetimes);
     }
 }
 
@@ -1084,88 +1078,38 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir::TypeBindingKind::Equality { term }
             }
             AssocConstraintKind::Bound { bounds } => {
-                enum DesugarKind {
-                    ImplTrait,
-                    Error(ImplTraitPosition),
-                    Bound,
-                }
+                // Disallow ATB in dyn types
+                if self.is_in_dyn_type {
+                    let suggestion = match itctx {
+                        ImplTraitContext::ReturnPositionOpaqueTy { .. }
+                        | ImplTraitContext::TypeAliasesOpaqueTy { .. }
+                        | ImplTraitContext::Universal => {
+                            let bound_end_span = constraint
+                                .gen_args
+                                .as_ref()
+                                .map_or(constraint.ident.span, |args| args.span());
+                            if bound_end_span.eq_ctxt(constraint.span) {
+                                Some(self.tcx.sess.source_map().next_point(bound_end_span))
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    };
 
-                // Piggy-back on the `impl Trait` context to figure out the correct behavior.
-                let desugar_kind = match itctx {
-                    // in an argument, RPIT, or TAIT, if we are within a dyn type:
-                    //
-                    //     fn foo(x: dyn Iterator<Item: Debug>)
-                    //
-                    // then desugar to:
-                    //
-                    //     fn foo(x: dyn Iterator<Item = impl Debug>)
-                    //
-                    // This is because dyn traits must have all of their associated types specified.
-                    ImplTraitContext::ReturnPositionOpaqueTy { .. }
-                    | ImplTraitContext::TypeAliasesOpaqueTy { .. }
-                    | ImplTraitContext::Universal
-                        if self.is_in_dyn_type =>
-                    {
-                        DesugarKind::ImplTrait
-                    }
+                    let guar = self.dcx().emit_err(errors::MisplacedAssocTyBinding {
+                        span: constraint.span,
+                        suggestion,
+                    });
+                    let err_ty =
+                        &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
+                    hir::TypeBindingKind::Equality { term: err_ty.into() }
+                } else {
+                    // Desugar `AssocTy: Bounds` into a type binding where the
+                    // later desugars into a trait predicate.
+                    let bounds = self.lower_param_bounds(bounds, itctx);
 
-                    ImplTraitContext::Disallowed(position) if self.is_in_dyn_type => {
-                        DesugarKind::Error(position)
-                    }
-
-                    // We are in the parameter position, but not within a dyn type:
-                    //
-                    //     fn foo(x: impl Iterator<Item: Debug>)
-                    //
-                    // so we leave it as is and this gets expanded in astconv to a bound like
-                    // `<T as Iterator>::Item: Debug` where `T` is the type parameter for the
-                    // `impl Iterator`.
-                    _ => DesugarKind::Bound,
-                };
-
-                match desugar_kind {
-                    DesugarKind::ImplTrait => {
-                        // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
-                        // constructing the HIR for `impl bounds...` and then lowering that.
-
-                        let impl_trait_node_id = self.next_node_id();
-                        // Shift `impl Trait` lifetime captures from the associated type bound's
-                        // node id to the opaque node id, so that the opaque can actually use
-                        // these lifetime bounds.
-                        self.resolver
-                            .remap_extra_lifetime_params(constraint.id, impl_trait_node_id);
-
-                        self.with_dyn_type_scope(false, |this| {
-                            let node_id = this.next_node_id();
-                            let ty = this.lower_ty(
-                                &Ty {
-                                    id: node_id,
-                                    kind: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
-                                    span: this.lower_span(constraint.span),
-                                    tokens: None,
-                                },
-                                itctx,
-                            );
-
-                            hir::TypeBindingKind::Equality { term: ty.into() }
-                        })
-                    }
-                    DesugarKind::Bound => {
-                        // Desugar `AssocTy: Bounds` into a type binding where the
-                        // later desugars into a trait predicate.
-                        let bounds = self.lower_param_bounds(bounds, itctx);
-
-                        hir::TypeBindingKind::Constraint { bounds }
-                    }
-                    DesugarKind::Error(position) => {
-                        let guar = self.dcx().emit_err(errors::MisplacedAssocTyBinding {
-                            span: constraint.span,
-                            position: DiagnosticArgFromDisplay(&position),
-                        });
-                        let err_ty =
-                            &*self.arena.alloc(self.ty(constraint.span, hir::TyKind::Err(guar)));
-                        hir::TypeBindingKind::Equality { term: err_ty.into() }
-                    }
+                    hir::TypeBindingKind::Constraint { bounds }
                 }
             }
         };

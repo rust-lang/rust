@@ -177,12 +177,13 @@ pub fn report_object_safety_error<'tcx>(
             )));
         }
         impls => {
-            let types = impls
+            let mut types = impls
                 .iter()
                 .map(|t| {
                     with_no_trimmed_paths!(format!("  {}", tcx.type_of(*t).instantiate_identity(),))
                 })
                 .collect::<Vec<_>>();
+            types.sort();
             err.help(format!(
                 "the following types implement the trait, consider defining an enum where each \
                  variant holds one of these types, implementing `{}` for this new enum and using \

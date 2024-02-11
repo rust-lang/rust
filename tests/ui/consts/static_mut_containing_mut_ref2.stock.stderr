@@ -13,11 +13,11 @@ help: mutable references are dangerous since if there's any other pointer or ref
 LL |     *addr_of_mut!(STDERR_BUFFER_SPACE) = 42;
    |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error[E0658]: mutable references are not allowed in statics
-  --> $DIR/static_mut_containing_mut_ref2.rs:8:6
+error[E0658]: mutation through a reference is not allowed in statics
+  --> $DIR/static_mut_containing_mut_ref2.rs:8:5
    |
 LL |     *(&mut STDERR_BUFFER_SPACE) = 42;
-   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable

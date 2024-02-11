@@ -1,9 +1,13 @@
-error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:32:18
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:30:28
    |
-LL |     fn func() -> Self::Out {
-   |                  ^^^^^^^^^ the trait `Copy` is not implemented for `String`
+LL |     type Out = Box<dyn Bar<Assoc: Copy>>;
+   |                            ^^^^^^^^^^^
+   |
+help: use `impl Trait` to introduce a type instead
+   |
+LL |     type Out = Box<dyn Bar<Assoc = impl Copy>>;
+   |                                  ~~~~~~
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0277`.

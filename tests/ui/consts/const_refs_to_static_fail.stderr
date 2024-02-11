@@ -1,0 +1,26 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refs_to_static_fail.rs:9:1
+   |
+LL | const C1: &SyncUnsafeCell<i32> = &S;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+note: erroneous constant encountered
+  --> $DIR/const_refs_to_static_fail.rs:12:14
+   |
+LL |     assert!(*C1.get() == 0);
+   |              ^^
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_refs_to_static_fail.rs:16:13
+   |
+LL |     assert!(*C2 == 0);
+   |             ^^^ constant accesses mutable global memory
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

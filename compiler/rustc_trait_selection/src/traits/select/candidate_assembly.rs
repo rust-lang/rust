@@ -374,6 +374,43 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
+            ty::CoroutineClosure(def_id, args) => {
+                let is_const = self.tcx().is_const_fn_raw(def_id);
+                match self.infcx.closure_kind(self_ty) {
+                    Some(closure_kind) => {
+                        let no_borrows = match self
+                            .infcx
+                            .shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty())
+                            .kind()
+                        {
+                            ty::Tuple(tys) => tys.is_empty(),
+                            ty::Error(_) => false,
+                            _ => bug!("tuple_fields called on non-tuple"),
+                        };
+                        // A coroutine-closure implements `FnOnce` *always*, since it may
+                        // always be called once. It additionally implements `Fn`/`FnMut`
+                        // only if it has no upvars (therefore no borrows from the closure
+                        // that would need to be represented with a lifetime) and if the
+                        // closure kind permits it.
+                        // FIXME(async_closures): Actually, it could also implement `Fn`/`FnMut`
+                        // if it takes all of its upvars by copy, and none by ref. This would
+                        // require us to record a bit more information during upvar analysis.
+                        if no_borrows && closure_kind.extends(kind) {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        } else if kind == ty::ClosureKind::FnOnce {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        }
+                    }
+                    None => {
+                        if kind == ty::ClosureKind::FnOnce {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        } else {
+                            // This stays ambiguous until kind+upvars are determined.
+                            candidates.ambiguous = true;
+                        }
+                    }
+                }
+            }
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
@@ -403,8 +440,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 candidates.vec.push(AsyncClosureCandidate);
             }
-            ty::Infer(ty::TyVar(_)) => {
-                candidates.ambiguous = true;
+            // Closures and fn pointers implement `AsyncFn*` if their return types
+            // implement `Future`, which is checked later.
+            ty::Closure(_, args) => {
+                if let Some(closure_kind) = args.as_closure().kind_ty().to_opt_closure_kind()
+                    && !closure_kind.extends(goal_kind)
+                {
+                    return;
+                }
+                candidates.vec.push(AsyncClosureCandidate);
+            }
+            ty::FnDef(..) | ty::FnPtr(..) => {
+                candidates.vec.push(AsyncClosureCandidate);
             }
             _ => {}
         }

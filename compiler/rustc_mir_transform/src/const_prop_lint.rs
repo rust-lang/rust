@@ -3,8 +3,9 @@
 
 use std::fmt::Debug;
 
-use rustc_const_eval::interpret::{ImmTy, Projectable};
-use rustc_const_eval::interpret::{InterpCx, InterpResult, Scalar};
+use rustc_const_eval::interpret::{
+    format_interp_error, ImmTy, InterpCx, InterpResult, Projectable, Scalar,
+};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
@@ -246,7 +247,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 assert!(
                     !error.kind().formatted_string(),
                     "const-prop encountered formatting error: {}",
-                    self.ecx.format_error(error),
+                    format_interp_error(self.ecx.tcx.dcx(), error),
                 );
                 None
             }

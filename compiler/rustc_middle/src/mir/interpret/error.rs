@@ -417,6 +417,8 @@ pub enum ValidationErrorKind<'tcx> {
     PtrToUninhabited { ptr_kind: PointerKind, ty: Ty<'tcx> },
     PtrToStatic { ptr_kind: PointerKind },
     MutableRefInConst,
+    ConstRefToMutable,
+    ConstRefToExtern,
     MutableRefToImmutable,
     UnsafeCellInImmutable,
     NullFnPtr,

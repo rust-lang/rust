@@ -27,8 +27,9 @@ use rustc_target::abi::{
 use std::hash::Hash;
 
 use super::{
-    AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, MPlaceTy,
-    Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar, ValueVisitor,
+    format_interp_error, AllocId, CheckInAllocMsg, GlobalAlloc, ImmTy, Immediate, InterpCx,
+    InterpResult, MPlaceTy, Machine, MemPlaceMeta, OpTy, Pointer, Projectable, Scalar,
+    ValueVisitor,
 };
 
 // for the validation errors
@@ -132,8 +133,7 @@ pub enum CtfeValidationMode {
     /// `allow_immutable_unsafe_cell` says whether we allow `UnsafeCell` in immutable memory (which is the
     /// case for the top-level allocation of a `const`, where this is fine because the allocation will be
     /// copied at each use site).
-    /// `allow_static_ptrs` says if pointers to statics are permitted (which is the case for promoteds in statics).
-    Const { allow_immutable_unsafe_cell: bool, allow_static_ptrs: bool },
+    Const { allow_immutable_unsafe_cell: bool, allow_extern_static_ptrs: bool },
 }
 
 impl CtfeValidationMode {
@@ -143,13 +143,6 @@ impl CtfeValidationMode {
             CtfeValidationMode::Const { allow_immutable_unsafe_cell, .. } => {
                 allow_immutable_unsafe_cell
             }
-        }
-    }
-
-    fn allow_static_ptrs(self) -> bool {
-        match self {
-            CtfeValidationMode::Static { .. } => true, // statics can point to statics
-            CtfeValidationMode::Const { allow_static_ptrs, .. } => allow_static_ptrs,
         }
     }
 
@@ -468,53 +461,59 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // Special handling for pointers to statics (irrespective of their type).
                         assert!(!self.ecx.tcx.is_thread_local_static(did));
                         assert!(self.ecx.tcx.is_static(did));
-                        if self.ctfe_mode.is_some_and(|c| !c.allow_static_ptrs()) {
-                            // See const_eval::machine::MemoryExtra::can_access_statics for why
-                            // this check is so important.
-                            // This check is reachable when the const just referenced the static,
-                            // but never read it (so we never entered `before_access_global`).
-                            throw_validation_failure!(self.path, PtrToStatic { ptr_kind });
-                        }
+                        let is_mut =
+                            matches!(self.ecx.tcx.def_kind(did), DefKind::Static(Mutability::Mut))
+                                || !self
+                                    .ecx
+                                    .tcx
+                                    .type_of(did)
+                                    .no_bound_vars()
+                                    .expect("statics should not have generic parameters")
+                                    .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all());
                         // Mutability check.
                         if ptr_expected_mutbl == Mutability::Mut {
-                            if matches!(
-                                self.ecx.tcx.def_kind(did),
-                                DefKind::Static(Mutability::Not)
-                            ) && self
-                                .ecx
-                                .tcx
-                                .type_of(did)
-                                .no_bound_vars()
-                                .expect("statics should not have generic parameters")
-                                .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all())
-                            {
+                            if !is_mut {
                                 throw_validation_failure!(self.path, MutableRefToImmutable);
                             }
                         }
-                        // We skip recursively checking other statics. These statics must be sound by
-                        // themselves, and the only way to get broken statics here is by using
-                        // unsafe code.
-                        // The reasons we don't check other statics is twofold. For one, in all
-                        // sound cases, the static was already validated on its own, and second, we
-                        // trigger cycle errors if we try to compute the value of the other static
-                        // and that static refers back to us.
-                        // We might miss const-invalid data,
-                        // but things are still sound otherwise (in particular re: consts
-                        // referring to statics).
-                        return Ok(());
+                        match self.ctfe_mode {
+                            Some(CtfeValidationMode::Static { .. }) => {
+                                // We skip recursively checking other statics. These statics must be sound by
+                                // themselves, and the only way to get broken statics here is by using
+                                // unsafe code.
+                                // The reasons we don't check other statics is twofold. For one, in all
+                                // sound cases, the static was already validated on its own, and second, we
+                                // trigger cycle errors if we try to compute the value of the other static
+                                // and that static refers back to us.
+                                // This could miss some UB, but that's fine.
+                                return Ok(());
+                            }
+                            Some(CtfeValidationMode::Const {
+                                allow_extern_static_ptrs, ..
+                            }) => {
+                                // For consts on the other hand we have to recursively check;
+                                // pattern matching assumes a valid value. However we better make
+                                // sure this is not mutable.
+                                if is_mut {
+                                    throw_validation_failure!(self.path, ConstRefToMutable);
+                                }
+                                if self.ecx.tcx.is_foreign_item(did) {
+                                    if !allow_extern_static_ptrs {
+                                        throw_validation_failure!(self.path, ConstRefToExtern);
+                                    } else {
+                                        // We can't validate this...
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                            None => {}
+                        }
                     }
                     GlobalAlloc::Memory(alloc) => {
                         if alloc.inner().mutability == Mutability::Mut
                             && matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
                         {
-                            // This is impossible: this can only be some inner allocation of a
-                            // `static mut` (everything else either hits the `GlobalAlloc::Static`
-                            // case or is interned immutably). To get such a pointer we'd have to
-                            // load it from a static, but such loads lead to a CTFE error.
-                            span_bug!(
-                                self.ecx.tcx.span,
-                                "encountered reference to mutable memory inside a `const`"
-                            );
+                            throw_validation_failure!(self.path, ConstRefToMutable);
                         }
                         if ptr_expected_mutbl == Mutability::Mut
                             && alloc.inner().mutability == Mutability::Not
@@ -993,7 +992,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Complain about any other kind of error -- those are bad because we'd like to
             // report them in a way that shows *where* in the value the issue lies.
             Err(err) => {
-                bug!("Unexpected error during validation: {}", self.format_error(err));
+                bug!(
+                    "Unexpected error during validation: {}",
+                    format_interp_error(self.tcx.dcx(), err)
+                );
             }
         }
     }

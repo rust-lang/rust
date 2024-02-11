@@ -285,7 +285,10 @@ pub fn report_error<'tcx, 'mir>(
                 ) =>
             {
                 ecx.handle_ice(); // print interpreter backtrace
-                bug!("This validation error should be impossible in Miri: {}", ecx.format_error(e));
+                bug!(
+                    "This validation error should be impossible in Miri: {}",
+                    format_interp_error(ecx.tcx.dcx(), e)
+                );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
             ResourceExhaustion(_) => "resource exhaustion",
@@ -299,7 +302,10 @@ pub fn report_error<'tcx, 'mir>(
             ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace
-                bug!("This error should be impossible in Miri: {}", ecx.format_error(e));
+                bug!(
+                    "This error should be impossible in Miri: {}",
+                    format_interp_error(ecx.tcx.dcx(), e)
+                );
             }
         };
         #[rustfmt::skip]
@@ -365,7 +371,7 @@ pub fn report_error<'tcx, 'mir>(
         _ => {}
     }
 
-    msg.insert(0, ecx.format_error(e));
+    msg.insert(0, format_interp_error(ecx.tcx.dcx(), e));
 
     report_msg(
         DiagLevel::Error,

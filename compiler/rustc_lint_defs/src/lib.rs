@@ -1,5 +1,3 @@
-#![feature(min_specialization)]
-
 #[macro_use]
 extern crate rustc_macros;
 
