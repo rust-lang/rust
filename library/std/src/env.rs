@@ -451,7 +451,7 @@ pub struct SplitPaths<'a> {
 ///
 /// # Panics
 ///
-/// This will panic on systems where theere is no delimited `PATH` variable,
+/// This will panic on systems where there is no delimited `PATH` variable,
 /// such as UEFI.
 ///
 /// # Examples
