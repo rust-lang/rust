@@ -1,5 +1,5 @@
-- // MIR for `too_complex` before SeparateConstSwitch
-+ // MIR for `too_complex` after SeparateConstSwitch
+- // MIR for `too_complex` before JumpThreading
++ // MIR for `too_complex` after JumpThreading
   
   fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
       debug x => _1;
@@ -33,7 +33,8 @@
       bb1: {
           _5 = ((_1 as Err).0: usize);
           _2 = ControlFlow::<usize, i32>::Break(_5);
-          goto -> bb3;
+-         goto -> bb3;
++         goto -> bb8;
       }
   
       bb2: {
@@ -44,7 +45,8 @@
   
       bb3: {
           _6 = discriminant(_2);
-          switchInt(move _6) -> [0: bb5, 1: bb4, otherwise: bb7];
+-         switchInt(move _6) -> [0: bb5, 1: bb4, otherwise: bb7];
++         goto -> bb5;
       }
   
       bb4: {
@@ -68,6 +70,11 @@
   
       bb7: {
           unreachable;
++     }
++ 
++     bb8: {
++         _6 = discriminant(_2);
++         goto -> bb4;
       }
   }
   

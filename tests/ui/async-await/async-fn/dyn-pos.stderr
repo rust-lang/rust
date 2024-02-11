@@ -8,6 +8,9 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
    = note: the trait cannot be made into an object because it contains the generic associated type `CallFuture`
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFn` for this new enum and using it instead:
+             &F
+             std::boxed::Box<F, A>
 
 error[E0038]: the trait `AsyncFnMut` cannot be made into an object
   --> $DIR/dyn-pos.rs:5:16
@@ -19,6 +22,10 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
    = note: the trait cannot be made into an object because it contains the generic associated type `CallMutFuture`
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFnMut` for this new enum and using it instead:
+             &F
+             &mut F
+             std::boxed::Box<F, A>
 
 error[E0038]: the trait `AsyncFn` cannot be made into an object
   --> $DIR/dyn-pos.rs:5:16
@@ -30,6 +37,9 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
    = note: the trait cannot be made into an object because it contains the generic associated type `CallFuture`
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFn` for this new enum and using it instead:
+             &F
+             std::boxed::Box<F, A>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `AsyncFnMut` cannot be made into an object
@@ -42,6 +52,10 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
    = note: the trait cannot be made into an object because it contains the generic associated type `CallMutFuture`
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFnMut` for this new enum and using it instead:
+             &F
+             &mut F
+             std::boxed::Box<F, A>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `AsyncFn` cannot be made into an object
@@ -54,6 +68,9 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
    = note: the trait cannot be made into an object because it contains the generic associated type `CallFuture`
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFn` for this new enum and using it instead:
+             &F
+             std::boxed::Box<F, A>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `AsyncFnMut` cannot be made into an object
@@ -66,6 +83,10 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
   --> $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
    = note: the trait cannot be made into an object because it contains the generic associated type `CallMutFuture`
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFnMut` for this new enum and using it instead:
+             &F
+             &mut F
+             std::boxed::Box<F, A>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `AsyncFn` cannot be made into an object
@@ -81,6 +102,9 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
   ::: $SRC_DIR/core/src/ops/async_function.rs:LL:COL
    |
    = note: the trait cannot be made into an object because it contains the generic associated type `CallMutFuture`
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `AsyncFn` for this new enum and using it instead:
+             &F
+             std::boxed::Box<F, A>
 
 error: aborting due to 7 previous errors
 

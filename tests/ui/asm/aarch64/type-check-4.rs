@@ -23,10 +23,10 @@ const fn const_bar<T>(x: T) -> T {
     x
 }
 global_asm!("{}", const S);
-//~^ ERROR constants cannot refer to statics
+//~^ ERROR referencing statics
 global_asm!("{}", const const_foo(0));
 global_asm!("{}", const const_foo(S));
-//~^ ERROR constants cannot refer to statics
+//~^ ERROR referencing statics
 global_asm!("{}", const const_bar(0));
 global_asm!("{}", const const_bar(S));
-//~^ ERROR constants cannot refer to statics
+//~^ ERROR referencing statics

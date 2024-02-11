@@ -20,7 +20,7 @@ mod visitor;
 
 pub use rustc_middle::mir::interpret::*; // have all the `interpret` symbols in one place: here
 
-pub use self::eval_context::{Frame, FrameInfo, InterpCx, StackPopCleanup};
+pub use self::eval_context::{format_interp_error, Frame, FrameInfo, InterpCx, StackPopCleanup};
 pub use self::intern::{
     intern_const_alloc_for_constprop, intern_const_alloc_recursive, InternKind,
 };

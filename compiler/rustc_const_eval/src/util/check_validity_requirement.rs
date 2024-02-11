@@ -2,7 +2,7 @@ use rustc_middle::ty::layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout, Val
 use rustc_middle::ty::{ParamEnv, ParamEnvAnd, Ty, TyCtxt};
 use rustc_target::abi::{Abi, FieldsShape, Scalar, Variants};
 
-use crate::const_eval::{CanAccessStatics, CheckAlignment, CompileTimeInterpreter};
+use crate::const_eval::{CanAccessMutGlobal, CheckAlignment, CompileTimeInterpreter};
 use crate::interpret::{InterpCx, MemoryKind, OpTy};
 
 /// Determines if this type permits "raw" initialization by just transmuting some memory into an
@@ -44,7 +44,7 @@ fn might_permit_raw_init_strict<'tcx>(
     tcx: TyCtxt<'tcx>,
     kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
-    let machine = CompileTimeInterpreter::new(CanAccessStatics::No, CheckAlignment::Error);
+    let machine = CompileTimeInterpreter::new(CanAccessMutGlobal::No, CheckAlignment::Error);
 
     let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);
 

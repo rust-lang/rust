@@ -30,7 +30,9 @@ const_eval_closure_non_const =
     cannot call non-const closure in {const_eval_const_context}s
 const_eval_consider_dereferencing =
     consider dereferencing here
-const_eval_const_accesses_static = constant accesses static
+
+const_eval_const_accesses_mut_global =
+    constant accesses mutable global memory
 
 const_eval_const_context = {$kind ->
     [const] constant
@@ -319,12 +321,6 @@ const_eval_size_overflow =
 const_eval_stack_frame_limit_reached =
     reached the configured maximum number of stack frames
 
-const_eval_static_access =
-    {const_eval_const_context}s cannot refer to statics
-    .help = consider extracting the value of the `static` to a `const`, and referring to that
-    .teach_note = `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
-    .teach_help = To fix this, the value can be extracted to a `const` and then used.
-
 const_eval_thread_local_access =
     thread-local statics cannot be accessed at compile-time
 
@@ -415,6 +411,10 @@ const_eval_upcast_mismatch =
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
 const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
+
+const_eval_validation_const_ref_to_extern = {$front_matter}: encountered reference to `extern` static in `const`
+const_eval_validation_const_ref_to_mutable = {$front_matter}: encountered reference to mutable memory in `const`
+
 const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
 const_eval_validation_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
 const_eval_validation_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)

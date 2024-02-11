@@ -1,17 +1,20 @@
+use rustc_middle::mir;
+use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
+use rustc_span::DUMMY_SP;
+use rustc_target::abi::{Abi, VariantIdx};
+
 use super::eval_queries::{mk_eval_cx, op_to_const};
 use super::machine::CompileTimeEvalContext;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
-use crate::const_eval::CanAccessStatics;
+use crate::const_eval::CanAccessMutGlobal;
+use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MemPlaceMeta, MemoryKind, PlaceTy,
     Projectable, Scalar,
 };
-use rustc_middle::mir;
-use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
-use rustc_target::abi::{Abi, VariantIdx};
 
 #[instrument(skip(ecx), level = "debug")]
 fn branches<'tcx>(
@@ -70,7 +73,7 @@ fn slice_branches<'tcx>(
 }
 
 #[instrument(skip(ecx), level = "debug")]
-pub(crate) fn const_to_valtree_inner<'tcx>(
+fn const_to_valtree_inner<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
     num_nodes: &mut usize,
@@ -88,9 +91,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             Ok(ty::ValTree::zst())
         }
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
-            let Ok(val) = ecx.read_immediate(place) else {
-                return Err(ValTreeCreationError::Other);
-            };
+            let val = ecx.read_immediate(place)?;
             let val = val.to_scalar();
             *num_nodes += 1;
 
@@ -102,19 +103,17 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
             // equality at compile-time (see `ptr_guaranteed_cmp`).
             // However we allow those that are just integers in disguise.
             // First, get the pointer. Remember it might be wide!
-            let Ok(val) = ecx.read_immediate(place) else {
-                return Err(ValTreeCreationError::Other);
-            };
+            let val = ecx.read_immediate(place)?;
             // We could allow wide raw pointers where both sides are integers in the future,
             // but for now we reject them.
             if matches!(val.layout.abi, Abi::ScalarPair(..)) {
-                return Err(ValTreeCreationError::Other);
+                return Err(ValTreeCreationError::NonSupportedType);
             }
             let val = val.to_scalar();
             // We are in the CTFE machine, so ptr-to-int casts will fail.
             // This can only be `Ok` if `val` already is an integer.
             let Ok(val) = val.try_to_int() else {
-                return Err(ValTreeCreationError::Other);
+                return Err(ValTreeCreationError::NonSupportedType);
             };
             // It's just a ScalarInt!
             Ok(ty::ValTree::Leaf(val))
@@ -125,11 +124,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         ty::FnPtr(_) => Err(ValTreeCreationError::NonSupportedType),
 
         ty::Ref(_, _, _)  => {
-            let Ok(derefd_place)= ecx.deref_pointer(place) else {
-                return Err(ValTreeCreationError::Other);
-            };
-            debug!(?derefd_place);
-
+            let derefd_place = ecx.deref_pointer(place)?;
             const_to_valtree_inner(ecx, &derefd_place, num_nodes)
         }
 
@@ -153,9 +148,7 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let Ok(variant) = ecx.read_discriminant(place) else {
-                return Err(ValTreeCreationError::Other);
-            };
+            let variant = ecx.read_discriminant(place)?;
             branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant), num_nodes)
         }
 
@@ -221,6 +214,47 @@ fn create_valtree_place<'tcx>(
     ecx.allocate_dyn(layout, MemoryKind::Stack, meta).unwrap()
 }
 
+/// Evaluates a constant and turns it into a type-level constant value.
+pub(crate) fn eval_to_valtree<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cid: GlobalId<'tcx>,
+) -> EvalToValTreeResult<'tcx> {
+    let const_alloc = tcx.eval_to_allocation_raw(param_env.and(cid))?;
+
+    // FIXME Need to provide a span to `eval_to_valtree`
+    let ecx = mk_eval_cx(
+        tcx,
+        DUMMY_SP,
+        param_env,
+        // It is absolutely crucial for soundness that
+        // we do not read from mutable memory.
+        CanAccessMutGlobal::No,
+    );
+    let place = ecx.raw_const_to_mplace(const_alloc).unwrap();
+    debug!(?place);
+
+    let mut num_nodes = 0;
+    let valtree_result = const_to_valtree_inner(&ecx, &place, &mut num_nodes);
+
+    match valtree_result {
+        Ok(valtree) => Ok(Some(valtree)),
+        Err(err) => {
+            let did = cid.instance.def_id();
+            let global_const_id = cid.display(tcx);
+            let span = tcx.hir().span_if_local(did);
+            match err {
+                ValTreeCreationError::NodesOverflow => {
+                    let handled =
+                        tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
+                    Err(handled.into())
+                }
+                ValTreeCreationError::NonSupportedType => Ok(None),
+            }
+        }
+    }
+}
+
 /// Converts a `ValTree` to a `ConstValue`, which is needed after mir
 /// construction has finished.
 // FIXME Merge `valtree_to_const_value` and `valtree_into_mplace` into one function
@@ -253,7 +287,7 @@ pub fn valtree_to_const_value<'tcx>(
             }
         }
         ty::Ref(_, inner_ty, _) => {
-            let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
+            let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
             let imm = valtree_to_ref(&mut ecx, valtree, *inner_ty);
             let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
@@ -280,7 +314,7 @@ pub fn valtree_to_const_value<'tcx>(
                 bug!("could not find non-ZST field during in {layout:#?}");
             }
 
-            let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
+            let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
 
             // Need to create a place for this valtree.
             let place = create_valtree_place(&mut ecx, layout, valtree);

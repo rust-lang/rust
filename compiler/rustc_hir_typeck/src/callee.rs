@@ -53,7 +53,7 @@ pub fn check_legal_trait_for_method_call(
         };
         return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
     }
-    tcx.coherent_trait(trait_id)
+    tcx.ensure().coherent_trait(trait_id)
 }
 
 #[derive(Debug)]
@@ -261,23 +261,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adjusted_ty: Ty<'tcx>,
         opt_arg_exprs: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> Option<(Option<Adjustment<'tcx>>, MethodCallee<'tcx>)> {
+        // HACK(async_closures): For async closures, prefer `AsyncFn*`
+        // over `Fn*`, since all async closures implement `FnOnce`, but
+        // choosing that over `AsyncFn`/`AsyncFnMut` would be more restrictive.
+        // For other callables, just prefer `Fn*` for perf reasons.
+        //
+        // The order of trait choices here is not that big of a deal,
+        // since it just guides inference (and our choice of autoref).
+        // Though in the future, I'd like typeck to choose:
+        // `Fn > AsyncFn > FnMut > AsyncFnMut > FnOnce > AsyncFnOnce`
+        // ...or *ideally*, we just have `LendingFn`/`LendingFnMut`, which
+        // would naturally unify these two trait hierarchies in the most
+        // general way.
+        let call_trait_choices = if self.shallow_resolve(adjusted_ty).is_coroutine_closure() {
+            [
+                (self.tcx.lang_items().async_fn_trait(), sym::async_call, true),
+                (self.tcx.lang_items().async_fn_mut_trait(), sym::async_call_mut, true),
+                (self.tcx.lang_items().async_fn_once_trait(), sym::async_call_once, false),
+                (self.tcx.lang_items().fn_trait(), sym::call, true),
+                (self.tcx.lang_items().fn_mut_trait(), sym::call_mut, true),
+                (self.tcx.lang_items().fn_once_trait(), sym::call_once, false),
+            ]
+        } else {
+            [
+                (self.tcx.lang_items().fn_trait(), sym::call, true),
+                (self.tcx.lang_items().fn_mut_trait(), sym::call_mut, true),
+                (self.tcx.lang_items().fn_once_trait(), sym::call_once, false),
+                (self.tcx.lang_items().async_fn_trait(), sym::async_call, true),
+                (self.tcx.lang_items().async_fn_mut_trait(), sym::async_call_mut, true),
+                (self.tcx.lang_items().async_fn_once_trait(), sym::async_call_once, false),
+            ]
+        };
+
         // Try the options that are least restrictive on the caller first.
-        for (opt_trait_def_id, method_name, borrow) in [
-            (self.tcx.lang_items().fn_trait(), Ident::with_dummy_span(sym::call), true),
-            (self.tcx.lang_items().fn_mut_trait(), Ident::with_dummy_span(sym::call_mut), true),
-            (self.tcx.lang_items().fn_once_trait(), Ident::with_dummy_span(sym::call_once), false),
-            (self.tcx.lang_items().async_fn_trait(), Ident::with_dummy_span(sym::async_call), true),
-            (
-                self.tcx.lang_items().async_fn_mut_trait(),
-                Ident::with_dummy_span(sym::async_call_mut),
-                true,
-            ),
-            (
-                self.tcx.lang_items().async_fn_once_trait(),
-                Ident::with_dummy_span(sym::async_call_once),
-                false,
-            ),
-        ] {
+        for (opt_trait_def_id, method_name, borrow) in call_trait_choices {
             let Some(trait_def_id) = opt_trait_def_id else { continue };
 
             let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
@@ -294,7 +311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if let Some(ok) = self.lookup_method_in_trait(
                 self.misc(call_expr.span),
-                method_name,
+                Ident::with_dummy_span(method_name),
                 trait_def_id,
                 adjusted_ty,
                 opt_input_type.as_ref().map(slice::from_ref),

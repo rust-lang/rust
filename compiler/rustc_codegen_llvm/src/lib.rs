@@ -13,7 +13,6 @@
 #![feature(hash_raw_entry)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(impl_trait_in_assoc_type)]
 
 #[macro_use]

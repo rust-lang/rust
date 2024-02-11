@@ -1,5 +1,5 @@
 // edition: 2021
-// check-pass
+// build-pass
 
 #![feature(async_fn_traits)]
 
