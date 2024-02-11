@@ -25,7 +25,7 @@
 
 use crate::errors;
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -218,8 +218,8 @@ pub enum ComparisonKind {
 }
 
 struct TrackerData {
-    actual_reuse: FxHashMap<String, CguReuse>,
-    expected_reuse: FxHashMap<String, (String, Span, CguReuse, ComparisonKind)>,
+    actual_reuse: UnordMap<String, CguReuse>,
+    expected_reuse: UnordMap<String, (String, Span, CguReuse, ComparisonKind)>,
 }
 
 pub struct CguReuseTracker {
@@ -267,9 +267,7 @@ impl CguReuseTracker {
 
     fn check_expected_reuse(&self, sess: &Session) {
         if let Some(ref data) = self.data {
-            #[allow(rustc::potential_query_instability)]
-            let mut keys = data.expected_reuse.keys().collect::<Vec<_>>();
-            keys.sort_unstable();
+            let keys = data.expected_reuse.keys().into_sorted_stable_ord();
             for cgu_name in keys {
                 let &(ref cgu_user_name, ref error_span, expected_reuse, comparison_kind) =
                     data.expected_reuse.get(cgu_name).unwrap();

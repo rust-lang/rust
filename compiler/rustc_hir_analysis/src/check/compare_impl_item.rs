@@ -1,7 +1,7 @@
 use super::potentially_plural_count;
 use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -392,7 +392,7 @@ fn compare_method_predicate_entailment<'tcx>(
 
 struct RemapLateBound<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    mapping: &'a FxHashMap<ty::BoundRegionKind, ty::BoundRegionKind>,
+    mapping: &'a FxIndexMap<ty::BoundRegionKind, ty::BoundRegionKind>,
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
@@ -553,7 +553,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // prove below that the hidden types are well formed.
     let universe = infcx.create_next_universe();
     let mut idx = 0;
-    let mapping: FxHashMap<_, _> = collector
+    let mapping: FxIndexMap<_, _> = collector
         .types
         .iter()
         .map(|(_, &(ty, _))| {
@@ -690,7 +690,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // contains `def_id`'s early-bound regions.
                 let id_args = GenericArgs::identity_for_item(tcx, def_id);
                 debug!(?id_args, ?args);
-                let map: FxHashMap<_, _> = std::iter::zip(args, id_args)
+                let map: FxIndexMap<_, _> = std::iter::zip(args, id_args)
                     .skip(tcx.generics_of(trait_m.def_id).count())
                     .filter_map(|(a, b)| Some((a.as_region()?, b.as_region()?)))
                     .collect();
@@ -766,7 +766,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
 struct ImplTraitInTraitCollector<'a, 'tcx> {
     ocx: &'a ObligationCtxt<'a, 'tcx>,
-    types: FxHashMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
+    types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
     body_id: LocalDefId,
@@ -779,7 +779,7 @@ impl<'a, 'tcx> ImplTraitInTraitCollector<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
     ) -> Self {
-        ImplTraitInTraitCollector { ocx, types: FxHashMap::default(), span, param_env, body_id }
+        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, body_id }
     }
 }
 
@@ -838,7 +838,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'_, 'tcx> {
 
 struct RemapHiddenTyRegions<'tcx> {
     tcx: TyCtxt<'tcx>,
-    map: FxHashMap<ty::Region<'tcx>, ty::Region<'tcx>>,
+    map: FxIndexMap<ty::Region<'tcx>, ty::Region<'tcx>>,
     num_trait_args: usize,
     num_impl_args: usize,
     def_id: DefId,

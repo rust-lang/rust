@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -241,7 +241,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         binding: &ConvertedBinding<'_, 'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
-        dup_bindings: &mut FxHashMap<DefId, Span>,
+        dup_bindings: &mut FxIndexMap<DefId, Span>,
         path_span: Span,
         only_self_bounds: OnlySelfBounds,
     ) -> Result<(), ErrorGuaranteed> {

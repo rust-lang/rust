@@ -403,7 +403,6 @@ fn codegenned_and_inlined_items(tcx: TyCtxt<'_>) -> DefIdSet {
     let mut result = items.clone();
 
     for cgu in cgus {
-        #[allow(rustc::potential_query_instability)]
         for item in cgu.items().keys() {
             if let mir::mono::MonoItem::Fn(ref instance) = item {
                 let did = instance.def_id();

@@ -1,7 +1,6 @@
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
@@ -534,9 +533,9 @@ fn link_staticlib<'a>(
 
             let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
             let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
-            let relevant_libs: FxHashSet<_> = relevant.filter_map(|lib| lib.filename).collect();
+            let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
-            let bundled_libs: FxHashSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
+            let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
             ab.add_archive(
                 path,
                 Box::new(move |fname: &str| {
@@ -564,11 +563,7 @@ fn link_staticlib<'a>(
                 .extract_bundled_libs(path, tempdir.as_ref(), &relevant_libs)
                 .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
 
-            // We sort the libraries below
-            #[allow(rustc::potential_query_instability)]
-            let mut relevant_libs: Vec<Symbol> = relevant_libs.into_iter().collect();
-            relevant_libs.sort_unstable();
-            for filename in relevant_libs {
+            for filename in relevant_libs.iter() {
                 let joined = tempdir.as_ref().join(filename.as_str());
                 let path = joined.as_path();
                 ab.add_archive(path, Box::new(|_| false)).unwrap();
@@ -682,13 +677,14 @@ fn link_dwarf_object<'a>(
         }
 
         // Input rlibs contain .o/.dwo files from dependencies.
-        #[allow(rustc::potential_query_instability)]
         let input_rlibs = cg_results
             .crate_info
             .used_crate_source
-            .values()
-            .filter_map(|csource| csource.rlib.as_ref())
-            .map(|(path, _)| path);
+            .items()
+            .filter_map(|(_, csource)| csource.rlib.as_ref())
+            .map(|(path, _)| path)
+            .into_sorted_stable_ord();
+
         for input_rlib in input_rlibs {
             debug!(?input_rlib);
             package.add_input_object(input_rlib)?;
@@ -2456,7 +2452,7 @@ fn add_native_libs_from_crate(
     codegen_results: &CodegenResults,
     tmpdir: &Path,
     search_paths: &SearchPaths,
-    bundled_libs: &FxHashSet<Symbol>,
+    bundled_libs: &FxIndexSet<Symbol>,
     cnum: CrateNum,
     link_static: bool,
     link_dynamic: bool,
@@ -2777,7 +2773,7 @@ fn add_static_crate<'a>(
     codegen_results: &CodegenResults,
     tmpdir: &Path,
     cnum: CrateNum,
-    bundled_lib_file_names: &FxHashSet<Symbol>,
+    bundled_lib_file_names: &FxIndexSet<Symbol>,
 ) {
     let src = &codegen_results.crate_info.used_crate_source[&cnum];
     let cratepath = &src.rlib.as_ref().unwrap().0;
