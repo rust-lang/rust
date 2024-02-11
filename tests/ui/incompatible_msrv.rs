@@ -20,4 +20,9 @@ fn foo() {
     //~^ ERROR: is `1.3.0` but this item is stable since `1.4.0`
 }
 
+#[test]
+fn test() {
+    sleep(Duration::new(1, 0));
+}
+
 fn main() {}
