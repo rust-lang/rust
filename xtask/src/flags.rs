@@ -129,7 +129,7 @@ impl FromStr for MeasurementType {
             "webrender-2022" => Ok(Self::AnalyzeWebRender),
             "diesel-1.4.8" => Ok(Self::AnalyzeDiesel),
             "hyper-0.14.18" => Ok(Self::AnalyzeHyper),
-            _ => Err("Invalid option".to_string()),
+            _ => Err("Invalid option".to_owned()),
         }
     }
 }

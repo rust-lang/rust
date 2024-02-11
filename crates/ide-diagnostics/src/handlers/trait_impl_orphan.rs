@@ -13,7 +13,7 @@ pub(crate) fn trait_impl_orphan(
         ctx,
         DiagnosticCode::RustcHardError("E0117"),
         "only traits defined in the current crate can be implemented for arbitrary types"
-            .to_string(),
+            .to_owned(),
         InFile::new(d.file_id, d.impl_.into()),
     )
     // Not yet checked for false positives

@@ -35,10 +35,11 @@
 //! as we don't have bincode in Cargo.toml yet, lets stick with serde_json for
 //! the time being.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use indexmap::IndexSet;
 use la_arena::RawIdx;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
 use text_size::TextRange;
@@ -129,7 +130,7 @@ impl FlatTree {
         span_data_table: &mut SpanDataIndexMap,
     ) -> FlatTree {
         let mut w = Writer {
-            string_table: HashMap::new(),
+            string_table: FxHashMap::default(),
             work: VecDeque::new(),
             span_data_table,
 
@@ -158,7 +159,7 @@ impl FlatTree {
 
     pub fn new_raw(subtree: &tt::Subtree<TokenId>, version: u32) -> FlatTree {
         let mut w = Writer {
-            string_table: HashMap::new(),
+            string_table: FxHashMap::default(),
             work: VecDeque::new(),
             span_data_table: &mut (),
 
@@ -340,7 +341,7 @@ impl InternableSpan for Span {
 
 struct Writer<'a, 'span, S: InternableSpan> {
     work: VecDeque<(usize, &'a tt::Subtree<S>)>,
-    string_table: HashMap<&'a str, u32>,
+    string_table: FxHashMap<&'a str, u32>,
     span_data_table: &'span mut S::Table,
 
     subtree: Vec<SubtreeRepr>,
@@ -370,7 +371,7 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
 
-        for child in &subtree.token_trees {
+        for child in subtree.token_trees.iter() {
             let idx_tag = match child {
                 tt::TokenTree::Subtree(it) => {
                     let idx = self.enqueue(it);
@@ -418,7 +419,7 @@ impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
         let table = &mut self.text;
         *self.string_table.entry(text).or_insert_with(|| {
             let idx = table.len();
-            table.push(text.to_string());
+            table.push(text.to_owned());
             idx as u32
         })
     }

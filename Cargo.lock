@@ -72,8 +72,8 @@ dependencies = [
  "cfg",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "profile",
- "rust-analyzer-salsa",
  "rustc-hash",
+ "salsa",
  "semver",
  "span",
  "stdx",
@@ -167,7 +167,7 @@ checksum = "5676cea088c32290fe65c82895be9d06dd21e0fa49bb97ca840529e9417ab71a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
  "synstructure",
 ]
 
@@ -314,17 +314,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derivative"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "derive_arbitrary"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -332,7 +321,7 @@ checksum = "67e77553c4162a157adbf834ebae5b415acbecbeafc7a74b0e886657506a7611"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
 ]
 
 [[package]]
@@ -364,6 +353,15 @@ name = "ena"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c533630cf40e9caa44bd91aadc88a75d75a4c3a12b4cfde353cbed41daa1e1f1"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
 dependencies = [
  "log",
 ]
@@ -451,6 +449,17 @@ name = "fst"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ab85b9b05e3978cc9a9cf8fea7f01b494e1a09ed3037e16ba39edc7a29eb61a"
+
+[[package]]
+name = "getrandom"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "190092ea657667030ac6a35e305e62fc4dd69fd98ac98631e5d3a2b1575a12b5"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "wasi",
+]
 
 [[package]]
 name = "gimli"
@@ -930,6 +939,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "linked-hash-map"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
+
+[[package]]
 name = "load-cargo"
 version = "0.0.0"
 dependencies = [
@@ -1273,6 +1288,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e0a7ae3ac2f1173085d398531c705756c94a4c56843785df85a60c1a0afac116"
 
 [[package]]
+name = "ppv-lite86"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b40af805b3121feab8a3c29f04d8ad262fa8e0561883e7653e024ae4479e6de"
+
+[[package]]
 name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
@@ -1283,6 +1304,7 @@ dependencies = [
  "object 0.32.0",
  "paths",
  "profile",
+ "rustc-hash",
  "serde",
  "serde_json",
  "snap",
@@ -1437,17 +1459,6 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.33.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e5313d7f243b63ef9e58d94355b11aa8499f1328055f1f58adf0a5ea7d2faca"
-dependencies = [
- "arrayvec",
- "ra-ap-rustc_index_macros 0.33.0",
- "smallvec",
-]
-
-[[package]]
-name = "ra-ap-rustc_index"
 version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "322b751895cc4a0a2ee0c6ab36ec80bc8abf5f8d76254c482f96f03c27c92ebe"
@@ -1458,15 +1469,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra-ap-rustc_index_macros"
-version = "0.33.0"
+name = "ra-ap-rustc_index"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a83108ebf3e73dde205b9c25706209bcd7736480820f90ded28eabaf8b469f25"
+checksum = "f8a41dee58608b1fc93779ea365edaa70ac9927e3335ae914b675be0fa063cd7"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.39",
- "synstructure",
+ "arrayvec",
+ "ra-ap-rustc_index_macros 0.36.0",
+ "smallvec",
 ]
 
 [[package]]
@@ -1477,7 +1487,19 @@ checksum = "054e25eac52f0506c1309ca4317c11ad4925d7b99eb897f71aa7c3cbafb46c2b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
+ "synstructure",
+]
+
+[[package]]
+name = "ra-ap-rustc_index_macros"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbfe98def54c4337a2f7d8233850bd5d5349972b185fe8a0db2b979164b30ed8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
  "synstructure",
 ]
 
@@ -1503,16 +1525,45 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.33.0"
+version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c4085e0c771fd4b883930b599ef42966b855762bbe4052c17673b3253421a6d"
+checksum = "b5529bffec7530b4a3425640bfdfd9b95d87c4c620f740266c0de6572561aab4"
 dependencies = [
- "derivative",
- "ra-ap-rustc_index 0.33.0",
+ "ra-ap-rustc_index 0.36.0",
  "rustc-hash",
  "rustc_apfloat",
  "smallvec",
  "tracing",
+]
+
+[[package]]
+name = "rand"
+version = "0.8.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
+dependencies = [
+ "libc",
+ "rand_chacha",
+ "rand_core",
+]
+
+[[package]]
+name = "rand_chacha"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6c10a63a0fa32252be49d21e7709d4d4baf8d231c2dbce1eaa8141b9b127d88"
+dependencies = [
+ "ppv-lite86",
+ "rand_core",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
+dependencies = [
+ "getrandom",
 ]
 
 [[package]]
@@ -1623,35 +1674,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-analyzer-salsa"
-version = "0.17.0-pre.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "719825638c59fd26a55412a24561c7c5bcf54364c88b9a7a04ba08a6eafaba8d"
-dependencies = [
- "indexmap",
- "lock_api",
- "oorandom",
- "parking_lot",
- "rust-analyzer-salsa-macros",
- "rustc-hash",
- "smallvec",
- "tracing",
- "triomphe",
-]
-
-[[package]]
-name = "rust-analyzer-salsa-macros"
-version = "0.17.0-pre.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d96498e9684848c6676c399032ebc37c52da95ecbefa83d71ccc53b9f8a4a8e"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 2.0.39",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1678,6 +1700,36 @@ name = "ryu"
 version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
+
+[[package]]
+name = "salsa"
+version = "0.0.0"
+dependencies = [
+ "dissimilar",
+ "expect-test",
+ "indexmap",
+ "linked-hash-map",
+ "lock_api",
+ "oorandom",
+ "parking_lot",
+ "rand",
+ "rustc-hash",
+ "salsa-macros",
+ "smallvec",
+ "test-log",
+ "tracing",
+ "triomphe",
+]
+
+[[package]]
+name = "salsa-macros"
+version = "0.0.0"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "same-file"
@@ -1735,7 +1787,7 @@ checksum = "43576ca501357b9b071ac53cdc7da8ef0cbd9493d8df094cd821777ea6e894d3"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
 ]
 
 [[package]]
@@ -1758,7 +1810,7 @@ checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
 ]
 
 [[package]]
@@ -1803,7 +1855,7 @@ name = "span"
 version = "0.0.0"
 dependencies = [
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rust-analyzer-salsa",
+ "salsa",
  "stdx",
  "syntax",
  "vfs",
@@ -1837,17 +1889,6 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.109"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
-]
-
-[[package]]
-name = "syn"
 version = "2.0.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23e78b90f2fcf45d3e842032ce32e3f2d1545ba6636271dcbf24fa306d87be7a"
@@ -1865,7 +1906,7 @@ checksum = "285ba80e733fac80aa4270fbcdf83772a79b80aa35c97075320abfee4a915b06"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
  "unicode-xid",
 ]
 
@@ -1912,6 +1953,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-log"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6159ab4116165c99fc88cce31f99fa2c9dbe08d3691cb38da02fc3b45f357d2b"
+dependencies = [
+ "env_logger",
+ "test-log-macros",
+]
+
+[[package]]
+name = "test-log-macros"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ba277e77219e9eea169e8508942db1bf5d8a41ff2db9b20aab5a5aadc9fa25d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "test-utils"
 version = "0.0.0"
 dependencies = [
@@ -1954,7 +2016,7 @@ checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
 ]
 
 [[package]]
@@ -2055,7 +2117,7 @@ checksum = "34704c8d6ebcbc939824180af020566b01a7c01f80641264eba0999f6c2b6be7"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.39",
+ "syn",
 ]
 
 [[package]]

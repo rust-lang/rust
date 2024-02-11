@@ -260,7 +260,7 @@ impl ChangeFixture {
             file_id = FileId::from_raw(file_id.index() + 1);
 
             let mut fs = FileSet::default();
-            fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
+            fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_owned()));
             roots.push(SourceRoot::new_library(fs));
 
             source_change.change_file(core_file, Some(mini_core.source_code().into()));
@@ -270,7 +270,7 @@ impl ChangeFixture {
             let core_crate = crate_graph.add_crate_root(
                 core_file,
                 Edition::Edition2021,
-                Some(CrateDisplayName::from_canonical_name("core".to_string())),
+                Some(CrateDisplayName::from_canonical_name("core".to_owned())),
                 None,
                 Default::default(),
                 Default::default(),
@@ -304,7 +304,7 @@ impl ChangeFixture {
             let mut fs = FileSet::default();
             fs.insert(
                 proc_lib_file,
-                VfsPath::new_virtual_path("/sysroot/proc_macros/lib.rs".to_string()),
+                VfsPath::new_virtual_path("/sysroot/proc_macros/lib.rs".to_owned()),
             );
             roots.push(SourceRoot::new_library(fs));
 
@@ -315,7 +315,7 @@ impl ChangeFixture {
             let proc_macros_crate = crate_graph.add_crate_root(
                 proc_lib_file,
                 Edition::Edition2021,
-                Some(CrateDisplayName::from_canonical_name("proc_macros".to_string())),
+                Some(CrateDisplayName::from_canonical_name("proc_macros".to_owned())),
                 None,
                 Default::default(),
                 Default::default(),
@@ -598,7 +598,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
                 };
                 token_trees.push(tt);
             }
-            Subtree { delimiter: input.delimiter, token_trees }
+            Subtree { delimiter: input.delimiter, token_trees: token_trees.into_boxed_slice() }
         }
         Ok(traverse(input))
     }

@@ -70,6 +70,7 @@ proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
 proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
 profile = { path = "./crates/profile", version = "0.0.0" }
 project-model = { path = "./crates/project-model", version = "0.0.0" }
+salsa = { path = "./crates/salsa", version = "0.0.0" }
 span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
@@ -83,7 +84,7 @@ ra-ap-rustc_lexer = { version = "0.35.0", default-features = false }
 ra-ap-rustc_parse_format = { version = "0.35.0", default-features = false }
 ra-ap-rustc_index = { version = "0.35.0", default-features = false }
 ra-ap-rustc_abi = { version = "0.35.0", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.33.0", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.36.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 sourcegen = { path = "./crates/sourcegen" }
@@ -106,22 +107,21 @@ dissimilar = "1.0.7"
 either = "1.9.0"
 expect-test = "1.4.0"
 hashbrown = { version = "0.14", features = [
-    "inline-more",
+  "inline-more",
 ], default-features = false }
 indexmap = "2.1.0"
 itertools = "0.12.0"
 libc = "0.2.150"
 nohash-hasher = "0.2.0"
 rayon = "1.8.0"
-rust-analyzer-salsa = "0.17.0-pre.6"
 rustc-hash = "1.1.0"
 semver = "1.0.14"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 smallvec = { version = "1.10.0", features = [
-    "const_new",
-    "union",
-    "const_generics",
+  "const_new",
+  "union",
+  "const_generics",
 ] }
 smol_str = "0.2.1"
 text-size = "1.1.1"
@@ -164,23 +164,20 @@ len_without_is_empty = "allow"
 enum_variant_names = "allow"
 # Builder pattern disagrees
 new_ret_no_self = "allow"
+# Has a bunch of false positives
+useless_asref = "allow"
 
 ## Following lints should be tackled at some point
-borrowed_box = "allow"
-derived_hash_with_manual_eq = "allow"
-forget_non_drop = "allow"
-needless_doctest_main = "allow"
-non_canonical_clone_impl = "allow"
-non_canonical_partial_ord_impl = "allow"
-self_named_constructors = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"
 wrong_self_convention = "allow"
 
 ## warn at following lints
+# CI raises these to deny
 dbg_macro = "warn"
 todo = "warn"
-unimplemented = "allow"
+print_stdout = "warn"
+print_stderr = "warn"
+
 rc_buffer = "warn"
-# FIXME enable this, we use this pattern a lot so its annoying work ...
-# str_to_string = "warn"
+str_to_string = "warn"

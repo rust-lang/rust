@@ -68,25 +68,8 @@ impl fmt::Display for Span {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContextId(InternId);
-
-impl fmt::Debug for SyntaxContextId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if *self == Self::SELF_REF {
-            f.debug_tuple("SyntaxContextId")
-                .field(&{
-                    #[derive(Debug)]
-                    #[allow(non_camel_case_types)]
-                    struct SELF_REF;
-                    SELF_REF
-                })
-                .finish()
-        } else {
-            f.debug_tuple("SyntaxContextId").field(&self.0).finish()
-        }
-    }
-}
 
 impl salsa::InternKey for SyntaxContextId {
     fn from_intern_id(v: salsa::InternId) -> Self {
@@ -106,10 +89,6 @@ impl fmt::Display for SyntaxContextId {
 // inherent trait impls please tyvm
 impl SyntaxContextId {
     pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
-    // veykril(HACK): FIXME salsa doesn't allow us fetching the id of the current input to be allocated so
-    // we need a special value that behaves as the current context.
-    pub const SELF_REF: Self =
-        SyntaxContextId(unsafe { InternId::new_unchecked(InternId::MAX - 1) });
 
     pub fn is_root(self) -> bool {
         self == Self::ROOT

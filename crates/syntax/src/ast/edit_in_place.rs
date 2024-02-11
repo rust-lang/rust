@@ -627,6 +627,8 @@ impl ast::Impl {
 }
 
 impl ast::AssocItemList {
+    /// Adds a new associated item after all of the existing associated items.
+    ///
     /// Attention! This function does align the first line of `item` with respect to `self`,
     /// but it does _not_ change indentation of other lines (if any).
     pub fn add_item(&self, item: ast::AssocItem) {
@@ -649,6 +651,46 @@ impl ast::AssocItemList {
             item.syntax().clone().into(),
         ];
         ted::insert_all(position, elements);
+    }
+
+    /// Adds a new associated item at the start of the associated item list.
+    ///
+    /// Attention! This function does align the first line of `item` with respect to `self`,
+    /// but it does _not_ change indentation of other lines (if any).
+    pub fn add_item_at_start(&self, item: ast::AssocItem) {
+        match self.assoc_items().next() {
+            Some(first_item) => {
+                let indent = IndentLevel::from_node(first_item.syntax());
+                let before = Position::before(first_item.syntax());
+
+                ted::insert_all(
+                    before,
+                    vec![
+                        item.syntax().clone().into(),
+                        make::tokens::whitespace(&format!("\n\n{indent}")).into(),
+                    ],
+                )
+            }
+            None => {
+                let (indent, position, whitespace) = match self.l_curly_token() {
+                    Some(l_curly) => {
+                        normalize_ws_between_braces(self.syntax());
+                        (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
+                    }
+                    None => (IndentLevel::single(), Position::first_child_of(self.syntax()), ""),
+                };
+
+                let mut elements = vec![];
+
+                // Avoid pushing an empty whitespace token
+                if !indent.is_zero() || !whitespace.is_empty() {
+                    elements.push(make::tokens::whitespace(&format!("{whitespace}{indent}")).into())
+                }
+                elements.push(item.syntax().clone().into());
+
+                ted::insert_all(position, elements)
+            }
+        };
     }
 }
 

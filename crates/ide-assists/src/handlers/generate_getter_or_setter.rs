@@ -1,12 +1,12 @@
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChangeBuilder};
 use stdx::{format_to, to_lower_snake_case};
 use syntax::{
-    ast::{self, AstNode, HasName, HasVisibility},
-    TextRange,
+    ast::{self, edit_in_place::Indent, make, AstNode, HasName, HasVisibility},
+    ted, TextRange,
 };
 
 use crate::{
-    utils::{convert_reference_type, find_impl_block_end, find_struct_impl, generate_impl_text},
+    utils::{convert_reference_type, find_struct_impl, generate_impl},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
 };
 
@@ -75,10 +75,17 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 // Generate a getter method.
 //
 // ```
-// # //- minicore: as_ref
+// # //- minicore: as_ref, deref
 // # pub struct String;
 // # impl AsRef<str> for String {
 // #     fn as_ref(&self) -> &str {
+// #         ""
+// #     }
+// # }
+// #
+// # impl core::ops::Deref for String {
+// #     type Target = str;
+// #     fn deref(&self) -> &Self::Target {
 // #         ""
 // #     }
 // # }
@@ -96,13 +103,20 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 // #     }
 // # }
 // #
+// # impl core::ops::Deref for String {
+// #     type Target = str;
+// #     fn deref(&self) -> &Self::Target {
+// #         ""
+// #     }
+// # }
+// #
 // struct Person {
 //     name: String,
 // }
 //
 // impl Person {
 //     fn $0name(&self) -> &str {
-//         self.name.as_ref()
+//         &self.name
 //     }
 // }
 // ```
@@ -200,14 +214,14 @@ fn generate_getter_from_info(
     ctx: &AssistContext<'_>,
     info: &AssistInfo,
     record_field_info: &RecordFieldInfo,
-) -> String {
-    let mut buf = String::with_capacity(512);
-
-    let vis = info.strukt.visibility().map_or(String::new(), |v| format!("{v} "));
+) -> ast::Fn {
     let (ty, body) = if matches!(info.assist_type, AssistType::MutGet) {
         (
-            format!("&mut {}", record_field_info.field_ty),
-            format!("&mut self.{}", record_field_info.field_name),
+            make::ty_ref(record_field_info.field_ty.clone(), true),
+            make::expr_ref(
+                make::expr_field(make::ext::expr_self(), &record_field_info.field_name.text()),
+                true,
+            ),
         )
     } else {
         (|| {
@@ -226,41 +240,52 @@ fn generate_getter_from_info(
         })()
         .unwrap_or_else(|| {
             (
-                format!("&{}", record_field_info.field_ty),
-                format!("&self.{}", record_field_info.field_name),
+                make::ty_ref(record_field_info.field_ty.clone(), false),
+                make::expr_ref(
+                    make::expr_field(make::ext::expr_self(), &record_field_info.field_name.text()),
+                    false,
+                ),
             )
         })
     };
 
-    format_to!(
-        buf,
-        "    {}fn {}(&{}self) -> {} {{
-        {}
-    }}",
-        vis,
-        record_field_info.fn_name,
-        matches!(info.assist_type, AssistType::MutGet).then_some("mut ").unwrap_or_default(),
-        ty,
-        body,
-    );
+    let self_param = if matches!(info.assist_type, AssistType::MutGet) {
+        make::mut_self_param()
+    } else {
+        make::self_param()
+    };
 
-    buf
+    let strukt = &info.strukt;
+    let fn_name = make::name(&record_field_info.fn_name);
+    let params = make::param_list(Some(self_param), []);
+    let ret_type = Some(make::ret_type(ty));
+    let body = make::block_expr([], Some(body));
+
+    make::fn_(strukt.visibility(), fn_name, None, None, params, body, ret_type, false, false, false)
 }
 
-fn generate_setter_from_info(info: &AssistInfo, record_field_info: &RecordFieldInfo) -> String {
-    let mut buf = String::with_capacity(512);
+fn generate_setter_from_info(info: &AssistInfo, record_field_info: &RecordFieldInfo) -> ast::Fn {
     let strukt = &info.strukt;
-    let fn_name = &record_field_info.fn_name;
+    let field_name = &record_field_info.fn_name;
+    let fn_name = make::name(&format!("set_{field_name}"));
     let field_ty = &record_field_info.field_ty;
-    let vis = strukt.visibility().map_or(String::new(), |v| format!("{v} "));
-    format_to!(
-        buf,
-        "    {vis}fn set_{fn_name}(&mut self, {fn_name}: {field_ty}) {{
-        self.{fn_name} = {fn_name};
-    }}"
-    );
 
-    buf
+    // Make the param list
+    // `(&mut self, $field_name: $field_ty)`
+    let field_param =
+        make::param(make::ident_pat(false, false, make::name(field_name)).into(), field_ty.clone());
+    let params = make::param_list(Some(make::mut_self_param()), [field_param]);
+
+    // Make the assignment body
+    // `self.$field_name = $field_name`
+    let self_expr = make::ext::expr_self();
+    let lhs = make::expr_field(self_expr, field_name);
+    let rhs = make::expr_path(make::ext::ident_path(field_name));
+    let assign_stmt = make::expr_stmt(make::expr_assignment(lhs, rhs));
+    let body = make::block_expr([assign_stmt.into()], None);
+
+    // Make the setter fn
+    make::fn_(strukt.visibility(), fn_name, None, None, params, body, None, false, false, false)
 }
 
 fn extract_and_parse(
@@ -353,74 +378,45 @@ fn build_source_change(
 ) {
     let record_fields_count = info_of_record_fields.len();
 
-    let mut buf = String::with_capacity(512);
+    let impl_def = if let Some(impl_def) = &assist_info.impl_def {
+        // We have an existing impl to add to
+        builder.make_mut(impl_def.clone())
+    } else {
+        // Generate a new impl to add the methods to
+        let impl_def = generate_impl(&ast::Adt::Struct(assist_info.strukt.clone()));
 
-    // Check if an impl exists
-    if let Some(impl_def) = &assist_info.impl_def {
-        // Check if impl is empty
-        if let Some(assoc_item_list) = impl_def.assoc_item_list() {
-            if assoc_item_list.assoc_items().next().is_some() {
-                // If not empty then only insert a new line
-                buf.push('\n');
-            }
-        }
-    }
+        // Insert it after the adt
+        let strukt = builder.make_mut(assist_info.strukt.clone());
+
+        ted::insert_all_raw(
+            ted::Position::after(strukt.syntax()),
+            vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+        );
+
+        impl_def
+    };
+
+    let assoc_item_list = impl_def.get_or_create_assoc_item_list();
 
     for (i, record_field_info) in info_of_record_fields.iter().enumerate() {
-        // this buf inserts a newline at the end of a getter
-        // automatically, if one wants to add one more newline
-        // for separating it from other assoc items, that needs
-        // to be handled separately
-        let mut getter_buf = match assist_info.assist_type {
+        // Make the new getter or setter fn
+        let new_fn = match assist_info.assist_type {
             AssistType::Set => generate_setter_from_info(&assist_info, record_field_info),
             _ => generate_getter_from_info(ctx, &assist_info, record_field_info),
-        };
+        }
+        .clone_for_update();
+        new_fn.indent(1.into());
 
-        // Insert `$0` only for last getter we generate
-        if i == record_fields_count - 1 && ctx.config.snippet_cap.is_some() {
-            getter_buf = getter_buf.replacen("fn ", "fn $0", 1);
+        // Insert a tabstop only for last method we generate
+        if i == record_fields_count - 1 {
+            if let Some(cap) = ctx.config.snippet_cap {
+                if let Some(name) = new_fn.name() {
+                    builder.add_tabstop_before(cap, name);
+                }
+            }
         }
 
-        // For first element we do not merge with '\n', as
-        // that can be inserted by impl_def check defined
-        // above, for other cases which are:
-        //
-        // - impl exists but it empty, here we would ideally
-        // not want to keep newline between impl <struct> {
-        // and fn <fn-name>() { line
-        //
-        // - next if impl itself does not exist, in this
-        // case we ourselves generate a new impl and that
-        // again ends up with the same reasoning as above
-        // for not keeping newline
-        if i == 0 {
-            buf = buf + &getter_buf;
-        } else {
-            buf = buf + "\n" + &getter_buf;
-        }
-
-        // We don't insert a new line at the end of
-        // last getter as it will end up in the end
-        // of an impl where we would not like to keep
-        // getter and end of impl ( i.e. `}` ) with an
-        // extra line for no reason
-        if i < record_fields_count - 1 {
-            buf += "\n";
-        }
-    }
-
-    let start_offset = assist_info
-        .impl_def
-        .as_ref()
-        .and_then(|impl_def| find_impl_block_end(impl_def.to_owned(), &mut buf))
-        .unwrap_or_else(|| {
-            buf = generate_impl_text(&ast::Adt::Struct(assist_info.strukt.clone()), &buf);
-            assist_info.strukt.syntax().text_range().end()
-        });
-
-    match ctx.config.snippet_cap {
-        Some(cap) => builder.insert_snippet(cap, start_offset, buf),
-        None => builder.insert(start_offset, buf),
+        assoc_item_list.add_item(new_fn.clone().into());
     }
 }
 

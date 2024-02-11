@@ -12,7 +12,7 @@ pub fn big_struct() -> String {
 }
 
 pub fn big_struct_n(n: u32) -> String {
-    let mut buf = "pub struct RegisterBlock {".to_string();
+    let mut buf = "pub struct RegisterBlock {".to_owned();
     for i in 0..n {
         format_to!(buf, "  /// Doc comment for {}.\n", i);
         format_to!(buf, "  pub s{}: S{},\n", i, i);

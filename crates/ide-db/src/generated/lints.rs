@@ -5047,17 +5047,6 @@ against are compatible with those of the `#[ffi_pure]`.
 "##,
     },
     Lint {
-        label: "ffi_returns_twice",
-        description: r##"# `ffi_returns_twice`
-
-The tracking issue for this feature is: [#58314]
-
-[#58314]: https://github.com/rust-lang/rust/issues/58314
-
-------------------------
-"##,
-    },
-    Lint {
         label: "float_gamma",
         description: r##"# `float_gamma`
 

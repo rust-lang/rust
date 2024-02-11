@@ -1,6 +1,5 @@
 //! LSIF (language server index format) generator
 
-use std::collections::HashMap;
 use std::env;
 use std::time::Instant;
 
@@ -16,6 +15,7 @@ use ide_db::{
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use lsp_types::{self, lsif};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
+use rustc_hash::FxHashMap;
 use vfs::{AbsPathBuf, Vfs};
 
 use crate::{
@@ -35,10 +35,10 @@ impl<DB: ParallelDatabase> Clone for Snap<salsa::Snapshot<DB>> {
 
 struct LsifManager<'a> {
     count: i32,
-    token_map: HashMap<TokenId, Id>,
-    range_map: HashMap<FileRange, Id>,
-    file_map: HashMap<FileId, Id>,
-    package_map: HashMap<PackageInformation, Id>,
+    token_map: FxHashMap<TokenId, Id>,
+    range_map: FxHashMap<FileRange, Id>,
+    file_map: FxHashMap<FileId, Id>,
+    package_map: FxHashMap<PackageInformation, Id>,
     analysis: &'a Analysis,
     db: &'a RootDatabase,
     vfs: &'a Vfs,
@@ -57,10 +57,10 @@ impl LsifManager<'_> {
     fn new<'a>(analysis: &'a Analysis, db: &'a RootDatabase, vfs: &'a Vfs) -> LsifManager<'a> {
         LsifManager {
             count: 0,
-            token_map: HashMap::default(),
-            range_map: HashMap::default(),
-            file_map: HashMap::default(),
-            package_map: HashMap::default(),
+            token_map: FxHashMap::default(),
+            range_map: FxHashMap::default(),
+            file_map: FxHashMap::default(),
+            package_map: FxHashMap::default(),
             analysis,
             db,
             vfs,
@@ -104,12 +104,12 @@ impl LsifManager<'_> {
         let result_set_id =
             self.add_vertex(lsif::Vertex::PackageInformation(lsif::PackageInformation {
                 name: pi.name,
-                manager: "cargo".to_string(),
+                manager: "cargo".to_owned(),
                 uri: None,
                 content: None,
                 repository: pi.repo.map(|url| lsif::Repository {
                     url,
-                    r#type: "git".to_string(),
+                    r#type: "git".to_owned(),
                     commit_id: None,
                 }),
                 version: pi.version,
@@ -148,7 +148,7 @@ impl LsifManager<'_> {
         let path = self.vfs.file_path(id);
         let path = path.as_path().unwrap();
         let doc_id = self.add_vertex(lsif::Vertex::Document(lsif::Document {
-            language_id: "rust".to_string(),
+            language_id: "rust".to_owned(),
             uri: lsp_types::Url::from_file_path(path).unwrap(),
         }));
         self.file_map.insert(id, doc_id);
@@ -175,7 +175,7 @@ impl LsifManager<'_> {
         if let Some(moniker) = token.moniker {
             let package_id = self.get_package_id(moniker.package_information);
             let moniker_id = self.add_vertex(lsif::Vertex::Moniker(lsp_types::Moniker {
-                scheme: "rust-analyzer".to_string(),
+                scheme: "rust-analyzer".to_owned(),
                 identifier: moniker.identifier.to_string(),
                 unique: lsp_types::UniquenessLevel::Scheme,
                 kind: Some(match moniker.kind {
@@ -215,7 +215,7 @@ impl LsifManager<'_> {
                 out_v: result_set_id.into(),
             }));
             let mut edges = token.references.iter().fold(
-                HashMap::<_, Vec<lsp_types::NumberOrString>>::new(),
+                FxHashMap::<_, Vec<lsp_types::NumberOrString>>::default(),
                 |mut edges, it| {
                     let entry = edges.entry((it.range.file_id, it.is_definition)).or_default();
                     entry.push((*self.range_map.get(&it.range).unwrap()).into());
@@ -313,7 +313,7 @@ impl flags::Lsif {
             project_root: lsp_types::Url::from_file_path(path).unwrap(),
             position_encoding: lsif::Encoding::Utf16,
             tool_info: Some(lsp_types::lsif::ToolInfo {
-                name: "rust-analyzer".to_string(),
+                name: "rust-analyzer".to_owned(),
                 args: vec![],
                 version: Some(version().to_string()),
             }),

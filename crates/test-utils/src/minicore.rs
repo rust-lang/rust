@@ -328,7 +328,6 @@ pub mod convert {
 }
 
 pub mod mem {
-    // region:drop
     // region:manually_drop
     #[lang = "manually_drop"]
     #[repr(transparent)]
@@ -353,6 +352,7 @@ pub mod mem {
 
     // endregion:manually_drop
 
+    // region:drop
     pub fn drop<T>(_x: T) {}
     pub const fn replace<T>(dest: &mut T, src: T) -> T {
         unsafe {

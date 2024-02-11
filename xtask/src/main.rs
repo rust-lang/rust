@@ -9,6 +9,7 @@
 //! `.cargo/config`.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::print_stderr, clippy::print_stdout)]
 
 mod flags;
 

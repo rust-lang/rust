@@ -83,7 +83,7 @@ impl<S: Span> Bindings<S> {
                             close: span,
                             kind: tt::DelimiterKind::Brace,
                         },
-                        token_trees: vec![],
+                        token_trees: Box::new([]),
                     })),
                     // FIXME: Meta and Item should get proper defaults
                     MetaVarKind::Meta | MetaVarKind::Item | MetaVarKind::Tt | MetaVarKind::Vis => {
@@ -349,11 +349,11 @@ fn expand_var<S: Span>(
             // We just treat it a normal tokens
             let tt = tt::Subtree {
                 delimiter: tt::Delimiter::invisible_spanned(id),
-                token_trees: vec![
+                token_trees: Box::new([
                     tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, span: id })
                         .into(),
                     tt::Leaf::from(tt::Ident { text: v.clone(), span: id }).into(),
-                ],
+                ]),
             }
             .into();
             ExpandResult::ok(Fragment::Tokens(tt))
@@ -406,7 +406,7 @@ fn expand_repeat<S: Span>(
                 value: Fragment::Tokens(
                     tt::Subtree {
                         delimiter: tt::Delimiter::invisible_spanned(ctx.call_site),
-                        token_trees: vec![],
+                        token_trees: Box::new([]),
                     }
                     .into(),
                 ),
@@ -455,7 +455,7 @@ fn expand_repeat<S: Span>(
     // e.g {Delimiter:None> ['>'] /Delimiter:None>}
     let tt = tt::Subtree {
         delimiter: tt::Delimiter::invisible_spanned(ctx.call_site),
-        token_trees: buf,
+        token_trees: buf.into_boxed_slice(),
     }
     .into();
 
@@ -486,7 +486,7 @@ fn push_fragment<S: Span>(
 
 fn push_subtree<S>(buf: &mut Vec<tt::TokenTree<S>>, tt: tt::Subtree<S>) {
     match tt.delimiter.kind {
-        tt::DelimiterKind::Invisible => buf.extend(tt.token_trees),
+        tt::DelimiterKind::Invisible => buf.extend(Vec::from(tt.token_trees)),
         _ => buf.push(tt.into()),
     }
 }
@@ -504,7 +504,7 @@ fn fix_up_and_push_path_tt<S: Span>(
     // Note that we only need to fix up the top-level `TokenTree`s because the
     // context of the paths in the descendant `Subtree`s won't be changed by the
     // mbe transcription.
-    for tt in subtree.token_trees {
+    for tt in Vec::from(subtree.token_trees) {
         if prev_was_ident {
             // Pedantically, `(T) -> U` in `FnOnce(T) -> U` is treated as a generic
             // argument list and thus needs `::` between it and `FnOnce`. However in

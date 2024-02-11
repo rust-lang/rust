@@ -3,7 +3,11 @@
 
 use std::sync;
 
-use base_db::{impl_intern_key, salsa, CrateId, Upcast};
+use base_db::{
+    impl_intern_key,
+    salsa::{self, impl_intern_value_trivial},
+    CrateId, Upcast,
+};
 use hir_def::{
     db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, ConstParamId,
     DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
@@ -199,9 +203,9 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
-    fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
+    fn intern_closure(&self, id: InternedClosure) -> InternedClosureId;
     #[salsa::interned]
-    fn intern_coroutine(&self, id: (DefWithBodyId, ExprId)) -> InternedCoroutineId;
+    fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
     #[salsa::invoke(chalk_db::associated_ty_data_query)]
     fn associated_ty_data(
@@ -338,8 +342,16 @@ pub struct InternedClosureId(salsa::InternId);
 impl_intern_key!(InternedClosureId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedClosure(pub DefWithBodyId, pub ExprId);
+impl_intern_value_trivial!(InternedClosure);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedCoroutineId(salsa::InternId);
 impl_intern_key!(InternedCoroutineId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
+impl_intern_value_trivial!(InternedCoroutine);
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

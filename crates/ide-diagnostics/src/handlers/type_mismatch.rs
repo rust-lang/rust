@@ -120,7 +120,7 @@ fn add_missing_ok_or_some(
 
     let mut builder = TextEdit::builder();
     builder.insert(expr.syntax().text_range().start(), format!("{variant_name}("));
-    builder.insert(expr.syntax().text_range().end(), ")".to_string());
+    builder.insert(expr.syntax().text_range().end(), ")".to_owned());
     let source_change =
         SourceChange::from_text_edit(expr_ptr.file_id.original_file(ctx.sema.db), builder.finish());
     let name = format!("Wrap in {variant_name}");
@@ -174,7 +174,7 @@ fn str_ref_to_owned(
     let expr = expr_ptr.value.to_node(&root);
     let expr_range = expr.syntax().text_range();
 
-    let to_owned = ".to_owned()".to_string();
+    let to_owned = ".to_owned()".to_owned();
 
     let edit = TextEdit::insert(expr.syntax().text_range().end(), to_owned);
     let source_change =
@@ -186,7 +186,9 @@ fn str_ref_to_owned(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+    use crate::tests::{
+        check_diagnostics, check_diagnostics_with_disabled, check_fix, check_no_fix,
+    };
 
     #[test]
     fn missing_reference() {
@@ -718,7 +720,7 @@ struct Bar {
 
     #[test]
     fn return_no_value() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn f() -> i32 {
     return;
@@ -727,6 +729,7 @@ fn f() -> i32 {
 }
 fn g() { return; }
 "#,
+            std::iter::once("needless_return".to_owned()),
         );
     }
 

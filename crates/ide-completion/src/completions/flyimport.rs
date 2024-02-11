@@ -395,6 +395,14 @@ fn import_assets_for_path(
     potential_import_name: &str,
     qualifier: Option<ast::Path>,
 ) -> Option<ImportAssets> {
+    let _p = tracing::span!(
+        tracing::Level::INFO,
+        "import_assets_for_path",
+        ?potential_import_name,
+        ?qualifier
+    )
+    .entered();
+
     let fuzzy_name_length = potential_import_name.len();
     let mut assets_for_path = ImportAssets::for_fuzzy_path(
         ctx.module,

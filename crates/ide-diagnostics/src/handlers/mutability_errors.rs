@@ -19,7 +19,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Diagno
         for source in d.local.sources(ctx.sema.db) {
             let Some(ast) = source.name() else { continue };
             // FIXME: macros
-            edit_builder.insert(ast.value.syntax().text_range().start(), "mut ".to_string());
+            edit_builder.insert(ast.value.syntax().text_range().start(), "mut ".to_owned());
         }
         let edit = edit_builder.finish();
         Some(vec![fix(
@@ -86,7 +86,7 @@ pub(super) fn token(parent: &SyntaxNode, kind: SyntaxKind) -> Option<SyntaxToken
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
 
     #[test]
     fn unused_mut_simple() {
@@ -428,7 +428,7 @@ fn main() {
 }
 "#,
         );
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 enum X {}
 fn g() -> X {
@@ -448,8 +448,9 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
+            std::iter::once("remove-unnecessary-else".to_owned()),
         );
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn main(b: bool) {
     if b {
@@ -462,6 +463,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
+            std::iter::once("remove-unnecessary-else".to_owned()),
         );
     }
 

@@ -1,14 +1,12 @@
 //! This module provides `StaticIndex` which is used for powering
 //! read-only code browsers and emitting LSIF
 
-use std::collections::HashMap;
-
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
-use ide_db::helpers::get_definition;
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
     defs::Definition,
-    FxHashSet, RootDatabase,
+    helpers::get_definition,
+    FxHashMap, FxHashSet, RootDatabase,
 };
 use syntax::{AstNode, SyntaxKind::*, TextRange, T};
 
@@ -31,7 +29,7 @@ pub struct StaticIndex<'a> {
     pub tokens: TokenStore,
     analysis: &'a Analysis,
     db: &'a RootDatabase,
-    def_map: HashMap<Definition, TokenId>,
+    def_map: FxHashMap<Definition, TokenId>,
 }
 
 #[derive(Debug)]
@@ -232,14 +230,13 @@ impl StaticIndex<'_> {
 #[cfg(test)]
 mod tests {
     use crate::{fixture, StaticIndex};
-    use ide_db::base_db::FileRange;
-    use std::collections::HashSet;
+    use ide_db::{base_db::FileRange, FxHashSet};
     use syntax::TextSize;
 
     fn check_all_ranges(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis);
-        let mut range_set: HashSet<_> = ranges.iter().map(|it| it.0).collect();
+        let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
                 let it = FileRange { file_id: f.file_id, range };
@@ -258,7 +255,7 @@ mod tests {
     fn check_definitions(ra_fixture: &str) {
         let (analysis, ranges) = fixture::annotations_without_marker(ra_fixture);
         let s = StaticIndex::compute(&analysis);
-        let mut range_set: HashSet<_> = ranges.iter().map(|it| it.0).collect();
+        let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for (_, t) in s.tokens.iter() {
             if let Some(t) = t.definition {
                 if t.range.start() == TextSize::from(0) {

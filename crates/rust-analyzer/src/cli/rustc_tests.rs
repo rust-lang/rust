@@ -1,8 +1,6 @@
 //! Run all tests in a project, similar to `cargo test`, but using the mir interpreter.
 
-use std::{
-    cell::RefCell, collections::HashMap, fs::read_to_string, panic::AssertUnwindSafe, path::PathBuf,
-};
+use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::PathBuf};
 
 use hir::{Change, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
@@ -10,6 +8,7 @@ use profile::StopWatch;
 use project_model::{CargoConfig, ProjectWorkspace, RustLibSource, Sysroot};
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
+use rustc_hash::FxHashMap;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, FileId};
 use walkdir::WalkDir;
@@ -27,7 +26,7 @@ struct Tester {
 
 fn string_to_diagnostic_code_leaky(code: &str) -> DiagnosticCode {
     thread_local! {
-        static LEAK_STORE: RefCell<HashMap<String, DiagnosticCode>> = RefCell::new(HashMap::new());
+        static LEAK_STORE: RefCell<FxHashMap<String, DiagnosticCode>> = RefCell::new(FxHashMap::default());
     }
     LEAK_STORE.with_borrow_mut(|s| match s.get(code) {
         Some(c) => *c,
@@ -39,9 +38,9 @@ fn string_to_diagnostic_code_leaky(code: &str) -> DiagnosticCode {
     })
 }
 
-fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> HashMap<DiagnosticCode, usize> {
+fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> FxHashMap<DiagnosticCode, usize> {
     let text = read_to_string(p).unwrap();
-    let mut result = HashMap::new();
+    let mut result = FxHashMap::default();
     {
         let mut text = &*text;
         while let Some(p) = text.find("error[E") {
@@ -106,7 +105,7 @@ impl Tester {
         let expected = if stderr_path.exists() {
             detect_errors_from_rustc_stderr_file(stderr_path)
         } else {
-            HashMap::new()
+            FxHashMap::default()
         };
         let text = read_to_string(&p).unwrap();
         let mut change = Change::new();
@@ -125,7 +124,7 @@ impl Tester {
         self.host.apply_change(change);
         let diagnostic_config = DiagnosticsConfig::test_sample();
 
-        let mut actual = HashMap::new();
+        let mut actual = FxHashMap::default();
         let panicked = match std::panic::catch_unwind(|| {
             self.host
                 .analysis()

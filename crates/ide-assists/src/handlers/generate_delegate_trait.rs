@@ -502,9 +502,7 @@ fn generate_args_for_impl(
     trait_params: &Option<GenericParamList>,
     old_trait_args: &FxHashSet<String>,
 ) -> Option<ast::GenericArgList> {
-    let Some(old_impl_args) = old_impl_gpl.map(|gpl| gpl.to_generic_args().generic_args()) else {
-        return None;
-    };
+    let old_impl_args = old_impl_gpl.map(|gpl| gpl.to_generic_args().generic_args())?;
     // Create pairs of the args of `self_ty` and corresponding `field_ty` to
     // form the substitution list
     let mut arg_substs = FxHashMap::default();
@@ -958,7 +956,8 @@ where
 impl<T> AnotherTrait for S<T>
 where
     T: AnotherTrait,
-{}"#,
+{
+}"#,
         );
     }
 
@@ -1448,7 +1447,8 @@ where
 impl<T> AnotherTrait for S<T>
 where
     T: AnotherTrait,
-{}"#,
+{
+}"#,
         );
     }
 
