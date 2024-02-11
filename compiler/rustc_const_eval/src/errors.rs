@@ -497,6 +497,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ScalarSizeMismatch(_) => const_eval_scalar_size_mismatch,
             UninhabitedEnumVariantWritten(_) => const_eval_uninhabited_enum_variant_written,
             UninhabitedEnumVariantRead(_) => const_eval_uninhabited_enum_variant_read,
+            InvalidNichedEnumVariantWritten { .. } => {
+                const_eval_invalid_niched_enum_variant_written
+            }
             AbiMismatchArgument { .. } => const_eval_incompatible_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
@@ -584,6 +587,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ScalarSizeMismatch(info) => {
                 builder.arg("target_size", info.target_size);
                 builder.arg("data_size", info.data_size);
+            }
+            InvalidNichedEnumVariantWritten { enum_ty } => {
+                builder.arg("ty", enum_ty.to_string());
             }
             AbiMismatchArgument { caller_ty, callee_ty }
             | AbiMismatchReturn { caller_ty, callee_ty } => {

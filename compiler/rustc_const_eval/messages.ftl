@@ -172,6 +172,10 @@ const_eval_invalid_meta =
     invalid metadata in wide pointer: total size is bigger than largest supported object
 const_eval_invalid_meta_slice =
     invalid metadata in wide pointer: slice is bigger than largest supported object
+
+const_eval_invalid_niched_enum_variant_written =
+    trying to set discriminant of a {$ty} to the niched variant, but the value does not match
+
 const_eval_invalid_str =
     this string is not valid UTF-8: {$err}
 const_eval_invalid_tag =
