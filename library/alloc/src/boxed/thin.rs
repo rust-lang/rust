@@ -67,6 +67,26 @@ impl<T> ThinBox<T> {
         let ptr = WithOpaqueHeader::new(meta, value);
         ThinBox { ptr, _marker: PhantomData }
     }
+
+    /// Moves a type to the heap with its [`Metadata`] stored in the heap allocation instead of on
+    /// the stack. Returns an error if allocation fails, instead of aborting.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// #![feature(thin_box)]
+    /// use std::boxed::ThinBox;
+    ///
+    /// let five = ThinBox::try_new(5)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    ///
+    /// [`Metadata`]: core::ptr::Pointee::Metadata
+    pub fn try_new(value: T) -> Result<Self, core::alloc::AllocError> {
+        let meta = ptr::metadata(&value);
+        WithOpaqueHeader::try_new(meta, value).map(|ptr| ThinBox { ptr, _marker: PhantomData })
+    }
 }
 
 #[unstable(feature = "thin_box", issue = "92791")]
@@ -179,6 +199,10 @@ impl WithOpaqueHeader {
         let ptr = WithHeader::new(header, value);
         Self(ptr.0)
     }
+
+    fn try_new<H, T>(header: H, value: T) -> Result<Self, core::alloc::AllocError> {
+        WithHeader::try_new(header, value).map(|ptr| Self(ptr.0))
+    }
 }
 
 impl<H> WithHeader<H> {
@@ -221,6 +245,46 @@ impl<H> WithHeader<H> {
             ptr::write(result.value().cast(), value);
 
             result
+        }
+    }
+
+    /// Non-panicking version of `new`.
+    /// Any error is returned as `Err(core::alloc::AllocError)`.
+    fn try_new<T>(header: H, value: T) -> Result<WithHeader<H>, core::alloc::AllocError> {
+        let value_layout = Layout::new::<T>();
+        let Ok((layout, value_offset)) = Self::alloc_layout(value_layout) else {
+            return Err(core::alloc::AllocError);
+        };
+
+        unsafe {
+            // Note: It's UB to pass a layout with a zero size to `alloc::alloc`, so
+            // we use `layout.dangling()` for this case, which should have a valid
+            // alignment for both `T` and `H`.
+            let ptr = if layout.size() == 0 {
+                // Some paranoia checking, mostly so that the ThinBox tests are
+                // more able to catch issues.
+                debug_assert!(
+                    value_offset == 0 && mem::size_of::<T>() == 0 && mem::size_of::<H>() == 0
+                );
+                layout.dangling()
+            } else {
+                let ptr = alloc::alloc(layout);
+                if ptr.is_null() {
+                    return Err(core::alloc::AllocError);
+                }
+
+                // Safety:
+                // - The size is at least `aligned_header_size`.
+                let ptr = ptr.add(value_offset) as *mut _;
+
+                NonNull::new_unchecked(ptr)
+            };
+
+            let result = WithHeader(ptr, PhantomData);
+            ptr::write(result.header(), header);
+            ptr::write(result.value().cast(), value);
+
+            Ok(result)
         }
     }
 
