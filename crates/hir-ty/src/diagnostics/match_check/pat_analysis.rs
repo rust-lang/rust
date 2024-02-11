@@ -11,7 +11,6 @@ use rustc_pattern_analysis::{
 };
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
-use typed_arena::Arena;
 
 use crate::{
     db::HirDatabase,
@@ -40,7 +39,6 @@ pub(crate) struct MatchCheckCtx<'p> {
     module: ModuleId,
     body: DefWithBodyId,
     pub(crate) db: &'p dyn HirDatabase,
-    pub(crate) pattern_arena: &'p Arena<DeconstructedPat<'p>>,
     exhaustive_patterns: bool,
     min_exhaustive_patterns: bool,
 }
@@ -52,17 +50,12 @@ pub(crate) struct PatData<'p> {
 }
 
 impl<'p> MatchCheckCtx<'p> {
-    pub(crate) fn new(
-        module: ModuleId,
-        body: DefWithBodyId,
-        db: &'p dyn HirDatabase,
-        pattern_arena: &'p Arena<DeconstructedPat<'p>>,
-    ) -> Self {
+    pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'p dyn HirDatabase) -> Self {
         let def_map = db.crate_def_map(module.krate());
         let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
         let min_exhaustive_patterns =
             def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
-        Self { module, body, db, pattern_arena, exhaustive_patterns, min_exhaustive_patterns }
+        Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
