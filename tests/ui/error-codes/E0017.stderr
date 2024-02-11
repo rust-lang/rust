@@ -14,7 +14,7 @@ LL | static STATIC_MUT_REF: &'static mut i32 = unsafe { addr_of_mut!(M) };
    |                                                    ~~~~~~~~~~~~~~~
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/E0017.rs:5:30
+  --> $DIR/E0017.rs:7:30
    |
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^
@@ -22,36 +22,20 @@ LL | const CR: &'static mut i32 = &mut C;
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/E0017.rs:2:1
+  --> $DIR/E0017.rs:4:1
    |
 LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
    = note: `#[warn(const_item_mutation)]` on by default
 
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/E0017.rs:5:30
+  --> $DIR/E0017.rs:7:30
    |
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^
 
-error[E0658]: mutation through a reference is not allowed in statics
-  --> $DIR/E0017.rs:8:39
-   |
-LL | static STATIC_REF: &'static mut i32 = &mut X;
-   |                                       ^^^^^^
-   |
-   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/E0017.rs:8:39
-   |
-LL | static STATIC_REF: &'static mut i32 = &mut X;
-   |                                       ^^^^^^
-
 error[E0596]: cannot borrow immutable static item `X` as mutable
-  --> $DIR/E0017.rs:8:39
+  --> $DIR/E0017.rs:10:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^ cannot borrow as mutable
@@ -65,7 +49,7 @@ LL | static CONST_REF: &'static mut i32 = &mut C;
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/E0017.rs:2:1
+  --> $DIR/E0017.rs:4:1
    |
 LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
@@ -76,13 +60,7 @@ error[E0764]: mutable references are not allowed in the final value of statics
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^
 
-error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/E0017.rs:15:52
-   |
-LL | static STATIC_MUT_REF: &'static mut i32 = unsafe { &mut M };
-   |                                                    ^^^^^^
+error: aborting due to 3 previous errors; 3 warnings emitted
 
-error: aborting due to 6 previous errors; 3 warnings emitted
-
-Some errors have detailed explanations: E0596, E0658, E0764.
+Some errors have detailed explanations: E0596, E0764.
 For more information about an error, try `rustc --explain E0596`.

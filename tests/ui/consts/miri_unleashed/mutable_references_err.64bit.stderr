@@ -114,7 +114,7 @@ help: skipping check for `const_refs_to_static` feature
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    |                                        ^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_mut_refs` feature
   --> $DIR/mutable_references_err.rs:32:35
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
