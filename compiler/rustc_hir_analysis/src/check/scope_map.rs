@@ -164,6 +164,21 @@ impl<'tcx> ScopeCollector<'tcx> {
             cx: Context { temp_lifetime: TemporaryLifetimeScopes::new_static(), var_parent: None },
         }
     }
+
+    fn is_data_constructor(&self, callee: &hir::Expr<'_>) -> bool {
+        match callee.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                _,
+                hir::Path {
+                    res:
+                        hir::def::Res::Def(hir::def::DefKind::Ctor(_, _), _)
+                        | hir::def::Res::SelfCtor(_),
+                    ..
+                },
+            )) => true,
+            _ => false,
+        }
+    }
 }
 
 impl<'tcx> ScopeCollector<'tcx> {
@@ -336,7 +351,7 @@ impl<'tcx> Visitor<'tcx> for ScopeCollector<'tcx> {
             }
 
             hir::ExprKind::Struct(_path, fields, struct_base) => {
-                for hir::ExprField { expr, .. } in fields {
+                for &hir::ExprField { expr, .. } in fields {
                     self.cx.temp_lifetime = prev_temp_lifetime;
                     self.cx.temp_lifetime.is_result = true;
                     self.visit_expr(expr);
@@ -346,6 +361,14 @@ impl<'tcx> Visitor<'tcx> for ScopeCollector<'tcx> {
                     // FIXME: does this make sense? It looks like so.
                     self.cx.temp_lifetime.is_result = true;
                     self.visit_expr(struct_base)
+                }
+            }
+
+            hir::ExprKind::Call(callee, args) if self.is_data_constructor(callee) => {
+                for expr in args {
+                    self.cx.temp_lifetime = prev_temp_lifetime;
+                    self.cx.temp_lifetime.is_result = true;
+                    self.visit_expr(expr);
                 }
             }
 

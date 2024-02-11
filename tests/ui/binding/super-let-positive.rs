@@ -21,6 +21,14 @@ fn example2() -> usize {
     *x.lock().unwrap()
 }
 
+fn example3() {
+    enum Enum<'a> {
+        A(&'a u8),
+    }
+    fn compute() -> u8 { 1 }
+    let x = Enum::A(&compute());
+}
+
 struct A;
 impl A {
     #[inline(never)]
