@@ -325,7 +325,7 @@ define_Conf! {
     ///
     /// The minimum number of enum variants for the lints about variant names to trigger
     (enum_variant_name_threshold: u64 = 3),
-    /// Lint: STRUCT_VARIANT_NAMES.
+    /// Lint: STRUCT_FIELD_NAMES.
     ///
     /// The minimum number of struct fields for the lints about field names to trigger
     (struct_field_name_threshold: u64 = 3),
