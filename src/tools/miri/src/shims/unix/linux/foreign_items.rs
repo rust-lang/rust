@@ -44,6 +44,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.linux_readdir64(dirp)?;
                 this.write_scalar(result, dest)?;
             }
+            "mmap64" => {
+                let [addr, length, prot, flags, fd, offset] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let offset = this.read_scalar(offset)?.to_i64()?;
+                let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
+                this.write_scalar(ptr, dest)?;
+            }
+
             // Linux-only
             "sync_file_range" => {
                 let [fd, offset, nbytes, flags] =
@@ -216,14 +224,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [_thread, _attr] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.write_null(dest)?;
-            }
-
-            "mmap64" => {
-                let [addr, length, prot, flags, fd, offset] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let offset = this.read_scalar(offset)?.to_i64()?;
-                let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
-                this.write_scalar(ptr, dest)?;
             }
 
             _ => return Ok(EmulateForeignItemResult::NotSupported),
