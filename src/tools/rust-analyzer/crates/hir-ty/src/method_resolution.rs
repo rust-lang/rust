@@ -931,6 +931,15 @@ pub fn iterate_method_candidates_dyn(
     mode: LookupMode,
     callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
+    let _p = tracing::span!(
+        tracing::Level::INFO,
+        "iterate_method_candidates_dyn",
+        ?mode,
+        ?name,
+        traits_in_scope_len = traits_in_scope.len()
+    )
+    .entered();
+
     match mode {
         LookupMode::MethodCall => {
             // For method calls, rust first does any number of autoderef, and
@@ -984,6 +993,7 @@ pub fn iterate_method_candidates_dyn(
     }
 }
 
+#[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_with_autoref(
     receiver_ty: &Canonical<Ty>,
     first_adjustment: ReceiverAdjustments,
@@ -1041,6 +1051,7 @@ fn iterate_method_candidates_with_autoref(
     )
 }
 
+#[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_by_receiver(
     receiver_ty: &Canonical<Ty>,
     receiver_adjustments: ReceiverAdjustments,
@@ -1088,6 +1099,7 @@ fn iterate_method_candidates_by_receiver(
     ControlFlow::Continue(())
 }
 
+#[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_for_self_ty(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
@@ -1119,6 +1131,7 @@ fn iterate_method_candidates_for_self_ty(
     )
 }
 
+#[tracing::instrument(skip_all, fields(name = ?name, visible_from_module, receiver_ty))]
 fn iterate_trait_method_candidates(
     self_ty: &Ty,
     table: &mut InferenceTable<'_>,
@@ -1175,6 +1188,7 @@ fn iterate_trait_method_candidates(
     ControlFlow::Continue(())
 }
 
+#[tracing::instrument(skip_all, fields(name = ?name, visible_from_module, receiver_ty))]
 fn iterate_inherent_methods(
     self_ty: &Ty,
     table: &mut InferenceTable<'_>,
@@ -1267,6 +1281,7 @@ fn iterate_inherent_methods(
     }
     return ControlFlow::Continue(());
 
+    #[tracing::instrument(skip_all, fields(name = ?name, visible_from_module, receiver_ty))]
     fn iterate_inherent_trait_methods(
         self_ty: &Ty,
         table: &mut InferenceTable<'_>,
@@ -1293,6 +1308,7 @@ fn iterate_inherent_methods(
         ControlFlow::Continue(())
     }
 
+    #[tracing::instrument(skip_all, fields(name = ?name, visible_from_module, receiver_ty))]
     fn impls_for_self_ty(
         impls: &InherentImpls,
         self_ty: &Ty,
@@ -1356,6 +1372,7 @@ macro_rules! check_that {
     };
 }
 
+#[tracing::instrument(skip_all, fields(name))]
 fn is_valid_candidate(
     table: &mut InferenceTable<'_>,
     name: Option<&Name>,
@@ -1403,6 +1420,7 @@ enum IsValidCandidate {
     NotVisible,
 }
 
+#[tracing::instrument(skip_all, fields(name))]
 fn is_valid_fn_candidate(
     table: &mut InferenceTable<'_>,
     fn_id: FunctionId,
@@ -1439,14 +1457,14 @@ fn is_valid_fn_candidate(
             _ => unreachable!(),
         };
 
-        let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
-            .fill_with_inference_vars(table)
-            .build();
-
         check_that!(table.unify(&expect_self_ty, self_ty));
 
         if let Some(receiver_ty) = receiver_ty {
             check_that!(data.has_self_param());
+
+            let fn_subst = TyBuilder::subst_for_def(db, fn_id, Some(impl_subst.clone()))
+                .fill_with_inference_vars(table)
+                .build();
 
             let sig = db.callable_item_signature(fn_id.into());
             let expected_receiver =
@@ -1540,6 +1558,7 @@ pub fn implements_trait_unique(
 
 /// This creates Substs for a trait with the given Self type and type variables
 /// for all other parameters, to query Chalk with it.
+#[tracing::instrument(skip_all)]
 fn generic_implements_goal(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,

@@ -10,7 +10,7 @@ use hir_expand::{
     HirFileId, InFile,
 };
 use intern::Interned;
-use la_arena::{Arena, ArenaMap};
+use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
 use syntax::ast::{self, HasName, HasVisibility};
 use triomphe::Arc;
@@ -22,13 +22,11 @@ use crate::{
     lang_item::LangItem,
     lower::LowerCtx,
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
-    src::HasChildSource,
-    src::HasSource,
     trace::Trace,
     tt::{Delimiter, DelimiterKind, Leaf, Subtree, TokenTree},
     type_ref::TypeRef,
     visibility::RawVisibility,
-    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
+    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -387,46 +385,6 @@ impl VariantData {
     }
 }
 
-impl HasChildSource<LocalFieldId> for VariantId {
-    type Value = Either<ast::TupleField, ast::RecordField>;
-
-    fn child_source(&self, db: &dyn DefDatabase) -> InFile<ArenaMap<LocalFieldId, Self::Value>> {
-        let item_tree;
-        let (src, fields, container) = match *self {
-            VariantId::EnumVariantId(it) => {
-                let lookup = it.lookup(db);
-                item_tree = lookup.id.item_tree(db);
-                (
-                    lookup.source(db).map(|it| it.kind()),
-                    &item_tree[lookup.id.value].fields,
-                    lookup.parent.lookup(db).container,
-                )
-            }
-            VariantId::StructId(it) => {
-                let lookup = it.lookup(db);
-                item_tree = lookup.id.item_tree(db);
-                (
-                    lookup.source(db).map(|it| it.kind()),
-                    &item_tree[lookup.id.value].fields,
-                    lookup.container,
-                )
-            }
-            VariantId::UnionId(it) => {
-                let lookup = it.lookup(db);
-                item_tree = lookup.id.item_tree(db);
-                (
-                    lookup.source(db).map(|it| it.kind()),
-                    &item_tree[lookup.id.value].fields,
-                    lookup.container,
-                )
-            }
-        };
-        let mut trace = Trace::new_for_map();
-        lower_struct(db, &mut trace, &src, container.krate, &item_tree, fields);
-        src.with_value(trace.into_map())
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum StructKind {
     Tuple,
@@ -434,7 +392,7 @@ pub enum StructKind {
     Unit,
 }
 
-fn lower_struct(
+pub(crate) fn lower_struct(
     db: &dyn DefDatabase,
     trace: &mut Trace<FieldData, Either<ast::TupleField, ast::RecordField>>,
     ast: &InFile<ast::StructKind>,

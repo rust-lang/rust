@@ -54,7 +54,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow:
     state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
-    state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), false);
+    state.fetch_workspaces_queue.request_op("reload workspace request".to_owned(), false);
     Ok(())
 }
 
@@ -62,7 +62,7 @@ pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> anyh
     state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
-    state.fetch_build_data_queue.request_op("rebuild proc macros request".to_string(), ());
+    state.fetch_build_data_queue.request_op("rebuild proc macros request".to_owned(), ());
     Ok(())
 }
 
@@ -562,7 +562,7 @@ pub(crate) fn handle_will_rename_files(
                 (Some(p1), Some(p2)) if p1 == p2 => {
                     if from_path.is_dir() {
                         // add '/' to end of url -- from `file://path/to/folder` to `file://path/to/folder/`
-                        let mut old_folder_name = from_path.file_stem()?.to_str()?.to_string();
+                        let mut old_folder_name = from_path.file_stem()?.to_str()?.to_owned();
                         old_folder_name.push('/');
                         let from_with_trailing_slash = from.join(&old_folder_name).ok()?;
 
@@ -570,7 +570,7 @@ pub(crate) fn handle_will_rename_files(
                         let new_file_name = to_path.file_name()?.to_str()?;
                         Some((
                             snap.url_to_file_id(&imitate_from_url).ok()?,
-                            new_file_name.to_string(),
+                            new_file_name.to_owned(),
                         ))
                     } else {
                         let old_name = from_path.file_stem()?.to_str()?;
@@ -578,7 +578,7 @@ pub(crate) fn handle_will_rename_files(
                         match (old_name, new_name) {
                             ("mod", _) => None,
                             (_, "mod") => None,
-                            _ => Some((snap.url_to_file_id(&from).ok()?, new_name.to_string())),
+                            _ => Some((snap.url_to_file_id(&from).ok()?, new_name.to_owned())),
                         }
                     }
                 }
@@ -799,13 +799,13 @@ pub(crate) fn handle_runnables(
         None => {
             if !snap.config.linked_or_discovered_projects().is_empty() {
                 res.push(lsp_ext::Runnable {
-                    label: "cargo check --workspace".to_string(),
+                    label: "cargo check --workspace".to_owned(),
                     location: None,
                     kind: lsp_ext::RunnableKind::Cargo,
                     args: lsp_ext::CargoRunnable {
                         workspace_root: None,
                         override_cargo: config.override_cargo,
-                        cargo_args: vec!["check".to_string(), "--workspace".to_string()],
+                        cargo_args: vec!["check".to_owned(), "--workspace".to_owned()],
                         cargo_extra_args: config.cargo_extra_args,
                         executable_args: Vec::new(),
                         expect_test: None,
@@ -879,7 +879,7 @@ pub(crate) fn handle_completion_resolve(
 
     if !all_edits_are_disjoint(&original_completion, &[]) {
         return Err(invalid_params_error(
-            "Received a completion with overlapping edits, this is not LSP-compliant".to_string(),
+            "Received a completion with overlapping edits, this is not LSP-compliant".to_owned(),
         )
         .into());
     }
@@ -1191,7 +1191,7 @@ pub(crate) fn handle_code_action_resolve(
     let _p = tracing::span!(tracing::Level::INFO, "handle_code_action_resolve").entered();
     let params = match code_action.data.take() {
         Some(it) => it,
-        None => return Err(invalid_params_error("code action without data".to_string()).into()),
+        None => return Err(invalid_params_error("code action without data".to_owned()).into()),
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
@@ -1270,7 +1270,7 @@ fn parse_action_id(action_id: &str) -> anyhow::Result<(usize, SingleResolve), St
             };
             Ok((index, SingleResolve { assist_id: assist_id_string.to_string(), assist_kind }))
         }
-        _ => Err("Action id contains incorrect number of segments".to_string()),
+        _ => Err("Action id contains incorrect number of segments".to_owned()),
     }
 }
 

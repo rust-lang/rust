@@ -285,7 +285,7 @@ impl CargoWorkspace {
         // FIXME: Fetching metadata is a slow process, as it might require
         // calling crates.io. We should be reporting progress here, but it's
         // unclear whether cargo itself supports it.
-        progress("metadata".to_string());
+        progress("metadata".to_owned());
 
         (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
             let mut command = meta.cargo_command();
@@ -399,7 +399,7 @@ impl CargoWorkspace {
         CargoWorkspace { packages, targets, workspace_root, target_directory }
     }
 
-    pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
+    pub fn packages(&self) -> impl ExactSizeIterator<Item = Package> + '_ {
         self.packages.iter().map(|(id, _pkg)| id)
     }
 
@@ -502,7 +502,7 @@ fn rustc_discover_host_triple(
             let field = "host: ";
             let target = stdout.lines().find_map(|l| l.strip_prefix(field));
             if let Some(target) = target {
-                Some(target.to_string())
+                Some(target.to_owned())
             } else {
                 // If we fail to resolve the host platform, it's not the end of the world.
                 tracing::info!("rustc -vV did not report host platform, got:\n{}", stdout);
@@ -536,7 +536,7 @@ fn parse_output_cargo_config_build_target(stdout: String) -> Vec<String> {
     let trimmed = stdout.trim_start_matches("build.target = ").trim_matches('"');
 
     if !trimmed.starts_with('[') {
-        return [trimmed.to_string()].to_vec();
+        return [trimmed.to_owned()].to_vec();
     }
 
     let res = serde_json::from_str(trimmed);

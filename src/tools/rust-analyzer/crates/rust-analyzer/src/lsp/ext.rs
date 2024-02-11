@@ -1,6 +1,8 @@
 //! rust-analyzer extensions to the LSP.
 
-use std::{collections::HashMap, path::PathBuf};
+#![allow(clippy::disallowed_types)]
+
+use std::path::PathBuf;
 
 use ide_db::line_index::WideEncoding;
 use lsp_types::request::Request;
@@ -9,6 +11,7 @@ use lsp_types::{
     PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
 };
 use lsp_types::{PositionEncodingKind, Url};
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::line_index::PositionEncoding;
@@ -448,12 +451,16 @@ pub struct CodeActionData {
 #[serde(rename_all = "camelCase")]
 pub struct SnippetWorkspaceEdit {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub changes: Option<HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>>>,
+    pub changes: Option<FxHashMap<lsp_types::Url, Vec<lsp_types::TextEdit>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub document_changes: Option<Vec<SnippetDocumentChangeOperation>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub change_annotations:
-        Option<HashMap<lsp_types::ChangeAnnotationIdentifier, lsp_types::ChangeAnnotation>>,
+    pub change_annotations: Option<
+        std::collections::HashMap<
+            lsp_types::ChangeAnnotationIdentifier,
+            lsp_types::ChangeAnnotation,
+        >,
+    >,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -695,4 +702,17 @@ pub struct CompletionImport {
 #[derive(Debug, Deserialize, Default)]
 pub struct ClientCommandOptions {
     pub commands: Vec<String>,
+}
+
+pub enum UnindexedProject {}
+
+impl Notification for UnindexedProject {
+    type Params = UnindexedProjectParams;
+    const METHOD: &'static str = "rust-analyzer/unindexedProject";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UnindexedProjectParams {
+    pub text_documents: Vec<TextDocumentIdentifier>,
 }

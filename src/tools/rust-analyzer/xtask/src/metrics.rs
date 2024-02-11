@@ -194,12 +194,12 @@ impl Host {
             bail!("can only collect metrics on Linux ");
         }
 
-        let os = read_field(sh, "/etc/os-release", "PRETTY_NAME=")?.trim_matches('"').to_string();
+        let os = read_field(sh, "/etc/os-release", "PRETTY_NAME=")?.trim_matches('"').to_owned();
 
         let cpu = read_field(sh, "/proc/cpuinfo", "model name")?
             .trim_start_matches(':')
             .trim()
-            .to_string();
+            .to_owned();
 
         let mem = read_field(sh, "/proc/meminfo", "MemTotal:")?;
 
@@ -210,7 +210,7 @@ impl Host {
 
             text.lines()
                 .find_map(|it| it.strip_prefix(field))
-                .map(|it| it.trim().to_string())
+                .map(|it| it.trim().to_owned())
                 .ok_or_else(|| format_err!("can't parse {}", path))
         }
     }

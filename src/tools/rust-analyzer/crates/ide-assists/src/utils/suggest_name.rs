@@ -1,9 +1,7 @@
 //! This module contains functions to suggest names for expressions, functions and other items
 
-use std::collections::HashSet;
-
 use hir::Semantics;
-use ide_db::RootDatabase;
+use ide_db::{FxHashSet, RootDatabase};
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -78,8 +76,8 @@ pub(crate) fn for_unique_generic_name(
             ast::GenericParam::TypeParam(t) => t.name().unwrap().to_string(),
             p => p.to_string(),
         })
-        .collect::<HashSet<_>>();
-    let mut name = name.to_string();
+        .collect::<FxHashSet<_>>();
+    let mut name = name.to_owned();
     let base_len = name.len();
     let mut count = 0;
     while param_names.contains(&name) {
@@ -167,7 +165,7 @@ pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>)
         }
     }
 
-    "var_name".to_string()
+    "var_name".to_owned()
 }
 
 fn normalize(name: &str) -> Option<String> {

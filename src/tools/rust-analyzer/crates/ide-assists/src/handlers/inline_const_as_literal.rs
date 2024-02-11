@@ -60,7 +60,7 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
 
         let id = AssistId("inline_const_as_literal", AssistKind::RefactorInline);
 
-        let label = "Inline const as literal".to_string();
+        let label = "Inline const as literal".to_owned();
         let target = variable.syntax().text_range();
 
         return acc.add(id, label, target, |edit| {

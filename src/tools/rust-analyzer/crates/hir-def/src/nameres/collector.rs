@@ -33,8 +33,8 @@ use crate::{
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
-        self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId,
-        ItemTreeModItemNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
+        self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
+        Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
     macro_call_as_call_id, macro_call_as_call_id_with_eager,
     nameres::{
@@ -2125,7 +2125,7 @@ impl ModCollector<'_, '_> {
 
         let is_export = export_attr.exists();
         let local_inner = if is_export {
-            export_attr.tt_values().flat_map(|it| &it.token_trees).any(|it| match it {
+            export_attr.tt_values().flat_map(|it| it.token_trees.iter()).any(|it| match it {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     ident.text.contains("local_inner_macros")
                 }

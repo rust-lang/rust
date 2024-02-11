@@ -11,7 +11,7 @@ authors.workspace = true
 
 [dependencies]
 la-arena.workspace = true
-rust-analyzer-salsa.workspace = true
+salsa.workspace = true
 
 
 # local deps

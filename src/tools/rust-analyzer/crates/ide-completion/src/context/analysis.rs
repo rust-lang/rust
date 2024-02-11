@@ -11,10 +11,11 @@ use syntax::{
 };
 
 use crate::context::{
-    AttrCtx, CompletionAnalysis, DotAccess, DotAccessKind, ExprCtx, ItemListKind, LifetimeContext,
-    LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamContext, ParamKind,
-    PathCompletionCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
-    TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
+    AttrCtx, BreakableKind, CompletionAnalysis, DotAccess, DotAccessExprCtx, DotAccessKind,
+    ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext,
+    NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx, PathKind, PatternContext,
+    PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget, TypeLocation,
+    COMPLETION_MARKER,
 };
 
 struct ExpansionResult {
@@ -623,7 +624,8 @@ fn classify_name_ref(
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
-                    receiver
+                    receiver,
+                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(field.syntax()), in_breakable: is_in_breakable(field.syntax()) }
                 });
                 return Some(make_res(kind));
             },
@@ -636,7 +638,8 @@ fn classify_name_ref(
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
-                    receiver
+                    receiver,
+                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(method.syntax()), in_breakable: is_in_breakable(method.syntax()) }
                 });
                 return Some(make_res(kind));
             },
@@ -659,13 +662,6 @@ fn classify_name_ref(
         use_tree_parent: false,
     };
 
-    let is_in_block = |it: &SyntaxNode| {
-        it.parent()
-            .map(|node| {
-                ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind())
-            })
-            .unwrap_or(false)
-    };
     let func_update_record = |syn: &SyntaxNode| {
         if let Some(record_expr) = syn.ancestors().nth(2).and_then(ast::RecordExpr::cast) {
             find_node_in_file_compensated(sema, original_file, &record_expr)
@@ -932,7 +928,7 @@ fn classify_name_ref(
     let make_path_kind_expr = |expr: ast::Expr| {
         let it = expr.syntax();
         let in_block_expr = is_in_block(it);
-        let in_loop_body = is_in_loop_body(it);
+        let in_loop_body = is_in_breakable(it);
         let after_if_expr = after_if_expr(it.clone());
         let ref_expr_parent =
             path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
@@ -998,9 +994,9 @@ fn classify_name_ref(
         };
 
         PathKind::Expr {
-            expr_ctx: ExprCtx {
+            expr_ctx: PathExprCtx {
                 in_block_expr,
-                in_loop_body,
+                in_breakable: in_loop_body,
                 after_if_expr,
                 in_condition,
                 ref_expr_parent,
@@ -1202,7 +1198,7 @@ fn classify_name_ref(
     if path_ctx.is_trivial_path() {
         // fetch the full expression that may have qualifiers attached to it
         let top_node = match path_ctx.kind {
-            PathKind::Expr { expr_ctx: ExprCtx { in_block_expr: true, .. } } => {
+            PathKind::Expr { expr_ctx: PathExprCtx { in_block_expr: true, .. } } => {
                 parent.ancestors().find(|it| ast::PathExpr::can_cast(it.kind())).and_then(|p| {
                     let parent = p.parent()?;
                     if ast::StmtList::can_cast(parent.kind()) {
@@ -1467,21 +1463,30 @@ fn is_in_token_of_for_loop(path: &ast::Path) -> bool {
     .unwrap_or(false)
 }
 
-fn is_in_loop_body(node: &SyntaxNode) -> bool {
+fn is_in_breakable(node: &SyntaxNode) -> BreakableKind {
     node.ancestors()
         .take_while(|it| it.kind() != SyntaxKind::FN && it.kind() != SyntaxKind::CLOSURE_EXPR)
         .find_map(|it| {
-            let loop_body = match_ast! {
+            let (breakable, loop_body) = match_ast! {
                 match it {
-                    ast::ForExpr(it) => it.loop_body(),
-                    ast::WhileExpr(it) => it.loop_body(),
-                    ast::LoopExpr(it) => it.loop_body(),
-                    _ => None,
+                    ast::ForExpr(it) => (BreakableKind::For, it.loop_body()),
+                    ast::WhileExpr(it) => (BreakableKind::While, it.loop_body()),
+                    ast::LoopExpr(it) => (BreakableKind::Loop, it.loop_body()),
+                    ast::BlockExpr(it) => return it.label().map(|_| BreakableKind::Block),
+                    _ => return None,
                 }
             };
-            loop_body.filter(|it| it.syntax().text_range().contains_range(node.text_range()))
+            loop_body
+                .filter(|it| it.syntax().text_range().contains_range(node.text_range()))
+                .map(|_| breakable)
         })
-        .is_some()
+        .unwrap_or(BreakableKind::None)
+}
+
+fn is_in_block(node: &SyntaxNode) -> bool {
+    node.parent()
+        .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
+        .unwrap_or(false)
 }
 
 fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {
