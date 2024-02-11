@@ -1,6 +1,6 @@
-use crate::astconv::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
 use crate::bounds::Bounds;
 use crate::errors::TraitObjectDeclaredWithNoTraits;
+use crate::hir_ty_lowering::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;

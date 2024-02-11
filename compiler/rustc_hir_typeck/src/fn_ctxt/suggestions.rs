@@ -21,7 +21,7 @@ use rustc_hir::{
     CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
     Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
-use rustc_hir_analysis::astconv::HirTyLowerer;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{self};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;

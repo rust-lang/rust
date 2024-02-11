@@ -4,8 +4,10 @@ use crate::{callee, FnCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
-use rustc_hir_analysis::astconv::generics::{check_generic_arg_count_for_call, lower_generic_args};
-use rustc_hir_analysis::astconv::{GenericArgsLowerer, HirTyLowerer, IsMethodCall};
+use rustc_hir_analysis::hir_ty_lowering::generics::{
+    check_generic_arg_count_for_call, lower_generic_args,
+};
+use rustc_hir_analysis::hir_ty_lowering::{GenericArgsLowerer, HirTyLowerer, IsMethodCall};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};

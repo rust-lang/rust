@@ -40,9 +40,9 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
-use crate::astconv::HirTyLowerer;
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
+use crate::hir_ty_lowering::HirTyLowerer;
 pub use type_of::test_opaque_hidden_types;
 
 mod generics_of;

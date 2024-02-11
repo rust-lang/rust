@@ -12,7 +12,7 @@ use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir_analysis::astconv::HirTyLowerer;
+use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer;
 use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;

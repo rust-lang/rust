@@ -30,7 +30,7 @@ several major phases:
 The type checker is defined into various submodules which are documented
 independently:
 
-- astconv: lowers type-system entities from the [HIR][hir] to the
+- hir_ty_lowering: lowers type-system entities from the [HIR][hir] to the
   [`rustc_middle::ty`] representation.
 
 - collect: computes the types of each top-level item and enters them into
@@ -82,11 +82,11 @@ extern crate rustc_middle;
 // These are used by Clippy.
 pub mod check;
 
-pub mod astconv;
 pub mod autoderef;
 mod bounds;
 mod check_unused;
 mod coherence;
+pub mod hir_ty_lowering;
 // FIXME: This module shouldn't be public.
 pub mod collect;
 mod constrained_generic_params;

@@ -1,5 +1,5 @@
 use super::ItemCtxt;
-use crate::astconv::{HirTyLowerer, PredicateFilter};
+use crate::hir_ty_lowering::{HirTyLowerer, PredicateFilter};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_infer::traits::util;

@@ -1,7 +1,7 @@
-use crate::astconv::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
+use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 use hir::{HirId, Node};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;

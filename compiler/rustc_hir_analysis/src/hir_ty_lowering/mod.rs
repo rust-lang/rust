@@ -19,11 +19,11 @@ pub mod generics;
 mod lint;
 mod object_safety;
 
-use crate::astconv::errors::prohibit_assoc_item_binding;
-use crate::astconv::generics::{check_generic_arg_count, lower_generic_args};
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
 use crate::errors::AmbiguousLifetimeBound;
+use crate::hir_ty_lowering::errors::prohibit_assoc_item_binding;
+use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;

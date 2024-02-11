@@ -1,5 +1,5 @@
 use super::IsMethodCall;
-use crate::astconv::{
+use crate::hir_ty_lowering::{
     errors::prohibit_assoc_item_binding, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, GenericArgPosition, GenericArgsLowerer,
 };

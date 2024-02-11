@@ -12,9 +12,9 @@ use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
 
-use crate::astconv::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::errors;
+use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Add a `Sized` bound to the `bounds` if appropriate.
