@@ -625,6 +625,13 @@ impl Span {
         span.lo < other.hi && other.lo < span.hi
     }
 
+    /// Returns `true` if `self` touches or adjoins `other`.
+    pub fn overlaps_or_adjacent(self, other: Span) -> bool {
+        let span = self.data();
+        let other = other.data();
+        span.lo <= other.hi && other.lo <= span.hi
+    }
+
     /// Returns `true` if the spans are equal with regards to the source text.
     ///
     /// Use this instead of `==` when either span could be generated code,
