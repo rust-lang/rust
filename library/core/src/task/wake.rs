@@ -99,6 +99,12 @@ impl RawWaker {
 /// [`RawWaker`] implementation. Calling one of the contained functions using
 /// any other `data` pointer will cause undefined behavior.
 ///
+/// Note that while this type implements `PartialEq`, comparing function pointers, and hence
+/// comparing structs like this that contain function pointers, is unreliable: pointers to the same
+/// function can compare inequal (because functions are duplicated in multiple codegen units), and
+/// pointers to *different* functions can compare equal (since identical functions can be
+/// deduplicated within a codegen unit).
+///
 /// # Thread safety
 /// If the [`RawWaker`] will be used to construct a [`Waker`] then
 /// these functions must all be thread-safe (even though [`RawWaker`] is
