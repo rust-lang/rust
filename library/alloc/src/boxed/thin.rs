@@ -67,20 +67,19 @@ impl<T> ThinBox<T> {
         let ptr = WithOpaqueHeader::new(meta, value);
         ThinBox { ptr, _marker: PhantomData }
     }
-}
 
-#[unstable(feature = "thin_box", issue = "92791")]
-impl<T> ThinBox<T> {
     /// Moves a type to the heap with its [`Metadata`] stored in the heap allocation instead of on
     /// the stack. Returns an error if allocation fails, instead of aborting.
     ///
     /// # Examples
     ///
     /// ```
+    /// #![feature(allocator_api)]
     /// #![feature(thin_box)]
     /// use std::boxed::ThinBox;
     ///
-    /// let five = ThinBox::new(5);
+    /// let five = ThinBox::try_new(5)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     ///
     /// [`Metadata`]: core::ptr::Pointee::Metadata
