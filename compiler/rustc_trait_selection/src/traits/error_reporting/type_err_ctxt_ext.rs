@@ -26,7 +26,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{GenericParam, Item, Node};
+use rustc_hir::{GenericParam, GenericParamKind, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
@@ -2993,7 +2993,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             (s, " +")
         } else {
-            (span.shrink_to_hi(), ":")
+            (
+                if let GenericParamKind::Type { default: Some(default), synthetic: _ } = param.kind
+                {
+                    span.data().with_hi(default.span.lo() - rustc_span::BytePos(3))
+                } else {
+                    span
+                }
+                .shrink_to_hi(),
+                ":",
+            )
         };
         err.span_suggestion_verbose(
             span,
