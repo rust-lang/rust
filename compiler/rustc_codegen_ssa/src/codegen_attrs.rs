@@ -229,7 +229,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::track_caller => {
-                let is_closure = tcx.is_closure_or_coroutine(did.to_def_id());
+                let is_closure = tcx.is_closure_like(did.to_def_id());
 
                 if !is_closure
                     && let Some(fn_sig) = fn_sig()
@@ -274,7 +274,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
             }
             sym::target_feature => {
-                if !tcx.is_closure_or_coroutine(did.to_def_id())
+                if !tcx.is_closure_like(did.to_def_id())
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().unsafety() == hir::Unsafety::Normal
                 {
@@ -529,7 +529,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // would result in this closure being compiled without the inherited target features, but this
     // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
     if tcx.features().target_feature_11
-        && tcx.is_closure_or_coroutine(did.to_def_id())
+        && tcx.is_closure_like(did.to_def_id())
         && codegen_fn_attrs.inline != InlineAttr::Always
     {
         let owner_id = tcx.parent(did.to_def_id());

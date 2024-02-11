@@ -67,7 +67,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                debug_assert!(is_closure_or_coroutine(
+                debug_assert!(is_closure_like(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
@@ -126,9 +126,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 {
                     item_msg = access_place_desc;
                     debug_assert!(self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_ref());
-                    debug_assert!(is_closure_or_coroutine(
-                        the_place_err.ty(self.body, self.infcx.tcx).ty
-                    ));
+                    debug_assert!(is_closure_like(the_place_err.ty(self.body, self.infcx.tcx).ty));
 
                     reason = if self.is_upvar_field_projection(access_place.as_ref()).is_some() {
                         ", as it is a captured variable in a `Fn` closure".to_string()
@@ -389,7 +387,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                debug_assert!(is_closure_or_coroutine(
+                debug_assert!(is_closure_like(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
@@ -1474,7 +1472,8 @@ fn suggest_ampmut<'tcx>(
     }
 }
 
-fn is_closure_or_coroutine(ty: Ty<'_>) -> bool {
+/// If the type is a `Coroutine`, `Closure`, or `CoroutineClosure`
+fn is_closure_like(ty: Ty<'_>) -> bool {
     ty.is_closure() || ty.is_coroutine() || ty.is_coroutine_closure()
 }
 
