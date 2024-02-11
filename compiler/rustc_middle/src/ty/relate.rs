@@ -435,7 +435,10 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(a)
         }
 
-        (ty::Param(a_p), ty::Param(b_p)) if a_p.index == b_p.index => Ok(a),
+        (ty::Param(a_p), ty::Param(b_p)) if a_p.index == b_p.index => {
+            debug_assert_eq!(a_p.name, b_p.name, "param types with same index differ in name");
+            Ok(a)
+        }
 
         (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => Ok(a),
 
@@ -593,7 +596,10 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Error(_), _) => return Ok(a),
         (_, ty::ConstKind::Error(_)) => return Ok(b),
 
-        (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) => a_p.index == b_p.index,
+        (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) if a_p.index == b_p.index => {
+            debug_assert_eq!(a_p.name, b_p.name, "param types with same index differ in name");
+            true
+        }
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
 

@@ -86,7 +86,6 @@ fn into_iter_bound<'tcx>(
     param_index: u32,
     node_args: GenericArgsRef<'tcx>,
 ) -> Option<Span> {
-    let param_env = cx.tcx.param_env(fn_did);
     let mut into_iter_span = None;
 
     for (pred, span) in cx.tcx.explicit_predicates_of(fn_did).predicates {
@@ -111,7 +110,7 @@ fn into_iter_bound<'tcx>(
                     }));
 
                     let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
-                    let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), param_env, predicate);
+                    let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                     if !cx
                         .tcx
                         .infer_ctxt()
