@@ -1,11 +1,11 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::hash_map::Entry;
 
 use hir::{HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
 use ide_db::{
     base_db::FileRange,
     defs::Definition,
     search::{FileReference, ReferenceCategory, SearchScope},
-    RootDatabase,
+    FxHashMap, RootDatabase,
 };
 use syntax::{ast, AstNode};
 use text_edit::TextRange;
@@ -44,7 +44,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let uses = uses_up.chain(uses_down).collect::<Vec<_>>();
 
     // Maps use nodes to the scope that we should search through to find
-    let mut search_scopes = HashMap::<Module, Vec<SearchScope>>::new();
+    let mut search_scopes = FxHashMap::<Module, Vec<SearchScope>>::default();
 
     // iterator over all unused use trees
     let mut unused = uses

@@ -129,7 +129,7 @@ fn generate_unique_lifetime_param_name(
                 type_params.lifetime_params().map(|p| p.syntax().text().to_string()).collect();
             ('a'..='z').map(|it| format!("'{it}")).find(|it| !used_lifetime_params.contains(it))
         }
-        None => Some("'a".to_string()),
+        None => Some("'a".to_owned()),
     }
     .map(|it| make::lifetime(&it))
 }

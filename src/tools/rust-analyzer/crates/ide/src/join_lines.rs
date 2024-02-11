@@ -115,7 +115,7 @@ fn remove_newline(
 
         let range = TextRange::at(offset, ((n_spaces_after_line_break + 1) as u32).into());
         let replace_with = if no_space { "" } else { " " };
-        edit.replace(range, replace_with.to_string());
+        edit.replace(range, replace_with.to_owned());
         return;
     }
 
@@ -140,7 +140,7 @@ fn remove_newline(
                 };
                 edit.replace(
                     TextRange::new(prev.text_range().start(), token.text_range().end()),
-                    space.to_string(),
+                    space.to_owned(),
                 );
                 return;
             }
@@ -154,7 +154,7 @@ fn remove_newline(
                 Some(_) => cov_mark::hit!(join_two_ifs_with_existing_else),
                 None => {
                     cov_mark::hit!(join_two_ifs);
-                    edit.replace(token.text_range(), " else ".to_string());
+                    edit.replace(token.text_range(), " else ".to_owned());
                     return;
                 }
             }
@@ -203,7 +203,7 @@ fn remove_newline(
     }
 
     // Remove newline but add a computed amount of whitespace characters
-    edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_string());
+    edit.replace(token.text_range(), compute_ws(prev.kind(), next.kind()).to_owned());
 }
 
 fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {

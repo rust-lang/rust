@@ -251,6 +251,12 @@ Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, 
 
 Aliased as `"checkOnSave.targets"`.
 --
+[[rust-analyzer.check.workspace]]rust-analyzer.check.workspace (default: `true`)::
++
+--
+Whether `--workspace` should be passed to `cargo check`.
+If false, `-p <package>` will be passed instead.
+--
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
 --
@@ -744,6 +750,11 @@ Sets the LRU capacity of the specified queries.
 +
 --
 Whether to show `can't find Cargo.toml` error message.
+--
+[[rust-analyzer.notifications.unindexedProject]]rust-analyzer.notifications.unindexedProject (default: `false`)::
++
+--
+Whether to send an UnindexedProject notification to the client.
 --
 [[rust-analyzer.numThreads]]rust-analyzer.numThreads (default: `null`)::
 +

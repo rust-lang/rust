@@ -469,12 +469,14 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn rollback_to(&mut self, snapshot: InferenceTableSnapshot) {
         self.var_unification_table.rollback_to(snapshot.var_table_snapshot);
         self.type_variable_table = snapshot.type_variable_table_snapshot;
         self.pending_obligations = snapshot.pending_obligations;
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn run_in_snapshot<T>(&mut self, f: impl FnOnce(&mut InferenceTable<'_>) -> T) -> T {
         let snapshot = self.snapshot();
         let result = f(self);

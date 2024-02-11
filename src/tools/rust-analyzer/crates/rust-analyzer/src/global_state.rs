@@ -33,7 +33,7 @@ use crate::{
     mem_docs::MemDocs,
     op_queue::OpQueue,
     reload,
-    task_pool::TaskPool,
+    task_pool::{TaskPool, TaskQueue},
 };
 
 // Enforces drop order
@@ -126,6 +126,17 @@ pub(crate) struct GlobalState {
         OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
     pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
     pub(crate) prime_caches_queue: OpQueue,
+
+    /// A deferred task queue.
+    ///
+    /// This queue is used for doing database-dependent work inside of sync
+    /// handlers, as accessing the database may block latency-sensitive
+    /// interactions and should be moved away from the main thread.
+    ///
+    /// For certain features, such as [`lsp_ext::UnindexedProjectParams`],
+    /// this queue should run only *after* [`GlobalState::process_changes`] has
+    /// been called.
+    pub(crate) deferred_task_queue: TaskQueue,
 }
 
 /// An immutable snapshot of the world's state at a point in time.
@@ -163,6 +174,11 @@ impl GlobalState {
             let (sender, receiver) = unbounded();
             let handle = TaskPool::new_with_threads(sender, 1);
             Handle { handle, receiver }
+        };
+
+        let task_queue = {
+            let (sender, receiver) = unbounded();
+            TaskQueue { sender, receiver }
         };
 
         let mut analysis_host = AnalysisHost::new(config.lru_parse_query_capacity());
@@ -208,6 +224,8 @@ impl GlobalState {
             fetch_proc_macros_queue: OpQueue::default(),
 
             prime_caches_queue: OpQueue::default(),
+
+            deferred_task_queue: task_queue,
         };
         // Apply any required database inputs from the config.
         this.update_configuration(config);
@@ -370,7 +388,7 @@ impl GlobalState {
         params: R::Params,
         handler: ReqHandler,
     ) {
-        let request = self.req_queue.outgoing.register(R::METHOD.to_string(), params, handler);
+        let request = self.req_queue.outgoing.register(R::METHOD.to_owned(), params, handler);
         self.send(request.into());
     }
 
@@ -387,7 +405,7 @@ impl GlobalState {
         &self,
         params: N::Params,
     ) {
-        let not = lsp_server::Notification::new(N::METHOD.to_string(), params);
+        let not = lsp_server::Notification::new(N::METHOD.to_owned(), params);
         self.send(not.into());
     }
 

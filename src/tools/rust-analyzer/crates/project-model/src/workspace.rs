@@ -241,7 +241,7 @@ impl ProjectWorkspace {
                         .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
                     Some(RustLibSource::Discover) => {
                         sysroot.as_ref().ok().and_then(Sysroot::discover_rustc_src).ok_or_else(
-                            || Some("Failed to discover rustc source for sysroot.".to_string()),
+                            || Some("Failed to discover rustc source for sysroot.".to_owned()),
                         )
                     }
                     None => Err(None),
@@ -840,7 +840,7 @@ fn project_json_to_crate_graph(
                     if let Some(name) = display_name.clone() {
                         CrateOrigin::Local {
                             repo: repository.clone(),
-                            name: Some(name.canonical_name().to_string()),
+                            name: Some(name.canonical_name().to_owned()),
                         }
                     } else {
                         CrateOrigin::Local { repo: None, name: None }
@@ -1117,7 +1117,7 @@ fn detached_files_to_crate_graph(
         let display_name = detached_file
             .file_stem()
             .and_then(|os_str| os_str.to_str())
-            .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_string()));
+            .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_owned()));
         let detached_file_crate = crate_graph.add_crate_root(
             file_id,
             Edition::CURRENT,
@@ -1129,7 +1129,7 @@ fn detached_files_to_crate_graph(
             false,
             CrateOrigin::Local {
                 repo: None,
-                name: display_name.map(|n| n.canonical_name().to_string()),
+                name: display_name.map(|n| n.canonical_name().to_owned()),
             },
             target_layout.clone(),
             None,
@@ -1323,7 +1323,7 @@ fn add_target_crate_root(
         }
     }
 
-    let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());
+    let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_owned());
     let crate_id = crate_graph.add_crate_root(
         file_id,
         edition,
@@ -1455,7 +1455,7 @@ fn sysroot_to_crate_graph(
             (SysrootPublicDeps { deps: pub_deps }, libproc_macro)
         }
         SysrootMode::Stitched(stitched) => {
-            let cfg_options = create_cfg_options(rustc_cfg.clone());
+            let cfg_options = create_cfg_options(rustc_cfg);
             let sysroot_crates: FxHashMap<SysrootCrate, CrateId> = stitched
                 .crates()
                 .filter_map(|krate| {

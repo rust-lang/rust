@@ -333,21 +333,20 @@ mod tests {
 
     #[test]
     fn empty_completion_disjoint_tests() {
-        let empty_completion =
-            CompletionItem::new_simple("label".to_string(), "detail".to_string());
+        let empty_completion = CompletionItem::new_simple("label".to_owned(), "detail".to_owned());
 
         let disjoint_edit_1 = lsp_types::TextEdit::new(
             Range::new(Position::new(2, 2), Position::new(3, 3)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
         let disjoint_edit_2 = lsp_types::TextEdit::new(
             Range::new(Position::new(3, 3), Position::new(4, 4)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
 
         let joint_edit = lsp_types::TextEdit::new(
             Range::new(Position::new(1, 1), Position::new(5, 5)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
 
         assert!(
@@ -375,19 +374,19 @@ mod tests {
     fn completion_with_joint_edits_disjoint_tests() {
         let disjoint_edit = lsp_types::TextEdit::new(
             Range::new(Position::new(1, 1), Position::new(2, 2)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
         let disjoint_edit_2 = lsp_types::TextEdit::new(
             Range::new(Position::new(2, 2), Position::new(3, 3)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
         let joint_edit = lsp_types::TextEdit::new(
             Range::new(Position::new(1, 1), Position::new(5, 5)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
 
         let mut completion_with_joint_edits =
-            CompletionItem::new_simple("label".to_string(), "detail".to_string());
+            CompletionItem::new_simple("label".to_owned(), "detail".to_owned());
         completion_with_joint_edits.additional_text_edits =
             Some(vec![disjoint_edit.clone(), joint_edit.clone()]);
         assert!(
@@ -405,7 +404,7 @@ mod tests {
 
         completion_with_joint_edits.text_edit =
             Some(CompletionTextEdit::InsertAndReplace(InsertReplaceEdit {
-                new_text: "new_text".to_string(),
+                new_text: "new_text".to_owned(),
                 insert: disjoint_edit.range,
                 replace: disjoint_edit_2.range,
             }));
@@ -420,19 +419,19 @@ mod tests {
     fn completion_with_disjoint_edits_disjoint_tests() {
         let disjoint_edit = lsp_types::TextEdit::new(
             Range::new(Position::new(1, 1), Position::new(2, 2)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
         let disjoint_edit_2 = lsp_types::TextEdit::new(
             Range::new(Position::new(2, 2), Position::new(3, 3)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
         let joint_edit = lsp_types::TextEdit::new(
             Range::new(Position::new(1, 1), Position::new(5, 5)),
-            "new_text".to_string(),
+            "new_text".to_owned(),
         );
 
         let mut completion_with_disjoint_edits =
-            CompletionItem::new_simple("label".to_string(), "detail".to_string());
+            CompletionItem::new_simple("label".to_owned(), "detail".to_owned());
         completion_with_disjoint_edits.text_edit = Some(CompletionTextEdit::Edit(disjoint_edit));
         let completion_with_disjoint_edits = completion_with_disjoint_edits;
 

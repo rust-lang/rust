@@ -182,11 +182,7 @@ fn try_filter_trait_item_definition(
     match assoc {
         AssocItem::Function(..) => None,
         AssocItem::Const(..) | AssocItem::TypeAlias(..) => {
-            let imp = match assoc.container(db) {
-                hir::AssocItemContainer::Impl(imp) => imp,
-                _ => return None,
-            };
-            let trait_ = imp.trait_(db)?;
+            let trait_ = assoc.implemented_trait(db)?;
             let name = def.name(db)?;
             let discri_value = discriminant(&assoc);
             trait_

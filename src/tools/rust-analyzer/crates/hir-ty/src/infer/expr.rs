@@ -23,6 +23,7 @@ use syntax::ast::RangeOp;
 use crate::{
     autoderef::{builtin_deref, deref_by_trait, Autoderef},
     consteval,
+    db::{InternedClosure, InternedCoroutine},
     infer::{
         coerce::{CoerceMany, CoercionCause},
         find_continuable,
@@ -253,13 +254,17 @@ impl InferenceContext<'_> {
                             .push(ret_ty.clone())
                             .build();
 
-                        let coroutine_id = self.db.intern_coroutine((self.owner, tgt_expr)).into();
+                        let coroutine_id = self
+                            .db
+                            .intern_coroutine(InternedCoroutine(self.owner, tgt_expr))
+                            .into();
                         let coroutine_ty = TyKind::Coroutine(coroutine_id, subst).intern(Interner);
 
                         (None, coroutine_ty, Some((resume_ty, yield_ty)))
                     }
                     ClosureKind::Closure | ClosureKind::Async => {
-                        let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
+                        let closure_id =
+                            self.db.intern_closure(InternedClosure(self.owner, tgt_expr)).into();
                         let closure_ty = TyKind::Closure(
                             closure_id,
                             TyBuilder::subst_for_closure(self.db, self.owner, sig_ty.clone()),

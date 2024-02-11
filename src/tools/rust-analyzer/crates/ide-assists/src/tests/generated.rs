@@ -1429,10 +1429,17 @@ fn doctest_generate_getter() {
     check_doc_test(
         "generate_getter",
         r#####"
-//- minicore: as_ref
+//- minicore: as_ref, deref
 pub struct String;
 impl AsRef<str> for String {
     fn as_ref(&self) -> &str {
+        ""
+    }
+}
+
+impl core::ops::Deref for String {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
         ""
     }
 }
@@ -1449,13 +1456,20 @@ impl AsRef<str> for String {
     }
 }
 
+impl core::ops::Deref for String {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        ""
+    }
+}
+
 struct Person {
     name: String,
 }
 
 impl Person {
     fn $0name(&self) -> &str {
-        self.name.as_ref()
+        &self.name
     }
 }
 "#####,
@@ -1499,9 +1513,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> Ctx<T> {
-    $0
-}
+impl<T: Clone> Ctx<T> {$0}
 "#####,
     )
 }
@@ -1589,7 +1601,9 @@ struct Ctx<T: Clone> {
 }
 
 impl<T: Clone> Ctx<T> {
-    fn $0new(data: T) -> Self { Self { data } }
+    fn $0new(data: T) -> Self {
+        Self { data }
+    }
 }
 "#####,
     )
@@ -1688,9 +1702,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> $0 for Ctx<T> {
-
-}
+impl<T: Clone> ${0:_} for Ctx<T> {}
 "#####,
     )
 }

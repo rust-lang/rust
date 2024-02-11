@@ -133,7 +133,7 @@ fn bit_op() {
     check_number(r#"const GOAL: i8 = 1 << 7"#, (1i8 << 7) as i128);
     check_number(r#"const GOAL: i8 = -1 << 2"#, (-1i8 << 2) as i128);
     check_fail(r#"const GOAL: i8 = 1 << 8"#, |e| {
-        e == ConstEvalError::MirEvalError(MirEvalError::Panic("Overflow in Shl".to_string()))
+        e == ConstEvalError::MirEvalError(MirEvalError::Panic("Overflow in Shl".to_owned()))
     });
     check_number(r#"const GOAL: i32 = 100000000i32 << 11"#, (100000000i32 << 11) as i128);
 }
@@ -2756,7 +2756,7 @@ fn memory_limit() {
         "#,
         |e| {
             e == ConstEvalError::MirEvalError(MirEvalError::Panic(
-                "Memory allocation of 30000000000 bytes failed".to_string(),
+                "Memory allocation of 30000000000 bytes failed".to_owned(),
             ))
         },
     );

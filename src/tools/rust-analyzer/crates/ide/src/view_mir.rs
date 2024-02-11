@@ -11,7 +11,7 @@ use syntax::{algo::ancestors_at_offset, ast, AstNode};
 // | VS Code | **rust-analyzer: View Mir**
 // |===
 pub(crate) fn view_mir(db: &RootDatabase, position: FilePosition) -> String {
-    body_mir(db, position).unwrap_or_else(|| "Not inside a function body".to_string())
+    body_mir(db, position).unwrap_or_else(|| "Not inside a function body".to_owned())
 }
 
 fn body_mir(db: &RootDatabase, position: FilePosition) -> Option<String> {

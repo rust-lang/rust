@@ -397,7 +397,7 @@ impl flags::AnalysisStats {
                 module
                     .krate()
                     .display_name(db)
-                    .map(|it| it.canonical_name().to_string())
+                    .map(|it| it.canonical_name().to_owned())
                     .into_iter()
                     .chain(
                         module
@@ -688,7 +688,7 @@ impl flags::AnalysisStats {
                 module
                     .krate()
                     .display_name(db)
-                    .map(|it| it.canonical_name().to_string())
+                    .map(|it| it.canonical_name().to_owned())
                     .into_iter()
                     .chain(
                         module
@@ -833,7 +833,7 @@ impl flags::AnalysisStats {
 fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: ExprId) -> String {
     let src = match sm.expr_syntax(expr_id) {
         Ok(s) => s,
-        Err(SyntheticSyntax) => return "synthetic,,".to_string(),
+        Err(SyntheticSyntax) => return "synthetic,,".to_owned(),
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
@@ -849,7 +849,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
 fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: PatId) -> String {
     let src = match sm.pat_syntax(pat_id) {
         Ok(s) => s,
-        Err(SyntheticSyntax) => return "synthetic,,".to_string(),
+        Err(SyntheticSyntax) => return "synthetic,,".to_owned(),
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());

@@ -41,6 +41,9 @@
 //!
 //! {"jsonrpc": "2.0", "method": "exit", "params": null}
 //! ```
+
+#![allow(clippy::print_stderr)]
+
 use std::error::Error;
 
 use lsp_types::OneOf;

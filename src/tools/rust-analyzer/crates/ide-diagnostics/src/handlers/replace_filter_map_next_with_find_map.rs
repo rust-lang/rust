@@ -63,8 +63,8 @@ mod tests {
     #[track_caller]
     pub(crate) fn check_diagnostics(ra_fixture: &str) {
         let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("inactive-code".to_string());
-        config.disabled.insert("E0599".to_string());
+        config.disabled.insert("inactive-code".to_owned());
+        config.disabled.insert("E0599".to_owned());
         check_diagnostics_with_config(config, ra_fixture)
     }
 

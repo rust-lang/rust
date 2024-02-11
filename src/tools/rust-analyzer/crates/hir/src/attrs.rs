@@ -30,7 +30,7 @@ macro_rules! impl_has_attrs {
         impl HasAttrs for $def {
             fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
                 let def = AttrDefId::$def_id(self.into());
-                AttrsWithOwner::attrs_with_owner(db.upcast(), def)
+                AttrsWithOwner::new(db.upcast(), def)
             }
             fn attr_id(self) -> AttrDefId {
                 AttrDefId::$def_id(self.into())

@@ -27,9 +27,9 @@ use crate::{
     visibility::{RawVisibility, Visibility},
     AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
     ExternBlockId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId,
-    ItemContainerId, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId,
-    ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
+    ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id, MacroId,
+    MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId, TraitId,
+    TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -248,6 +248,7 @@ impl Resolver {
             RawVisibility::Public => Some(Visibility::Public),
         }
     }
+
     pub fn resolve_path_in_value_ns(
         &self,
         db: &dyn DefDatabase,
@@ -1014,13 +1015,13 @@ impl HasResolver for CrateRootModuleId {
 
 impl HasResolver for TraitId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
 impl HasResolver for TraitAliasId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
@@ -1036,25 +1037,25 @@ impl<T: Into<AdtId> + Copy> HasResolver for T {
 
 impl HasResolver for FunctionId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
 impl HasResolver for ConstId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for StaticId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for TypeAliasId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
     }
 }
 
@@ -1071,19 +1072,19 @@ impl HasResolver for ImplId {
 impl HasResolver for ExternBlockId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         // Same as parent's
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for ExternCrateId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for UseId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
@@ -1170,18 +1171,28 @@ impl HasResolver for MacroId {
 
 impl HasResolver for Macro2Id {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for ProcMacroId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
 }
 
 impl HasResolver for MacroRulesId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.lookup(db).container.resolver(db)
+        lookup_resolver(db, self)
     }
+}
+
+fn lookup_resolver<'db>(
+    db: &(dyn DefDatabase + 'db),
+    lookup: impl Lookup<
+        Database<'db> = dyn DefDatabase + 'db,
+        Data = impl ItemTreeLoc<Container = impl HasResolver>,
+    >,
+) -> Resolver {
+    lookup.lookup(db).container().resolver(db)
 }

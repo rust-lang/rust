@@ -21,7 +21,7 @@ use smallvec::SmallVec;
 use stdx::never;
 
 use crate::{
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosure},
     from_placeholder_idx, make_binders,
     mir::{BorrowKind, MirSpan, ProjectionElem},
     static_lifetime, to_chalk_trait_id,
@@ -194,17 +194,15 @@ impl CapturedItem {
                     }
                     let variant_data = f.parent.variant_data(db.upcast());
                     let field = match &*variant_data {
-                        VariantData::Record(fields) => fields[f.local_id]
-                            .name
-                            .as_str()
-                            .unwrap_or("[missing field]")
-                            .to_string(),
+                        VariantData::Record(fields) => {
+                            fields[f.local_id].name.as_str().unwrap_or("[missing field]").to_owned()
+                        }
                         VariantData::Tuple(fields) => fields
                             .iter()
                             .position(|it| it.0 == f.local_id)
                             .unwrap_or_default()
                             .to_string(),
-                        VariantData::Unit => "[missing field]".to_string(),
+                        VariantData::Unit => "[missing field]".to_owned(),
                     };
                     result = format!("{result}.{field}");
                     field_need_paren = false;
@@ -718,7 +716,7 @@ impl InferenceContext<'_> {
 
     fn is_upvar(&self, place: &HirPlace) -> bool {
         if let Some(c) = self.current_closure {
-            let (_, root) = self.db.lookup_intern_closure(c.into());
+            let InternedClosure(_, root) = self.db.lookup_intern_closure(c.into());
             return self.body.is_binding_upvar(place.local, root);
         }
         false
@@ -940,7 +938,7 @@ impl InferenceContext<'_> {
     }
 
     fn analyze_closure(&mut self, closure: ClosureId) -> FnTrait {
-        let (_, root) = self.db.lookup_intern_closure(closure.into());
+        let InternedClosure(_, root) = self.db.lookup_intern_closure(closure.into());
         self.current_closure = Some(closure);
         let Expr::Closure { body, capture_by, .. } = &self.body[root] else {
             unreachable!("Closure expression id is always closure");

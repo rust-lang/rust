@@ -64,6 +64,7 @@ pub use crate::{
 // - `expr.ref` -> `&expr`
 // - `expr.refm` -> `&mut expr`
 // - `expr.let` -> `let $0 = expr;`
+// - `expr.lete` -> `let $1 = expr else { $0 };`
 // - `expr.letm` -> `let mut $0 = expr;`
 // - `expr.not` -> `!expr`
 // - `expr.dbg` -> `dbg!(expr)`
