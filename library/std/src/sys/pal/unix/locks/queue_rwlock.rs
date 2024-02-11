@@ -475,6 +475,9 @@ impl RwLock {
         }
     }
 
+    /// Unlocks the queue. If the lock is unlocked, wakes up the next eligible
+    /// thread(s).
+    ///
     /// # Safety
     /// The queue lock must be held by the current thread.
     unsafe fn unlock_queue(&self, mut state: State) {
