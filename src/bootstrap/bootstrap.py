@@ -1047,7 +1047,7 @@ class RustBuild(object):
                 eprint('       replacing <commit> with a specific commit checksum: ')
                 eprint('       '
                 'https://ci-artifacts.rust-lang.org/rustc-builds/<commit>/rustc-nightly-src.tar.xz')
-                if latest_commit_sha:
+                if last_commit != '':
                     eprint('        For example, download the latest commit through:')
                     eprint('       '
                            'https://ci-artifacts.rust-lang.org/rustc-builds/{}/'
