@@ -1,4 +1,3 @@
-
 // check-pass
 
 // Empty (and reason-only) lint attributes are legal—although we may want to
