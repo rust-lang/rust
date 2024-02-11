@@ -15,6 +15,7 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(ptr_sub_ptr)]
+#![feature(let_chains)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
 

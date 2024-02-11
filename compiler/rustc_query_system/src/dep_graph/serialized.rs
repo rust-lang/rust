@@ -397,13 +397,30 @@ impl NodeInfo {
         if header.len().is_none() {
             e.emit_usize(self.edges.len());
         }
-
         let bytes_per_index = header.bytes_per_index();
-        for node_index in self.edges.iter() {
-            e.write_with(|dest| {
-                *dest = node_index.as_u32().to_le_bytes();
-                bytes_per_index
+        let mut edges = &*self.edges;
+        loop {
+            e.write_with_spare(|dest| {
+                if dest.len() < 4 {
+                    return 0;
+                }
+                let usable_len = dest.len() - 4;
+                let (edges_to_encode, remaining) =
+                    edges.split_at((usable_len / bytes_per_index).min(edges.len()));
+                for (i, node_index) in edges_to_encode.iter().enumerate() {
+                    let start = i * bytes_per_index;
+                    let d: &mut [u8; 4] =
+                        unsafe { dest.get_unchecked_mut(start..start + 4).try_into().unwrap() };
+                    *d = node_index.as_u32().to_le_bytes();
+                }
+                edges = remaining;
+                edges_to_encode.len() * bytes_per_index
             });
+
+            if edges.is_empty() {
+                break;
+            }
+            e.flush();
         }
     }
 }

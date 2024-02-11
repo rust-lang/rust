@@ -3,6 +3,7 @@
 #![feature(hash_raw_entry)]
 #![feature(min_specialization)]
 #![feature(let_chains)]
+#![feature(array_windows)]
 #![allow(rustc::potential_query_instability, internal_features)]
 
 #[macro_use]

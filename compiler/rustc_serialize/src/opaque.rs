@@ -38,6 +38,8 @@ pub struct FileEncoder {
     path: PathBuf,
     #[cfg(debug_assertions)]
     finished: bool,
+    panic_at_offset: Option<usize>,
+    flush_every_write: bool,
 }
 
 impl FileEncoder {
@@ -48,6 +50,9 @@ impl FileEncoder {
         let file =
             File::options().read(true).write(true).create(true).truncate(true).open(&path)?;
 
+        let panic_at_offset = std::env::var_os("RUSTC_FILE_ENCODER_PANIC_AT_OFFSET")
+            .map(|v| v.to_str().unwrap().parse::<usize>().unwrap());
+
         Ok(FileEncoder {
             buf: vec![0u8; BUF_SIZE].into_boxed_slice().try_into().unwrap(),
             path: path.as_ref().into(),
@@ -57,6 +62,8 @@ impl FileEncoder {
             res: Ok(()),
             #[cfg(debug_assertions)]
             finished: false,
+            panic_at_offset,
+            flush_every_write: panic_at_offset.is_some_and(|v| v <= BUF_SIZE),
         })
     }
 
@@ -75,6 +82,19 @@ impl FileEncoder {
         {
             self.finished = false;
         }
+
+        if let Some(panic_offset) = self.panic_at_offset {
+            // If we are within the buffer size of the offset we're to panic at, we need to start
+            // flushing every write so that we don't panic late.
+            if panic_offset - self.flushed <= BUF_SIZE {
+                self.flush_every_write = true;
+            }
+            // If the offset we want to panic at is in the range we're about to write, panic.
+            if (self.flushed..self.flushed + self.buffered).contains(&panic_offset) {
+                panic!()
+            }
+        }
+
         if self.res.is_ok() {
             self.res = self.file.write_all(&self.buf[..self.buffered]);
         }
@@ -107,6 +127,12 @@ impl FileEncoder {
             if self.res.is_ok() {
                 self.res = self.file.write_all(buf);
             }
+            // This write bypasses the buffer, so we need to duplicate the check logic here
+            if let Some(panic_offset) = self.panic_at_offset {
+                if (self.flushed..self.flushed + buf.len()).contains(&panic_offset) {
+                    panic!()
+                }
+            }
             self.flushed += buf.len();
         }
     }
@@ -117,7 +143,9 @@ impl FileEncoder {
         {
             self.finished = false;
         }
-        if let Some(dest) = self.buffer_empty().get_mut(..buf.len()) {
+        if !self.flush_every_write
+            && let Some(dest) = self.buffer_empty().get_mut(..buf.len())
+        {
             dest.copy_from_slice(buf);
             self.buffered += buf.len();
         } else {
@@ -146,7 +174,7 @@ impl FileEncoder {
             self.finished = false;
         }
         let flush_threshold = const { BUF_SIZE.checked_sub(N).unwrap() };
-        if std::intrinsics::unlikely(self.buffered > flush_threshold) {
+        if std::intrinsics::unlikely(self.flush_every_write || self.buffered > flush_threshold) {
             self.flush();
         }
         // SAFETY: We checked above that that N < self.buffer_empty().len(),
@@ -154,9 +182,27 @@ impl FileEncoder {
         // We produce a post-mono error if N > BUF_SIZE.
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };
         let written = visitor(buf);
-        // We have to ensure that an errant visitor cannot cause self.buffered to exeed BUF_SIZE.
+        // We have to ensure that an errant visitor cannot cause self.buffered to exceed BUF_SIZE.
         if written > N {
             Self::panic_invalid_write::<N>(written);
+        }
+        self.buffered += written;
+    }
+
+    #[inline]
+    pub fn write_with_spare(&mut self, visitor: impl FnOnce(&mut [u8]) -> usize) {
+        #[cold]
+        #[inline(never)]
+        fn panic_invalid_write_spare() {
+            panic!(
+                "FileEncoder::write_with_spare cannot be used to write more bytes than the current buffer size!"
+            );
+        }
+
+        let buf = self.buffer_empty();
+        let written = visitor(buf);
+        if written > buf.len() {
+            panic_invalid_write_spare();
         }
         self.buffered += written;
     }
