@@ -31,16 +31,17 @@
           StorageDead(_3);
           StorageLive(_6);
           _6 = const 1_usize;
-          _7 = Len((*_2));
+-         _7 = Len((*_2));
 -         _8 = Lt(_6, _7);
 -         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb1, unwind continue];
-+         _8 = Lt(const 1_usize, _7);
-+         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, const 1_usize) -> [success: bb1, unwind continue];
++         _7 = const 3_usize;
++         _8 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> [success: bb1, unwind continue];
       }
   
       bb1: {
 -         _1 = (*_2)[_6];
-+         _1 = (*_2)[1 of 2];
++         _1 = const 2_u32;
           StorageDead(_6);
           StorageDead(_4);
           StorageDead(_2);

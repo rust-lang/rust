@@ -72,29 +72,47 @@
   
       bb2: {
 -         _10 = _6 as *mut () (PtrToPtr);
-+         _10 = const {0x1 as *mut [bool; 0]} as *mut () (PtrToPtr);
-          _9 = NonNull::<T>::new_unchecked::precondition_check(move _10) -> [return: bb3, unwind unreachable];
+-         _9 = NonNull::<T>::new_unchecked::precondition_check(move _10) -> [return: bb3, unwind unreachable];
++         _10 = const {0x1 as *mut ()};
++         _9 = NonNull::<T>::new_unchecked::precondition_check(const {0x1 as *mut ()}) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
           StorageDead(_8);
 -         _11 = _6 as *const [bool; 0] (PointerCoercion(MutToConstPointer));
-+         _11 = const {0x1 as *mut [bool; 0]} as *const [bool; 0] (PointerCoercion(MutToConstPointer));
-          _5 = NonNull::<[bool; 0]> { pointer: _11 };
+-         _5 = NonNull::<[bool; 0]> { pointer: _11 };
++         _11 = const {0x1 as *const [bool; 0]};
++         _5 = const NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }};
           StorageDead(_11);
           StorageDead(_10);
           StorageDead(_6);
-          _4 = Unique::<[bool; 0]> { pointer: move _5, _marker: const PhantomData::<[bool; 0]> };
+-         _4 = Unique::<[bool; 0]> { pointer: move _5, _marker: const PhantomData::<[bool; 0]> };
++         _4 = const Unique::<[bool; 0]> {{ pointer: NonNull::<[bool; 0]> {{ pointer: {0x1 as *const [bool; 0]} }}, _marker: PhantomData::<[bool; 0]> }};
           StorageDead(_5);
-          _3 = move _4 as std::ptr::Unique<[bool]> (PointerCoercion(Unsize));
+-         _3 = move _4 as std::ptr::Unique<[bool]> (PointerCoercion(Unsize));
++         _3 = const Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }};
           StorageDead(_4);
-          _2 = Box::<[bool]>(_3, const std::alloc::Global);
+-         _2 = Box::<[bool]>(_3, const std::alloc::Global);
++         _2 = const Box::<[bool]>(Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }}, std::alloc::Global);
           StorageDead(_9);
           StorageDead(_3);
-          _1 = A { foo: move _2 };
+-         _1 = A { foo: move _2 };
++         _1 = const A {{ foo: Box::<[bool]>(Unique::<[bool]> {{ pointer: NonNull::<[bool]> {{ pointer: Indirect { alloc_id: ALLOC2, offset: Size(0 bytes) }: *const [bool] }}, _marker: PhantomData::<[bool]> }}, std::alloc::Global) }};
           StorageDead(_2);
           _0 = const ();
           drop(_1) -> [return: bb1, unwind unreachable];
       }
++ }
++ 
++ ALLOC2 (size: 16, align: 8) {
++     01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
++ }
++ 
++ ALLOC1 (size: 16, align: 8) {
++     01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
++ }
++ 
++ ALLOC0 (size: 16, align: 8) {
++     01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
   }
   
