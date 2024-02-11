@@ -48,7 +48,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 
-    let any_replacement = ssa.copy_classes().iter_enumerated().any(|(l, &h)| l != h);
+    let any_replacement = !storage_to_remove.is_empty() || !const_locals.is_empty();
 
     Replacer {
         tcx,
@@ -79,9 +79,7 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     let mut fully_moved = BitSet::new_filled(body.local_decls.len());
 
     for (_, rvalue, _) in ssa.assignments(body) {
-        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
-        | Rvalue::CopyForDeref(place)) = rvalue
-        else {
+        let (Rvalue::Use(Operand::Copy(place)) | Rvalue::CopyForDeref(place)) = rvalue else {
             continue;
         };
 
@@ -89,10 +87,7 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
         if !ssa.is_ssa(rhs) {
             continue;
         }
-
-        if let Rvalue::Use(Operand::Copy(_)) | Rvalue::CopyForDeref(_) = rvalue {
-            fully_moved.remove(rhs);
-        }
+        fully_moved.remove(rhs);
     }
 
     ssa.meet_copy_equivalence(&mut fully_moved);
@@ -173,11 +168,9 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
-        if let Operand::Move(place) = *operand
+        if let Operand::Move(place) = *operand {
             // A move out of a projection of a copy is equivalent to a copy of the original projection.
-            && !place.is_indirect_first_projection()
-        {
-            if !self.fully_moved.contains(place.local) {
+            if !place.is_indirect_first_projection() && !self.fully_moved.contains(place.local) {
                 *operand = Operand::Copy(place);
             } else if let Some(local) = place.as_local()
                 && let Some(val) = self.const_locals.get(&local)
