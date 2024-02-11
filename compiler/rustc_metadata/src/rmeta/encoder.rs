@@ -1447,6 +1447,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             {
                 self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind))
             }
+            if def_kind == DefKind::Closure
+                && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
+            {
+                self.tables
+                    .coroutine_for_closure
+                    .set_some(def_id.index, self.tcx.coroutine_for_closure(def_id).into());
+            }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
             }
