@@ -174,7 +174,10 @@ impl Repr {
     pub(super) fn new_os(code: RawOsError) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
+        let res = Self(
+            unsafe { NonNull::new_unchecked(ptr::without_provenance_mut(utagged)) },
+            PhantomData,
+        );
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(
@@ -188,7 +191,10 @@ impl Repr {
     pub(super) fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
+        let res = Self(
+            unsafe { NonNull::new_unchecked(ptr::without_provenance_mut(utagged)) },
+            PhantomData,
+        );
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(

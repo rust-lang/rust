@@ -2575,7 +2575,7 @@ fn test_box_zero_allocator() {
                 assert!(state.0.insert(addr));
                 state.1 += 1;
                 std::println!("allocating {addr}");
-                std::ptr::invalid_mut(addr)
+                std::ptr::without_provenance_mut(addr)
             } else {
                 unsafe { std::alloc::alloc(layout) }
             };

@@ -4,8 +4,7 @@ use crate::hash;
 use crate::intrinsics;
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
-use crate::mem::SizedTypeProperties;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::{NonZero, NonZeroUsize};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr;
@@ -114,7 +113,7 @@ impl<T: Sized> NonNull<T> {
         // to a *mut T. Therefore, `ptr` is not null and the conditions for
         // calling new_unchecked() are respected.
         unsafe {
-            let ptr = crate::ptr::invalid_mut::<T>(mem::align_of::<T>());
+            let ptr = crate::ptr::dangling_mut::<T>();
             NonNull::new_unchecked(ptr)
         }
     }
