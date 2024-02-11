@@ -87,6 +87,7 @@ diagnostics![
     UnresolvedMacroCall,
     UnresolvedMethodCall,
     UnresolvedModule,
+    UnresolvedIdent,
     UnresolvedProcMacro,
     UnusedMut,
     UnusedVariable,
@@ -240,6 +241,11 @@ pub struct UnresolvedMethodCall {
 #[derive(Debug)]
 pub struct UnresolvedAssocItem {
     pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, Either<ast::Pat, ast::SelfParam>>>>,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedIdent {
+    pub expr: InFile<AstPtr<ast::Expr>>,
 }
 
 #[derive(Debug)]
@@ -587,6 +593,10 @@ impl AnyDiagnostic {
                     ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
                 };
                 UnresolvedAssocItem { expr_or_pat }.into()
+            }
+            &InferenceDiagnostic::UnresolvedIdent { expr } => {
+                let expr = expr_syntax(expr);
+                UnresolvedIdent { expr }.into()
             }
             &InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break, bad_value_break } => {
                 let expr = expr_syntax(expr);
