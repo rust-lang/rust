@@ -557,7 +557,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if self.tcx.is_foreign_item(def_id) {
                     // This is unreachable in Miri, but can happen in CTFE where we actually *do* support
                     // referencing arbitrary (declared) extern statics.
-                    throw_unsup!(ReadExternStatic(def_id));
+                    throw_unsup!(ExternStatic(def_id));
                 }
 
                 // We don't give a span -- statics don't need that, they cannot be generic or associated.

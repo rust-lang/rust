@@ -98,6 +98,8 @@ const_eval_error = {$error_kind ->
 const_eval_exact_div_has_remainder =
     exact_div: {$a} cannot be divided by {$b} without remainder
 
+const_eval_extern_static =
+    cannot access extern static ({$did})
 const_eval_fn_ptr_call =
     function pointers need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_for_loop_into_iter_non_const =
@@ -172,6 +174,10 @@ const_eval_invalid_meta =
     invalid metadata in wide pointer: total size is bigger than largest supported object
 const_eval_invalid_meta_slice =
     invalid metadata in wide pointer: slice is bigger than largest supported object
+
+const_eval_invalid_niched_enum_variant_written =
+    trying to set discriminant of a {$ty} to the niched variant, but the value does not match
+
 const_eval_invalid_str =
     this string is not valid UTF-8: {$err}
 const_eval_invalid_tag =
@@ -298,8 +304,6 @@ const_eval_raw_ptr_to_int =
     .note = at compile-time, pointers do not have an integer value
     .note2 = avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
-const_eval_read_extern_static =
-    cannot read from extern static ({$did})
 const_eval_read_pointer_as_int =
     unable to turn pointer into integer
 const_eval_realloc_or_alloc_with_offset =

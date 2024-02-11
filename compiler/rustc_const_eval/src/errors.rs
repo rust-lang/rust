@@ -497,6 +497,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ScalarSizeMismatch(_) => const_eval_scalar_size_mismatch,
             UninhabitedEnumVariantWritten(_) => const_eval_uninhabited_enum_variant_written,
             UninhabitedEnumVariantRead(_) => const_eval_uninhabited_enum_variant_read,
+            InvalidNichedEnumVariantWritten { .. } => {
+                const_eval_invalid_niched_enum_variant_written
+            }
             AbiMismatchArgument { .. } => const_eval_incompatible_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
@@ -584,6 +587,9 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             ScalarSizeMismatch(info) => {
                 builder.arg("target_size", info.target_size);
                 builder.arg("data_size", info.data_size);
+            }
+            InvalidNichedEnumVariantWritten { enum_ty } => {
+                builder.arg("ty", enum_ty.to_string());
             }
             AbiMismatchArgument { caller_ty, callee_ty }
             | AbiMismatchReturn { caller_ty, callee_ty } => {
@@ -793,7 +799,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
             UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
             UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
-            UnsupportedOpInfo::ReadExternStatic(_) => const_eval_read_extern_static,
+            UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
         }
     }
     fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, builder: &mut DiagnosticBuilder<'_, G>) {
@@ -812,7 +818,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 builder.arg("ptr", ptr);
             }
-            ThreadLocalStatic(did) | ReadExternStatic(did) => {
+            ThreadLocalStatic(did) | ExternStatic(did) => {
                 builder.arg("did", format!("{did:?}"));
             }
         }

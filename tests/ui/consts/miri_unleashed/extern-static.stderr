@@ -1,0 +1,15 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/extern-static.rs:11:25
+   |
+LL |     unsafe { let _val = DATA; }
+   |                         ^^^^ cannot access extern static (DefId(0:4 ~ extern_static[c41e]::{extern#0}::DATA))
+
+error[E0080]: could not evaluate static initializer
+  --> $DIR/extern-static.rs:16:14
+   |
+LL |     unsafe { DATA = 0; }
+   |              ^^^^^^^^ cannot access extern static (DefId(0:4 ~ extern_static[c41e]::{extern#0}::DATA))
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
