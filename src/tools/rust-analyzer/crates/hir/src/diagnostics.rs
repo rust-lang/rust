@@ -67,6 +67,8 @@ diagnostics![
     NoSuchField,
     PrivateAssocItem,
     PrivateField,
+    RemoveTrailingReturn,
+    RemoveUnnecessaryElse,
     ReplaceFilterMapNextWithFindMap,
     TraitImplIncorrectSafety,
     TraitImplMissingAssocItems,
@@ -342,6 +344,16 @@ pub struct TraitImplRedundantAssocItems {
     pub assoc_item: (Name, AssocItem),
 }
 
+#[derive(Debug)]
+pub struct RemoveTrailingReturn {
+    pub return_expr: InFile<AstPtr<ast::ReturnExpr>>,
+}
+
+#[derive(Debug)]
+pub struct RemoveUnnecessaryElse {
+    pub if_expr: InFile<AstPtr<ast::IfExpr>>,
+}
+
 impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
@@ -442,6 +454,29 @@ impl AnyDiagnostic {
                         }
                     }
                     Err(SyntheticSyntax) => (),
+                }
+            }
+            BodyValidationDiagnostic::RemoveTrailingReturn { return_expr } => {
+                if let Ok(source_ptr) = source_map.expr_syntax(return_expr) {
+                    // Filters out desugared return expressions (e.g. desugared try operators).
+                    if let Some(ptr) = source_ptr.value.cast::<ast::ReturnExpr>() {
+                        return Some(
+                            RemoveTrailingReturn {
+                                return_expr: InFile::new(source_ptr.file_id, ptr),
+                            }
+                            .into(),
+                        );
+                    }
+                }
+            }
+            BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr } => {
+                if let Ok(source_ptr) = source_map.expr_syntax(if_expr) {
+                    if let Some(ptr) = source_ptr.value.cast::<ast::IfExpr>() {
+                        return Some(
+                            RemoveUnnecessaryElse { if_expr: InFile::new(source_ptr.file_id, ptr) }
+                                .into(),
+                        );
+                    }
                 }
             }
         }
@@ -546,9 +581,7 @@ impl AnyDiagnostic {
                             source_map.pat_syntax(pat).expect("unexpected synthetic");
 
                         // cast from Either<Pat, SelfParam> -> Either<_, Pat>
-                        let Some(ptr) = AstPtr::try_from_raw(value.syntax_node_ptr()) else {
-                            return None;
-                        };
+                        let ptr = AstPtr::try_from_raw(value.syntax_node_ptr())?;
                         InFile { file_id, value: ptr }
                     }
                 };

@@ -23,7 +23,7 @@ fn render(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> 
         .set_relevance(ctx.completion_relevance());
 
     if let Some(actm) = const_.as_assoc_item(db) {
-        if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+        if let Some(trt) = actm.container_or_implemented_trait(db) {
             item.trait_name(trt.name(db).to_smol_str());
         }
     }

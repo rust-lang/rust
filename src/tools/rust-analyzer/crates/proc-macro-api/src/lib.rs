@@ -197,7 +197,7 @@ impl ProcMacro {
                     &deserialize_span_data_index_map(&resp.span_data_table),
                 )
             })),
-            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
+            _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
         }
     }
 }

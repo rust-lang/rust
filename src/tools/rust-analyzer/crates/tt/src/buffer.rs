@@ -106,7 +106,7 @@ impl<'t, Span> TokenBuffer<'t, Span> {
 
         for (child_idx, (subtree, tt)) in children {
             let idx = TokenBuffer::new_inner(
-                subtree.token_trees.as_slice(),
+                &*subtree.token_trees,
                 buffers,
                 Some(EntryPtr(EntryId(res), child_idx + 1)),
             );

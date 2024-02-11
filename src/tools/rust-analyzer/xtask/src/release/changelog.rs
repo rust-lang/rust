@@ -183,5 +183,5 @@ fn parse_title_line(s: &str) -> PrInfo {
             return PrInfo { message, kind };
         }
     }
-    PrInfo { kind: PrKind::Other, message: Some(s.to_string()) }
+    PrInfo { kind: PrKind::Other, message: Some(s.to_owned()) }
 }

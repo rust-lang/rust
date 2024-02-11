@@ -6,7 +6,7 @@ use syntax::{
 };
 
 use crate::{
-    context::{DotAccess, DotAccessKind, PatternContext},
+    context::{DotAccess, DotAccessExprCtx, DotAccessKind, PatternContext},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
     CompletionRelevancePostfixMatch, Completions,
 };
@@ -118,12 +118,17 @@ fn complete_fields(
     missing_fields: Vec<(hir::Field, hir::Type)>,
 ) {
     for (field, ty) in missing_fields {
+        // This should call something else, we shouldn't be synthesizing a DotAccess here
         acc.add_field(
             ctx,
             &DotAccess {
                 receiver: None,
                 receiver_ty: None,
                 kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
+                ctx: DotAccessExprCtx {
+                    in_block_expr: false,
+                    in_breakable: crate::context::BreakableKind::None,
+                },
             },
             None,
             field,

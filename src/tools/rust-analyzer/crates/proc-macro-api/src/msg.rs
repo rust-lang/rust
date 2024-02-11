@@ -187,7 +187,67 @@ mod tests {
             file_id: FileId::from_raw(0),
             ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)),
         };
-        let mut subtree = Subtree {
+
+        let token_trees = Box::new([
+            TokenTree::Leaf(
+                Ident {
+                    text: "struct".into(),
+                    span: Span {
+                        range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
+                        anchor,
+                        ctx: SyntaxContextId::ROOT,
+                    },
+                }
+                .into(),
+            ),
+            TokenTree::Leaf(
+                Ident {
+                    text: "Foo".into(),
+                    span: Span {
+                        range: TextRange::at(TextSize::new(5), TextSize::of("Foo")),
+                        anchor,
+                        ctx: SyntaxContextId::ROOT,
+                    },
+                }
+                .into(),
+            ),
+            TokenTree::Leaf(Leaf::Literal(Literal {
+                text: "Foo".into(),
+
+                span: Span {
+                    range: TextRange::at(TextSize::new(8), TextSize::of("Foo")),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+            })),
+            TokenTree::Leaf(Leaf::Punct(Punct {
+                char: '@',
+                span: Span {
+                    range: TextRange::at(TextSize::new(11), TextSize::of('@')),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+                spacing: Spacing::Joint,
+            })),
+            TokenTree::Subtree(Subtree {
+                delimiter: Delimiter {
+                    open: Span {
+                        range: TextRange::at(TextSize::new(12), TextSize::of('{')),
+                        anchor,
+                        ctx: SyntaxContextId::ROOT,
+                    },
+                    close: Span {
+                        range: TextRange::at(TextSize::new(13), TextSize::of('}')),
+                        anchor,
+                        ctx: SyntaxContextId::ROOT,
+                    },
+                    kind: DelimiterKind::Brace,
+                },
+                token_trees: Box::new([]),
+            }),
+        ]);
+
+        Subtree {
             delimiter: Delimiter {
                 open: Span {
                     range: TextRange::empty(TextSize::new(0)),
@@ -201,65 +261,8 @@ mod tests {
                 },
                 kind: DelimiterKind::Invisible,
             },
-            token_trees: Vec::new(),
-        };
-        subtree.token_trees.push(TokenTree::Leaf(
-            Ident {
-                text: "struct".into(),
-                span: Span {
-                    range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-            }
-            .into(),
-        ));
-        subtree.token_trees.push(TokenTree::Leaf(
-            Ident {
-                text: "Foo".into(),
-                span: Span {
-                    range: TextRange::at(TextSize::new(5), TextSize::of("Foo")),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-            }
-            .into(),
-        ));
-        subtree.token_trees.push(TokenTree::Leaf(Leaf::Literal(Literal {
-            text: "Foo".into(),
-
-            span: Span {
-                range: TextRange::at(TextSize::new(8), TextSize::of("Foo")),
-                anchor,
-                ctx: SyntaxContextId::ROOT,
-            },
-        })));
-        subtree.token_trees.push(TokenTree::Leaf(Leaf::Punct(Punct {
-            char: '@',
-            span: Span {
-                range: TextRange::at(TextSize::new(11), TextSize::of('@')),
-                anchor,
-                ctx: SyntaxContextId::ROOT,
-            },
-            spacing: Spacing::Joint,
-        })));
-        subtree.token_trees.push(TokenTree::Subtree(Subtree {
-            delimiter: Delimiter {
-                open: Span {
-                    range: TextRange::at(TextSize::new(12), TextSize::of('{')),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-                close: Span {
-                    range: TextRange::at(TextSize::new(13), TextSize::of('}')),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-                kind: DelimiterKind::Brace,
-            },
-            token_trees: vec![],
-        }));
-        subtree
+            token_trees,
+        }
     }
 
     #[test]

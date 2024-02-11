@@ -52,7 +52,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
 
 #[cfg(test)]
 mod change_case {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
 
     #[test]
     fn test_rename_incorrect_case() {
@@ -388,14 +388,13 @@ mod F {
 
     #[test]
     fn complex_ignore() {
-        // FIXME: this should trigger errors for the second case.
         check_diagnostics(
             r#"
 trait T { fn a(); }
 struct U {}
 impl T for U {
     fn a() {
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, non_upper_case_globals)]
         trait __BitFlagsOk {
             const HiImAlsoBad: u8 = 2;
             fn Dirty(&self) -> bool { false }
@@ -403,7 +402,9 @@ impl T for U {
 
         trait __BitFlagsBad {
             const HiImAlsoBad: u8 = 2;
+               // ^^^^^^^^^^^ 💡 warn: Constant `HiImAlsoBad` should have UPPER_SNAKE_CASE name, e.g. `HI_IM_ALSO_BAD`
             fn Dirty(&self) -> bool { false }
+            // ^^^^^💡 warn: Function `Dirty` should have snake_case name, e.g. `dirty`
         }
     }
 }
@@ -462,16 +463,56 @@ extern {
     }
 
     #[test]
-    fn bug_traits_arent_checked() {
-        // FIXME: Traits and functions in traits aren't currently checked by
-        // r-a, even though rustc will complain about them.
+    fn incorrect_trait_and_assoc_item_names() {
         check_diagnostics(
             r#"
 trait BAD_TRAIT {
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    const bad_const: u8;
+       // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
+    type BAD_TYPE;
+      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
     fn BAD_FUNCTION();
+    // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
     fn BadFunction();
+    // ^^^^^^^^^^^ 💡 warn: Function `BadFunction` should have snake_case name, e.g. `bad_function`
 }
     "#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostics_for_trait_impl_assoc_items_except_pats_in_body() {
+        cov_mark::check!(trait_impl_assoc_const_incorrect_case_ignored);
+        cov_mark::check!(trait_impl_assoc_type_incorrect_case_ignored);
+        cov_mark::check_count!(trait_impl_assoc_func_name_incorrect_case_ignored, 2);
+        check_diagnostics_with_disabled(
+            r#"
+trait BAD_TRAIT {
+   // ^^^^^^^^^ 💡 warn: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    const bad_const: u8;
+       // ^^^^^^^^^ 💡 warn: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
+    type BAD_TYPE;
+      // ^^^^^^^^ 💡 warn: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+    fn BAD_FUNCTION(BAD_PARAM: u8);
+    // ^^^^^^^^^^^^ 💡 warn: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
+                 // ^^^^^^^^^ 💡 warn: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
+    fn BadFunction();
+    // ^^^^^^^^^^^ 💡 warn: Function `BadFunction` should have snake_case name, e.g. `bad_function`
+}
+
+impl BAD_TRAIT for () {
+    const bad_const: u8 = 0;
+    type BAD_TYPE = ();
+    fn BAD_FUNCTION(BAD_PARAM: u8) {
+                 // ^^^^^^^^^ 💡 warn: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
+        let BAD_VAR = 0;
+         // ^^^^^^^ 💡 warn: Variable `BAD_VAR` should have snake_case name, e.g. `bad_var`
+    }
+    fn BadFunction() {}
+}
+    "#,
+            std::iter::once("unused_variables".to_owned()),
         );
     }
 
@@ -519,6 +560,14 @@ pub const some_const: u8 = 10;
 
 #[allow(non_upper_case_globals)]
 pub static SomeStatic: u8 = 10;
+
+#[allow(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+trait BAD_TRAIT {
+    const bad_const: u8;
+    type BAD_TYPE;
+    fn BAD_FUNCTION(BAD_PARAM: u8);
+    fn BadFunction();
+}
     "#,
         );
     }
@@ -578,6 +627,20 @@ pub const some_const: u8 = 10;
 #[deny(non_upper_case_globals)]
 pub static SomeStatic: u8 = 10;
          //^^^^^^^^^^ 💡 error: Static variable `SomeStatic` should have UPPER_SNAKE_CASE name, e.g. `SOME_STATIC`
+
+#[deny(non_snake_case, non_camel_case_types, non_upper_case_globals)]
+trait BAD_TRAIT {
+   // ^^^^^^^^^ 💡 error: Trait `BAD_TRAIT` should have CamelCase name, e.g. `BadTrait`
+    const bad_const: u8;
+       // ^^^^^^^^^ 💡 error: Constant `bad_const` should have UPPER_SNAKE_CASE name, e.g. `BAD_CONST`
+    type BAD_TYPE;
+      // ^^^^^^^^ 💡 error: Type alias `BAD_TYPE` should have CamelCase name, e.g. `BadType`
+    fn BAD_FUNCTION(BAD_PARAM: u8);
+    // ^^^^^^^^^^^^ 💡 error: Function `BAD_FUNCTION` should have snake_case name, e.g. `bad_function`
+                 // ^^^^^^^^^ 💡 error: Parameter `BAD_PARAM` should have snake_case name, e.g. `bad_param`
+    fn BadFunction();
+    // ^^^^^^^^^^^ 💡 error: Function `BadFunction` should have snake_case name, e.g. `bad_function`
+}
     "#,
         );
     }

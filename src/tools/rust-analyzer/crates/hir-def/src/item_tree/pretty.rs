@@ -24,7 +24,7 @@ pub(super) fn print_item_tree(db: &dyn DefDatabase, tree: &ItemTree) -> String {
         p.print_mod_item(*item);
     }
 
-    let mut s = p.buf.trim_end_matches('\n').to_string();
+    let mut s = p.buf.trim_end_matches('\n').to_owned();
     s.push('\n');
     s
 }
@@ -58,7 +58,7 @@ impl Printer<'_> {
         wln!(self);
         f(self);
         self.indent_level -= 1;
-        self.buf = self.buf.trim_end_matches('\n').to_string();
+        self.buf = self.buf.trim_end_matches('\n').to_owned();
     }
 
     /// Ensures that a blank line is output before the next text.

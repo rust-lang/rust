@@ -105,7 +105,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
         }
     }
 
-    buf.trim().to_string()
+    buf.trim().to_owned()
 }
 
 fn collect_query<'q, Q>(table: QueryTable<'q, Q>) -> <Q as QueryCollect>::Collector

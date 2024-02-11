@@ -1,10 +1,6 @@
 //! SCIP generator
 
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-    time::Instant,
-};
+use std::{path::PathBuf, time::Instant};
 
 use ide::{
     LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile,
@@ -12,6 +8,7 @@ use ide::{
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use rustc_hash::{FxHashMap, FxHashSet};
 use scip::types as scip_types;
 
 use crate::{
@@ -76,9 +73,10 @@ impl flags::Scip {
         };
         let mut documents = Vec::new();
 
-        let mut symbols_emitted: HashSet<TokenId> = HashSet::default();
-        let mut tokens_to_symbol: HashMap<TokenId, String> = HashMap::new();
-        let mut tokens_to_enclosing_symbol: HashMap<TokenId, Option<String>> = HashMap::new();
+        let mut symbols_emitted: FxHashSet<TokenId> = FxHashSet::default();
+        let mut tokens_to_symbol: FxHashMap<TokenId, String> = FxHashMap::default();
+        let mut tokens_to_enclosing_symbol: FxHashMap<TokenId, Option<String>> =
+            FxHashMap::default();
 
         for StaticIndexedFile { file_id, tokens, .. } in si.files {
             let mut local_count = 0;
@@ -148,7 +146,7 @@ impl flags::Scip {
                         let signature_documentation =
                             token.signature.clone().map(|text| scip_types::Document {
                                 relative_path: relative_path.clone(),
-                                language: "rust".to_string(),
+                                language: "rust".to_owned(),
                                 text,
                                 position_encoding,
                                 ..Default::default()
@@ -188,7 +186,7 @@ impl flags::Scip {
                 scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
             documents.push(scip_types::Document {
                 relative_path,
-                language: "rust".to_string(),
+                language: "rust".to_owned(),
                 occurrences,
                 symbols,
                 text: String::new(),
@@ -218,7 +216,7 @@ fn get_relative_filepath(
     rootpath: &vfs::AbsPathBuf,
     file_id: ide::FileId,
 ) -> Option<String> {
-    Some(vfs.file_path(file_id).as_path()?.strip_prefix(rootpath)?.as_ref().to_str()?.to_string())
+    Some(vfs.file_path(file_id).as_path()?.strip_prefix(rootpath)?.as_ref().to_str()?.to_owned())
 }
 
 // SCIP Ranges have a (very large) optimization that ranges if they are on the same line
@@ -241,8 +239,8 @@ fn new_descriptor_str(
     suffix: scip_types::descriptor::Suffix,
 ) -> scip_types::Descriptor {
     scip_types::Descriptor {
-        name: name.to_string(),
-        disambiguator: "".to_string(),
+        name: name.to_owned(),
+        disambiguator: "".to_owned(),
         suffix: suffix.into(),
         special_fields: Default::default(),
     }
@@ -313,9 +311,9 @@ fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
     scip_types::Symbol {
         scheme: "rust-analyzer".into(),
         package: Some(scip_types::Package {
-            manager: "cargo".to_string(),
+            manager: "cargo".to_owned(),
             name: package_name,
-            version: version.unwrap_or_else(|| ".".to_string()),
+            version: version.unwrap_or_else(|| ".".to_owned()),
             special_fields: Default::default(),
         })
         .into(),

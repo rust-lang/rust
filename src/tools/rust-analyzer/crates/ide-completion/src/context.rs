@@ -45,13 +45,13 @@ pub(crate) enum Visible {
 
 /// Existing qualifiers for the thing we are currently completing.
 #[derive(Debug, Default)]
-pub(super) struct QualifierCtx {
-    pub(super) unsafe_tok: Option<SyntaxToken>,
-    pub(super) vis_node: Option<ast::Visibility>,
+pub(crate) struct QualifierCtx {
+    pub(crate) unsafe_tok: Option<SyntaxToken>,
+    pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
-    pub(super) fn none(&self) -> bool {
+    pub(crate) fn none(&self) -> bool {
         self.unsafe_tok.is_none() && self.vis_node.is_none()
     }
 }
@@ -60,27 +60,27 @@ impl QualifierCtx {
 #[derive(Debug)]
 pub(crate) struct PathCompletionCtx {
     /// If this is a call with () already there (or {} in case of record patterns)
-    pub(super) has_call_parens: bool,
+    pub(crate) has_call_parens: bool,
     /// If this has a macro call bang !
-    pub(super) has_macro_bang: bool,
+    pub(crate) has_macro_bang: bool,
     /// The qualifier of the current path.
-    pub(super) qualified: Qualified,
+    pub(crate) qualified: Qualified,
     /// The parent of the path we are completing.
-    pub(super) parent: Option<ast::Path>,
+    pub(crate) parent: Option<ast::Path>,
     #[allow(dead_code)]
     /// The path of which we are completing the segment
-    pub(super) path: ast::Path,
+    pub(crate) path: ast::Path,
     /// The path of which we are completing the segment in the original file
     pub(crate) original_path: Option<ast::Path>,
-    pub(super) kind: PathKind,
+    pub(crate) kind: PathKind,
     /// Whether the path segment has type args or not.
-    pub(super) has_type_args: bool,
+    pub(crate) has_type_args: bool,
     /// Whether the qualifier comes from a use tree parent or not
     pub(crate) use_tree_parent: bool,
 }
 
 impl PathCompletionCtx {
-    pub(super) fn is_trivial_path(&self) -> bool {
+    pub(crate) fn is_trivial_path(&self) -> bool {
         matches!(
             self,
             PathCompletionCtx {
@@ -97,9 +97,9 @@ impl PathCompletionCtx {
 
 /// The kind of path we are completing right now.
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum PathKind {
+pub(crate) enum PathKind {
     Expr {
-        expr_ctx: ExprCtx,
+        expr_ctx: PathExprCtx,
     },
     Type {
         location: TypeLocation,
@@ -132,9 +132,9 @@ pub(crate) struct AttrCtx {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ExprCtx {
+pub(crate) struct PathExprCtx {
     pub(crate) in_block_expr: bool,
-    pub(crate) in_loop_body: bool,
+    pub(crate) in_breakable: BreakableKind,
     pub(crate) after_if_expr: bool,
     /// Whether this expression is the direct condition of an if or while expression
     pub(crate) in_condition: bool,
@@ -221,7 +221,7 @@ pub(crate) enum TypeAscriptionTarget {
 
 /// The kind of item list a [`PathKind::Item`] belongs to.
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum ItemListKind {
+pub(crate) enum ItemListKind {
     SourceFile,
     Module,
     Impl,
@@ -231,7 +231,7 @@ pub(super) enum ItemListKind {
 }
 
 #[derive(Debug)]
-pub(super) enum Qualified {
+pub(crate) enum Qualified {
     No,
     With {
         path: ast::Path,
@@ -259,37 +259,37 @@ pub(super) enum Qualified {
 
 /// The state of the pattern we are completing.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct PatternContext {
-    pub(super) refutability: PatternRefutability,
-    pub(super) param_ctx: Option<ParamContext>,
-    pub(super) has_type_ascription: bool,
-    pub(super) parent_pat: Option<ast::Pat>,
-    pub(super) ref_token: Option<SyntaxToken>,
-    pub(super) mut_token: Option<SyntaxToken>,
+pub(crate) struct PatternContext {
+    pub(crate) refutability: PatternRefutability,
+    pub(crate) param_ctx: Option<ParamContext>,
+    pub(crate) has_type_ascription: bool,
+    pub(crate) parent_pat: Option<ast::Pat>,
+    pub(crate) ref_token: Option<SyntaxToken>,
+    pub(crate) mut_token: Option<SyntaxToken>,
     /// The record pattern this name or ref is a field of
-    pub(super) record_pat: Option<ast::RecordPat>,
-    pub(super) impl_: Option<ast::Impl>,
+    pub(crate) record_pat: Option<ast::RecordPat>,
+    pub(crate) impl_: Option<ast::Impl>,
     /// List of missing variants in a match expr
-    pub(super) missing_variants: Vec<hir::Variant>,
+    pub(crate) missing_variants: Vec<hir::Variant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct ParamContext {
-    pub(super) param_list: ast::ParamList,
-    pub(super) param: ast::Param,
-    pub(super) kind: ParamKind,
+pub(crate) struct ParamContext {
+    pub(crate) param_list: ast::ParamList,
+    pub(crate) param: ast::Param,
+    pub(crate) kind: ParamKind,
 }
 
 /// The state of the lifetime we are completing.
 #[derive(Debug)]
-pub(super) struct LifetimeContext {
-    pub(super) lifetime: Option<ast::Lifetime>,
-    pub(super) kind: LifetimeKind,
+pub(crate) struct LifetimeContext {
+    pub(crate) lifetime: Option<ast::Lifetime>,
+    pub(crate) kind: LifetimeKind,
 }
 
 /// The kind of lifetime we are completing.
 #[derive(Debug)]
-pub(super) enum LifetimeKind {
+pub(crate) enum LifetimeKind {
     LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
     Lifetime,
     LabelRef,
@@ -298,16 +298,16 @@ pub(super) enum LifetimeKind {
 
 /// The state of the name we are completing.
 #[derive(Debug)]
-pub(super) struct NameContext {
+pub(crate) struct NameContext {
     #[allow(dead_code)]
-    pub(super) name: Option<ast::Name>,
-    pub(super) kind: NameKind,
+    pub(crate) name: Option<ast::Name>,
+    pub(crate) kind: NameKind,
 }
 
 /// The kind of the name we are completing.
 #[derive(Debug)]
 #[allow(dead_code)]
-pub(super) enum NameKind {
+pub(crate) enum NameKind {
     Const,
     ConstParam,
     Enum,
@@ -331,15 +331,15 @@ pub(super) enum NameKind {
 
 /// The state of the NameRef we are completing.
 #[derive(Debug)]
-pub(super) struct NameRefContext {
+pub(crate) struct NameRefContext {
     /// NameRef syntax in the original file
-    pub(super) nameref: Option<ast::NameRef>,
-    pub(super) kind: NameRefKind,
+    pub(crate) nameref: Option<ast::NameRef>,
+    pub(crate) kind: NameRefKind,
 }
 
 /// The kind of the NameRef we are completing.
 #[derive(Debug)]
-pub(super) enum NameRefKind {
+pub(crate) enum NameRefKind {
     Path(PathCompletionCtx),
     DotAccess(DotAccess),
     /// Position where we are only interested in keyword completions
@@ -355,7 +355,7 @@ pub(super) enum NameRefKind {
 
 /// The identifier we are currently completing.
 #[derive(Debug)]
-pub(super) enum CompletionAnalysis {
+pub(crate) enum CompletionAnalysis {
     Name(NameContext),
     NameRef(NameRefContext),
     Lifetime(LifetimeContext),
@@ -376,14 +376,15 @@ pub(super) enum CompletionAnalysis {
 
 /// Information about the field or method access we are completing.
 #[derive(Debug)]
-pub(super) struct DotAccess {
-    pub(super) receiver: Option<ast::Expr>,
-    pub(super) receiver_ty: Option<TypeInfo>,
-    pub(super) kind: DotAccessKind,
+pub(crate) struct DotAccess {
+    pub(crate) receiver: Option<ast::Expr>,
+    pub(crate) receiver_ty: Option<TypeInfo>,
+    pub(crate) kind: DotAccessKind,
+    pub(crate) ctx: DotAccessExprCtx,
 }
 
 #[derive(Debug)]
-pub(super) enum DotAccessKind {
+pub(crate) enum DotAccessKind {
     Field {
         /// True if the receiver is an integer and there is no ident in the original file after it yet
         /// like `0.$0`
@@ -392,6 +393,21 @@ pub(super) enum DotAccessKind {
     Method {
         has_parens: bool,
     },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct DotAccessExprCtx {
+    pub(crate) in_block_expr: bool,
+    pub(crate) in_breakable: BreakableKind,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum BreakableKind {
+    None,
+    Loop,
+    For,
+    While,
+    Block,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -404,39 +420,39 @@ pub(crate) enum ParamKind {
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
 pub(crate) struct CompletionContext<'a> {
-    pub(super) sema: Semantics<'a, RootDatabase>,
-    pub(super) scope: SemanticsScope<'a>,
-    pub(super) db: &'a RootDatabase,
-    pub(super) config: &'a CompletionConfig,
-    pub(super) position: FilePosition,
+    pub(crate) sema: Semantics<'a, RootDatabase>,
+    pub(crate) scope: SemanticsScope<'a>,
+    pub(crate) db: &'a RootDatabase,
+    pub(crate) config: &'a CompletionConfig,
+    pub(crate) position: FilePosition,
 
     /// The token before the cursor, in the original file.
-    pub(super) original_token: SyntaxToken,
+    pub(crate) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
-    pub(super) token: SyntaxToken,
+    pub(crate) token: SyntaxToken,
     /// The crate of the current file.
-    pub(super) krate: hir::Crate,
+    pub(crate) krate: hir::Crate,
     /// The module of the `scope`.
-    pub(super) module: hir::Module,
+    pub(crate) module: hir::Module,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
     is_nightly: bool,
 
     /// The expected name of what we are completing.
     /// This is usually the parameter name of the function argument we are completing.
-    pub(super) expected_name: Option<NameOrNameRef>,
+    pub(crate) expected_name: Option<NameOrNameRef>,
     /// The expected type of what we are completing.
-    pub(super) expected_type: Option<Type>,
+    pub(crate) expected_type: Option<Type>,
 
-    pub(super) qualifier_ctx: QualifierCtx,
+    pub(crate) qualifier_ctx: QualifierCtx,
 
-    pub(super) locals: FxHashMap<Name, Local>,
+    pub(crate) locals: FxHashMap<Name, Local>,
 
     /// The module depth of the current module of the cursor position.
     /// - crate-root
     ///  - mod foo
     ///   - mod bar
     /// Here depth will be 2
-    pub(super) depth_from_crate_root: usize,
+    pub(crate) depth_from_crate_root: usize,
 }
 
 impl CompletionContext<'_> {
@@ -634,7 +650,7 @@ impl CompletionContext<'_> {
 
 // CompletionContext construction
 impl<'a> CompletionContext<'a> {
-    pub(super) fn new(
+    pub(crate) fn new(
         db: &'a RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'a CompletionConfig,
@@ -649,7 +665,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
-            let edit = Indel::insert(offset, COMPLETION_MARKER.to_string());
+            let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
             parse.reparse(&edit).tree()
         };
 

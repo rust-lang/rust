@@ -167,7 +167,7 @@ fn utf8_stdout(mut cmd: Command) -> anyhow::Result<String> {
         }
     }
     let stdout = String::from_utf8(output.stdout)?;
-    Ok(stdout.trim().to_string())
+    Ok(stdout.trim().to_owned())
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]

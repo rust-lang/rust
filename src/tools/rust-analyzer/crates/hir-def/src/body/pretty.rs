@@ -29,11 +29,11 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
                 "const {} = ",
                 match &it.name {
                     Some(name) => name.display(db.upcast()).to_string(),
-                    None => "_".to_string(),
+                    None => "_".to_owned(),
                 }
             )
         }),
-        DefWithBodyId::InTypeConstId(_) => "In type const = ".to_string(),
+        DefWithBodyId::InTypeConstId(_) => "In type const = ".to_owned(),
         DefWithBodyId::VariantId(it) => {
             let loc = it.lookup(db);
             let enum_loc = loc.parent.lookup(db);
@@ -123,7 +123,7 @@ impl Printer<'_> {
         wln!(self);
         f(self);
         self.indent_level -= 1;
-        self.buf = self.buf.trim_end_matches('\n').to_string();
+        self.buf = self.buf.trim_end_matches('\n').to_owned();
     }
 
     fn whitespace(&mut self) {

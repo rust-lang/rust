@@ -155,10 +155,10 @@ fn line_expand(
     // not incremental
     ExpandResult::ok(tt::Subtree {
         delimiter: tt::Delimiter::invisible_spanned(span),
-        token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+        token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: "0u32".into(),
             span,
-        }))],
+        }))]),
     })
 }
 
@@ -208,11 +208,11 @@ fn assert_expand(
         [cond, panic_args @ ..] => {
             let comma = tt::Subtree {
                 delimiter: tt::Delimiter::invisible_spanned(call_site_span),
-                token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+                token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     char: ',',
                     spacing: tt::Spacing::Alone,
                     span: call_site_span,
-                }))],
+                }))]),
             };
             let cond = cond.clone();
             let panic_args = itertools::Itertools::intersperse(panic_args.iter().cloned(), comma);
@@ -359,7 +359,10 @@ fn panic_expand(
         close: call_site_span,
         kind: tt::DelimiterKind::Parenthesis,
     };
-    call.token_trees.push(tt::TokenTree::Subtree(subtree));
+
+    // FIXME(slow): quote! have a way to expand to builder to make this a vec!
+    call.push(tt::TokenTree::Subtree(subtree));
+
     ExpandResult::ok(call)
 }
 
@@ -388,7 +391,10 @@ fn unreachable_expand(
         close: call_site_span,
         kind: tt::DelimiterKind::Parenthesis,
     };
-    call.token_trees.push(tt::TokenTree::Subtree(subtree));
+
+    // FIXME(slow): quote! have a way to expand to builder to make this a vec!
+    call.push(tt::TokenTree::Subtree(subtree));
+
     ExpandResult::ok(call)
 }
 
@@ -509,7 +515,7 @@ fn concat_bytes_expand(
             tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                 let token = ast::make::tokens::literal(&lit.to_string());
                 match token.kind() {
-                    syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
+                    syntax::SyntaxKind::BYTE => bytes.push(token.text().to_owned()),
                     syntax::SyntaxKind::BYTE_STRING => {
                         let components = unquote_byte_string(lit).unwrap_or_default();
                         components.into_iter().for_each(|it| bytes.push(it.to_string()));
@@ -564,7 +570,7 @@ fn concat_bytes_expand_subtree(
                 let lit = ast::make::tokens::literal(&lit.to_string());
                 match lit.kind() {
                     syntax::SyntaxKind::BYTE | syntax::SyntaxKind::INT_NUMBER => {
-                        bytes.push(lit.text().to_string())
+                        bytes.push(lit.text().to_owned())
                     }
                     _ => {
                         return Err(mbe::ExpandError::UnexpectedToken.into());
@@ -675,10 +681,10 @@ fn include_bytes_expand(
     // FIXME: actually read the file here if the user asked for macro expansion
     let res = tt::Subtree {
         delimiter: tt::Delimiter::invisible_spanned(span),
-        token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+        token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: r#"b"""#.into(),
             span,
-        }))],
+        }))]),
     };
     ExpandResult::ok(res)
 }
@@ -743,7 +749,7 @@ fn env_expand(
         // We cannot use an empty string here, because for
         // `include!(concat!(env!("OUT_DIR"), "/foo.rs"))` will become
         // `include!("foo.rs"), which might go to infinite loop
-        "UNRESOLVED_ENV_VAR".to_string()
+        "UNRESOLVED_ENV_VAR".to_owned()
     });
     let expanded = quote! {span => #s };
 

@@ -376,6 +376,8 @@
 //! [Stacked Borrows]: https://plv.mpi-sws.org/rustbelt/stacked-borrows/
 
 #![stable(feature = "rust1", since = "1.0.0")]
+// There are many unsafe functions taking pointers that don't dereference them.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::cmp::Ordering;
 use crate::fmt;

@@ -83,7 +83,7 @@ impl GlobalState {
         }
         if self.config.linked_or_discovered_projects() != old_config.linked_or_discovered_projects()
         {
-            self.fetch_workspaces_queue.request_op("linked projects changed".to_string(), false)
+            self.fetch_workspaces_queue.request_op("linked projects changed".to_owned(), false)
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -440,8 +440,8 @@ impl GlobalState {
                     .collect(),
             };
             let registration = lsp_types::Registration {
-                id: "workspace/didChangeWatchedFiles".to_string(),
-                method: "workspace/didChangeWatchedFiles".to_string(),
+                id: "workspace/didChangeWatchedFiles".to_owned(),
+                method: "workspace/didChangeWatchedFiles".to_owned(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
             self.send_request::<lsp_types::request::RegisterCapability>(
@@ -503,7 +503,7 @@ impl GlobalState {
             let mut crate_graph_file_dependencies = FxHashSet::default();
 
             let mut load = |path: &AbsPath| {
-                let _p = tracing::span!(tracing::Level::INFO, "switch_workspaces::load").entered();
+                let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 crate_graph_file_dependencies.insert(vfs_path.clone());
                 match vfs.file_id(&vfs_path) {
@@ -528,10 +528,16 @@ impl GlobalState {
             (crate_graph, proc_macros, crate_graph_file_dependencies)
         };
 
+        let mut change = Change::new();
         if self.config.expand_proc_macros() {
+            change.set_proc_macros(
+                crate_graph
+                    .iter()
+                    .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
+                    .collect(),
+            );
             self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
         }
-        let mut change = Change::new();
         change.set_crate_graph(crate_graph);
         self.analysis_host.apply_change(change);
         self.crate_graph_file_dependencies = crate_graph_file_dependencies;

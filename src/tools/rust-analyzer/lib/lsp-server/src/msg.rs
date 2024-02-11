@@ -269,7 +269,7 @@ fn read_msg_text(inp: &mut dyn BufRead) -> io::Result<Option<String>> {
             size = Some(header_value.parse::<usize>().map_err(invalid_data)?);
         }
     }
-    let size: usize = size.ok_or_else(|| invalid_data("no Content-Length".to_string()))?;
+    let size: usize = size.ok_or_else(|| invalid_data("no Content-Length".to_owned()))?;
     let mut buf = buf.into_bytes();
     buf.resize(size, 0);
     inp.read_exact(&mut buf)?;

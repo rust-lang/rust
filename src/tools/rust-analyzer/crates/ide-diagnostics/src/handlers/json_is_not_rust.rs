@@ -42,12 +42,12 @@ impl State {
             v.push("Deserialize");
         }
         match v.as_slice() {
-            [] => "".to_string(),
+            [] => "".to_owned(),
             [x] => format!("#[derive({x})]\n"),
             [x, y] => format!("#[derive({x}, {y})]\n"),
             _ => {
                 never!();
-                "".to_string()
+                "".to_owned()
             }
         }
     }
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn diagnostic_for_simple_case() {
         let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("syntax-error".to_string());
+        config.disabled.insert("syntax-error".to_owned());
         check_diagnostics_with_config(
             config,
             r#"

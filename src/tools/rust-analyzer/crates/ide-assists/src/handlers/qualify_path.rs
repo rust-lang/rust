@@ -203,7 +203,7 @@ fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
 
     match item_module_def {
         hir::ModuleDef::Trait(trait_) => Some(trait_),
-        _ => item_module_def.as_assoc_item(db)?.containing_trait(db),
+        _ => item_module_def.as_assoc_item(db)?.container_trait(db),
     }
 }
 
