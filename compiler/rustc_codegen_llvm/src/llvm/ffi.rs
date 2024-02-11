@@ -925,13 +925,17 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     input_tts: Vec<TypeTree>,
     output_tt: TypeTree,
 ) -> &Value {
-    let (primary_ret, diff_ret, ret_activity) = match ret_activity {
-        DiffActivity::Const => (true, false, CDIFFE_TYPE::DFT_CONSTANT),
-        DiffActivity::Active => (true, true, CDIFFE_TYPE::DFT_DUP_ARG),
-        DiffActivity::ActiveOnly => (false, true, CDIFFE_TYPE::DFT_DUP_NONEED),
-        DiffActivity::None => (false, false, CDIFFE_TYPE::DFT_CONSTANT),
+    let (primary_ret, ret_activity) = match ret_activity {
+        DiffActivity::Const => (true, CDIFFE_TYPE::DFT_CONSTANT),
+        DiffActivity::Active => (true, CDIFFE_TYPE::DFT_DUP_ARG),
+        DiffActivity::None => (false, CDIFFE_TYPE::DFT_CONSTANT),
         _ => panic!("Invalid return activity"),
     };
+    // This only is needed for split-mode AD, which we don't support.
+    // See Julia:
+    // https://github.com/EnzymeAD/Enzyme.jl/blob/a511e4e6979d6161699f5c9919d49801c0764a09/src/compiler.jl#L3132
+    // https://github.com/EnzymeAD/Enzyme.jl/blob/a511e4e6979d6161699f5c9919d49801c0764a09/src/compiler.jl#L3092
+    let diff_ret = false;
 
     let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
 
@@ -2690,7 +2694,7 @@ extern "C" {
         numRules: size_t,
     ) -> EnzymeTypeAnalysisRef;
 }
-    pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef) { unimplemented!() }
+    //pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef) { unimplemented!() }
     pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef) { unimplemented!() }
     pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef { unimplemented!() }
     pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef) { unimplemented!() }
@@ -2936,25 +2940,12 @@ pub use self::Enzyme_AD::*;
 pub mod Enzyme_AD {
 use super::*;
 
-use super::debuginfo::{
-    DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
-    DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
-    DebugEmissionKind, DebugNameTableKind,
-};
-
-use libc::{c_char, c_int, c_uint, size_t};
-use libc::{c_ulonglong, c_void};
-
-use std::marker::PhantomData;
-
-use super::RustString;
-use core::fmt;
-use std::ffi::{CStr, CString};
+use libc::{c_char, size_t};
+use libc::c_void;
 
 extern "C" {
-    fn EnzymeNewTypeTree() -> CTypeTreeRef;
-    fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+    pub fn EnzymeNewTypeTree() -> CTypeTreeRef;
+    pub fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
     pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
     pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64);
 }
@@ -2971,43 +2962,46 @@ extern "C" {
     static mut EnzymeStrictAliasing: c_void;
 }
 pub fn set_max_int_offset(offset: u64) {
+    let offset = offset.try_into().unwrap();
     unsafe {
-        EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::MaxIntOffset), offset);
+        EnzymeSetCLInteger(std::ptr::addr_of_mut!(MaxIntOffset), offset);
     }
 }
 pub fn set_max_type_offset(offset: u64) {
+    let offset = offset.try_into().unwrap();
     unsafe {
-        EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::MaxTypeOffset), offset);
+        EnzymeSetCLInteger(std::ptr::addr_of_mut!(MaxTypeOffset), offset);
     }
 }
 pub fn set_max_type_depth(depth: u64) {
+    let depth = depth.try_into().unwrap();
     unsafe {
-        EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::EnzymeMaxTypeDepth), depth);
+        EnzymeSetCLInteger(std::ptr::addr_of_mut!(EnzymeMaxTypeDepth), depth);
     }
 }
 pub fn set_print_perf(print: bool) {
     unsafe {
-        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintPerf), print as u8);
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintPerf), print as u8);
     }
 }
 pub fn set_print_activity(print: bool) {
     unsafe {
-        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), print as u8);
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintActivity), print as u8);
     }
 }
 pub fn set_print_type(print: bool) {
     unsafe {
-        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), print as u8);
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintType), print as u8);
     }
 }
 pub fn set_print(print: bool) {
     unsafe {
-        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), print as u8);
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrint), print as u8);
     }
 }
 pub fn set_strict_aliasing(strict: bool) {
     unsafe {
-        EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), strict as u8);
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymeStrictAliasing), strict as u8);
     }
 }
 extern "C" {
@@ -3074,28 +3068,28 @@ extern "C" {
         numRules: size_t,
     ) -> EnzymeTypeAnalysisRef;
 }
-//extern "C" {
-//    pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
-//    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
-//    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef;
-//    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef);
-//    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
-//}
+extern "C" {
+    //pub(super) fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef;
+    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef);
+    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
+}
 
 extern "C" {
-    fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
-    fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
-    fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool;
-    fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
-    fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef);
-    fn EnzymeTypeTreeShiftIndiciesEq(
+    pub(super) fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+    pub(super) fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
+    pub(super) fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool;
+    pub(super) fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
+    pub(super) fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef);
+    pub(super) fn EnzymeTypeTreeShiftIndiciesEq(
         arg1: CTypeTreeRef,
         data_layout: *const c_char,
         offset: i64,
         max_size: i64,
         add_offset: u64,
     );
-    fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
-    fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+    pub(super) fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
+    pub(super) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
 }
 }

@@ -11,7 +11,7 @@ use crate::errors::{
 };
 use crate::llvm::{self, DiagnosticInfo, PassManager};
 use crate::llvm::{
-    enzyme_rust_forward_diff, enzyme_rust_reverse_diff, AttributeKind, BasicBlock,
+    enzyme_rust_forward_diff, enzyme_rust_reverse_diff, AttributeKind, BasicBlock, FreeTypeAnalysis,
     CreateEnzymeLogic, CreateTypeAnalysis, EnzymeLogicRef, EnzymeTypeAnalysisRef, LLVMAddFunction,
     LLVMAppendBasicBlockInContext, LLVMBuildCall2, LLVMBuildExtractValue, LLVMBuildRet,
     LLVMCountParams, LLVMCountStructElementTypes, LLVMCreateBuilderInContext,
@@ -809,6 +809,8 @@ pub(crate) unsafe fn enzyme_ad(
     LLVMSetValueName2(res, name2.as_ptr(), rust_name2.len());
     LLVMReplaceAllUsesWith(target_fnc, res);
     LLVMDeleteFunction(target_fnc);
+    // TODO: implement drop for wrapper type?
+    FreeTypeAnalysis(type_analysis);
 
     Ok(())
 }
