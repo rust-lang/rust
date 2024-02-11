@@ -51,7 +51,7 @@ pub use core::slice::{from_mut, from_ref};
 pub use core::slice::{from_mut_ptr_range, from_ptr_range};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
-#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "slice_group_by", since = "1.77.0")]
 pub use core::slice::{ChunkBy, ChunkByMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};

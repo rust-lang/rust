@@ -216,6 +216,10 @@
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(dead_code))]
 #![cfg_attr(not(target_has_atomic_load_store = "8"), allow(unused_imports))]
 #![rustc_diagnostic_item = "atomic_mod"]
+// Clippy complains about the pattern of "safe function calling unsafe function taking pointers".
+// This happens with AtomicPtr intrinsics but is fine, as the pointers clippy is concerned about
+// are just normal values that get loaded/stored, but not dereferenced.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use self::Ordering::*;
 
@@ -2119,7 +2123,16 @@ macro_rules! atomic_int {
         /// This type has the same in-memory representation as the underlying
         /// integer type, [`
         #[doc = $s_int_type]
-        /// `]. For more about the differences between atomic types and
+        /// `].
+        #[doc = if_not_8_bit! {
+            $int_type,
+            concat!(
+                "However, the alignment of this type is always equal to its ",
+                "size, even on targets where [`", $s_int_type, "`] has a ",
+                "lesser alignment."
+            )
+        }]
+        /// For more about the differences between atomic types and
         /// non-atomic types as well as information about the portability of
         /// this type, please see the [module-level documentation].
         ///

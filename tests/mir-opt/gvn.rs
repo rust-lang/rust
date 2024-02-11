@@ -644,25 +644,80 @@ fn constant_index_overflow<T: Copy>(x: &[T]) {
     opaque(b)
 }
 
-fn wide_ptr_ops() {
+/// Check that we do not attempt to simplify anything when there is provenance.
+fn wide_ptr_provenance() {
+    // CHECK-LABEL: fn wide_ptr_provenance(
     let a: *const dyn Send = &1 as &dyn Send;
     let b: *const dyn Send = &1 as &dyn Send;
-    let _val = a == b;
-    let _val = a != b;
-    let _val = a < b;
-    let _val = a <= b;
-    let _val = a > b;
-    let _val = a >= b;
+
+    // CHECK: [[eqp:_.*]] = Eq([[a:_.*]], [[b:_.*]]);
+    // CHECK: opaque::<bool>(move [[eqp]])
+    opaque(a == b);
+    // CHECK: [[nep:_.*]] = Ne([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[nep]])
+    opaque(a != b);
+    // CHECK: [[ltp:_.*]] = Lt([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[ltp]])
+    opaque(a < b);
+    // CHECK: [[lep:_.*]] = Le([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[lep]])
+    opaque(a <= b);
+    // CHECK: [[gtp:_.*]] = Gt([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[gtp]])
+    opaque(a > b);
+    // CHECK: [[gep:_.*]] = Ge([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[gep]])
+    opaque(a >= b);
+}
+
+/// Both pointers come form the same allocation, so we could probably fold the comparisons.
+fn wide_ptr_same_provenance() {
+    // CHECK-LABEL: fn wide_ptr_same_provenance(
+    let slice = &[1, 2];
+    let a: *const dyn Send = &slice[0] as &dyn Send;
+    let b: *const dyn Send = &slice[1] as &dyn Send;
+
+    // CHECK: [[eqp:_.*]] = Eq([[a:_.*]], [[b:_.*]]);
+    // CHECK: opaque::<bool>(move [[eqp]])
+    opaque(a == b);
+    // CHECK: [[nep:_.*]] = Ne([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[nep]])
+    opaque(a != b);
+    // CHECK: [[ltp:_.*]] = Lt([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[ltp]])
+    opaque(a < b);
+    // CHECK: [[lep:_.*]] = Le([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[lep]])
+    opaque(a <= b);
+    // CHECK: [[gtp:_.*]] = Gt([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[gtp]])
+    opaque(a > b);
+    // CHECK: [[gep:_.*]] = Ge([[a]], [[b]]);
+    // CHECK: opaque::<bool>(move [[gep]])
+    opaque(a >= b);
+}
+
+/// Check that we do simplify when there is no provenance, and do not ICE.
+fn wide_ptr_integer() {
+    // CHECK-LABEL: fn wide_ptr_integer(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
 
     let a: *const [u8] = unsafe { transmute((1usize, 1usize)) };
     let b: *const [u8] = unsafe { transmute((1usize, 2usize)) };
 
-    opaque(!(a == b));
+    // CHECK: opaque::<bool>(const false)
+    opaque(a == b);
+    // CHECK: opaque::<bool>(const true)
     opaque(a != b);
-    opaque(a <= b);
+    // CHECK: opaque::<bool>(const true)
     opaque(a < b);
-    opaque(!(a >= b));
-    opaque(!(a > b));
+    // CHECK: opaque::<bool>(const true)
+    opaque(a <= b);
+    // CHECK: opaque::<bool>(const false)
+    opaque(a > b);
+    // CHECK: opaque::<bool>(const false)
+    opaque(a >= b);
 }
 
 fn main() {
@@ -685,7 +740,8 @@ fn main() {
     fn_pointers();
     indirect_static();
     constant_index_overflow(&[5, 3]);
-    wide_ptr_ops();
+    wide_ptr_provenance();
+    wide_ptr_integer();
 }
 
 #[inline(never)]
@@ -714,4 +770,6 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.fn_pointers.GVN.diff
 // EMIT_MIR gvn.indirect_static.GVN.diff
 // EMIT_MIR gvn.constant_index_overflow.GVN.diff
-// EMIT_MIR gvn.wide_ptr_ops.GVN.diff
+// EMIT_MIR gvn.wide_ptr_provenance.GVN.diff
+// EMIT_MIR gvn.wide_ptr_same_provenance.GVN.diff
+// EMIT_MIR gvn.wide_ptr_integer.GVN.diff

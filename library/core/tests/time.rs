@@ -18,6 +18,49 @@ fn new_overflow() {
 }
 
 #[test]
+#[should_panic]
+fn from_mins_overflow() {
+    let overflow = u64::MAX / 60 + 1;
+    let _ = Duration::from_mins(overflow);
+}
+
+#[test]
+#[should_panic]
+fn from_hours_overflow() {
+    let overflow = u64::MAX / (60 * 60) + 1;
+    let _ = Duration::from_hours(overflow);
+}
+
+#[test]
+#[should_panic]
+fn from_days_overflow() {
+    let overflow = u64::MAX / (24 * 60 * 60) + 1;
+    let _ = Duration::from_days(overflow);
+}
+
+#[test]
+#[should_panic]
+fn from_weeks_overflow() {
+    let overflow = u64::MAX / (7 * 24 * 60 * 60) + 1;
+    let _ = Duration::from_weeks(overflow);
+}
+
+#[test]
+fn constructors() {
+    assert_eq!(Duration::from_weeks(1), Duration::from_secs(7 * 24 * 60 * 60));
+    assert_eq!(Duration::from_weeks(0), Duration::ZERO);
+
+    assert_eq!(Duration::from_days(1), Duration::from_secs(86_400));
+    assert_eq!(Duration::from_days(0), Duration::ZERO);
+
+    assert_eq!(Duration::from_hours(1), Duration::from_secs(3_600));
+    assert_eq!(Duration::from_hours(0), Duration::ZERO);
+
+    assert_eq!(Duration::from_mins(1), Duration::from_secs(60));
+    assert_eq!(Duration::from_mins(0), Duration::ZERO);
+}
+
+#[test]
 fn secs() {
     assert_eq!(Duration::new(0, 0).as_secs(), 0);
     assert_eq!(Duration::new(0, 500_000_005).as_secs(), 0);

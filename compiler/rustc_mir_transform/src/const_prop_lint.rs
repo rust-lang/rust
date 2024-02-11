@@ -3,8 +3,9 @@
 
 use std::fmt::Debug;
 
-use rustc_const_eval::interpret::{ImmTy, Projectable};
-use rustc_const_eval::interpret::{InterpCx, InterpResult, Scalar};
+use rustc_const_eval::interpret::{
+    format_interp_error, ImmTy, InterpCx, InterpResult, Projectable, Scalar,
+};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
@@ -246,7 +247,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 assert!(
                     !error.kind().formatted_string(),
                     "const-prop encountered formatting error: {}",
-                    self.ecx.format_error(error),
+                    format_interp_error(self.ecx.tcx.dcx(), error),
                 );
                 None
             }
@@ -541,12 +542,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self), ret)]
-    fn eval_rvalue(
-        &mut self,
-        rvalue: &Rvalue<'tcx>,
-        location: Location,
-        dest: &Place<'tcx>,
-    ) -> Option<()> {
+    fn eval_rvalue(&mut self, rvalue: &Rvalue<'tcx>, dest: &Place<'tcx>) -> Option<()> {
         if !dest.projection.is_empty() {
             return None;
         }
@@ -639,6 +635,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     NullOp::OffsetOf(fields) => {
                         op_layout.offset_of_subfield(self, fields.iter()).bytes()
                     }
+                    NullOp::DebugAssertions => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }
@@ -734,7 +731,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             _ if place.is_indirect() => {}
             ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
             ConstPropMode::OnlyInsideOwnBlock | ConstPropMode::FullConstProp => {
-                if self.eval_rvalue(rvalue, location, place).is_none() {
+                if self.eval_rvalue(rvalue, place).is_none() {
                     // Const prop failed, so erase the destination, ensuring that whatever happens
                     // from here on, does not know about the previous value.
                     // This is important in case we have

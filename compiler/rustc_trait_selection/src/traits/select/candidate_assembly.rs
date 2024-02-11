@@ -6,13 +6,16 @@
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
 
+use std::ops::ControlFlow;
+
 use hir::def_id::DefId;
 use hir::LangItem;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt};
 
 use crate::traits;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
@@ -158,11 +161,50 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => return,
         }
 
-        let result = self
-            .infcx
-            .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
+        self.infcx.probe(|_| {
+            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+            let placeholder_trait_predicate =
+                self.infcx.enter_forall_and_leak_universe(poly_trait_predicate);
+            debug!(?placeholder_trait_predicate);
 
-        candidates.vec.extend(result.into_iter().map(|idx| ProjectionCandidate(idx)));
+            // The bounds returned by `item_bounds` may contain duplicates after
+            // normalization, so try to deduplicate when possible to avoid
+            // unnecessary ambiguity.
+            let mut distinct_normalized_bounds = FxHashSet::default();
+            self.for_each_item_bound::<!>(
+                placeholder_trait_predicate.self_ty(),
+                |selcx, bound, idx| {
+                    let Some(bound) = bound.as_trait_clause() else {
+                        return ControlFlow::Continue(());
+                    };
+                    if bound.polarity() != placeholder_trait_predicate.polarity {
+                        return ControlFlow::Continue(());
+                    }
+
+                    selcx.infcx.probe(|_| {
+                        match selcx.match_normalize_trait_ref(
+                            obligation,
+                            bound.to_poly_trait_ref(),
+                            placeholder_trait_predicate.trait_ref,
+                        ) {
+                            Ok(None) => {
+                                candidates.vec.push(ProjectionCandidate(idx));
+                            }
+                            Ok(Some(normalized_trait))
+                                if distinct_normalized_bounds.insert(normalized_trait) =>
+                            {
+                                candidates.vec.push(ProjectionCandidate(idx));
+                            }
+                            _ => {}
+                        }
+                    });
+
+                    ControlFlow::Continue(())
+                },
+                // On ambiguity.
+                || candidates.ambiguous = true,
+            );
+        });
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
@@ -332,6 +374,43 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
+            ty::CoroutineClosure(def_id, args) => {
+                let is_const = self.tcx().is_const_fn_raw(def_id);
+                match self.infcx.closure_kind(self_ty) {
+                    Some(closure_kind) => {
+                        let no_borrows = match self
+                            .infcx
+                            .shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty())
+                            .kind()
+                        {
+                            ty::Tuple(tys) => tys.is_empty(),
+                            ty::Error(_) => false,
+                            _ => bug!("tuple_fields called on non-tuple"),
+                        };
+                        // A coroutine-closure implements `FnOnce` *always*, since it may
+                        // always be called once. It additionally implements `Fn`/`FnMut`
+                        // only if it has no upvars (therefore no borrows from the closure
+                        // that would need to be represented with a lifetime) and if the
+                        // closure kind permits it.
+                        // FIXME(async_closures): Actually, it could also implement `Fn`/`FnMut`
+                        // if it takes all of its upvars by copy, and none by ref. This would
+                        // require us to record a bit more information during upvar analysis.
+                        if no_borrows && closure_kind.extends(kind) {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        } else if kind == ty::ClosureKind::FnOnce {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        }
+                    }
+                    None => {
+                        if kind == ty::ClosureKind::FnOnce {
+                            candidates.vec.push(ClosureCandidate { is_const });
+                        } else {
+                            // This stays ambiguous until kind+upvars are determined.
+                            candidates.ambiguous = true;
+                        }
+                    }
+                }
+            }
             ty::Infer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
@@ -361,8 +440,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 candidates.vec.push(AsyncClosureCandidate);
             }
-            ty::Infer(ty::TyVar(_)) => {
-                candidates.ambiguous = true;
+            // Closures and fn pointers implement `AsyncFn*` if their return types
+            // implement `Future`, which is checked later.
+            ty::Closure(_, args) => {
+                if let Some(closure_kind) = args.as_closure().kind_ty().to_opt_closure_kind()
+                    && !closure_kind.extends(goal_kind)
+                {
+                    return;
+                }
+                candidates.vec.push(AsyncClosureCandidate);
+            }
+            ty::FnDef(..) | ty::FnPtr(..) => {
+                candidates.vec.push(AsyncClosureCandidate);
             }
             _ => {}
         }
@@ -728,64 +817,63 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx.probe(|_snapshot| {
             let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-            let placeholder_trait_predicate =
-                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
-
-            let self_ty = placeholder_trait_predicate.self_ty();
-            let principal_trait_ref = match self_ty.kind() {
-                ty::Dynamic(data, ..) => {
-                    if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
-                        debug!(
-                            "assemble_candidates_from_object_ty: matched builtin bound, \
+            self.infcx.enter_forall(poly_trait_predicate, |placeholder_trait_predicate| {
+                let self_ty = placeholder_trait_predicate.self_ty();
+                let principal_trait_ref = match self_ty.kind() {
+                    ty::Dynamic(data, ..) => {
+                        if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
+                            debug!(
+                                "assemble_candidates_from_object_ty: matched builtin bound, \
                              pushing candidate"
-                        );
-                        candidates.vec.push(BuiltinObjectCandidate);
-                        return;
-                    }
-
-                    if let Some(principal) = data.principal() {
-                        if !self.infcx.tcx.features().object_safe_for_dispatch {
-                            principal.with_self_ty(self.tcx(), self_ty)
-                        } else if self.tcx().check_is_object_safe(principal.def_id()) {
-                            principal.with_self_ty(self.tcx(), self_ty)
-                        } else {
+                            );
+                            candidates.vec.push(BuiltinObjectCandidate);
                             return;
                         }
-                    } else {
-                        // Only auto trait bounds exist.
+
+                        if let Some(principal) = data.principal() {
+                            if !self.infcx.tcx.features().object_safe_for_dispatch {
+                                principal.with_self_ty(self.tcx(), self_ty)
+                            } else if self.tcx().check_is_object_safe(principal.def_id()) {
+                                principal.with_self_ty(self.tcx(), self_ty)
+                            } else {
+                                return;
+                            }
+                        } else {
+                            // Only auto trait bounds exist.
+                            return;
+                        }
+                    }
+                    ty::Infer(ty::TyVar(_)) => {
+                        debug!("assemble_candidates_from_object_ty: ambiguous");
+                        candidates.ambiguous = true; // could wind up being an object type
                         return;
                     }
-                }
-                ty::Infer(ty::TyVar(_)) => {
-                    debug!("assemble_candidates_from_object_ty: ambiguous");
-                    candidates.ambiguous = true; // could wind up being an object type
-                    return;
-                }
-                _ => return,
-            };
+                    _ => return,
+                };
 
-            debug!(?principal_trait_ref, "assemble_candidates_from_object_ty");
+                debug!(?principal_trait_ref, "assemble_candidates_from_object_ty");
 
-            // Count only those upcast versions that match the trait-ref
-            // we are looking for. Specifically, do not only check for the
-            // correct trait, but also the correct type parameters.
-            // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
-            // but `Foo` is declared as `trait Foo: Bar<u32>`.
-            let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
-                .enumerate()
-                .filter(|&(_, upcast_trait_ref)| {
-                    self.infcx.probe(|_| {
-                        self.match_normalize_trait_ref(
-                            obligation,
-                            upcast_trait_ref,
-                            placeholder_trait_predicate.trait_ref,
-                        )
-                        .is_ok()
+                // Count only those upcast versions that match the trait-ref
+                // we are looking for. Specifically, do not only check for the
+                // correct trait, but also the correct type parameters.
+                // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
+                // but `Foo` is declared as `trait Foo: Bar<u32>`.
+                let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
+                    .enumerate()
+                    .filter(|&(_, upcast_trait_ref)| {
+                        self.infcx.probe(|_| {
+                            self.match_normalize_trait_ref(
+                                obligation,
+                                upcast_trait_ref,
+                                placeholder_trait_predicate.trait_ref,
+                            )
+                            .is_ok()
+                        })
                     })
-                })
-                .map(|(idx, _)| ObjectCandidate(idx));
+                    .map(|(idx, _)| ObjectCandidate(idx));
 
-            candidates.vec.extend(candidate_supertraits);
+                candidates.vec.extend(candidate_supertraits);
+            })
         })
     }
 

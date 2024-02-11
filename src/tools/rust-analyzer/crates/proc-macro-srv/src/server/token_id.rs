@@ -94,7 +94,7 @@ impl server::TokenStream for TokenIdServer {
                     delimiter: delim_to_internal(group.delimiter, group.span),
                     token_trees: match group.stream {
                         Some(stream) => stream.into_iter().collect(),
-                        None => Vec::new(),
+                        None => Box::new([]),
                     },
                 };
                 let tree = TokenTree::from(group);
@@ -206,7 +206,7 @@ impl server::TokenStream for TokenIdServer {
                     stream: if subtree.token_trees.is_empty() {
                         None
                     } else {
-                        Some(TokenStream { token_trees: subtree.token_trees })
+                        Some(TokenStream { token_trees: subtree.token_trees.into_vec() })
                     },
                     span: bridge::DelimSpan::from_single(subtree.delimiter.open),
                 }),
@@ -338,7 +338,7 @@ mod tests {
                         close: tt::TokenId(0),
                         kind: tt::DelimiterKind::Brace,
                     },
-                    token_trees: vec![],
+                    token_trees: Box::new([]),
                 }),
             ],
         };
@@ -354,10 +354,10 @@ mod tests {
                 close: tt::TokenId(0),
                 kind: tt::DelimiterKind::Parenthesis,
             },
-            token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+            token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "a".into(),
                 span: tt::TokenId(0),
-            }))],
+            }))]),
         });
 
         let t1 = TokenStream::from_str("(a)", tt::TokenId(0)).unwrap();

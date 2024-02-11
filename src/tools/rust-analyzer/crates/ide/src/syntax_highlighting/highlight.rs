@@ -559,7 +559,7 @@ fn highlight_method_call(
     }
     if func
         .as_assoc_item(sema.db)
-        .and_then(|it| it.containing_trait_or_trait_impl(sema.db))
+        .and_then(|it| it.container_or_implemented_trait(sema.db))
         .is_some()
     {
         h |= HlMod::Trait;

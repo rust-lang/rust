@@ -17,8 +17,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-#![deny(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -625,6 +623,13 @@ impl Span {
         let span = self.data();
         let other = other.data();
         span.lo < other.hi && other.lo < span.hi
+    }
+
+    /// Returns `true` if `self` touches or adjoins `other`.
+    pub fn overlaps_or_adjacent(self, other: Span) -> bool {
+        let span = self.data();
+        let other = other.data();
+        span.lo <= other.hi && other.lo <= span.hi
     }
 
     /// Returns `true` if the spans are equal with regards to the source text.

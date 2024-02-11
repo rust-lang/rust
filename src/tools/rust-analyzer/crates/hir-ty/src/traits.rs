@@ -104,8 +104,8 @@ pub(crate) fn trait_solve_query(
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
             db.trait_data(it.hir_trait_id()).name.display(db.upcast()).to_string()
         }
-        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_string(),
-        _ => "??".to_string(),
+        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_owned(),
+        _ => "??".to_owned(),
     };
     let _p = tracing::span!(tracing::Level::INFO, "trait_solve_query", ?detail).entered();
     tracing::info!("trait_solve_query({:?})", goal.value.goal);
@@ -187,7 +187,7 @@ struct LoggingRustIrDatabaseLoggingOnDrop<'a>(LoggingRustIrDatabase<Interner, Ch
 
 impl Drop for LoggingRustIrDatabaseLoggingOnDrop<'_> {
     fn drop(&mut self) {
-        eprintln!("chalk program:\n{}", self.0);
+        tracing::info!("chalk program:\n{}", self.0);
     }
 }
 

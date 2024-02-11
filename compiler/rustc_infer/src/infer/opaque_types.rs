@@ -327,7 +327,6 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn register_member_constraints(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         concrete_ty: Ty<'tcx>,
         span: Span,

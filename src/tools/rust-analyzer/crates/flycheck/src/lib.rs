@@ -100,9 +100,14 @@ impl FlycheckHandle {
         FlycheckHandle { id, sender, _thread: thread }
     }
 
-    /// Schedule a re-start of the cargo check worker.
-    pub fn restart(&self) {
-        self.sender.send(StateChange::Restart).unwrap();
+    /// Schedule a re-start of the cargo check worker to do a workspace wide check.
+    pub fn restart_workspace(&self) {
+        self.sender.send(StateChange::Restart(None)).unwrap();
+    }
+
+    /// Schedule a re-start of the cargo check worker to do a package wide check.
+    pub fn restart_for_package(&self, package: String) {
+        self.sender.send(StateChange::Restart(Some(package))).unwrap();
     }
 
     /// Stop this cargo check worker.
@@ -153,7 +158,7 @@ pub enum Progress {
 }
 
 enum StateChange {
-    Restart,
+    Restart(Option<String>),
     Cancel,
 }
 
@@ -213,7 +218,7 @@ impl FlycheckActor {
                     tracing::debug!(flycheck_id = self.id, "flycheck cancelled");
                     self.cancel_check_process();
                 }
-                Event::RequestStateChange(StateChange::Restart) => {
+                Event::RequestStateChange(StateChange::Restart(package)) => {
                     // Cancel the previously spawned process
                     self.cancel_check_process();
                     while let Ok(restart) = inbox.recv_timeout(Duration::from_millis(50)) {
@@ -223,7 +228,7 @@ impl FlycheckActor {
                         }
                     }
 
-                    let command = self.check_command();
+                    let command = self.check_command(package.as_deref());
                     let formatted_command = format!("{:?}", command);
 
                     tracing::debug!(?command, "will restart flycheck");
@@ -297,7 +302,7 @@ impl FlycheckActor {
         }
     }
 
-    fn check_command(&self) -> Command {
+    fn check_command(&self, package: Option<&str>) -> Command {
         let (mut cmd, args) = match &self.config {
             FlycheckConfig::CargoCommand {
                 command,
@@ -314,7 +319,11 @@ impl FlycheckActor {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
                 cmd.current_dir(&self.root);
-                cmd.arg("--workspace");
+
+                match package {
+                    Some(pkg) => cmd.arg("-p").arg(pkg),
+                    None => cmd.arg("--workspace"),
+                };
 
                 cmd.arg(if *ansi_color_output {
                     "--message-format=json-diagnostic-rendered-ansi"
@@ -493,9 +502,7 @@ impl CargoActor {
                     // Skip certain kinds of messages to only spend time on what's useful
                     JsonMessage::Cargo(message) => match message {
                         cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
-                            self.sender
-                                .send(CargoMessage::CompilerArtifact(Box::new(artifact)))
-                                .unwrap();
+                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap();
                         }
                         cargo_metadata::Message::CompilerMessage(msg) => {
                             self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap();
@@ -539,8 +546,9 @@ impl CargoActor {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum CargoMessage {
-    CompilerArtifact(Box<cargo_metadata::Artifact>),
+    CompilerArtifact(cargo_metadata::Artifact),
     Diagnostic(Diagnostic),
 }
 

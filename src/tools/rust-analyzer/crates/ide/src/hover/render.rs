@@ -621,7 +621,7 @@ fn closure_ty(
         })
         .join("\n");
     if captures_rendered.trim().is_empty() {
-        captures_rendered = "This closure captures nothing".to_string();
+        captures_rendered = "This closure captures nothing".to_owned();
     }
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
@@ -823,7 +823,7 @@ fn keyword_hints(
                     }
                 }
                 _ => KeywordHint {
-                    description: token.text().to_string(),
+                    description: token.text().to_owned(),
                     keyword_mod,
                     actions: Vec::new(),
                 },
@@ -835,9 +835,9 @@ fn keyword_hints(
                 Some(_) => format!("prim_{}", token.text()),
                 None => format!("{}_keyword", token.text()),
             };
-            KeywordHint::new(token.text().to_string(), module)
+            KeywordHint::new(token.text().to_owned(), module)
         }
-        T![Self] => KeywordHint::new(token.text().to_string(), "self_upper_keyword".into()),
-        _ => KeywordHint::new(token.text().to_string(), format!("{}_keyword", token.text())),
+        T![Self] => KeywordHint::new(token.text().to_owned(), "self_upper_keyword".into()),
+        _ => KeywordHint::new(token.text().to_owned(), format!("{}_keyword", token.text())),
     }
 }

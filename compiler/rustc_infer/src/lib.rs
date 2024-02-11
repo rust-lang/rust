@@ -16,13 +16,15 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(extend_one)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
 #![feature(iterator_try_collect)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(try_blocks)]
 #![recursion_limit = "512"] // For rustdoc
 

@@ -7,22 +7,17 @@
       let mut _2: std::option::Option<T>;
 +     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
 +         debug self => _2;
-+         let mut _3: &std::option::Option<T>;
-+         let mut _4: isize;
-+         let mut _5: bool;
++         let mut _3: isize;
 +         scope 2 {
 +             debug val => _0;
 +         }
 +         scope 3 {
-+             scope 5 (inlined unreachable_unchecked) {
-+                 scope 6 {
-+                     scope 7 (inlined unreachable_unchecked::runtime) {
-+                     }
++             scope 4 (inlined unreachable_unchecked) {
++                 let mut _4: bool;
++                 let _5: ();
++                 scope 5 {
 +                 }
 +             }
-+         }
-+         scope 4 (inlined Option::<T>::is_some) {
-+             debug self => _3;
 +         }
 +     }
   
@@ -30,25 +25,33 @@
           StorageLive(_2);
           _2 = move _1;
 -         _0 = Option::<T>::unwrap_unchecked(move _2) -> [return: bb1, unwind: bb2];
--     }
-- 
--     bb1: {
 +         StorageLive(_3);
-+         StorageLive(_4);
 +         StorageLive(_5);
-+         _4 = discriminant(_2);
-+         _5 = Eq(_4, const 1_isize);
-+         assume(move _5);
-+         _0 = move ((_2 as Some).0: T);
-+         StorageDead(_5);
-+         StorageDead(_4);
-+         StorageDead(_3);
-          StorageDead(_2);
-          return;
--     }
-- 
++         _3 = discriminant(_2);
++         switchInt(move _3) -> [0: bb1, 1: bb3, otherwise: bb2];
+      }
+  
+      bb1: {
+-         StorageDead(_2);
+-         return;
++         StorageLive(_4);
++         _4 = cfg!(debug_assertions);
++         assume(_4);
++         _5 = unreachable_unchecked::precondition_check() -> [return: bb2, unwind unreachable];
+      }
+  
 -     bb2 (cleanup): {
 -         resume;
++     bb2: {
++         unreachable;
++     }
++ 
++     bb3: {
++         _0 = move ((_2 as Some).0: T);
++         StorageDead(_5);
++         StorageDead(_3);
++         StorageDead(_2);
++         return;
       }
   }
   

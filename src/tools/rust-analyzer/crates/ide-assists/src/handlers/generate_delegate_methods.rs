@@ -1,7 +1,5 @@
-use std::collections::HashSet;
-
 use hir::{self, HasCrate, HasVisibility};
-use ide_db::path_transform::PathTransform;
+use ide_db::{path_transform::PathTransform, FxHashSet};
 use syntax::{
     ast::{
         self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
@@ -71,7 +69,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
     let sema_field_ty = ctx.sema.resolve_type(&field_ty)?;
     let mut methods = vec![];
-    let mut seen_names = HashSet::new();
+    let mut seen_names = FxHashSet::default();
 
     for ty in sema_field_ty.autoderef(ctx.db()) {
         let krate = ty.krate(ctx.db());
@@ -163,13 +161,13 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     Some(impl_def) => edit.make_mut(impl_def),
                     None => {
                         let name = &strukt_name.to_string();
-                        let params = strukt.generic_param_list();
-                        let ty_params = params;
+                        let ty_params = strukt.generic_param_list();
+                        let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
                         let where_clause = strukt.where_clause();
 
                         let impl_def = make::impl_(
                             ty_params,
-                            None,
+                            ty_args,
                             make::ty_path(make::ext::ident_path(name)),
                             where_clause,
                             None,

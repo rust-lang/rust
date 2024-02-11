@@ -257,6 +257,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
             OffsetOf(indices) => stable_mir::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
+            DebugAssertions => stable_mir::mir::NullOp::DebugAssertions,
         }
     }
 }

@@ -94,8 +94,8 @@ LL |     let _var: &str = "test";
 error: redundant type annotation
   --> $DIR/redundant_type_annotations.rs:199:5
    |
-LL |     let _var: &[u8] = b"test";
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _var: &[u8; 4] = b"test";
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: redundant type annotation
   --> $DIR/redundant_type_annotations.rs:202:5

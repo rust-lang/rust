@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// //                                      ^^^ this closure executes 123 times
     /// //                                          and the vecs will have the expected capacity
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.76.0"]
     pub REPEAT_VEC_WITH_CAPACITY,
     suspicious,
     "repeating a `Vec::with_capacity` expression which does not retain capacity"

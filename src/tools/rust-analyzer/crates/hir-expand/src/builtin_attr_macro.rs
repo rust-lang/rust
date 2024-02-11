@@ -137,5 +137,8 @@ pub fn pseudo_derive_attr_expansion(
         token_trees.extend(tt.iter().cloned());
         token_trees.push(mk_leaf(']'));
     }
-    ExpandResult::ok(tt::Subtree { delimiter: tt.delimiter, token_trees })
+    ExpandResult::ok(tt::Subtree {
+        delimiter: tt.delimiter,
+        token_trees: token_trees.into_boxed_slice(),
+    })
 }

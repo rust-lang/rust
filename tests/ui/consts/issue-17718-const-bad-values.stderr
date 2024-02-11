@@ -19,24 +19,32 @@ error[E0764]: mutable references are not allowed in the final value of constants
 LL | const C1: &'static mut [usize] = &mut [];
    |                                  ^^^^^^^
 
-error[E0013]: constants cannot refer to statics
+error[E0658]: referencing statics in constants is unstable
   --> $DIR/issue-17718-const-bad-values.rs:5:46
    |
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                              ^
    |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
+   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
+   = help: to fix this, the value can be extracted to a `const` and then used.
 
-error[E0013]: constants cannot refer to statics
+error[E0658]: referencing statics in constants is unstable
   --> $DIR/issue-17718-const-bad-values.rs:5:46
    |
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                              ^
    |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
+   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
+   = help: to fix this, the value can be extracted to a `const` and then used.
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0013, E0764.
-For more information about an error, try `rustc --explain E0013`.
+Some errors have detailed explanations: E0658, E0764.
+For more information about an error, try `rustc --explain E0658`.

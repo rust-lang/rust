@@ -16,7 +16,7 @@ pub(crate) fn inactive_code(
     }
 
     let inactive = DnfExpr::new(d.cfg.clone()).why_inactive(&d.opts);
-    let mut message = "code is inactive due to #[cfg] directives".to_string();
+    let mut message = "code is inactive due to #[cfg] directives".to_owned();
 
     if let Some(inactive) = inactive {
         let inactive_reasons = inactive.to_string();

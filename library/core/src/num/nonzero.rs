@@ -4,11 +4,8 @@ use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::intrinsics;
-#[cfg(bootstrap)]
-use crate::marker::StructuralEq;
 use crate::marker::StructuralPartialEq;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
-use crate::ptr;
 use crate::str::FromStr;
 
 use super::from_str_radix;
@@ -91,13 +88,12 @@ where
     /// Creates a non-zero if the given value is not zero.
     #[stable(feature = "nonzero", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_nonzero_int_methods", since = "1.47.0")]
-    #[rustc_allow_const_fn_unstable(const_refs_to_cell)]
     #[must_use]
     #[inline]
     pub const fn new(n: T) -> Option<Self> {
         // SAFETY: Memory layout optimization guarantees that `Option<NonZero<T>>` has
         //         the same layout and size as `T`, with `0` representing `None`.
-        unsafe { ptr::read(ptr::addr_of!(n).cast()) }
+        unsafe { intrinsics::transmute_unchecked(n) }
     }
 
     /// Creates a non-zero without checking whether the value is non-zero.
@@ -582,10 +578,6 @@ macro_rules! nonzero_integer {
 
         #[$stability]
         impl Eq for $Ty {}
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        #[cfg(bootstrap)]
-        impl StructuralEq for $Ty {}
 
         #[$stability]
         impl PartialOrd for $Ty {

@@ -4,7 +4,10 @@ use ide_db::FxHashSet;
 use syntax::SmolStr;
 
 use crate::{
-    context::{CompletionContext, DotAccess, DotAccessKind, ExprCtx, PathCompletionCtx, Qualified},
+    context::{
+        CompletionContext, DotAccess, DotAccessExprCtx, DotAccessKind, PathCompletionCtx,
+        PathExprCtx, Qualified,
+    },
     CompletionItem, CompletionItemKind, Completions,
 };
 
@@ -51,7 +54,7 @@ pub(crate) fn complete_undotted_self(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
-    expr_ctx: &ExprCtx,
+    expr_ctx: &PathExprCtx,
 ) {
     if !ctx.config.enable_self_on_the_fly {
         return;
@@ -66,7 +69,7 @@ pub(crate) fn complete_undotted_self(
         return;
     }
     let self_param = match expr_ctx {
-        ExprCtx { self_param: Some(self_param), .. } => self_param,
+        PathExprCtx { self_param: Some(self_param), .. } => self_param,
         _ => return,
     };
 
@@ -82,6 +85,10 @@ pub(crate) fn complete_undotted_self(
                     receiver: None,
                     receiver_ty: None,
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
+                    ctx: DotAccessExprCtx {
+                        in_block_expr: expr_ctx.in_block_expr,
+                        in_breakable: expr_ctx.in_breakable,
+                    },
                 },
                 Some(hir::known::SELF_PARAM),
                 field,
@@ -99,6 +106,10 @@ pub(crate) fn complete_undotted_self(
                 receiver: None,
                 receiver_ty: None,
                 kind: DotAccessKind::Method { has_parens: false },
+                ctx: DotAccessExprCtx {
+                    in_block_expr: expr_ctx.in_block_expr,
+                    in_breakable: expr_ctx.in_breakable,
+                },
             },
             func,
             Some(hir::known::SELF_PARAM),

@@ -2861,16 +2861,16 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     #[inline]
     fn into_iter(self) -> Self::IntoIter {
         unsafe {
-            let mut me = ManuallyDrop::new(self);
+            let me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
-            let begin = me.as_mut_ptr();
+            let buf = me.buf.non_null();
+            let begin = buf.as_ptr();
             let end = if T::IS_ZST {
                 begin.wrapping_byte_add(me.len())
             } else {
                 begin.add(me.len()) as *const T
             };
             let cap = me.buf.capacity();
-            let buf = NonNull::new_unchecked(begin);
             IntoIter { buf, phantom: PhantomData, cap, alloc, ptr: buf, end }
         }
     }

@@ -9,8 +9,6 @@ pub mod locks;
 pub mod net;
 pub mod once;
 pub mod os;
-#[path = "../unix/path.rs"]
-pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod stdio;

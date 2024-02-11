@@ -2,7 +2,7 @@
 //[normal] check-pass
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
-#![cfg_attr(exh_pats, feature(exhaustive_patterns))]
+#![cfg_attr(exh_pats, feature(min_exhaustive_patterns))]
 #![allow(dead_code, unreachable_code)]
 #![deny(unreachable_patterns)]
 

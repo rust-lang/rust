@@ -29,9 +29,6 @@ fn check_external_docs(
     let web_url = links.web_url;
     let local_url = links.local_url;
 
-    println!("web_url: {:?}", web_url);
-    println!("local_url: {:?}", local_url);
-
     match (expect_web_url, web_url) {
         (Some(expect), Some(url)) => expect.assert_eq(&url),
         (None, None) => (),

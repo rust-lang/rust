@@ -1,5 +1,8 @@
 // ignore-tidy-filelength
 
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use either::Either;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;

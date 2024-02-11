@@ -199,7 +199,7 @@ fn f() {
         // future, but we shouldn't emit an argument count diagnostic here
         check_diagnostics(
             r#"
-trait Foo { fn method(&self, arg: usize) {} }
+trait Foo { fn method(&self, _arg: usize) {} }
 
 fn f() {
     let x;

@@ -178,13 +178,13 @@ impl FixtureWithProjectMeta {
 
         if let Some(meta) = fixture.strip_prefix("//- toolchain:") {
             let (meta, remain) = meta.split_once('\n').unwrap();
-            toolchain = Some(meta.trim().to_string());
+            toolchain = Some(meta.trim().to_owned());
             fixture = remain;
         }
 
         if let Some(meta) = fixture.strip_prefix("//- proc_macros:") {
             let (meta, remain) = meta.split_once('\n').unwrap();
-            proc_macro_names = meta.split(',').map(|it| it.trim().to_string()).collect();
+            proc_macro_names = meta.split(',').map(|it| it.trim().to_owned()).collect();
             fixture = remain;
         }
 
@@ -234,7 +234,7 @@ impl FixtureWithProjectMeta {
         let meta = meta["//-".len()..].trim();
         let mut components = meta.split_ascii_whitespace();
 
-        let path = components.next().expect("fixture meta must start with a path").to_string();
+        let path = components.next().expect("fixture meta must start with a path").to_owned();
         assert!(path.starts_with('/'), "fixture path does not start with `/`: {path:?}");
 
         let mut krate = None;
@@ -246,7 +246,7 @@ impl FixtureWithProjectMeta {
         let mut introduce_new_source_root = None;
         let mut library = false;
         let mut target_data_layout = Some(
-            "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_string(),
+            "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_owned(),
         );
         for component in components {
             if component == "library" {
@@ -257,22 +257,22 @@ impl FixtureWithProjectMeta {
             let (key, value) =
                 component.split_once(':').unwrap_or_else(|| panic!("invalid meta line: {meta:?}"));
             match key {
-                "crate" => krate = Some(value.to_string()),
-                "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
+                "crate" => krate = Some(value.to_owned()),
+                "deps" => deps = value.split(',').map(|it| it.to_owned()).collect(),
                 "extern-prelude" => {
                     if value.is_empty() {
                         extern_prelude = Some(Vec::new());
                     } else {
                         extern_prelude =
-                            Some(value.split(',').map(|it| it.to_string()).collect::<Vec<_>>());
+                            Some(value.split(',').map(|it| it.to_owned()).collect::<Vec<_>>());
                     }
                 }
-                "edition" => edition = Some(value.to_string()),
+                "edition" => edition = Some(value.to_owned()),
                 "cfg" => {
                     for entry in value.split(',') {
                         match entry.split_once('=') {
-                            Some((k, v)) => cfgs.push((k.to_string(), Some(v.to_string()))),
-                            None => cfgs.push((entry.to_string(), None)),
+                            Some((k, v)) => cfgs.push((k.to_owned(), Some(v.to_owned()))),
+                            None => cfgs.push((entry.to_owned(), None)),
                         }
                     }
                 }
@@ -283,8 +283,8 @@ impl FixtureWithProjectMeta {
                         }
                     }
                 }
-                "new_source_root" => introduce_new_source_root = Some(value.to_string()),
-                "target_data_layout" => target_data_layout = Some(value.to_string()),
+                "new_source_root" => introduce_new_source_root = Some(value.to_owned()),
+                "target_data_layout" => target_data_layout = Some(value.to_owned()),
                 _ => panic!("bad component: {component:?}"),
             }
         }
@@ -381,7 +381,7 @@ impl MiniCore {
             let (flag, deps) = line.split_once(':').unwrap();
             let flag = flag.trim();
 
-            self.valid_flags.push(flag.to_string());
+            self.valid_flags.push(flag.to_owned());
             implications.extend(
                 iter::repeat(flag)
                     .zip(deps.split(", ").map(str::trim).filter(|dep| !dep.is_empty())),
@@ -401,7 +401,7 @@ impl MiniCore {
             let mut changed = false;
             for &(u, v) in &implications {
                 if self.has_flag(u) && !self.has_flag(v) {
-                    self.activated_flags.push(v.to_string());
+                    self.activated_flags.push(v.to_owned());
                     changed = true;
                 }
             }
@@ -486,9 +486,9 @@ fn parse_fixture_gets_full_meta() {
 mod m;
 "#,
         );
-    assert_eq!(toolchain, Some("nightly".to_string()));
-    assert_eq!(proc_macro_names, vec!["identity".to_string()]);
-    assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_string()]);
+    assert_eq!(toolchain, Some("nightly".to_owned()));
+    assert_eq!(proc_macro_names, vec!["identity".to_owned()]);
+    assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_owned()]);
     assert_eq!(1, parsed.len());
 
     let meta = &parsed[0];

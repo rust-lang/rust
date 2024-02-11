@@ -28,8 +28,6 @@ pub mod io;
 pub mod net;
 #[path = "../unsupported/os.rs"]
 pub mod os;
-#[path = "../unix/path.rs"]
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]

@@ -5,7 +5,7 @@ use syntax::ast;
 
 use crate::{
     completions::record::add_default_update,
-    context::{ExprCtx, PathCompletionCtx, Qualified},
+    context::{BreakableKind, PathCompletionCtx, PathExprCtx, Qualified},
     CompletionContext, Completions,
 };
 
@@ -13,16 +13,16 @@ pub(crate) fn complete_expr_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx @ PathCompletionCtx { qualified, .. }: &PathCompletionCtx,
-    expr_ctx: &ExprCtx,
+    expr_ctx: &PathExprCtx,
 ) {
     let _p = tracing::span!(tracing::Level::INFO, "complete_expr_path").entered();
     if !ctx.qualifier_ctx.none() {
         return;
     }
 
-    let &ExprCtx {
+    let &PathExprCtx {
         in_block_expr,
-        in_loop_body,
+        in_breakable,
         after_if_expr,
         in_condition,
         incomplete_let,
@@ -290,7 +290,7 @@ pub(crate) fn complete_expr_path(
                         add_keyword("mut", "mut ");
                     }
 
-                    if in_loop_body {
+                    if in_breakable != BreakableKind::None {
                         if in_block_expr {
                             add_keyword("continue", "continue;");
                             add_keyword("break", "break;");

@@ -60,6 +60,8 @@ impl<'tcx> MirPass<'tcx> for Validator {
                 ty::Closure(..) => Abi::RustCall,
                 ty::CoroutineClosure(..) => Abi::RustCall,
                 ty::Coroutine(..) => Abi::Rust,
+                // No need to do MIR validation on error bodies
+                ty::Error(_) => return,
                 _ => {
                     span_bug!(body.span, "unexpected body ty: {:?} phase {:?}", body_ty, mir_phase)
                 }
@@ -1139,7 +1141,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::AddressOf(_, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _)
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::DebugAssertions, _)
             | Rvalue::Discriminant(_) => {}
         }
         self.super_rvalue(rvalue, location);

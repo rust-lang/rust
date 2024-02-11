@@ -1248,52 +1248,55 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        let ty = self.instantiate_binder_with_placeholders(self_ty);
-        let Some(generics) = self.tcx.hir().get_generics(obligation.cause.body_id) else {
-            return false;
-        };
-        let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
-        let ty::Param(param) = inner_ty.kind() else { return false };
-        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
-            obligation.cause.code()
-        else {
-            return false;
-        };
-        let arg_node = self.tcx.hir_node(*arg_hir_id);
-        let Node::Expr(Expr { kind: hir::ExprKind::Path(_), .. }) = arg_node else { return false };
+        self.enter_forall(self_ty, |ty: Ty<'_>| {
+            let Some(generics) = self.tcx.hir().get_generics(obligation.cause.body_id) else {
+                return false;
+            };
+            let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
+            let ty::Param(param) = inner_ty.kind() else { return false };
+            let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
+                obligation.cause.code()
+            else {
+                return false;
+            };
+            let arg_node = self.tcx.hir_node(*arg_hir_id);
+            let Node::Expr(Expr { kind: hir::ExprKind::Path(_), .. }) = arg_node else {
+                return false;
+            };
 
-        let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
-        let has_clone = |ty| {
-            self.type_implements_trait(clone_trait, [ty], obligation.param_env)
-                .must_apply_modulo_regions()
-        };
+            let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
+            let has_clone = |ty| {
+                self.type_implements_trait(clone_trait, [ty], obligation.param_env)
+                    .must_apply_modulo_regions()
+            };
 
-        let new_obligation = self.mk_trait_obligation_with_new_self_ty(
-            obligation.param_env,
-            trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty)),
-        );
-
-        if self.predicate_may_hold(&new_obligation) && has_clone(ty) {
-            if !has_clone(param.to_ty(self.tcx)) {
-                suggest_constraining_type_param(
-                    self.tcx,
-                    generics,
-                    err,
-                    param.name.as_str(),
-                    "Clone",
-                    Some(clone_trait),
-                    None,
-                );
-            }
-            err.span_suggestion_verbose(
-                obligation.cause.span.shrink_to_hi(),
-                "consider using clone here",
-                ".clone()",
-                Applicability::MaybeIncorrect,
+            let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+                obligation.param_env,
+                trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty)),
             );
-            return true;
-        }
-        false
+
+            if self.predicate_may_hold(&new_obligation) && has_clone(ty) {
+                if !has_clone(param.to_ty(self.tcx)) {
+                    suggest_constraining_type_param(
+                        self.tcx,
+                        generics,
+                        err,
+                        param.name.as_str(),
+                        "Clone",
+                        Some(clone_trait),
+                        None,
+                    );
+                }
+                err.span_suggestion_verbose(
+                    obligation.cause.span.shrink_to_hi(),
+                    "consider using clone here",
+                    ".clone()".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+                return true;
+            }
+            false
+        })
     }
 
     /// Extracts information about a callable type for diagnostics. This is a
@@ -4038,26 +4041,27 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(where_pred) = where_pred.as_trait_clause()
                     && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
                 {
-                    let where_pred = self.instantiate_binder_with_placeholders(where_pred);
-                    let failed_pred = self.instantiate_binder_with_fresh_vars(
-                        expr.span,
-                        BoundRegionConversionTime::FnCall,
-                        failed_pred,
-                    );
+                    self.enter_forall(where_pred, |where_pred| {
+                        let failed_pred = self.instantiate_binder_with_fresh_vars(
+                            expr.span,
+                            BoundRegionConversionTime::FnCall,
+                            failed_pred,
+                        );
 
-                    let zipped = iter::zip(where_pred.trait_ref.args, failed_pred.trait_ref.args);
-                    for (expected, actual) in zipped {
-                        self.probe(|_| {
-                            match self.at(&ObligationCause::misc(expr.span, body_id), param_env).eq(
-                                DefineOpaqueTypes::No,
-                                expected,
-                                actual,
-                            ) {
-                                Ok(_) => (), // We ignore nested obligations here for now.
-                                Err(err) => type_diffs.push(err),
-                            }
-                        })
-                    }
+                        let zipped =
+                            iter::zip(where_pred.trait_ref.args, failed_pred.trait_ref.args);
+                        for (expected, actual) in zipped {
+                            self.probe(|_| {
+                                match self
+                                    .at(&ObligationCause::misc(expr.span, body_id), param_env)
+                                    .eq(DefineOpaqueTypes::No, expected, actual)
+                                {
+                                    Ok(_) => (), // We ignore nested obligations here for now.
+                                    Err(err) => type_diffs.push(err),
+                                }
+                            })
+                        }
+                    })
                 } else if let Some(where_pred) = where_pred.as_projection_clause()
                     && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
                     && let Some(found) = failed_pred.skip_binder().term.ty()
@@ -4614,14 +4618,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
-                let pred = self.instantiate_binder_with_placeholders(pred);
-                let pred = ocx.normalize(&ObligationCause::dummy(), param_env, pred);
-                ocx.register_obligation(Obligation::new(
-                    self.tcx,
-                    ObligationCause::dummy(),
-                    param_env,
-                    pred,
-                ));
+                self.enter_forall(pred, |pred| {
+                    let pred = ocx.normalize(&ObligationCause::dummy(), param_env, pred);
+                    ocx.register_obligation(Obligation::new(
+                        self.tcx,
+                        ObligationCause::dummy(),
+                        param_env,
+                        pred,
+                    ));
+                });
                 if !ocx.select_where_possible().is_empty() {
                     // encountered errors.
                     return;
@@ -4768,13 +4773,13 @@ fn hint_missing_borrow<'tcx>(
     }
 
     let found_args = match found.kind() {
-        ty::FnPtr(f) => infcx.instantiate_binder_with_placeholders(*f).inputs().iter(),
+        ty::FnPtr(f) => infcx.enter_forall(*f, |f| f.inputs().iter()),
         kind => {
             span_bug!(span, "found was converted to a FnPtr above but is now {:?}", kind)
         }
     };
     let expected_args = match expected.kind() {
-        ty::FnPtr(f) => infcx.instantiate_binder_with_placeholders(*f).inputs().iter(),
+        ty::FnPtr(f) => infcx.enter_forall(*f, |f| f.inputs().iter()),
         kind => {
             span_bug!(span, "expected was converted to a FnPtr above but is now {:?}", kind)
         }

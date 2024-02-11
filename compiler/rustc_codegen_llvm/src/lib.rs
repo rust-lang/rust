@@ -13,10 +13,7 @@
 #![feature(hash_raw_entry)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(impl_trait_in_assoc_type)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate rustc_macros;

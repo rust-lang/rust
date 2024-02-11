@@ -6,7 +6,7 @@
 
 use std::ops::ControlFlow;
 
-// EMIT_MIR separate_const_switch.too_complex.SeparateConstSwitch.diff
+// EMIT_MIR separate_const_switch.too_complex.JumpThreading.diff
 fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     // The pass should break the outer match into
     // two blocks that only have one parent each.
@@ -23,7 +23,7 @@ fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     }
 }
 
-// EMIT_MIR separate_const_switch.identity.SeparateConstSwitch.diff
+// EMIT_MIR separate_const_switch.identity.JumpThreading.diff
 fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     Ok(x?)
 }

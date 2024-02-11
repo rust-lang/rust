@@ -22,7 +22,6 @@ pub mod io;
 pub mod memchr;
 pub mod net;
 pub mod os;
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]

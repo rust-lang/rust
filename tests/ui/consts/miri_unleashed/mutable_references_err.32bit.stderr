@@ -42,18 +42,24 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/mutable_references_err.rs:47:1
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to a static variable in a constant
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
                ╾ALLOC2<imm>╼                                     │ ╾──╼
            }
 
+note: erroneous constant encountered
+  --> $DIR/mutable_references_err.rs:49:34
+   |
+LL | const READS_FROM_MUTABLE: i32 = *POINTS_TO_MUTABLE1;
+   |                                  ^^^^^^^^^^^^^^^^^^
+
 error[E0080]: evaluation of constant value failed
   --> $DIR/mutable_references_err.rs:51:43
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
-   |                                           ^^^^^^^^^^^^^ constant accesses static
+   |                                           ^^^^^^^^^^^^^ constant accesses mutable global memory
 
 error: encountered mutable pointer in final value of constant
   --> $DIR/mutable_references_err.rs:55:1
@@ -103,12 +109,12 @@ help: skipping check that does not even have a feature gate
    |
 LL | const SNEAKY: &dyn Sync = &Synced { x: UnsafeCell::new(42) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references_err.rs:32:40
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    |                                        ^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references_err.rs:32:40
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
@@ -133,32 +139,22 @@ help: skipping check for `const_mut_refs` feature
    |
 LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:40:49
-   |
-LL | static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as *mut _) };
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references_err.rs:47:44
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    |                                            ^^^^^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references_err.rs:47:44
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    |                                            ^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references_err.rs:50:36
-   |
-LL | static mut MUTABLE_REF: &mut i32 = &mut 42;
-   |                                    ^^^^^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references_err.rs:51:45
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
    |                                             ^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references_err.rs:51:45
    |
 LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };

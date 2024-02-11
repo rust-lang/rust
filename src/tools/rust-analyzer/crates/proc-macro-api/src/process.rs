@@ -78,7 +78,7 @@ impl ProcMacroProcessSrv {
 
         match response {
             Response::ApiVersionCheck(version) => Ok(version),
-            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
+            _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
         }
     }
 
@@ -90,7 +90,7 @@ impl ProcMacroProcessSrv {
 
         match response {
             Response::SetConfig(crate::msg::ServerConfig { span_mode }) => Ok(span_mode),
-            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
+            _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
         }
     }
 
@@ -104,7 +104,7 @@ impl ProcMacroProcessSrv {
 
         match response {
             Response::ListMacros(it) => Ok(it),
-            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
+            _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
         }
     }
 

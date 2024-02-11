@@ -798,7 +798,7 @@ fn match_meta_var<S: Span>(
                 tt.map(|tt| match tt {
                     tt::TokenTree::Leaf(leaf) => tt::Subtree {
                         delimiter: tt::Delimiter::invisible_spanned(*leaf.span()),
-                        token_trees: vec![leaf.into()],
+                        token_trees: Box::new([leaf.into()]),
                     },
                     tt::TokenTree::Subtree(mut s) => {
                         if s.delimiter.kind == tt::DelimiterKind::Invisible {
@@ -832,7 +832,7 @@ fn match_meta_var<S: Span>(
                                 None => lit.into(),
                                 Some(neg) => tt::TokenTree::Subtree(tt::Subtree {
                                     delimiter: tt::Delimiter::invisible_spanned(*literal.span()),
-                                    token_trees: vec![neg, lit.into()],
+                                    token_trees: Box::new([neg, lit.into()]),
                                 }),
                             }
                         })
@@ -989,10 +989,10 @@ impl<S: Span> TtIter<'_, S> {
                 close: ident.span,
                 kind: tt::DelimiterKind::Invisible,
             },
-            token_trees: vec![
+            token_trees: Box::new([
                 tt::Leaf::Punct(*punct).into(),
                 tt::Leaf::Ident(ident.clone()).into(),
-            ],
+            ]),
         }
         .into())
     }

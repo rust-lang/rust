@@ -112,7 +112,7 @@ impl<'a> RenderContext<'a> {
         };
         is_assoc_deprecated
             || assoc
-                .containing_trait_or_trait_impl(db)
+                .container_or_implemented_trait(db)
                 .map(|trait_| self.is_deprecated(trait_))
                 .unwrap_or(false)
     }
@@ -167,14 +167,14 @@ pub(crate) fn render_field(
         if !expected_fn_type {
             if let Some(receiver) = &dot_access.receiver {
                 if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
-                    builder.insert(receiver.syntax().text_range().start(), "(".to_string());
-                    builder.insert(ctx.source_range().end(), ")".to_string());
+                    builder.insert(receiver.syntax().text_range().start(), "(".to_owned());
+                    builder.insert(ctx.source_range().end(), ")".to_owned());
 
                     let is_parens_needed =
                         !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
 
                     if is_parens_needed {
-                        builder.insert(ctx.source_range().end(), "()".to_string());
+                        builder.insert(ctx.source_range().end(), "()".to_owned());
                     }
                 }
             }
@@ -2199,12 +2199,14 @@ fn main() {
                 sn while []
                 sn ref []
                 sn refm []
+                sn deref []
                 sn unsafe []
                 sn match []
                 sn box []
                 sn dbg []
                 sn dbgr []
                 sn call []
+                sn return []
             "#]],
         );
     }
@@ -2227,6 +2229,7 @@ fn main() {
                 me f() []
                 sn ref []
                 sn refm []
+                sn deref []
                 sn unsafe []
                 sn match []
                 sn box []
@@ -2235,6 +2238,7 @@ fn main() {
                 sn call []
                 sn let []
                 sn letm []
+                sn return []
             "#]],
         );
     }

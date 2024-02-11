@@ -26,7 +26,6 @@ pub mod net;
 #[path = "../unsupported/once.rs"]
 pub mod once;
 pub mod os;
-pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
@@ -38,7 +37,6 @@ pub mod thread;
 pub mod thread_local_key;
 #[path = "../unsupported/thread_parking.rs"]
 pub mod thread_parking;
-#[path = "../unsupported/time.rs"]
 pub mod time;
 
 mod helpers;

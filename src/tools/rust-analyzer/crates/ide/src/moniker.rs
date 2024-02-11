@@ -383,18 +383,18 @@ pub(crate) fn def_to_moniker(
             let (name, repo, version) = match krate.origin(db) {
                 CrateOrigin::Library { repo, name } => (name, repo, krate.version(db)),
                 CrateOrigin::Local { repo, name } => (
-                    name.unwrap_or(krate.display_name(db)?.canonical_name().to_string()),
+                    name.unwrap_or(krate.display_name(db)?.canonical_name().to_owned()),
                     repo,
                     krate.version(db),
                 ),
                 CrateOrigin::Rustc { name } => (
                     name.clone(),
-                    Some("https://github.com/rust-lang/rust/".to_string()),
+                    Some("https://github.com/rust-lang/rust/".to_owned()),
                     Some(format!("https://github.com/rust-lang/rust/compiler/{name}",)),
                 ),
                 CrateOrigin::Lang(lang) => (
-                    krate.display_name(db)?.canonical_name().to_string(),
-                    Some("https://github.com/rust-lang/rust/".to_string()),
+                    krate.display_name(db)?.canonical_name().to_owned(),
+                    Some("https://github.com/rust-lang/rust/".to_owned()),
                     Some(match lang {
                         LangCrateOrigin::Other => {
                             "https://github.com/rust-lang/rust/library/".into()

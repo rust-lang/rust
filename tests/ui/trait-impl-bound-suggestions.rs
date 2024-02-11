@@ -17,4 +17,13 @@ trait InsufficientlyConstrainedGeneric<X=()> {
     }
 }
 
+// Regression test for #120838
+#[allow(dead_code)]
+trait InsufficientlyConstrainedGenericWithEmptyWhere<X=()> where {
+    fn return_the_constrained_type(&self, x: X) -> ConstrainedStruct<X> {
+        //~^ ERROR the trait bound `X: Copy` is not satisfied
+        ConstrainedStruct { x }
+    }
+}
+
 pub fn main() { }

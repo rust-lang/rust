@@ -1,11 +1,9 @@
-error[E0275]: overflow evaluating the requirement `<<T as Id<_>>::Id as Unnormalizable>::Assoc == _`
+error[E0284]: type annotations needed: cannot satisfy `<<T as Id<_>>::Id as Unnormalizable>::Assoc == _`
   --> $DIR/occurs-check-nested-alias.rs:36:9
    |
 LL |     x = y;
-   |         ^
-   |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`occurs_check_nested_alias`)
+   |         ^ cannot satisfy `<<T as Id<_>>::Id as Unnormalizable>::Assoc == _`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0284`.

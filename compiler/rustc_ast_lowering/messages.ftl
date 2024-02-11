@@ -8,6 +8,10 @@ ast_lowering_arbitrary_expression_in_pattern =
 
 ast_lowering_argument = argument
 
+ast_lowering_assoc_ty_binding_in_dyn =
+    associated type bounds are not allowed in `dyn` types
+    .suggestion = use `impl Trait` to introduce a type instead
+
 ast_lowering_assoc_ty_parentheses =
     parenthesized generic arguments cannot be used in associated type constraints
 
@@ -99,9 +103,6 @@ ast_lowering_invalid_register_class =
 ast_lowering_match_arm_with_no_body =
     `match` arm with no body
     .suggestion = add a body after the pattern
-
-ast_lowering_misplaced_assoc_ty_binding =
-    associated type bounds are only allowed in where clauses and function signatures, not in {$position}
 
 ast_lowering_misplaced_double_dot =
     `..` patterns are not allowed here

@@ -148,7 +148,7 @@ pub const unsafe fn assert_unchecked(cond: bool) {
     unsafe {
         intrinsics::assert_unsafe_precondition!(
             "hint::assert_unchecked must never be called when the condition is false",
-            (cond: bool) => cond,
+            (cond: bool = cond) => cond,
         );
         crate::intrinsics::assume(cond);
     }

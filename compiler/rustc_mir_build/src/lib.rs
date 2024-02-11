@@ -1,12 +1,15 @@
 //! Construction of MIR from HIR.
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
+
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(try_blocks)]
 
 #[macro_use]

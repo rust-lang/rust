@@ -49,7 +49,7 @@
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 #![feature(control_flow_enum)]
-#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
+#![feature(trait_upcasting)]
 #![feature(try_blocks)]
 #![feature(decl_macro)]
 #![feature(extract_if)]
@@ -58,8 +58,10 @@
 #![feature(const_option)]
 #![feature(ptr_alignment_type)]
 #![feature(macro_metavar_expr)]
-#![allow(rustc::potential_query_instability)]
 #![allow(internal_features)]
+#![allow(rustc::potential_query_instability)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 
 #[macro_use]
 extern crate bitflags;

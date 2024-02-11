@@ -34,11 +34,8 @@
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
-#![cfg_attr(not(bootstrap), feature(trait_upcasting))]
-#![feature(min_specialization)]
+#![feature(trait_upcasting)]
 #![feature(rustc_attrs)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]

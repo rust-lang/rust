@@ -306,6 +306,12 @@ pub struct InferCtxt<'tcx> {
     // FIXME(matthewjasper) Merge into `tainted_by_errors`
     err_count_on_creation: usize,
 
+    /// Track how many errors were stashed when this infcx is created.
+    /// Used for the same purpose as `err_count_on_creation`, even
+    /// though it's weaker because the count can go up and down.
+    // FIXME(matthewjasper) Merge into `tainted_by_errors`
+    stashed_err_count_on_creation: usize,
+
     /// What is the innermost universe we have created? Starts out as
     /// `UniverseIndex::root()` but grows from there as we enter
     /// universal quantifiers.
@@ -711,6 +717,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             err_count_on_creation: tcx.dcx().err_count(),
+            stashed_err_count_on_creation: tcx.dcx().stashed_err_count(),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
@@ -863,7 +870,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[instrument(skip(self, snapshot), level = "debug")]
-    fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot<'tcx>) {
+    fn rollback_to(&self, snapshot: CombinedSnapshot<'tcx>) {
         let CombinedSnapshot { undo_snapshot, region_constraints_snapshot, universe } = snapshot;
 
         self.universe.set(universe);
@@ -895,7 +902,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.commit_from(snapshot);
             }
             Err(_) => {
-                self.rollback_to("commit_if_ok -- error", snapshot);
+                self.rollback_to(snapshot);
             }
         }
         r
@@ -909,7 +916,7 @@ impl<'tcx> InferCtxt<'tcx> {
     {
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
-        self.rollback_to("probe", snapshot);
+        self.rollback_to(snapshot);
         r
     }
 
@@ -1032,10 +1039,9 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        let ty::SubtypePredicate { a_is_expected, a, b } =
-            self.instantiate_binder_with_placeholders(predicate);
-
-        Ok(self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b))
+        self.enter_forall(predicate, |ty::SubtypePredicate { a_is_expected, a, b }| {
+            Ok(self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b))
+        })
     }
 
     pub fn region_outlives_predicate(
@@ -1043,10 +1049,12 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &traits::ObligationCause<'tcx>,
         predicate: ty::PolyRegionOutlivesPredicate<'tcx>,
     ) {
-        let ty::OutlivesPredicate(r_a, r_b) = self.instantiate_binder_with_placeholders(predicate);
-        let origin =
-            SubregionOrigin::from_obligation_cause(cause, || RelateRegionParamBound(cause.span));
-        self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+        self.enter_forall(predicate, |ty::OutlivesPredicate(r_a, r_b)| {
+            let origin = SubregionOrigin::from_obligation_cause(cause, || {
+                RelateRegionParamBound(cause.span)
+            });
+            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+        })
     }
 
     /// Number of type variables created so far.
@@ -1261,26 +1269,24 @@ impl<'tcx> InferCtxt<'tcx> {
     /// inference variables, regionck errors).
     #[must_use = "this method does not have any side effects"]
     pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
-        debug!(
-            "is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
-             tainted_by_errors={})",
-            self.dcx().err_count(),
-            self.err_count_on_creation,
-            self.tainted_by_errors.get().is_some()
-        );
-
-        if let Some(e) = self.tainted_by_errors.get() {
-            return Some(e);
+        if let Some(guar) = self.tainted_by_errors.get() {
+            Some(guar)
+        } else if self.dcx().err_count() > self.err_count_on_creation {
+            // Errors reported since this infcx was made.
+            let guar = self.dcx().has_errors().unwrap();
+            self.set_tainted_by_errors(guar);
+            Some(guar)
+        } else if self.dcx().stashed_err_count() > self.stashed_err_count_on_creation {
+            // Errors stashed since this infcx was made. Not entirely reliable
+            // because the count of stashed errors can go down. But without
+            // this case we get a moderate number of uninteresting and
+            // extraneous "type annotations needed" errors.
+            let guar = self.dcx().delayed_bug("tainted_by_errors: stashed bug awaiting emission");
+            self.set_tainted_by_errors(guar);
+            Some(guar)
+        } else {
+            None
         }
-
-        if self.dcx().err_count() > self.err_count_on_creation {
-            // errors reported since this infcx was made
-            let e = self.dcx().has_errors().unwrap();
-            self.set_tainted_by_errors(e);
-            return Some(e);
-        }
-
-        None
     }
 
     /// Set the "tainted by errors" flag to true. We call this when we
@@ -1455,7 +1461,7 @@ impl<'tcx> InferCtxt<'tcx> {
     // Use this method if you'd like to find some substitution of the binder's
     // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
     // that corresponds to your use case, consider whether or not you should
-    // use [`InferCtxt::instantiate_binder_with_placeholders`] instead.
+    // use [`InferCtxt::enter_forall`] instead.
     pub fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,

@@ -75,7 +75,7 @@ fn render(
     let ret_type = func.ret_type(db);
     let assoc_item = func.as_assoc_item(db);
 
-    let trait_ = assoc_item.and_then(|trait_| trait_.containing_trait_or_trait_impl(db));
+    let trait_ = assoc_item.and_then(|trait_| trait_.container_or_implemented_trait(db));
     let is_op_method = trait_.map_or(false, |trait_| completion.is_ops_trait(trait_));
 
     let is_item_from_notable_trait =
@@ -145,7 +145,7 @@ fn render(
         }
         None => {
             if let Some(actm) = assoc_item {
-                if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+                if let Some(trt) = actm.container_or_implemented_trait(db) {
                     item.trait_name(trt.name(db).to_smol_str());
                 }
             }
@@ -184,12 +184,12 @@ pub(super) fn add_call_parens<'b>(
                         }
                         None => {
                             let name = match param.ty().as_adt() {
-                                None => "_".to_string(),
+                                None => "_".to_owned(),
                                 Some(adt) => adt
                                     .name(ctx.db)
                                     .as_text()
                                     .map(|s| to_lower_snake_case(s.as_str()))
-                                    .unwrap_or_else(|| "_".to_string()),
+                                    .unwrap_or_else(|| "_".to_owned()),
                             };
                             f(&format_args!("${{{}:{name}}}", index + offset))
                         }

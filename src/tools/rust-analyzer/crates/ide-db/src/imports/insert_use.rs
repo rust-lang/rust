@@ -214,7 +214,7 @@ fn insert_use_with_alias_option(
         };
     }
 
-    let mut use_tree = make::use_tree(path.clone(), None, alias, false);
+    let mut use_tree = make::use_tree(path, None, alias, false);
     if mb == Some(MergeBehavior::One) && use_tree.path().is_some() {
         use_tree = use_tree.clone_for_update();
         use_tree.wrap_in_tree_list();

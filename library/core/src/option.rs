@@ -567,6 +567,7 @@ use crate::{
 #[rustc_diagnostic_item = "Option"]
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::derived_hash_with_manual_eq)] // PartialEq is specialized
 pub enum Option<T> {
     /// No value.
     #[lang = "None"]
@@ -1033,7 +1034,6 @@ impl<T> Option<T> {
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
-        debug_assert!(self.is_some());
         match self {
             Some(val) => val,
             // SAFETY: the safety contract must be upheld by the caller.
@@ -1074,18 +1074,23 @@ impl<T> Option<T> {
         }
     }
 
-    /// Calls the provided closure with a reference to the contained value (if [`Some`]).
+    /// Calls a function with a reference to the contained value if [`Some`].
+    ///
+    /// Returns the original option.
     ///
     /// # Examples
     ///
     /// ```
-    /// let v = vec![1, 2, 3, 4, 5];
+    /// let list = vec![1, 2, 3];
     ///
-    /// // prints "got: 4"
-    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {x}"));
+    /// // prints "got: 2"
+    /// let x = list
+    ///     .get(1)
+    ///     .inspect(|x| println!("got: {x}"))
+    ///     .expect("list should be long enough");
     ///
     /// // prints nothing
-    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
+    /// list.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
     #[stable(feature = "result_option_inspect", since = "1.76.0")]
@@ -2155,7 +2160,6 @@ impl<T: PartialEq> PartialEq for Option<T> {
 ///
 /// Once that's fixed, `Option` should go back to deriving `PartialEq`, as
 /// it used to do before <https://github.com/rust-lang/rust/pull/103556>.
-/// The comment regarding this trait on the `newtype_index` macro should be removed if this is done.
 #[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
 #[doc(hidden)]
 pub trait SpecOptionPartialEq: Sized {

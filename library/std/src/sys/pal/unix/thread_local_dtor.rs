@@ -11,7 +11,6 @@
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
-#[cfg_attr(bootstrap, allow(unexpected_cfgs))]
 #[cfg(any(
     target_os = "linux",
     target_os = "android",

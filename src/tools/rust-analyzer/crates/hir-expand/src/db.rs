@@ -61,7 +61,7 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
 
-    #[salsa::invoke(AstIdMap::ast_id_map)]
+    #[salsa::invoke(AstIdMap::new)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     /// Main public API -- parses a hir file, not caring whether it's a real
@@ -524,7 +524,7 @@ fn macro_expand(
                 return ExpandResult {
                     value: CowArc::Owned(tt::Subtree {
                         delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
-                        token_trees: Vec::new(),
+                        token_trees: Box::new([]),
                     }),
                     // FIXME: We should make sure to enforce an invariant that invalid macro
                     // calls do not reach this call path!
@@ -586,7 +586,7 @@ fn macro_expand(
             return value.map(|()| {
                 CowArc::Owned(tt::Subtree {
                     delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
-                    token_trees: vec![],
+                    token_trees: Box::new([]),
                 })
             });
         }
@@ -601,7 +601,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         return ExpandResult {
             value: Arc::new(tt::Subtree {
                 delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
-                token_trees: Vec::new(),
+                token_trees: Box::new([]),
             }),
             // FIXME: We should make sure to enforce an invariant that invalid macro
             // calls do not reach this call path!
@@ -635,7 +635,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         return value.map(|()| {
             Arc::new(tt::Subtree {
                 delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
-                token_trees: vec![],
+                token_trees: Box::new([]),
             })
         });
     }

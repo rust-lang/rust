@@ -90,10 +90,6 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
     // (Some(Mode::Std), "target_os", Some(&[])),
-    // #[cfg(bootstrap)] zkvm
-    (Some(Mode::Std), "target_os", Some(&["zkvm"])),
-    // #[cfg(bootstrap)] risc0
-    (Some(Mode::Std), "target_vendor", Some(&["risc0"])),
     (Some(Mode::Std), "target_arch", Some(&["spirv", "nvptx", "xtensa"])),
     /* Extra names used by dependencies */
     // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
@@ -796,12 +792,16 @@ impl Build {
         self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
     }
 
-    /// Root output directory for LLVM compiled for `target`
+    /// Root output directory of LLVM for `target`
     ///
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("llvm")
+        if self.config.llvm_from_ci && self.config.build == target {
+            self.config.ci_llvm_root()
+        } else {
+            self.out.join(&*target.triple).join("llvm")
+        }
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
