@@ -9,7 +9,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_semver::RustcVersion;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::DefId;
-use rustc_span::Span;
+use rustc_span::{ExpnKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -89,6 +89,11 @@ impl IncompatibleMsrv {
         }
         let version = self.get_def_id_version(cx.tcx, def_id);
         if self.msrv.meets(version) || is_in_test_function(cx.tcx, node) {
+            return;
+        }
+        if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = span.ctxt().outer_expn_data().kind {
+            // Desugared expressions get to cheat and stability is ignored.
+            // Intentionally not using `.from_expansion()`, since we do still care about macro expansions
             return;
         }
         self.emit_lint_for(cx, span, version);
