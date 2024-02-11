@@ -84,21 +84,6 @@ help: skipping check for `const_refs_to_static` feature
 LL |     unsafe { &static_cross_crate::ZERO }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:12:15
-   |
-LL |     unsafe { &static_cross_crate::ZERO }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:18:15
-   |
-LL |     unsafe { &static_cross_crate::ZERO[0] }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:18:15
-   |
-LL |     unsafe { &static_cross_crate::ZERO[0] }
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
   --> $DIR/const_refers_to_static_cross_crate.rs:18:15
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
@@ -108,26 +93,6 @@ help: skipping check for `const_refs_to_static` feature
    |
 LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
-   |
-LL |         match static_cross_crate::OPT_ZERO {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
-   |
-LL |         match static_cross_crate::OPT_ZERO {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
-   |
-LL |         match static_cross_crate::OPT_ZERO {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
-   |
-LL |         match static_cross_crate::OPT_ZERO {
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
   --> $DIR/const_refers_to_static_cross_crate.rs:28:15
    |
