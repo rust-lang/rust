@@ -266,12 +266,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ptr = this.mmap(addr, length, prot, flags, fd, offset)?;
                 this.write_scalar(ptr, dest)?;
             }
-            "mmap64" => {
-                let [addr, length, prot, flags, fd, offset] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
-                let offset = this.read_scalar(offset)?.to_i64()?;
-                let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
-                this.write_scalar(ptr, dest)?;
-            }
             "munmap" => {
                 let [addr, length] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
                 let result = this.munmap(addr, length)?;

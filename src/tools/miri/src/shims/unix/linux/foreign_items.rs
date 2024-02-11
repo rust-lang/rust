@@ -9,6 +9,7 @@ use shims::unix::fs::EvalContextExt as _;
 use shims::unix::linux::fd::EvalContextExt as _;
 use shims::unix::linux::mem::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
+use shims::unix::mem::EvalContextExt as _;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
 
@@ -215,6 +216,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [_thread, _attr] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.write_null(dest)?;
+            }
+
+            "mmap64" => {
+                let [addr, length, prot, flags, fd, offset] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let offset = this.read_scalar(offset)?.to_i64()?;
+                let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
+                this.write_scalar(ptr, dest)?;
             }
 
             _ => return Ok(EmulateForeignItemResult::NotSupported),
