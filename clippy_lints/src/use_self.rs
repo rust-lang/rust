@@ -193,7 +193,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_body(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
-        // `hir_ty_to_ty` cannot be called in `Body`s or it will panic (sometimes). But in bodies
+        // `lower_ty` cannot be called in `Body`s or it will panic (sometimes). But in bodies
         // we can use `cx.typeck_results.node_type(..)` to get the `ty::Ty` from a `hir::Ty`.
         // However the `node_type()` method can *only* be called in bodies.
         if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {

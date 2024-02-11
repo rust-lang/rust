@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath:
     };
     let inner_span = match qpath_generic_tys(inner_qpath).next() {
         Some(hir_ty) => {
-            // Reallocation of a fat pointer causes it to become thin. `hir_ty_to_ty` is safe to use
+            // Reallocation of a fat pointer causes it to become thin. `lower_ty` is safe to use
             // here because `mod.rs` guarantees this lint is only run on types outside of bodies and
             // is not run on locals.
             let ty = lower_ty(cx.tcx, hir_ty);
