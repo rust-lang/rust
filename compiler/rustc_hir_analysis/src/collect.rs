@@ -79,7 +79,6 @@ pub fn provide(providers: &mut Providers) {
         adt_def,
         fn_sig,
         impl_trait_header,
-        impl_polarity,
         coroutine_kind,
         coroutine_for_closure,
         collect_mod_item_types,
@@ -1392,11 +1391,6 @@ fn check_impl_constness(
         marking: (),
         adding: (),
     }))
-}
-
-fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
-    let item = tcx.hir().expect_item(def_id);
-    polarity_of_impl(tcx, def_id, item.expect_impl(), item.span)
 }
 
 fn polarity_of_impl(

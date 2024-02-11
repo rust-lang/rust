@@ -853,10 +853,6 @@ rustc_queries! {
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
     }
-    query impl_polarity(impl_id: DefId) -> ty::ImplPolarity {
-        desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(impl_id) }
-        separate_provide_extern
-    }
 
     query issue33140_self_ty(key: DefId) -> Option<ty::EarlyBinder<ty::Ty<'tcx>>> {
         desc { |tcx| "computing Self type wrt issue #33140 `{}`", tcx.def_path_str(key) }

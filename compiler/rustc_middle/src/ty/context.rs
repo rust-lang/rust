@@ -2317,6 +2317,11 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
         Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
     }
+
+    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+        self.impl_trait_header(def_id)
+            .map_or(ty::ImplPolarity::Positive, |h| h.skip_binder().polarity)
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead

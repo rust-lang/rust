@@ -234,7 +234,6 @@ provide! { tcx, def_id, other, cdata,
     unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
     def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
-    impl_polarity => { table_direct }
     defaultness => { table_direct }
     constness => { table_direct }
     coerce_unsized_info => {

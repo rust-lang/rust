@@ -1969,7 +1969,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_id = id.owner_id.to_def_id();
 
             self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
-            self.tables.impl_polarity.set_some(def_id.index, tcx.impl_polarity(def_id));
 
             if of_trait && let Some(header) = tcx.impl_trait_header(def_id) {
                 record!(self.tables.impl_trait_header[def_id] <- header);
