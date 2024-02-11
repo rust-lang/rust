@@ -36,8 +36,8 @@ LL | pub trait Bar: Foo<Assoc=()> + Sized {
    |                              +++++++
 help: consider relaxing the implicit `Sized` restriction
    |
-LL | pub trait Foo<RHS=Self: ?Sized> {
-   |                       ++++++++
+LL | pub trait Foo<RHS: ?Sized=Self> {
+   |                  ++++++++
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/issue-28576.rs:5:16
@@ -56,8 +56,8 @@ LL |     ) where Self: Sized;
    |       +++++++++++++++++
 help: consider relaxing the implicit `Sized` restriction
    |
-LL | pub trait Foo<RHS=Self: ?Sized> {
-   |                       ++++++++
+LL | pub trait Foo<RHS: ?Sized=Self> {
+   |                  ++++++++
 
 error: aborting due to 3 previous errors
 
