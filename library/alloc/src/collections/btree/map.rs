@@ -2673,8 +2673,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// ]);
     ///
     /// let cursor = map.upper_bound(Bound::Included(&3));
-    /// assert_eq!(cursor.peek_prev(), Some((&3, &"d")));
-    /// assert_eq!(cursor.peek_next(), Some((&4, &"c")));
+    /// assert_eq!(cursor.peek_prev(), Some((&3, &"c")));
+    /// assert_eq!(cursor.peek_next(), Some((&4, &"d")));
     ///
     /// let cursor = map.upper_bound(Bound::Excluded(&3));
     /// assert_eq!(cursor.peek_prev(), Some((&2, &"b")));
