@@ -457,8 +457,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -469,8 +467,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -481,8 +477,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -493,8 +487,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -505,8 +497,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -517,8 +507,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -529,8 +517,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -541,8 +527,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -553,8 +537,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -565,8 +547,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.12
-              SELECT_XCODE: /Applications/Xcode_15.2.app
-              USE_XCODE_CLANG: 1
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
