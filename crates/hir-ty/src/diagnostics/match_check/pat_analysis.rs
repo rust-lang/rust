@@ -1,6 +1,7 @@
 //! Interface with `rustc_pattern_analysis`.
 
 use std::fmt;
+use tracing::debug;
 
 use hir_def::{DefWithBodyId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use rustc_hash::FxHashMap;
@@ -475,7 +476,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
     }
 
     fn bug(&self, fmt: fmt::Arguments<'_>) {
-        never!("{}", fmt)
+        debug!("{}", fmt)
     }
 }
 
