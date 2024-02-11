@@ -29,12 +29,13 @@ use core::task::Waker;
 /// exists as an alternative for those systems.
 ///
 /// To construct a [`Waker`] from some type `W` implementing this trait,
-/// wrap it in an [`Arc<W>`](Arc) and call [`Waker::from()`][wi].
+/// wrap it in an [`Arc<W>`](Arc) and call `Waker::from()` on that.
 /// It is also possible to convert to [`RawWaker`] in the same way.
 ///
-/// <!-- This impl is reachable from `alloc` but rustdoc only lists it in `std`
-///      because `alloc` doesn't reexport `Waker` -->
-/// [wi]: ../../std/task/struct.Waker.html#impl-From%3CArc%3CW,+Global%3E%3E-for-Waker
+/// <!-- Ideally we'd link to the `From` impl, but rustdoc doesn't generate any page for it within
+///      `alloc` because `alloc` neither defines nor re-exports `From` or `Waker`, and we can't
+///      link ../../std/task/struct.Waker.html#impl-From%3CArc%3CW,+Global%3E%3E-for-Waker
+///      without getting a link-checking error in CI. -->
 ///
 /// # Examples
 ///
