@@ -30,8 +30,8 @@ several major phases:
 The type checker is defined into various submodules which are documented
 independently:
 
-- astconv: converts the AST representation of types
-  into the `ty` representation.
+- astconv: lowers type-system entities from the [HIR][hir] to the
+  [`rustc_middle::ty`] representation.
 
 - collect: computes the types of each top-level item and enters them into
   the `tcx.types` table for later use.
@@ -211,8 +211,16 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     Ok(())
 }
 
-/// A quasi-deprecated helper used in rustdoc and clippy to get
-/// the type from a HIR node.
+/// Lower a [`hir::Ty`] to a [`Ty`].
+///
+/// <div class="warning">
+///
+/// This function is **quasi-deprecated**. It can cause ICEs if called inside of a body
+/// (of a function or constant) and especially if it contains inferred types (`_`).
+///
+/// It's used in rustdoc and Clippy.
+///
+/// </div>
 pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in

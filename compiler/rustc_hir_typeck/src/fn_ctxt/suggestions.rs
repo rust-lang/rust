@@ -957,7 +957,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bounded_ty,
                     ..
                 }) => {
-                    // FIXME: Maybe these calls to `ast_ty_to_ty` can be removed (and the ones below)
+                    // FIXME: Maybe these calls to `lower_ty` can be removed (and the ones below)
                     let ty = self.lowerer().lower_ty(bounded_ty);
                     Some((ty, bounds))
                 }

@@ -32,8 +32,9 @@ use std::ops::ControlFlow;
 
 pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
 
-/// Returns the object safety violations that affect
-/// astconv -- currently, `Self` in supertraits. This is needed
+/// Returns the object safety violations that affect HIR ty lowering.
+///
+/// Currently that is `Self` in supertraits. This is needed
 /// because `object_safety_violations` can't be used during
 /// type collection.
 pub fn hir_ty_lowering_object_safety_violations(

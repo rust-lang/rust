@@ -143,24 +143,22 @@ fn generic_arg_mismatch_err(
     err.emit()
 }
 
-/// Creates the relevant generic arguments
-/// corresponding to a set of generic parameters. This is a
-/// rather complex function. Let us try to explain the role
+/// Lower generic arguments from the HIR to the [`rustc_middle::ty`] representation.
+///
+/// This is a rather complex function. Let us try to explain the role
 /// of each of its parameters:
 ///
-/// To start, we are given the `def_id` of the thing whose generic
-/// parameters we are instantiating, and a partial set of
-/// arguments `parent_args`. In general, the generic arguments
-/// for an item begin with arguments for all the "parents" of
-/// that item -- e.g., for a method it might include the
-/// parameters from the impl.
+/// To start, we are given the `def_id` of the thing whose generic parameters we
+/// are creating, and a partial set of arguments `parent_args`. In general,
+/// the generic arguments for an item begin with arguments for all the "parents"
+/// of that item -- e.g., for a method it might include the parameters from the impl.
 ///
 /// Therefore, the method begins by walking down these parents,
 /// starting with the outermost parent and proceed inwards until
 /// it reaches `def_id`. For each parent `P`, it will check `parent_args`
 /// first to see if the parent's arguments are listed in there. If so,
-/// we can append those and move on. Otherwise, it invokes the
-/// three callback functions:
+/// we can append those and move on. Otherwise, it uses the provided
+/// [`GenericArgsLowerer`] `ctx` which has the following methods:
 ///
 /// - `args_for_def_id`: given the `DefId` `P`, supplies back the
 ///   generic arguments that were given to that parent from within
@@ -168,10 +166,10 @@ fn generic_arg_mismatch_err(
 ///   might refer to the trait `Foo`, and the arguments might be
 ///   `[T]`. The boolean value indicates whether to infer values
 ///   for arguments whose values were not explicitly provided.
-/// - `provided_kind`: given the generic parameter and the value from `args_for_def_id`,
-///   instantiate a `GenericArg`.
-/// - `inferred_kind`: if no parameter was provided, and inference is enabled, then
-///   creates a suitable inference variable.
+/// - `provided_kind`: given the generic parameter and the value
+///   from `args_for_def_id`, creating a `GenericArg`.
+/// - `inferred_kind`: if no parameter was provided, and inference
+///   is enabled, then creates a suitable inference variable.
 pub fn lower_generic_args<'tcx: 'a, 'a>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,

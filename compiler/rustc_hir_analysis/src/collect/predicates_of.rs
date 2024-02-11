@@ -542,8 +542,8 @@ pub(super) fn explicit_predicates_of<'tcx>(
 }
 
 /// Ensures that the super-predicates of the trait with a `DefId`
-/// of `trait_def_id` are converted and stored. This also ensures that
-/// the transitive super-predicates are converted.
+/// of `trait_def_id` are lowered and stored. This also ensures that
+/// the transitive super-predicates are lowered.
 pub(super) fn super_predicates_of(
     tcx: TyCtxt<'_>,
     trait_def_id: LocalDefId,
@@ -574,8 +574,8 @@ pub(super) fn implied_predicates_of(
 }
 
 /// Ensures that the super-predicates of the trait with a `DefId`
-/// of `trait_def_id` are converted and stored. This also ensures that
-/// the transitive super-predicates are converted.
+/// of `trait_def_id` are lowered and stored. This also ensures that
+/// the transitive super-predicates are lowered.
 pub(super) fn implied_predicates_with_filter(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
@@ -615,7 +615,7 @@ pub(super) fn implied_predicates_with_filter(
         &*tcx.arena.alloc_from_iter(superbounds.clauses().chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
-    // Now require that immediate supertraits are converted, which will, in
+    // Now require that immediate supertraits are lowered, which will, in
     // turn, reach indirect supertraits, so we detect cycles now instead of
     // overflowing during elaboration. Same for implied predicates, which
     // make sure we walk into associated type bounds.
@@ -656,7 +656,7 @@ pub(super) fn type_param_predicates(
     use rustc_hir::*;
     use rustc_middle::ty::Ty;
 
-    // In the AST, bounds can derive from two places. Either
+    // In the HIR, bounds can derive from two places. Either
     // written inline like `<T: Foo>` or in a where-clause like
     // `where T: Foo`.
 
@@ -714,10 +714,11 @@ pub(super) fn type_param_predicates(
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
-    /// Finds bounds from `hir::Generics`. This requires scanning through the
-    /// AST. We do this to avoid having to convert *all* the bounds, which
-    /// would create artificial cycles. Instead, we can only convert the
-    /// bounds for a type parameter `X` if `X::Foo` is used.
+    /// Finds bounds from `hir::Generics`.
+    ///
+    /// This requires scanning through the HIR.
+    /// We do this to avoid having to lower *all* the bounds, which would create artificial cycles.
+    /// Instead, we can only lower the bounds for a type parameter `X` if `X::Foo` is used.
     #[instrument(level = "trace", skip(self, ast_generics))]
     fn probe_ty_param_bounds_in_generics(
         &self,

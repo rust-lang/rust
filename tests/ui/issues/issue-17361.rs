@@ -1,5 +1,5 @@
 //@ run-pass
-// Test that astconv doesn't forget about mutability of &mut str
+// Test that HIR ty lowering doesn't forget about mutability of `&mut str`.
 
 //@ pretty-expanded FIXME #23616
 

@@ -760,7 +760,7 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
 
     fn enter_node_scope_with_dtor(&mut self, id: hir::ItemLocalId) {
         // If node was previously marked as a terminating scope during the
-        // recursive visit of its parent node in the AST, then we need to
+        // recursive visit of its parent node in the HIR, then we need to
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
         if self.terminating_scopes.contains(&id) {

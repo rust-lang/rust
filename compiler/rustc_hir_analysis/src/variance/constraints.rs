@@ -1,6 +1,6 @@
 //! Constraint construction and representation
 //!
-//! The second pass over the AST determines the set of constraints.
+//! The second pass over the HIR determines the set of constraints.
 //! We walk the set of items and, for each member, generate new constraints.
 
 use hir::def_id::{DefId, LocalDefId};

@@ -1,5 +1,5 @@
 //! Computes a normalizes-to (projection) goal for inherent associated types,
-//! `#![feature(inherent_associated_type)]`. Since astconv already determines
+//! `#![feature(inherent_associated_type)]`. Since HIR ty lowering already determines
 //! which impl the IAT is being projected from, we just:
 //! 1. instantiate generic parameters,
 //! 2. equate the self type, and

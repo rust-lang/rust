@@ -18,6 +18,7 @@ use smallvec::{smallvec, SmallVec};
 use super::HirTyLowerer;
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Lower a trait object type from the HIR to our internal notion of a type.
     pub(super) fn lower_trait_object_ty(
         &self,
         span: Span,

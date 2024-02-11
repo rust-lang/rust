@@ -138,8 +138,8 @@ pub(super) fn explicit_item_bounds_with_filter(
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
             opaque_type_bounds(tcx, def_id, bounds, item_ty, *span, filter)
         }
-        // Since RPITITs are astconv'd as projections in `ast_ty_to_ty`, when we're asking
-        // for the item bounds of the *opaques* in a trait's default method signature, we
+        // Since RPITITs are lowered as projections in `<dyn HirTyLowerer>::lower_ty`, when we're
+        // asking for the item bounds of the *opaques* in a trait's default method signature, we
         // need to map these projections back to opaques.
         hir::Node::Item(hir::Item {
             kind: hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, in_trait: true, origin, .. }),

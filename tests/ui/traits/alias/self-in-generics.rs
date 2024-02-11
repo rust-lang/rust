@@ -1,4 +1,4 @@
-// astconv uses `FreshTy(0)` as a dummy `Self` type when instanciating trait objects.
+// HIR ty lowering uses `FreshTy(0)` as a dummy `Self` type when instanciating trait objects.
 // This `FreshTy(0)` can leak into substs, causing ICEs in several places.
 
 #![feature(trait_alias)]

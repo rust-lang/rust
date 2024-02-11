@@ -88,13 +88,12 @@ pub fn provide(providers: &mut Providers) {
 
 ///////////////////////////////////////////////////////////////////////////
 
-/// Context specific to some particular item. This is what implements
-/// [`AstConv`].
+/// Context specific to some particular item. This is what implements [`HirTyLowerer`].
 ///
 /// # `ItemCtxt` vs `FnCtxt`
 ///
 /// `ItemCtxt` is primarily used to type-check item signatures and lower them
-/// from HIR to their [`ty::Ty`] representation, which is exposed using [`AstConv`].
+/// from HIR to their [`ty::Ty`] representation, which is exposed using [`HirTyLowerer`].
 /// It's also used for the bodies of items like structs where the body (the fields)
 /// are just signatures.
 ///
@@ -111,11 +110,11 @@ pub fn provide(providers: &mut Providers) {
 /// `ItemCtxt` has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
 /// available in various different forms at various points in the
-/// process. So we can't just store a pointer to e.g., the AST or the
+/// process. So we can't just store a pointer to e.g., the HIR or the
 /// parsed ty form, we have to be more flexible. To this end, the
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
-/// `get_type_parameter_bounds` requests, drawing the information from
-/// the AST (`hir::Generics`), recursively.
+/// `probe_ty_param_bounds` requests, drawing the information from
+/// the HIR (`hir::Generics`), recursively.
 pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
@@ -785,8 +784,7 @@ fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
             tcx.ensure().predicates_of(f.did);
         }
 
-        // Convert the ctor, if any. This also registers the variant as
-        // an item.
+        // Lower the ctor, if any. This also registers the variant as an item.
         if let Some(ctor_def_id) = variant.ctor_def_id() {
             lower_variant_ctor(tcx, ctor_def_id.expect_local());
         }
@@ -1545,7 +1543,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
                 // we have a const impl, but for a trait without `#[const_trait]`, so
                 // without the host param. If we continue with the HIR trait ref, we get
                 // ICEs for generic arg count mismatch. We do a little HIR editing to
-                // make astconv happy.
+                // make HIR ty lowering happy.
                 let mut path_segments = ast_trait_ref.path.segments.to_vec();
                 let last_segment = path_segments.len() - 1;
                 let mut args = *path_segments[last_segment].args();
