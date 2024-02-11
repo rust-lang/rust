@@ -1,7 +1,11 @@
-use crate::utils::{get_gcc_path, get_os_name, rustc_version_info, split_args};
+use crate::utils::{get_os_name, rustc_version_info, split_args};
 use std::collections::HashMap;
 use std::env as std_env;
 use std::ffi::OsStr;
+use std::fs;
+use std::path::Path;
+
+use boml::{types::TomlValue, Toml};
 
 #[derive(Default, PartialEq, Eq, Clone, Copy, Debug)]
 pub enum Channel {
@@ -19,6 +23,71 @@ impl Channel {
     }
 }
 
+fn failed_config_parsing(config_file: &str, err: &str) -> Result<ConfigFile, String> {
+    Err(format!("Failed to parse `{}`: {}", config_file, err))
+}
+
+#[derive(Default)]
+pub struct ConfigFile {
+    gcc_path: Option<String>,
+    download_gccjit: Option<bool>,
+}
+
+impl ConfigFile {
+    pub fn new(config_file: Option<&str>) -> Result<Self, String> {
+        let config_file = config_file.unwrap_or("config.toml");
+        let content = fs::read_to_string(config_file).map_err(|_| {
+            format!(
+                "Failed to read `{}`. Take a look at `Readme.md` to see how to set up the project",
+                config_file,
+            )
+        })?;
+        let toml = Toml::parse(&content).map_err(|err| {
+            format!(
+                "Error occurred around `{}`: {:?}",
+                &content[err.start..=err.end],
+                err.kind
+            )
+        })?;
+        let mut config = Self::default();
+        for (key, value) in toml.iter() {
+            match (key, value) {
+                ("gcc-path", TomlValue::String(value)) => {
+                    config.gcc_path = Some(value.as_str().to_string())
+                }
+                ("gcc-path", _) => {
+                    return failed_config_parsing(config_file, "Expected a string for `gcc-path`")
+                }
+                ("download-gccjit", TomlValue::Boolean(value)) => {
+                    config.download_gccjit = Some(*value)
+                }
+                ("download-gccjit", _) => {
+                    return failed_config_parsing(
+                        config_file,
+                        "Expected a boolean for `download-gccjit`",
+                    )
+                }
+                _ => return failed_config_parsing(config_file, &format!("Unknown key `{}`", key)),
+            }
+        }
+        if config.gcc_path.is_none() && config.download_gccjit.is_none() {
+            return failed_config_parsing(
+                config_file,
+                "At least one of `gcc-path` or `download-gccjit` value must be set",
+            );
+        }
+        if let Some(gcc_path) = config.gcc_path.as_mut() {
+            let path = Path::new(gcc_path);
+            *gcc_path = path
+                .canonicalize()
+                .map_err(|err| format!("Failed to get absolute path of `{}`: {:?}", gcc_path, err))?
+                .display()
+                .to_string();
+        }
+        Ok(config)
+    }
+}
+
 #[derive(Default, Debug)]
 pub struct ConfigInfo {
     pub target: String,
@@ -33,6 +102,8 @@ pub struct ConfigInfo {
     pub sysroot_panic_abort: bool,
     pub cg_backend_path: String,
     pub sysroot_path: String,
+    pub gcc_path: String,
+    config_file: Option<String>,
 }
 
 impl ConfigInfo {
@@ -64,6 +135,14 @@ impl ConfigInfo {
                 }
                 _ => return Err("Expected a value after `--out-dir`, found nothing".to_string()),
             },
+            "--config-file" => match args.next() {
+                Some(arg) if !arg.is_empty() => {
+                    self.config_file = Some(arg.to_string());
+                }
+                _ => {
+                    return Err("Expected a value after `--config-file`, found nothing".to_string())
+                }
+            },
             "--release-sysroot" => self.sysroot_release_channel = true,
             "--release" => self.channel = Channel::Release,
             "--sysroot-panic-abort" => self.sysroot_panic_abort = true,
@@ -80,18 +159,46 @@ impl ConfigInfo {
         command
     }
 
+    pub fn setup_gcc_path(&mut self, override_gcc_path: Option<&str>) -> Result<(), String> {
+        let ConfigFile { gcc_path, .. } = ConfigFile::new(self.config_file.as_deref())?;
+
+        self.gcc_path = match override_gcc_path {
+            Some(path) => {
+                if gcc_path.is_some() {
+                    println!(
+                        "overriding setting from `{}`",
+                        self.config_file.as_deref().unwrap_or("config.toml")
+                    );
+                }
+                path.to_string()
+            }
+            None => {
+                match gcc_path {
+                    Some(path) => path,
+                    // FIXME: Once we support "download", rewrite this.
+                    None => {
+                        return Err(format!(
+                            "missing `gcc-path` value from `{}`",
+                            self.config_file.as_deref().unwrap_or("config.toml"),
+                        ))
+                    }
+                }
+            }
+        };
+        Ok(())
+    }
+
     pub fn setup(
         &mut self,
         env: &mut HashMap<String, String>,
-        gcc_path: Option<&str>,
+        override_gcc_path: Option<&str>,
     ) -> Result<(), String> {
         env.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
 
-        let gcc_path = match gcc_path {
-            Some(path) => path.to_string(),
-            None => get_gcc_path()?,
-        };
-        env.insert("GCC_PATH".to_string(), gcc_path.clone());
+        if self.gcc_path.is_empty() || override_gcc_path.is_some() {
+            self.setup_gcc_path(override_gcc_path)?;
+        }
+        env.insert("GCC_PATH".to_string(), self.gcc_path.clone());
 
         if self.cargo_target_dir.is_empty() {
             match env.get("CARGO_TARGET_DIR").filter(|dir| !dir.is_empty()) {
@@ -225,7 +332,9 @@ impl ConfigInfo {
             // line option to change it.
             target = current_dir.join("target/out").display(),
             sysroot = sysroot.display(),
+            gcc_path = self.gcc_path,
         );
+        env.insert("LIBRARY_PATH".to_string(), ld_library_path.clone());
         env.insert("LD_LIBRARY_PATH".to_string(), ld_library_path.clone());
         env.insert("DYLD_LIBRARY_PATH".to_string(), ld_library_path);
 
@@ -265,7 +374,8 @@ impl ConfigInfo {
     --out-dir              : Location where the files will be generated
     --release              : Build in release mode
     --release-sysroot      : Build sysroot in release mode
-    --sysroot-panic-abort  : Build the sysroot without unwinding support."
+    --sysroot-panic-abort  : Build the sysroot without unwinding support
+    --config-file          : Location of the config file to be used"
         );
     }
 }

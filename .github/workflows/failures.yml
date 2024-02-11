@@ -52,7 +52,10 @@ jobs:
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
+      run: |
+          echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
+          echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
 
     - name: Download artifact
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
@@ -62,12 +65,12 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
           sudo dpkg --force-overwrite -i gcc-13.deb
-          echo /usr/lib/ > gcc_path
+          echo 'gcc-path = "/usr/lib"' > config.toml
+          echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+          echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     - name: Set env
       run: |
-        echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
 
     #- name: Cache rust repository
