@@ -1679,7 +1679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         span: Span,
         variant: &'tcx ty::VariantDef,
-        ast_fields: &'tcx [hir::ExprField<'tcx>],
+        hir_fields: &'tcx [hir::ExprField<'tcx>],
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) {
         let tcx = self.tcx;
@@ -1710,7 +1710,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut error_happened = false;
 
         // Type-check each field.
-        for (idx, field) in ast_fields.iter().enumerate() {
+        for (idx, field) in hir_fields.iter().enumerate() {
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
@@ -1739,7 +1739,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         variant,
                         expr,
                         field,
-                        ast_fields,
+                        hir_fields,
                         adt.variant_descr(),
                     )
                 };
@@ -1754,7 +1754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.demand_coerce_diag(field.expr, ty, field_type, None, AllowTwoPhase::No);
 
             if let Some(diag) = diag {
-                if idx == ast_fields.len() - 1 {
+                if idx == hir_fields.len() - 1 {
                     if remaining_fields.is_empty() {
                         self.suggest_fru_from_range_and_emit(field, variant, args, diag);
                     } else {
@@ -1768,7 +1768,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Make sure the programmer specified correct number of fields.
         if adt_kind == AdtKind::Union {
-            if ast_fields.len() != 1 {
+            if hir_fields.len() != 1 {
                 struct_span_code_err!(
                     tcx.dcx(),
                     span,
@@ -1905,14 +1905,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .collect();
 
             if !private_fields.is_empty() {
-                self.report_private_fields(adt_ty, span, expr.span, private_fields, ast_fields);
+                self.report_private_fields(adt_ty, span, expr.span, private_fields, hir_fields);
             } else {
                 self.report_missing_fields(
                     adt_ty,
                     span,
                     remaining_fields,
                     variant,
-                    ast_fields,
+                    hir_fields,
                     args,
                 );
             }
@@ -1949,7 +1949,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         remaining_fields: UnordMap<Ident, (FieldIdx, &ty::FieldDef)>,
         variant: &'tcx ty::VariantDef,
-        ast_fields: &'tcx [hir::ExprField<'tcx>],
+        hir_fields: &'tcx [hir::ExprField<'tcx>],
         args: GenericArgsRef<'tcx>,
     ) {
         let len = remaining_fields.len();
@@ -1986,8 +1986,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(span, format!("missing {remaining_fields_names}{truncated_fields_error}"));
 
-        if let Some(last) = ast_fields.last() {
-            self.suggest_fru_from_range_and_emit(last, variant, args, err);
+        if let Some(hir_field) = hir_fields.last() {
+            self.suggest_fru_from_range_and_emit(hir_field, variant, args, err);
         } else {
             err.emit();
         }

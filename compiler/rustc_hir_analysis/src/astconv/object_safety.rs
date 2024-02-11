@@ -19,6 +19,7 @@ use super::HirTyLowerer;
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Lower a trait object type from the HIR to our internal notion of a type.
+    #[instrument(level = "debug", skip_all, ret)]
     pub(super) fn lower_trait_object_ty(
         &self,
         span: Span,
@@ -157,7 +158,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for (base_trait_ref, span) in regular_traits_refs_spans {
             let base_pred: ty::Predicate<'tcx> = base_trait_ref.to_predicate(tcx);
             for pred in traits::elaborate(tcx, [base_pred]).filter_only_self() {
-                debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", pred);
+                debug!("observing object predicate `{pred:?}`");
 
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
@@ -244,8 +245,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // the bounds
         let mut duplicates = FxHashSet::default();
         auto_traits.retain(|i| duplicates.insert(i.trait_ref().def_id()));
-        debug!("regular_traits: {:?}", regular_traits);
-        debug!("auto_traits: {:?}", auto_traits);
+        debug!(?regular_traits);
+        debug!(?auto_traits);
 
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
         let existential_trait_refs = regular_traits.iter().map(|i| {
@@ -390,10 +391,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             })
         };
-        debug!("region_bound: {:?}", region_bound);
+        debug!(?region_bound);
 
-        let ty = Ty::new_dynamic(tcx, existential_predicates, region_bound, representation);
-        debug!("trait_object_type: {:?}", ty);
-        ty
+        Ty::new_dynamic(tcx, existential_predicates, region_bound, representation)
     }
 }

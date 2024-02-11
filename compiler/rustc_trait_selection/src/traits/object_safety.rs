@@ -37,6 +37,7 @@ pub use crate::traits::{MethodViolationCode, ObjectSafetyViolation};
 /// Currently that is `Self` in supertraits. This is needed
 /// because `object_safety_violations` can't be used during
 /// type collection.
+#[instrument(level = "debug", skip(tcx))]
 pub fn hir_ty_lowering_object_safety_violations(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
@@ -47,9 +48,7 @@ pub fn hir_ty_lowering_object_safety_violations(
         .filter(|spans| !spans.is_empty())
         .map(ObjectSafetyViolation::SupertraitSelf)
         .collect();
-
-    debug!("astconv_object_safety_violations(trait_def_id={:?}) = {:?}", trait_def_id, violations);
-
+    debug!(?violations);
     violations
 }
 

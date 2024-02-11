@@ -123,7 +123,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Clause<'_>, Span)> = FxIndexSet::default();
 
-    let ast_generics = node.generics().unwrap_or(NO_GENERICS);
+    let hir_generics = node.generics().unwrap_or(NO_GENERICS);
     if let Node::Item(item) = node {
         match item.kind {
             ItemKind::Impl(impl_) => {
@@ -170,7 +170,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`). Also add `ConstArgHasType` predicates
     // for each const parameter.
-    for param in ast_generics.params {
+    for param in hir_generics.params {
         match param.kind {
             // We already dealt with early bound lifetimes above.
             GenericParamKind::Lifetime { .. } => (),
@@ -182,7 +182,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &mut bounds,
                     param_ty,
                     &[],
-                    Some((param.def_id, ast_generics.predicates)),
+                    Some((param.def_id, hir_generics.predicates)),
                     param.span,
                 );
                 trace!(?bounds);
@@ -205,7 +205,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
     trace!(?predicates);
     // Add in the bounds that appear in the where-clause.
-    for predicate in ast_generics.predicates {
+    for predicate in hir_generics.predicates {
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
                 let ty = icx.lower_ty(bound_pred.bounded_ty);
@@ -684,7 +684,7 @@ pub(super) fn type_param_predicates(
     let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
 
     let hir_node = tcx.hir_node(item_hir_id);
-    let Some(ast_generics) = hir_node.generics() else { return result };
+    let Some(hir_generics) = hir_node.generics() else { return result };
     if let Node::Item(item) = hir_node
         && let ItemKind::Trait(..) = item.kind
         // Implied `Self: Trait` and supertrait bounds.
@@ -697,7 +697,7 @@ pub(super) fn type_param_predicates(
     let icx = ItemCtxt::new(tcx, item_def_id);
     let extra_predicates = extend.into_iter().chain(
         icx.probe_ty_param_bounds_in_generics(
-            ast_generics,
+            hir_generics,
             def_id,
             ty,
             PredicateFilter::SelfThatDefines(assoc_name),
@@ -719,17 +719,17 @@ impl<'tcx> ItemCtxt<'tcx> {
     /// This requires scanning through the HIR.
     /// We do this to avoid having to lower *all* the bounds, which would create artificial cycles.
     /// Instead, we can only lower the bounds for a type parameter `X` if `X::Foo` is used.
-    #[instrument(level = "trace", skip(self, ast_generics))]
+    #[instrument(level = "trace", skip(self, hir_generics))]
     fn probe_ty_param_bounds_in_generics(
         &self,
-        ast_generics: &'tcx hir::Generics<'tcx>,
+        hir_generics: &'tcx hir::Generics<'tcx>,
         param_def_id: LocalDefId,
         ty: Ty<'tcx>,
         filter: PredicateFilter,
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
         let mut bounds = Bounds::default();
 
-        for predicate in ast_generics.predicates {
+        for predicate in hir_generics.predicates {
             let hir::WherePredicate::BoundPredicate(predicate) = predicate else {
                 continue;
             };

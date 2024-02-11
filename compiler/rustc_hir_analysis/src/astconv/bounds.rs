@@ -24,7 +24,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         bounds: &mut Bounds<'tcx>,
         self_ty: Ty<'tcx>,
-        ast_bounds: &'tcx [hir::GenericBound<'tcx>],
+        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
         self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
         span: Span,
     ) {
@@ -35,9 +35,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // Try to find an unbound in bounds.
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
-        let mut search_bounds = |ast_bounds: &'tcx [hir::GenericBound<'tcx>]| {
-            for ab in ast_bounds {
-                let hir::GenericBound::Trait(ptr, modifier) = ab else {
+        let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
+            for hir_bound in hir_bounds {
+                let hir::GenericBound::Trait(ptr, modifier) = hir_bound else {
                     continue;
                 };
                 match modifier {
@@ -60,7 +60,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
         };
-        search_bounds(ast_bounds);
+        search_bounds(hir_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
                 if let hir::WherePredicate::BoundPredicate(pred) = clause
@@ -109,34 +109,34 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// ```ignore (illustrative)
     /// fn foo<T>() where for<'a> T: Trait<'a> + Copy {}
-    /// //                ^^^^^^^ ^  ^^^^^^^^^^^^^^^^ `ast_bounds`, in HIR form
+    /// //                ^^^^^^^ ^  ^^^^^^^^^^^^^^^^ `hir_bounds`, in HIR form
     /// //                |       |
     /// //                |       `param_ty`, in ty form
     /// //                `bound_vars`, in ty form
     ///
     /// fn bar<T>() where T: for<'a> Trait<'a> + Copy {} // no overarching `bound_vars` here!
-    /// //                ^  ^^^^^^^^^^^^^^^^^^^^^^^^ `ast_bounds`, in HIR form
+    /// //                ^  ^^^^^^^^^^^^^^^^^^^^^^^^ `hir_bounds`, in HIR form
     /// //                |
     /// //                `param_ty`, in ty form
     /// ```
     ///
     /// ### A Note on Binders
     ///
-    /// There is an implied binder around `param_ty` and `ast_bounds`.
+    /// There is an implied binder around `param_ty` and `hir_bounds`.
     /// See `lower_poly_trait_ref` for more details.
-    #[instrument(level = "debug", skip(self, ast_bounds, bounds))]
+    #[instrument(level = "debug", skip(self, hir_bounds, bounds))]
     pub(crate) fn lower_poly_bounds<'hir, I: Iterator<Item = &'hir hir::GenericBound<'tcx>>>(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: I,
+        hir_bounds: I,
         bounds: &mut Bounds<'tcx>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
         only_self_bounds: OnlySelfBounds,
     ) where
         'tcx: 'hir,
     {
-        for ast_bound in ast_bounds {
-            match ast_bound {
+        for hir_bound in hir_bounds {
+            match hir_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                     let (constness, polarity) = match modifier {
                         hir::TraitBoundModifier::Const => {
@@ -183,14 +183,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// ### Example
     ///
     /// ```ignore (illustrative)
-    /// fn foo<T: Bar + Baz>() {}
-    /// //     ^  ^^^^^^^^^ ast_bounds
+    /// fn foo<T: Bar + Baz>() { }
+    /// //     ^  ^^^^^^^^^ hir_bounds
     /// //     param_ty
     /// ```
     pub(crate) fn lower_mono_bounds(
         &self,
         param_ty: Ty<'tcx>,
-        ast_bounds: &[hir::GenericBound<'tcx>],
+        hir_bounds: &[hir::GenericBound<'tcx>],
         filter: PredicateFilter,
     ) -> Bounds<'tcx> {
         let mut bounds = Bounds::default();
@@ -204,7 +204,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.lower_poly_bounds(
             param_ty,
-            ast_bounds.iter().filter(|bound| match filter {
+            hir_bounds.iter().filter(|bound| match filter {
                 PredicateFilter::All
                 | PredicateFilter::SelfOnly
                 | PredicateFilter::SelfAndAssociatedTypeBounds => true,
@@ -496,7 +496,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             // Lower a constraint like `Item: Debug` as found in HIR bound `T: Iterator<Item: Debug>`
             // to a bound involving a projection: `<T as Iterator>::Item: Debug`.
-            hir::TypeBindingKind::Constraint { bounds: ast_bounds } => {
+            hir::TypeBindingKind::Constraint { bounds: hir_bounds } => {
                 // NOTE: If `only_self_bounds` is true, do NOT expand this associated type bound into
                 // a trait predicate, since we only want to add predicates for the `Self` type.
                 if !only_self_bounds.0 {
@@ -505,7 +505,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let param_ty = Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
                     self.lower_poly_bounds(
                         param_ty,
-                        ast_bounds.iter(),
+                        hir_bounds.iter(),
                         bounds,
                         projection_ty.bound_vars(),
                         only_self_bounds,

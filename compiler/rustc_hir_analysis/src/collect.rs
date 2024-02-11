@@ -343,8 +343,8 @@ impl<'tcx> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
     }
 
-    pub fn lower_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        self.lowerer().lower_ty(ast_ty)
+    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        self.lowerer().lower_ty(hir_ty)
     }
 
     pub fn hir_id(&self) -> hir::HirId {
@@ -546,9 +546,10 @@ fn get_new_lifetime_name<'tcx>(
     (1..).flat_map(a_to_z_repeat_n).find(|lt| !existing_lifetimes.contains(lt.as_str())).unwrap()
 }
 
+#[instrument(level = "debug", skip_all)]
 fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir().item(item_id);
-    debug!("convert: item {} with id {}", it.ident, it.hir_id());
+    debug!(item = %it.ident, id = %it.hir_id());
     let def_id = item_id.owner_id.def_id;
 
     match &it.kind {
@@ -1532,19 +1533,19 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
     impl_
         .of_trait
         .as_ref()
-        .map(|ast_trait_ref| {
-            let selfty = tcx.type_of(def_id).instantiate_identity();
+        .map(|hir_trait_ref| {
+            let self_ty = tcx.type_of(def_id).instantiate_identity();
 
             let trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
                 tcx,
                 tcx.is_const_trait_impl_raw(def_id.to_def_id()),
-                ast_trait_ref,
+                hir_trait_ref,
             ) {
                 // we have a const impl, but for a trait without `#[const_trait]`, so
                 // without the host param. If we continue with the HIR trait ref, we get
                 // ICEs for generic arg count mismatch. We do a little HIR editing to
                 // make HIR ty lowering happy.
-                let mut path_segments = ast_trait_ref.path.segments.to_vec();
+                let mut path_segments = hir_trait_ref.path.segments.to_vec();
                 let last_segment = path_segments.len() - 1;
                 let mut args = *path_segments[last_segment].args();
                 let last_arg = args.args.len() - 1;
@@ -1552,19 +1553,19 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
                 args.args = &args.args[..args.args.len() - 1];
                 path_segments[last_segment].args = Some(tcx.hir_arena.alloc(args));
                 let path = hir::Path {
-                    span: ast_trait_ref.path.span,
-                    res: ast_trait_ref.path.res,
+                    span: hir_trait_ref.path.span,
+                    res: hir_trait_ref.path.res,
                     segments: tcx.hir_arena.alloc_slice(&path_segments),
                 };
-                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: ast_trait_ref.hir_ref_id });
-                icx.lowerer().lower_impl_trait_ref(trait_ref, selfty)
+                let trait_ref = tcx.hir_arena.alloc(hir::TraitRef { path: tcx.hir_arena.alloc(path), hir_ref_id: hir_trait_ref.hir_ref_id });
+                icx.lowerer().lower_impl_trait_ref(trait_ref, self_ty)
             } else {
-                icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty)
+                icx.lowerer().lower_impl_trait_ref(hir_trait_ref, self_ty)
             };
             ty::ImplTraitHeader {
                 trait_ref: ty::EarlyBinder::bind(trait_ref),
                 unsafety: impl_.unsafety,
-                polarity: polarity_of_impl(tcx, def_id,  impl_, item.span)
+                polarity: polarity_of_impl(tcx, def_id, impl_, item.span)
             }
         })
 }
@@ -1572,20 +1573,20 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
 fn check_impl_constness(
     tcx: TyCtxt<'_>,
     is_const: bool,
-    ast_trait_ref: &hir::TraitRef<'_>,
+    hir_trait_ref: &hir::TraitRef<'_>,
 ) -> Option<ErrorGuaranteed> {
     if !is_const {
         return None;
     }
 
-    let trait_def_id = ast_trait_ref.trait_def_id()?;
+    let trait_def_id = hir_trait_ref.trait_def_id()?;
     if tcx.has_attr(trait_def_id, sym::const_trait) {
         return None;
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
     Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
-        trait_ref_span: ast_trait_ref.path.span,
+        trait_ref_span: hir_trait_ref.path.span,
         trait_name,
         local_trait_span:
             trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
@@ -1686,14 +1687,14 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     // Feature gate SIMD types in FFI, since I am not sure that the
     // ABIs are handled at all correctly. -huonw
     if abi != abi::Abi::RustIntrinsic && !tcx.features().simd_ffi {
-        let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
+        let check = |hir_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 let snip = tcx
                     .sess
                     .source_map()
-                    .span_to_snippet(ast_ty.span)
+                    .span_to_snippet(hir_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{s}`"));
-                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
+                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: hir_ty.span, snip });
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {

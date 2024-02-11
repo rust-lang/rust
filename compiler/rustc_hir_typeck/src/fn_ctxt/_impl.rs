@@ -392,20 +392,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn lower_ty(&self, ast_t: &hir::Ty<'tcx>) -> LoweredTy<'tcx> {
-        let t = self.lowerer().lower_ty(ast_t);
-        self.register_wf_obligation(t.into(), ast_t.span, traits::WellFormed(None));
-        LoweredTy::from_raw(self, ast_t.span, t)
+    pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> LoweredTy<'tcx> {
+        let ty = self.lowerer().lower_ty(hir_ty);
+        self.register_wf_obligation(ty.into(), hir_ty.span, traits::WellFormed(None));
+        LoweredTy::from_raw(self, hir_ty.span, ty)
     }
 
-    pub fn lower_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-        let ty = self.lower_ty(ast_ty);
-        debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
+    #[instrument(level = "debug", skip_all)]
+    pub fn lower_ty_saving_user_provided_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+        let ty = self.lower_ty(hir_ty);
+        debug!(?ty);
 
         if Self::can_contain_user_lifetime_bounds(ty.raw) {
             let c_ty = self.canonicalize_response(UserType::Ty(ty.raw));
-            debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
-            self.typeck_results.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
+            debug!(?c_ty);
+            self.typeck_results.borrow_mut().user_provided_types_mut().insert(hir_ty.hir_id, c_ty);
         }
 
         ty.normalized
@@ -434,16 +435,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn lower_const_arg(&self, ast_c: &hir::AnonConst, param_def_id: DefId) -> ty::Const<'tcx> {
-        let did = ast_c.def_id;
+    pub fn lower_const_arg(&self, hir_ct: &hir::AnonConst, param_def_id: DefId) -> ty::Const<'tcx> {
+        let did = hir_ct.def_id;
         self.tcx.feed_anon_const_type(did, self.tcx.type_of(param_def_id));
-        let c = ty::Const::from_anon_const(self.tcx, did);
+        let ct = ty::Const::from_anon_const(self.tcx, did);
         self.register_wf_obligation(
-            c.into(),
-            self.tcx.hir().span(ast_c.hir_id),
+            ct.into(),
+            self.tcx.hir().span(hir_ct.hir_id),
             ObligationCauseCode::WellFormed(None),
         );
-        c
+        ct
     }
 
     // If the type given by the user has free regions, save it for later, since

@@ -218,8 +218,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         Deny,
     }
 
-    let no_generics = hir::Generics::empty();
-    let ast_generics = node.generics().unwrap_or(no_generics);
+    let hir_generics = node.generics().unwrap_or(hir::Generics::empty());
     let (opt_self, allow_defaults) = match node {
         Node::Item(item) => {
             match item.kind {
@@ -275,13 +274,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         generics.parent_count + generics.params.len()
     });
 
-    let mut params: Vec<_> = Vec::with_capacity(ast_generics.params.len() + has_self as usize);
+    let mut params: Vec<_> = Vec::with_capacity(hir_generics.params.len() + has_self as usize);
 
     if let Some(opt_self) = opt_self {
         params.push(opt_self);
     }
 
-    let early_lifetimes = super::early_bound_lifetimes_from_generics(tcx, ast_generics);
+    let early_lifetimes = super::early_bound_lifetimes_from_generics(tcx, hir_generics);
     params.extend(early_lifetimes.enumerate().map(|(i, param)| ty::GenericParamDef {
         name: param.name.ident().name,
         index: own_start + i as u32,
@@ -302,7 +301,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     const TYPE_DEFAULT_NOT_ALLOWED: &'static str = "defaults for type parameters are only allowed in \
     `struct`, `enum`, `type`, or `trait` definitions";
 
-    params.extend(ast_generics.params.iter().filter_map(|param| match param.kind {
+    params.extend(hir_generics.params.iter().filter_map(|param| match param.kind {
         GenericParamKind::Lifetime { .. } => None,
         GenericParamKind::Type { default, synthetic, .. } => {
             if default.is_some() {
