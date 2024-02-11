@@ -7,5 +7,7 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isMacOS; then
-    sudo xcode-select -s "${SELECT_XCODE}"
+    if [[ -s "${SELECT_XCODE-}" ]]; then
+        sudo xcode-select -s "${SELECT_XCODE}"
+    fi
 fi
