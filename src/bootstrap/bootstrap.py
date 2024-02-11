@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import requests
 
 from time import time
 from multiprocessing import Pool, cpu_count
@@ -1027,6 +1028,22 @@ class RustBuild(object):
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, 'vendor')
             if not os.path.exists(vendor_dir):
+                '''Get the latest rust commit checksum to use as an example
+                '''
+                url = f'https://api.github.com/repos/rust-lang/rust/commits/master'
+
+                # Make a GET request to the GitHub API
+                response = requests.get(url)
+
+                # Check if the request was successful
+                if response.status_code == 200:
+                    data = response.json()
+                    # Extract the latest commit SHA hash
+                    latest_commit_sha = data['sha']
+                else:
+                    print("Failed to retrieve the commit information.")
+
+
                 sync_dirs = "--sync ./src/tools/cargo/Cargo.toml " \
                             "--sync ./src/tools/rust-analyzer/Cargo.toml " \
                             "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
@@ -1039,9 +1056,13 @@ class RustBuild(object):
                 eprint('       '
                 'https://forge.rust-lang.org/infra/other-installation-methods.html#source-code')
                 eprint('       To get a specific commit version, download it using the below URL,')
-                eprint('       replacing <commit> with a specific commit checksum: ')
+                eprint('       replacing <commit> with a specific commit checksum:')
                 eprint('       '
                 'https://ci-artifacts.rust-lang.org/rustc-builds/<commit>/rustc-nightly-src.tar.xz')
+                if latest_commit_sha:
+                    eprint('       For example, to get the latest commit version, download it using the below URL:')
+                    eprint('       '
+                    'https://ci-artifacts.rust-lang.org/rustc-builds/{}/rustc-nightly-src.tar.xz'.format(latest_commit_sha))
                 eprint('       Once you have the source downloaded, place the vendor directory')
                 eprint('       from the archive in the root of the rust project.')
                 raise Exception("{} not found".format(vendor_dir))
