@@ -1,7 +1,6 @@
 // check-pass
 // incremental
 
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![warn(unused)]
 
 struct OneUnused;

@@ -1,5 +1,4 @@
 // check-pass
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 
 #[expect(drop_bounds)]
 fn trigger_rustc_lints<T: Drop>() {

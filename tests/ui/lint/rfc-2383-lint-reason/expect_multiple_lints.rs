@@ -1,7 +1,5 @@
 // check-pass
 
-#![cfg_attr(bootstrap, feature(lint_reasons))]
-
 #![warn(unused)]
 
 // The warnings are not double triggers, they identify different unfulfilled lint

@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 
 // check-pass
 

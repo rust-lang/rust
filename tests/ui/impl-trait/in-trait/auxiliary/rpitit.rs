@@ -1,5 +1,3 @@
-#![cfg_attr(bootstrap, feature(lint_reasons))]
-
 use std::ops::Deref;
 
 pub trait Foo {

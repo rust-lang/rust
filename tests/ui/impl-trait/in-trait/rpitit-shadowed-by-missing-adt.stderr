@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Missing` in this scope
-  --> $DIR/rpitit-shadowed-by-missing-adt.rs:8:35
+  --> $DIR/rpitit-shadowed-by-missing-adt.rs:6:35
    |
 LL |     fn w() -> impl Deref<Target = Missing<impl Sized>>;
    |                                   ^^^^^^^ not found in this scope

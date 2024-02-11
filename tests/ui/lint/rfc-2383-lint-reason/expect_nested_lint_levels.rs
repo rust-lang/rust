@@ -1,6 +1,5 @@
 // ignore-tidy-linelength
 
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![warn(unused_mut)]
 
 #[expect(

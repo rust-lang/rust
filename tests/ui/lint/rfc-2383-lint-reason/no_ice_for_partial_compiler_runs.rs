@@ -2,8 +2,6 @@
 // check-pass
 // compile-flags: -Z unpretty=expanded
 
-#![cfg_attr(bootstrap, feature(lint_reasons))]
-
 // This `expect` will create an expectation with an unstable expectation id
 #[expect(while_true)]
 fn create_early_lint_pass_expectation() {

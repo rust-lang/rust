@@ -1,6 +1,5 @@
 // check-pass
 
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![allow(incomplete_features)]
 
 pub struct Wrapper<T>(T);

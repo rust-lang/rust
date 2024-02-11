@@ -1,5 +1,4 @@
 // check-pass
-#![cfg_attr(bootstrap, feature(lint_reasons))]
 
 #[warn(unused_variables)]
 

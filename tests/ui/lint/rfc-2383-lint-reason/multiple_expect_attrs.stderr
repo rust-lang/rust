@@ -1,5 +1,5 @@
 warning: this lint expectation is unfulfilled
-  --> $DIR/multiple_expect_attrs.rs:7:10
+  --> $DIR/multiple_expect_attrs.rs:6:10
    |
 LL | #[expect(unused_variables)]
    |          ^^^^^^^^^^^^^^^^

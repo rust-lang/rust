@@ -1,5 +1,5 @@
 warning: this lint expectation is unfulfilled
-  --> $DIR/crate_level_expect.rs:7:11
+  --> $DIR/crate_level_expect.rs:5:11
    |
 LL | #![expect(unused_mut)]
    |           ^^^^^^^^^^

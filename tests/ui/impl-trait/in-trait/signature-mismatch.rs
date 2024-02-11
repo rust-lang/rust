@@ -2,8 +2,6 @@
 // revisions: success failure
 //[success] check-pass
 
-#![cfg_attr(bootstrap, feature(lint_reasons))]
-
 use std::future::Future;
 
 pub trait Captures<'a> {}
