@@ -323,15 +323,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// #![cfg_attr(bootstrap, feature(lint_reasons))]
-    ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// #![cfg_attr(bootstrap, feature(lint_reasons))]
-    ///
     /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
     /// ```
     #[clippy::version = "1.61.0"]
@@ -363,7 +359,6 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust,ignore
-    /// #![cfg_attr(bootstrap, feature(lint_reasons))]
     /// #[expect(unused_mut)]
     /// fn foo() -> usize {
     ///     let mut a = Vec::new();
