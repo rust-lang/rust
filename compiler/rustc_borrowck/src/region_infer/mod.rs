@@ -662,7 +662,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
-        self.propagate_constraints(body);
+        self.propagate_constraints();
 
         let mut errors_buffer = RegionErrors::new(infcx.tcx);
 
@@ -716,8 +716,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    #[instrument(skip(self, _body), level = "debug")]
-    fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
+    #[instrument(skip(self), level = "debug")]
+    fn propagate_constraints(&mut self) {
         debug!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.outlives_constraints().collect();
             constraints.sort_by_key(|c| (c.sup, c.sub));

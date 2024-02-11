@@ -3020,7 +3020,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// assignment to `x.f`).
     pub(crate) fn report_illegal_reassignment(
         &mut self,
-        _location: Location,
         (place, span): (Place<'tcx>, Span),
         assigned_span: Span,
         err_place: Place<'tcx>,

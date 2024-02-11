@@ -16,7 +16,6 @@ use rustc_index::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
-use rustc_span::Span;
 
 use super::errs::{maybe_expr_static_mut, maybe_stmt_static_mut};
 
@@ -72,11 +71,7 @@ struct RegionResolutionVisitor<'tcx> {
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
-fn record_var_lifetime(
-    visitor: &mut RegionResolutionVisitor<'_>,
-    var_id: hir::ItemLocalId,
-    _sp: Span,
-) {
+fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_>, var_id: hir::ItemLocalId) {
     match visitor.cx.var_parent {
         None => {
             // this can happen in extern fn declarations like
@@ -210,7 +205,7 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
 
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
-        record_var_lifetime(visitor, pat.hir_id.local_id, pat.span);
+        record_var_lifetime(visitor, pat.hir_id.local_id);
     }
 
     debug!("resolve_pat - pre-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);

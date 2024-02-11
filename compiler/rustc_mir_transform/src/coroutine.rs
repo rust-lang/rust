@@ -726,7 +726,7 @@ fn replace_resume_ty_local<'tcx>(
 /// The async lowering step and the type / lifetime inference / checking are
 /// still using the `resume` argument for the time being. After this transform,
 /// the coroutine body doesn't have the `resume` argument.
-fn transform_gen_context<'tcx>(_tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn transform_gen_context<'tcx>(body: &mut Body<'tcx>) {
     // This leaves the local representing the `resume` argument in place,
     // but turns it into a regular local variable. This is cheaper than
     // adjusting all local references in the body after removing it.
@@ -1733,7 +1733,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Remove the context argument within generator bodies.
         if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) {
-            transform_gen_context(tcx, body);
+            transform_gen_context(body);
         }
 
         // The original arguments to the function are no longer arguments, mark them as such.
