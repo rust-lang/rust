@@ -2,7 +2,7 @@ error[E0382]: use of moved value: `x`
   --> $DIR/move-consuming-capture.rs:17:9
    |
 LL |         let x = async move || {
-   |             - move occurs because `x` has type `{coroutine-closure@$DIR/move-consuming-capture.rs:13:17: 13:30}`, which does not implement the `Copy` trait
+   |             - move occurs because `x` has type `{async closure@$DIR/move-consuming-capture.rs:13:17: 13:30}`, which does not implement the `Copy` trait
 ...
 LL |         x().await;
    |         --- `x` moved due to this method call
