@@ -1031,6 +1031,11 @@ class RustBuild(object):
                             "--sync ./src/tools/rust-analyzer/Cargo.toml " \
                             "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
                             "--sync ./src/bootstrap/Cargo.toml "
+
+                # get the last commit hash of the rustc directory
+                last_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']) \
+                                .decode('ascii').strip()
+
                 eprint('ERROR: vendoring required, but vendor directory does not exist.')
                 eprint('       Run `cargo vendor {}` to initialize the '
                       'vendor directory.'.format(sync_dirs))
@@ -1042,6 +1047,11 @@ class RustBuild(object):
                 eprint('       replacing <commit> with a specific commit checksum: ')
                 eprint('       '
                 'https://ci-artifacts.rust-lang.org/rustc-builds/<commit>/rustc-nightly-src.tar.xz')
+                if latest_commit_sha:
+                    eprint('        For example, download the latest commit through:')
+                    eprint('       '
+                           'https://ci-artifacts.rust-lang.org/rustc-builds/{}/'
+                           'rustc-nightly-src.tar.xz'.format(last_commit))
                 eprint('       Once you have the source downloaded, place the vendor directory')
                 eprint('       from the archive in the root of the rust project.')
                 raise Exception("{} not found".format(vendor_dir))
