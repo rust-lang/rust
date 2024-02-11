@@ -223,7 +223,7 @@ impl ExprValidator {
             ValidityConstraint::ValidOnly,
         ) {
             Ok(report) => report,
-            Err(void) => match void {},
+            Err(()) => return,
         };
 
         // FIXME Report unreachable arms
