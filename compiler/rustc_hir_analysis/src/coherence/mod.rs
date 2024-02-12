@@ -137,11 +137,12 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
         res = res.and(check_impl(tcx, impl_def_id, trait_ref));
         res = res.and(check_object_overlap(tcx, impl_def_id, trait_ref));
 
-        res = res.and(unsafety::check_item(tcx, impl_def_id));
+        res = res.and(unsafety::check_item(tcx, impl_def_id, trait_ref));
         res = res.and(tcx.ensure().orphan_check_impl(impl_def_id));
+        res = res.and(builtin::check_trait(tcx, def_id, impl_def_id));
     }
 
-    res.and(builtin::check_trait(tcx, def_id))
+    res
 }
 
 /// Checks whether an impl overlaps with the automatic `impl Trait for dyn Trait`.

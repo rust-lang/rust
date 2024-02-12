@@ -25,9 +25,13 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
 
-pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Result<(), ErrorGuaranteed> {
+pub fn check_trait(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     let lang_items = tcx.lang_items();
-    let checker = Checker { tcx, trait_def_id };
+    let checker = Checker { tcx, trait_def_id, impl_def_id };
     let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
     res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
     res = res.and(
@@ -45,20 +49,16 @@ pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) -> Result<(), ErrorGuar
 struct Checker<'tcx> {
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
+    impl_def_id: LocalDefId,
 }
 
 impl<'tcx> Checker<'tcx> {
-    fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> Result<(), ErrorGuaranteed>
-    where
-        F: FnMut(TyCtxt<'tcx>, LocalDefId) -> Result<(), ErrorGuaranteed>,
-    {
-        let mut res = Ok(());
-        if Some(self.trait_def_id) == trait_def_id {
-            for &impl_def_id in self.tcx.hir().trait_impls(self.trait_def_id) {
-                res = res.and(f(self.tcx, impl_def_id));
-            }
-        }
-        res
+    fn check(
+        &self,
+        trait_def_id: Option<DefId>,
+        f: impl FnOnce(TyCtxt<'tcx>, LocalDefId) -> Result<(), ErrorGuaranteed>,
+    ) -> Result<(), ErrorGuaranteed> {
+        if Some(self.trait_def_id) == trait_def_id { f(self.tcx, self.impl_def_id) } else { Ok(()) }
     }
 }
 
@@ -92,10 +92,10 @@ fn visit_implementation_of_copy(
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
-    let span = match tcx.hir().expect_item(impl_did).expect_impl() {
-        hir::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => return Ok(()),
-        hir::Impl { self_ty, .. } => self_ty.span,
-    };
+    if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
+        return Ok(());
+    }
+    let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
 
     let cause = traits::ObligationCause::misc(span, impl_did);
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
@@ -121,10 +121,10 @@ fn visit_implementation_of_const_param_ty(
 
     let param_env = tcx.param_env(impl_did);
 
-    let span = match tcx.hir().expect_item(impl_did).expect_impl() {
-        hir::Impl { polarity: hir::ImplPolarity::Negative(_), .. } => return Ok(()),
-        impl_ => impl_.self_ty.span,
-    };
+    if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
+        return Ok(());
+    }
+    let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
 
     let cause = traits::ObligationCause::misc(span, impl_did);
     match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
