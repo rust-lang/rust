@@ -5,7 +5,7 @@ bitflags! {
     /// over the type itself.
     #[derive(Debug, PartialEq, Eq, Clone, Copy)]
     pub struct TypeFlags: u32 {
-        // Does this have parameters? Used to determine whether substitution is
+        // Does this have parameters? Used to determine whether instantiation is
         // required.
         /// Does this have `Param`?
         const HAS_TY_PARAM                = 1 << 0;

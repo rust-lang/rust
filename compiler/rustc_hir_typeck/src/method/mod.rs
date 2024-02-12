@@ -38,7 +38,7 @@ pub struct MethodCallee<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 
     /// Instantiated method signature, i.e., it has been
-    /// substituted, normalized, and has had late-bound
+    /// instantiated, normalized, and has had late-bound
     /// lifetimes replaced with inference variables.
     pub sig: ty::FnSig<'tcx>,
 }
@@ -395,7 +395,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = vec![];
 
-        // Instantiate late-bound regions and substitute the trait
+        // Instantiate late-bound regions and instantiate the trait
         // parameters into the method type to get the actual method type.
         //
         // N.B., instantiate late-bound regions before normalizing the

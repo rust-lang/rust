@@ -803,13 +803,13 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> ty::EarlyBinder<T> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// The actual substitution engine itself is a type folder.
+// The actual instantiation engine itself is a type folder.
 
 struct ArgFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     args: &'a [GenericArg<'tcx>],
 
-    /// Number of region binders we have passed through while doing the substitution
+    /// Number of region binders we have passed through while doing the instantiation
     binders_passed: u32,
 }
 
@@ -834,7 +834,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         #[inline(never)]
         fn region_param_out_of_range(data: ty::EarlyParamRegion, args: &[GenericArg<'_>]) -> ! {
             bug!(
-                "Region parameter out of range when substituting in region {} (index={}, args = {:?})",
+                "Region parameter out of range when instantiating in region {} (index={}, args = {:?})",
                 data.name,
                 data.index,
                 args,
@@ -845,7 +845,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         #[inline(never)]
         fn region_param_invalid(data: ty::EarlyParamRegion, other: GenericArgKind<'_>) -> ! {
             bug!(
-                "Unexpected parameter {:?} when substituting in region {} (index={})",
+                "Unexpected parameter {:?} when instantiating in region {} (index={})",
                 other,
                 data.name,
                 data.index
@@ -854,7 +854,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
-        // bound in *fn types*. Region substitution of the bound
+        // bound in *fn types*. Region instantiation of the bound
         // regions that appear in a function signature is done using
         // the specialized routine `ty::replace_late_regions()`.
         match *r {
@@ -913,7 +913,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     #[inline(never)]
     fn type_param_expected(&self, p: ty::ParamTy, ty: Ty<'tcx>, kind: GenericArgKind<'tcx>) -> ! {
         bug!(
-            "expected type for `{:?}` ({:?}/{}) but found {:?} when substituting, args={:?}",
+            "expected type for `{:?}` ({:?}/{}) but found {:?} when instantiating, args={:?}",
             p,
             ty,
             p.index,
@@ -926,7 +926,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     #[inline(never)]
     fn type_param_out_of_range(&self, p: ty::ParamTy, ty: Ty<'tcx>) -> ! {
         bug!(
-            "type parameter `{:?}` ({:?}/{}) out of range when substituting, args={:?}",
+            "type parameter `{:?}` ({:?}/{}) out of range when instantiating, args={:?}",
             p,
             ty,
             p.index,
@@ -955,7 +955,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
         kind: GenericArgKind<'tcx>,
     ) -> ! {
         bug!(
-            "expected const for `{:?}` ({:?}/{}) but found {:?} when substituting args={:?}",
+            "expected const for `{:?}` ({:?}/{}) but found {:?} when instantiating args={:?}",
             p,
             ct,
             p.index,
@@ -968,7 +968,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     #[inline(never)]
     fn const_param_out_of_range(&self, p: ty::ParamConst, ct: ty::Const<'tcx>) -> ! {
         bug!(
-            "const parameter `{:?}` ({:?}/{}) out of range when substituting args={:?}",
+            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             p,
             ct,
             p.index,
@@ -976,8 +976,8 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
         )
     }
 
-    /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs
-    /// when we are substituting a type with escaping bound vars into a context where we have
+    /// It is sometimes necessary to adjust the De Bruijn indices during instantiation. This occurs
+    /// when we are instantating a type with escaping bound vars into a context where we have
     /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
     /// ```
@@ -997,7 +997,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     /// inner one. Therefore, that appearance will have a DebruijnIndex of 2, because we must skip
     /// over the inner binder (remember that we count De Bruijn indices from 1). However, in the
     /// definition of `MetaFunc`, the binder is not visible, so the type `&'a i32` will have a
-    /// De Bruijn index of 1. It's only during the substitution that we can see we must increase the
+    /// De Bruijn index of 1. It's only during the instantiation that we can see we must increase the
     /// depth by 1 to account for the binder that we passed through.
     ///
     /// As a second example, consider this twist:
@@ -1015,7 +1015,7 @@ impl<'a, 'tcx> ArgFolder<'a, 'tcx> {
     /// //   DebruijnIndex of 1 |
     /// //               DebruijnIndex of 2
     /// ```
-    /// As indicated in the diagram, here the same type `&'a i32` is substituted once, but in the
+    /// As indicated in the diagram, here the same type `&'a i32` is instantiated once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
     fn shift_vars_through_binders<T: TypeFoldable<TyCtxt<'tcx>>>(&self, val: T) -> T {

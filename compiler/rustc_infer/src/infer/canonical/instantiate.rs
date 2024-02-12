@@ -1,4 +1,4 @@
-//! This module contains code to substitute new values into a
+//! This module contains code to instantiate new values into a
 //! `Canonical<'tcx, T>`.
 //!
 //! For an overview of what canonicalization is and how it fits into
@@ -16,17 +16,17 @@ use rustc_middle::ty::{self, TyCtxt};
 pub trait CanonicalExt<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
-    fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
+    fn instantiate(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
         V: TypeFoldable<TyCtxt<'tcx>>;
 
-    /// Allows one to apply a substitute to some subset of
+    /// Allows one to apply a instantiation to some subset of
     /// `self.value`. Invoke `projection_fn` with `self.value` to get
     /// a value V that is expressed in terms of the same canonical
     /// variables bound in `self` (usually this extracts from subset
-    /// of `self`). Apply the substitution `var_values` to this value
+    /// of `self`). Apply the instantiation `var_values` to this value
     /// V, replacing each of the canonical variables.
-    fn substitute_projected<T>(
+    fn instantiate_projected<T>(
         &self,
         tcx: TyCtxt<'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
@@ -37,14 +37,14 @@ pub trait CanonicalExt<'tcx, V> {
 }
 
 impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
-    fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
+    fn instantiate(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.substitute_projected(tcx, var_values, |value| value.clone())
+        self.instantiate_projected(tcx, var_values, |value| value.clone())
     }
 
-    fn substitute_projected<T>(
+    fn instantiate_projected<T>(
         &self,
         tcx: TyCtxt<'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
@@ -55,14 +55,14 @@ impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
     {
         assert_eq!(self.variables.len(), var_values.len());
         let value = projection_fn(&self.value);
-        substitute_value(tcx, var_values, value)
+        instantiate_value(tcx, var_values, value)
     }
 }
 
-/// Substitute the values from `var_values` into `value`. `var_values`
+/// Instantiate the values from `var_values` into `value`. `var_values`
 /// must be values for the set of canonical variables that appear in
 /// `value`.
-pub(super) fn substitute_value<'tcx, T>(
+pub(super) fn instantiate_value<'tcx, T>(
     tcx: TyCtxt<'tcx>,
     var_values: &CanonicalVarValues<'tcx>,
     value: T,

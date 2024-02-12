@@ -752,7 +752,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut obligations: Vec<_> = predicates
             .iter()
             .map(|predicate| {
-                // For each existential predicate (e.g., `?Self: Clone`) substitute
+                // For each existential predicate (e.g., `?Self: Clone`) instantiate
                 // the type of the expression (e.g., `usize` in our example above)
                 // and then require that the resulting predicate (e.g., `usize: Clone`)
                 // holds (it does).

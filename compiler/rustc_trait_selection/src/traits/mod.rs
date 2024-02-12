@@ -443,11 +443,11 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     result
 }
 
-fn subst_and_check_impossible_predicates<'tcx>(
+fn instantiate_and_check_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, GenericArgsRef<'tcx>),
 ) -> bool {
-    debug!("subst_and_check_impossible_predicates(key={:?})", key);
+    debug!("instantiate_and_check_impossible_predicates(key={:?})", key);
 
     let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
 
@@ -461,7 +461,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
     predicates.retain(|predicate| !predicate.has_param());
     let result = impossible_predicates(tcx, predicates);
 
-    debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
+    debug!("instantiate_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -548,7 +548,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
-        subst_and_check_impossible_predicates,
+        instantiate_and_check_impossible_predicates,
         check_tys_might_be_eq: misc::check_tys_might_be_eq,
         is_impossible_associated_item,
         ..*providers

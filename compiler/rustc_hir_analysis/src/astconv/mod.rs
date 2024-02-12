@@ -214,7 +214,7 @@ pub struct GenericArgCountResult {
     pub correct: Result<(), GenericArgCountMismatch>,
 }
 
-pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
+pub trait CreateInstantiationsForGenericArgsCtxt<'a, 'tcx> {
     fn args_for_def_id(&mut self, def_id: DefId) -> (Option<&'a GenericArgs<'tcx>>, bool);
 
     fn provided_kind(
@@ -366,8 +366,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if generics.has_self {
             if generics.parent.is_some() {
-                // The parent is a trait so it should have at least one subst
-                // for the `Self` type.
+                // The parent is a trait so it should have at least one
+                // generic parameter for the `Self` type.
                 assert!(!parent_args.is_empty())
             } else {
                 // This item (presumably a trait) needs a self-type.
@@ -402,7 +402,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return (tcx.mk_args(parent_args), arg_count);
         }
 
-        struct SubstsForAstPathCtxt<'a, 'tcx> {
+        struct InstantiationsForAstPathCtxt<'a, 'tcx> {
             astconv: &'a (dyn AstConv<'tcx> + 'a),
             def_id: DefId,
             generic_args: &'a GenericArgs<'tcx>,
@@ -411,7 +411,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             infer_args: bool,
         }
 
-        impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for SubstsForAstPathCtxt<'a, 'tcx> {
+        impl<'a, 'tcx> CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>
+            for InstantiationsForAstPathCtxt<'a, 'tcx>
+        {
             fn args_for_def_id(&mut self, did: DefId) -> (Option<&'a GenericArgs<'tcx>>, bool) {
                 if did == self.def_id {
                     (Some(self.generic_args), self.infer_args)
@@ -556,7 +558,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let mut args_ctx = SubstsForAstPathCtxt {
+        let mut args_ctx = InstantiationsForAstPathCtxt {
             astconv: self,
             def_id,
             span,
@@ -2412,8 +2414,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let self_ty = self.tcx().type_of(parent).instantiate_identity();
             let generic_self_ty = ty::GenericArg::from(self_ty);
-            let substs = self.tcx().mk_args_from_iter(std::iter::once(generic_self_ty));
-            sig.instantiate(self.tcx(), substs)
+            let args = self.tcx().mk_args_from_iter(std::iter::once(generic_self_ty));
+            sig.instantiate(self.tcx(), args)
         } else {
             sig.instantiate_identity()
         };

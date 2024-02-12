@@ -618,7 +618,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     // The bounds we that we would require from `to_check`
     let mut bounds = FxHashSet::default();
 
-    let (regions, types) = GATSubstCollector::visit(gat_def_id.to_def_id(), to_check);
+    let (regions, types) = GATArgsCollector::visit(gat_def_id.to_def_id(), to_check);
 
     // If both regions and types are empty, then this GAT isn't in the
     // set of types we are checking, and we shouldn't try to do clause analysis
@@ -787,34 +787,34 @@ fn test_region_obligations<'tcx>(
 /// `<P0 as Trait<P1..Pn>>::GAT<Pn..Pm>` and adds the arguments `P0..Pm` into
 /// the two vectors, `regions` and `types` (depending on their kind). For each
 /// parameter `Pi` also track the index `i`.
-struct GATSubstCollector<'tcx> {
+struct GATArgsCollector<'tcx> {
     gat: DefId,
-    // Which region appears and which parameter index its substituted for
+    // Which region appears and which parameter index its instantiated with
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
-    // Which params appears and which parameter index its substituted for
+    // Which params appears and which parameter index its instantiated with
     types: FxHashSet<(Ty<'tcx>, usize)>,
 }
 
-impl<'tcx> GATSubstCollector<'tcx> {
+impl<'tcx> GATArgsCollector<'tcx> {
     fn visit<T: TypeFoldable<TyCtxt<'tcx>>>(
         gat: DefId,
         t: T,
     ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
         let mut visitor =
-            GATSubstCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
+            GATArgsCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATSubstCollector<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
     type BreakTy = !;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Alias(ty::Projection, p) if p.def_id == self.gat => {
-                for (idx, subst) in p.args.iter().enumerate() {
-                    match subst.unpack() {
+                for (idx, arg) in p.args.iter().enumerate() {
+                    match arg.unpack() {
                         GenericArgKind::Lifetime(lt) if !lt.is_bound() => {
                             self.regions.insert((lt, idx));
                         }
@@ -1407,14 +1407,14 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         }
     }
 
-    // Check that trait predicates are WF when params are substituted by their defaults.
+    // Check that trait predicates are WF when params are instantiated with their defaults.
     // We don't want to overly constrain the predicates that may be written but we want to
     // catch cases where a default my never be applied such as `struct Foo<T: Copy = String>`.
     // Therefore we check if a predicate which contains a single type param
-    // with a concrete default is WF with that default substituted.
+    // with a concrete default is WF with that default instantiated.
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
-    // First we build the defaulted substitution.
+    // First we build the defaulted generic parameters.
     let args = GenericArgs::for_item(tcx, def_id.to_def_id(), |param, _| {
         match param.kind {
             GenericParamDefKind::Lifetime => {
@@ -1428,7 +1428,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     let default_ty = tcx.type_of(param.def_id).instantiate_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ty.has_param() {
-                        // ... then substitute it with the default.
+                        // ... then instantiate it with the default.
                         return default_ty.into();
                     }
                 }
@@ -1441,7 +1441,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     let default_ct = tcx.const_param_default(param.def_id).instantiate_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ct.has_param() {
-                        // ... then substitute it with the default.
+                        // ... then instantiate it with the default.
                         return default_ct.into();
                     }
                 }
@@ -1451,7 +1451,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         }
     });
 
-    // Now we build the substituted predicates.
+    // Now we build the instantiated predicates.
     let default_obligations = predicates
         .predicates
         .iter()
@@ -1483,23 +1483,25 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
+            let instantiated_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
-            if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region
+            if instantiated_pred.has_non_region_param()
+                || param_count.params.len() > 1
+                || has_region
             {
                 None
-            } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+            } else if predicates.predicates.iter().any(|&(p, _)| p == instantiated_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
-                Some((substituted_pred, sp))
+                Some((instantiated_pred, sp))
             }
         })
         .map(|(pred, sp)| {
             // Convert each of those into an obligation. So if you have
             // something like `struct Foo<T: Copy = String>`, we would
-            // take that predicate `T: Copy`, substitute to `String: Copy`
+            // take that predicate `T: Copy`, instantiated with `String: Copy`
             // (actually that happens in the previous `flat_map` call),
             // and then try to prove it (in this case, we'll fail).
             //

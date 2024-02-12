@@ -7,7 +7,7 @@ use rustc_hir::GenericArg;
 use rustc_hir_analysis::astconv::generics::{
     check_generic_arg_count_for_call, create_args_for_parent_generic_args,
 };
-use rustc_hir_analysis::astconv::{AstConv, CreateSubstsForGenericArgsCtxt, IsMethodCall};
+use rustc_hir_analysis::astconv::{AstConv, CreateInstantiationsForGenericArgsCtxt, IsMethodCall};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -95,7 +95,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, pick);
 
-        // Create substitutions for the method's type parameters.
+        // Create generic args for the method's type parameters.
         let rcvr_args = self.fresh_receiver_args(self_ty, pick);
         let all_args = self.instantiate_method_args(pick, segment, rcvr_args);
 
@@ -246,11 +246,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         target
     }
 
-    /// Returns a set of substitutions for the method *receiver* where all type and region
-    /// parameters are instantiated with fresh variables. This substitution does not include any
+    /// Returns a set of generic parameters for the method *receiver* where all type and region
+    /// parameters are instantiated with fresh variables. This generic paramters does not include any
     /// parameters declared on the method itself.
     ///
-    /// Note that this substitution may include late-bound regions from the impl level. If so,
+    /// Note that this generic parameters may include late-bound regions from the impl level. If so,
     /// these are instantiated later in the `instantiate_method_sig` routine.
     fn fresh_receiver_args(
         &mut self,
@@ -272,8 +272,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 self.extract_existential_trait_ref(self_ty, |this, object_ty, principal| {
                     // The object data has no entry for the Self
                     // Type. For the purposes of this method call, we
-                    // substitute the object type itself. This
-                    // wouldn't be a sound substitution in all cases,
+                    // instantiate the object type itself. This
+                    // wouldn't be a sound instantiation in all cases,
                     // since each instance of the object type is a
                     // different existential and hence could match
                     // distinct types (e.g., if `Self` appeared as an
@@ -362,16 +362,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             IsMethodCall::Yes,
         );
 
-        // Create subst for early-bound lifetime parameters, combining
-        // parameters from the type and those from the method.
+        // Create generic paramters for early-bound lifetime parameters,
+        // combining parameters from the type and those from the method.
         assert_eq!(generics.parent_count, parent_args.len());
 
-        struct MethodSubstsCtxt<'a, 'tcx> {
+        struct MethodInstantiationsCtxt<'a, 'tcx> {
             cfcx: &'a ConfirmContext<'a, 'tcx>,
             pick: &'a probe::Pick<'tcx>,
             seg: &'a hir::PathSegment<'tcx>,
         }
-        impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for MethodSubstsCtxt<'a, 'tcx> {
+        impl<'a, 'tcx> CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>
+            for MethodInstantiationsCtxt<'a, 'tcx>
+        {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
@@ -437,7 +439,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             false,
             None,
             &arg_count_correct,
-            &mut MethodSubstsCtxt { cfcx: self, pick, seg },
+            &mut MethodInstantiationsCtxt { cfcx: self, pick, seg },
         );
 
         // When the method is confirmed, the `args` includes
@@ -538,15 +540,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         debug!("instantiate_method_sig(pick={:?}, all_args={:?})", pick, all_args);
 
         // Instantiate the bounds on the method with the
-        // type/early-bound-regions substitutions performed. There can
+        // type/early-bound-regions instatiations performed. There can
         // be no late-bound regions appearing here.
         let def_id = pick.item.def_id;
         let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_args);
 
-        debug!("method_predicates after subst = {:?}", method_predicates);
+        debug!("method_predicates after instantitation = {:?}", method_predicates);
 
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args);
-        debug!("type scheme substituted, sig={:?}", sig);
+        debug!("type scheme instantiated, sig={:?}", sig);
 
         let sig = self.instantiate_binder_with_fresh_vars(sig);
         debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);

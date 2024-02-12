@@ -242,7 +242,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                 self.tcx.lang_items().fn_once_trait(),
             ] {
                 let Some(trait_def_id) = trait_def_id else { continue };
-                // Make a fresh inference variable so we can determine what the substitutions
+                // Make a fresh inference variable so we can determine what the generic parameters
                 // of the trait are.
                 let var = self.next_ty_var(TypeVariableOrigin {
                     span: DUMMY_SP,

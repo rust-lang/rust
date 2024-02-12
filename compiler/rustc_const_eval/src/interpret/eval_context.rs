@@ -554,18 +554,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_current_frame_and_normalize_erasing_regions<
+    pub(super) fn instantiate_from_current_frame_and_normalize_erasing_regions<
         T: TypeFoldable<TyCtxt<'tcx>>,
     >(
         &self,
         value: T,
     ) -> Result<T, ErrorHandled> {
-        self.subst_from_frame_and_normalize_erasing_regions(self.frame(), value)
+        self.instantiate_from_frame_and_normalize_erasing_regions(self.frame(), value)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the provided
     /// stack frame), to bring it into the proper environment for this interpreter.
-    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<TyCtxt<'tcx>>>(
+    pub(super) fn instantiate_from_frame_and_normalize_erasing_regions<
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    >(
         &self,
         frame: &Frame<'mir, 'tcx, M::Provenance, M::FrameExtra>,
         value: T,
@@ -656,7 +658,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let layout = from_known_layout(self.tcx, self.param_env, layout, || {
             let local_ty = frame.body.local_decls[local].ty;
-            let local_ty = self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
+            let local_ty =
+                self.instantiate_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
             self.layout_of(local_ty)
         })?;
 
@@ -791,8 +794,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Make sure all the constants required by this frame evaluate successfully (post-monomorphization check).
         if M::POST_MONO_CHECKS {
             for &const_ in &body.required_consts {
-                let c =
-                    self.subst_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
+                let c = self
+                    .instantiate_from_current_frame_and_normalize_erasing_regions(const_.const_)?;
                 c.eval(*self.tcx, self.param_env, Some(const_.span)).map_err(|err| {
                     err.emit_note(*self.tcx);
                     err

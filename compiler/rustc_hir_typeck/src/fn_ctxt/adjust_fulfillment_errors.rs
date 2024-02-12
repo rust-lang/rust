@@ -21,7 +21,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
 
-        let Some(unsubstituted_pred) = self
+        let Some(uninstantiated_pred) = self
             .tcx
             .predicates_of(def_id)
             .instantiate_identity(self.tcx)
@@ -34,7 +34,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let generics = self.tcx.generics_of(def_id);
         let (predicate_args, predicate_self_type_to_point_at) =
-            match unsubstituted_pred.kind().skip_binder() {
+            match uninstantiated_pred.kind().skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
                     (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
                 }
@@ -343,10 +343,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let TypeVariableOriginKind::TypeParameterDefinition(_, def_id) = origin.kind
                     && let generics = self.0.tcx.generics_of(self.1)
                     && let Some(index) = generics.param_def_id_to_index(self.0.tcx, def_id)
-                    && let Some(subst) =
+                    && let Some(arg) =
                         ty::GenericArgs::identity_for_item(self.0.tcx, self.1).get(index as usize)
                 {
-                    ControlFlow::Break(*subst)
+                    ControlFlow::Break(*arg)
                 } else {
                     ty.super_visit_with(self)
                 }

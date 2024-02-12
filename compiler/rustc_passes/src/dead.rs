@@ -263,11 +263,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         for &(variant, field) in indices {
             match current_ty.kind() {
-                ty::Adt(def, subst) => {
+                ty::Adt(def, args) => {
                     let field = &def.variant(variant).fields[field];
 
                     self.insert_def_id(field.did);
-                    let field_ty = field.ty(self.tcx, subst);
+                    let field_ty = field.ty(self.tcx, args);
 
                     current_ty = self.tcx.normalize_erasing_regions(param_env, field_ty);
                 }

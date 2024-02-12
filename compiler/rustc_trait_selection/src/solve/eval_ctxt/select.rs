@@ -312,8 +312,8 @@ fn rematch_unsize<'tcx>(
             let a_tail_ty = tail_field_ty.instantiate(tcx, a_args);
             let b_tail_ty = tail_field_ty.instantiate(tcx, b_args);
 
-            // Substitute just the unsizing params from B into A. The type after
-            // this substitution must be equal to B. This is so we don't unsize
+            // Instantiate just the unsizing params from B into A. The type after
+            // this instantiation must be equal to B. This is so we don't unsize
             // unrelated type parameters.
             let new_a_args = tcx.mk_args_from_iter(
                 a_args
@@ -349,7 +349,7 @@ fn rematch_unsize<'tcx>(
             let (a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
             let b_last_ty = b_tys.last().unwrap();
 
-            // Substitute just the tail field of B., and require that they're equal.
+            // Instantiate just the tail field of B., and require that they're equal.
             let unsized_a_ty =
                 Ty::new_tup_from_iter(tcx, a_rest_tys.iter().chain([b_last_ty]).copied());
             nested.extend(

@@ -380,7 +380,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 .filter(|(_, arg)| !arg.has_escaping_bound_vars())
                 .map(|(i, arg)| {
                     let mut cause = traits::ObligationCause::misc(self.span, self.body_id);
-                    // The first subst is the self ty - use the correct span for it.
+                    // The first arg is the self ty - use the correct span for it.
                     if i == 0 {
                         if let Some(hir::ItemKind::Impl(hir::Impl { self_ty, .. })) =
                             item.map(|i| &i.kind)

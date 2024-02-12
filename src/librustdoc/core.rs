@@ -44,10 +44,10 @@ pub(crate) struct DocContext<'tcx> {
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub(crate) active_extern_traits: DefIdSet,
-    // The current set of parameter substitutions,
+    // The current set of parameter instantiations,
     // for expanding type aliases at the HIR level:
-    /// Table `DefId` of type, lifetime, or const parameter -> substituted type, lifetime, or const
-    pub(crate) args: DefIdMap<clean::SubstParam>,
+    /// Table `DefId` of type, lifetime, or const parameter -> instantiated type, lifetime, or const
+    pub(crate) args: DefIdMap<clean::InstantiationParam>,
     pub(crate) current_type_aliases: DefIdMap<usize>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
@@ -84,10 +84,10 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     /// Call the closure with the given parameters set as
-    /// the substitutions for a type alias' RHS.
+    /// the generic parameters for a type alias' RHS.
     pub(crate) fn enter_alias<F, R>(
         &mut self,
-        args: DefIdMap<clean::SubstParam>,
+        args: DefIdMap<clean::InstantiationParam>,
         def_id: DefId,
         f: F,
     ) -> R

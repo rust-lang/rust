@@ -1796,7 +1796,7 @@ fn maybe_expand_private_type_alias<'tcx>(
                     } else {
                         Lifetime::elided()
                     };
-                    args.insert(param.def_id.to_def_id(), SubstParam::Lifetime(cleaned));
+                    args.insert(param.def_id.to_def_id(), InstantiationParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;
             }
@@ -1813,9 +1813,15 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(ty) = type_ {
-                    args.insert(param.def_id.to_def_id(), SubstParam::Type(clean_ty(ty, cx)));
+                    args.insert(
+                        param.def_id.to_def_id(),
+                        InstantiationParam::Type(clean_ty(ty, cx)),
+                    );
                 } else if let Some(default) = *default {
-                    args.insert(param.def_id.to_def_id(), SubstParam::Type(clean_ty(default, cx)));
+                    args.insert(
+                        param.def_id.to_def_id(),
+                        InstantiationParam::Type(clean_ty(default, cx)),
+                    );
                 }
                 indices.types += 1;
             }
@@ -1832,7 +1838,7 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(_) = const_ {
-                    args.insert(param.def_id.to_def_id(), SubstParam::Constant);
+                    args.insert(param.def_id.to_def_id(), InstantiationParam::Constant);
                 }
                 // FIXME(const_generics_defaults)
                 indices.consts += 1;

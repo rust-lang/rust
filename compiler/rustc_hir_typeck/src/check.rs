@@ -123,7 +123,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let ty::Dynamic(..) = declared_ret_ty.kind() {
         // We have special-cased the case where the function is declared
         // `-> dyn Foo` and we don't actually relate it to the
-        // `fcx.ret_coercion`, so just substitute a type variable.
+        // `fcx.ret_coercion`, so just instantiate a type variable.
         actual_return_ty =
             fcx.next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::DynReturnFn, span });
         debug!("actual_return_ty replaced with {:?}", actual_return_ty);
