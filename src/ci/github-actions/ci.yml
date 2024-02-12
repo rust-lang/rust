@@ -137,9 +137,9 @@ x--expand-yaml-anchors--remove:
             git
             dos2unix
             diffutils
-      
-      # - name: disable git crlf conversion
-      #   run: src/ci/scripts/disable-git-crlf-conversion.sh
+
+      - name: disable git crlf conversion
+        run: git config --global core.autocrlf false
 
       - name: checkout the source code
         uses: actions/checkout@v4
