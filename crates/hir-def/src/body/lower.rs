@@ -1000,10 +1000,6 @@ impl ExprCollector<'_> {
                         krate: *krate,
                     });
                 }
-                Some(ExpandError::RecursionOverflowPoisoned) => {
-                    // Recursion limit has been reached in the macro expansion tree, but not in
-                    // this very macro call. Don't add diagnostics to avoid duplication.
-                }
                 Some(err) => {
                     self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
                         node: InFile::new(outer_file, syntax_ptr),
