@@ -465,10 +465,7 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
-        assert!(
-            !tcx.is_closure_or_coroutine(def_id),
-            "Called `resolve_for_fn_ptr` on closure: {def_id:?}"
-        );
+        assert!(!tcx.is_closure_like(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
         Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
@@ -530,7 +527,7 @@ impl<'tcx> Instance<'tcx> {
                                 })
                             )
                         {
-                            if tcx.is_closure_or_coroutine(def) {
+                            if tcx.is_closure_like(def) {
                                 debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
                                        def, def_id, args);
 

@@ -101,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
 fn is_by_value_closure_capture(cx: &LateContext<'_>, redefinition: HirId, root_variable: HirId) -> bool {
     let closure_def_id = cx.tcx.hir().enclosing_body_owner(redefinition);
 
-    cx.tcx.is_closure_or_coroutine(closure_def_id.to_def_id())
+    cx.tcx.is_closure_like(closure_def_id.to_def_id())
         && cx.tcx.closure_captures(closure_def_id).iter().any(|c| {
             matches!(c.info.capture_kind, UpvarCapture::ByValue)
                 && matches!(c.place.base, PlaceBase::Upvar(upvar) if upvar.var_path.hir_id == root_variable)

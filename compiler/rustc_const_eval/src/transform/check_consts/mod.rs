@@ -72,7 +72,7 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
 
     pub fn fn_sig(&self) -> PolyFnSig<'tcx> {
         let did = self.def_id().to_def_id();
-        if self.tcx.is_closure_or_coroutine(did) {
+        if self.tcx.is_closure_like(did) {
             let ty = self.tcx.type_of(did).instantiate_identity();
             let ty::Closure(_, args) = ty.kind() else { bug!("type_of closure not ty::Closure") };
             args.as_closure().sig()
