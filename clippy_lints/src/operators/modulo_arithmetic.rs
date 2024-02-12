@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
 }
 
 fn used_in_comparison_with_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    let Some(Node::Expr(parent_expr)) = cx.tcx.hir().find_parent(expr.hir_id) else {
+    let Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id) else {
         return false;
     };
     let ExprKind::Binary(op, lhs, rhs) = parent_expr.kind else {

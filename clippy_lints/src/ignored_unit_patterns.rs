@@ -41,8 +41,8 @@ impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {
             return;
         }
 
-        match cx.tcx.hir().get_parent(pat.hir_id) {
-            Node::Param(param) if matches!(cx.tcx.hir().get_parent(param.hir_id), Node::Item(_)) => {
+        match cx.tcx.parent_hir_node(pat.hir_id) {
+            Node::Param(param) if matches!(cx.tcx.parent_hir_node(param.hir_id), Node::Item(_)) => {
                 // Ignore function parameters
                 return;
             },
