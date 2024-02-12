@@ -10,8 +10,8 @@ use crate::diagnostics::utils::{
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
-use syn::Token;
 use syn::{parse_quote, spanned::Spanned, Attribute, Meta, Path, Type};
+use syn::{LitStr, Token};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
 use super::utils::SubdiagnosticVariant;
@@ -21,6 +21,18 @@ use super::utils::SubdiagnosticVariant;
 pub(crate) enum DiagnosticDeriveKind {
     Diagnostic,
     LintDiagnostic,
+}
+
+/// Temporary type while both slugs and raw Fluent messages are supported.
+pub(crate) enum SlugOrRawFluent {
+    /// Path to item corresponding to the slug of the diagnostic's message from the Fluent resource.
+    ///
+    /// e.g. `#[diag(foo_bar)]`
+    Slug(Path),
+    /// Literal string containing the Fluent message.
+    ///
+    /// e.g. `#[diag_raw(message = "raw fluent content")]`
+    RawFluent(LitStr),
 }
 
 /// Tracks persistent information required for a specific variant when building up individual calls
@@ -42,7 +54,7 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
 
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
-    pub slug: SpannedOption<Path>,
+    pub slug: SpannedOption<SlugOrRawFluent>,
 
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
@@ -143,7 +155,7 @@ impl DiagnosticDeriveVariantBuilder {
     fn parse_subdiag_attribute(
         &self,
         attr: &Attribute,
-    ) -> Result<Option<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
+    ) -> Result<Option<(SubdiagnosticKind, SlugOrRawFluent, bool)>, DiagnosticDeriveError> {
         let Some(subdiag) = SubdiagnosticVariant::from_attr(attr, self)? else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
@@ -155,13 +167,15 @@ impl DiagnosticDeriveVariantBuilder {
                 .help("consider creating a `Subdiagnostic` instead"));
         }
 
-        let slug = subdiag.slug.unwrap_or_else(|| match subdiag.kind {
-            SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
-            SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
-            SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
-            SubdiagnosticKind::Warn => parse_quote! { _subdiag::warn },
-            SubdiagnosticKind::Suggestion { .. } => parse_quote! { _subdiag::suggestion },
-            SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
+        let slug = subdiag.slug.unwrap_or_else(|| {
+            SlugOrRawFluent::Slug(match subdiag.kind {
+                SubdiagnosticKind::Label => parse_quote! { _subdiag::label },
+                SubdiagnosticKind::Note => parse_quote! { _subdiag::note },
+                SubdiagnosticKind::Help => parse_quote! { _subdiag::help },
+                SubdiagnosticKind::Warn => parse_quote! { _subdiag::warn },
+                SubdiagnosticKind::Suggestion { .. } => parse_quote! { _subdiag::suggestion },
+                SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
+            })
         });
 
         Ok(Some((subdiag.kind, slug, subdiag.no_span)))
@@ -184,13 +198,16 @@ impl DiagnosticDeriveVariantBuilder {
 
         let mut first = true;
 
-        if name == "diag" {
+        if name == "diag" || name == "diag_raw" {
             let mut tokens = TokenStream::new();
             attr.parse_nested_meta(|nested| {
                 let path = &nested.path;
 
-                if first && (nested.input.is_empty() || nested.input.peek(Token![,])) {
-                    self.slug.set_once(path.clone(), path.span().unwrap());
+                if first
+                    && name == "diag"
+                    && (nested.input.is_empty() || nested.input.peek(Token![,]))
+                {
+                    self.slug.set_once(SlugOrRawFluent::Slug(path.clone()), path.span().unwrap());
                     first = false;
                     return Ok(());
                 }
@@ -206,7 +223,13 @@ impl DiagnosticDeriveVariantBuilder {
                     return Ok(());
                 };
 
-                if path.is_ident("code") {
+                if path.is_ident("message") {
+                    self.slug.set_once(
+                        SlugOrRawFluent::RawFluent(nested.parse::<LitStr>()?),
+                        path.span().unwrap(),
+                    );
+                    return Ok(());
+                } else if path.is_ident("code") {
                     self.code.set_once((), path.span().unwrap());
 
                     let code = nested.parse::<syn::Expr>()?;
@@ -388,42 +411,67 @@ impl DiagnosticDeriveVariantBuilder {
                 let style = suggestion_kind.to_suggestion_style();
 
                 self.formatting_init.extend(code_init);
-                Ok(quote! {
-                    diag.span_suggestions_with_style(
-                        #span_field,
-                        crate::fluent_generated::#slug,
-                        #code_field,
-                        #applicability,
-                        #style
-                    );
-                })
+                match slug {
+                    SlugOrRawFluent::Slug(slug) => Ok(quote! {
+                        diag.span_suggestions_with_style(
+                            #span_field,
+                            crate::fluent_generated::#slug,
+                            #code_field,
+                            #applicability,
+                            #style
+                        );
+                    }),
+                    SlugOrRawFluent::RawFluent(raw) => Ok(quote! {
+                        diag.span_suggestions_with_style(
+                            #span_field,
+                            #raw,
+                            #code_field,
+                            #applicability,
+                            #style
+                        );
+                    }),
+                }
             }
             SubdiagnosticKind::MultipartSuggestion { .. } => unreachable!(),
         }
     }
 
     /// Adds a spanned subdiagnostic by generating a `diag.span_$kind` call with the current slug
-    /// and `fluent_attr_identifier`.
+    /// and the message.
     fn add_spanned_subdiagnostic(
         &self,
         field_binding: TokenStream,
         kind: &Ident,
-        fluent_attr_identifier: Path,
+        content: SlugOrRawFluent,
     ) -> TokenStream {
         let fn_name = format_ident!("span_{}", kind);
-        quote! {
-            diag.#fn_name(
-                #field_binding,
-                crate::fluent_generated::#fluent_attr_identifier
-            );
+        match content {
+            SlugOrRawFluent::Slug(fluent_attr_identifier) => {
+                quote! {
+                    diag.#fn_name(
+                        #field_binding,
+                        crate::fluent_generated::#fluent_attr_identifier
+                    );
+                }
+            }
+            SlugOrRawFluent::RawFluent(raw) => {
+                quote! { diag.#fn_name(#field_binding, #raw); }
+            }
         }
     }
 
     /// Adds a subdiagnostic by generating a `diag.span_$kind` call with the current slug
-    /// and `fluent_attr_identifier`.
-    fn add_subdiagnostic(&self, kind: &Ident, fluent_attr_identifier: Path) -> TokenStream {
-        quote! {
-            diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
+    /// and the message.
+    fn add_subdiagnostic(&self, kind: &Ident, content: SlugOrRawFluent) -> TokenStream {
+        match content {
+            SlugOrRawFluent::Slug(fluent_attr_identifier) => {
+                quote! {
+                    diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
+                }
+            }
+            SlugOrRawFluent::RawFluent(raw) => {
+                quote! { diag.#kind(#raw); }
+            }
         }
     }
 

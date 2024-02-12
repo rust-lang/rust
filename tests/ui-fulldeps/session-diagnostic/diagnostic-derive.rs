@@ -828,3 +828,16 @@ struct SuggestionOnVec {
     //~^ ERROR `#[suggestion(...)]` is not a valid attribute
     sub: Vec<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag_raw(message = "raw diagnostic message")]
+struct RawDiag {
+    #[note(message = "raw note")]
+    x: Span,
+    #[help(message = "raw help")]
+    y: Span,
+    #[label(message = "raw label")]
+    z: Span,
+    #[suggestion(message = "raw label", code = "")]
+    a: Span,
+}

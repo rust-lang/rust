@@ -827,3 +827,31 @@ struct PrimarySpanOnVec {
     //~| NOTE there must be exactly one primary span
     sub: Vec<Span>,
 }
+
+#[derive(Diagnostic)]
+#[help(message = "raw diagnostic message")]
+struct RawHelp {
+    #[primary_span]
+    x: Span,
+}
+
+#[derive(Diagnostic)]
+#[note(message = "raw diagnostic message")]
+struct RawNote {
+    #[primary_span]
+    x: Span,
+}
+
+#[derive(Diagnostic)]
+#[suggestion(message = "raw diagnostic message", code = "")]
+struct RawSuggestion {
+    #[primary_span]
+    x: Span,
+}
+
+#[derive(Diagnostic)]
+#[label(message = "raw diagnostic message")]
+struct RawLabel {
+    #[primary_span]
+    x: Span,
+}

@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 
-use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
+use crate::diagnostics::diagnostic_builder::{DiagnosticDeriveKind, SlugOrRawFluent};
 use crate::diagnostics::error::{span_err, DiagnosticDeriveError};
 use crate::diagnostics::utils::SetOnce;
 use proc_macro2::TokenStream;
@@ -38,7 +38,7 @@ impl<'a> DiagnosticDerive<'a> {
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
-                Some(slug)
+                Some(SlugOrRawFluent::Slug(slug))
                     if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
                         Mismatch::check(slug) =>
                 {
@@ -48,13 +48,22 @@ impl<'a> DiagnosticDerive<'a> {
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
-                Some(slug) => {
+                Some(SlugOrRawFluent::Slug(slug)) => {
                     slugs.borrow_mut().push(slug.clone());
                     quote! {
                         let mut diag = rustc_errors::DiagnosticBuilder::new(
                             dcx,
                             level,
                             crate::fluent_generated::#slug
+                        );
+                    }
+                }
+                Some(SlugOrRawFluent::RawFluent(raw)) => {
+                    quote! {
+                        let mut diag = rustc_errors::DiagnosticBuilder::new(
+                            dcx,
+                            level,
+                            #raw,
                         );
                     }
                 }
@@ -136,7 +145,7 @@ impl<'a> LintDiagnosticDerive<'a> {
                         .emit();
                     DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }
-                Some(slug)
+                Some(SlugOrRawFluent::Slug(slug))
                     if let Some(Mismatch { slug_name, crate_name, slug_prefix }) =
                         Mismatch::check(slug) =>
                 {
@@ -146,10 +155,15 @@ impl<'a> LintDiagnosticDerive<'a> {
                         .emit();
                     DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }
-                Some(slug) => {
+                Some(SlugOrRawFluent::Slug(slug)) => {
                     slugs.borrow_mut().push(slug.clone());
                     quote! {
                         crate::fluent_generated::#slug.into()
+                    }
+                }
+                Some(SlugOrRawFluent::RawFluent(raw)) => {
+                    quote! {
+                        #raw
                     }
                 }
             }

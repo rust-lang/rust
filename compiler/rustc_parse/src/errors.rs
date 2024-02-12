@@ -16,11 +16,11 @@ use crate::fluent_generated as fluent;
 use crate::parser::{ForbiddenLetReason, TokenDescription};
 
 #[derive(Diagnostic)]
-#[diag(parse_maybe_report_ambiguous_plus)]
+#[diag_raw(message = "ambiguous `+` in a type")]
 pub(crate) struct AmbiguousPlus {
     pub sum_ty: String,
     #[primary_span]
-    #[suggestion(code = "({sum_ty})")]
+    #[suggestion(message = "use parentheses to disambiguate", code = "({sum_ty})")]
     pub span: Span,
 }
 

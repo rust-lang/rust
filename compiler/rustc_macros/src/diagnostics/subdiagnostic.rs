@@ -14,6 +14,7 @@ use quote::{format_ident, quote};
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
+use super::diagnostic_builder::SlugOrRawFluent;
 use super::utils::SubdiagnosticVariant;
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
@@ -180,7 +181,7 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
 impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     fn identify_kind(
         &mut self,
-    ) -> Result<Vec<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
+    ) -> Result<Vec<(SubdiagnosticKind, SlugOrRawFluent, bool)>, DiagnosticDeriveError> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
@@ -513,9 +514,16 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut calls = TokenStream::new();
         for (kind, slug, no_span) in kind_slugs {
             let message = format_ident!("__message");
-            calls.extend(
-                quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
-            );
+            match slug {
+                SlugOrRawFluent::Slug(slug) => {
+                    calls.extend(
+                        quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
+                    );
+                }
+                SlugOrRawFluent::RawFluent(raw) => {
+                    calls.extend(quote! { let #message = #f(#diag, #raw); });
+                }
+            }
 
             let name = format_ident!(
                 "{}{}",

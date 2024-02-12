@@ -1,3 +1,4 @@
+use crate::diagnostics::diagnostic_builder::SlugOrRawFluent;
 use crate::diagnostics::error::{
     span_err, throw_invalid_attr, throw_span_err, DiagnosticDeriveError,
 };
@@ -10,7 +11,7 @@ use std::fmt;
 use std::str::FromStr;
 use syn::meta::ParseNestedMeta;
 use syn::punctuated::Punctuated;
-use syn::{parenthesized, LitStr, Path, Token};
+use syn::{parenthesized, LitStr, Token};
 use syn::{spanned::Spanned, Attribute, Field, Meta, Type, TypeTuple};
 use synstructure::{BindingInfo, VariantInfo};
 
@@ -599,7 +600,7 @@ pub(super) enum SubdiagnosticKind {
 
 pub(super) struct SubdiagnosticVariant {
     pub(super) kind: SubdiagnosticKind,
-    pub(super) slug: Option<Path>,
+    pub(super) slug: Option<SlugOrRawFluent>,
     pub(super) no_span: bool,
 }
 
@@ -707,7 +708,7 @@ impl SubdiagnosticVariant {
         list.parse_nested_meta(|nested| {
             if nested.input.is_empty() || nested.input.peek(Token![,]) {
                 if first {
-                    slug = Some(nested.path);
+                    slug = Some(SlugOrRawFluent::Slug(nested.path));
                 } else if nested.path.is_ident("no_span") {
                     no_span = true;
                 } else {
@@ -740,6 +741,17 @@ impl SubdiagnosticVariant {
             let input = nested.input;
 
             match (nested_name, &mut kind) {
+                ("message", _) => {
+                    let Ok(value) = nested.value() else {
+                        span_err(
+                            nested.input.span().unwrap(),
+                            "diagnostic message must have a value",
+                        )
+                        .emit();
+                        return Ok(());
+                    };
+                    slug = Some(SlugOrRawFluent::RawFluent(value.parse::<LitStr>()?));
+                },
                 ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                     let code_init = build_suggestion_code(
                         code_field,

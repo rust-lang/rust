@@ -510,10 +510,6 @@ parse_maybe_recover_from_bad_qpath_stage_2 =
 parse_maybe_recover_from_bad_type_plus =
     expected a path on the left-hand side of `+`, not `{$ty}`
 
-parse_maybe_report_ambiguous_plus =
-    ambiguous `+` in a type
-    .suggestion = use parentheses to disambiguate
-
 parse_meta_bad_delim = wrong meta list delimiters
 parse_meta_bad_delim_suggestion = the delimiters should be `(` and `)`
 

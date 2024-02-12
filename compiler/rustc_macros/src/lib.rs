@@ -93,6 +93,7 @@ decl_derive!(
     [Diagnostic, attributes(
         // struct attributes
         diag,
+        diag_raw,
         help,
         note,
         warning,
@@ -110,6 +111,7 @@ decl_derive!(
     [LintDiagnostic, attributes(
         // struct attributes
         diag,
+        diag_raw,
         help,
         note,
         warning,
