@@ -184,6 +184,16 @@ pub(crate) fn complete_type_path(
                         }
                     }
                 }
+                TypeLocation::ImplTrait => {
+                    acc.add_nameref_keywords_with_colon(ctx);
+                    ctx.process_all_names(&mut |name, def, doc_aliases| {
+                        let is_trait = matches!(def, ScopeDef::ModuleDef(hir::ModuleDef::Trait(_)));
+                        if is_trait {
+                            acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases);
+                        }
+                    });
+                    return;
+                }
                 _ => {}
             };
 
