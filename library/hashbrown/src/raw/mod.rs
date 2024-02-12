@@ -919,9 +919,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     pub fn data_end(&self) -> NonNull<T> {
-        // SAFETY: `self.table.ctrl` is `NonNull`, so casting it is safe
-        //
-        //                        `self.table.ctrl.as_ptr().cast()` returns pointer that
+        //                        `self.table.ctrl.cast()` returns pointer that
         //                        points here (to the end of `T0`)
         //                          ∨
         // [Pad], T_n, ..., T1, T0, |CT0, CT1, ..., CT_n|, CTa_0, CTa_1, ..., CTa_m
@@ -938,7 +936,7 @@ impl<T, A: Allocator> RawTable<T, A> {
         //
         // P.S. `h1(hash) & self.bucket_mask` is the same as `hash as usize % self.buckets()` because the number
         // of buckets is a power of two, and `self.bucket_mask = self.buckets() - 1`.
-        unsafe { NonNull::new_unchecked(self.table.ctrl.as_ptr().cast()) }
+        self.table.ctrl.cast()
     }
 
     /// Returns pointer to start of data table.
@@ -2595,10 +2593,7 @@ impl RawTableInner {
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     fn data_end<T>(&self) -> NonNull<T> {
-        unsafe {
-            // SAFETY: `self.ctrl` is `NonNull`, so casting it is safe
-            NonNull::new_unchecked(self.ctrl.as_ptr().cast())
-        }
+        self.ctrl.cast()
     }
 
     /// Returns an iterator-like object for a probe sequence on the table.
