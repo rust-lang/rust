@@ -728,7 +728,7 @@ impl From<ty::ConstVid> for TermVid {
 /// the `GenericPredicates` are expressed in terms of the bound type
 /// parameters of the impl/trait/whatever, an `InstantiatedPredicates` instance
 /// represented a set of bounds for some particular instantiation,
-/// meaning that the generic parameters have been substituted with
+/// meaning that the generic parameters have been instantiated with
 /// their values.
 ///
 /// Example:
@@ -1672,7 +1672,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
+    /// Returns the possibly-auto-generated MIR of a [`ty::InstanceDef`].
     #[instrument(skip(self), level = "debug")]
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {

@@ -3,7 +3,7 @@ use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::{self, InferConst, Ty, TyCtxt};
 
 /// A type "A" *matches* "B" if the fresh types in B could be
-/// substituted with values so as to make it equal to A. Matching is
+/// instantiated with values so as to make it equal to A. Matching is
 /// intended to be used only on freshened types, and it basically
 /// indicates if the non-freshened versions of A and B could have been
 /// unified.

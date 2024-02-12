@@ -84,7 +84,7 @@ impl TrackAmbiguityCauses {
 
 /// If there are types that satisfy both impls, returns `Some`
 /// with a suitably-freshened `ImplHeader` with those types
-/// substituted. Otherwise, returns `None`.
+/// instantiated. Otherwise, returns `None`.
 #[instrument(skip(tcx, skip_leak_check), level = "debug")]
 pub fn overlapping_impls(
     tcx: TyCtxt<'_>,
@@ -561,21 +561,21 @@ pub fn trait_ref_is_knowable<'tcx, E: Debug>(
 ) -> Result<Result<(), Conflict>, E> {
     if orphan_check_trait_ref(trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok() {
         // A downstream or cousin crate is allowed to implement some
-        // substitution of this trait-ref.
+        // generic parameters of this trait-ref.
         return Ok(Err(Conflict::Downstream));
     }
 
     if trait_ref_is_local_or_fundamental(tcx, trait_ref) {
         // This is a local or fundamental trait, so future-compatibility
         // is no concern. We know that downstream/cousin crates are not
-        // allowed to implement a substitution of this trait ref, which
-        // means impls could only come from dependencies of this crate,
-        // which we already know about.
+        // allowed to implement a generic parameter of this trait ref,
+        // which means impls could only come from dependencies of this
+        // crate, which we already know about.
         return Ok(Ok(()));
     }
 
     // This is a remote non-fundamental trait, so if another crate
-    // can be the "final owner" of a substitution of this trait-ref,
+    // can be the "final owner" of the generic parameters of this trait-ref,
     // they are allowed to implement it future-compatibly.
     //
     // However, if we are a final owner, then nobody else can be,
@@ -628,8 +628,8 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 /// The current rule is that a trait-ref orphan checks in a crate C:
 ///
-/// 1. Order the parameters in the trait-ref in subst order - Self first,
-///    others linearly (e.g., `<U as Foo<V, W>>` is U < V < W).
+/// 1. Order the parameters in the trait-ref in generic parameters order
+/// - Self first, others linearly (e.g., `<U as Foo<V, W>>` is U < V < W).
 /// 2. Of these type parameters, there is at least one type parameter
 ///    in which, walking the type as a tree, you can reach a type local
 ///    to C where all types in-between are fundamental types. Call the
@@ -696,7 +696,7 @@ pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanChe
 ///
 ///    Because we never perform negative reasoning generically (coherence does
 ///    not involve type parameters), this can be interpreted as doing the full
-///    orphan check (using InCrate::Local mode), substituting non-local known
+///    orphan check (using InCrate::Local mode), instantiating non-local known
 ///    types for all inference variables.
 ///
 ///    This allows for crates to future-compatibly add impls as long as they

@@ -55,19 +55,19 @@ pub struct TypeckResults<'tcx> {
     /// typeck::check::fn_ctxt for details.
     node_types: ItemLocalMap<Ty<'tcx>>,
 
-    /// Stores the type parameters which were substituted to obtain the type
+    /// Stores the type parameters which were instantiated to obtain the type
     /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
     node_args: ItemLocalMap<GenericArgsRef<'tcx>>,
 
     /// This will either store the canonicalized types provided by the user
-    /// or the substitutions that the user explicitly gave (if any) attached
+    /// or the generic parameters that the user explicitly gave (if any) attached
     /// to `id`. These will not include any inferred values. The canonical form
     /// is used to capture things like `_` or other unspecified values.
     ///
     /// For example, if the user wrote `foo.collect::<Vec<_>>()`, then the
-    /// canonical substitutions would include only `for<X> { Vec<X> }`.
+    /// canonical generic parameters would include only `for<X> { Vec<X> }`.
     ///
     /// See also `AscribeUserType` statement in MIR.
     user_provided_types: ItemLocalMap<CanonicalUserType<'tcx>>,
@@ -348,7 +348,7 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 
     /// Returns the type of a pattern as a monotype. Like [`expr_ty`], this function
-    /// doesn't provide type parameter substitutions.
+    /// doesn't provide type parameter args.
     ///
     /// [`expr_ty`]: TypeckResults::expr_ty
     pub fn pat_ty(&self, pat: &hir::Pat<'_>) -> Ty<'tcx> {
@@ -360,9 +360,9 @@ impl<'tcx> TypeckResults<'tcx> {
     /// NB (1): This is the PRE-ADJUSTMENT TYPE for the expression. That is, in
     /// some cases, we insert `Adjustment` annotations such as auto-deref or
     /// auto-ref. The type returned by this function does not consider such
-    /// adjustments. See `expr_ty_adjusted()` instead.
+    /// adjustments. See [`Self::expr_ty_adjusted`] instead.
     ///
-    /// NB (2): This type doesn't provide type parameter substitutions; e.g., if you
+    /// NB (2): This type doesn't provide type parameter args; e.g., if you
     /// ask for the type of `id` in `id(3)`, it will return `fn(&isize) -> isize`
     /// instead of `fn(ty) -> T with T = isize`.
     pub fn expr_ty(&self, expr: &hir::Expr<'_>) -> Ty<'tcx> {
@@ -627,7 +627,7 @@ pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
-    /// given substitutions applied.
+    /// given generic parameters applied.
     TypeOf(DefId, UserArgs<'tcx>),
 }
 
@@ -636,7 +636,7 @@ pub trait IsIdentity {
 }
 
 impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
-    /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
+    /// Returns `true` if this represents the generic parameters of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
     fn is_identity(&self) -> bool {
         match self.value {
@@ -650,7 +650,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     match kind.unpack() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {
-                                // We only allow a `ty::INNERMOST` index in substitutions.
+                                // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(*debruijn, ty::INNERMOST);
                                 cvar == b.var
                             }
@@ -659,7 +659,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
                         GenericArgKind::Lifetime(r) => match *r {
                             ty::ReBound(debruijn, br) => {
-                                // We only allow a `ty::INNERMOST` index in substitutions.
+                                // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == br.var
                             }
@@ -668,7 +668,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
                         GenericArgKind::Const(ct) => match ct.kind() {
                             ty::ConstKind::Bound(debruijn, b) => {
-                                // We only allow a `ty::INNERMOST` index in substitutions.
+                                // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == b
                             }

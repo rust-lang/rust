@@ -173,7 +173,7 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
 
         variant.fields.iter().enumerate().filter_map(move |(i, field)| {
             let ty = field.ty(cx.tcx, args);
-            // `field.ty()` doesn't normalize after substituting.
+            // `field.ty()` doesn't normalize after instantiating.
             let ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
             let is_visible = adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
             let is_uninhabited = (cx.tcx.features().exhaustive_patterns

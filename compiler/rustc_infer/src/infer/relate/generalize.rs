@@ -183,14 +183,14 @@ where
     fn relate_item_args(
         &mut self,
         item_def_id: DefId,
-        a_subst: ty::GenericArgsRef<'tcx>,
-        b_subst: ty::GenericArgsRef<'tcx>,
+        a_arg: ty::GenericArgsRef<'tcx>,
+        b_arg: ty::GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_args_invariantly(self, a_subst, b_subst)
+            relate::relate_args_invariantly(self, a_arg, b_arg)
         } else {
             let tcx = self.tcx();
             let opt_variances = tcx.variances_of(item_def_id);
@@ -198,8 +198,8 @@ where
                 self,
                 item_def_id,
                 opt_variances,
-                a_subst,
-                b_subst,
+                a_arg,
+                b_arg,
                 false,
             )
         }

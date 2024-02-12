@@ -396,7 +396,7 @@ pub fn coerce_unsized_info<'tcx>(
             //
             // To check if this impl is legal, we would walk down
             // the fields of `Foo` and consider their types with
-            // both substitutes. We are looking to find that
+            // both generic parameters. We are looking to find that
             // exactly one (non-phantom) field has changed its
             // type, which we will expect to be the pointer that
             // is becoming fat (we could probably generalize this

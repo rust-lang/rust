@@ -811,7 +811,7 @@ impl<'tcx> Cx<'tcx> {
         let user_provided_type = match res {
             // A reference to something callable -- e.g., a fn, method, or
             // a tuple-struct or tuple-variant. This has the type of a
-            // `Fn` but with the user-given substitutions.
+            // `Fn` but with the user-given generic parameters.
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
@@ -822,7 +822,7 @@ impl<'tcx> Cx<'tcx> {
 
             // A unit struct/variant which is used as a value (e.g.,
             // `None`). This has the type of the enum/struct that defines
-            // this variant -- but with the substitutions given by the
+            // this variant -- but with the generic parameters given by the
             // user.
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => {
                 self.user_args_applied_to_ty_of_hir_id(hir_id).map(Box::new)

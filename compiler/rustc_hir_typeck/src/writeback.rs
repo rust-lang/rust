@@ -1,6 +1,6 @@
 // Type resolution: the phase that finds all the types in the AST with
 // unresolved type variables and replaces "ty_var" types with their
-// substitutions.
+// generic parameters.
 
 use crate::FnCtxt;
 use rustc_data_structures::unord::ExtendUnord;
@@ -621,7 +621,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.write_ty_to_typeck_results(hir_id, n_ty);
         debug!(?n_ty);
 
-        // Resolve any substitutions
+        // Resolve any generic parameters
         if let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(hir_id) {
             let args = self.resolve(args, &span);
             debug!("write_args_to_tcx({:?}, {:?})", hir_id, args);

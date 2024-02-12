@@ -30,24 +30,24 @@ use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_span::Span;
 
+pub use instantiate::CanonicalExt;
 pub use rustc_middle::infer::canonical::*;
-pub use substitute::CanonicalExt;
 
 mod canonicalizer;
+mod instantiate;
 pub mod query_response;
-mod substitute;
 
 impl<'tcx> InferCtxt<'tcx> {
-    /// Creates a substitution S for the canonical value with fresh
+    /// Creates an instantiation S for the canonical value with fresh
     /// inference variables and applies it to the canonical value.
-    /// Returns both the instantiated result *and* the substitution S.
+    /// Returns both the instantiated result *and* the instantiation S.
     ///
     /// This can be invoked as part of constructing an
     /// inference context at the start of a query (see
     /// `InferCtxtBuilder::build_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
     ///
-    /// At the end of processing, the substitution S (once
+    /// At the end of processing, the instantiation S (once
     /// canonicalized) then represents the values that you computed
     /// for each of the canonical inputs to your query.
     pub fn instantiate_canonical_with_fresh_inference_vars<T>(
@@ -73,14 +73,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let canonical_inference_vars =
             self.instantiate_canonical_vars(span, canonical.variables, |ui| universes[ui]);
-        let result = canonical.substitute(self.tcx, &canonical_inference_vars);
+        let result = canonical.instantiate(self.tcx, &canonical_inference_vars);
         (result, canonical_inference_vars)
     }
 
     /// Given the "infos" about the canonical variables from some
     /// canonical, creates fresh variables with the same
     /// characteristics (see `instantiate_canonical_var` for
-    /// details). You can then use `substitute` to instantiate the
+    /// details). You can then use `instantiate` to instantiate the
     /// canonical variable with these inference variables.
     fn instantiate_canonical_vars(
         &self,

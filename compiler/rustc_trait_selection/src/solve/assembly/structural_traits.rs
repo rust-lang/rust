@@ -576,7 +576,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<'tcx>(
             assert_eq!(
                 old_ty,
                 None,
-                "{} has two substitutions: {} and {}",
+                "{} has two generic parameters: {} and {}",
                 proj.projection_ty,
                 proj.term,
                 old_ty.unwrap()

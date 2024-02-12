@@ -49,7 +49,8 @@ pub type EvaluationCache<'tcx> = Cache<
 /// parameters don't unify with regular types, but they *can* unify
 /// with variables from blanket impls, and (unless we know its bounds
 /// will always be satisfied) picking the blanket impl will be wrong
-/// for at least *some* substitutions. To make this concrete, if we have
+/// for at least *some* generic parameters. To make this concrete, if
+/// we have
 ///
 /// ```rust, ignore
 /// trait AsDebug { type Out: fmt::Debug; fn debug(self) -> Self::Out; }

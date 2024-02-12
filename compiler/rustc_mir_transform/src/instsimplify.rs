@@ -208,7 +208,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         // Only bother looking more if it's easy to know what we're calling
         let Some((fn_def_id, fn_args)) = func.const_fn_def() else { return };
 
-        // Clone needs one subst, so we can cheaply rule out other stuff
+        // Clone needs one arg, so we can cheaply rule out other stuff
         if fn_args.len() != 1 {
             return;
         }

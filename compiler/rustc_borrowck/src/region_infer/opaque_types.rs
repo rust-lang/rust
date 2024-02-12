@@ -45,7 +45,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// be allowed:
     /// `fn f<'a: 'b, 'b: 'a>(x: *mut &'b i32) -> impl Sized + 'a { x }`
     ///
-    /// Then we map the regions in both the type and the subst to their
+    /// Then we map the regions in both the type and the generic parameters to their
     /// `external_name` giving `concrete_type = &'a i32`,
     /// `args = ['static, 'a]`. This will then allow
     /// `infer_opaque_definition_from_instantiation` to determine that
@@ -77,9 +77,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let args = opaque_type_key.args;
             debug!(?concrete_type, ?args);
 
-            let mut subst_regions = vec![self.universal_regions.fr_static];
+            let mut arg_regions = vec![self.universal_regions.fr_static];
 
-            let to_universal_region = |vid, subst_regions: &mut Vec<_>| {
+            let to_universal_region = |vid, arg_regions: &mut Vec<_>| {
                 trace!(?vid);
                 let scc = self.constraint_sccs.scc(vid);
                 trace!(?scc);
@@ -88,11 +88,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }) {
                     Some(region) => {
                         let vid = self.universal_regions.to_region_vid(region);
-                        subst_regions.push(vid);
+                        arg_regions.push(vid);
                         region
                     }
                     None => {
-                        subst_regions.push(vid);
+                        arg_regions.push(vid);
                         ty::Region::new_error_with_message(
                             infcx.tcx,
                             concrete_type.span,
@@ -106,10 +106,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // This will ensure they get precedence when folding the regions in the concrete type.
             if let Some(&ci) = member_constraints.get(&opaque_type_key) {
                 for &vid in self.member_constraints.choice_regions(ci) {
-                    to_universal_region(vid, &mut subst_regions);
+                    to_universal_region(vid, &mut arg_regions);
                 }
             }
-            debug!(?subst_regions);
+            debug!(?arg_regions);
 
             // Next, insert universal regions from args, so we can translate regions that appear
             // in them but are not subject to member constraints, for instance closure args.
@@ -119,18 +119,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     return region;
                 }
                 let vid = self.to_region_vid(region);
-                to_universal_region(vid, &mut subst_regions)
+                to_universal_region(vid, &mut arg_regions)
             });
             debug!(?universal_args);
-            debug!(?subst_regions);
+            debug!(?arg_regions);
 
             // Deduplicate the set of regions while keeping the chosen order.
-            let subst_regions = subst_regions.into_iter().collect::<FxIndexSet<_>>();
-            debug!(?subst_regions);
+            let arg_regions = arg_regions.into_iter().collect::<FxIndexSet<_>>();
+            debug!(?arg_regions);
 
             let universal_concrete_type =
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
-                    ty::ReVar(vid) => subst_regions
+                    ty::ReVar(vid) => arg_regions
                         .iter()
                         .find(|ur_vid| self.eval_equal(vid, **ur_vid))
                         .and_then(|ur_vid| self.definitions[*ur_vid].external_name)
