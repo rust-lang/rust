@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/ptr-to-trait-obj-different-regions-lt-ext.rs:12:5
+   |
+LL | fn bad_cast<'a>(x: *const dyn Static<'static>) -> *const dyn Static<'a> {
+   |             -- lifetime `'a` defined here
+LL |     x as _
+   |     ^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to 1 previous error
+

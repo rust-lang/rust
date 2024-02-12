@@ -1,35 +1,51 @@
-error[E0606]: casting `*const dyn A` as `*const dyn B` is invalid
+error[E0277]: the trait bound `dyn A: Unsize<dyn B>` is not satisfied
   --> $DIR/ptr-to-trait-obj-different-args.rs:19:27
    |
 LL |     let b: *const dyn B = a as _;
-   |                           ^^^^^^
+   |                           ^^^^^^ the trait `Unsize<dyn B>` is not implemented for `dyn A`
    |
-   = note: vtable kinds may not match
+   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
 
-error[E0606]: casting `*const dyn Trait<X>` as `*const dyn Trait<Y>` is invalid
+error[E0277]: the trait bound `dyn Trait<X>: Unsize<dyn Trait<Y>>` is not satisfied
   --> $DIR/ptr-to-trait-obj-different-args.rs:22:34
    |
 LL |     let y: *const dyn Trait<Y> = x as _;
-   |                                  ^^^^^^
+   |                                  ^^^^^^ the trait `Unsize<dyn Trait<Y>>` is not implemented for `dyn Trait<X>`
    |
-   = note: vtable kinds may not match
+   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
 
-error[E0606]: casting `*const (dyn Trait<X> + 'static)` as `*const dyn Trait<T>` is invalid
+error[E0277]: the trait bound `dyn Trait<X>: Unsize<dyn Trait<T>>` is not satisfied
   --> $DIR/ptr-to-trait-obj-different-args.rs:28:34
    |
 LL |     let _: *const dyn Trait<T> = x as _;
-   |                                  ^^^^^^
+   |                                  ^^^^^^ the trait `Unsize<dyn Trait<T>>` is not implemented for `dyn Trait<X>`
    |
-   = note: vtable kinds may not match
+   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) where dyn Trait<X>: Unsize<dyn Trait<T>> {
+   |                                                               ++++++++++++++++++++++++++++++++++++++++
 
-error[E0606]: casting `*const (dyn Trait<T> + 'static)` as `*const dyn Trait<X>` is invalid
+error[E0277]: the trait bound `dyn Trait<T>: Unsize<dyn Trait<X>>` is not satisfied
   --> $DIR/ptr-to-trait-obj-different-args.rs:29:34
    |
 LL |     let _: *const dyn Trait<X> = t as _;
-   |                                  ^^^^^^
+   |                                  ^^^^^^ the trait `Unsize<dyn Trait<X>>` is not implemented for `dyn Trait<T>`
    |
-   = note: vtable kinds may not match
+   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) where dyn Trait<T>: Unsize<dyn Trait<X>> {
+   |                                                               ++++++++++++++++++++++++++++++++++++++++
 
-error: aborting due to 4 previous errors
+error[E0277]: the trait bound `dyn Assocked<Assoc = u8>: Unsize<dyn Assocked<Assoc = u32>>` is not satisfied
+  --> $DIR/ptr-to-trait-obj-different-args.rs:37:5
+   |
+LL |     x as _
+   |     ^^^^^^ the trait `Unsize<dyn Assocked<Assoc = u32>>` is not implemented for `dyn Assocked<Assoc = u8>`
+   |
+   = note: all implementations of `Unsize` are provided automatically by the compiler, see <https://doc.rust-lang.org/stable/std/marker/trait.Unsize.html> for more information
 
-For more information about this error, try `rustc --explain E0606`.
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
