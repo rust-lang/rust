@@ -121,6 +121,9 @@ pub struct ConfigInfo {
     pub gcc_path: String,
     config_file: Option<String>,
     cg_gcc_path: Option<PathBuf>,
+    // Needed for the `info` command which doesn't want to actually download the lib if needed,
+    // just to set the `gcc_path` field to display it.
+    pub no_download: bool,
 }
 
 impl ConfigInfo {
@@ -204,7 +207,7 @@ impl ConfigInfo {
             return Err(format!(
                 "{}: invalid commit hash `{}`",
                 commit_hash_file.display(),
-                commit
+                commit,
             ));
         }
         let output_dir = output_dir.join(commit);
@@ -217,9 +220,17 @@ impl ConfigInfo {
                 )
             })?;
         }
+        let output_dir = output_dir.canonicalize().map_err(|err| {
+            format!(
+                "Failed to get absolute path of `{}`: {:?}",
+                output_dir.display(),
+                err
+            )
+        })?;
+
         let libgccjit_so_name = "libgccjit.so";
         let libgccjit_so = output_dir.join(libgccjit_so_name);
-        if !libgccjit_so.is_file() {
+        if !libgccjit_so.is_file() && !self.no_download {
             // Download time!
             let tempfile_name = "libgccjit.so.download";
             let tempfile = output_dir.join(tempfile_name);
@@ -283,28 +294,12 @@ impl ConfigInfo {
 
             println!("Downloaded libgccjit.so version {} successfully!", commit);
             create_symlink(
-                &libgccjit_so.canonicalize().map_err(|err| {
-                    format!(
-                        "Failed to get absolute path of `{}`: {:?}",
-                        libgccjit_so.display(),
-                        err,
-                    )
-                })?,
+                &libgccjit_so,
                 output_dir.join(&format!("{}.0", libgccjit_so_name)),
             )?;
         }
 
-        self.gcc_path = output_dir
-            .canonicalize()
-            .map_err(|err| {
-                format!(
-                    "Failed to get absolute path of `{}`: {:?}",
-                    output_dir.display(),
-                    err
-                )
-            })?
-            .display()
-            .to_string();
+        self.gcc_path = output_dir.display().to_string();
         println!("Using `{}` as path for libgccjit", self.gcc_path);
         Ok(())
     }
