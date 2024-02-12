@@ -1179,7 +1179,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Note, msg).with_span(span)
+        self.struct_note(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
