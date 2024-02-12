@@ -993,10 +993,10 @@ impl DiagCtxt {
                     .emit_diagnostic(Diagnostic::new(Warning, DiagnosticMessage::Str(warnings)));
             }
             (_, 0) => {
-                inner.emit_diagnostic(Diagnostic::new(Fatal, errors));
+                inner.emit_diagnostic(Diagnostic::new(Error, errors));
             }
             (_, _) => {
-                inner.emit_diagnostic(Diagnostic::new(Fatal, format!("{errors}; {warnings}")));
+                inner.emit_diagnostic(Diagnostic::new(Error, format!("{errors}; {warnings}")));
             }
         }
 
