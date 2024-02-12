@@ -53,6 +53,7 @@ mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
 mod manual_c_str_literals;
+mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
@@ -4079,6 +4080,27 @@ declare_clippy_lint! {
     "is_ascii() called on a char iterator"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for uses of `map` which return the original item.
+    ///
+    /// ### Why is this bad?
+    /// `inspect` is both clearer in intent and shorter.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let x = Some(0).map(|x| { println!("{x}"); x });
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let x = Some(0).inspect(|x| println!("{x}"));
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub MANUAL_INSPECT,
+    complexity,
+    "use of `map` returning the original item"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4244,6 +4266,7 @@ impl_lint_pass!(Methods => [
     MANUAL_C_STR_LITERALS,
     UNNECESSARY_GET_THEN_CHECK,
     NEEDLESS_CHARACTER_ITERATION,
+    MANUAL_INSPECT,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4747,6 +4770,7 @@ impl Methods {
                         }
                     }
                     map_identity::check(cx, expr, recv, m_arg, name, span);
+                    manual_inspect::check(cx, expr, m_arg, name, span, &self.msrv);
                 },
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
