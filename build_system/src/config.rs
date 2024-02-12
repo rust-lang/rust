@@ -159,30 +159,17 @@ impl ConfigInfo {
         command
     }
 
-    pub fn setup_gcc_path(&mut self, override_gcc_path: Option<&str>) -> Result<(), String> {
+    pub fn setup_gcc_path(&mut self) -> Result<(), String> {
         let ConfigFile { gcc_path, .. } = ConfigFile::new(self.config_file.as_deref())?;
 
-        self.gcc_path = match override_gcc_path {
-            Some(path) => {
-                if gcc_path.is_some() {
-                    println!(
-                        "overriding setting from `{}`",
-                        self.config_file.as_deref().unwrap_or("config.toml")
-                    );
-                }
-                path.to_string()
-            }
+        self.gcc_path = match gcc_path {
+            Some(path) => path,
+            // FIXME: Once we support "download", rewrite this.
             None => {
-                match gcc_path {
-                    Some(path) => path,
-                    // FIXME: Once we support "download", rewrite this.
-                    None => {
-                        return Err(format!(
-                            "missing `gcc-path` value from `{}`",
-                            self.config_file.as_deref().unwrap_or("config.toml"),
-                        ))
-                    }
-                }
+                return Err(format!(
+                    "missing `gcc-path` value from `{}`",
+                    self.config_file.as_deref().unwrap_or("config.toml"),
+                ))
             }
         };
         Ok(())
@@ -191,12 +178,12 @@ impl ConfigInfo {
     pub fn setup(
         &mut self,
         env: &mut HashMap<String, String>,
-        override_gcc_path: Option<&str>,
+        use_system_gcc: bool,
     ) -> Result<(), String> {
         env.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
 
-        if self.gcc_path.is_empty() || override_gcc_path.is_some() {
-            self.setup_gcc_path(override_gcc_path)?;
+        if self.gcc_path.is_empty() && !use_system_gcc {
+            self.setup_gcc_path()?;
         }
         env.insert("GCC_PATH".to_string(), self.gcc_path.clone());
 

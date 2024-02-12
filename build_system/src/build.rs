@@ -207,7 +207,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     }
     run_command_with_output_and_env(&command, None, Some(&env))?;
 
-    args.config_info.setup(&mut env, None)?;
+    args.config_info.setup(&mut env, false)?;
 
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");
@@ -229,7 +229,7 @@ pub fn run() -> Result<(), String> {
         Some(args) => args,
         None => return Ok(()),
     };
-    args.config_info.setup_gcc_path(None)?;
+    args.config_info.setup_gcc_path()?;
     build_codegen(&mut args)?;
     Ok(())
 }

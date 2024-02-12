@@ -254,7 +254,11 @@ pub struct CloneResult {
     pub repo_dir: String,
 }
 
-pub fn git_clone(to_clone: &str, dest: Option<&Path>, shallow_clone: bool) -> Result<CloneResult, String> {
+pub fn git_clone(
+    to_clone: &str,
+    dest: Option<&Path>,
+    shallow_clone: bool,
+) -> Result<CloneResult, String> {
     let repo_name = to_clone.split('/').last().unwrap();
     let repo_name = match repo_name.strip_suffix(".git") {
         Some(n) => n.to_string(),

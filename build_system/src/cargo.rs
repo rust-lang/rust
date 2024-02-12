@@ -77,7 +77,7 @@ pub fn run() -> Result<(), String> {
     })?;
 
     let mut env: HashMap<String, String> = std::env::vars().collect();
-    ConfigInfo::default().setup(&mut env, None)?;
+    ConfigInfo::default().setup(&mut env, false)?;
     let toolchain = get_toolchain()?;
 
     let toolchain_version = rustc_toolchain_version_info(&toolchain)?;
