@@ -1635,6 +1635,12 @@ fn check_method_receiver<'tcx>(
     let receiver_ty = sig.inputs()[0];
     let receiver_ty = wfcx.normalize(span, None, receiver_ty);
 
+    // If the receiver already has errors reported, consider it valid to avoid
+    // unnecessary errors (#58712).
+    if receiver_ty.references_error() {
+        return Ok(());
+    }
+
     if tcx.features().arbitrary_self_types {
         if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
@@ -1749,9 +1755,7 @@ fn receiver_is_valid<'tcx>(
             }
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-            // If the receiver already has errors reported due to it, consider it valid to avoid
-            // unnecessary errors (#58712).
-            return receiver_ty.references_error();
+            return false;
         }
     }
 
