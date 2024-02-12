@@ -333,13 +333,12 @@ impl GlobalState {
                                         crate_name
                                             .as_deref()
                                             .and_then(|crate_name| {
-                                                ignored_proc_macros.iter().find_map(|c| {
-                                                    if eq_ignore_underscore(&*c.0, crate_name) {
-                                                        Some(&**c.1)
-                                                    } else {
-                                                        None
-                                                    }
-                                                })
+                                                ignored_proc_macros.iter().find_map(
+                                                    |(name, macros)| {
+                                                        eq_ignore_underscore(name, crate_name)
+                                                            .then_some(&**macros)
+                                                    },
+                                                )
                                             })
                                             .unwrap_or_default(),
                                     )

@@ -374,6 +374,7 @@ pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 name: "identity".into(),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -388,6 +389,7 @@ pub fn derive_identity(item: TokenStream) -> TokenStream {
                 name: "DeriveIdentity".into(),
                 kind: ProcMacroKind::CustomDerive,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -402,6 +404,7 @@ pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
                 name: "input_replace".into(),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(AttributeInputReplaceProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -416,6 +419,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
                 name: "mirror".into(),
                 kind: ProcMacroKind::FuncLike,
                 expander: sync::Arc::new(MirrorProcMacroExpander),
+                disabled: false,
             },
         ),
         (
@@ -430,6 +434,7 @@ pub fn shorten(input: TokenStream) -> TokenStream {
                 name: "shorten".into(),
                 kind: ProcMacroKind::FuncLike,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
+                disabled: false,
             },
         ),
     ]

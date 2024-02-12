@@ -653,7 +653,8 @@ impl<'a> AssocItemCollector<'a> {
                                 ));
 
                                 continue 'attrs;
-                            } else if exp.is_disabled() {
+                            }
+                            if exp.is_disabled() {
                                 continue 'attrs;
                             }
                         }
