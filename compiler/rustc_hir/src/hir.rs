@@ -2587,6 +2587,8 @@ pub enum TyKind<'hir> {
     Never,
     /// A tuple (`(A, B, C, D, ...)`).
     Tup(&'hir [Ty<'hir>]),
+    /// An anonymous struct or union type i.e. `struct { foo: Type }` or `union { foo: Type }`
+    AnonAdt(ItemId),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type (e.g., `<Vec<T> as Trait>::Type` or `<T>::Target`).
     ///

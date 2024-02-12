@@ -1003,11 +1003,11 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
-            ast::TyKind::AnonStruct(fields) => {
+            ast::TyKind::AnonStruct(_, fields) => {
                 self.head("struct");
                 self.print_record_struct_body(fields, ty.span);
             }
-            ast::TyKind::AnonUnion(fields) => {
+            ast::TyKind::AnonUnion(_, fields) => {
                 self.head("union");
                 self.print_record_struct_body(fields, ty.span);
             }

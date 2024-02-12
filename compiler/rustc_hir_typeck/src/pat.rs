@@ -1389,7 +1389,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     field_map
                         .get(&ident)
                         .map(|(i, f)| {
-                            self.write_field_index(field.hir_id, *i);
+                            // FIXME: handle nested fields
+                            self.write_field_index(field.hir_id, *i, Vec::new());
                             self.tcx.check_stability(f.did, Some(pat.hir_id), span, None);
                             self.field_ty(span, f, args)
                         })

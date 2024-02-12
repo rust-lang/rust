@@ -2457,6 +2457,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Tup(fields) => {
                 Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.ast_ty_to_ty(t)))
             }
+            hir::TyKind::AnonAdt(item_id) => {
+                let did = item_id.owner_id.def_id;
+                let adt_def = tcx.adt_def(did);
+                let generics = tcx.generics_of(did);
+
+                debug!("ast_ty_to_ty_inner(AnonAdt): generics={:?}", generics);
+                let args = ty::GenericArgs::for_item(tcx, did.to_def_id(), |param, _| {
+                    tcx.mk_param_from_def(param)
+                });
+                debug!("ast_ty_to_ty_inner(AnonAdt): args={:?}", args);
+
+                Ty::new_adt(tcx, adt_def, tcx.mk_args(args))
+            }
             hir::TyKind::BareFn(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);
 

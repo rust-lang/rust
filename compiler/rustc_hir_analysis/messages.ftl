@@ -123,6 +123,28 @@ hir_analysis_field_already_declared =
     .label = field already declared
     .previous_decl_label = `{$field_name}` first declared here
 
+hir_analysis_field_already_declared_both_nested =
+    field `{$field_name}` is already declared
+    .label = field `{$field_name}` declared in this unnamed field
+    .nested_field_decl_note = field `{$field_name}` declared here
+    .previous_decl_label = `{$field_name}` first declared here in this unnamed field
+    .previous_nested_field_decl_note = field `{$field_name}` first declared here
+
+hir_analysis_field_already_declared_current_nested =
+    field `{$field_name}` is already declared
+    .label = field `{$field_name}` declared in this unnamed field
+    .nested_field_decl_note = field `{$field_name}` declared here
+    .previous_decl_label = `{$field_name}` first declared here
+
+hir_analysis_field_already_declared_nested_help =
+    fields from the type of this unnamed field are considered fields of the outer type
+
+hir_analysis_field_already_declared_previous_nested =
+    field `{$field_name}` is already declared
+    .label = field already declared
+    .previous_decl_label = `{$field_name}` first declared here in this unnamed field
+    .previous_nested_field_decl_note = field `{$field_name}` first declared here
+
 hir_analysis_function_not_found_in_trait = function not found in this trait
 
 hir_analysis_function_not_have_default_implementation = function doesn't have a default implementation
@@ -419,6 +441,19 @@ hir_analysis_typeof_reserved_keyword_used =
 
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
+
+hir_analysis_unnamed_fields_repr_field_defined = unnamed field defined here
+
+hir_analysis_unnamed_fields_repr_field_missing_repr_c =
+    named type of unnamed field must have `#[repr(C)]` representation
+    .label = unnamed field defined here
+    .field_ty_label = `{$field_ty}` defined here
+    .suggestion = add `#[repr(C)]` to this {$field_adt_kind}
+
+hir_analysis_unnamed_fields_repr_missing_repr_c =
+    {$adt_kind} with unnamed fields must have `#[repr(C)]` representation
+    .label = {$adt_kind} `{$adt_name}` defined here
+    .suggestion = add `#[repr(C)]` to this {$adt_kind}
 
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`

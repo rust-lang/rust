@@ -50,6 +50,8 @@ bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
+        /// Indicates whether the type is anonymous.
+        const IS_ANONYMOUS                = 1 << 10;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -233,8 +235,12 @@ impl AdtDefData {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, VariantDef>,
         repr: ReprOptions,
+        is_anonymous: bool,
     ) -> Self {
-        debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
+        debug!(
+            "AdtDef::new({:?}, {:?}, {:?}, {:?}, {:?})",
+            did, kind, variants, repr, is_anonymous
+        );
         let mut flags = AdtFlags::NO_ADT_FLAGS;
 
         if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
@@ -266,6 +272,9 @@ impl AdtDefData {
         }
         if Some(did) == tcx.lang_items().unsafe_cell_type() {
             flags |= AdtFlags::IS_UNSAFE_CELL;
+        }
+        if is_anonymous {
+            flags |= AdtFlags::IS_ANONYMOUS;
         }
 
         AdtDefData { did, variants, flags, repr }
@@ -365,6 +374,12 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
     }
 
+    /// Returns `true` if this is an anonymous adt
+    #[inline]
+    pub fn is_anonymous(self) -> bool {
+        self.flags().contains(AdtFlags::IS_ANONYMOUS)
+    }
+
     /// Returns `true` if this type has a destructor.
     pub fn has_dtor(self, tcx: TyCtxt<'tcx>) -> bool {
         self.destructor(tcx).is_some()
@@ -386,7 +401,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     /// Returns an iterator over all fields contained
-    /// by this ADT.
+    /// by this ADT (nested unnamed fields are not expanded).
     #[inline]
     pub fn all_fields(self) -> impl Iterator<Item = &'tcx FieldDef> + Clone {
         self.variants().iter().flat_map(|v| v.fields.iter())

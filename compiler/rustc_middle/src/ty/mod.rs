@@ -1130,6 +1130,8 @@ bitflags! {
         /// Indicates whether this variant was obtained as part of recovering from
         /// a syntactic error. May be incomplete or bogus.
         const IS_RECOVERED = 1 << 1;
+        /// Indicates whether this variant has unnamed fields.
+        const HAS_UNNAMED_FIELDS = 1 << 2;
     }
 }
 rustc_data_structures::external_bitflags_debug! { VariantFlags }
@@ -1143,7 +1145,7 @@ pub struct VariantDef {
     /// `DefId` that identifies the variant's constructor.
     /// If this variant is a struct variant, then this is `None`.
     pub ctor: Option<(CtorKind, DefId)>,
-    /// Variant or struct name.
+    /// Variant or struct name, maybe empty for anonymous adt (struct or union).
     pub name: Symbol,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
@@ -1180,11 +1182,12 @@ impl VariantDef {
         parent_did: DefId,
         recovered: bool,
         is_field_list_non_exhaustive: bool,
+        has_unnamed_fields: bool,
     ) -> Self {
         debug!(
             "VariantDef::new(name = {:?}, variant_did = {:?}, ctor = {:?}, discr = {:?},
-             fields = {:?}, adt_kind = {:?}, parent_did = {:?})",
-            name, variant_did, ctor, discr, fields, adt_kind, parent_did,
+             fields = {:?}, adt_kind = {:?}, parent_did = {:?}, has_unnamed_fields = {:?})",
+            name, variant_did, ctor, discr, fields, adt_kind, parent_did, has_unnamed_fields,
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
@@ -1194,6 +1197,10 @@ impl VariantDef {
 
         if recovered {
             flags |= VariantFlags::IS_RECOVERED;
+        }
+
+        if has_unnamed_fields {
+            flags |= VariantFlags::HAS_UNNAMED_FIELDS;
         }
 
         VariantDef { def_id: variant_did.unwrap_or(parent_did), ctor, name, discr, fields, flags }
@@ -1209,6 +1216,12 @@ impl VariantDef {
     #[inline]
     pub fn is_recovered(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_RECOVERED)
+    }
+
+    /// Does this variant contains unnamed fields
+    #[inline]
+    pub fn has_unnamed_fields(&self) -> bool {
+        self.flags.intersects(VariantFlags::HAS_UNNAMED_FIELDS)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1373,6 +1386,11 @@ impl<'tcx> FieldDef {
     /// Computes the `Ident` of this variant by looking up the `Span`
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.did).unwrap())
+    }
+
+    /// Returns whether the field is unnamed
+    pub fn is_unnamed(&self) -> bool {
+        self.name == rustc_span::symbol::kw::Underscore
     }
 }
 

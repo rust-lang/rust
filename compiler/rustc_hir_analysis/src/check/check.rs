@@ -80,6 +80,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     check_transparent(tcx, def);
     check_packed(tcx, span, def);
+    check_unnamed_fields(tcx, def);
 }
 
 fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
@@ -89,6 +90,58 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_transparent(tcx, def);
     check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def);
+    check_unnamed_fields(tcx, def);
+}
+
+/// Check the representation of adts with unnamed fields.
+fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
+    if def.is_enum() {
+        return;
+    }
+    let variant = def.non_enum_variant();
+    if !variant.has_unnamed_fields() {
+        return;
+    }
+    if !def.is_anonymous() {
+        let adt_kind = def.descr();
+        let span = tcx.def_span(def.did());
+        let unnamed_fields = variant
+            .fields
+            .iter()
+            .filter(|f| f.is_unnamed())
+            .map(|f| {
+                let span = tcx.def_span(f.did);
+                errors::UnnamedFieldsReprFieldDefined { span }
+            })
+            .collect::<Vec<_>>();
+        debug_assert_ne!(unnamed_fields.len(), 0, "expect unnamed fields in this adt");
+        let adt_name = tcx.item_name(def.did());
+        if !def.repr().c() {
+            tcx.dcx().emit_err(errors::UnnamedFieldsRepr::MissingReprC {
+                span,
+                adt_kind,
+                adt_name,
+                unnamed_fields,
+                sugg_span: span.shrink_to_lo(),
+            });
+        }
+    }
+    for field in variant.fields.iter().filter(|f| f.is_unnamed()) {
+        let field_ty = tcx.type_of(field.did).instantiate_identity();
+        if let Some(adt) = field_ty.ty_adt_def()
+            && !adt.is_anonymous()
+            && !adt.repr().c()
+        {
+            let field_ty_span = tcx.def_span(adt.did());
+            tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
+                span: tcx.def_span(field.did),
+                field_ty_span,
+                field_ty,
+                field_adt_kind: adt.descr(),
+                sugg_span: field_ty_span.shrink_to_lo(),
+            });
+        }
+    }
 }
 
 /// Check that the fields of the `union` do not need dropping.
