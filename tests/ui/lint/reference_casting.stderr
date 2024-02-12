@@ -66,8 +66,8 @@ LL |     let _num = &mut *(num as *const i32).cast::<i32>().cast_mut().cast_cons
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
   --> $DIR/reference_casting.rs:33:16
    |
-LL |     let _num = &mut *(std::ptr::from_ref(static_u8()) as *mut i32);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _num = &mut *(std::ptr::from_ref(static_u8()) as *mut i8);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
@@ -373,5 +373,164 @@ LL |         *(this as *const _ as *mut _) = a;
    |
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
-error: aborting due to 42 previous errors
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:161:20
+   |
+LL |         let num = &mut 3i32;
+   |                        ---- backing allocation comes from here
+LL |
+LL |         let _num = &*(num as *const i32 as *const i64);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:163:20
+   |
+LL |         let num = &mut 3i32;
+   |                        ---- backing allocation comes from here
+...
+LL |         let _num = &mut *(num as *mut i32 as *mut i64);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:165:20
+   |
+LL |         let num = &mut 3i32;
+   |                        ---- backing allocation comes from here
+...
+LL |         let _num = &mut *(num as *mut i32 as *mut I64);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `i32` (4 bytes) to `I64` (16 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:167:9
+   |
+LL |         let num = &mut 3i32;
+   |                        ---- backing allocation comes from here
+...
+LL |         std::ptr::write(num as *mut i32 as *mut i64, 2);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:176:20
+   |
+LL |         let num = &mut [0i32; 3];
+   |                        --------- backing allocation comes from here
+LL |
+LL |         let _num = &mut *(num as *mut _ as *mut [i64; 2]);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `[i32; 3]` (12 bytes) to `[i64; 2]` (16 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:178:9
+   |
+LL |         let num = &mut [0i32; 3];
+   |                        --------- backing allocation comes from here
+...
+LL |         std::ptr::write_unaligned(num as *mut _ as *mut [i32; 4], [0, 0, 1, 1]);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `[i32; 3]` (12 bytes) to `[i32; 4]` (16 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:188:20
+   |
+LL |         let num = &mut [0i32; 3] as &mut [i32];
+   |                        --------- backing allocation comes from here
+LL |
+LL |         let _num = &mut *(num as *mut _ as *mut i128);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `[i32; 3]` (12 bytes) to `i128` (16 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:190:20
+   |
+LL |         let num = &mut [0i32; 3] as &mut [i32];
+   |                        --------- backing allocation comes from here
+...
+LL |         let _num = &mut *(num as *mut _ as *mut [i64; 4]);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: casting from `[i32; 3]` (12 bytes) to `[i64; 4]` (32 bytes)
+
+error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:200:20
+   |
+LL |         let _num = &mut *(&mat3 as *const _ as *mut [[i64; 3]; 3]);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:200:20
+   |
+LL |         let _num = &mut *(&mat3 as *const _ as *mut [[i64; 3]; 3]);
+   |                    ^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                            |
+   |                            backing allocation comes from here
+   |
+   = note: casting from `Mat3<i32>` (36 bytes) to `[[i64; 3]; 3]` (72 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:203:20
+   |
+LL |         let _num = &*(&mat3 as *const _ as *mut [[i64; 3]; 3]);
+   |                    ^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        |
+   |                        backing allocation comes from here
+   |
+   = note: casting from `Mat3<i32>` (36 bytes) to `[[i64; 3]; 3]` (72 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:212:37
+   |
+LL |         let w: *mut [u16; 2] = &mut l as *mut [u8; 2] as *mut _;
+   |                                --------------------------------
+   |                                |    |
+   |                                |    backing allocation comes from here
+   |                                casting happend here
+LL |         let w: *mut [u16] = unsafe {&mut *w};
+   |                                     ^^^^^^^
+   |
+   = note: casting from `[u8; 2]` (2 bytes) to `[u16; 2]` (4 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:220:20
+   |
+LL |         let _num = &*(&num as *const i32 as *const i64);
+   |                    ^^^^---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        |
+   |                        backing allocation comes from here
+   |
+   = note: casting from `[i32; 1]` (4 bytes) to `i64` (8 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:222:20
+   |
+LL |         let _num = &*(&foo() as *const i32 as *const i64);
+   |                    ^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        |
+   |                        backing allocation comes from here
+   |
+   = note: casting from `[i32; 1]` (4 bytes) to `i64` (8 bytes)
+
+error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+  --> $DIR/reference_casting.rs:238:20
+   |
+LL |         let _num = &*(&num as *const i32 as *const i64);
+   |                    ^^^^---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        |
+   |                        backing allocation comes from here
+   |
+   = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
+
+error: aborting due to 57 previous errors
 

@@ -81,14 +81,14 @@ fn main()
     assert_eq!(u as *const u16, p as *const u16);
 
     // ptr-ptr-cast (Length vtables)
-    let mut l : [u8; 2] = [0,1];
-    let w: *mut [u16; 2] = &mut l as *mut [u8; 2] as *mut _;
-    let w: *mut [u16] = unsafe {&mut *w};
-    let w_u8 : *const [u8] = w as *const [u8];
-    assert_eq!(unsafe{&*w_u8}, &l);
+    let mut l : [u16; 2] = [0,1];
+    let w: *mut [u8; 2] = &mut l as *mut [u16; 2] as *mut _;
+    let w: *mut [u8] = unsafe {&mut *w};
+    let w_u16 : *const [u16] = w as *const [u16];
+    assert_eq!(unsafe{&*w_u16}, &l);
 
     let s: *mut str = w as *mut str;
-    let l_via_str = unsafe{&*(s as *const [u8])};
+    let l_via_str = unsafe{&*(s as *const [u16])};
     assert_eq!(&l, l_via_str);
 
     // ptr-ptr-cast (Length vtables, check length is preserved)
