@@ -151,7 +151,7 @@ where
             let mut err = tcx.dcx().create_err(err);
 
             let msg = error.diagnostic_message();
-            error.add_args(tcx.dcx(), &mut err);
+            error.add_args(&mut err);
 
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);

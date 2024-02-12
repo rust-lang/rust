@@ -108,9 +108,9 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
-    /// This exists purely for testing the interactions between span_delayed_bug and incremental.
-    query trigger_span_delayed_bug(key: DefId) {
-        desc { "triggering a span delayed bug for testing incremental" }
+    /// This exists purely for testing the interactions between delayed bugs and incremental.
+    query trigger_delayed_bug(key: DefId) {
+        desc { "triggering a delayed bug for testing incremental" }
     }
 
     /// Collects the list of all tools registered using `#![register_tool]`.

@@ -445,7 +445,7 @@ pub fn format_interp_error<'tcx>(dcx: &DiagCtxt, e: InterpErrorInfo<'tcx>) -> St
     #[allow(rustc::untranslatable_diagnostic)]
     let mut diag = dcx.struct_allow("");
     let msg = e.diagnostic_message();
-    e.add_args(dcx, &mut diag);
+    e.add_args(&mut diag);
     let s = dcx.eagerly_translate_to_string(msg, diag.args());
     diag.cancel();
     s

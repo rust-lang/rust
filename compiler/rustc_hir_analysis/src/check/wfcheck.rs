@@ -118,9 +118,9 @@ where
             return Err(err);
         } else {
             // HACK(oli-obk): tests/ui/specialization/min_specialization/specialize_on_type_error.rs
-            // causes an error (span_delayed_bug) during normalization, without reporting an error,
-            // so we need to act as if no error happened, in order to let our callers continue and
-            // report an error later in check_impl_items_against_trait.
+            // causes an delayed bug during normalization, without reporting an error, so we need
+            // to act as if no error happened, in order to let our callers continue and report an
+            // error later in check_impl_items_against_trait.
             return Ok(());
         }
     }
