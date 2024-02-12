@@ -691,7 +691,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
-        // These types seem reasonably opaque enough that they could be substituted with their
+        // These types seem reasonably opaque enough that they could be instantiated with their
         // borrowed variants in a function body when we see a move error.
         let borrow_level = match *ty.kind() {
             ty::Param(_) => tcx

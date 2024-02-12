@@ -119,7 +119,7 @@ pub fn identify_constrained_generic_params<'tcx>(
 ///   * `<U as Iterator>::Item = T` -- a desugared ProjectionPredicate
 ///
 /// When we, for example, try to go over the trait-reference
-/// `IntoIter<u32> as Trait`, we substitute the impl parameters with fresh
+/// `IntoIter<u32> as Trait`, we instantiate the impl parameters with fresh
 /// variables and match them with the impl trait-ref, so we know that
 /// `$U = IntoIter<u32>`.
 ///

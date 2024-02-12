@@ -41,17 +41,17 @@ pub struct OverlapError<'tcx> {
     pub involves_placeholder: bool,
 }
 
-/// Given a subst for the requested impl, translate it to a subst
+/// Given the generic parameters for the requested impl, translate it to the generic parameters
 /// appropriate for the actual item definition (whether it be in that impl,
 /// a parent impl, or the trait).
 ///
 /// When we have selected one impl, but are actually using item definitions from
 /// a parent impl providing a default, we need a way to translate between the
 /// type parameters of the two impls. Here the `source_impl` is the one we've
-/// selected, and `source_args` is a substitution of its generics.
+/// selected, and `source_args` is its generic parameters.
 /// And `target_node` is the impl/trait we're actually going to get the
-/// definition from. The resulting substitution will map from `target_node`'s
-/// generics to `source_impl`'s generics as instantiated by `source_subst`.
+/// definition from. The resulting instantiation will map from `target_node`'s
+/// generics to `source_impl`'s generics as instantiated by `source_args`.
 ///
 /// For example, consider the following scenario:
 ///
@@ -62,7 +62,7 @@ pub struct OverlapError<'tcx> {
 /// ```
 ///
 /// Suppose we have selected "source impl" with `V` instantiated with `u32`.
-/// This function will produce a substitution with `T` and `U` both mapping to `u32`.
+/// This function will produce an instantiation with `T` and `U` both mapping to `u32`.
 ///
 /// where-clauses add some trickiness here, because they can be used to "define"
 /// an argument indirectly:
@@ -72,7 +72,7 @@ pub struct OverlapError<'tcx> {
 ///    where I: Iterator<Item = &'a T>, T: Clone
 /// ```
 ///
-/// In a case like this, the substitution for `T` is determined indirectly,
+/// In a case like this, the instantiation for `T` is determined indirectly,
 /// through associated type projection. We deal with such cases by using
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
@@ -109,7 +109,7 @@ pub fn translate_args_with_cause<'tcx>(
     let source_trait_ref =
         infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, source_args);
 
-    // translate the Self and Param parts of the substitution, since those
+    // translate the Self and Param parts of the generic parameters, since those
     // vary across impls
     let target_args = match target_node {
         specialization_graph::Node::Impl(target_impl) => {
@@ -121,8 +121,8 @@ pub fn translate_args_with_cause<'tcx>(
             fulfill_implication(infcx, param_env, source_trait_ref, source_impl, target_impl, cause)
                 .unwrap_or_else(|()| {
                     bug!(
-                        "When translating substitutions from {source_impl:?} to {target_impl:?}, \
-                        the expected specialization failed to hold"
+                        "When translating generic parameters from {source_impl:?} to \
+                        {target_impl:?}, the expected specialization failed to hold"
                     )
                 })
         }
@@ -200,7 +200,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 }
 
 /// Attempt to fulfill all obligations of `target_impl` after unification with
-/// `source_trait_ref`. If successful, returns a substitution for *all* the
+/// `source_trait_ref`. If successful, returns the generic parameters for *all* the
 /// generics of `target_impl`, including both those needed to unify with
 /// `source_trait_ref` and those whose identity is determined via a where
 /// clause in the impl.
@@ -247,7 +247,7 @@ fn fulfill_implication<'tcx>(
     };
 
     // Needs to be `in_snapshot` because this function is used to rebase
-    // substitutions, which may happen inside of a select within a probe.
+    // generic parameters, which may happen inside of a select within a probe.
     let ocx = ObligationCtxt::new(infcx);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
@@ -269,7 +269,7 @@ fn fulfill_implication<'tcx>(
 
     debug!("fulfill_implication: an impl for {:?} specializes {:?}", source_trait, target_trait);
 
-    // Now resolve the *substitution* we built for the target earlier, replacing
+    // Now resolve the *generic parameters* we built for the target earlier, replacing
     // the inference variables inside with whatever we got from fulfillment.
     Ok(infcx.resolve_vars_if_possible(target_args))
 }

@@ -2536,7 +2536,7 @@ pub struct OpaqueTy<'hir> {
     /// lifetimes that are captured from the function signature they originate from.
     ///
     /// This is done by generating a new early-bound lifetime parameter local to the
-    /// opaque which is substituted in the function signature with the late-bound
+    /// opaque which is instantiated in the function signature with the late-bound
     /// lifetime.
     ///
     /// This mapping associated a captured lifetime (first parameter) with the new

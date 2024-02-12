@@ -153,6 +153,8 @@ hir_analysis_function_not_have_default_implementation = function doesn't have a 
 hir_analysis_functions_names_duplicated = functions names are duplicated
     .note = all `#[rustc_must_implement_one_of]` arguments must be unique
 
+hir_analysis_generic_args_on_overridden_impl = could not resolve generic parameters on overridden impl
+
 hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
     .label = cannot specialize default item `{$ident}`
     .ok_label = parent `impl` is here
@@ -386,8 +388,6 @@ hir_analysis_static_mut_ref_lint = {$shared}reference of mutable static is disco
     .why_note = mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
 
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
-
-hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
 
 hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
     .note = this item must mention the opaque type in its signature in order to be able to register hidden types

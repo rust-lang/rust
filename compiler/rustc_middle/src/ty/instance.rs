@@ -19,7 +19,7 @@ use std::fmt;
 ///
 /// Monomorphization happens on-the-fly and no monomorphized MIR is ever created. Instead, this type
 /// simply couples a potentially generic `InstanceDef` with some args, and codegen and const eval
-/// will do all required substitution as they run.
+/// will do all required instantiations as they run.
 ///
 /// Note: the `Lift` impl is currently not used by rustc, but is used by
 /// rustc_codegen_cranelift when the `jit` feature is enabled.
@@ -138,7 +138,7 @@ pub enum InstanceDef<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
-    /// Returns the `Ty` corresponding to this `Instance`, with generic substitutions applied and
+    /// Returns the `Ty` corresponding to this `Instance`, with generic instantiations applied and
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
@@ -298,11 +298,11 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     /// Returns `true` when the MIR body associated with this instance should be monomorphized
-    /// by its users (e.g. codegen or miri) by substituting the `args` from `Instance` (see
+    /// by its users (e.g. codegen or miri) by instantiating the `args` from `Instance` (see
     /// `Instance::args_for_mir_body`).
     ///
     /// Otherwise, returns `false` only for some kinds of shims where the construction of the MIR
-    /// body should perform necessary substitutions.
+    /// body should perform necessary instantiations.
     pub fn has_polymorphic_mir_body(&self) -> bool {
         match *self {
             InstanceDef::CloneShim(..)
@@ -669,13 +669,13 @@ impl<'tcx> Instance<'tcx> {
 
     /// Depending on the kind of `InstanceDef`, the MIR body associated with an
     /// instance is expressed in terms of the generic parameters of `self.def_id()`, and in other
-    /// cases the MIR body is expressed in terms of the types found in the substitution array.
-    /// In the former case, we want to substitute those generic types and replace them with the
+    /// cases the MIR body is expressed in terms of the types found in the generic parameter array.
+    /// In the former case, we want to instantiate those generic types and replace them with the
     /// values from the args when monomorphizing the function body. But in the latter case, we
-    /// don't want to do that substitution, since it has already been done effectively.
+    /// don't want to do that instantiation, since it has already been done effectively.
     ///
     /// This function returns `Some(args)` in the former case and `None` otherwise -- i.e., if
-    /// this function returns `None`, then the MIR body does not require substitution during
+    /// this function returns `None`, then the MIR body does not require instantiation during
     /// codegen.
     fn args_for_mir_body(&self) -> Option<GenericArgsRef<'tcx>> {
         self.def.has_polymorphic_mir_body().then_some(self.args)

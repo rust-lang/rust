@@ -1083,7 +1083,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             match t.kind() {
                 ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
                 ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
-                ty::Adt(def, subst) => {
+                ty::Adt(def, args) => {
                     if !def.did().is_local() {
                         let non_exhaustive = def.is_variant_list_non_exhaustive()
                             || def
@@ -1095,13 +1095,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                             return ControlFlow::Break((
                                 def.descr(),
                                 def.did(),
-                                subst,
+                                args,
                                 non_exhaustive,
                             ));
                         }
                     }
                     def.all_fields()
-                        .map(|field| field.ty(tcx, subst))
+                        .map(|field| field.ty(tcx, args))
                         .try_for_each(|t| check_non_exhaustive(tcx, t))
                 }
                 _ => ControlFlow::Continue(()),

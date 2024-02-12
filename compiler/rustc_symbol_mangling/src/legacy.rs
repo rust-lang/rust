@@ -99,7 +99,7 @@ fn get_symbol_hash<'tcx>(
     instance: Instance<'tcx>,
 
     // type of the item, without any generic
-    // parameters substituted; this is
+    // parameters instantiated; this is
     // included in the hash as a kind of
     // safeguard.
     item_type: Ty<'tcx>,

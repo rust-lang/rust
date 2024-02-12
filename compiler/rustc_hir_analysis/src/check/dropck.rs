@@ -124,14 +124,14 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    // Take the param-env of the adt and substitute the args that show up in
+    // Take the param-env of the adt and instantiate the args that show up in
     // the implementation's self type. This gives us the assumptions that the
     // self ty of the implementation is allowed to know just from it being a
     // well-formed adt, since that's all we're allowed to assume while proving
     // the Drop implementation is not specialized.
     //
     // We don't need to normalize this param-env or anything, since we're only
-    // substituting it with free params, so no additional param-env normalization
+    // instantiating it with free params, so no additional param-env normalization
     // can occur on top of what has been done in the param_env query itself.
     let param_env =
         ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);

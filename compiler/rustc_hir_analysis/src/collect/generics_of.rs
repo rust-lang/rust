@@ -71,7 +71,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
                     //
                     // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
-                    // we substitute the defaults with the partially built args when we build the args. Subst'ing
+                    // we instantiate the defaults with the partially built args when we build the args. Instantiating
                     // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
                     //
                     // We fix this by having this function return the parent's generics ourselves and truncating the

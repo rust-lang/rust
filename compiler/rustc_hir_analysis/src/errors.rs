@@ -424,8 +424,8 @@ pub struct ManualImplementation {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_substs_on_overridden_impl)]
-pub struct SubstsOnOverriddenImpl {
+#[diag(hir_analysis_generic_args_on_overridden_impl)]
+pub struct GenericArgsOnOverriddenImpl {
     #[primary_span]
     pub span: Span,
 }

@@ -125,9 +125,9 @@ fn check_method_is_structurally_compatible<'tcx>(
 /// <'b> fn(t: &'i0 U0, m: &'b N0) -> Foo
 /// ```
 ///
-/// We now want to extract and substitute the type of the *trait*
+/// We now want to extract and instantiate the type of the *trait*
 /// method and compare it. To do so, we must create a compound
-/// substitution by combining `trait_to_impl_args` and
+/// instantiation by combining `trait_to_impl_args` and
 /// `impl_to_placeholder_args`, and also adding a mapping for the method
 /// type parameters. We extend the mapping to also include
 /// the method parameters.
@@ -146,11 +146,11 @@ fn check_method_is_structurally_compatible<'tcx>(
 /// vs `'b`). However, the normal subtyping rules on fn types handle
 /// this kind of equivalency just fine.
 ///
-/// We now use these substitutions to ensure that all declared bounds are
-/// satisfied by the implementation's method.
+/// We now use these generic parameters to ensure that all declared bounds
+/// are satisfied by the implementation's method.
 ///
 /// We do this by creating a parameter environment which contains a
-/// substitution corresponding to `impl_to_placeholder_args`. We then build
+/// generic parameter corresponding to `impl_to_placeholder_args`. We then build
 /// `trait_to_placeholder_args` and use it to convert the predicates contained
 /// in the `trait_m` generics to the placeholder form.
 ///
@@ -454,7 +454,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_trait_ref =
         tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap().instantiate_identity();
     // First, check a few of the same things as `compare_impl_method`,
-    // just so we don't ICE during substitution later.
+    // just so we don't ICE during instantiation later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
 
     let trait_to_impl_args = impl_trait_ref.args;
@@ -543,7 +543,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // }
     // ```
     // .. to compile. However, since we use both the normalized and unnormalized
-    // inputs and outputs from the substituted trait signature, we will end up
+    // inputs and outputs from the instantiated trait signature, we will end up
     // seeing the hidden type of an RPIT in the signature itself. Naively, this
     // means that we will use the hidden type to imply the hidden type's own
     // well-formedness.
@@ -699,7 +699,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // NOTE(compiler-errors): RPITITs, like all other RPITs, have early-bound
                 // region args that are synthesized during AST lowering. These are args
                 // that are appended to the parent args (trait and trait method). However,
-                // we're trying to infer the unsubstituted type value of the RPITIT inside
+                // we're trying to infer the uninstantiated type value of the RPITIT inside
                 // the *impl*, so we can later use the impl's method args to normalize
                 // an RPITIT to a concrete type (`confirm_impl_trait_in_trait_candidate`).
                 //
@@ -711,7 +711,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 // guarantee that the indices from the trait args and impl args line up.
                 // So to fix this, we subtract the number of trait args and add the number of
                 // impl args to *renumber* these early-bound regions to their corresponding
-                // indices in the impl's substitutions list.
+                // indices in the impl's generic parameters list.
                 //
                 // Also, we only need to account for a difference in trait and impl args,
                 // since we previously enforce that the trait method and impl method have the
