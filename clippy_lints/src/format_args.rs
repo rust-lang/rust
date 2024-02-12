@@ -191,7 +191,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
             let linter = FormatArgsExpr {
                 cx,
                 expr,
-                macro_call,
+                macro_call: &macro_call,
                 format_args: &format_args,
                 ignore_mixed: self.ignore_mixed,
             };
@@ -210,7 +210,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
 struct FormatArgsExpr<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-    macro_call: MacroCall,
+    macro_call: &'a MacroCall,
     format_args: &'a rustc_ast::FormatArgs,
     ignore_mixed: bool,
 }
