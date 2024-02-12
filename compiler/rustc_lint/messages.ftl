@@ -319,6 +319,11 @@ lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not 
 lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
     .label = casting happend here
 
+lint_invalid_reference_casting_bigger_layout = casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
+    .label = casting happend here
+    .alloc = backing allocation comes from here
+    .layout = casting from `{$from_ty}` ({$from_size} bytes) to `{$to_ty}` ({$to_size} bytes)
+
 lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
     .label = casting happend here
 
