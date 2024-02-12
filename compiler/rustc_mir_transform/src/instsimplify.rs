@@ -29,17 +29,14 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
                         ctx.simplify_bool_cmp(&statement.source_info, rvalue);
                         ctx.simplify_ref_deref(&statement.source_info, rvalue);
                         ctx.simplify_len(&statement.source_info, rvalue);
-                        ctx.simplify_cast(&statement.source_info, rvalue);
+                        ctx.simplify_cast(rvalue);
                     }
                     _ => {}
                 }
             }
 
             ctx.simplify_primitive_clone(block.terminator.as_mut().unwrap(), &mut block.statements);
-            ctx.simplify_intrinsic_assert(
-                block.terminator.as_mut().unwrap(),
-                &mut block.statements,
-            );
+            ctx.simplify_intrinsic_assert(block.terminator.as_mut().unwrap());
             ctx.simplify_nounwind_call(block.terminator.as_mut().unwrap());
             simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());
         }
@@ -143,7 +140,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         }
     }
 
-    fn simplify_cast(&self, _source_info: &SourceInfo, rvalue: &mut Rvalue<'tcx>) {
+    fn simplify_cast(&self, rvalue: &mut Rvalue<'tcx>) {
         if let Rvalue::Cast(kind, operand, cast_ty) = rvalue {
             let operand_ty = operand.ty(self.local_decls, self.tcx);
             if operand_ty == *cast_ty {
@@ -277,11 +274,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         }
     }
 
-    fn simplify_intrinsic_assert(
-        &self,
-        terminator: &mut Terminator<'tcx>,
-        _statements: &mut Vec<Statement<'tcx>>,
-    ) {
+    fn simplify_intrinsic_assert(&self, terminator: &mut Terminator<'tcx>) {
         let TerminatorKind::Call { func, target, .. } = &mut terminator.kind else {
             return;
         };
