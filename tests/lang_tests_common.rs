@@ -21,11 +21,16 @@ pub fn main_inner(profile: Profile) {
     let tempdir = TempDir::new().expect("temp dir");
     let current_dir = current_dir().expect("current dir");
     let current_dir = current_dir.to_str().expect("current dir").to_string();
-    let gcc_path = Toml::parse(include_str!("../config.toml"))
-        .expect("Failed to parse `config.toml`")
-        .get_string("gcc-path")
-        .expect("Missing `gcc-path` key in `config.toml`")
-        .to_string();
+    let toml = Toml::parse(include_str!("../config.toml"))
+        .expect("Failed to parse `config.toml`");
+    let gcc_path = if let Ok(gcc_path) = toml.get_string("gcc-path") {
+        PathBuf::from(gcc_path.to_string())
+    } else {
+        // then we try to retrieve it from the `target` folder.
+        let commit = include_str!("../libgccjit.version").trim();
+        Path::new("target/libgccjit").join(commit)
+    };
+
     let gcc_path = Path::new(&gcc_path)
         .canonicalize()
         .expect("failed to get absolute path of `gcc-path`")
