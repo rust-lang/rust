@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
-            ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected, expr),
+            ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected),
             ExprKind::Repeat(element, ref count) => {
                 self.check_expr_repeat(element, count, expected, expr)
             }
@@ -1487,7 +1487,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         block: &'tcx hir::ConstBlock,
         expected: Expectation<'tcx>,
-        _expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let body = self.tcx.hir().body(block.body);
 

@@ -615,8 +615,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         let UnsatisfiedConst(unsatisfied_const) = self
                             .maybe_add_note_for_unsatisfied_const(
-                                &obligation,
-                                trait_ref,
                                 &trait_predicate,
                                 &mut err,
                                 span,
@@ -1480,8 +1478,6 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
 
     fn maybe_add_note_for_unsatisfied_const(
         &self,
-        obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
         trait_predicate: &ty::PolyTraitPredicate<'tcx>,
         err: &mut Diagnostic,
         span: Span,
@@ -3359,8 +3355,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn maybe_add_note_for_unsatisfied_const(
         &self,
-        _obligation: &PredicateObligation<'tcx>,
-        _trait_ref: ty::PolyTraitRef<'tcx>,
         _trait_predicate: &ty::PolyTraitPredicate<'tcx>,
         _err: &mut Diagnostic,
         _span: Span,

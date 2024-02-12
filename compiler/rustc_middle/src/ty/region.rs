@@ -82,8 +82,8 @@ impl<'tcx> Region<'tcx> {
         tcx.intern_region(ty::ReError(reported))
     }
 
-    /// Constructs a `RegionKind::ReError` region and registers a `span_delayed_bug` to ensure it
-    /// gets used.
+    /// Constructs a `RegionKind::ReError` region and registers a delayed bug to ensure it gets
+    /// used.
     #[track_caller]
     pub fn new_error_misc(tcx: TyCtxt<'tcx>) -> Region<'tcx> {
         Region::new_error_with_message(
@@ -93,8 +93,8 @@ impl<'tcx> Region<'tcx> {
         )
     }
 
-    /// Constructs a `RegionKind::ReError` region and registers a `span_delayed_bug` with the given
-    /// `msg` to ensure it gets used.
+    /// Constructs a `RegionKind::ReError` region and registers a delayed bug with the given `msg`
+    /// to ensure it gets used.
     #[track_caller]
     pub fn new_error_with_message<S: Into<MultiSpan>>(
         tcx: TyCtxt<'tcx>,

@@ -425,9 +425,7 @@ fn check_predicates<'tcx>(
 
     let mut res = Ok(());
     for (clause, span) in impl1_predicates {
-        if !impl2_predicates
-            .iter()
-            .any(|pred2| trait_predicates_eq(tcx, clause.as_predicate(), *pred2, span))
+        if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(clause.as_predicate(), *pred2))
         {
             res = res.and(check_specialization_on(tcx, clause, span))
         }
@@ -459,10 +457,8 @@ fn check_predicates<'tcx>(
 ///
 /// So we make that check in this function and try to raise a helpful error message.
 fn trait_predicates_eq<'tcx>(
-    _tcx: TyCtxt<'tcx>,
     predicate1: ty::Predicate<'tcx>,
     predicate2: ty::Predicate<'tcx>,
-    _span: Span,
 ) -> bool {
     // FIXME(effects)
     predicate1 == predicate2

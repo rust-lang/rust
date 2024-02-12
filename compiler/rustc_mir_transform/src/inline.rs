@@ -2,6 +2,7 @@
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
 use rustc_const_eval::transform::validate::validate_types;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::Idx;
@@ -384,6 +385,17 @@ impl<'tcx> Inliner<'tcx> {
                 }
 
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
+
+                // Additionally, check that the body that we're inlining actually agrees
+                // with the ABI of the trait that the item comes from.
+                if let InstanceDef::Item(instance_def_id) = callee.def
+                    && self.tcx.def_kind(instance_def_id) == DefKind::AssocFn
+                    && let instance_fn_sig = self.tcx.fn_sig(instance_def_id).skip_binder()
+                    && instance_fn_sig.abi() != fn_sig.abi()
+                {
+                    return None;
+                }
+
                 let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
 
                 return Some(CallSite { callee, fn_sig, block: bb, source_info });

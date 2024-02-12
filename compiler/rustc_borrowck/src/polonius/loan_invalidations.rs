@@ -340,7 +340,6 @@ impl<'cx, 'tcx> LoanInvalidationsGenerator<'cx, 'tcx> {
             self,
             self.tcx,
             self.body,
-            location,
             (sd, place),
             self.borrow_set,
             |_| true,

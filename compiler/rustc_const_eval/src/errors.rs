@@ -426,7 +426,7 @@ pub struct UndefinedBehavior {
 pub trait ReportErrorExt {
     /// Returns the diagnostic message for this error.
     fn diagnostic_message(&self) -> DiagnosticMessage;
-    fn add_args<G: EmissionGuarantee>(self, dcx: &DiagCtxt, builder: &mut DiagnosticBuilder<'_, G>);
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>);
 
     fn debug(self) -> String
     where
@@ -434,11 +434,11 @@ pub trait ReportErrorExt {
     {
         ty::tls::with(move |tcx| {
             let dcx = tcx.dcx();
-            let mut builder = dcx.struct_allow(DiagnosticMessage::Str(String::new().into()));
+            let mut diag = dcx.struct_allow(DiagnosticMessage::Str(String::new().into()));
             let message = self.diagnostic_message();
-            self.add_args(dcx, &mut builder);
-            let s = dcx.eagerly_translate_to_string(message, builder.args());
-            builder.cancel();
+            self.add_args(&mut diag);
+            let s = dcx.eagerly_translate_to_string(message, diag.args());
+            diag.cancel();
             s
         })
     }
@@ -505,20 +505,17 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
         }
     }
 
-    fn add_args<G: EmissionGuarantee>(
-        self,
-        dcx: &DiagCtxt,
-        builder: &mut DiagnosticBuilder<'_, G>,
-    ) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
         use UndefinedBehaviorInfo::*;
+        let dcx = diag.dcx;
         match self {
             Ub(_) => {}
             Custom(custom) => {
                 (custom.add_args)(&mut |name, value| {
-                    builder.arg(name, value);
+                    diag.arg(name, value);
                 });
             }
-            ValidationError(e) => e.add_args(dcx, builder),
+            ValidationError(e) => e.add_args(diag),
 
             Unreachable
             | DivisionByZero
@@ -533,20 +530,18 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             | UninhabitedEnumVariantWritten(_)
             | UninhabitedEnumVariantRead(_) => {}
             BoundsCheckFailed { len, index } => {
-                builder.arg("len", len);
-                builder.arg("index", index);
+                diag.arg("len", len);
+                diag.arg("index", index);
             }
             UnterminatedCString(ptr) | InvalidFunctionPointer(ptr) | InvalidVTablePointer(ptr) => {
-                builder.arg("pointer", ptr);
+                diag.arg("pointer", ptr);
             }
             PointerUseAfterFree(alloc_id, msg) => {
-                builder
-                    .arg("alloc_id", alloc_id)
+                diag.arg("alloc_id", alloc_id)
                     .arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => {
-                builder
-                    .arg("alloc_id", alloc_id)
+                diag.arg("alloc_id", alloc_id)
                     .arg("alloc_size", alloc_size.bytes())
                     .arg("ptr_offset", ptr_offset)
                     .arg("ptr_size", ptr_size.bytes())
@@ -554,47 +549,47 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             }
             DanglingIntPointer(ptr, msg) => {
                 if ptr != 0 {
-                    builder.arg("pointer", format!("{ptr:#x}[noalloc]"));
+                    diag.arg("pointer", format!("{ptr:#x}[noalloc]"));
                 }
 
-                builder.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
+                diag.arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             AlignmentCheckFailed(Misalignment { required, has }, msg) => {
-                builder.arg("required", required.bytes());
-                builder.arg("has", has.bytes());
-                builder.arg("msg", format!("{msg:?}"));
+                diag.arg("required", required.bytes());
+                diag.arg("has", has.bytes());
+                diag.arg("msg", format!("{msg:?}"));
             }
             WriteToReadOnly(alloc) | DerefFunctionPointer(alloc) | DerefVTablePointer(alloc) => {
-                builder.arg("allocation", alloc);
+                diag.arg("allocation", alloc);
             }
             InvalidBool(b) => {
-                builder.arg("value", format!("{b:02x}"));
+                diag.arg("value", format!("{b:02x}"));
             }
             InvalidChar(c) => {
-                builder.arg("value", format!("{c:08x}"));
+                diag.arg("value", format!("{c:08x}"));
             }
             InvalidTag(tag) => {
-                builder.arg("tag", format!("{tag:x}"));
+                diag.arg("tag", format!("{tag:x}"));
             }
             InvalidStr(err) => {
-                builder.arg("err", format!("{err}"));
+                diag.arg("err", format!("{err}"));
             }
             InvalidUninitBytes(Some((alloc, info))) => {
-                builder.arg("alloc", alloc);
-                builder.arg("access", info.access);
-                builder.arg("uninit", info.bad);
+                diag.arg("alloc", alloc);
+                diag.arg("access", info.access);
+                diag.arg("uninit", info.bad);
             }
             ScalarSizeMismatch(info) => {
-                builder.arg("target_size", info.target_size);
-                builder.arg("data_size", info.data_size);
+                diag.arg("target_size", info.target_size);
+                diag.arg("data_size", info.data_size);
             }
             InvalidNichedEnumVariantWritten { enum_ty } => {
-                builder.arg("ty", enum_ty.to_string());
+                diag.arg("ty", enum_ty.to_string());
             }
             AbiMismatchArgument { caller_ty, callee_ty }
             | AbiMismatchReturn { caller_ty, callee_ty } => {
-                builder.arg("caller_ty", caller_ty.to_string());
-                builder.arg("callee_ty", callee_ty.to_string());
+                diag.arg("caller_ty", caller_ty.to_string());
+                diag.arg("callee_ty", callee_ty.to_string());
             }
         }
     }
@@ -674,7 +669,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
     }
 
-    fn add_args<G: EmissionGuarantee>(self, dcx: &DiagCtxt, err: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, err: &mut DiagnosticBuilder<'_, G>) {
         use crate::fluent_generated as fluent;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
@@ -684,12 +679,12 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
 
         let message = if let Some(path) = self.path {
-            dcx.eagerly_translate_to_string(
+            err.dcx.eagerly_translate_to_string(
                 fluent::const_eval_validation_front_matter_invalid_value_with_path,
                 [("path".into(), DiagnosticArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
-            dcx.eagerly_translate_to_string(
+            err.dcx.eagerly_translate_to_string(
                 fluent::const_eval_validation_front_matter_invalid_value,
                 [].into_iter(),
             )
@@ -700,7 +695,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         fn add_range_arg<G: EmissionGuarantee>(
             r: WrappingRange,
             max_hi: u128,
-            dcx: &DiagCtxt,
             err: &mut DiagnosticBuilder<'_, G>,
         ) {
             let WrappingRange { start: lo, end: hi } = r;
@@ -724,7 +718,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 ("hi".into(), DiagnosticArgValue::Str(hi.to_string().into())),
             ];
             let args = args.iter().map(|(a, b)| (a, b));
-            let message = dcx.eagerly_translate_to_string(msg, args);
+            let message = err.dcx.eagerly_translate_to_string(msg, args);
             err.arg("in_range", message);
         }
 
@@ -746,7 +740,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                     ExpectedKind::EnumTag => fluent::const_eval_validation_expected_enum_tag,
                     ExpectedKind::Str => fluent::const_eval_validation_expected_str,
                 };
-                let msg = dcx.eagerly_translate_to_string(msg, [].into_iter());
+                let msg = err.dcx.eagerly_translate_to_string(msg, [].into_iter());
                 err.arg("expected", msg);
             }
             InvalidEnumTag { value }
@@ -757,11 +751,11 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.arg("value", value);
             }
             NullablePtrOutOfRange { range, max_value } | PtrOutOfRange { range, max_value } => {
-                add_range_arg(range, max_value, dcx, err)
+                add_range_arg(range, max_value, err)
             }
             OutOfRange { range, max_value, value } => {
                 err.arg("value", value);
-                add_range_arg(range, max_value, dcx, err);
+                add_range_arg(range, max_value, err);
             }
             UnalignedPtr { required_bytes, found_bytes, .. } => {
                 err.arg("required_bytes", required_bytes);
@@ -802,13 +796,13 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, builder: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
         use crate::fluent_generated::*;
 
         use UnsupportedOpInfo::*;
         if let ReadPointerAsInt(_) | OverwritePartialPointer(_) | ReadPartialPointer(_) = self {
-            builder.help(const_eval_ptr_as_bytes_1);
-            builder.help(const_eval_ptr_as_bytes_2);
+            diag.help(const_eval_ptr_as_bytes_1);
+            diag.help(const_eval_ptr_as_bytes_2);
         }
         match self {
             // `ReadPointerAsInt(Some(info))` is never printed anyway, it only serves as an error to
@@ -816,10 +810,10 @@ impl ReportErrorExt for UnsupportedOpInfo {
             // print. So it's not worth the effort of having diagnostics that can print the `info`.
             UnsizedLocal | Unsupported(_) | ReadPointerAsInt(_) => {}
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
-                builder.arg("ptr", ptr);
+                diag.arg("ptr", ptr);
             }
             ThreadLocalStatic(did) | ExternStatic(did) => {
-                builder.arg("did", format!("{did:?}"));
+                diag.arg("did", format!("{did:?}"));
             }
         }
     }
@@ -835,18 +829,14 @@ impl<'tcx> ReportErrorExt for InterpError<'tcx> {
             InterpError::MachineStop(e) => e.diagnostic_message(),
         }
     }
-    fn add_args<G: EmissionGuarantee>(
-        self,
-        dcx: &DiagCtxt,
-        builder: &mut DiagnosticBuilder<'_, G>,
-    ) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
         match self {
-            InterpError::UndefinedBehavior(ub) => ub.add_args(dcx, builder),
-            InterpError::Unsupported(e) => e.add_args(dcx, builder),
-            InterpError::InvalidProgram(e) => e.add_args(dcx, builder),
-            InterpError::ResourceExhaustion(e) => e.add_args(dcx, builder),
+            InterpError::UndefinedBehavior(ub) => ub.add_args(diag),
+            InterpError::Unsupported(e) => e.add_args(diag),
+            InterpError::InvalidProgram(e) => e.add_args(diag),
+            InterpError::ResourceExhaustion(e) => e.add_args(diag),
             InterpError::MachineStop(e) => e.add_args(&mut |name, value| {
-                builder.arg(name, value);
+                diag.arg(name, value);
             }),
         }
     }
@@ -864,28 +854,24 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             }
         }
     }
-    fn add_args<G: EmissionGuarantee>(
-        self,
-        dcx: &DiagCtxt,
-        builder: &mut DiagnosticBuilder<'_, G>,
-    ) {
+    fn add_args<G: EmissionGuarantee>(self, diag: &mut DiagnosticBuilder<'_, G>) {
         match self {
             InvalidProgramInfo::TooGeneric | InvalidProgramInfo::AlreadyReported(_) => {}
             InvalidProgramInfo::Layout(e) => {
-                // The level doesn't matter, `diag` is consumed without it being used.
+                // The level doesn't matter, `dummy_diag` is consumed without it being used.
                 let dummy_level = Level::Bug;
-                let diag: DiagnosticBuilder<'_, ()> =
-                    e.into_diagnostic().into_diagnostic(dcx, dummy_level);
-                for (name, val) in diag.args() {
-                    builder.arg(name.clone(), val.clone());
+                let dummy_diag: DiagnosticBuilder<'_, ()> =
+                    e.into_diagnostic().into_diagnostic(diag.dcx, dummy_level);
+                for (name, val) in dummy_diag.args() {
+                    diag.arg(name.clone(), val.clone());
                 }
-                diag.cancel();
+                dummy_diag.cancel();
             }
             InvalidProgramInfo::FnAbiAdjustForForeignAbi(
                 AdjustForForeignAbiError::Unsupported { arch, abi },
             ) => {
-                builder.arg("arch", arch);
-                builder.arg("abi", abi.name());
+                diag.arg("arch", arch);
+                diag.arg("abi", abi.name());
             }
         }
     }
@@ -900,7 +886,7 @@ impl ReportErrorExt for ResourceExhaustionInfo {
             ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, _: &mut DiagnosticBuilder<'_, G>) {}
+    fn add_args<G: EmissionGuarantee>(self, _: &mut DiagnosticBuilder<'_, G>) {}
 }
 
 impl rustc_errors::IntoDiagnosticArg for InternKind {
