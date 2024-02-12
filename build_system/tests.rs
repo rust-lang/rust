@@ -133,8 +133,8 @@ pub(crate) static REGEX: CargoProject = CargoProject::new(&REGEX_REPO.source_dir
 pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
-    "97007cc2e70df8c97326ce896a79e2f0ce4dd98b",
-    "e54a16035cedf205",
+    "f505736e45e256efcb36bf85b7f920ccef320435",
+    "b012e6b58fa0f78d",
     "portable-simd",
 );
 

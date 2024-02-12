@@ -39,6 +39,6 @@ index 42a26ae..5ac1042 100644
 +#![cfg(test)]
  #![feature(alloc_layout_extra)]
  #![feature(array_chunks)]
- #![feature(array_methods)]
+ #![feature(array_windows)]
 --
 2.21.0 (Apple Git-122)
