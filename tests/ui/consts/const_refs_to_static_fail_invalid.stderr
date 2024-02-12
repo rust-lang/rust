@@ -1,20 +1,5 @@
-warning: shared reference of mutable static is discouraged
-  --> $DIR/const_refs_to_static_fail_invalid.rs:38:30
-   |
-LL |     const C: &i32 = unsafe { &S_MUT };
-   |                              ^^^^^^ shared reference of mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: reference of mutable static is a hard error from 2024 edition
-   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
-   = note: `#[warn(static_mut_ref)]` on by default
-help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
-   |
-LL |     const C: &i32 = unsafe { addr_of!(S_MUT) };
-   |                              ~~~~~~~~~~~~~~~
-
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refs_to_static_fail_invalid.rs:8:5
+  --> $DIR/const_refs_to_static_fail_invalid.rs:9:5
    |
 LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
    |     ^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered 0x0a, but expected a boolean
@@ -25,13 +10,13 @@ LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
            }
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:14:9
+  --> $DIR/const_refs_to_static_fail_invalid.rs:15:9
    |
 LL |         C => {}
    |         ^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refs_to_static_fail_invalid.rs:24:5
+  --> $DIR/const_refs_to_static_fail_invalid.rs:25:5
    |
 LL |     const C: &i8 = unsafe { &S };
    |     ^^^^^^^^^^^^ constructing invalid value: encountered reference to `extern` static in `const`
@@ -42,13 +27,13 @@ LL |     const C: &i8 = unsafe { &S };
            }
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:30:9
+  --> $DIR/const_refs_to_static_fail_invalid.rs:31:9
    |
 LL |         C => {}
    |         ^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refs_to_static_fail_invalid.rs:38:5
+  --> $DIR/const_refs_to_static_fail_invalid.rs:39:5
    |
 LL |     const C: &i32 = unsafe { &S_MUT };
    |     ^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -64,6 +49,6 @@ error: could not evaluate constant pattern
 LL |         C => {},
    |         ^
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
