@@ -6,7 +6,6 @@ const C1_READ: () = {
     assert!(*C1 == 0);
 };
 const C2: *const i32 = unsafe { std::ptr::addr_of!(S_MUT) }; //~ERROR:  referencing statics in constants is unstable
-//~^ERROR:  referencing statics in constants is unstable
 
 fn main() {
 }

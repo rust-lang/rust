@@ -114,11 +114,6 @@ help: skipping check for `const_refs_to_static` feature
    |
 LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
    |                                        ^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:32:40
-   |
-LL | const SUBTLE: &mut i32 = unsafe { &mut FOO };
-   |                                        ^^^
 help: skipping check that does not even have a feature gate
   --> $DIR/mutable_references_err.rs:32:35
    |
@@ -144,16 +139,6 @@ help: skipping check for `const_refs_to_static` feature
    |
 LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
    |                                            ^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:47:44
-   |
-LL | const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
-   |                                            ^^^^^^^
-help: skipping check for `const_refs_to_static` feature
-  --> $DIR/mutable_references_err.rs:51:45
-   |
-LL | const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
-   |                                             ^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
   --> $DIR/mutable_references_err.rs:51:45
    |
