@@ -1063,7 +1063,7 @@ pub fn park() {
     let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.as_ref().parker().park();
+        current().park();
     }
     // No panic occurred, do not abort.
     forget(guard);
@@ -1288,6 +1288,15 @@ impl Thread {
         };
 
         Thread { inner }
+    }
+
+    /// Like the public [`park`], but callable on any handle. This is used to
+    /// allow parking in TLS destructors.
+    ///
+    /// # Safety
+    /// May only be called from the thread to which this handle belongs.
+    pub(crate) unsafe fn park(&self) {
+        unsafe { self.inner.as_ref().parker().park() }
     }
 
     /// Atomically makes the handle's token available if it is not already.
