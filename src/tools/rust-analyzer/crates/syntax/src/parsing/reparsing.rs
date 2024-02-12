@@ -105,7 +105,7 @@ fn get_text_after_edit(element: SyntaxElement, edit: &Indel) -> String {
     let edit = Indel::replace(edit.delete - element.text_range().start(), edit.insert.clone());
 
     let mut text = match element {
-        NodeOrToken::Token(token) => token.text().to_string(),
+        NodeOrToken::Token(token) => token.text().to_owned(),
         NodeOrToken::Node(node) => node.text().to_string(),
     };
     edit.apply(&mut text);

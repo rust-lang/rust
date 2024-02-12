@@ -223,6 +223,9 @@ config_data! {
         ///
         /// Aliased as `"checkOnSave.targets"`.
         check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = "null",
+        /// Whether `--workspace` should be passed to `cargo check`.
+        /// If false, `-p <package>` will be passed instead.
+        check_workspace: bool = "true",
 
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
@@ -477,6 +480,9 @@ config_data! {
 
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
+
+        /// Whether to send an UnindexedProject notification to the client.
+        notifications_unindexedProject: bool      = "false",
 
         /// How many worker threads in the main loop. The default `null` means to pick automatically.
         numThreads: Option<usize> = "null",
@@ -745,6 +751,7 @@ pub enum FilesWatcher {
 #[derive(Debug, Clone)]
 pub struct NotificationsConfig {
     pub cargo_toml_not_found: bool,
+    pub unindexed_project: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -897,7 +904,7 @@ impl Config {
         use serde::de::Error;
         if self.data.check_command.is_empty() {
             error_sink.push((
-                "/check/command".to_string(),
+                "/check/command".to_owned(),
                 serde_json::Error::custom("expected a non-empty string"),
             ));
         }
@@ -1220,7 +1227,10 @@ impl Config {
     }
 
     pub fn notifications(&self) -> NotificationsConfig {
-        NotificationsConfig { cargo_toml_not_found: self.data.notifications_cargoTomlNotFound }
+        NotificationsConfig {
+            cargo_toml_not_found: self.data.notifications_cargoTomlNotFound,
+            unindexed_project: self.data.notifications_unindexedProject,
+        }
     }
 
     pub fn cargo_autoreload(&self) -> bool {
@@ -1321,6 +1331,10 @@ impl Config {
                 enable_range_formatting: self.data.rustfmt_rangeFormatting_enable,
             },
         }
+    }
+
+    pub fn flycheck_workspace(&self) -> bool {
+        self.data.check_workspace
     }
 
     pub fn flycheck(&self) -> FlycheckConfig {
@@ -2612,7 +2626,7 @@ mod tests {
             .replace('\n', "\n            ")
             .trim_start_matches('\n')
             .trim_end()
-            .to_string();
+            .to_owned();
         schema.push_str(",\n");
 
         // Transform the asciidoc form link to markdown style.

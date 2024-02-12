@@ -130,7 +130,7 @@ where
         tt::Subtree {
             delimiter: tt::Delimiter { kind: tt::DelimiterKind::Invisible, .. },
             token_trees,
-        } => TokenBuffer::from_tokens(token_trees.as_slice()),
+        } => TokenBuffer::from_tokens(token_trees),
         _ => TokenBuffer::from_subtree(tt),
     };
     let parser_input = to_parser_input(&buffer);
@@ -146,7 +146,7 @@ where
             }
             parser::Step::Enter { kind } => tree_sink.start_node(kind),
             parser::Step::Exit => tree_sink.finish_node(),
-            parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
+            parser::Step::Error { msg } => tree_sink.error(msg.to_owned()),
         }
     }
     tree_sink.finish()
@@ -227,14 +227,14 @@ where
     C: TokenConverter<S>,
     S: Span,
 {
-    let entry = tt::Subtree {
+    let entry = tt::SubtreeBuilder {
         delimiter: tt::Delimiter::invisible_spanned(conv.call_site()),
         token_trees: vec![],
     };
     let mut stack = NonEmptyVec::new(entry);
 
     while let Some((token, abs_range)) = conv.bump() {
-        let tt::Subtree { delimiter, token_trees } = stack.last_mut();
+        let tt::SubtreeBuilder { delimiter, token_trees } = stack.last_mut();
 
         let tt = match token.as_leaf() {
             Some(leaf) => tt::TokenTree::Leaf(leaf.clone()),
@@ -260,7 +260,7 @@ where
                     if matches!(expected, Some(expected) if expected == kind) {
                         if let Some(mut subtree) = stack.pop() {
                             subtree.delimiter.close = conv.span_for(abs_range);
-                            stack.last_mut().token_trees.push(subtree.into());
+                            stack.last_mut().token_trees.push(subtree.build().into());
                         }
                         continue;
                     }
@@ -275,7 +275,7 @@ where
                     // Start a new subtree
                     if let Some(kind) = delim {
                         let open = conv.span_for(abs_range);
-                        stack.push(tt::Subtree {
+                        stack.push(tt::SubtreeBuilder {
                             delimiter: tt::Delimiter {
                                 open,
                                 // will be overwritten on subtree close above
@@ -361,7 +361,7 @@ where
         parent.token_trees.extend(entry.token_trees);
     }
 
-    let subtree = stack.into_last();
+    let subtree = stack.into_last().build();
     if let [tt::TokenTree::Subtree(first)] = &*subtree.token_trees {
         first.clone()
     } else {
@@ -454,7 +454,7 @@ fn convert_doc_comment<S: Copy>(
     };
 
     // Make `doc="\" Comments\""
-    let meta_tkns = vec![mk_ident("doc"), mk_punct('='), mk_doc_literal(&comment)];
+    let meta_tkns = Box::new([mk_ident("doc"), mk_punct('='), mk_doc_literal(&comment)]);
 
     // Make `#![]`
     let mut token_trees = Vec::with_capacity(3);

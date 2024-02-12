@@ -1,6 +1,8 @@
 //! A standalone binary for `proc-macro-srv`.
 //! Driver for proc macro server
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![allow(clippy::print_stderr)]
+
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 

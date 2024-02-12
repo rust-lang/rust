@@ -48,7 +48,7 @@ pub(crate) fn into_to_qualified_from(acc: &mut Assists, ctx: &AssistContext<'_>)
     let fnc = sema.resolve_method_call(&method_call)?;
     let scope = sema.scope(method_call.syntax())?;
     // Check if the method call refers to Into trait.
-    if fnc.as_assoc_item(db)?.containing_trait_impl(db)?
+    if fnc.as_assoc_item(db)?.implemented_trait(db)?
         == FamousDefs(sema, scope.krate()).core_convert_Into()?
     {
         let type_call = sema.type_of_expr(&method_call.clone().into())?;

@@ -32,7 +32,7 @@ use triomphe::Arc;
 
 use crate::{
     consteval::try_const_usize,
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosure},
     from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
     layout::Layout,
     lt_from_placeholder_idx,
@@ -814,9 +814,8 @@ impl HirDisplay for Ty {
 
                             // Don't count Sized but count when it absent
                             // (i.e. when explicit ?Sized bound is set).
-                            let default_sized = SizedByDefault::Sized {
-                                anchor: func.lookup(db.upcast()).module(db.upcast()).krate(),
-                            };
+                            let default_sized =
+                                SizedByDefault::Sized { anchor: func.krate(db.upcast()) };
                             let sized_bounds = bounds
                                 .skip_binders()
                                 .iter()
@@ -1025,7 +1024,7 @@ impl HirDisplay for Ty {
                         let data =
                             (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                         let bounds = data.substitute(Interner, &parameters);
-                        let krate = func.lookup(db.upcast()).module(db.upcast()).krate();
+                        let krate = func.krate(db.upcast());
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",
@@ -1086,7 +1085,7 @@ impl HirDisplay for Ty {
                 }
                 let sig = ClosureSubst(substs).sig_ty().callable_sig(db);
                 if let Some(sig) = sig {
-                    let (def, _) = db.lookup_intern_closure((*id).into());
+                    let InternedClosure(def, _) = db.lookup_intern_closure((*id).into());
                     let infer = db.infer(def);
                     let (_, kind) = infer.closure_info(id);
                     match f.closure_style {
@@ -1191,7 +1190,7 @@ impl HirDisplay for Ty {
                         let data =
                             (*datas).as_ref().map(|rpit| rpit.impl_traits[idx].bounds.clone());
                         let bounds = data.substitute(Interner, &opaque_ty.substitution);
-                        let krate = func.lookup(db.upcast()).module(db.upcast()).krate();
+                        let krate = func.krate(db.upcast());
                         write_bounds_like_dyn_trait_with_prefix(
                             f,
                             "impl",

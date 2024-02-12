@@ -732,7 +732,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     let Some(def_id) = def_id.as_local() else { continue };
                     let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
-                    let parent_id = self.tcx.hir().parent_id(hir_id);
+                    let parent_id = self.tcx.parent_hir_id(hir_id);
                     if !parent_id.is_owner() {
                         struct_span_code_err!(
                             self.tcx.dcx(),

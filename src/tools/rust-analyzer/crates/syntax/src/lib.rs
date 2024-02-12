@@ -432,7 +432,7 @@ fn api_walkthrough() {
             WalkEvent::Enter(node) => {
                 let text = match &node {
                     NodeOrToken::Node(it) => it.text().to_string(),
-                    NodeOrToken::Token(it) => it.text().to_string(),
+                    NodeOrToken::Token(it) => it.text().to_owned(),
                 };
                 format_to!(buf, "{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
                 indent += 2;

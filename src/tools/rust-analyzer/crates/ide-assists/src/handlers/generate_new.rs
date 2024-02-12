@@ -1,12 +1,13 @@
 use ide_db::{
     imports::import_assets::item_for_path_search, use_trivial_constructor::use_trivial_constructor,
 };
-use itertools::Itertools;
-use stdx::format_to;
-use syntax::ast::{self, AstNode, HasName, HasVisibility, StructKind};
+use syntax::{
+    ast::{self, edit_in_place::Indent, make, AstNode, HasName, HasVisibility, StructKind},
+    ted,
+};
 
 use crate::{
-    utils::{find_impl_block_start, find_struct_impl, generate_impl_text},
+    utils::{find_struct_impl, generate_impl},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -26,7 +27,9 @@ use crate::{
 // }
 //
 // impl<T: Clone> Ctx<T> {
-//     fn $0new(data: T) -> Self { Self { data } }
+//     fn $0new(data: T) -> Self {
+//         Self { data }
+//     }
 // }
 // ```
 pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
@@ -46,14 +49,6 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
     let target = strukt.syntax().text_range();
     acc.add(AssistId("generate_new", AssistKind::Generate), "Generate `new`", target, |builder| {
-        let mut buf = String::with_capacity(512);
-
-        if impl_def.is_some() {
-            buf.push('\n');
-        }
-
-        let vis = strukt.visibility().map_or(String::new(), |v| format!("{v} "));
-
         let trivial_constructors = field_list
             .fields()
             .map(|f| {
@@ -76,54 +71,79 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                     &ty,
                 )?;
 
-                Some(format!("{name}: {expr}"))
+                Some(make::record_expr_field(make::name_ref(&name.text()), Some(expr)))
             })
             .collect::<Vec<_>>();
 
-        let params = field_list
-            .fields()
-            .enumerate()
-            .filter_map(|(i, f)| {
-                if trivial_constructors[i].is_none() {
-                    let name = f.name()?;
-                    let ty = f.ty()?;
+        let params = field_list.fields().enumerate().filter_map(|(i, f)| {
+            if trivial_constructors[i].is_none() {
+                let name = f.name()?;
+                let ty = f.ty()?;
 
-                    Some(format!("{name}: {ty}"))
-                } else {
-                    None
-                }
-            })
-            .format(", ");
+                Some(make::param(make::ident_pat(false, false, name).into(), ty))
+            } else {
+                None
+            }
+        });
+        let params = make::param_list(None, params);
 
-        let fields = field_list
-            .fields()
-            .enumerate()
-            .filter_map(|(i, f)| {
-                let constructor = trivial_constructors[i].clone();
-                if constructor.is_some() {
-                    constructor
-                } else {
-                    Some(f.name()?.to_string())
-                }
-            })
-            .format(", ");
+        let fields = field_list.fields().enumerate().filter_map(|(i, f)| {
+            let constructor = trivial_constructors[i].clone();
+            if constructor.is_some() {
+                constructor
+            } else {
+                Some(make::record_expr_field(make::name_ref(&f.name()?.text()), None))
+            }
+        });
+        let fields = make::record_expr_field_list(fields);
 
-        format_to!(buf, "    {vis}fn new({params}) -> Self {{ Self {{ {fields} }} }}");
+        let record_expr = make::record_expr(make::ext::ident_path("Self"), fields);
+        let body = make::block_expr(None, Some(record_expr.into()));
 
-        let start_offset = impl_def
-            .and_then(|impl_def| find_impl_block_start(impl_def, &mut buf))
-            .unwrap_or_else(|| {
-                buf = generate_impl_text(&ast::Adt::Struct(strukt.clone()), &buf);
-                strukt.syntax().text_range().end()
-            });
+        let ret_type = make::ret_type(make::ty_path(make::ext::ident_path("Self")));
 
-        match ctx.config.snippet_cap {
-            None => builder.insert(start_offset, buf),
-            Some(cap) => {
-                buf = buf.replace("fn new", "fn $0new");
-                builder.insert_snippet(cap, start_offset, buf);
+        let fn_ = make::fn_(
+            strukt.visibility(),
+            make::name("new"),
+            None,
+            None,
+            params,
+            body,
+            Some(ret_type),
+            false,
+            false,
+            false,
+        )
+        .clone_for_update();
+        fn_.indent(1.into());
+
+        // Add a tabstop before the name
+        if let Some(cap) = ctx.config.snippet_cap {
+            if let Some(name) = fn_.name() {
+                builder.add_tabstop_before(cap, name);
             }
         }
+
+        // Get the mutable version of the impl to modify
+        let impl_def = if let Some(impl_def) = impl_def {
+            builder.make_mut(impl_def)
+        } else {
+            // Generate a new impl to add the method to
+            let impl_def = generate_impl(&ast::Adt::Struct(strukt.clone()));
+
+            // Insert it after the adt
+            let strukt = builder.make_mut(strukt.clone());
+
+            ted::insert_all_raw(
+                ted::Position::after(strukt.syntax()),
+                vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+            );
+
+            impl_def
+        };
+
+        // Add the `new` method at the start of the impl
+        impl_def.get_or_create_assoc_item_list().add_item_at_start(fn_.into());
     })
 }
 
@@ -148,7 +168,9 @@ struct Empty;
 struct Foo { empty: Empty }
 
 impl Foo {
-    fn $0new() -> Self { Self { empty: Empty } }
+    fn $0new() -> Self {
+        Self { empty: Empty }
+    }
 }
 "#,
         );
@@ -165,7 +187,9 @@ struct Empty;
 struct Foo { baz: String, empty: Empty }
 
 impl Foo {
-    fn $0new(baz: String) -> Self { Self { baz, empty: Empty } }
+    fn $0new(baz: String) -> Self {
+        Self { baz, empty: Empty }
+    }
 }
 "#,
         );
@@ -182,7 +206,9 @@ enum Empty { Bar }
 struct Foo { empty: Empty }
 
 impl Foo {
-    fn $0new() -> Self { Self { empty: Empty::Bar } }
+    fn $0new() -> Self {
+        Self { empty: Empty::Bar }
+    }
 }
 "#,
         );
@@ -201,7 +227,9 @@ struct Empty {}
 struct Foo { empty: Empty }
 
 impl Foo {
-    fn $0new(empty: Empty) -> Self { Self { empty } }
+    fn $0new(empty: Empty) -> Self {
+        Self { empty }
+    }
 }
 "#,
         );
@@ -218,7 +246,9 @@ enum Empty { Bar {} }
 struct Foo { empty: Empty }
 
 impl Foo {
-    fn $0new(empty: Empty) -> Self { Self { empty } }
+    fn $0new(empty: Empty) -> Self {
+        Self { empty }
+    }
 }
 "#,
         );
@@ -235,7 +265,9 @@ struct Foo {$0}
 struct Foo {}
 
 impl Foo {
-    fn $0new() -> Self { Self {  } }
+    fn $0new() -> Self {
+        Self {  }
+    }
 }
 "#,
         );
@@ -248,7 +280,9 @@ struct Foo<T: Clone> {$0}
 struct Foo<T: Clone> {}
 
 impl<T: Clone> Foo<T> {
-    fn $0new() -> Self { Self {  } }
+    fn $0new() -> Self {
+        Self {  }
+    }
 }
 "#,
         );
@@ -261,7 +295,9 @@ struct Foo<'a, T: Foo<'a>> {$0}
 struct Foo<'a, T: Foo<'a>> {}
 
 impl<'a, T: Foo<'a>> Foo<'a, T> {
-    fn $0new() -> Self { Self {  } }
+    fn $0new() -> Self {
+        Self {  }
+    }
 }
 "#,
         );
@@ -274,7 +310,9 @@ struct Foo { baz: String $0}
 struct Foo { baz: String }
 
 impl Foo {
-    fn $0new(baz: String) -> Self { Self { baz } }
+    fn $0new(baz: String) -> Self {
+        Self { baz }
+    }
 }
 "#,
         );
@@ -287,7 +325,9 @@ struct Foo { baz: String, qux: Vec<i32> $0}
 struct Foo { baz: String, qux: Vec<i32> }
 
 impl Foo {
-    fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
+    fn $0new(baz: String, qux: Vec<i32>) -> Self {
+        Self { baz, qux }
+    }
 }
 "#,
         );
@@ -304,7 +344,9 @@ struct Foo { pub baz: String, pub qux: Vec<i32> $0}
 struct Foo { pub baz: String, pub qux: Vec<i32> }
 
 impl Foo {
-    fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
+    fn $0new(baz: String, qux: Vec<i32>) -> Self {
+        Self { baz, qux }
+    }
 }
 "#,
         );
@@ -323,7 +365,9 @@ impl Foo {}
 struct Foo {}
 
 impl Foo {
-    fn $0new() -> Self { Self {  } }
+    fn $0new() -> Self {
+        Self {  }
+    }
 }
 "#,
         );
@@ -340,7 +384,9 @@ impl Foo {
 struct Foo {}
 
 impl Foo {
-    fn $0new() -> Self { Self {  } }
+    fn $0new() -> Self {
+        Self {  }
+    }
 
     fn qux(&self) {}
 }
@@ -363,7 +409,9 @@ impl Foo {
 struct Foo {}
 
 impl Foo {
-    fn $0new() -> Self { Self {  } }
+    fn $0new() -> Self {
+        Self {  }
+    }
 
     fn qux(&self) {}
     fn baz() -> i32 {
@@ -385,7 +433,9 @@ pub struct Foo {$0}
 pub struct Foo {}
 
 impl Foo {
-    pub fn $0new() -> Self { Self {  } }
+    pub fn $0new() -> Self {
+        Self {  }
+    }
 }
 "#,
         );
@@ -398,7 +448,9 @@ pub(crate) struct Foo {$0}
 pub(crate) struct Foo {}
 
 impl Foo {
-    pub(crate) fn $0new() -> Self { Self {  } }
+    pub(crate) fn $0new() -> Self {
+        Self {  }
+    }
 }
 "#,
         );
@@ -493,7 +545,9 @@ pub struct Source<T> {
 }
 
 impl<T> Source<T> {
-    pub fn $0new(file_id: HirFileId, ast: T) -> Self { Self { file_id, ast } }
+    pub fn $0new(file_id: HirFileId, ast: T) -> Self {
+        Self { file_id, ast }
+    }
 
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
         Source { file_id: self.file_id, ast: f(self.ast) }

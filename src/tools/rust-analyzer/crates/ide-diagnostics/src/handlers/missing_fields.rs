@@ -59,9 +59,15 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
     let current_module =
         ctx.sema.scope(d.field_list_parent.to_node(&root).syntax()).map(|it| it.module());
+    let range = InFile::new(d.file, d.field_list_parent.text_range())
+        .original_node_file_range_rooted(ctx.sema.db);
 
-    let build_text_edit = |parent_syntax, new_syntax: &SyntaxNode, old_syntax| {
+    let build_text_edit = |new_syntax: &SyntaxNode, old_syntax| {
         let edit = {
+            let old_range = ctx.sema.original_range_opt(old_syntax)?;
+            if old_range.file_id != range.file_id {
+                return None;
+            }
             let mut builder = TextEdit::builder();
             if d.file.is_macro() {
                 // we can't map the diff up into the macro input unfortunately, as the macro loses all
@@ -69,8 +75,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                 // This has the downside that the cursor will be moved in macros by doing it without a diff
                 // but that is a trade off we can make.
                 // FIXME: this also currently discards a lot of whitespace in the input... we really need a formatter here
-                let range = ctx.sema.original_range_opt(old_syntax)?;
-                builder.replace(range.range, new_syntax.to_string());
+                builder.replace(old_range.range, new_syntax.to_string());
             } else {
                 algo::diff(old_syntax, new_syntax).into_text_edit(&mut builder);
             }
@@ -79,8 +84,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         Some(vec![fix(
             "fill_missing_fields",
             "Fill struct fields",
-            SourceChange::from_text_edit(d.file.original_file(ctx.sema.db), edit),
-            ctx.sema.original_range(parent_syntax).range,
+            SourceChange::from_text_edit(range.file_id, edit),
+            range.range,
         )])
     };
 
@@ -143,11 +148,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                 );
                 new_field_list.add_field(field.clone_for_update());
             }
-            build_text_edit(
-                field_list_parent.syntax(),
-                new_field_list.syntax(),
-                old_field_list.syntax(),
-            )
+            build_text_edit(new_field_list.syntax(), old_field_list.syntax())
         }
         Either::Right(field_list_parent) => {
             let missing_fields = ctx.sema.record_pattern_missing_fields(field_list_parent);
@@ -160,11 +161,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                 ));
                 new_field_list.add_field(field.clone_for_update());
             }
-            build_text_edit(
-                field_list_parent.syntax(),
-                new_field_list.syntax(),
-                old_field_list.syntax(),
-            )
+            build_text_edit(new_field_list.syntax(), old_field_list.syntax())
         }
     }
 }
@@ -173,7 +170,7 @@ fn make_ty(ty: &hir::Type, db: &dyn HirDatabase, module: hir::Module) -> ast::Ty
     let ty_str = match ty.as_adt() {
         Some(adt) => adt.name(db).display(db.upcast()).to_string(),
         None => {
-            ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_string())
+            ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_owned())
         }
     };
 

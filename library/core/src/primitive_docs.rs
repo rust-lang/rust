@@ -1660,6 +1660,11 @@ mod prim_ref {}
 /// * [`UnwindSafe`]
 /// * [`RefUnwindSafe`]
 ///
+/// Note that while this type implements `PartialEq`, comparing function pointers is unreliable:
+/// pointers to the same function can compare inequal (because functions are duplicated in multiple
+/// codegen units), and pointers to *different* functions can compare equal (since identical
+/// functions can be deduplicated within a codegen unit).
+///
 /// [`Hash`]: hash::Hash
 /// [`Pointer`]: fmt::Pointer
 /// [`UnwindSafe`]: panic::UnwindSafe

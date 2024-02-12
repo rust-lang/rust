@@ -11,7 +11,10 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, mir::Operand, utils::ClosureSubst, ClosureId, Interner, Ty, TyExt, TypeFlags,
+    db::{HirDatabase, InternedClosure},
+    mir::Operand,
+    utils::ClosureSubst,
+    ClosureId, Interner, Ty, TyExt, TypeFlags,
 };
 
 use super::{
@@ -97,7 +100,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                     ty,
                     db,
                     |c, subst, f| {
-                        let (def, _) = db.lookup_intern_closure(c.into());
+                        let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
                         let infer = db.infer(def);
                         let (captures, _) = infer.closure_info(&c);
                         let parent_subst = ClosureSubst(subst).parent_subst();
@@ -215,7 +218,7 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
             ty,
             db,
             |c, subst, f| {
-                let (def, _) = db.lookup_intern_closure(c.into());
+                let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
                 let infer = db.infer(def);
                 let (captures, _) = infer.closure_info(&c);
                 let parent_subst = ClosureSubst(subst).parent_subst();

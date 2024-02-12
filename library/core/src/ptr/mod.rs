@@ -376,12 +376,14 @@
 //! [Stacked Borrows]: https://plv.mpi-sws.org/rustbelt/stacked-borrows/
 
 #![stable(feature = "rust1", since = "1.0.0")]
+// There are many unsafe functions taking pointers that don't dereference them.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics::{
-    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping_mono,
+    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping,
 };
 use crate::marker::FnPtr;
 
@@ -976,7 +978,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
             ) =>
             is_aligned_and_not_null(x, align)
                 && is_aligned_and_not_null(y, align)
-                && is_nonoverlapping_mono(x, y, size, count)
+                && is_nonoverlapping(x, y, size, count)
         );
     }
 

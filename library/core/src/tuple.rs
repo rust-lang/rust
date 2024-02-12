@@ -154,18 +154,6 @@ macro_rules! maybe_tuple_doc {
     };
 }
 
-#[inline]
-const fn ordering_is_some(c: Option<Ordering>, x: Ordering) -> bool {
-    // FIXME: Just use `==` once that's const-stable on `Option`s.
-    // This is mapping `None` to 2 and then doing the comparison afterwards
-    // because it optimizes better (`None::<Ordering>` is represented as 2).
-    x as i8
-        == match c {
-            Some(c) => c as i8,
-            None => 2,
-        }
-}
-
 // Constructs an expression that performs a lexical ordering using method `$rel`.
 // The values are interleaved, so the macro invocation for
 // `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_ord!(lt, opt_is_lt, a1, b1,
@@ -176,7 +164,7 @@ const fn ordering_is_some(c: Option<Ordering>, x: Ordering) -> bool {
 macro_rules! lexical_ord {
     ($rel: ident, $ne_rel: ident, $a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {{
         let c = PartialOrd::partial_cmp(&$a, &$b);
-        if !ordering_is_some(c, Equal) { ordering_is_some(c, $ne_rel) }
+        if c != Some(Equal) { c == Some($ne_rel) }
         else { lexical_ord!($rel, $ne_rel, $($rest_a, $rest_b),+) }
     }};
     ($rel: ident, $ne_rel: ident, $a:expr, $b:expr) => {

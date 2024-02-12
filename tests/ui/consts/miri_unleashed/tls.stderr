@@ -5,7 +5,7 @@ LL |     unsafe { let _val = A; }
    |                         ^ cannot access thread local static (DefId(0:4 ~ tls[ca29]::A))
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/tls.rs:18:26
+  --> $DIR/tls.rs:20:26
    |
 LL |     unsafe { let _val = &A; }
    |                          ^ cannot access thread local static (DefId(0:4 ~ tls[ca29]::A))
@@ -18,7 +18,7 @@ help: skipping check that does not even have a feature gate
 LL |     unsafe { let _val = A; }
    |                         ^
 help: skipping check that does not even have a feature gate
-  --> $DIR/tls.rs:18:26
+  --> $DIR/tls.rs:20:26
    |
 LL |     unsafe { let _val = &A; }
    |                          ^

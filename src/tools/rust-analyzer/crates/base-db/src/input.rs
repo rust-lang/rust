@@ -782,7 +782,7 @@ impl FromStr for Edition {
             "2018" => Edition::Edition2018,
             "2021" => Edition::Edition2021,
             "2024" => Edition::Edition2024,
-            _ => return Err(ParseEditionError { invalid_input: s.to_string() }),
+            _ => return Err(ParseEditionError { invalid_input: s.to_owned() }),
         };
         Ok(res)
     }

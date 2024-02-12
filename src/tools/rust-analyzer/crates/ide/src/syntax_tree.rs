@@ -55,7 +55,7 @@ fn syntax_tree_for_string(token: &SyntaxToken, text_range: TextRange) -> Option<
 fn syntax_tree_for_token(node: &SyntaxToken, text_range: TextRange) -> Option<String> {
     // Range of the full node
     let node_range = node.text_range();
-    let text = node.text().to_string();
+    let text = node.text().to_owned();
 
     // We start at some point inside the node
     // Either we have selected the whole string

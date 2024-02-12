@@ -182,11 +182,9 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// Note: If you have an expression that references a binding `x`, use `path_to_local` to get the
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
-    let hir = cx.tcx.hir();
     if let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
         && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
-        && let parent = hir.parent_id(hir_id)
-        && let Node::Local(local) = cx.tcx.hir_node(parent)
+        && let Node::Local(local) = cx.tcx.parent_hir_node(hir_id)
     {
         return local.init;
     }
@@ -333,7 +331,7 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
 /// Checks if the `def_id` belongs to a function that is part of a trait impl.
 pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     if let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(def_id)
-        && let Node::Item(item) = cx.tcx.hir().get_parent(hir_id)
+        && let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
         && let ItemKind::Impl(imp) = item.kind
     {
         imp.of_trait.is_some()
@@ -1311,7 +1309,7 @@ pub fn contains_return<'tcx>(expr: impl Visitable<'tcx>) -> bool {
 
 /// Gets the parent node, if any.
 pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
-    tcx.hir().find_parent(id)
+    Some(tcx.parent_hir_node(id))
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
@@ -2227,7 +2225,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 /// }
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
+    if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
         matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false

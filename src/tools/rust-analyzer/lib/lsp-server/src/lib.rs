@@ -5,6 +5,7 @@
 //! Run with `RUST_LOG=lsp_server=debug` to see all the messages.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::print_stdout, clippy::disallowed_types)]
 
 mod error;
 mod msg;
@@ -359,12 +360,12 @@ impl Connection {
             }
             Err(RecvTimeoutError::Timeout) => {
                 return Err(ProtocolError::new(
-                    "timed out waiting for exit notification".to_string(),
+                    "timed out waiting for exit notification".to_owned(),
                 ))
             }
             Err(RecvTimeoutError::Disconnected) => {
                 return Err(ProtocolError::new(
-                    "channel disconnected waiting for exit notification".to_string(),
+                    "channel disconnected waiting for exit notification".to_owned(),
                 ))
             }
         }
@@ -405,7 +406,7 @@ mod tests {
     #[test]
     fn not_exit_notification() {
         let notification = crate::Notification {
-            method: Initialized::METHOD.to_string(),
+            method: Initialized::METHOD.to_owned(),
             params: to_value(InitializedParams {}).unwrap(),
         };
 
@@ -413,7 +414,7 @@ mod tests {
         let req_id = RequestId::from(234);
         let request = crate::Request {
             id: req_id.clone(),
-            method: Initialize::METHOD.to_string(),
+            method: Initialize::METHOD.to_owned(),
             params: params_as_value.clone(),
         };
 
@@ -426,7 +427,7 @@ mod tests {
     #[test]
     fn exit_notification() {
         let notification =
-            crate::Notification { method: Exit::METHOD.to_string(), params: to_value(()).unwrap() };
+            crate::Notification { method: Exit::METHOD.to_owned(), params: to_value(()).unwrap() };
         let notification_msg = Message::from(notification);
 
         initialize_start_test(TestCase {

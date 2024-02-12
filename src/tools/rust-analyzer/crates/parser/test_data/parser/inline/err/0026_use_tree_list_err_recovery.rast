@@ -43,4 +43,29 @@ SOURCE_FILE
         L_CURLY "{"
         R_CURLY "}"
   WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      USE_TREE_LIST
+        L_CURLY "{"
+        USE_TREE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "a"
+        WHITESPACE " "
+        COMMA ","
+        ERROR
+          COMMA ","
+        WHITESPACE " "
+        USE_TREE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "b"
+        R_CURLY "}"
+    SEMICOLON ";"
+  WHITESPACE "\n"
 error 6: expected R_CURLY
+error 46: expected use tree

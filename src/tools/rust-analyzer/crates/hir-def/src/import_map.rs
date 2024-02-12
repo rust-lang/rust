@@ -859,7 +859,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).fuzzy(),
+            Query::new("fmt".to_owned()).fuzzy(),
             expect![[r#"
                 dep::fmt (t)
                 dep::fmt::Display::FMT_CONST (a)
@@ -888,9 +888,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string())
-                .fuzzy()
-                .assoc_search_mode(AssocSearchMode::AssocItemsOnly),
+            Query::new("fmt".to_owned()).fuzzy().assoc_search_mode(AssocSearchMode::AssocItemsOnly),
             expect![[r#"
                 dep::fmt::Display::FMT_CONST (a)
                 dep::fmt::Display::format_function (a)
@@ -901,7 +899,7 @@ mod tests {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).fuzzy().assoc_search_mode(AssocSearchMode::Exclude),
+            Query::new("fmt".to_owned()).fuzzy().assoc_search_mode(AssocSearchMode::Exclude),
             expect![[r#"
                 dep::fmt (t)
             "#]],
@@ -937,7 +935,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()).fuzzy(),
+            Query::new("fmt".to_owned()).fuzzy(),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -951,7 +949,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()),
+            Query::new("fmt".to_owned()),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -991,7 +989,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("fmt".to_string()),
+            Query::new("fmt".to_owned()),
             expect![[r#"
                 dep::Fmt (m)
                 dep::Fmt (t)
@@ -1015,7 +1013,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT".to_string()),
+            Query::new("FMT".to_owned()),
             expect![[r#"
                 dep::FMT (t)
                 dep::FMT (v)
@@ -1027,7 +1025,7 @@ pub mod fmt {
         check_search(
             ra_fixture,
             "main",
-            Query::new("FMT".to_string()).case_sensitive(),
+            Query::new("FMT".to_owned()).case_sensitive(),
             expect![[r#"
                 dep::FMT (t)
                 dep::FMT (v)

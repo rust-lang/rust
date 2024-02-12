@@ -179,6 +179,7 @@ impl Node {
         self.go(0, filter)
     }
 
+    #[allow(clippy::print_stderr)]
     fn go(&self, level: usize, filter: &WriteFilter) {
         if self.duration > filter.longer_than && level < filter.depth {
             let duration = ms(self.duration);

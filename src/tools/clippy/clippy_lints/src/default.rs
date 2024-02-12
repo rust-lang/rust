@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // only when assigning `... = Default::default()`
                 && is_expr_default(expr, cx)
                 && let binding_type = cx.typeck_results().node_type(binding_id)
-                && let Some(adt) = binding_type.ty_adt_def()
+                && let ty::Adt(adt, args) = *binding_type.kind()
                 && adt.is_struct()
                 && let variant = adt.non_enum_variant()
                 && (adt.did().is_local() || !variant.is_field_list_non_exhaustive())
@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .fields
                     .iter()
                     .all(|field| {
-                        is_copy(cx, cx.tcx.type_of(field.did).instantiate_identity())
+                        is_copy(cx, cx.tcx.type_of(field.did).instantiate(cx.tcx, args))
                     })
                 && (!has_drop(cx, binding_type) || all_fields_are_copy)
             {

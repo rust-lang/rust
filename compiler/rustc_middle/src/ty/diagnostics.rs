@@ -358,11 +358,17 @@ pub fn suggest_constraining_type_params<'a>(
         //      trait Foo<T=()> {... }
         //                     - insert: `where T: Zar`
         if matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. }) {
+            // If we are here and the where clause span is of non-zero length
+            // it means we're dealing with an empty where clause like this:
+            //      fn foo<X>(x: X) where { ... }
+            // In that case we don't want to add another "where" (Fixes #120838)
+            let where_prefix = if generics.where_clause_span.is_empty() { " where" } else { "" };
+
             // Suggest a bound, but there is no existing `where` clause *and* the type param has a
             // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
             suggestions.push((
                 generics.tail_span_for_predicate_suggestion(),
-                format!(" where {param_name}: {constraint}"),
+                format!("{where_prefix} {param_name}: {constraint}"),
                 SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
             ));
             continue;

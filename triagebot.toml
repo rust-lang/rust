@@ -667,7 +667,6 @@ compiler = [
 ]
 libs = [
     "@cuviper",
-    "@joshtriplett",
     "@Mark-Simulacrum",
 ]
 bootstrap = [
@@ -833,7 +832,7 @@ project-stable-mir = [
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0.json" =                                     ["bootstrap"]
 "/tests/ui" =                                            ["compiler"]
-"/src/tools/cargo" =                                     ["@ehuss", "@joshtriplett"]
+"/src/tools/cargo" =                                     ["@ehuss"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@compiler-errors"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
 "/src/tools/rust-installer" =                            ["bootstrap"]

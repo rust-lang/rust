@@ -46,11 +46,10 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
             return;
         };
         if let ConstantSource::Constant = source
-            && let Some(node) = cx.tcx.hir().find_parent(e.hir_id)
             && let Node::Item(Item {
                 kind: ItemKind::Const(..),
                 ..
-            }) = node
+            }) = cx.tcx.parent_hir_node(e.hir_id)
         {
             return;
         }

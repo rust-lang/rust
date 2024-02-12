@@ -23,12 +23,14 @@ pub fn is_ci() -> bool {
 }
 
 #[must_use]
+#[allow(clippy::print_stderr)]
 pub fn timeit(label: &'static str) -> impl Drop {
     let start = Instant::now();
     defer(move || eprintln!("{}: {:.2?}", label, start.elapsed()))
 }
 
 /// Prints backtrace to stderr, useful for debugging.
+#[allow(clippy::print_stderr)]
 pub fn print_backtrace() {
     #[cfg(feature = "backtrace")]
     eprintln!("{:?}", backtrace::Backtrace::new());

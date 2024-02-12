@@ -279,7 +279,7 @@ pub fn load_proc_macro(
         let dylib = MacroDylib::new(path.to_path_buf());
         let vec = server.load_dylib(dylib).map_err(|e| format!("{e}"))?;
         if vec.is_empty() {
-            return Err("proc macro library returned no proc macros".to_string());
+            return Err("proc macro library returned no proc macros".to_owned());
         }
         Ok(vec
             .into_iter()
@@ -382,7 +382,7 @@ impl ProcMacroExpander for Expander {
         call_site: Span,
         mixed_site: Span,
     ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+        let env = env.iter().map(|(k, v)| (k.to_owned(), v.to_owned())).collect();
         match self.0.expand(subtree, attrs, env, def_site, call_site, mixed_site) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),

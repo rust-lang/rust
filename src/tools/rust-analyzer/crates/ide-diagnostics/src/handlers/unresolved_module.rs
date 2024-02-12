@@ -16,7 +16,7 @@ pub(crate) fn unresolved_module(
         ctx,
         DiagnosticCode::RustcHardError("E0583"),
         match &*d.candidates {
-            [] => "unresolved module".to_string(),
+            [] => "unresolved module".to_owned(),
             [candidate] => format!("unresolved module, can't find module file: {candidate}"),
             [candidates @ .., last] => {
                 format!(
@@ -46,7 +46,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<
                             anchor: d.decl.file_id.original_file(ctx.sema.db),
                             path: candidate.clone(),
                         },
-                        initial_contents: "".to_string(),
+                        initial_contents: "".to_owned(),
                     }
                     .into(),
                     unresolved_module.syntax().text_range(),

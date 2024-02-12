@@ -206,10 +206,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 ///
 /// When such a read is found, the lint is triggered.
 fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
-    let map = &vis.cx.tcx.hir();
     let mut cur_id = vis.write_expr.hir_id;
     loop {
-        let parent_id = map.parent_id(cur_id);
+        let parent_id = vis.cx.tcx.parent_hir_id(cur_id);
         if parent_id == cur_id {
             break;
         }

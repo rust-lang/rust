@@ -1810,10 +1810,9 @@ impl Config {
                     target.llvm_config = Some(config.src.join(s));
                 }
                 if let Some(patches) = cfg.llvm_has_rust_patches {
-                    assert_eq!(
-                        config.submodules,
-                        Some(false),
-                        "cannot set `llvm-has-rust-patches` for a managed submodule (set `build.submodules = false` if you want to apply patches)"
+                    assert!(
+                        config.submodules == Some(false) || cfg.llvm_config.is_some(),
+                        "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
                     );
                     target.llvm_has_rust_patches = Some(patches);
                 }

@@ -25,7 +25,7 @@ use triomphe::Arc;
 
 use crate::{
     consteval::{intern_const_scalar, try_const_usize, ConstEvalError},
-    db::HirDatabase,
+    db::{HirDatabase, InternedClosure},
     display::{ClosureStyle, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
@@ -647,7 +647,7 @@ impl Evaluator<'_> {
             ty.clone(),
             self.db,
             |c, subst, f| {
-                let (def, _) = self.db.lookup_intern_closure(c.into());
+                let InternedClosure(def, _) = self.db.lookup_intern_closure(c.into());
                 let infer = self.db.infer(def);
                 let (captures, _) = infer.closure_info(&c);
                 let parent_subst = ClosureSubst(subst).parent_subst();
@@ -1763,7 +1763,7 @@ impl Evaluator<'_> {
             }
         };
         mem.get(pos..pos + size)
-            .ok_or_else(|| MirEvalError::UndefinedBehavior("out of bound memory read".to_string()))
+            .ok_or_else(|| MirEvalError::UndefinedBehavior("out of bound memory read".to_owned()))
     }
 
     fn write_memory_using_ref(&mut self, addr: Address, size: usize) -> Result<&mut [u8]> {
@@ -1777,7 +1777,7 @@ impl Evaluator<'_> {
             }
         };
         mem.get_mut(pos..pos + size)
-            .ok_or_else(|| MirEvalError::UndefinedBehavior("out of bound memory write".to_string()))
+            .ok_or_else(|| MirEvalError::UndefinedBehavior("out of bound memory write".to_owned()))
     }
 
     fn write_memory(&mut self, addr: Address, r: &[u8]) -> Result<()> {
@@ -1800,7 +1800,7 @@ impl Evaluator<'_> {
             return Ok(());
         }
 
-        let oob = || MirEvalError::UndefinedBehavior("out of bounds memory write".to_string());
+        let oob = || MirEvalError::UndefinedBehavior("out of bounds memory write".to_owned());
 
         match (addr, r.addr) {
             (Stack(dst), Stack(src)) => {
@@ -2653,7 +2653,7 @@ pub fn render_const_using_debug_impl(
         ptr: ArenaMap::new(),
         body: db
             .mir_body(owner.into())
-            .map_err(|_| MirEvalError::NotSupported("unreachable".to_string()))?,
+            .map_err(|_| MirEvalError::NotSupported("unreachable".to_owned()))?,
         drop_flags: DropFlags::default(),
     };
     let data = evaluator.allocate_const_in_heap(locals, c)?;

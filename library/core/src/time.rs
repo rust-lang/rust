@@ -28,6 +28,14 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
+#[unstable(feature = "duration_units", issue = "120301")]
+const SECS_PER_MINUTE: u64 = 60;
+#[unstable(feature = "duration_units", issue = "120301")]
+const MINS_PER_HOUR: u64 = 60;
+#[unstable(feature = "duration_units", issue = "120301")]
+const HOURS_PER_DAY: u64 = 24;
+#[unstable(feature = "duration_units", issue = "120301")]
+const DAYS_PER_WEEK: u64 = 7;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -273,6 +281,11 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of nanoseconds.
     ///
+    /// Note: Using this on the return value of `as_nanos()` might cause unexpected behavior:
+    /// `as_nanos()` returns a u128, and can return values that do not fit in u64, e.g. 585 years.
+    /// Instead, consider using the pattern `Duration::new(d.as_secs(), d.subsec_nanos())`
+    /// if you cannot copy/clone the Duration directly.
+    ///
     /// # Examples
     ///
     /// ```
@@ -289,6 +302,118 @@ impl Duration {
     #[rustc_const_stable(feature = "duration_consts", since = "1.32.0")]
     pub const fn from_nanos(nanos: u64) -> Duration {
         Duration::new(nanos / (NANOS_PER_SEC as u64), (nanos % (NANOS_PER_SEC as u64)) as u32)
+    }
+
+    /// Creates a new `Duration` from the specified number of weeks.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given number of weeks overflows the `Duration` size.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_weeks(4);
+    ///
+    /// assert_eq!(4 * 7 * 24 * 60 * 60, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    #[must_use]
+    #[inline]
+    pub const fn from_weeks(weeks: u64) -> Duration {
+        if weeks > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK) {
+            panic!("overflow in Duration::from_days");
+        }
+
+        Duration::from_secs(weeks * MINS_PER_HOUR * SECS_PER_MINUTE * HOURS_PER_DAY * DAYS_PER_WEEK)
+    }
+
+    /// Creates a new `Duration` from the specified number of days.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given number of days overflows the `Duration` size.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_days(7);
+    ///
+    /// assert_eq!(7 * 24 * 60 * 60, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    #[must_use]
+    #[inline]
+    pub const fn from_days(days: u64) -> Duration {
+        if days > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY) {
+            panic!("overflow in Duration::from_days");
+        }
+
+        Duration::from_secs(days * MINS_PER_HOUR * SECS_PER_MINUTE * HOURS_PER_DAY)
+    }
+
+    /// Creates a new `Duration` from the specified number of hours.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given number of hours overflows the `Duration` size.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_hours(6);
+    ///
+    /// assert_eq!(6 * 60 * 60, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    #[must_use]
+    #[inline]
+    pub const fn from_hours(hours: u64) -> Duration {
+        if hours > u64::MAX / (SECS_PER_MINUTE * MINS_PER_HOUR) {
+            panic!("overflow in Duration::from_hours");
+        }
+
+        Duration::from_secs(hours * MINS_PER_HOUR * SECS_PER_MINUTE)
+    }
+
+    /// Creates a new `Duration` from the specified number of minutes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the given number of minutes overflows the `Duration` size.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(duration_constructors)]
+    /// use std::time::Duration;
+    ///
+    /// let duration = Duration::from_mins(10);
+    ///
+    /// assert_eq!(10 * 60, duration.as_secs());
+    /// assert_eq!(0, duration.subsec_nanos());
+    /// ```
+    #[unstable(feature = "duration_constructors", issue = "120301")]
+    #[must_use]
+    #[inline]
+    pub const fn from_mins(mins: u64) -> Duration {
+        if mins > u64::MAX / SECS_PER_MINUTE {
+            panic!("overflow in Duration::from_mins");
+        }
+
+        Duration::from_secs(mins * SECS_PER_MINUTE)
     }
 
     /// Returns true if this `Duration` spans no time.

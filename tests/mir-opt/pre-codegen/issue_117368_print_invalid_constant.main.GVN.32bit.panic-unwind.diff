@@ -50,12 +50,16 @@
   
       bb1: {
           StorageDead(_6);
-          StorageLive(_12);
+-         StorageLive(_12);
++         nop;
           _12 = (_5.0: *const [u8]);
-          _4 = move _12 as *mut [u8] (PtrToPtr);
-          StorageDead(_12);
+-         _4 = move _12 as *mut [u8] (PtrToPtr);
+-         StorageDead(_12);
++         _4 = _12 as *mut [u8] (PtrToPtr);
++         nop;
           StorageDead(_5);
-          _3 = move _4 as *mut u8 (PtrToPtr);
+-         _3 = move _4 as *mut u8 (PtrToPtr);
++         _3 = _12 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
 -         StorageDead(_1);

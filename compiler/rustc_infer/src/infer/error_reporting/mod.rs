@@ -862,8 +862,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ) {
                         err.subdiagnostic(subdiag);
                     }
-                    if let Some(hir::Node::Expr(m)) = self.tcx.hir().find_parent(scrut_hir_id)
-                        && let Some(hir::Node::Stmt(stmt)) = self.tcx.hir().find_parent(m.hir_id)
+                    if let hir::Node::Expr(m) = self.tcx.parent_hir_node(scrut_hir_id)
+                        && let hir::Node::Stmt(stmt) = self.tcx.parent_hir_node(m.hir_id)
                         && let hir::StmtKind::Expr(_) = stmt.kind
                     {
                         err.span_suggestion_verbose(

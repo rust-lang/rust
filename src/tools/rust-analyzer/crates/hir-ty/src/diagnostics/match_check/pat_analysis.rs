@@ -9,7 +9,7 @@ use rustc_pattern_analysis::{
     index::IdxContainer,
     Captures, TypeCx,
 };
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use stdx::never;
 use typed_arena::Arena;
 
@@ -41,8 +41,14 @@ pub(crate) struct MatchCheckCtx<'p> {
     body: DefWithBodyId,
     pub(crate) db: &'p dyn HirDatabase,
     pub(crate) pattern_arena: &'p Arena<DeconstructedPat<'p>>,
-    ty_arena: &'p Arena<Ty>,
     exhaustive_patterns: bool,
+    min_exhaustive_patterns: bool,
+}
+
+#[derive(Clone)]
+pub(crate) struct PatData<'p> {
+    /// Keep db around so that we can print variant names in `Debug`.
+    pub(crate) db: &'p dyn HirDatabase,
 }
 
 impl<'p> MatchCheckCtx<'p> {
@@ -51,11 +57,12 @@ impl<'p> MatchCheckCtx<'p> {
         body: DefWithBodyId,
         db: &'p dyn HirDatabase,
         pattern_arena: &'p Arena<DeconstructedPat<'p>>,
-        ty_arena: &'p Arena<Ty>,
     ) -> Self {
         let def_map = db.crate_def_map(module.krate());
         let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
-        Self { module, body, db, pattern_arena, exhaustive_patterns, ty_arena }
+        let min_exhaustive_patterns =
+            def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
+        Self { module, body, db, pattern_arena, exhaustive_patterns, min_exhaustive_patterns }
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
@@ -75,18 +82,15 @@ impl<'p> MatchCheckCtx<'p> {
         }
     }
 
-    fn variant_id_for_adt(&self, ctor: &Constructor<Self>, adt: hir_def::AdtId) -> VariantId {
+    fn variant_id_for_adt(ctor: &Constructor<Self>, adt: hir_def::AdtId) -> Option<VariantId> {
         match ctor {
-            &Variant(id) => id.into(),
-            Struct | UnionField => {
-                assert!(!matches!(adt, hir_def::AdtId::EnumId(_)));
-                match adt {
-                    hir_def::AdtId::EnumId(_) => unreachable!(),
-                    hir_def::AdtId::StructId(id) => id.into(),
-                    hir_def::AdtId::UnionId(id) => id.into(),
-                }
-            }
-            _ => panic!("bad constructor {self:?} for adt {adt:?}"),
+            &Variant(id) => Some(id.into()),
+            Struct | UnionField => match adt {
+                hir_def::AdtId::EnumId(_) => None,
+                hir_def::AdtId::StructId(id) => Some(id.into()),
+                hir_def::AdtId::UnionId(id) => Some(id.into()),
+            },
+            _ => panic!("bad constructor {ctor:?} for adt {adt:?}"),
         }
     }
 
@@ -200,7 +204,7 @@ impl<'p> MatchCheckCtx<'p> {
                                 Wildcard
                             }
                         };
-                        let variant = self.variant_id_for_adt(&ctor, adt.0);
+                        let variant = Self::variant_id_for_adt(&ctor, adt.0).unwrap();
                         let fields_len = variant.variant_data(self.db.upcast()).fields().len();
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> = vec![None; fields_len];
@@ -241,7 +245,8 @@ impl<'p> MatchCheckCtx<'p> {
                 fields = self.pattern_arena.alloc_extend(subpats);
             }
         }
-        DeconstructedPat::new(ctor, fields, pat.ty.clone(), ())
+        let data = PatData { db: self.db };
+        DeconstructedPat::new(ctor, fields, pat.ty.clone(), data)
     }
 
     pub(crate) fn hoist_witness_pat(&self, pat: &WitnessPat<'p>) -> Pat {
@@ -266,7 +271,7 @@ impl<'p> MatchCheckCtx<'p> {
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
                 TyKind::Adt(adt, substs) => {
-                    let variant = self.variant_id_for_adt(pat.ctor(), adt.0);
+                    let variant = Self::variant_id_for_adt(pat.ctor(), adt.0).unwrap();
                     let subpatterns = self
                         .list_variant_nonhidden_fields(pat.ty(), variant)
                         .zip(subpatterns)
@@ -307,10 +312,13 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
     type VariantIdx = EnumVariantId;
     type StrLit = Void;
     type ArmData = ();
-    type PatData = ();
+    type PatData = PatData<'p>;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.exhaustive_patterns
+    }
+    fn is_min_exhaustive_patterns_feature_on(&self) -> bool {
+        self.min_exhaustive_patterns
     }
 
     fn ctor_arity(
@@ -327,7 +335,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
                         // patterns. If we're here we can assume this is a box pattern.
                         1
                     } else {
-                        let variant = self.variant_id_for_adt(ctor, adt);
+                        let variant = Self::variant_id_for_adt(ctor, adt).unwrap();
                         self.list_variant_nonhidden_fields(ty, variant).count()
                     }
                 }
@@ -347,54 +355,51 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         }
     }
 
-    fn ctor_sub_tys(
-        &self,
-        ctor: &rustc_pattern_analysis::constructor::Constructor<Self>,
-        ty: &Self::Ty,
-    ) -> &[Self::Ty] {
-        use std::iter::once;
-        fn alloc<'a>(cx: &'a MatchCheckCtx<'_>, iter: impl Iterator<Item = Ty>) -> &'a [Ty] {
-            cx.ty_arena.alloc_extend(iter)
-        }
-        match ctor {
+    fn ctor_sub_tys<'a>(
+        &'a self,
+        ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
+        ty: &'a Self::Ty,
+    ) -> impl ExactSizeIterator<Item = Self::Ty> + Captures<'a> {
+        let single = |ty| smallvec![ty];
+        let tys: SmallVec<[_; 2]> = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {
                 TyKind::Tuple(_, substs) => {
                     let tys = substs.iter(Interner).map(|ty| ty.assert_ty_ref(Interner));
-                    alloc(self, tys.cloned())
+                    tys.cloned().collect()
                 }
-                TyKind::Ref(.., rty) => alloc(self, once(rty.clone())),
+                TyKind::Ref(.., rty) => single(rty.clone()),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
                     if is_box(self.db, adt) {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
                         let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
-                        alloc(self, once(subst_ty))
+                        single(subst_ty)
                     } else {
-                        let variant = self.variant_id_for_adt(ctor, adt);
-                        let tys = self.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
-                        alloc(self, tys)
+                        let variant = Self::variant_id_for_adt(ctor, adt).unwrap();
+                        self.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty).collect()
                     }
                 }
                 ty_kind => {
                     never!("Unexpected type for `{:?}` constructor: {:?}", ctor, ty_kind);
-                    alloc(self, once(ty.clone()))
+                    single(ty.clone())
                 }
             },
             Ref => match ty.kind(Interner) {
-                TyKind::Ref(.., rty) => alloc(self, once(rty.clone())),
+                TyKind::Ref(.., rty) => single(rty.clone()),
                 ty_kind => {
                     never!("Unexpected type for `{:?}` constructor: {:?}", ctor, ty_kind);
-                    alloc(self, once(ty.clone()))
+                    single(ty.clone())
                 }
             },
             Slice(_) => unreachable!("Found a `Slice` constructor in match checking"),
             Bool(..) | IntRange(..) | F32Range(..) | F64Range(..) | Str(..) | Opaque(..)
-            | NonExhaustive | Hidden | Missing | Wildcard => &[],
+            | NonExhaustive | Hidden | Missing | Wildcard => smallvec![],
             Or => {
                 never!("called `Fields::wildcards` on an `Or` ctor");
-                &[]
+                smallvec![]
             }
-        }
+        };
+        tys.into_iter()
     }
 
     fn ctors_for_ty(
@@ -456,11 +461,27 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         })
     }
 
-    fn debug_pat(
-        _f: &mut fmt::Formatter<'_>,
-        _pat: &rustc_pattern_analysis::pat::DeconstructedPat<'_, Self>,
+    fn write_variant_name(
+        f: &mut fmt::Formatter<'_>,
+        pat: &rustc_pattern_analysis::pat::DeconstructedPat<'_, Self>,
     ) -> fmt::Result {
-        // FIXME: implement this, as using `unimplemented!()` causes panics in `tracing`.
+        let variant =
+            pat.ty().as_adt().and_then(|(adt, _)| Self::variant_id_for_adt(pat.ctor(), adt));
+
+        let db = pat.data().unwrap().db;
+        if let Some(variant) = variant {
+            match variant {
+                VariantId::EnumVariantId(v) => {
+                    write!(f, "{}", db.enum_variant_data(v).name.display(db.upcast()))?;
+                }
+                VariantId::StructId(s) => {
+                    write!(f, "{}", db.struct_data(s).name.display(db.upcast()))?
+                }
+                VariantId::UnionId(u) => {
+                    write!(f, "{}", db.union_data(u).name.display(db.upcast()))?
+                }
+            }
+        }
         Ok(())
     }
 

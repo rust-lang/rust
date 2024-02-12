@@ -206,7 +206,7 @@ impl Definition {
             // docs are missing, for assoc items of trait impls try to fall back to the docs of the
             // original item of the trait
             let assoc = self.as_assoc_item(db)?;
-            let trait_ = assoc.containing_trait_impl(db)?;
+            let trait_ = assoc.implemented_trait(db)?;
             let name = Some(assoc.name(db)?);
             let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
             item.docs(db)

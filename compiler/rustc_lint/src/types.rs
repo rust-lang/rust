@@ -200,8 +200,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     ty: &str,
 ) -> bool {
     // Look past casts to support cases like `0..256 as u8`
-    let (expr, lit_span) = if let Node::Expr(par_expr) =
-        cx.tcx.hir_node(cx.tcx.hir().parent_id(expr.hir_id))
+    let (expr, lit_span) = if let Node::Expr(par_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && let ExprKind::Cast(_, _) = par_expr.kind
     {
         (par_expr, expr.span)
@@ -211,9 +210,8 @@ fn lint_overflowing_range_endpoint<'tcx>(
 
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
-    let par_id = cx.tcx.hir().parent_id(expr.hir_id);
-    let Node::ExprField(field) = cx.tcx.hir_node(par_id) else { return false };
-    let Node::Expr(struct_expr) = cx.tcx.hir().get_parent(field.hir_id) else { return false };
+    let Node::ExprField(field) = cx.tcx.parent_hir_node(expr.hir_id) else { return false };
+    let Node::Expr(struct_expr) = cx.tcx.parent_hir_node(field.hir_id) else { return false };
     if !is_range_literal(struct_expr) {
         return false;
     };
@@ -496,8 +494,7 @@ fn lint_uint_literal<'tcx>(
         _ => bug!(),
     };
     if lit_val < min || lit_val > max {
-        let parent_id = cx.tcx.hir().parent_id(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir_node(parent_id) {
+        if let Node::Expr(par_e) = cx.tcx.parent_hir_node(e.hir_id) {
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
