@@ -8,6 +8,8 @@ They must appear before the Rust source in the test.
 They may also appear in Makefiles for [run-make tests](compiletest.md#run-make-tests).
 
 They are normally put after the short comment that explains the point of this test.
+Some test suites use `//@` to signal that a comment is a header, but most are still
+just using plain comments.
 For example, this test uses the `// compile-flags` command to specify a custom
 flag to give to rustc when the test is compiled:
 

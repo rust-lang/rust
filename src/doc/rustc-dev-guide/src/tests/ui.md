@@ -29,7 +29,10 @@ the source file.
 See [Error annotations](#error-annotations) for more.
 
 [Headers](headers.md) in the form of comments at the top of the file control
-how the test is compiled and what the expected behavior is.
+how the test is compiled and what the expected behavior is. Note that ui
+tests require the use of `//@ header-name` instead of `// header-name` like
+the other test suites do. The other test suites will be migrated to use the `//@`
+syntax, too, but that is in progress.
 
 Tests are expected to fail to compile, since most tests are testing compiler
 errors.
@@ -126,7 +129,7 @@ more suitable for UI testing.
 For example, it will anonymize line numbers in the output (line numbers
 prefixing each source line are replaced with `LL`).
 In extremely rare situations, this mode can be disabled with the header
-command `// compile-flags: -Z ui-testing=no`.
+command `//@ compile-flags: -Z ui-testing=no`.
 
 Note: The line and column numbers for `-->` lines pointing to the test are
 *not* normalized, and left as-is. This ensures that the compiler continues
@@ -139,9 +142,9 @@ Sometimes these built-in normalizations are not enough. In such cases, you
 may provide custom normalization rules using the header commands, e.g.
 
 ```rust,ignore
-// normalize-stdout-test: "foo" -> "bar"
-// normalize-stderr-32bit: "fn\(\) \(32 bits\)" -> "fn\(\) \($$PTR bits\)"
-// normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
+//@ normalize-stdout-test: "foo" -> "bar"
+//@ normalize-stderr-32bit: "fn\(\) \(32 bits\)" -> "fn\(\) \($$PTR bits\)"
+//@ normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
 ```
 
 This tells the test, on 32-bit platforms, whenever the compiler writes
@@ -291,7 +294,7 @@ We want to ensure this shows "index out of bounds" but we cannot use the
 Then it's time to use the `error-pattern` header:
 
 ```rust,ignore
-// error-pattern: index out of bounds
+//@ error-pattern: index out of bounds
 fn main() {
     let a: *const [_] = &[1, 2, 3];
     unsafe {
@@ -330,9 +333,9 @@ conditionally checked based on the current revision.
 This is done by placing the revision cfg name in brackets like this:
 
 ```rust,ignore
-// edition:2018
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@ edition:2018
+//@ revisions: mir thir
+//@ [thir]compile-flags: -Z thir-unsafeck
 
 async unsafe fn f() {}
 
@@ -363,20 +366,20 @@ and you can even run the resulting program.
 Just add one of the following [header commands](headers.md):
 
 * Pass headers:
-  * `// check-pass` — compilation should succeed but skip codegen
+  * `//@ check-pass` — compilation should succeed but skip codegen
     (which is expensive and isn't supposed to fail in most cases).
-  * `// build-pass` — compilation and linking should succeed but do
+  * `//@ build-pass` — compilation and linking should succeed but do
     not run the resulting binary.
-  * `// run-pass` — compilation should succeed and running the resulting
+  * `//@ run-pass` — compilation should succeed and running the resulting
     binary should also succeed.
 * Fail headers:
-  * `// check-fail` — compilation should fail (the codegen phase is skipped).
+  * `//@ check-fail` — compilation should fail (the codegen phase is skipped).
     This is the default for UI tests.
-  * `// build-fail` — compilation should fail during the codegen phase.
+  * `//@ build-fail` — compilation should fail during the codegen phase.
     This will run `rustc` twice, once to verify that it compiles successfully
     without the codegen phase, then a second time the full compile should
     fail.
-  * `// run-fail` — compilation should succeed, but running the resulting
+  * `//@ run-fail` — compilation should succeed, but running the resulting
     binary should fail.
 
 For `run-pass` and `run-fail` tests, by default the output of the program
@@ -466,8 +469,8 @@ and that the resulting changes compile correctly.
 This can be done with the `run-rustfix` header:
 
 ```rust,ignore
-// run-rustfix
-// check-pass
+//@ run-rustfix
+//@ check-pass
 #![crate_type = "lib"]
 
 pub struct not_camel_case {}
