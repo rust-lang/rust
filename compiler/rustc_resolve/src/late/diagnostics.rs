@@ -460,7 +460,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             return (err, Vec::new());
         }
 
-        let (found, candidates) = self.try_lookup_name_relaxed(
+        let (found, mut candidates) = self.try_lookup_name_relaxed(
             &mut err,
             source,
             path,
@@ -473,10 +473,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             return (err, candidates);
         }
 
-        let mut fallback = self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
+        if self.suggest_shadowed(&mut err, source, path, following_seg, span) {
+            // if there is already a shadowed name, don'suggest candidates for importing
+            candidates.clear();
+        }
 
-        // if we have suggested using pattern matching, then don't add needless suggestions
-        // for typos.
+        let mut fallback = self.suggest_trait_and_bounds(&mut err, source, res, span, &base_error);
         fallback |= self.suggest_typo(&mut err, source, path, following_seg, span, &base_error);
 
         if fallback {
@@ -872,25 +874,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let typo_sugg =
             self.lookup_typo_candidate(path, following_seg, source.namespace(), is_expected);
-        let is_in_same_file = &|sp1, sp2| {
-            let source_map = self.r.tcx.sess.source_map();
-            let file1 = source_map.span_to_filename(sp1);
-            let file2 = source_map.span_to_filename(sp2);
-            file1 == file2
-        };
-        // print 'you might have meant' if the candidate is (1) is a shadowed name with
-        // accessible definition and (2) either defined in the same crate as the typo
-        // (could be in a different file) or introduced in the same file as the typo
-        // (could belong to a different crate)
-        if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg
-            && res.opt_def_id().is_some_and(|id| id.is_local() || is_in_same_file(span, sugg_span))
-        {
-            err.span_label(
-                sugg_span,
-                format!("you might have meant to refer to this {}", res.descr()),
-            );
-            return true;
-        }
         let mut fallback = false;
         let typo_sugg = typo_sugg.to_opt_suggestion();
         if !self.r.add_typo_suggestion(err, typo_sugg, ident_span) {
@@ -916,6 +899,39 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         }
         fallback
+    }
+
+    fn suggest_shadowed(
+        &mut self,
+        err: &mut Diagnostic,
+        source: PathSource<'_>,
+        path: &[Segment],
+        following_seg: Option<&Segment>,
+        span: Span,
+    ) -> bool {
+        let is_expected = &|res| source.is_expected(res);
+        let typo_sugg =
+            self.lookup_typo_candidate(path, following_seg, source.namespace(), is_expected);
+        let is_in_same_file = &|sp1, sp2| {
+            let source_map = self.r.tcx.sess.source_map();
+            let file1 = source_map.span_to_filename(sp1);
+            let file2 = source_map.span_to_filename(sp2);
+            file1 == file2
+        };
+        // print 'you might have meant' if the candidate is (1) is a shadowed name with
+        // accessible definition and (2) either defined in the same crate as the typo
+        // (could be in a different file) or introduced in the same file as the typo
+        // (could belong to a different crate)
+        if let TypoCandidate::Shadowed(res, Some(sugg_span)) = typo_sugg
+            && res.opt_def_id().is_some_and(|id| id.is_local() || is_in_same_file(span, sugg_span))
+        {
+            err.span_label(
+                sugg_span,
+                format!("you might have meant to refer to this {}", res.descr()),
+            );
+            return true;
+        }
+        false
     }
 
     fn err_code_special_cases(
