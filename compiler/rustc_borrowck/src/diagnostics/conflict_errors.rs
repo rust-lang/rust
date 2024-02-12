@@ -4,7 +4,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use either::Either;
-use hir::ClosureKind;
+use hir::{ClosureKind, Path};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
@@ -494,7 +494,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     self.suggest_cloning(err, ty, expr, None, Some(move_spans));
                 }
             }
-            if let Some(pat) = finder.pat {
+
+            self.suggest_ref_for_dbg_args(expr, span, move_span, err);
+
+            // it's useless to suggest inserting `ref` when the span don't comes from local code
+            if let Some(pat) = finder.pat
+                && !move_span.is_dummy()
+                && !self.infcx.tcx.sess.source_map().is_imported(move_span)
+            {
                 *in_pattern = true;
                 let mut sugg = vec![(pat.span.shrink_to_lo(), "ref ".to_string())];
                 if let Some(pat) = finder.parent_pat {
@@ -506,6 +513,58 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Applicability::MachineApplicable,
                 );
             }
+        }
+    }
+
+    // for dbg!(x) which may take onwership, suggest dbg!(&x) instead
+    // but here we actually do not check whether the macro name is `dbg!`
+    // so that we may extend the scope a bit larger to cover more cases
+    fn suggest_ref_for_dbg_args(
+        &self,
+        body: &hir::Expr<'_>,
+        span: Option<Span>,
+        move_span: Span,
+        err: &mut Diag<'tcx>,
+    ) {
+        let sm = self.infcx.tcx.sess.source_map();
+        let arg_code = if let Some(span) = span
+            && let Ok(code) = sm.span_to_snippet(span)
+        {
+            code
+        } else {
+            return;
+        };
+        struct MatchArgFinder {
+            expr_span: Span,
+            match_arg_span: Option<Span>,
+            arg_code: String,
+        }
+        impl Visitor<'_> for MatchArgFinder {
+            fn visit_expr(&mut self, e: &hir::Expr<'_>) {
+                // dbg! is expanded into a match pattern, we need to find the right argument span
+                if let hir::ExprKind::Match(expr, ..) = &e.kind
+                    && let hir::ExprKind::Path(hir::QPath::Resolved(
+                        _,
+                        path @ Path { segments: [seg], .. },
+                    )) = &expr.kind
+                    && seg.ident.name.as_str() == &self.arg_code
+                    && self.expr_span.source_callsite().contains(expr.span)
+                {
+                    self.match_arg_span = Some(path.span);
+                }
+                hir::intravisit::walk_expr(self, e);
+            }
+        }
+
+        let mut finder = MatchArgFinder { expr_span: move_span, match_arg_span: None, arg_code };
+        finder.visit_expr(body);
+        if let Some(macro_arg_span) = finder.match_arg_span {
+            err.span_suggestion_verbose(
+                macro_arg_span.shrink_to_lo(),
+                "consider borrowing instead of transferring ownership",
+                "&",
+                Applicability::MachineApplicable,
+            );
         }
     }
 
