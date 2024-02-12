@@ -1,0 +1,12 @@
+error[E0053]: method `call` has an incompatible type for trait
+  --> $DIR/inline-wrong-abi.rs:7:5
+   |
+LL |     extern "C" fn call(&self, _: ()) -> T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "rust-call" fn, found "C" fn
+   |
+   = note: expected signature `extern "rust-call" fn(&Foo<_>, ()) -> _`
+              found signature `extern "C" fn(&Foo<_>, ()) -> _`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.
