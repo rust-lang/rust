@@ -98,9 +98,8 @@ fn test_mutex_libc_static_initializer_recursive() {
     }
 }
 
-// Testing the behavior of std::sync::RwLock does not fully exercise the pthread rwlock shims, we
-// need to go a layer deeper and test the behavior of the libc functions, because
-// std::sys::unix::rwlock::RWLock itself keeps track of write_locked and num_readers.
+// std::sync::RwLock does not even used pthread_rwlock any more.
+// Do some smoke testing of the API surface.
 fn test_rwlock_libc_static_initializer() {
     let rw = std::cell::UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER);
     unsafe {

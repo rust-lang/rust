@@ -70,7 +70,7 @@ struct Mutex {
     lock_count: usize,
     /// The queue of threads waiting for this mutex.
     queue: VecDeque<ThreadId>,
-    /// Data race handle, this tracks the happens-before
+    /// Data race handle. This tracks the happens-before
     /// relationship between each mutex access. It is
     /// released to during unlock and acquired from during
     /// locking, and therefore stores the clock of the last
@@ -92,7 +92,7 @@ struct RwLock {
     writer_queue: VecDeque<ThreadId>,
     /// The queue of reader threads waiting for this lock.
     reader_queue: VecDeque<ThreadId>,
-    /// Data race handle for writers, tracks the happens-before
+    /// Data race handle for writers. Tracks the happens-before
     /// ordering between each write access to a rwlock and is updated
     /// after a sequence of concurrent readers to track the happens-
     /// before ordering between the set of previous readers and
@@ -101,7 +101,7 @@ struct RwLock {
     /// lock or the joined clock of the set of last threads to release
     /// shared reader locks.
     data_race: VClock,
-    /// Data race handle for readers, this is temporary storage
+    /// Data race handle for readers. This is temporary storage
     /// for the combined happens-before ordering for between all
     /// concurrent readers and the next writer, and the value
     /// is stored to the main data_race variable once all
