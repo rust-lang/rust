@@ -90,8 +90,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                 // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
                 traits::SizedArgumentType(
-                    if ty_span == Some(param.span) && tcx.is_closure_or_coroutine(fn_def_id.into())
-                    {
+                    if ty_span == Some(param.span) && tcx.is_closure_like(fn_def_id.into()) {
                         None
                     } else {
                         ty.map(|ty| ty.hir_id)
