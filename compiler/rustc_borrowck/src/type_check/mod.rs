@@ -2319,7 +2319,41 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_))) => (),
+                            (Some(CastTy::Ptr(src)), Some(CastTy::Ptr(dst))) => {
+                                let src_tail = tcx.struct_tail_without_normalization(src.ty);
+                                let dst_tail = tcx.struct_tail_without_normalization(dst.ty);
+
+                                if let ty::Dynamic(..) = src_tail.kind()
+                                    && let ty::Dynamic(dst_tty, ..) = dst_tail.kind()
+                                    && dst_tty.principal().is_some()
+                                {
+                                    // Erase trait object lifetimes, to allow casts like `*mut dyn FnOnce()` -> `*mut dyn FnOnce() + 'static`.
+                                    let src_tail =
+                                        erase_single_trait_object_lifetime(tcx, src_tail);
+                                    let dst_tail =
+                                        erase_single_trait_object_lifetime(tcx, dst_tail);
+
+                                    let trait_ref = ty::TraitRef::new(
+                                        tcx,
+                                        tcx.require_lang_item(LangItem::Unsize, Some(span)),
+                                        [src_tail, dst_tail],
+                                    );
+
+                                    self.prove_trait_ref(
+                                        trait_ref,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast {
+                                            unsize_to: Some(tcx.fold_regions(dst_tail, |r, _| {
+                                                if let ty::ReVar(_) = r.kind() {
+                                                    tcx.lifetimes.re_erased
+                                                } else {
+                                                    r
+                                                }
+                                            })),
+                                        },
+                                    );
+                                }
+                            }
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -2841,4 +2875,16 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         output.error_info = Some(self);
         Ok(output)
     }
+}
+
+fn erase_single_trait_object_lifetime<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+    let &ty::Dynamic(tty, region, dyn_kind @ ty::Dyn) = ty.kind() else {
+        bug!("expected trait object")
+    };
+
+    if region.is_erased() {
+        return ty;
+    }
+
+    tcx.mk_ty_from_kind(ty::Dynamic(tty, tcx.lifetimes.re_erased, dyn_kind))
 }

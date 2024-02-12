@@ -16,17 +16,17 @@ impl<T> Trait<Y> for T {}
 
 fn main() {
     let a: *const dyn A = &();
-    let b: *const dyn B = a as _; //~ error: casting `*const dyn A` as `*const dyn B` is invalid
+    let b: *const dyn B = a as _; //~ error: the trait bound `dyn A: Unsize<dyn B>` is not satisfied
 
     let x: *const dyn Trait<X> = &();
-    let y: *const dyn Trait<Y> = x as _; //~ error: casting `*const dyn Trait<X>` as `*const dyn Trait<Y>` is invalid
+    let y: *const dyn Trait<Y> = x as _; //~ error: the trait bound `dyn Trait<X>: Unsize<dyn Trait<Y>>` is not satisfied
 
     _ = (b, y);
 }
 
 fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) {
-    let _: *const dyn Trait<T> = x as _; //~ error: casting `*const (dyn Trait<X> + 'static)` as `*const dyn Trait<T>` is invalid
-    let _: *const dyn Trait<X> = t as _; //~ error: casting `*const (dyn Trait<T> + 'static)` as `*const dyn Trait<X>` is invalid
+    let _: *const dyn Trait<T> = x as _; //~ error: the trait bound `dyn Trait<X>: Unsize<dyn Trait<T>>` is not satisfied
+    let _: *const dyn Trait<X> = t as _; //~ error: the trait bound `dyn Trait<T>: Unsize<dyn Trait<X>>` is not satisfied
 }
 
 trait Assocked {
@@ -34,5 +34,5 @@ trait Assocked {
 }
 
 fn change_assoc(x: *mut dyn Assocked<Assoc = u8>) -> *mut dyn Assocked<Assoc = u32> {
-    x as _
+    x as _ //~ error: the trait bound `dyn Assocked<Assoc = u8>: Unsize<dyn Assocked<Assoc = u32>>` is not satisfied
 }
