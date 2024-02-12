@@ -97,6 +97,11 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
             kw unsafe
             kw while
             kw while let
+            ex ifletlocal
+            ex letlocal
+            ex matcharm
+            ex param1
+            ex param2
         "#]],
     );
 }
@@ -241,6 +246,8 @@ fn complete_in_block() {
             sn macro_rules
             sn pd
             sn ppd
+            ex false
+            ex true
         "#]],
     )
 }
@@ -682,7 +689,9 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fn test() fn() -> Zulu
+            fn test()       fn() -> Zulu
+            ex Zulu
+            ex Zulu::test()
         "#]],
     );
 }

@@ -123,6 +123,7 @@ pub(crate) fn completion_item_kind(
         CompletionItemKind::Method => lsp_types::CompletionItemKind::METHOD,
         CompletionItemKind::Snippet => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::UnresolvedReference => lsp_types::CompletionItemKind::REFERENCE,
+        CompletionItemKind::Expression => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::SymbolKind(symbol) => match symbol {
             SymbolKind::Attribute => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,

@@ -1246,7 +1246,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.push_assignment(current, place, op.into(), expr_id.into());
                 Ok(Some(current))
             }
-            Expr::Underscore => not_supported!("underscore"),
+            Expr::Underscore => Ok(Some(current)),
         }
     }
 

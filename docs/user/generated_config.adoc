@@ -344,6 +344,11 @@ Default:
 Custom completion snippets.
 
 --
+[[rust-analyzer.completion.termSearch.enable]]rust-analyzer.completion.termSearch.enable (default: `false`)::
++
+--
+Whether to enable term search based snippets like `Some(foo.bar().baz())`.
+--
 [[rust-analyzer.diagnostics.disabled]]rust-analyzer.diagnostics.disabled (default: `[]`)::
 +
 --
