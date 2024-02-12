@@ -676,6 +676,16 @@ mod tests {
     }
 
     #[track_caller]
+    fn check_function_relevance(ra_fixture: &str, expect: Expect) {
+        let actual: Vec<_> = do_completion(ra_fixture, CompletionItemKind::Method)
+            .into_iter()
+            .map(|item| (item.detail.unwrap_or_default(), item.relevance.function))
+            .collect();
+
+        expect.assert_debug_eq(&actual);
+    }
+
+    #[track_caller]
     fn check_relevance_for_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
         actual.retain(|it| kinds.contains(&it.kind));
@@ -1254,6 +1264,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
+                            function: None,
                         },
                         trigger_call_info: true,
                     },
@@ -1281,6 +1292,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
+                            function: None,
                         },
                         trigger_call_info: true,
                     },
@@ -1360,6 +1372,7 @@ fn foo() { A { the$0 } }
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
+                            function: None,
                         },
                     },
                 ]
@@ -1393,6 +1406,26 @@ impl S {
                         documentation: Documentation(
                             "Method docs",
                         ),
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_args: true,
+                                    has_self_arg: true,
+                                    return_type: Other,
+                                },
+                            ),
+                        },
                     },
                     CompletionItem {
                         label: "foo",
@@ -1498,6 +1531,26 @@ fn foo(s: S) { s.$0 }
                         kind: Method,
                         lookup: "the_method",
                         detail: "fn(&self)",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_args: true,
+                                    has_self_arg: true,
+                                    return_type: Other,
+                                },
+                            ),
+                        },
                     },
                 ]
             "#]],
@@ -2099,6 +2152,254 @@ fn main() {
     }
 
     #[test]
+    fn constructor_order_simple() {
+        check_relevance(
+            r#"
+struct Foo;
+struct Other;
+struct Option<T>(T);
+
+impl Foo {
+    fn fn_ctr() -> Foo { unimplemented!() }
+    fn fn_another(n: u32) -> Other { unimplemented!() }
+    fn fn_ctr_self() -> Option<Self> { unimplemented!() }
+}
+
+fn test() {
+    let a = Foo::$0;
+}
+"#,
+            expect![[r#"
+                fn fn_ctr() [type_could_unify]
+                fn fn_ctr_self() [type_could_unify]
+                fn fn_another(…) [type_could_unify]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn constructor_order_kind() {
+        check_function_relevance(
+            r#"
+struct Foo;
+struct Bar;
+struct Option<T>(T);
+enum Result<T, E> { Ok(T), Err(E) };
+
+impl Foo {
+    fn fn_ctr(&self) -> Foo { unimplemented!() }
+    fn fn_ctr_with_args(&self, n: u32) -> Foo { unimplemented!() }
+    fn fn_another(&self, n: u32) -> Bar { unimplemented!() }
+    fn fn_ctr_wrapped(&self, ) -> Option<Self> { unimplemented!() }
+    fn fn_ctr_wrapped_2(&self, ) -> Result<Self, Bar> { unimplemented!() }
+    fn fn_ctr_wrapped_3(&self, ) -> Result<Bar, Self> { unimplemented!() } // Self is not the first type
+    fn fn_ctr_wrapped_with_args(&self, m: u32) -> Option<Self> { unimplemented!() }
+    fn fn_another_unit(&self) { unimplemented!() }
+}
+
+fn test() {
+    let a = self::Foo::$0;
+}
+"#,
+            expect![[r#"
+                [
+                    (
+                        "fn(&self, u32) -> Bar",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: Other,
+                            },
+                        ),
+                    ),
+                    (
+                        "fn(&self)",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: Other,
+                            },
+                        ),
+                    ),
+                    (
+                        "fn(&self) -> Foo",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: DirectConstructor,
+                            },
+                        ),
+                    ),
+                    (
+                        "fn(&self, u32) -> Foo",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: DirectConstructor,
+                            },
+                        ),
+                    ),
+                    (
+                        "fn(&self) -> Option<Foo>",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: Constructor,
+                            },
+                        ),
+                    ),
+                    (
+                        "fn(&self) -> Result<Foo, Bar>",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: Constructor,
+                            },
+                        ),
+                    ),
+                    (
+                        "fn(&self) -> Result<Bar, Foo>",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: Constructor,
+                            },
+                        ),
+                    ),
+                    (
+                        "fn(&self, u32) -> Option<Foo>",
+                        Some(
+                            CompletionRelevanceFn {
+                                has_args: true,
+                                has_self_arg: true,
+                                return_type: Constructor,
+                            },
+                        ),
+                    ),
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn constructor_order_relevance() {
+        check_relevance(
+            r#"
+struct Foo;
+struct FooBuilder;
+struct Result<T>(T);
+
+impl Foo {
+    fn fn_no_ret(&self) {}
+    fn fn_ctr_with_args(input: u32) -> Foo { unimplemented!() }
+    fn fn_direct_ctr() -> Self { unimplemented!() }
+    fn fn_ctr() -> Result<Self> { unimplemented!() }
+    fn fn_other() -> Result<u32> { unimplemented!() }
+    fn fn_builder() -> FooBuilder { unimplemented!() }
+}
+
+fn test() {
+    let a = self::Foo::$0;
+}
+"#,
+            // preference:
+            // Direct Constructor
+            // Direct Constructor with args
+            // Builder
+            // Constructor
+            // Others
+            expect![[r#"
+                fn fn_direct_ctr() [type_could_unify]
+                fn fn_ctr_with_args(…) [type_could_unify]
+                fn fn_builder() [type_could_unify]
+                fn fn_ctr() [type_could_unify]
+                me fn_no_ret(…) [type_could_unify]
+                fn fn_other() [type_could_unify]
+            "#]],
+        );
+
+        //
+    }
+
+    #[test]
+    fn function_relevance_generic_1() {
+        check_relevance(
+            r#"
+struct Foo<T: Default>(T);
+struct FooBuilder;
+struct Option<T>(T);
+enum Result<T, E>{Ok(T), Err(E)};
+
+impl<T: Default> Foo<T> {
+    fn fn_returns_unit(&self) {}
+    fn fn_ctr_with_args(input: T) -> Foo<T> { unimplemented!() }
+    fn fn_direct_ctr() -> Self { unimplemented!() }
+    fn fn_ctr_wrapped() -> Option<Self> { unimplemented!() }
+    fn fn_ctr_wrapped_2() -> Result<Self, u32> { unimplemented!() }
+    fn fn_other() -> Option<u32> { unimplemented!() }
+    fn fn_builder() -> FooBuilder { unimplemented!() }
+}
+
+fn test() {
+    let a = self::Foo::<u32>::$0;
+}
+                "#,
+            expect![[r#"
+                        fn fn_direct_ctr() [type_could_unify]
+                        fn fn_ctr_with_args(…) [type_could_unify]
+                        fn fn_builder() [type_could_unify]
+                        fn fn_ctr_wrapped() [type_could_unify]
+                        fn fn_ctr_wrapped_2() [type_could_unify]
+                        me fn_returns_unit(…) [type_could_unify]
+                        fn fn_other() [type_could_unify]
+                    "#]],
+        );
+    }
+
+    #[test]
+    fn function_relevance_generic_2() {
+        // Generic 2
+        check_relevance(
+            r#"
+struct Foo<T: Default>(T);
+struct FooBuilder;
+struct Option<T>(T);
+enum Result<T, E>{Ok(T), Err(E)};
+
+impl<T: Default> Foo<T> {
+    fn fn_no_ret(&self) {}
+    fn fn_ctr_with_args(input: T) -> Foo<T> { unimplemented!() }
+    fn fn_direct_ctr() -> Self { unimplemented!() }
+    fn fn_ctr() -> Option<Self> { unimplemented!() }
+    fn fn_ctr2() -> Result<Self, u32> { unimplemented!() }
+    fn fn_other() -> Option<u32> { unimplemented!() }
+    fn fn_builder() -> FooBuilder { unimplemented!() }
+}
+
+fn test() {
+    let a : Res<Foo<u32>> = Foo::$0;
+}
+                "#,
+            expect![[r#"
+                fn fn_direct_ctr() [type_could_unify]
+                fn fn_ctr_with_args(…) [type_could_unify]
+                fn fn_builder() [type_could_unify]
+                fn fn_ctr() [type_could_unify]
+                fn fn_ctr2() [type_could_unify]
+                me fn_no_ret(…) [type_could_unify]
+                fn fn_other() [type_could_unify]
+            "#]],
+        );
+    }
+
+    #[test]
     fn struct_field_method_ref() {
         check_kinds(
             r#"
@@ -2118,6 +2419,26 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                         kind: Method,
                         lookup: "baz",
                         detail: "fn(&self) -> u32",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_args: true,
+                                    has_self_arg: true,
+                                    return_type: Other,
+                                },
+                            ),
+                        },
                         ref_match: "&@107",
                     },
                     CompletionItem {
@@ -2192,6 +2513,7 @@ fn foo() {
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
+                            function: None,
                         },
                     },
                 ]
@@ -2229,6 +2551,26 @@ fn main() {
                         ),
                         lookup: "foo",
                         detail: "fn() -> S",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_item_from_notable_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_args: false,
+                                    has_self_arg: false,
+                                    return_type: Other,
+                                },
+                            ),
+                        },
                         ref_match: "&@92",
                     },
                 ]
@@ -2590,6 +2932,13 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_args: true,
+                                    has_self_arg: true,
+                                    return_type: Other,
+                                },
+                            ),
                         },
                     },
                     CompletionItem {
@@ -2612,6 +2961,13 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_args: true,
+                                    has_self_arg: true,
+                                    return_type: Other,
+                                },
+                            ),
                         },
                     },
                 ]
