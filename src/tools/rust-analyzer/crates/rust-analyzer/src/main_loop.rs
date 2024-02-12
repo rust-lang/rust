@@ -1,5 +1,6 @@
 //! The main loop of `rust-analyzer` responsible for dispatching LSP
 //! requests/replies and notifications back to the client.
+use crate::lsp::ext;
 use std::{
     fmt,
     time::{Duration, Instant},
@@ -56,6 +57,7 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
 enum Event {
     Lsp(lsp_server::Message),
     Task(Task),
+    QueuedTask(QueuedTask),
     Vfs(vfs::loader::Message),
     Flycheck(flycheck::Message),
 }
@@ -67,13 +69,20 @@ impl fmt::Display for Event {
             Event::Task(_) => write!(f, "Event::Task"),
             Event::Vfs(_) => write!(f, "Event::Vfs"),
             Event::Flycheck(_) => write!(f, "Event::Flycheck"),
+            Event::QueuedTask(_) => write!(f, "Event::QueuedTask"),
         }
     }
 }
 
 #[derive(Debug)]
+pub(crate) enum QueuedTask {
+    CheckIfIndexed(lsp_types::Url),
+}
+
+#[derive(Debug)]
 pub(crate) enum Task {
     Response(lsp_server::Response),
+    ClientNotification(ext::UnindexedProjectParams),
     Retry(lsp_server::Request),
     Diagnostics(Vec<(FileId, Vec<lsp_types::Diagnostic>)>),
     PrimeCaches(PrimeCachesProgress),
@@ -115,6 +124,7 @@ impl fmt::Debug for Event {
         match self {
             Event::Lsp(it) => fmt::Debug::fmt(it, f),
             Event::Task(it) => fmt::Debug::fmt(it, f),
+            Event::QueuedTask(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::Flycheck(it) => fmt::Debug::fmt(it, f),
         }
@@ -129,7 +139,7 @@ impl GlobalState {
             self.register_did_save_capability();
         }
 
-        self.fetch_workspaces_queue.request_op("startup".to_string(), false);
+        self.fetch_workspaces_queue.request_op("startup".to_owned(), false);
         if let Some((cause, force_crate_graph_reload)) =
             self.fetch_workspaces_queue.should_start_op()
         {
@@ -175,8 +185,8 @@ impl GlobalState {
         };
 
         let registration = lsp_types::Registration {
-            id: "textDocument/didSave".to_string(),
-            method: "textDocument/didSave".to_string(),
+            id: "textDocument/didSave".to_owned(),
+            method: "textDocument/didSave".to_owned(),
             register_options: Some(serde_json::to_value(save_registration_options).unwrap()),
         };
         self.send_request::<lsp_types::request::RegisterCapability>(
@@ -192,6 +202,9 @@ impl GlobalState {
 
             recv(self.task_pool.receiver) -> task =>
                 Some(Event::Task(task.unwrap())),
+
+            recv(self.deferred_task_queue.receiver) -> task =>
+                Some(Event::QueuedTask(task.unwrap())),
 
             recv(self.fmt_pool.receiver) -> task =>
                 Some(Event::Task(task.unwrap())),
@@ -211,7 +224,7 @@ impl GlobalState {
             .entered();
 
         let event_dbg_msg = format!("{event:?}");
-        tracing::debug!("{:?} handle_event({})", loop_start, event_dbg_msg);
+        tracing::debug!(?loop_start, ?event, "handle_event");
         if tracing::enabled!(tracing::Level::INFO) {
             let task_queue_len = self.task_pool.handle.len();
             if task_queue_len > 0 {
@@ -226,6 +239,16 @@ impl GlobalState {
                 lsp_server::Message::Notification(not) => self.on_notification(not)?,
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
+            Event::QueuedTask(task) => {
+                let _p =
+                    tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/queued_task")
+                        .entered();
+                self.handle_queued_task(task);
+                // Coalesce multiple task events into one loop turn
+                while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
+                    self.handle_queued_task(task);
+                }
+            }
             Event::Task(task) => {
                 let _p = tracing::span!(tracing::Level::INFO, "GlobalState::handle_event/task")
                     .entered();
@@ -273,7 +296,7 @@ impl GlobalState {
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
-                                    .request_op("restart after cancellation".to_string(), ());
+                                    .request_op("restart after cancellation".to_owned(), ());
                             }
                         }
                     };
@@ -314,10 +337,10 @@ impl GlobalState {
             if became_quiescent {
                 if self.config.check_on_save() {
                     // Project has loaded properly, kick off initial flycheck
-                    self.flycheck.iter().for_each(FlycheckHandle::restart);
+                    self.flycheck.iter().for_each(FlycheckHandle::restart_workspace);
                 }
                 if self.config.prefill_caches() {
-                    self.prime_caches_queue.request_op("became quiescent".to_string(), ());
+                    self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
                 }
             }
 
@@ -367,7 +390,7 @@ impl GlobalState {
                 // See https://github.com/rust-lang/rust-analyzer/issues/13130
                 let patch_empty = |message: &mut String| {
                     if message.is_empty() {
-                        *message = " ".to_string();
+                        *message = " ".to_owned();
                     }
                 };
 
@@ -498,6 +521,9 @@ impl GlobalState {
     fn handle_task(&mut self, prime_caches_progress: &mut Vec<PrimeCachesProgress>, task: Task) {
         match task {
             Task::Response(response) => self.respond(response),
+            Task::ClientNotification(params) => {
+                self.send_notification::<lsp_ext::UnindexedProject>(params)
+            }
             // Only retry requests that haven't been cancelled. Otherwise we do unnecessary work.
             Task::Retry(req) if !self.is_completed(&req) => self.on_request(req),
             Task::Retry(_) => (),
@@ -531,12 +557,12 @@ impl GlobalState {
                         }
 
                         let old = Arc::clone(&self.workspaces);
-                        self.switch_workspaces("fetched workspace".to_string());
+                        self.switch_workspaces("fetched workspace".to_owned());
                         let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
 
                         if self.config.run_build_scripts() && workspaces_updated {
                             self.fetch_build_data_queue
-                                .request_op("workspace updated".to_string(), ());
+                                .request_op("workspace updated".to_owned(), ());
                         }
 
                         (Progress::End, None)
@@ -555,7 +581,7 @@ impl GlobalState {
                             tracing::error!("FetchBuildDataError:\n{e}");
                         }
 
-                        self.switch_workspaces("fetched build data".to_string());
+                        self.switch_workspaces("fetched build data".to_owned());
                         self.send_hint_refresh_query = true;
 
                         (Some(Progress::End), None)
@@ -634,6 +660,31 @@ impl GlobalState {
                     Some(Progress::fraction(n_done, n_total)),
                     None,
                 );
+            }
+        }
+    }
+
+    fn handle_queued_task(&mut self, task: QueuedTask) {
+        match task {
+            QueuedTask::CheckIfIndexed(uri) => {
+                let snap = self.snapshot();
+
+                self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
+                    let _p = tracing::span!(tracing::Level::INFO, "GlobalState::check_if_indexed")
+                        .entered();
+                    tracing::debug!(?uri, "handling uri");
+                    let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
+                    if let Ok(crates) = &snap.analysis.crates_for(id) {
+                        if crates.is_empty() {
+                            let params = ext::UnindexedProjectParams {
+                                text_documents: vec![lsp_types::TextDocumentIdentifier { uri }],
+                            };
+                            sender.send(Task::ClientNotification(params)).unwrap();
+                        } else {
+                            tracing::debug!(?uri, "is indexed");
+                        }
+                    }
+                });
             }
         }
     }

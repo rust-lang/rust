@@ -13,7 +13,7 @@ use std::{fs, mem};
 
 use crate::core::build_steps::compile;
 use crate::core::build_steps::tool::{self, prepare_tool_cargo, SourceType, Tool};
-use crate::core::builder::crate_description;
+use crate::core::builder::{self, crate_description};
 use crate::core::builder::{Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::cache::{Interned, INTERNER};
@@ -684,7 +684,9 @@ fn doc_std(
     // as a function parameter.
     let out_dir = target_dir.join(target.triple).join("doc");
 
-    let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "doc");
+    let mut cargo =
+        builder::Cargo::new(builder, compiler, Mode::Std, SourceType::InTree, target, "doc");
+
     compile::std_cargo(builder, target, compiler.stage, &mut cargo);
     cargo
         .arg("--no-deps")
@@ -785,7 +787,9 @@ impl Step for Rustc {
         );
 
         // Build cargo command.
-        let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
+        let mut cargo =
+            builder::Cargo::new(builder, compiler, Mode::Rustc, SourceType::InTree, target, "doc");
+
         cargo.rustdocflag("--document-private-items");
         // Since we always pass --document-private-items, there's no need to warn about linking to private items.
         cargo.rustdocflag("-Arustdoc::private-intra-doc-links");

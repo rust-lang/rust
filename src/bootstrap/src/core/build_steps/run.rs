@@ -165,7 +165,7 @@ impl Step for Miri {
             SourceType::InTree,
             &[],
         );
-        miri.add_rustc_lib_path(builder, compiler);
+        miri.add_rustc_lib_path(builder);
         // Forward arguments.
         miri.arg("--").arg("--target").arg(target.rustc_target_arg());
         miri.args(builder.config.args());

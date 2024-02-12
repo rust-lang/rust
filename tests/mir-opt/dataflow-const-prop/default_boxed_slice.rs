@@ -16,14 +16,11 @@ struct A {
 // CHECK-LABEL: fn main(
 fn main() {
     // ConstProp will create a constant of type `Box<[bool]>`.
-    // FIXME: it is not yet a constant.
-
     // Verify that `DataflowConstProp` does not ICE trying to dereference it directly.
 
     // CHECK: debug a => [[a:_.*]];
     // We may check other inlined functions as well...
 
-    // CHECK: {{_.*}} = Box::<[bool]>(
-    // FIXME: should be `{{_.*}} = const Box::<[bool]>`
+    // CHECK: {{_.*}} = const Box::<[bool]>(
     let a: A = A { foo: Box::default() };
 }

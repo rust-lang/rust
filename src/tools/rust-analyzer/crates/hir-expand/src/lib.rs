@@ -30,7 +30,7 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{CrateId, Edition, FileId};
+use base_db::{salsa::impl_intern_value_trivial, CrateId, Edition, FileId};
 use either::Either;
 use span::{FileRange, HirFileIdRepr, Span, SyntaxContextId};
 use syntax::{
@@ -66,6 +66,7 @@ pub mod tt {
     pub type Delimiter = ::tt::Delimiter<Span>;
     pub type DelimSpan = ::tt::DelimSpan<Span>;
     pub type Subtree = ::tt::Subtree<Span>;
+    pub type SubtreeBuilder = ::tt::SubtreeBuilder<Span>;
     pub type Leaf = ::tt::Leaf<Span>;
     pub type Literal = ::tt::Literal<Span>;
     pub type Punct = ::tt::Punct<Span>;
@@ -175,6 +176,7 @@ pub struct MacroCallLoc {
     pub kind: MacroCallKind,
     pub call_site: Span,
 }
+impl_intern_value_trivial!(MacroCallLoc);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
@@ -760,7 +762,7 @@ impl ExpansionInfo {
             (
                 Arc::new(tt::Subtree {
                     delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
-                    token_trees: Vec::new(),
+                    token_trees: Box::new([]),
                 }),
                 SyntaxFixupUndoInfo::NONE,
             )

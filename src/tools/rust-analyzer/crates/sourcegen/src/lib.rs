@@ -69,7 +69,7 @@ impl CommentBlock {
                 panic!("Use plain (non-doc) comments with tags like {tag}:\n    {first}");
             }
 
-            block.id = id.trim().to_string();
+            block.id = id.trim().to_owned();
             true
         });
         blocks
@@ -93,7 +93,7 @@ impl CommentBlock {
                     if let Some(' ') = contents.chars().next() {
                         contents = &contents[1..];
                     }
-                    block.contents.push(contents.to_string());
+                    block.contents.push(contents.to_owned());
                 }
                 None => {
                     if !block.contents.is_empty() {
@@ -167,6 +167,7 @@ pub fn add_preamble(generator: &'static str, mut text: String) -> String {
 
 /// Checks that the `file` has the specified `contents`. If that is not the
 /// case, updates the file and then fails the test.
+#[allow(clippy::print_stderr)]
 pub fn ensure_file_contents(file: &Path, contents: &str) {
     if let Ok(old_contents) = fs::read_to_string(file) {
         if normalize_newlines(&old_contents) == normalize_newlines(contents) {

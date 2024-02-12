@@ -224,11 +224,8 @@ pub(crate) fn placeholder_type_error_diag<'tcx>(
             is_fn = true;
 
             // Check if parent is const or static
-            let parent_id = tcx.hir().parent_id(hir_ty.hir_id);
-            let parent_node = tcx.hir_node(parent_id);
-
             is_const_or_static = matches!(
-                parent_node,
+                tcx.parent_hir_node(hir_ty.hir_id),
                 Node::Item(&hir::Item {
                     kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
                     ..
@@ -1085,7 +1082,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<
 
         ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
             // Do not try to infer the return type for a impl method coming from a trait
-            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.hir().get_parent(hir_id)
+            if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) = tcx.parent_hir_node(hir_id)
                 && i.of_trait.is_some()
             {
                 icx.astconv().ty_of_fn(

@@ -2069,14 +2069,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         span: Span,
         target: Target,
     ) -> bool {
-        let hir = self.tcx.hir();
-
         if let Target::ForeignFn = target
-            && let Some(parent) = hir.opt_parent_id(hir_id)
             && let hir::Node::Item(Item {
                 kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic | Abi::PlatformIntrinsic, .. },
                 ..
-            }) = self.tcx.hir_node(parent)
+            }) = self.tcx.parent_hir_node(hir_id)
         {
             return true;
         }

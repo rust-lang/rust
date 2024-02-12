@@ -1,7 +1,7 @@
 //! Completion of paths and keywords at item list position.
 
 use crate::{
-    context::{ExprCtx, ItemListKind, PathCompletionCtx, Qualified},
+    context::{ItemListKind, PathCompletionCtx, PathExprCtx, Qualified},
     CompletionContext, Completions,
 };
 
@@ -11,7 +11,7 @@ pub(crate) fn complete_item_list_in_expr(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
-    expr_ctx: &ExprCtx,
+    expr_ctx: &PathExprCtx,
 ) {
     if !expr_ctx.in_block_expr {
         return;

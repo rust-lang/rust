@@ -362,6 +362,8 @@ impl FromRawFd for process::Stdio {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for process::Stdio {
+    /// Takes ownership of a file descriptor and returns a [`Stdio`](process::Stdio)
+    /// that can attach a stream to it.
     #[inline]
     fn from(fd: OwnedFd) -> process::Stdio {
         let fd = sys::fd::FileDesc::from_inner(fd);
@@ -428,6 +430,7 @@ impl AsFd for crate::process::ChildStdin {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdin> for OwnedFd {
+    /// Takes ownership of a [`ChildStdin`](crate::process::ChildStdin)'s file descriptor.
     #[inline]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedFd {
         child_stdin.into_inner().into_inner().into_inner()
@@ -458,6 +461,7 @@ impl AsFd for crate::process::ChildStdout {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdout> for OwnedFd {
+    /// Takes ownership of a [`ChildStdout`](crate::process::ChildStdout)'s file descriptor.
     #[inline]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedFd {
         child_stdout.into_inner().into_inner().into_inner()
@@ -488,6 +492,7 @@ impl AsFd for crate::process::ChildStderr {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStderr> for OwnedFd {
+    /// Takes ownership of a [`ChildStderr`](crate::process::ChildStderr)'s file descriptor.
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedFd {
         child_stderr.into_inner().into_inner().into_inner()

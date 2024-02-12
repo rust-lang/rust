@@ -24,6 +24,8 @@ impl FromRawHandle for process::Stdio {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for process::Stdio {
+    /// Takes ownership of a handle and returns a [`Stdio`](process::Stdio)
+    /// that can attach a stream to it.
     fn from(handle: OwnedHandle) -> process::Stdio {
         let handle = sys::handle::Handle::from_inner(handle);
         let io = sys::process::Stdio::Handle(handle);
@@ -56,6 +58,7 @@ impl IntoRawHandle for process::Child {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<process::Child> for OwnedHandle {
+    /// Takes ownership of a [`Child`](process::Child)'s process handle.
     fn from(child: process::Child) -> OwnedHandle {
         child.into_inner().into_handle().into_inner()
     }

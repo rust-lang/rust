@@ -1088,7 +1088,7 @@ fn report<'tcx>(
                 //
                 // e.g. `&mut x.y.z` where `x` is a union, and accessing `z` requires a
                 // deref through `ManuallyDrop<_>` will not compile.
-                let parent_id = cx.tcx.hir().parent_id(expr.hir_id);
+                let parent_id = cx.tcx.parent_hir_id(expr.hir_id);
                 if parent_id == data.first_expr.hir_id {
                     return;
                 }

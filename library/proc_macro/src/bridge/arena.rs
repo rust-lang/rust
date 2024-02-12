@@ -102,6 +102,7 @@ impl Arena {
         }
     }
 
+    #[allow(clippy::mut_from_ref)] // arena allocator
     pub(crate) fn alloc_str<'a>(&'a self, string: &str) -> &'a mut str {
         let alloc = self.alloc_raw(string.len());
         let bytes = MaybeUninit::write_slice(alloc, string.as_bytes());

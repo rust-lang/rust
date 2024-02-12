@@ -3508,7 +3508,7 @@ impl<'hir> Node<'hir> {
     /// ```ignore (illustrative)
     /// ctor
     ///     .ctor_hir_id()
-    ///     .and_then(|ctor_id| tcx.hir().find_parent(ctor_id))
+    ///     .map(|ctor_id| tcx.parent_hir_node(ctor_id))
     ///     .and_then(|parent| parent.ident())
     /// ```
     pub fn ident(&self) -> Option<Ident> {

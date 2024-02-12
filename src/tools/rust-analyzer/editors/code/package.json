@@ -803,6 +803,11 @@
                         }
                     ]
                 },
+                "rust-analyzer.check.workspace": {
+                    "markdownDescription": "Whether `--workspace` should be passed to `cargo check`.\nIf false, `-p <package>` will be passed instead.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.completion.autoimport.enable": {
                     "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
                     "default": true,
@@ -1466,6 +1471,11 @@
                 "rust-analyzer.notifications.cargoTomlNotFound": {
                     "markdownDescription": "Whether to show `can't find Cargo.toml` error message.",
                     "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.notifications.unindexedProject": {
+                    "markdownDescription": "Whether to send an UnindexedProject notification to the client.",
+                    "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.numThreads": {

@@ -6,15 +6,21 @@
 
 use either::Either;
 use hir_expand::{attrs::collect_attrs, HirFileId};
+use syntax::ast;
 
 use crate::{
     db::DefDatabase,
-    dyn_map::{keys, DynMap},
+    dyn_map::{
+        keys::{self, Key},
+        DynMap,
+    },
     item_scope::ItemScope,
+    item_tree::ItemTreeNode,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, ExternCrateId, FieldId, ImplId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId, UseId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId, ItemTreeLoc,
+    LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
+    VariantId,
 };
 
 pub trait ChildBySource {
@@ -55,29 +61,6 @@ impl ChildBySource for ImplId {
     }
 }
 
-fn add_assoc_item(db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId, item: AssocItemId) {
-    match item {
-        AssocItemId::FunctionId(func) => {
-            let loc = func.lookup(db);
-            if loc.id.file_id() == file_id {
-                res[keys::FUNCTION].insert(loc.source(db).value, func)
-            }
-        }
-        AssocItemId::ConstId(konst) => {
-            let loc = konst.lookup(db);
-            if loc.id.file_id() == file_id {
-                res[keys::CONST].insert(loc.source(db).value, konst)
-            }
-        }
-        AssocItemId::TypeAliasId(ty) => {
-            let loc = ty.lookup(db);
-            if loc.id.file_id() == file_id {
-                res[keys::TYPE_ALIAS].insert(loc.source(db).value, ty)
-            }
-        }
-    }
-}
-
 impl ChildBySource for ModuleId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let def_map = self.def_map(db);
@@ -89,15 +72,12 @@ impl ChildBySource for ModuleId {
 impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
-        self.impls().for_each(|imp| add_impl(db, res, file_id, imp));
-        self.extern_crate_decls().for_each(|ext| add_extern_crate(db, res, file_id, ext));
-        self.use_decls().for_each(|ext| add_use(db, res, file_id, ext));
-        self.unnamed_consts(db).for_each(|konst| {
-            let loc = konst.lookup(db);
-            if loc.id.file_id() == file_id {
-                res[keys::CONST].insert(loc.source(db).value, konst);
-            }
-        });
+        self.impls().for_each(|imp| insert_item_loc(db, res, file_id, imp, keys::IMPL));
+        self.extern_crate_decls()
+            .for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::EXTERN_CRATE));
+        self.use_decls().for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::USE));
+        self.unnamed_consts(db)
+            .for_each(|konst| insert_item_loc(db, res, file_id, konst, keys::CONST));
         self.attr_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
                 res[keys::ATTR_MACRO_CALL].insert(ast_id.to_node(db.upcast()), call_id);
@@ -132,57 +112,36 @@ impl ChildBySource for ItemScope {
             file_id: HirFileId,
             item: ModuleDefId,
         ) {
-            macro_rules! insert {
-                ($map:ident[$key:path].$insert:ident($id:ident)) => {{
-                    let loc = $id.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        $map[$key].$insert(loc.source(db).value, $id)
-                    }
-                }};
-            }
             match item {
-                ModuleDefId::FunctionId(id) => insert!(map[keys::FUNCTION].insert(id)),
-                ModuleDefId::ConstId(id) => insert!(map[keys::CONST].insert(id)),
-                ModuleDefId::StaticId(id) => insert!(map[keys::STATIC].insert(id)),
-                ModuleDefId::TypeAliasId(id) => insert!(map[keys::TYPE_ALIAS].insert(id)),
-                ModuleDefId::TraitId(id) => insert!(map[keys::TRAIT].insert(id)),
-                ModuleDefId::TraitAliasId(id) => insert!(map[keys::TRAIT_ALIAS].insert(id)),
+                ModuleDefId::FunctionId(id) => {
+                    insert_item_loc(db, map, file_id, id, keys::FUNCTION)
+                }
+                ModuleDefId::ConstId(id) => insert_item_loc(db, map, file_id, id, keys::CONST),
+                ModuleDefId::TypeAliasId(id) => {
+                    insert_item_loc(db, map, file_id, id, keys::TYPE_ALIAS)
+                }
+                ModuleDefId::StaticId(id) => insert_item_loc(db, map, file_id, id, keys::STATIC),
+                ModuleDefId::TraitId(id) => insert_item_loc(db, map, file_id, id, keys::TRAIT),
+                ModuleDefId::TraitAliasId(id) => {
+                    insert_item_loc(db, map, file_id, id, keys::TRAIT_ALIAS)
+                }
                 ModuleDefId::AdtId(adt) => match adt {
-                    AdtId::StructId(id) => insert!(map[keys::STRUCT].insert(id)),
-                    AdtId::UnionId(id) => insert!(map[keys::UNION].insert(id)),
-                    AdtId::EnumId(id) => insert!(map[keys::ENUM].insert(id)),
+                    AdtId::StructId(id) => insert_item_loc(db, map, file_id, id, keys::STRUCT),
+                    AdtId::UnionId(id) => insert_item_loc(db, map, file_id, id, keys::UNION),
+                    AdtId::EnumId(id) => insert_item_loc(db, map, file_id, id, keys::ENUM),
                 },
                 ModuleDefId::MacroId(id) => match id {
-                    MacroId::Macro2Id(id) => insert!(map[keys::MACRO2].insert(id)),
-                    MacroId::MacroRulesId(id) => insert!(map[keys::MACRO_RULES].insert(id)),
-                    MacroId::ProcMacroId(id) => insert!(map[keys::PROC_MACRO].insert(id)),
+                    MacroId::Macro2Id(id) => insert_item_loc(db, map, file_id, id, keys::MACRO2),
+                    MacroId::MacroRulesId(id) => {
+                        insert_item_loc(db, map, file_id, id, keys::MACRO_RULES)
+                    }
+                    MacroId::ProcMacroId(id) => {
+                        insert_item_loc(db, map, file_id, id, keys::PROC_MACRO)
+                    }
                 },
                 ModuleDefId::ModuleId(_)
                 | ModuleDefId::EnumVariantId(_)
                 | ModuleDefId::BuiltinType(_) => (),
-            }
-        }
-        fn add_impl(db: &dyn DefDatabase, map: &mut DynMap, file_id: HirFileId, imp: ImplId) {
-            let loc = imp.lookup(db);
-            if loc.id.file_id() == file_id {
-                map[keys::IMPL].insert(loc.source(db).value, imp)
-            }
-        }
-        fn add_extern_crate(
-            db: &dyn DefDatabase,
-            map: &mut DynMap,
-            file_id: HirFileId,
-            ext: ExternCrateId,
-        ) {
-            let loc = ext.lookup(db);
-            if loc.id.file_id() == file_id {
-                map[keys::EXTERN_CRATE].insert(loc.source(db).value, ext)
-            }
-        }
-        fn add_use(db: &dyn DefDatabase, map: &mut DynMap, file_id: HirFileId, ext: UseId) {
-            let loc = ext.lookup(db);
-            if loc.id.file_id() == file_id {
-                map[keys::USE].insert(loc.source(db).value, ext)
             }
         }
     }
@@ -235,5 +194,65 @@ impl ChildBySource for DefWithBodyId {
             // inner items to the containing `DefWithBodyId`.
             def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
         }
+    }
+}
+
+impl ChildBySource for GenericDefId {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+        let (gfile_id, generic_params_list) = self.file_id_and_params_of(db);
+        if gfile_id != file_id {
+            return;
+        }
+
+        let generic_params = db.generic_params(*self);
+        let mut toc_idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
+        let lts_idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
+
+        // For traits the first type index is `Self`, skip it.
+        if let GenericDefId::TraitId(_) = *self {
+            toc_idx_iter.next().unwrap(); // advance_by(1);
+        }
+
+        if let Some(generic_params_list) = generic_params_list {
+            for (local_id, ast_param) in
+                toc_idx_iter.zip(generic_params_list.type_or_const_params())
+            {
+                let id = TypeOrConstParamId { parent: *self, local_id };
+                match ast_param {
+                    ast::TypeOrConstParam::Type(a) => res[keys::TYPE_PARAM].insert(a, id),
+                    ast::TypeOrConstParam::Const(a) => res[keys::CONST_PARAM].insert(a, id),
+                }
+            }
+            for (local_id, ast_param) in lts_idx_iter.zip(generic_params_list.lifetime_params()) {
+                let id = LifetimeParamId { parent: *self, local_id };
+                res[keys::LIFETIME_PARAM].insert(ast_param, id);
+            }
+        }
+    }
+}
+
+fn insert_item_loc<ID, N, Data>(
+    db: &dyn DefDatabase,
+    res: &mut DynMap,
+    file_id: HirFileId,
+    id: ID,
+    key: Key<N::Source, ID>,
+) where
+    ID: for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = Data> + 'static,
+    Data: ItemTreeLoc<Id = N>,
+    N: ItemTreeNode,
+    N::Source: 'static,
+{
+    let loc = id.lookup(db);
+    if loc.item_tree_id().file_id() == file_id {
+        res[key].insert(loc.source(db).value, id)
+    }
+}
+
+fn add_assoc_item(db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId, item: AssocItemId) {
+    match item {
+        AssocItemId::FunctionId(func) => insert_item_loc(db, res, file_id, func, keys::FUNCTION),
+        AssocItemId::ConstId(konst) => insert_item_loc(db, res, file_id, konst, keys::CONST),
+        AssocItemId::TypeAliasId(ty) => insert_item_loc(db, res, file_id, ty, keys::TYPE_ALIAS),
     }
 }

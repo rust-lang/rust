@@ -111,3 +111,11 @@ fn redirect_loop() {
          which is also a redirect (not supported)",
     );
 }
+
+#[test]
+fn broken_intra_doc_link() {
+    broken_test(
+        "broken_intra_doc_link",
+        "foo.html:3: broken intra-doc link - [<code>std::ffi::CString</code>]",
+    );
+}

@@ -86,4 +86,30 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn block_module_madness2() {
+        check_diagnostics(
+            r#"
+fn main() {
+    use crate as ForceParentBlockDefMap;
+    let strukt = {
+        use crate as ForceParentBlockDefMap;
+        {
+            pub struct Struct {
+                field: (),
+            }
+            {
+                use crate as ForceParentBlockDefMap;
+                {
+                    Struct { field: () }
+                }
+            }
+        }
+    };
+    strukt.field;
+}
+"#,
+        );
+    }
 }

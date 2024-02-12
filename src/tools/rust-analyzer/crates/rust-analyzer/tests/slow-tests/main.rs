@@ -9,6 +9,7 @@
 //! be sure without a real client anyway.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::disallowed_types)]
 
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
@@ -29,7 +30,7 @@ use lsp_types::{
     PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
     TextDocumentPositionParams, WorkDoneProgressParams,
 };
-use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
+use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams, UnindexedProject};
 use serde_json::json;
 use stdx::format_to_acc;
 use test_utils::skip_slow_tests;
@@ -587,6 +588,66 @@ fn main() {{}}
 }
 
 #[test]
+fn test_opening_a_file_outside_of_indexed_workspace() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let tmp_dir = TestDir::new();
+    let path = tmp_dir.path();
+
+    let project = json!({
+        "roots": [path],
+        "crates": [ {
+            "root_module": path.join("src/crate_one/lib.rs"),
+            "deps": [],
+            "edition": "2015",
+            "cfg": [ "cfg_atom_1", "feature=\"cfg_1\""],
+        } ]
+    });
+
+    let code = format!(
+        r#"
+//- /rust-project.json
+{project}
+
+//- /src/crate_one/lib.rs
+mod bar;
+
+fn main() {{}}
+"#,
+    );
+
+    let server = Project::with_fixture(&code)
+        .tmp_dir(tmp_dir)
+        .with_config(serde_json::json!({
+            "notifications": {
+                "unindexedProject": true
+            },
+        }))
+        .server()
+        .wait_until_workspace_is_loaded();
+
+    let uri = server.doc_id("src/crate_two/lib.rs").uri;
+    server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: uri.clone(),
+            language_id: "rust".to_owned(),
+            version: 0,
+            text: "/// Docs\nfn foo() {}".to_owned(),
+        },
+    });
+    let expected = json!({
+        "textDocuments": [
+            {
+                "uri": uri
+            }
+        ]
+    });
+    server.expect_notification::<UnindexedProject>(expected);
+}
+
+#[test]
 fn diagnostics_dont_block_typing() {
     if skip_slow_tests() {
         return;
@@ -621,9 +682,9 @@ fn main() {{}}
         server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri: server.doc_id(&format!("src/m{i}.rs")).uri,
-                language_id: "rust".to_string(),
+                language_id: "rust".to_owned(),
                 version: 0,
-                text: "/// Docs\nfn foo() {}".to_string(),
+                text: "/// Docs\nfn foo() {}".to_owned(),
             },
         });
     }
@@ -1017,15 +1078,15 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/old_file.rs").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/new_file.rs").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/old_file.rs").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/new_file.rs").to_str().unwrap().to_owned(),
             }],
         },
         json!({
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_string().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1052,8 +1113,8 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/from_mod/mod.rs").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/from_mod/foo.rs").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/from_mod/mod.rs").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/from_mod/foo.rs").to_str().unwrap().to_owned(),
             }],
         },
         json!(null),
@@ -1063,8 +1124,8 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/to_mod/foo.rs").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/to_mod/mod.rs").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/to_mod/foo.rs").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/to_mod/mod.rs").to_str().unwrap().to_owned(),
             }],
         },
         json!(null),
@@ -1074,15 +1135,15 @@ use crate::old_folder::nested::foo as bar;
     server.request::<WillRenameFiles>(
         RenameFilesParams {
             files: vec![FileRename {
-                old_uri: base_path.join("src/old_folder").to_str().unwrap().to_string(),
-                new_uri: base_path.join("src/new_folder").to_str().unwrap().to_string(),
+                old_uri: base_path.join("src/old_folder").to_str().unwrap().to_owned(),
+                new_uri: base_path.join("src/new_folder").to_str().unwrap().to_owned(),
             }],
         },
         json!({
           "documentChanges": [
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_string().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("lib.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [
@@ -1103,7 +1164,7 @@ use crate::old_folder::nested::foo as bar;
             },
             {
               "textDocument": {
-                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").to_str().unwrap().to_string().replace("C:\\", "/c:/").replace('\\', "/")),
+                "uri": format!("file://{}", tmp_dir_path.join("src").join("old_folder").join("nested.rs").to_str().unwrap().to_owned().replace("C:\\", "/c:/").replace('\\', "/")),
                 "version": null
               },
               "edits": [

@@ -529,7 +529,7 @@ fn trait_applicable_items(
             return None;
         }
 
-        let assoc_item_trait = assoc.containing_trait(db)?;
+        let assoc_item_trait = assoc.container_trait(db)?;
         if related_traits.contains(&assoc_item_trait) {
             return None;
         }
@@ -550,8 +550,7 @@ fn trait_applicable_items(
             None,
             |assoc| {
                 if required_assoc_items.contains(&assoc) {
-                    let located_trait =
-                        assoc.containing_trait(db).filter(|&it| scope_filter(it))?;
+                    let located_trait = assoc.container_trait(db).filter(|&it| scope_filter(it))?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
                     let import_path = trait_import_paths
                         .entry(trait_item)
@@ -576,8 +575,7 @@ fn trait_applicable_items(
             |function| {
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
-                    let located_trait =
-                        assoc.containing_trait(db).filter(|&it| scope_filter(it))?;
+                    let located_trait = assoc.container_trait(db).filter(|&it| scope_filter(it))?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
                     let import_path = trait_import_paths
                         .entry(trait_item)
@@ -605,6 +603,7 @@ fn assoc_to_item(assoc: AssocItem) -> ItemInNs {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn get_mod_path(
     db: &RootDatabase,
     item_to_search: ItemInNs,

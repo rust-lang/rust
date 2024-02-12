@@ -225,7 +225,7 @@ impl MirLowerCtx<'_> {
                 {
                     let Some(index_fn) = self.infer.method_resolution(expr_id) else {
                         return Err(MirLowerError::UnresolvedMethod(
-                            "[overloaded index]".to_string(),
+                            "[overloaded index]".to_owned(),
                         ));
                     };
                     let Some((base_place, current)) =

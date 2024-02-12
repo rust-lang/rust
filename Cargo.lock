@@ -147,7 +147,21 @@ dependencies = [
  "anstyle",
  "anstyle-parse",
  "anstyle-query",
- "anstyle-wincon",
+ "anstyle-wincon 2.1.0",
+ "colorchoice",
+ "utf8parse",
+]
+
+[[package]]
+name = "anstream"
+version = "0.6.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e2e1ebcb11de5c03c67de28a7df593d32191b44939c482e97702baaaa6ab6a5"
+dependencies = [
+ "anstyle",
+ "anstyle-parse",
+ "anstyle-query",
+ "anstyle-wincon 3.0.2",
  "colorchoice",
  "utf8parse",
 ]
@@ -184,6 +198,16 @@ checksum = "58f54d10c6dfa51283a066ceab3ec1ab78d13fae00aa49243a45e4571fb79dfd"
 dependencies = [
  "anstyle",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "anstyle-wincon"
+version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cd54b81ec8d6180e24654d0b371ad22fc3dd083b6ff8ba325b72e00c87660a7"
+dependencies = [
+ "anstyle",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -520,7 +544,7 @@ version = "4.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5179bb514e4d7c2051749d8fcefa2ed6d06a9f4e6d69faf3805f5d80b8cf8d56"
 dependencies = [
- "anstream",
+ "anstream 0.5.0",
  "anstyle",
  "clap_lex",
  "strsim",
@@ -558,7 +582,7 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 name = "clippy"
 version = "0.1.78"
 dependencies = [
- "anstream",
+ "anstream 0.5.0",
  "clippy_config",
  "clippy_lints",
  "clippy_utils",
@@ -1235,6 +1259,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_filter"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a009aa4810eb158359dda09d0c87378e4bbb89b5a801f016885a4707ba24f7ea"
+dependencies = [
+ "log",
+ "regex",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1245,6 +1279,19 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05e7cf40684ae96ade6232ed84582f40ce0a66efcd43a5117aef610534f8e0b8"
+dependencies = [
+ "anstream 0.6.11",
+ "anstyle",
+ "env_filter",
+ "humantime",
+ "log",
 ]
 
 [[package]]
@@ -1638,9 +1685,9 @@ dependencies = [
 
 [[package]]
 name = "handlebars"
-version = "4.3.7"
+version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83c3372087601b532857d332f5957cbae686da52bb7810bf038c3e3c3cc2fa0d"
+checksum = "ab283476b99e66691dee3f1640fea91487a8d81f50fb5ecc75538f8f8879a1e4"
 dependencies = [
  "log",
  "pest",
@@ -2227,6 +2274,7 @@ dependencies = [
 name = "linkchecker"
 version = "0.1.0"
 dependencies = [
+ "html5ever",
  "once_cell",
  "regex",
 ]
@@ -2335,9 +2383,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.36"
+version = "0.4.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80992cb0e05f22cc052c99f8e883f1593b891014b96a8b4637fd274d7030c85e"
+checksum = "0c33564061c3c640bed5ace7d6a2a1b65f2c64257d1ac930c15e94ed0fb561d3"
 dependencies = [
  "ammonia",
  "anyhow",
@@ -2345,14 +2393,13 @@ dependencies = [
  "clap",
  "clap_complete",
  "elasticlunr-rs",
- "env_logger",
+ "env_logger 0.11.1",
  "handlebars",
  "log",
  "memchr",
  "once_cell",
  "opener",
- "pathdiff",
- "pulldown-cmark",
+ "pulldown-cmark 0.10.0",
  "regex",
  "serde",
  "serde_json",
@@ -2471,7 +2518,7 @@ dependencies = [
  "aes",
  "colored",
  "ctrlc",
- "env_logger",
+ "env_logger 0.10.0",
  "getrandom",
  "jemalloc-sys",
  "lazy_static",
@@ -2689,7 +2736,7 @@ dependencies = [
  "camino",
  "clap",
  "derive_builder",
- "env_logger",
+ "env_logger 0.10.0",
  "fs_extra",
  "glob",
  "humansize",
@@ -3013,6 +3060,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pulldown-cmark"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dce76ce678ffc8e5675b22aa1405de0b7037e2fdf8913fea40d1926c6fe1e6e7"
+dependencies = [
+ "bitflags 2.4.1",
+ "memchr",
+ "pulldown-cmark-escape",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark-escape"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5d8f9aa0e3cbcfaf8bf00300004ee3b72f74770f9cbac93f6928771f613276b"
+
+[[package]]
 name = "punycode"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3271,7 +3336,7 @@ name = "rustbook"
 version = "0.1.0"
 dependencies = [
  "clap",
- "env_logger",
+ "env_logger 0.10.0",
  "mdbook",
 ]
 
@@ -4427,7 +4492,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.1",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.6",
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -4971,9 +5036,9 @@ checksum = "45bb67a18fa91266cc7807181f62f9178a6873bfad7dc788c42e6430db40184f"
 
 [[package]]
 name = "shlex"
-version = "1.1.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
+checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "siphasher"

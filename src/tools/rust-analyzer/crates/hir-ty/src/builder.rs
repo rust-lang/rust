@@ -125,6 +125,7 @@ impl<D> TyBuilder<D> {
         this
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable<'_>) -> Self {
         self.fill(|x| match x {
             ParamKind::Type => table.new_type_var().cast(Interner),
@@ -208,6 +209,7 @@ impl TyBuilder<()> {
         )
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn subst_for_def(
         db: &dyn HirDatabase,
         def: impl Into<GenericDefId>,

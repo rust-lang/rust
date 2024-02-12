@@ -516,6 +516,17 @@ impl Diagnostic {
 
     /// Helper for pushing to `self.suggestions`, if available (not disable).
     fn push_suggestion(&mut self, suggestion: CodeSuggestion) {
+        for subst in &suggestion.substitutions {
+            for part in &subst.parts {
+                let span = part.span;
+                let call_site = span.ctxt().outer_expn_data().call_site;
+                if span.in_derive_expansion() && span.overlaps_or_adjacent(call_site) {
+                    // Ignore if spans is from derive macro.
+                    return;
+                }
+            }
+        }
+
         if let Ok(suggestions) = &mut self.suggestions {
             suggestions.push(suggestion);
         }

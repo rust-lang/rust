@@ -947,7 +947,9 @@ fn clean_ty_alias_inner_type<'tcx>(
     };
 
     if !adt_def.did().is_local() {
-        inline::build_impls(cx, adt_def.did(), None, ret);
+        cx.with_param_env(adt_def.did(), |cx| {
+            inline::build_impls(cx, adt_def.did(), None, ret);
+        });
     }
 
     Some(if adt_def.is_enum() {

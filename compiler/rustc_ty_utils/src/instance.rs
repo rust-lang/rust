@@ -209,10 +209,8 @@ fn resolve_associated_item<'tcx>(
                 let name = tcx.item_name(trait_item_id);
                 if name == sym::clone {
                     let self_ty = trait_ref.self_ty();
-
-                    let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
                     match self_ty.kind() {
-                        _ if is_copy => (),
+                        ty::FnDef(..) | ty::FnPtr(_) => (),
                         ty::Coroutine(..)
                         | ty::CoroutineWitness(..)
                         | ty::Closure(..)

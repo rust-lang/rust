@@ -1162,8 +1162,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
                 && let hir::Node::Pat(binding) = self.tcx.hir_node(*hir_id)
-                && let Some(parent) = self.tcx.hir().find_parent(binding.hir_id)
             {
+                let parent = self.tcx.parent_hir_node(binding.hir_id);
                 // We've reached the root of the method call chain...
                 if let hir::Node::Local(local) = parent
                     && let Some(binding_expr) = local.init

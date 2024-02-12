@@ -104,7 +104,7 @@ impl server::TokenStream for RaSpanServer {
                     delimiter: delim_to_internal(group.delimiter, group.span),
                     token_trees: match group.stream {
                         Some(stream) => stream.into_iter().collect(),
-                        None => Vec::new(),
+                        None => Box::new([]),
                     },
                 };
                 let tree = tt::TokenTree::from(group);
@@ -221,7 +221,7 @@ impl server::TokenStream for RaSpanServer {
                     stream: if subtree.token_trees.is_empty() {
                         None
                     } else {
-                        Some(subtree.token_trees.into_iter().collect())
+                        Some(subtree.token_trees.into_vec().into_iter().collect())
                     },
                     span: bridge::DelimSpan::from_single(subtree.delimiter.open),
                 }),

@@ -666,7 +666,15 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         debug!(?def_id, ?fn_span);
 
         for arg in args {
-            if let Some(too_large_size) = self.operand_size_if_too_large(limit, &arg.node) {
+            // Moving args into functions is typically implemented with pointer
+            // passing at the llvm-ir level and not by memcpy's. So always allow
+            // moving args into functions.
+            let operand: &mir::Operand<'tcx> = &arg.node;
+            if let mir::Operand::Move(_) = operand {
+                continue;
+            }
+
+            if let Some(too_large_size) = self.operand_size_if_too_large(limit, operand) {
                 self.lint_large_assignment(limit.0, too_large_size, location, arg.span);
             };
         }

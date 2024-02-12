@@ -128,7 +128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let sugg_span = if let SelfSource::MethodCall(expr) = source {
             // Given `foo.bar(baz)`, `expr` is `bar`, but we want to point to the whole thing.
-            self.tcx.hir().expect_expr(self.tcx.hir().parent_id(expr.hir_id)).span
+            self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id)).span
         } else {
             span
         };
@@ -231,9 +231,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = kind
                             && let hir::def::Res::Local(hir_id) = path.res
                             && let hir::Node::Pat(b) = self.tcx.hir_node(hir_id)
-                            && let Some(hir::Node::Param(p)) = self.tcx.hir().find_parent(b.hir_id)
-                            && let Some(node) = self.tcx.hir().find_parent(p.hir_id)
-                            && let Some(decl) = node.fn_decl()
+                            && let hir::Node::Param(p) = self.tcx.parent_hir_node(b.hir_id)
+                            && let Some(decl) = self.tcx.parent_hir_node(p.hir_id).fn_decl()
                             && let Some(ty) = decl.inputs.iter().find(|ty| ty.span == p.ty_span)
                             && let hir::TyKind::Ref(_, mut_ty) = &ty.kind
                             && let hir::Mutability::Not = mut_ty.mutbl
@@ -471,7 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
                 let call_expr =
-                    self.tcx.hir().expect_expr(self.tcx.hir().parent_id(rcvr_expr.hir_id));
+                    self.tcx.hir().expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id));
                 let probe = self.lookup_probe_for_diagnostic(
                     item_name,
                     output_ty,
@@ -1020,7 +1019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rcvr_ty,
                         &item_segment,
                         span,
-                        tcx.hir().get_parent(rcvr_expr.hir_id).expect_expr(),
+                        tcx.parent_hir_node(rcvr_expr.hir_id).expect_expr(),
                         rcvr_expr,
                     ) {
                         err.span_note(
@@ -1254,7 +1253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let msg = "remove this method call";
             let mut fallback_span = true;
             if let SelfSource::MethodCall(expr) = source {
-                let call_expr = self.tcx.hir().expect_expr(self.tcx.hir().parent_id(expr.hir_id));
+                let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
                 if let Some(span) = call_expr.span.trim_start(expr.span) {
                     err.span_suggestion(span, msg, "", Applicability::MachineApplicable);
                     fallback_span = false;
@@ -1753,7 +1752,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Applicability::MachineApplicable,
                     );
                 } else {
-                    let call_expr = tcx.hir().expect_expr(tcx.hir().parent_id(expr.hir_id));
+                    let call_expr = tcx.hir().expect_expr(tcx.parent_hir_id(expr.hir_id));
 
                     if let Some(span) = call_expr.span.trim_start(item_name.span) {
                         err.span_suggestion(
@@ -1937,7 +1936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let span = tcx.hir().span(hir_id);
                         let filename = tcx.sess.source_map().span_to_filename(span);
 
-                        let parent_node = self.tcx.hir().get_parent(hir_id);
+                        let parent_node = self.tcx.parent_hir_node(hir_id);
                         let msg = format!(
                             "you must specify a type for this binding, like `{concrete_type}`",
                         );
@@ -2016,8 +2015,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut visitor = LetVisitor { result: None, ident_name: seg1.ident.name };
         visitor.visit_body(body);
 
-        let parent = self.tcx.hir().parent_id(seg1.hir_id);
-        if let Node::Expr(call_expr) = self.tcx.hir_node(parent)
+        if let Node::Expr(call_expr) = self.tcx.parent_hir_node(seg1.hir_id)
             && let Some(expr) = visitor.result
             && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
         {
@@ -2056,7 +2054,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for (fields, args) in
                 self.get_field_candidates_considering_privacy(span, actual, mod_id, expr.hir_id)
             {
-                let call_expr = self.tcx.hir().expect_expr(self.tcx.hir().parent_id(expr.hir_id));
+                let call_expr = self.tcx.hir().expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
                 let never_mention_traits = [
@@ -2133,7 +2131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let SelfSource::MethodCall(expr) = source else {
             return;
         };
-        let call_expr = tcx.hir().expect_expr(tcx.hir().parent_id(expr.hir_id));
+        let call_expr = tcx.hir().expect_expr(tcx.parent_hir_id(expr.hir_id));
 
         let ty::Adt(kind, args) = actual.kind() else {
             return;
@@ -3250,8 +3248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let parent = self.tcx.hir().parent_id(expr.hir_id);
-        if let Node::Expr(call_expr) = self.tcx.hir_node(parent)
+        if let Node::Expr(call_expr) = self.tcx.parent_hir_node(expr.hir_id)
             && let hir::ExprKind::MethodCall(
                 hir::PathSegment { ident: method_name, .. },
                 self_expr,

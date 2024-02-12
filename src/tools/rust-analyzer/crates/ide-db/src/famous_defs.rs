@@ -1,7 +1,7 @@
 //! See [`FamousDefs`].
 
 use base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase};
-use hir::{Crate, Enum, Macro, Module, ScopeDef, Semantics, Trait};
+use hir::{Crate, Enum, Function, Macro, Module, ScopeDef, Semantics, Trait};
 
 use crate::RootDatabase;
 
@@ -110,6 +110,10 @@ impl FamousDefs<'_, '_> {
         self.find_macro("core:macros:builtin:derive")
     }
 
+    pub fn core_mem_drop(&self) -> Option<Function> {
+        self.find_function("core:mem:drop")
+    }
+
     pub fn builtin_crates(&self) -> impl Iterator<Item = Crate> {
         IntoIterator::into_iter([
             self.std(),
@@ -145,6 +149,13 @@ impl FamousDefs<'_, '_> {
     fn find_module(&self, path: &str) -> Option<Module> {
         match self.find_def(path)? {
             hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    fn find_function(&self, path: &str) -> Option<Function> {
+        match self.find_def(path)? {
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Function(it)) => Some(it),
             _ => None,
         }
     }

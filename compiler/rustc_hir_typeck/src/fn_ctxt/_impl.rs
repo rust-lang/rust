@@ -764,7 +764,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let code = match lang_item {
             hir::LangItem::IntoFutureIntoFuture => {
-                if let hir::Node::Expr(into_future_call) = self.tcx.hir().get_parent(hir_id)
+                if let hir::Node::Expr(into_future_call) = self.tcx.parent_hir_node(hir_id)
                     && let hir::ExprKind::Call(_, [arg0]) = &into_future_call.kind
                 {
                     Some(ObligationCauseCode::AwaitableExpr(arg0.hir_id))
@@ -956,12 +956,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ..
             }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, false)),
             Node::Expr(&hir::Expr { hir_id, kind: hir::ExprKind::Closure(..), .. })
-                if let Some(Node::Item(&hir::Item {
+                if let Node::Item(&hir::Item {
                     ident,
                     kind: hir::ItemKind::Fn(ref sig, ..),
                     owner_id,
                     ..
-                })) = self.tcx.hir().find_parent(hir_id) =>
+                }) = self.tcx.parent_hir_node(hir_id) =>
             {
                 Some((
                     hir::HirId::make_owner(owner_id.def_id),
@@ -1574,7 +1574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn expr_in_place(&self, mut expr_id: hir::HirId) -> bool {
         let mut contained_in_place = false;
 
-        while let hir::Node::Expr(parent_expr) = self.tcx.hir().get_parent(expr_id) {
+        while let hir::Node::Expr(parent_expr) = self.tcx.parent_hir_node(expr_id) {
             match &parent_expr.kind {
                 hir::ExprKind::Assign(lhs, ..) | hir::ExprKind::AssignOp(_, lhs, ..) => {
                     if lhs.hir_id == expr_id {

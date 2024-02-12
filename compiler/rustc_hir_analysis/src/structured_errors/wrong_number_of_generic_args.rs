@@ -135,7 +135,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             // Here we check if the reference to the generic type
             // is from the 'of_trait' field of the enclosing impl
 
-            let parent = self.tcx.hir().get_parent(self.path_segment.hir_id);
+            let parent = self.tcx.parent_hir_node(self.path_segment.hir_id);
             let parent_item = self.tcx.hir_node_by_def_id(
                 self.tcx.hir().get_parent_item(self.path_segment.hir_id).def_id,
             );
@@ -770,9 +770,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             num = num_trait_generics_except_self,
         );
 
-        if let Some(parent_node) = self.tcx.hir().opt_parent_id(self.path_segment.hir_id)
-            && let hir::Node::Expr(expr) = self.tcx.hir_node(parent_node)
-        {
+        if let hir::Node::Expr(expr) = self.tcx.parent_hir_node(self.path_segment.hir_id) {
             match &expr.kind {
                 hir::ExprKind::Path(qpath) => self
                     .suggest_moving_args_from_assoc_fn_to_trait_for_qualified_path(

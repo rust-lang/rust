@@ -33,7 +33,7 @@ pub(crate) fn get(
     res.push(CfgFlag::Atom("target_thread_local".into()));
     for ty in ["8", "16", "32", "64", "cas", "ptr"] {
         for key in ["target_has_atomic", "target_has_atomic_load_store"] {
-            res.push(CfgFlag::KeyValue { key: key.to_string(), value: ty.into() });
+            res.push(CfgFlag::KeyValue { key: key.to_owned(), value: ty.into() });
         }
     }
 

@@ -1980,10 +1980,7 @@ fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> 
     let ast_lit = lit.literal()?;
     let mut hir_lit: Literal = ast_lit.kind().into();
     if lit.minus_token().is_some() {
-        let Some(h) = hir_lit.negate() else {
-            return None;
-        };
-        hir_lit = h;
+        hir_lit = hir_lit.negate()?;
     }
     Some((hir_lit, ast_lit))
 }

@@ -57,7 +57,7 @@ impl Stitched {
         self.by_name("proc_macro")
     }
 
-    pub(crate) fn crates(&self) -> impl Iterator<Item = SysrootCrate> + ExactSizeIterator + '_ {
+    pub(crate) fn crates(&self) -> impl ExactSizeIterator<Item = SysrootCrate> + '_ {
         self.crates.iter().map(|(id, _data)| id)
     }
 

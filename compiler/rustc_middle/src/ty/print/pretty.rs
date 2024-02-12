@@ -877,7 +877,24 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::CoroutineClosure(did, args) => {
                 p!(write("{{"));
                 if !self.should_print_verbose() {
-                    p!(write("coroutine-closure"));
+                    match self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(did)).unwrap()
+                    {
+                        hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::Async,
+                            hir::CoroutineSource::Closure,
+                        ) => p!("async closure"),
+                        hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::AsyncGen,
+                            hir::CoroutineSource::Closure,
+                        ) => p!("async gen closure"),
+                        hir::CoroutineKind::Desugared(
+                            hir::CoroutineDesugaring::Gen,
+                            hir::CoroutineSource::Closure,
+                        ) => p!("gen closure"),
+                        _ => unreachable!(
+                            "coroutine from coroutine-closure should have CoroutineSource::Closure"
+                        ),
+                    }
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
                         if self.tcx().sess.opts.unstable_opts.span_free_formats {

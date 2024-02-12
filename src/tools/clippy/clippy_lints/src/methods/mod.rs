@@ -4458,7 +4458,7 @@ impl Methods {
                     _ => {},
                 },
                 ("drain", ..) => {
-                    if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.hir().get_parent(expr.hir_id)
+                    if let Node::Stmt(Stmt { hir_id: _, kind, .. }) = cx.tcx.parent_hir_node(expr.hir_id)
                         && matches!(kind, StmtKind::Semi(_))
                         && args.len() <= 1
                     {

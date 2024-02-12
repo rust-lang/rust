@@ -346,6 +346,7 @@ impl From<OwnedFd> for UnixListener {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixListener> for OwnedFd {
+    /// Takes ownership of a [`UnixListener`]'s socket file descriptor.
     #[inline]
     fn from(listener: UnixListener) -> OwnedFd {
         listener.0.into_inner().into_inner()

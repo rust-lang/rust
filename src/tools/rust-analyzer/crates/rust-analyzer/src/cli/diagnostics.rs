@@ -45,7 +45,7 @@ impl flags::Diagnostics {
             let file_id = module.definition_source_file_id(db).original_file(db);
             if !visited_files.contains(&file_id) {
                 let crate_name =
-                    module.krate().display_name(db).as_deref().unwrap_or("unknown").to_string();
+                    module.krate().display_name(db).as_deref().unwrap_or("unknown").to_owned();
                 println!("processing crate: {crate_name}, module: {}", _vfs.file_path(file_id));
                 for diagnostic in analysis
                     .diagnostics(
