@@ -124,11 +124,13 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed> {
+    // If there are no impls for the trait, then "all impls" are trivially coherent and we won't check anything
+    // anyway. Thus we bail out even before the specialization graph, avoiding the dep_graph edge.
+    let Some(impls) = tcx.all_local_trait_impls(()).get(&def_id) else { return Ok(()) };
     // Trigger building the specialization graph for the trait. This will detect and report any
     // overlap errors.
     let mut res = tcx.ensure().specialization_graph_of(def_id);
 
-    let impls = tcx.hir().trait_impls(def_id);
     for &impl_def_id in impls {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
 
