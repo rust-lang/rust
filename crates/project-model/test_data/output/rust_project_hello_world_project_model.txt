@@ -37,7 +37,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -70,7 +70,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -103,7 +103,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -136,7 +136,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -186,7 +186,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -219,7 +219,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -317,7 +317,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -350,7 +350,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -383,7 +383,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -416,7 +416,7 @@
         ),
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },
@@ -493,7 +493,7 @@
         },
         is_proc_macro: false,
         target_layout: Err(
-            "rust-project.json projects have no target layout set",
+            "test has no data layout",
         ),
         toolchain: None,
     },

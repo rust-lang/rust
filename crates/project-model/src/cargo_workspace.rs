@@ -12,8 +12,9 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use serde_json::from_value;
+use toolchain::Tool;
 
-use crate::{utf8_stdout, InvocationLocation, ManifestPath};
+use crate::{utf8_stdout, InvocationLocation, ManifestPath, Sysroot};
 use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
@@ -236,12 +237,13 @@ impl CargoWorkspace {
         cargo_toml: &ManifestPath,
         current_dir: &AbsPath,
         config: &CargoConfig,
+        sysroot: Option<&Sysroot>,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<cargo_metadata::Metadata> {
-        let targets = find_list_of_build_targets(config, cargo_toml);
+        let targets = find_list_of_build_targets(config, cargo_toml, sysroot);
 
         let mut meta = MetadataCommand::new();
-        meta.cargo_path(toolchain::cargo());
+        meta.cargo_path(Sysroot::discover_tool(sysroot, Tool::Cargo)?);
         meta.manifest_path(cargo_toml.to_path_buf());
         match &config.features {
             CargoFeatures::All => {
@@ -476,24 +478,29 @@ impl CargoWorkspace {
     }
 }
 
-fn find_list_of_build_targets(config: &CargoConfig, cargo_toml: &ManifestPath) -> Vec<String> {
+fn find_list_of_build_targets(
+    config: &CargoConfig,
+    cargo_toml: &ManifestPath,
+    sysroot: Option<&Sysroot>,
+) -> Vec<String> {
     if let Some(target) = &config.target {
         return [target.into()].to_vec();
     }
 
-    let build_targets = cargo_config_build_target(cargo_toml, &config.extra_env);
+    let build_targets = cargo_config_build_target(cargo_toml, &config.extra_env, sysroot);
     if !build_targets.is_empty() {
         return build_targets;
     }
 
-    rustc_discover_host_triple(cargo_toml, &config.extra_env).into_iter().collect()
+    rustc_discover_host_triple(cargo_toml, &config.extra_env, sysroot).into_iter().collect()
 }
 
 fn rustc_discover_host_triple(
     cargo_toml: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
+    sysroot: Option<&Sysroot>,
 ) -> Option<String> {
-    let mut rustc = Command::new(toolchain::rustc());
+    let mut rustc = Command::new(Sysroot::discover_tool(sysroot, Tool::Rustc).ok()?);
     rustc.envs(extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);
@@ -519,8 +526,10 @@ fn rustc_discover_host_triple(
 fn cargo_config_build_target(
     cargo_toml: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
+    sysroot: Option<&Sysroot>,
 ) -> Vec<String> {
-    let mut cargo_config = Command::new(toolchain::cargo());
+    let Ok(program) = Sysroot::discover_tool(sysroot, Tool::Cargo) else { return vec![] };
+    let mut cargo_config = Command::new(program);
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())
