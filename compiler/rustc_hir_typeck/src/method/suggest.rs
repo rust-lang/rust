@@ -1073,12 +1073,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // for instance
                                         self.tcx.at(span).type_of(*def_id).instantiate_identity()
                                             != rcvr_ty
-                                            && self
-                                                .tcx
-                                                .at(span)
-                                                .type_of(*def_id)
-                                                .instantiate_identity()
-                                                != rcvr_ty
                                     }
                                     (Mode::Path, false, _) => true,
                                     _ => false,
