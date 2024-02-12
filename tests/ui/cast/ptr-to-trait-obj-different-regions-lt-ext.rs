@@ -1,4 +1,4 @@
-// check-pass
+// check-fail
 //
 // issue: <https://github.com/rust-lang/rust/issues/120217>
 
@@ -9,7 +9,7 @@ trait Static<'a> {
 }
 
 fn bad_cast<'a>(x: *const dyn Static<'static>) -> *const dyn Static<'a> {
-    x as _
+    x as _ //~ error: lifetime may not live long enough
 }
 
 impl Static<'static> for () {
