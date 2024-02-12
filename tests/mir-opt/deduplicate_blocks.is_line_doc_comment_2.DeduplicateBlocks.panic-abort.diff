@@ -25,58 +25,66 @@
           _7 = Len((*_2));
           _8 = const 4_usize;
           _9 = Ge(move _7, move _8);
-          switchInt(move _9) -> [0: bb6, otherwise: bb2];
+-         switchInt(move _9) -> [0: bb2, otherwise: bb7];
++         switchInt(move _9) -> [0: bb2, otherwise: bb6];
       }
   
       bb2: {
-          switchInt((*_2)[0 of 4]) -> [47: bb3, otherwise: bb6];
-      }
-  
-      bb3: {
-          switchInt((*_2)[1 of 4]) -> [47: bb4, otherwise: bb6];
-      }
-  
-      bb4: {
-          switchInt((*_2)[2 of 4]) -> [47: bb5, otherwise: bb6];
-      }
-  
-      bb5: {
--         switchInt((*_2)[3 of 4]) -> [47: bb11, otherwise: bb6];
-+         switchInt((*_2)[3 of 4]) -> [47: bb10, otherwise: bb6];
-      }
-  
-      bb6: {
           _4 = Len((*_2));
           _5 = const 3_usize;
           _6 = Ge(move _4, move _5);
-          switchInt(move _6) -> [0: bb10, otherwise: bb7];
+-         switchInt(move _6) -> [0: bb3, otherwise: bb4];
++         switchInt(move _6) -> [0: bb10, otherwise: bb3];
       }
   
-      bb7: {
-          switchInt((*_2)[0 of 3]) -> [47: bb8, otherwise: bb10];
+      bb3: {
+-         _0 = const false;
+-         goto -> bb14;
++         switchInt((*_2)[0 of 3]) -> [47: bb4, otherwise: bb10];
       }
   
-      bb8: {
-          switchInt((*_2)[1 of 3]) -> [47: bb9, otherwise: bb10];
+      bb4: {
+-         switchInt((*_2)[0 of 3]) -> [47: bb5, otherwise: bb3];
++         switchInt((*_2)[1 of 3]) -> [47: bb5, otherwise: bb10];
       }
   
-      bb9: {
--         switchInt((*_2)[2 of 3]) -> [47: bb12, 33: bb13, otherwise: bb10];
+      bb5: {
+-         switchInt((*_2)[1 of 3]) -> [47: bb6, otherwise: bb3];
 +         switchInt((*_2)[2 of 3]) -> [47: bb11, 33: bb11, otherwise: bb10];
       }
   
+      bb6: {
+-         switchInt((*_2)[2 of 3]) -> [47: bb12, 33: bb13, otherwise: bb3];
++         switchInt((*_2)[0 of 4]) -> [47: bb7, otherwise: bb2];
+      }
+  
+      bb7: {
+-         switchInt((*_2)[0 of 4]) -> [47: bb8, otherwise: bb2];
++         switchInt((*_2)[1 of 4]) -> [47: bb8, otherwise: bb2];
+      }
+  
+      bb8: {
+-         switchInt((*_2)[1 of 4]) -> [47: bb9, otherwise: bb2];
++         switchInt((*_2)[2 of 4]) -> [47: bb9, otherwise: bb2];
+      }
+  
+      bb9: {
+-         switchInt((*_2)[2 of 4]) -> [47: bb10, otherwise: bb2];
++         switchInt((*_2)[3 of 4]) -> [47: bb10, otherwise: bb2];
+      }
+  
       bb10: {
+-         switchInt((*_2)[3 of 4]) -> [47: bb11, otherwise: bb2];
+-     }
+- 
+-     bb11: {
           _0 = const false;
 -         goto -> bb14;
 +         goto -> bb12;
       }
   
-      bb11: {
--         _0 = const false;
--         goto -> bb14;
--     }
-- 
 -     bb12: {
++     bb11: {
           _0 = const true;
 -         goto -> bb14;
 +         goto -> bb12;

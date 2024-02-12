@@ -18,10 +18,14 @@
 -         _5 = const false;
 -         _5 = const true;
           _2 = discriminant(_1);
-          switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2];
+          switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
       }
   
       bb1: {
+          unreachable;
+      }
+  
+      bb2: {
           StorageLive(_3);
           _3 = move ((_1 as Some).0: std::boxed::Box<()>);
           StorageLive(_4);
@@ -30,10 +34,6 @@
           StorageDead(_4);
           StorageDead(_3);
           goto -> bb4;
-      }
-  
-      bb2: {
-          unreachable;
       }
   
       bb3: {

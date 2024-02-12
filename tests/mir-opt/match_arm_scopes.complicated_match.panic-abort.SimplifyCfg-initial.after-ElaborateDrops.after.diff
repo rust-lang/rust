@@ -32,33 +32,25 @@
   
       bb0: {
           PlaceMention(_2);
--         switchInt((_2.0: bool)) -> [0: bb1, otherwise: bb2];
+-         switchInt((_2.0: bool)) -> [0: bb6, otherwise: bb1];
 +         switchInt((_2.0: bool)) -> [0: bb5, otherwise: bb1];
       }
   
       bb1: {
--         falseEdge -> [real: bb8, imaginary: bb3];
+-         switchInt((_2.1: bool)) -> [0: bb5, otherwise: bb2];
 +         switchInt((_2.1: bool)) -> [0: bb10, otherwise: bb2];
       }
   
       bb2: {
--         switchInt((_2.1: bool)) -> [0: bb3, otherwise: bb4];
+-         switchInt((_2.0: bool)) -> [0: bb4, otherwise: bb3];
 +         switchInt((_2.0: bool)) -> [0: bb3, otherwise: bb17];
       }
   
       bb3: {
--         falseEdge -> [real: bb13, imaginary: bb5];
+-         falseEdge -> [real: bb20, imaginary: bb4];
 -     }
 - 
 -     bb4: {
--         switchInt((_2.0: bool)) -> [0: bb6, otherwise: bb5];
--     }
-- 
--     bb5: {
--         falseEdge -> [real: bb20, imaginary: bb6];
--     }
-- 
--     bb6: {
           StorageLive(_15);
           _15 = (_2.1: bool);
           StorageLive(_16);
@@ -67,6 +59,14 @@
 +         goto -> bb16;
       }
   
+-     bb5: {
+-         falseEdge -> [real: bb13, imaginary: bb3];
+-     }
+- 
+-     bb6: {
+-         falseEdge -> [real: bb8, imaginary: bb5];
+-     }
+- 
 -     bb7: {
 +     bb4: {
           _0 = const 1_i32;
@@ -127,7 +127,7 @@
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_6);
--         falseEdge -> [real: bb2, imaginary: bb3];
+-         falseEdge -> [real: bb1, imaginary: bb5];
 +         goto -> bb1;
       }
   
@@ -184,7 +184,7 @@
           StorageDead(_12);
           StorageDead(_8);
           StorageDead(_6);
--         falseEdge -> [real: bb4, imaginary: bb5];
+-         falseEdge -> [real: bb2, imaginary: bb3];
 +         goto -> bb2;
       }
   

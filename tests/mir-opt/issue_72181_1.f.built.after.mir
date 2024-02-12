@@ -6,11 +6,15 @@ fn f(_1: Void) -> ! {
 
     bb0: {
         PlaceMention(_1);
+        goto -> bb1;
+    }
+
+    bb1: {
         FakeRead(ForMatchedPlace(None), _1);
         unreachable;
     }
 
-    bb1: {
+    bb2: {
         return;
     }
 }

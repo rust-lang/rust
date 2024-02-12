@@ -14,4 +14,9 @@ fn bar(_1: [(Never, u32); 1]) -> u32 {
         StorageDead(_2);
         return;
     }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
 }

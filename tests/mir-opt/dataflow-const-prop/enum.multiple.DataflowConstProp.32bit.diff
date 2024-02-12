@@ -49,16 +49,16 @@
           StorageDead(_4);
           StorageLive(_6);
           _7 = discriminant(_3);
-          switchInt(move _7) -> [0: bb4, 1: bb6, otherwise: bb5];
+          switchInt(move _7) -> [0: bb5, 1: bb6, otherwise: bb4];
       }
   
       bb4: {
-          _6 = const 0_u8;
-          goto -> bb7;
+          unreachable;
       }
   
       bb5: {
-          unreachable;
+          _6 = const 0_u8;
+          goto -> bb7;
       }
   
       bb6: {
