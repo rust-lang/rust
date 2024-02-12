@@ -1840,7 +1840,9 @@ fn maybe_expand_private_type_alias<'tcx>(
         }
     }
 
-    Some(cx.enter_alias(args, def_id.to_def_id(), |cx| clean_ty(&ty, cx)))
+    Some(cx.enter_alias(args, def_id.to_def_id(), |cx| {
+        cx.with_param_env(def_id.to_def_id(), |cx| clean_ty(&ty, cx))
+    }))
 }
 
 pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
