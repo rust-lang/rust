@@ -384,6 +384,13 @@ extern "C" {
     fn vclzh(a: vector_signed_short) -> vector_signed_short;
     #[link_name = "llvm.ctlz.v4i32"]
     fn vclzw(a: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vrlb"]
+    fn vrlb(a: vector_signed_char, b: vector_unsigned_char) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.vrlh"]
+    fn vrlh(a: vector_signed_short, b: vector_unsigned_short) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vrlw"]
+    fn vrlw(a: vector_signed_int, c: vector_unsigned_int) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -461,6 +468,27 @@ macro_rules! t_t_s {
 
     (f32) => {
         f32x4
+    };
+}
+
+macro_rules! t_u {
+    (vector_unsigned_char) => {
+        vector_unsigned_char
+    };
+    (vector_unsigned_short) => {
+        vector_unsigned_short
+    };
+    (vector_unsigned_int) => {
+        vector_unsigned_int
+    };
+    (vector_signed_char) => {
+        vector_unsigned_char
+    };
+    (vector_signed_short) => {
+        vector_unsigned_short
+    };
+    (vector_signed_int) => {
+        vector_unsigned_int
     };
 }
 
@@ -3126,6 +3154,37 @@ mod sealed {
     impl_vec_cntlz! { vec_vcntlzh(vector_unsigned_short) }
     impl_vec_cntlz! { vec_vcntlzw(vector_signed_int) }
     impl_vec_cntlz! { vec_vcntlzw(vector_unsigned_int) }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorRl {
+        type B;
+        unsafe fn vec_rl(self, b: Self::B) -> Self;
+    }
+
+    macro_rules! impl_vec_rl {
+        ($fun:ident ($a:ident)) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorRl for $a {
+                type B = t_u!($a);
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_rl(self, b: Self::B) -> Self {
+                    transmute($fun(transmute(self), b))
+                }
+            }
+        };
+    }
+
+    test_impl! { vec_vrlb(a: vector_signed_char, b: vector_unsigned_char) -> vector_signed_char [vrlb, vrlb] }
+    test_impl! { vec_vrlh(a: vector_signed_short, b: vector_unsigned_short) -> vector_signed_short [vrlh, vrlh] }
+    test_impl! { vec_vrlw(a: vector_signed_int, b: vector_unsigned_int) -> vector_signed_int [vrlw, vrlw] }
+
+    impl_vec_rl! { vec_vrlb(vector_signed_char) }
+    impl_vec_rl! { vec_vrlh(vector_signed_short) }
+    impl_vec_rl! { vec_vrlw(vector_signed_int) }
+    impl_vec_rl! { vec_vrlb(vector_unsigned_char) }
+    impl_vec_rl! { vec_vrlh(vector_unsigned_short) }
+    impl_vec_rl! { vec_vrlw(vector_unsigned_int) }
 }
 
 /// Vector Merge Low
@@ -3713,6 +3772,24 @@ where
     T: sealed::VectorAbss,
 {
     a.vec_abss()
+}
+
+/// Vector Rotate Left
+///
+/// ## Purpose
+/// Rotates each element of a vector left by a given number of bits.
+///
+/// ## Result value
+/// Each element of r is obtained by rotating the corresponding element of a left by
+/// the number of bits specified by the corresponding element of b.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_rl<T>(a: T, b: <T as sealed::VectorRl>::B) -> T
+where
+    T: sealed::VectorRl,
+{
+    a.vec_rl(b)
 }
 
 /// Vector Splat
