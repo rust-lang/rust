@@ -129,17 +129,20 @@ pub enum PathElem {
 pub enum CtfeValidationMode {
     /// Validation of a `static`
     Static { mutbl: Mutability },
-    /// Validation of a `const` (including promoteds).
+    /// Validation of a promoted.
+    Promoted,
+    /// Validation of a `const`.
     /// `allow_immutable_unsafe_cell` says whether we allow `UnsafeCell` in immutable memory (which is the
     /// case for the top-level allocation of a `const`, where this is fine because the allocation will be
     /// copied at each use site).
-    Const { allow_immutable_unsafe_cell: bool, allow_extern_static_ptrs: bool },
+    Const { allow_immutable_unsafe_cell: bool },
 }
 
 impl CtfeValidationMode {
     fn allow_immutable_unsafe_cell(self) -> bool {
         match self {
             CtfeValidationMode::Static { .. } => false,
+            CtfeValidationMode::Promoted { .. } => false,
             CtfeValidationMode::Const { allow_immutable_unsafe_cell, .. } => {
                 allow_immutable_unsafe_cell
             }
@@ -149,6 +152,7 @@ impl CtfeValidationMode {
     fn may_contain_mutable_ref(self) -> bool {
         match self {
             CtfeValidationMode::Static { mutbl } => mutbl == Mutability::Mut,
+            CtfeValidationMode::Promoted { .. } => false,
             CtfeValidationMode::Const { .. } => false,
         }
     }
@@ -476,34 +480,32 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                                 throw_validation_failure!(self.path, MutableRefToImmutable);
                             }
                         }
+                        // Mode-specific checks
                         match self.ctfe_mode {
-                            Some(CtfeValidationMode::Static { .. }) => {
+                            Some(
+                                CtfeValidationMode::Static { .. }
+                                | CtfeValidationMode::Promoted { .. },
+                            ) => {
                                 // We skip recursively checking other statics. These statics must be sound by
                                 // themselves, and the only way to get broken statics here is by using
                                 // unsafe code.
                                 // The reasons we don't check other statics is twofold. For one, in all
                                 // sound cases, the static was already validated on its own, and second, we
                                 // trigger cycle errors if we try to compute the value of the other static
-                                // and that static refers back to us.
+                                // and that static refers back to us (potentially through a promoted).
                                 // This could miss some UB, but that's fine.
                                 return Ok(());
                             }
-                            Some(CtfeValidationMode::Const {
-                                allow_extern_static_ptrs, ..
-                            }) => {
+                            Some(CtfeValidationMode::Const { .. }) => {
                                 // For consts on the other hand we have to recursively check;
                                 // pattern matching assumes a valid value. However we better make
                                 // sure this is not mutable.
                                 if is_mut {
                                     throw_validation_failure!(self.path, ConstRefToMutable);
                                 }
+                                // We can't recursively validate `extern static`, so we better reject them.
                                 if self.ecx.tcx.is_foreign_item(did) {
-                                    if !allow_extern_static_ptrs {
-                                        throw_validation_failure!(self.path, ConstRefToExtern);
-                                    } else {
-                                        // We can't validate this...
-                                        return Ok(());
-                                    }
+                                    throw_validation_failure!(self.path, ConstRefToExtern);
                                 }
                             }
                             None => {}
