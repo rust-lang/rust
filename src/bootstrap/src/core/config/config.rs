@@ -1095,6 +1095,7 @@ define_config! {
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         lld: Option<bool> = "lld",
         lld_mode: Option<LldMode> = "use-lld",
+        llvm_enzyme: Option<bool> = "llvm-enzyme",
         llvm_tools: Option<bool> = "llvm-tools",
         deny_warnings: Option<bool> = "deny-warnings",
         backtrace_on_ice: Option<bool> = "backtrace-on-ice",
@@ -1545,6 +1546,7 @@ impl Config {
                 save_toolstates,
                 codegen_backends,
                 lld,
+                llvm_enzyme,
                 llvm_tools,
                 deny_warnings,
                 backtrace_on_ice,
@@ -1634,6 +1636,8 @@ impl Config {
             }
 
             set(&mut config.llvm_tools_enabled, llvm_tools);
+            config.llvm_enzyme =
+                llvm_enzyme.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;

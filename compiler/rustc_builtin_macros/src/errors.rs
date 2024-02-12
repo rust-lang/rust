@@ -172,6 +172,13 @@ pub(crate) struct AutoDiffInvalidApplication {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_autodiff_not_build)]
+pub(crate) struct AutoDiffSupportNotBuild {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
 pub(crate) struct ConcatBytesInvalid {
     #[primary_span]

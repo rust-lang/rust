@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
-#![allow(unexpected_cfgs)]
+//#![allow(unexpected_cfgs)]
 
 use rustc_ast::expand::autodiff_attrs::DiffActivity;
 
@@ -2609,10 +2609,10 @@ extern "C" {
     ) -> *mut c_void;
 }
 
-#[cfg(autodiff_fallback)]
+#[cfg(not(llvm_enzyme))]
 pub use self::Fallback_AD::*;
 
-#[cfg(autodiff_fallback)]
+#[cfg(not(llvm_enzyme))]
 pub mod Fallback_AD {
     #![allow(unused_variables)]
     use super::*;
@@ -2745,9 +2745,9 @@ pub mod Shared_AD {
     use libc::size_t;
     use super::Context;
 
-    #[cfg(autodiff_fallback)]
+    #[cfg(not(llvm_enzyme))]
     use super::Fallback_AD::*;
-    #[cfg(not(autodiff_fallback))]
+    #[cfg(llvm_enzyme)]
     use super::Enzyme_AD::*;
 
     use core::fmt;
@@ -2931,13 +2931,13 @@ pub mod Shared_AD {
     }
 }
 
-#[cfg(not(autodiff_fallback))]
+#[cfg(llvm_enzyme)]
 pub use self::Enzyme_AD::*;
 
 // Enzyme is an optional component, so we do need to provide a fallback when it is ont getting
 // compiled. We deny the usage of #[autodiff(..)] on a higher level, so a placeholder implementation
 // here is completely fine.
-#[cfg(not(autodiff_fallback))]
+#[cfg(llvm_enzyme)]
 pub mod Enzyme_AD {
 use super::*;
 

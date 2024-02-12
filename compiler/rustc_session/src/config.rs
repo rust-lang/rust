@@ -1273,6 +1273,7 @@ fn default_configuration(sess: &Session) -> Cfg {
     //
     // NOTE: These insertions should be kept in sync with
     // `CheckCfg::fill_well_known` below.
+    ins_none!(sym::autodiff_fallback);
 
     if sess.opts.debug_assertions {
         ins_none!(sym::debug_assertions);
@@ -1460,6 +1461,7 @@ impl CheckCfg {
         //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs`.
+        ins!(sym::autodiff_fallback, no_values);
 
         ins!(sym::debug_assertions, no_values);
 
