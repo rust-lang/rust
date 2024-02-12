@@ -411,8 +411,8 @@ impl CodeSuggestion {
 /// or `.span_bug` rather than a failed assertion, etc.
 pub struct ExplicitBug;
 
-/// Signifies that the compiler died with an explicit call to `.delay_*_bug`
-/// rather than a failed assertion, etc.
+/// Signifies that the compiler died due to a delayed bug rather than a failed
+/// assertion, etc.
 pub struct DelayedBugPanic;
 
 /// A `DiagCtxt` deals with errors and other compiler output.
@@ -1446,7 +1446,7 @@ impl DiagCtxtInner {
             {
                 let _ = write!(
                     &mut out,
-                    "delayed span bug: {}\n{}\n",
+                    "delayed bug: {}\n{}\n",
                     bug.inner
                         .messages
                         .iter()
