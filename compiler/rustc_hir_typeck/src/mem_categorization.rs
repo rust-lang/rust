@@ -273,7 +273,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                         deref.region,
                         ty::TypeAndMut { ty: target, mutbl: deref.mutbl },
                     );
-                    self.cat_rvalue(expr.hir_id, expr.span, ref_ty)
+                    self.cat_rvalue(expr.hir_id, ref_ty)
                 } else {
                     previous()?
                 };
@@ -285,7 +285,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | adjustment::Adjust::Borrow(_)
             | adjustment::Adjust::DynStar => {
                 // Result is an rvalue.
-                Ok(self.cat_rvalue(expr.hir_id, expr.span, target))
+                Ok(self.cat_rvalue(expr.hir_id, target))
             }
         }
     }
@@ -374,7 +374,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::OffsetOf(..)
-            | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr.span, expr_ty)),
+            | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr_ty)),
         }
     }
 
@@ -396,7 +396,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 | DefKind::AssocFn,
                 _,
             )
-            | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, span, expr_ty)),
+            | Res::SelfCtor(..) => Ok(self.cat_rvalue(hir_id, expr_ty)),
 
             Res::Def(DefKind::Static(_), _) => {
                 Ok(PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::StaticItem, Vec::new()))
@@ -433,13 +433,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub(crate) fn cat_rvalue(
-        &self,
-        hir_id: hir::HirId,
-        // FIXME: remove
-        _span: Span,
-        expr_ty: Ty<'tcx>,
-    ) -> PlaceWithHirId<'tcx> {
+    pub(crate) fn cat_rvalue(&self, hir_id: hir::HirId, expr_ty: Ty<'tcx>) -> PlaceWithHirId<'tcx> {
         PlaceWithHirId::new(hir_id, expr_ty, PlaceBase::Rvalue, Vec::new())
     }
 
@@ -487,7 +481,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         };
         let ref_ty = Ty::new_ref(self.tcx(), region, ty::TypeAndMut { ty: place_ty, mutbl });
 
-        let base = self.cat_rvalue(expr.hir_id, expr.span, ref_ty);
+        let base = self.cat_rvalue(expr.hir_id, ref_ty);
         self.cat_deref(expr, base)
     }
 
