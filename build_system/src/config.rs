@@ -1,4 +1,6 @@
-use crate::utils::{get_os_name, run_command_with_output, rustc_version_info, split_args};
+use crate::utils::{
+    create_symlink, get_os_name, run_command_with_output, rustc_version_info, split_args,
+};
 use std::collections::HashMap;
 use std::env as std_env;
 use std::ffi::OsStr;
@@ -215,7 +217,8 @@ impl ConfigInfo {
                 )
             })?;
         }
-        let libgccjit_so = output_dir.join("libgccjit.so");
+        let libgccjit_so_name = "libgccjit.so";
+        let libgccjit_so = output_dir.join(libgccjit_so_name);
         if !libgccjit_so.is_file() {
             // Download time!
             let tempfile_name = "libgccjit.so.download";
@@ -279,6 +282,16 @@ impl ConfigInfo {
             })?;
 
             println!("Downloaded libgccjit.so version {} successfully!", commit);
+            create_symlink(
+                &libgccjit_so.canonicalize().map_err(|err| {
+                    format!(
+                        "Failed to get absolute path of `{}`: {:?}",
+                        libgccjit_so.display(),
+                        err,
+                    )
+                })?,
+                output_dir.join(&format!("{}.0", libgccjit_so_name)),
+            )?;
         }
 
         self.gcc_path = output_dir
