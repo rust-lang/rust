@@ -8,7 +8,6 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use flycheck::FlycheckHandle;
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
@@ -337,7 +336,7 @@ impl GlobalState {
             if became_quiescent {
                 if self.config.check_on_save() {
                     // Project has loaded properly, kick off initial flycheck
-                    self.flycheck.iter().for_each(FlycheckHandle::restart_workspace);
+                    self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
                 if self.config.prefill_caches() {
                     self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
