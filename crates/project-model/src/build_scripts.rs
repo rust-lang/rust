@@ -20,10 +20,11 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use serde::Deserialize;
+use toolchain::Tool;
 
 use crate::{
     cfg_flag::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
-    InvocationStrategy, Package,
+    InvocationStrategy, Package, Sysroot,
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -61,6 +62,7 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         allowed_features: &FxHashSet<String>,
         workspace_root: &AbsPathBuf,
+        sysroot: Option<&Sysroot>,
     ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
@@ -69,7 +71,10 @@ impl WorkspaceBuildScripts {
                 cmd
             }
             _ => {
-                let mut cmd = Command::new(toolchain::cargo());
+                let mut cmd = Command::new(
+                    Sysroot::discover_tool(sysroot, Tool::Cargo)
+                        .map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?,
+                );
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
@@ -133,6 +138,7 @@ impl WorkspaceBuildScripts {
         workspace: &CargoWorkspace,
         progress: &dyn Fn(String),
         toolchain: &Option<Version>,
+        sysroot: Option<&Sysroot>,
     ) -> io::Result<WorkspaceBuildScripts> {
         const RUST_1_62: Version = Version::new(1, 62, 0);
 
@@ -151,6 +157,7 @@ impl WorkspaceBuildScripts {
                 config,
                 &allowed_features,
                 &workspace.workspace_root().to_path_buf(),
+                sysroot,
             )?,
             workspace,
             current_dir,
@@ -165,6 +172,7 @@ impl WorkspaceBuildScripts {
                     config,
                     &allowed_features,
                     &workspace.workspace_root().to_path_buf(),
+                    sysroot,
                 )?;
                 cmd.args(["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
                 let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
@@ -194,7 +202,7 @@ impl WorkspaceBuildScripts {
                 ))
             }
         };
-        let cmd = Self::build_command(config, &Default::default(), workspace_root)?;
+        let cmd = Self::build_command(config, &Default::default(), workspace_root, None)?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
@@ -415,6 +423,7 @@ impl WorkspaceBuildScripts {
         rustc: &CargoWorkspace,
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
+        sysroot: Option<&Sysroot>,
     ) -> Self {
         let mut bs = WorkspaceBuildScripts::default();
         for p in rustc.packages() {
@@ -422,7 +431,7 @@ impl WorkspaceBuildScripts {
         }
         let res = (|| {
             let target_libdir = (|| {
-                let mut cargo_config = Command::new(toolchain::cargo());
+                let mut cargo_config = Command::new(Sysroot::discover_tool(sysroot, Tool::Cargo)?);
                 cargo_config.envs(extra_env);
                 cargo_config
                     .current_dir(current_dir)
@@ -431,7 +440,7 @@ impl WorkspaceBuildScripts {
                 if let Ok(it) = utf8_stdout(cargo_config) {
                     return Ok(it);
                 }
-                let mut cmd = Command::new(toolchain::rustc());
+                let mut cmd = Command::new(Sysroot::discover_tool(sysroot, Tool::Rustc)?);
                 cmd.envs(extra_env);
                 cmd.args(["--print", "target-libdir"]);
                 utf8_stdout(cmd)

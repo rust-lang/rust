@@ -69,8 +69,13 @@ fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
     let sysroot = Ok(get_fake_sysroot());
-    let project_workspace =
-        ProjectWorkspace::Json { project, sysroot, rustc_cfg: Vec::new(), toolchain: None };
+    let project_workspace = ProjectWorkspace::Json {
+        project,
+        sysroot,
+        rustc_cfg: Vec::new(),
+        toolchain: None,
+        target_layout: Err("test has no data layout".to_owned()),
+    };
     to_crate_graph(project_workspace)
 }
 
@@ -125,7 +130,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(sysroot_dir, sysroot_src_dir, false)
+    Sysroot::load(sysroot_dir, Some(Ok(sysroot_src_dir)), false)
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {

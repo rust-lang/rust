@@ -24,7 +24,7 @@ use ide_db::{
 use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
-use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
+use project_model::{ProjectWorkspace, Sysroot, WorkspaceBuildScripts};
 use rustc_hash::FxHashSet;
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
@@ -234,7 +234,6 @@ impl GlobalState {
                                 it.clone(),
                                 cargo_config.target.as_deref(),
                                 &cargo_config.extra_env,
-                                None,
                             ))
                         }
                     })
@@ -605,6 +604,7 @@ impl GlobalState {
                 0,
                 Box::new(move |msg| sender.send(msg).unwrap()),
                 config,
+                toolchain::cargo(),
                 self.config.root_path().clone(),
             )],
             flycheck::InvocationStrategy::PerWorkspace => {
@@ -612,23 +612,35 @@ impl GlobalState {
                     .iter()
                     .enumerate()
                     .filter_map(|(id, w)| match w {
-                        ProjectWorkspace::Cargo { cargo, .. } => Some((id, cargo.workspace_root())),
-                        ProjectWorkspace::Json { project, .. } => {
+                        ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((
+                            id,
+                            cargo.workspace_root(),
+                            Sysroot::discover_tool(sysroot.as_ref().ok(), toolchain::Tool::Cargo),
+                        )),
+                        ProjectWorkspace::Json { project, sysroot, .. } => {
                             // Enable flychecks for json projects if a custom flycheck command was supplied
                             // in the workspace configuration.
                             match config {
-                                FlycheckConfig::CustomCommand { .. } => Some((id, project.path())),
+                                FlycheckConfig::CustomCommand { .. } => Some((
+                                    id,
+                                    project.path(),
+                                    Sysroot::discover_tool(
+                                        sysroot.as_ref().ok(),
+                                        toolchain::Tool::Cargo,
+                                    ),
+                                )),
                                 _ => None,
                             }
                         }
                         ProjectWorkspace::DetachedFiles { .. } => None,
                     })
-                    .map(|(id, root)| {
+                    .map(|(id, root, cargo)| {
                         let sender = sender.clone();
                         FlycheckHandle::spawn(
                             id,
                             Box::new(move |msg| sender.send(msg).unwrap()),
                             config.clone(),
+                            cargo.unwrap_or_else(|_| toolchain::cargo()),
                             root.to_path_buf(),
                         )
                     })
