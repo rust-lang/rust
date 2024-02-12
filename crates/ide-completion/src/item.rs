@@ -211,8 +211,8 @@ pub enum CompletionRelevancePostfixMatch {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CompletionRelevanceFn {
-    pub has_args: bool,
-    pub has_self_arg: bool,
+    pub has_params: bool,
+    pub has_self_param: bool,
     pub return_type: CompletionRelevanceReturnType,
 }
 
@@ -310,10 +310,10 @@ impl CompletionRelevance {
                 // Bump Constructor or Builder methods with no arguments,
                 // over them tha with self arguments
                 if fn_score > 0 {
-                    if !asf.has_args {
+                    if !asf.has_params {
                         // bump associated functions
                         fn_score += 1;
-                    } else if asf.has_self_arg {
+                    } else if asf.has_self_param {
                         // downgrade methods (below Constructor)
                         fn_score = 1;
                     }

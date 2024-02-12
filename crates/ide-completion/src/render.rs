@@ -1420,8 +1420,8 @@ impl S {
                             is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
-                                    has_args: true,
-                                    has_self_arg: true,
+                                    has_params: true,
+                                    has_self_param: true,
                                     return_type: Other,
                                 },
                             ),
@@ -1545,8 +1545,8 @@ fn foo(s: S) { s.$0 }
                             is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
-                                    has_args: true,
-                                    has_self_arg: true,
+                                    has_params: true,
+                                    has_self_param: true,
                                     return_type: Other,
                                 },
                             ),
@@ -2207,8 +2207,8 @@ fn test() {
                         "fn(&self, u32) -> Bar",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: Other,
                             },
                         ),
@@ -2217,8 +2217,8 @@ fn test() {
                         "fn(&self)",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: Other,
                             },
                         ),
@@ -2227,8 +2227,8 @@ fn test() {
                         "fn(&self) -> Foo",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: DirectConstructor,
                             },
                         ),
@@ -2237,8 +2237,8 @@ fn test() {
                         "fn(&self, u32) -> Foo",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: DirectConstructor,
                             },
                         ),
@@ -2247,8 +2247,8 @@ fn test() {
                         "fn(&self) -> Option<Foo>",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: Constructor,
                             },
                         ),
@@ -2257,8 +2257,8 @@ fn test() {
                         "fn(&self) -> Result<Foo, Bar>",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: Constructor,
                             },
                         ),
@@ -2267,8 +2267,8 @@ fn test() {
                         "fn(&self) -> Result<Bar, Foo>",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: Constructor,
                             },
                         ),
@@ -2277,8 +2277,8 @@ fn test() {
                         "fn(&self, u32) -> Option<Foo>",
                         Some(
                             CompletionRelevanceFn {
-                                has_args: true,
-                                has_self_arg: true,
+                                has_params: true,
+                                has_self_param: true,
                                 return_type: Constructor,
                             },
                         ),
@@ -2433,8 +2433,8 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                             is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
-                                    has_args: true,
-                                    has_self_arg: true,
+                                    has_params: true,
+                                    has_self_param: true,
                                     return_type: Other,
                                 },
                             ),
@@ -2565,8 +2565,8 @@ fn main() {
                             is_definite: false,
                             function: Some(
                                 CompletionRelevanceFn {
-                                    has_args: false,
-                                    has_self_arg: false,
+                                    has_params: false,
+                                    has_self_param: false,
                                     return_type: Other,
                                 },
                             ),
@@ -2932,13 +2932,7 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
-                            function: Some(
-                                CompletionRelevanceFn {
-                                    has_args: true,
-                                    has_self_arg: true,
-                                    return_type: Other,
-                                },
-                            ),
+                            function: None,
                         },
                     },
                     CompletionItem {
@@ -2961,13 +2955,7 @@ fn main() {
                             is_private_editable: false,
                             postfix_match: None,
                             is_definite: false,
-                            function: Some(
-                                CompletionRelevanceFn {
-                                    has_args: true,
-                                    has_self_arg: true,
-                                    return_type: Other,
-                                },
-                            ),
+                            function: None,
                         },
                     },
                 ]

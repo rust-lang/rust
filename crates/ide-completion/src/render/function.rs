@@ -66,9 +66,9 @@ fn render(
         ),
         _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
-
+    let has_self_param = func.self_param(db).is_some();
     let mut item = CompletionItem::new(
-        if func.self_param(db).is_some() {
+        if has_self_param {
             CompletionItemKind::Method
         } else {
             CompletionItemKind::SymbolKind(SymbolKind::Function)
@@ -104,18 +104,21 @@ fn render(
         .filter(|_| !has_call_parens)
         .and_then(|cap| Some((cap, params(ctx.completion, func, &func_kind, has_dot_receiver)?)));
 
-    let type_match = if has_call_parens || complete_call_parens.is_some() {
-        compute_type_match(completion, &ret_type)
-    } else {
-        compute_type_match(completion, &func.ty(db))
-    };
-
     let function = assoc_item
         .and_then(|assoc_item| assoc_item.implementing_ty(db))
-        .and_then(|self_type| compute_function_match(db, &ctx, self_type, func, &ret_type));
+        .map(|self_type| compute_return_type_match(db, &ctx, self_type, &ret_type))
+        .map(|return_type| CompletionRelevanceFn {
+            has_params: has_self_param || func.num_params(db) > 0,
+            has_self_param,
+            return_type,
+        });
 
     item.set_relevance(CompletionRelevance {
-        type_match,
+        type_match: if has_call_parens || complete_call_parens.is_some() {
+            compute_type_match(completion, &ret_type)
+        } else {
+            compute_type_match(completion, &func.ty(db))
+        },
         exact_name_match: compute_exact_name_match(completion, &call),
         function,
         is_op_method,
@@ -168,26 +171,22 @@ fn render(
     item
 }
 
-fn compute_function_match(
+fn compute_return_type_match(
     db: &dyn HirDatabase,
     ctx: &RenderContext<'_>,
     self_type: hir::Type,
-    func: hir::Function,
-    func_return_type: &hir::Type,
-) -> Option<CompletionRelevanceFn> {
-    let has_args = func.num_params(db) > 0;
-    let has_self_arg = func.self_param(db).is_some();
-
-    let return_type = if match_types(ctx.completion, &self_type, &func_return_type).is_some() {
+    ret_type: &hir::Type,
+) -> CompletionRelevanceReturnType {
+    if match_types(ctx.completion, &self_type, &ret_type).is_some() {
         // fn([..]) -> Self
         CompletionRelevanceReturnType::DirectConstructor
-    } else if func_return_type
+    } else if ret_type
         .type_arguments()
         .any(|ret_type_arg| match_types(ctx.completion, &self_type, &ret_type_arg).is_some())
     {
         // fn([..]) -> Result<Self, E> OR Wrapped<Foo, Self>
         CompletionRelevanceReturnType::Constructor
-    } else if func_return_type
+    } else if ret_type
         .as_adt()
         .and_then(|adt| adt.name(db).as_str().map(|name| name.ends_with("Builder")))
         .unwrap_or(false)
@@ -196,9 +195,7 @@ fn compute_function_match(
         CompletionRelevanceReturnType::Builder
     } else {
         CompletionRelevanceReturnType::Other
-    };
-
-    Some(CompletionRelevanceFn { return_type, has_args, has_self_arg })
+    }
 }
 
 pub(super) fn add_call_parens<'b>(
