@@ -22,19 +22,6 @@ LL | const C2: *const i32 = unsafe { std::ptr::addr_of!(S_MUT) };
    = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
    = help: to fix this, the value can be extracted to a `const` and then used.
 
-error[E0658]: referencing statics in constants is unstable
-  --> $DIR/feature-gate-const-refs-to-static.rs:8:52
-   |
-LL | const C2: *const i32 = unsafe { std::ptr::addr_of!(S_MUT) };
-   |                                                    ^^^^^
-   |
-   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
-   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
-   = help: to fix this, the value can be extracted to a `const` and then used.
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

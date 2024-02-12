@@ -50,11 +50,6 @@ help: skipping check for `const_refs_to_static` feature
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:18:32
-   |
-LL | const READ_MUT: u32 = unsafe { MUTABLE };
-   |                                ^^^^^^^
-help: skipping check for `const_refs_to_static` feature
   --> $DIR/const_refers_to_static.rs:24:18
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
