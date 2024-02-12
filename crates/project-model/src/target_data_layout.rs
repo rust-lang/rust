@@ -20,31 +20,41 @@ pub fn get(
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
 ) -> anyhow::Result<String> {
-    let output = match config {
+    let process = |output: String| {
+        (|| Some(output.split_once(r#""data-layout": ""#)?.1.split_once('"')?.0.to_owned()))()
+            .ok_or_else(|| {
+                anyhow::format_err!("could not fetch target-spec-json from command output")
+            })
+    };
+    let sysroot = match config {
         RustcDataLayoutConfig::Cargo(sysroot, cargo_toml) => {
             let cargo = Sysroot::discover_tool(sysroot, toolchain::Tool::Cargo)?;
             let mut cmd = Command::new(cargo);
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
-                .args(["-Z", "unstable-options", "--print", "target-spec-json"])
+                .args(["rustc", "--", "-Z", "unstable-options", "--print", "target-spec-json"])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
                 cmd.args(["--target", target]);
             }
-            utf8_stdout(cmd)
-        }
-        RustcDataLayoutConfig::Rustc(sysroot) => {
-            let rustc = Sysroot::discover_tool(sysroot, toolchain::Tool::Rustc)?;
-            let mut cmd = Command::new(rustc);
-            cmd.envs(extra_env)
-                .args(["-Z", "unstable-options", "--print", "target-spec-json"])
-                .env("RUSTC_BOOTSTRAP", "1");
-            if let Some(target) = target {
-                cmd.args(["--target", target]);
+            match utf8_stdout(cmd) {
+                Ok(output) => return process(output),
+                Err(e) => {
+                    tracing::warn!("failed to run `cargo rustc --print target-spec-json`, falling back to invoking rustc directly: {e}");
+                    sysroot
+                }
             }
-            utf8_stdout(cmd)
         }
-    }?;
-    (|| Some(output.split_once(r#""data-layout": ""#)?.1.split_once('"')?.0.to_owned()))()
-        .ok_or_else(|| anyhow::format_err!("could not fetch target-spec-json from command output"))
+        RustcDataLayoutConfig::Rustc(sysroot) => sysroot,
+    };
+
+    let rustc = Sysroot::discover_tool(sysroot, toolchain::Tool::Rustc)?;
+    let mut cmd = Command::new(rustc);
+    cmd.envs(extra_env)
+        .args(["-Z", "unstable-options", "--print", "target-spec-json"])
+        .env("RUSTC_BOOTSTRAP", "1");
+    if let Some(target) = target {
+        cmd.args(["--target", target]);
+    }
+    process(utf8_stdout(cmd)?)
 }
