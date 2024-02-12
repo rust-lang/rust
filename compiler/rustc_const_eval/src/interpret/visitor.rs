@@ -153,6 +153,16 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
                 // We visited all parts of this one.
                 return Ok(());
             }
+
+            // Non-normalized types should never show up here.
+            ty::Param(..)
+            | ty::Alias(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(..)
+            | ty::Error(..) => throw_inval!(TooGeneric),
+
+            // The rest is handled below.
             _ => {}
         };
 

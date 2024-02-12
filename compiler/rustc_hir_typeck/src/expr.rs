@@ -1016,7 +1016,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         original_expr_id: HirId,
         then: impl FnOnce(&hir::Expr<'_>),
     ) {
-        let mut parent = self.tcx.hir().parent_id(original_expr_id);
+        let mut parent = self.tcx.parent_hir_id(original_expr_id);
         loop {
             let node = self.tcx.hir_node(parent);
             match node {
@@ -1038,15 +1038,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     ..
                 }) => {
-                    // Check if our original expression is a child of the condition of a while loop
-                    let expr_is_ancestor = std::iter::successors(Some(original_expr_id), |id| {
-                        self.tcx.hir().opt_parent_id(*id)
-                    })
-                    .take_while(|id| *id != parent)
-                    .any(|id| id == expr.hir_id);
-                    // if it is, then we have a situation like `while Some(0) = value.get(0) {`,
+                    // Check if our original expression is a child of the condition of a while loop.
+                    // If it is, then we have a situation like `while Some(0) = value.get(0) {`,
                     // where `while let` was more likely intended.
-                    if expr_is_ancestor {
+                    if self.tcx.hir().parent_id_iter(original_expr_id).any(|id| id == expr.hir_id) {
                         then(expr);
                     }
                     break;
@@ -1056,7 +1051,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | hir::Node::TraitItem(_)
                 | hir::Node::Crate(_) => break,
                 _ => {
-                    parent = self.tcx.hir().parent_id(parent);
+                    parent = self.tcx.parent_hir_id(parent);
                 }
             }
         }
@@ -1199,9 +1194,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && !matches!(lhs.kind, hir::ExprKind::Lit(_))
             {
                 // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
-                let hir = self.tcx.hir();
                 if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
-                    hir.get_parent(hir.parent_id(expr.hir_id))
+                    self.tcx.parent_hir_node(expr.hir_id)
                 {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_lo(),
@@ -2645,7 +2639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(field.span, "method, not a field");
         let expr_is_call =
             if let hir::Node::Expr(hir::Expr { kind: ExprKind::Call(callee, _args), .. }) =
-                self.tcx.hir().get_parent(expr.hir_id)
+                self.tcx.parent_hir_node(expr.hir_id)
             {
                 expr.hir_id == callee.hir_id
             } else {

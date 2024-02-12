@@ -403,8 +403,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
-                let hir_id = hir.parent_id(expr.hir_id);
-                let parent = self.infcx.tcx.hir_node(hir_id);
+                let parent = self.infcx.tcx.parent_hir_node(expr.hir_id);
                 let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                     && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
@@ -1660,8 +1659,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // Check that the parent of the closure is a method call,
         // with receiver matching with local's type (modulo refs)
-        let parent = hir.parent_id(closure_expr.hir_id);
-        if let hir::Node::Expr(parent) = tcx.hir_node(parent) {
+        if let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_expr.hir_id) {
             if let hir::ExprKind::MethodCall(_, recv, ..) = parent.kind {
                 let recv_ty = typeck_results.expr_ty(recv);
 

@@ -175,6 +175,11 @@ impl<T: ?Sized> Clone for PtrComponents<T> {
 ///
 /// It is possible to name this struct with a type parameter that is not a `dyn` trait object
 /// (for example `DynMetadata<u64>`) but not to obtain a meaningful value of that struct.
+///
+/// Note that while this type implements `PartialEq`, comparing vtable pointers is unreliable:
+/// pointers to vtables of the same type for the same trait can compare inequal (because vtables are
+/// duplicated in multiple codegen units), and pointers to vtables of *different* types/traits can
+/// compare equal (since identical vtables can be deduplicated within a codegen unit).
 #[lang = "dyn_metadata"]
 pub struct DynMetadata<Dyn: ?Sized> {
     vtable_ptr: &'static VTable,

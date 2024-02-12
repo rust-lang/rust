@@ -30,7 +30,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         );
     };
 
-    let parent_node_id = tcx.hir().parent_id(hir_id);
+    let parent_node_id = tcx.parent_hir_id(hir_id);
     let parent_node = tcx.hir_node(parent_node_id);
 
     let (generics, arg_idx) = match parent_node {
@@ -79,7 +79,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
         }
 
         Node::TypeBinding(binding @ &TypeBinding { hir_id: binding_id, .. })
-            if let Node::TraitRef(trait_ref) = tcx.hir_node(tcx.hir().parent_id(binding_id)) =>
+            if let Node::TraitRef(trait_ref) = tcx.parent_hir_node(binding_id) =>
         {
             let Some(trait_def_id) = trait_ref.trait_def_id() else {
                 return Ty::new_error_with_message(

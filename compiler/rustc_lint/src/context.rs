@@ -933,7 +933,7 @@ impl<'tcx> LateContext<'tcx> {
 
         while let hir::ExprKind::Path(ref qpath) = expr.kind
             && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
-                Res::Local(hir_id) => self.tcx.hir().find_parent(hir_id),
+                Res::Local(hir_id) => Some(self.tcx.parent_hir_node(hir_id)),
                 _ => None,
             }
             && let Some(init) = match parent_node {
@@ -977,7 +977,7 @@ impl<'tcx> LateContext<'tcx> {
 
         while let hir::ExprKind::Path(ref qpath) = expr.kind
             && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
-                Res::Local(hir_id) => self.tcx.hir().find_parent(hir_id),
+                Res::Local(hir_id) => Some(self.tcx.parent_hir_node(hir_id)),
                 Res::Def(_, def_id) => self.tcx.hir().get_if_local(def_id),
                 _ => None,
             }

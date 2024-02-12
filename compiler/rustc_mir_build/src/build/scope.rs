@@ -792,7 +792,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 return id;
             }
 
-            let next = hir.parent_id(id);
+            let next = self.tcx.parent_hir_id(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }

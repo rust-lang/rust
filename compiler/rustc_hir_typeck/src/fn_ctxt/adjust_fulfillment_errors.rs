@@ -93,7 +93,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.find_ambiguous_parameter_in(def_id, error.root_obligation.predicate);
         }
 
-        let hir = self.tcx.hir();
         let (expr, qpath) = match self.tcx.hir_node(hir_id) {
             hir::Node::Expr(expr) => {
                 if self.closure_span_overlaps_error(error, expr.span) {
@@ -122,7 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir_id: call_hir_id,
                 span: call_span,
                 ..
-            }) = hir.get_parent(hir_id)
+            }) = self.tcx.parent_hir_node(hir_id)
                 && callee.hir_id == hir_id
             {
                 if self.closure_span_overlaps_error(error, *call_span) {

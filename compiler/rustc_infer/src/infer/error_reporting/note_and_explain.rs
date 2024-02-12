@@ -106,7 +106,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 }
                                 p_def_id.as_local().and_then(|id| {
                                     let local_id = tcx.local_def_id_to_hir_id(id);
-                                    let generics = tcx.hir().find_parent(local_id)?.generics()?;
+                                    let generics = tcx.parent_hir_node(local_id).generics()?;
                                     Some((id, generics))
                                 })
                             });

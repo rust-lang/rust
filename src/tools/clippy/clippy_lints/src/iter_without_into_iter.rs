@@ -269,7 +269,7 @@ impl {self_ty_without_ref} {{
                     // }
                     let span_behind_impl = cx
                         .tcx
-                        .def_span(cx.tcx.hir().parent_id(item.hir_id()).owner.def_id)
+                        .def_span(cx.tcx.parent_hir_id(item.hir_id()).owner.def_id)
                         .shrink_to_lo();
 
                     let sugg = format!(
