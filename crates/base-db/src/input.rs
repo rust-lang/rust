@@ -243,6 +243,7 @@ impl CrateDisplayName {
         CrateDisplayName { crate_name, canonical_name }
     }
 }
+
 pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]

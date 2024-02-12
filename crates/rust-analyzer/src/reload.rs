@@ -299,13 +299,13 @@ impl GlobalState {
 
     pub(crate) fn fetch_proc_macros(&mut self, cause: Cause, paths: Vec<ProcMacroPaths>) {
         tracing::info!(%cause, "will load proc macros");
-        let dummy_replacements = self.config.dummy_replacements().clone();
+        let ignored_proc_macros = self.config.ignored_proc_macros().clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
             sender.send(Task::LoadProcMacros(ProcMacroProgress::Begin)).unwrap();
 
-            let dummy_replacements = &dummy_replacements;
+            let ignored_proc_macros = &ignored_proc_macros;
             let progress = {
                 let sender = sender.clone();
                 &move |msg| {
@@ -333,7 +333,12 @@ impl GlobalState {
                                         crate_name
                                             .as_deref()
                                             .and_then(|crate_name| {
-                                                dummy_replacements.get(crate_name).map(|v| &**v)
+                                                ignored_proc_macros.iter().find_map(
+                                                    |(name, macros)| {
+                                                        eq_ignore_underscore(name, crate_name)
+                                                            .then_some(&**macros)
+                                                    },
+                                                )
                                             })
                                             .unwrap_or_default(),
                                     )
@@ -694,4 +699,19 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
         }
     }
     false
+}
+
+/// Similar to [`str::eq_ignore_ascii_case`] but instead of ignoring
+/// case, we say that `-` and `_` are equal.
+fn eq_ignore_underscore(s1: &str, s2: &str) -> bool {
+    if s1.len() != s2.len() {
+        return false;
+    }
+
+    s1.as_bytes().iter().zip(s2.as_bytes()).all(|(c1, c2)| {
+        let c1_underscore = c1 == &b'_' || c1 == &b'-';
+        let c2_underscore = c2 == &b'_' || c2 == &b'-';
+
+        c1 == c2 || (c1_underscore && c2_underscore)
+    })
 }

@@ -18,7 +18,6 @@ use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
-use tt::DelimSpan;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -273,7 +272,7 @@ impl SourceRootConfig {
 pub fn load_proc_macro(
     server: &ProcMacroServer,
     path: &AbsPath,
-    dummy_replace: &[Box<str>],
+    ignored_macros: &[Box<str>],
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
@@ -283,7 +282,7 @@ pub fn load_proc_macro(
         }
         Ok(vec
             .into_iter()
-            .map(|expander| expander_to_proc_macro(expander, dummy_replace))
+            .map(|expander| expander_to_proc_macro(expander, ignored_macros))
             .collect())
     })();
     match res {
@@ -349,7 +348,7 @@ fn load_crate_graph(
 
 fn expander_to_proc_macro(
     expander: proc_macro_api::ProcMacro,
-    dummy_replace: &[Box<str>],
+    ignored_macros: &[Box<str>],
 ) -> ProcMacro {
     let name = From::from(expander.name());
     let kind = match expander.kind() {
@@ -357,16 +356,8 @@ fn expander_to_proc_macro(
         proc_macro_api::ProcMacroKind::FuncLike => ProcMacroKind::FuncLike,
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
-    let expander: sync::Arc<dyn ProcMacroExpander> =
-        if dummy_replace.iter().any(|replace| **replace == name) {
-            match kind {
-                ProcMacroKind::Attr => sync::Arc::new(IdentityExpander),
-                _ => sync::Arc::new(EmptyExpander),
-            }
-        } else {
-            sync::Arc::new(Expander(expander))
-        };
-    ProcMacro { name, kind, expander }
+    let disabled = ignored_macros.iter().any(|replace| **replace == name);
+    ProcMacro { name, kind, expander: sync::Arc::new(Expander(expander)), disabled }
 }
 
 #[derive(Debug)]
@@ -388,42 +379,6 @@ impl ProcMacroExpander for Expander {
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
         }
-    }
-}
-
-/// Dummy identity expander, used for attribute proc-macros that are deliberately ignored by the user.
-#[derive(Debug)]
-struct IdentityExpander;
-
-impl ProcMacroExpander for IdentityExpander {
-    fn expand(
-        &self,
-        subtree: &tt::Subtree<Span>,
-        _: Option<&tt::Subtree<Span>>,
-        _: &Env,
-        _: Span,
-        _: Span,
-        _: Span,
-    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        Ok(subtree.clone())
-    }
-}
-
-/// Empty expander, used for proc-macros that are deliberately ignored by the user.
-#[derive(Debug)]
-struct EmptyExpander;
-
-impl ProcMacroExpander for EmptyExpander {
-    fn expand(
-        &self,
-        _: &tt::Subtree<Span>,
-        _: Option<&tt::Subtree<Span>>,
-        _: &Env,
-        call_site: Span,
-        _: Span,
-        _: Span,
-    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        Ok(tt::Subtree::empty(DelimSpan { open: call_site, close: call_site }))
     }
 }
 
