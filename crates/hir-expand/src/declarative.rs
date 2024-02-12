@@ -44,9 +44,9 @@ impl DeclarativeMacroExpander {
             )
         });
         match self.mac.err() {
-            Some(e) => ExpandResult::new(
+            Some(_) => ExpandResult::new(
                 tt::Subtree::empty(tt::DelimSpan { open: loc.call_site, close: loc.call_site }),
-                ExpandError::other(format!("invalid macro definition: {e}")),
+                ExpandError::MacroDefinition,
             ),
             None => self
                 .mac
@@ -80,9 +80,9 @@ impl DeclarativeMacroExpander {
             )
         });
         match self.mac.err() {
-            Some(e) => ExpandResult::new(
+            Some(_) => ExpandResult::new(
                 tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
-                ExpandError::other(format!("invalid macro definition: {e}")),
+                ExpandError::MacroDefinition,
             ),
             None => self.mac.expand(&tt, |_| (), new_meta_vars, call_site).map_err(Into::into),
         }

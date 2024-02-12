@@ -549,7 +549,26 @@ fn quux(x: i32) {
     m!(x$0
 }
 "#,
-        expect![[r#""#]],
+        expect![[r#"
+            fn quux(…)   fn(i32)
+            lc x         i32
+            lc y         i32
+            ma m!(…)     macro_rules! m
+            bt u32       u32
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw return
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
+        "#]],
     );
 }
 
