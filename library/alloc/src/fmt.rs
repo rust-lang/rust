@@ -278,6 +278,19 @@
 //! Hello, `     123` has 3 right-aligned characters
 //! ```
 //!
+//! When truncuating these values, Rust uses round-to-even, which may
+//! cause concern when formatting for scientific notation. For example,
+//!
+//! ```
+//! print!("{0:.1$e}", 12345, 3);
+//! ```
+//! 
+//! Would return:
+//!
+//! ```text
+//! 1.234e4
+//! ```
+//!
 //! ## Localization
 //!
 //! In some programming languages, the behavior of string formatting functions
