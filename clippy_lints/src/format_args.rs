@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::{
     find_format_arg_expr, find_format_args, format_arg_removal_span, format_placeholder_format_span, is_assert_macro,
-    is_format_macro, is_panic, root_macro_call, root_macro_call_first_node, FormatParamUsage,
+    is_format_macro, is_panic, root_macro_call, root_macro_call_first_node, FormatParamUsage, MacroCall,
 };
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
@@ -20,7 +20,6 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{sym, Span, Symbol};
 
@@ -189,32 +188,18 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
             && is_format_macro(cx, macro_call.def_id)
             && let Some(format_args) = find_format_args(cx, expr, macro_call.expn)
         {
-            for piece in &format_args.template {
-                if let FormatArgsPiece::Placeholder(placeholder) = piece
-                    && let Ok(index) = placeholder.argument.index
-                    && let Some(arg) = format_args.arguments.all_args().get(index)
-                {
-                    let arg_expr = find_format_arg_expr(expr, arg);
+            let linter = FormatArgsExpr {
+                cx,
+                expr,
+                macro_call: &macro_call,
+                format_args: &format_args,
+                ignore_mixed: self.ignore_mixed,
+            };
 
-                    check_unused_format_specifier(cx, placeholder, arg_expr);
-
-                    if placeholder.format_trait != FormatTrait::Display
-                        || placeholder.format_options != FormatOptions::default()
-                        || is_aliased(&format_args, index)
-                    {
-                        continue;
-                    }
-
-                    if let Ok(arg_hir_expr) = arg_expr {
-                        let name = cx.tcx.item_name(macro_call.def_id);
-                        check_format_in_format_args(cx, macro_call.span, name, arg_hir_expr);
-                        check_to_string_in_format_args(cx, name, arg_hir_expr);
-                    }
-                }
-            }
+            linter.check_templates();
 
             if self.msrv.meets(msrvs::FORMAT_ARGS_CAPTURE) {
-                check_uninlined_args(cx, &format_args, macro_call.span, macro_call.def_id, self.ignore_mixed);
+                linter.check_uninlined_args();
             }
         }
     }
@@ -222,255 +207,279 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_unused_format_specifier(
-    cx: &LateContext<'_>,
-    placeholder: &FormatPlaceholder,
-    arg_expr: Result<&Expr<'_>, &rustc_ast::Expr>,
-) {
-    let ty_or_ast_expr = arg_expr.map(|expr| cx.typeck_results().expr_ty(expr).peel_refs());
+struct FormatArgsExpr<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    macro_call: &'a MacroCall,
+    format_args: &'a rustc_ast::FormatArgs,
+    ignore_mixed: bool,
+}
 
-    let is_format_args = match ty_or_ast_expr {
-        Ok(ty) => is_type_lang_item(cx, ty, LangItem::FormatArguments),
-        Err(expr) => matches!(expr.peel_parens_and_refs().kind, rustc_ast::ExprKind::FormatArgs(_)),
-    };
+impl<'a, 'tcx> FormatArgsExpr<'a, 'tcx> {
+    fn check_templates(&self) {
+        for piece in &self.format_args.template {
+            if let FormatArgsPiece::Placeholder(placeholder) = piece
+                && let Ok(index) = placeholder.argument.index
+                && let Some(arg) = self.format_args.arguments.all_args().get(index)
+            {
+                let arg_expr = find_format_arg_expr(self.expr, arg);
 
-    let options = &placeholder.format_options;
+                self.check_unused_format_specifier(placeholder, arg_expr);
 
-    let arg_span = match arg_expr {
-        Ok(expr) => expr.span,
-        Err(expr) => expr.span,
-    };
+                if let Ok(arg_expr) = arg_expr
+                    && placeholder.format_trait == FormatTrait::Display
+                    && placeholder.format_options == FormatOptions::default()
+                    && !self.is_aliased(index)
+                {
+                    let name = self.cx.tcx.item_name(self.macro_call.def_id);
+                    self.check_format_in_format_args(name, arg_expr);
+                    self.check_to_string_in_format_args(name, arg_expr);
+                }
+            }
+        }
+    }
 
-    if let Some(placeholder_span) = placeholder.span
-        && is_format_args
-        && *options != FormatOptions::default()
-    {
-        span_lint_and_then(
-            cx,
-            UNUSED_FORMAT_SPECS,
-            placeholder_span,
-            "format specifiers have no effect on `format_args!()`",
-            |diag| {
-                let mut suggest_format = |spec| {
-                    let message = format!("for the {spec} to apply consider using `format!()`");
+    fn check_unused_format_specifier(
+        &self,
+        placeholder: &FormatPlaceholder,
+        arg_expr: Result<&Expr<'_>, &rustc_ast::Expr>,
+    ) {
+        let ty_or_ast_expr = arg_expr.map(|expr| self.cx.typeck_results().expr_ty(expr).peel_refs());
 
-                    if let Some(mac_call) = root_macro_call(arg_span)
-                        && cx.tcx.is_diagnostic_item(sym::format_args_macro, mac_call.def_id)
-                    {
-                        diag.span_suggestion(
-                            cx.sess().source_map().span_until_char(mac_call.span, '!'),
-                            message,
-                            "format",
+        let is_format_args = match ty_or_ast_expr {
+            Ok(ty) => is_type_lang_item(self.cx, ty, LangItem::FormatArguments),
+            Err(expr) => matches!(expr.peel_parens_and_refs().kind, rustc_ast::ExprKind::FormatArgs(_)),
+        };
+
+        let options = &placeholder.format_options;
+
+        let arg_span = match arg_expr {
+            Ok(expr) => expr.span,
+            Err(expr) => expr.span,
+        };
+
+        if let Some(placeholder_span) = placeholder.span
+            && is_format_args
+            && *options != FormatOptions::default()
+        {
+            span_lint_and_then(
+                self.cx,
+                UNUSED_FORMAT_SPECS,
+                placeholder_span,
+                "format specifiers have no effect on `format_args!()`",
+                |diag| {
+                    let mut suggest_format = |spec| {
+                        let message = format!("for the {spec} to apply consider using `format!()`");
+
+                        if let Some(mac_call) = root_macro_call(arg_span)
+                            && self.cx.tcx.is_diagnostic_item(sym::format_args_macro, mac_call.def_id)
+                        {
+                            diag.span_suggestion(
+                                self.cx.sess().source_map().span_until_char(mac_call.span, '!'),
+                                message,
+                                "format",
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            diag.help(message);
+                        }
+                    };
+
+                    if options.width.is_some() {
+                        suggest_format("width");
+                    }
+
+                    if options.precision.is_some() {
+                        suggest_format("precision");
+                    }
+
+                    if let Some(format_span) = format_placeholder_format_span(placeholder) {
+                        diag.span_suggestion_verbose(
+                            format_span,
+                            "if the current behavior is intentional, remove the format specifiers",
+                            "",
                             Applicability::MaybeIncorrect,
                         );
-                    } else {
-                        diag.help(message);
                     }
-                };
+                },
+            );
+        }
+    }
 
-                if options.width.is_some() {
-                    suggest_format("width");
-                }
+    fn check_uninlined_args(&self) {
+        if self.format_args.span.from_expansion() {
+            return;
+        }
+        if self.macro_call.span.edition() < Edition2021
+            && (is_panic(self.cx, self.macro_call.def_id) || is_assert_macro(self.cx, self.macro_call.def_id))
+        {
+            // panic!, assert!, and debug_assert! before 2021 edition considers a single string argument as
+            // non-format
+            return;
+        }
 
-                if options.precision.is_some() {
-                    suggest_format("precision");
-                }
+        let mut fixes = Vec::new();
+        // If any of the arguments are referenced by an index number,
+        // and that argument is not a simple variable and cannot be inlined,
+        // we cannot remove any other arguments in the format string,
+        // because the index numbers might be wrong after inlining.
+        // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
+        for (pos, usage) in self.format_arg_positions() {
+            if !self.check_one_arg(pos, usage, &mut fixes) {
+                return;
+            }
+        }
 
-                if let Some(format_span) = format_placeholder_format_span(placeholder) {
-                    diag.span_suggestion_verbose(
-                        format_span,
-                        "if the current behavior is intentional, remove the format specifiers",
-                        "",
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+        if fixes.is_empty() {
+            return;
+        }
+
+        // multiline span display suggestion is sometimes broken: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
+        // in those cases, make the code suggestion hidden
+        let multiline_fix = fixes
+            .iter()
+            .any(|(span, _)| self.cx.sess().source_map().is_multiline(*span));
+
+        // Suggest removing each argument only once, for example in `format!("{0} {0}", arg)`.
+        fixes.sort_unstable_by_key(|(span, _)| *span);
+        fixes.dedup_by_key(|(span, _)| *span);
+
+        span_lint_and_then(
+            self.cx,
+            UNINLINED_FORMAT_ARGS,
+            self.macro_call.span,
+            "variables can be used directly in the `format!` string",
+            |diag| {
+                diag.multipart_suggestion_with_style(
+                    "change this to",
+                    fixes,
+                    Applicability::MachineApplicable,
+                    if multiline_fix { CompletelyHidden } else { ShowCode },
+                );
             },
         );
     }
-}
 
-fn check_uninlined_args(
-    cx: &LateContext<'_>,
-    args: &rustc_ast::FormatArgs,
-    call_site: Span,
-    def_id: DefId,
-    ignore_mixed: bool,
-) {
-    if args.span.from_expansion() {
-        return;
-    }
-    if call_site.edition() < Edition2021 && (is_panic(cx, def_id) || is_assert_macro(cx, def_id)) {
-        // panic!, assert!, and debug_assert! before 2021 edition considers a single string argument as
-        // non-format
-        return;
+    fn check_one_arg(&self, pos: &FormatArgPosition, usage: FormatParamUsage, fixes: &mut Vec<(Span, String)>) -> bool {
+        let index = pos.index.unwrap();
+        let arg = &self.format_args.arguments.all_args()[index];
+
+        if !matches!(arg.kind, FormatArgumentKind::Captured(_))
+            && let rustc_ast::ExprKind::Path(None, path) = &arg.expr.kind
+            && let [segment] = path.segments.as_slice()
+            && segment.args.is_none()
+            && let Some(arg_span) = format_arg_removal_span(self.format_args, index)
+            && let Some(pos_span) = pos.span
+        {
+            let replacement = match usage {
+                FormatParamUsage::Argument => segment.ident.name.to_string(),
+                FormatParamUsage::Width => format!("{}$", segment.ident.name),
+                FormatParamUsage::Precision => format!(".{}$", segment.ident.name),
+            };
+            fixes.push((pos_span, replacement));
+            fixes.push((arg_span, String::new()));
+            true // successful inlining, continue checking
+        } else {
+            // Do not continue inlining (return false) in case
+            // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`
+            // * if allow_mixed_uninlined_format_args is false and this arg hasn't been inlined already
+            pos.kind != FormatArgPositionKind::Number
+                && (!self.ignore_mixed || matches!(arg.kind, FormatArgumentKind::Captured(_)))
+        }
     }
 
-    let mut fixes = Vec::new();
-    // If any of the arguments are referenced by an index number,
-    // and that argument is not a simple variable and cannot be inlined,
-    // we cannot remove any other arguments in the format string,
-    // because the index numbers might be wrong after inlining.
-    // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
-    for (pos, usage) in format_arg_positions(args) {
-        if !check_one_arg(args, pos, usage, &mut fixes, ignore_mixed) {
+    fn check_format_in_format_args(&self, name: Symbol, arg: &Expr<'_>) {
+        let expn_data = arg.span.ctxt().outer_expn_data();
+        if expn_data.call_site.from_expansion() {
             return;
         }
+        let Some(mac_id) = expn_data.macro_def_id else { return };
+        if !self.cx.tcx.is_diagnostic_item(sym::format_macro, mac_id) {
+            return;
+        }
+        span_lint_and_then(
+            self.cx,
+            FORMAT_IN_FORMAT_ARGS,
+            self.macro_call.span,
+            &format!("`format!` in `{name}!` args"),
+            |diag| {
+                diag.help(format!(
+                    "combine the `format!(..)` arguments with the outer `{name}!(..)` call"
+                ));
+                diag.help("or consider changing `format!` to `format_args!`");
+            },
+        );
     }
 
-    if fixes.is_empty() {
-        return;
-    }
-
-    // multiline span display suggestion is sometimes broken: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
-    // in those cases, make the code suggestion hidden
-    let multiline_fix = fixes.iter().any(|(span, _)| cx.sess().source_map().is_multiline(*span));
-
-    // Suggest removing each argument only once, for example in `format!("{0} {0}", arg)`.
-    fixes.sort_unstable_by_key(|(span, _)| *span);
-    fixes.dedup_by_key(|(span, _)| *span);
-
-    span_lint_and_then(
-        cx,
-        UNINLINED_FORMAT_ARGS,
-        call_site,
-        "variables can be used directly in the `format!` string",
-        |diag| {
-            diag.multipart_suggestion_with_style(
-                "change this to",
-                fixes,
-                Applicability::MachineApplicable,
-                if multiline_fix { CompletelyHidden } else { ShowCode },
-            );
-        },
-    );
-}
-
-fn check_one_arg(
-    args: &rustc_ast::FormatArgs,
-    pos: &FormatArgPosition,
-    usage: FormatParamUsage,
-    fixes: &mut Vec<(Span, String)>,
-    ignore_mixed: bool,
-) -> bool {
-    let index = pos.index.unwrap();
-    let arg = &args.arguments.all_args()[index];
-
-    if !matches!(arg.kind, FormatArgumentKind::Captured(_))
-        && let rustc_ast::ExprKind::Path(None, path) = &arg.expr.kind
-        && let [segment] = path.segments.as_slice()
-        && segment.args.is_none()
-        && let Some(arg_span) = format_arg_removal_span(args, index)
-        && let Some(pos_span) = pos.span
-    {
-        let replacement = match usage {
-            FormatParamUsage::Argument => segment.ident.name.to_string(),
-            FormatParamUsage::Width => format!("{}$", segment.ident.name),
-            FormatParamUsage::Precision => format!(".{}$", segment.ident.name),
-        };
-        fixes.push((pos_span, replacement));
-        fixes.push((arg_span, String::new()));
-        true // successful inlining, continue checking
-    } else {
-        // Do not continue inlining (return false) in case
-        // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`
-        // * if allow_mixed_uninlined_format_args is false and this arg hasn't been inlined already
-        pos.kind != FormatArgPositionKind::Number
-            && (!ignore_mixed || matches!(arg.kind, FormatArgumentKind::Captured(_)))
-    }
-}
-
-fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symbol, arg: &Expr<'_>) {
-    let expn_data = arg.span.ctxt().outer_expn_data();
-    if expn_data.call_site.from_expansion() {
-        return;
-    }
-    let Some(mac_id) = expn_data.macro_def_id else { return };
-    if !cx.tcx.is_diagnostic_item(sym::format_macro, mac_id) {
-        return;
-    }
-    span_lint_and_then(
-        cx,
-        FORMAT_IN_FORMAT_ARGS,
-        call_site,
-        &format!("`format!` in `{name}!` args"),
-        |diag| {
-            diag.help(format!(
-                "combine the `format!(..)` arguments with the outer `{name}!(..)` call"
-            ));
-            diag.help("or consider changing `format!` to `format_args!`");
-        },
-    );
-}
-
-fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Expr<'_>) {
-    if !value.span.from_expansion()
-        && let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind
-        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
-        && is_diag_trait_item(cx, method_def_id, sym::ToString)
-        && let receiver_ty = cx.typeck_results().expr_ty(receiver)
-        && let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display)
-        && let (n_needed_derefs, target) =
-            count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
-        && implements_trait(cx, target, display_trait_id, &[])
-        && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
-        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
-    {
-        let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
-        if n_needed_derefs == 0 && !needs_ref {
-            span_lint_and_sugg(
-                cx,
-                TO_STRING_IN_FORMAT_ARGS,
-                to_string_span.with_lo(receiver.span.hi()),
-                &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
-                "remove this",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-        } else {
-            span_lint_and_sugg(
-                cx,
-                TO_STRING_IN_FORMAT_ARGS,
-                value.span,
-                &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
-                "use this",
-                format!(
-                    "{}{:*>n_needed_derefs$}{receiver_snippet}",
-                    if needs_ref { "&" } else { "" },
-                    ""
-                ),
-                Applicability::MachineApplicable,
-            );
+    fn check_to_string_in_format_args(&self, name: Symbol, value: &Expr<'_>) {
+        let cx = self.cx;
+        if !value.span.from_expansion()
+            && let ExprKind::MethodCall(_, receiver, [], to_string_span) = value.kind
+            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
+            && is_diag_trait_item(cx, method_def_id, sym::ToString)
+            && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+            && let Some(display_trait_id) = cx.tcx.get_diagnostic_item(sym::Display)
+            && let (n_needed_derefs, target) =
+                count_needed_derefs(receiver_ty, cx.typeck_results().expr_adjustments(receiver).iter())
+            && implements_trait(cx, target, display_trait_id, &[])
+            && let Some(sized_trait_id) = cx.tcx.lang_items().sized_trait()
+            && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+        {
+            let needs_ref = !implements_trait(cx, receiver_ty, sized_trait_id, &[]);
+            if n_needed_derefs == 0 && !needs_ref {
+                span_lint_and_sugg(
+                    cx,
+                    TO_STRING_IN_FORMAT_ARGS,
+                    to_string_span.with_lo(receiver.span.hi()),
+                    &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                    "remove this",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                span_lint_and_sugg(
+                    cx,
+                    TO_STRING_IN_FORMAT_ARGS,
+                    value.span,
+                    &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
+                    "use this",
+                    format!(
+                        "{}{:*>n_needed_derefs$}{receiver_snippet}",
+                        if needs_ref { "&" } else { "" },
+                        ""
+                    ),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
-}
 
-fn format_arg_positions(
-    format_args: &rustc_ast::FormatArgs,
-) -> impl Iterator<Item = (&FormatArgPosition, FormatParamUsage)> {
-    format_args.template.iter().flat_map(|piece| match piece {
-        FormatArgsPiece::Placeholder(placeholder) => {
-            let mut positions = ArrayVec::<_, 3>::new();
+    fn format_arg_positions(&self) -> impl Iterator<Item = (&FormatArgPosition, FormatParamUsage)> {
+        self.format_args.template.iter().flat_map(|piece| match piece {
+            FormatArgsPiece::Placeholder(placeholder) => {
+                let mut positions = ArrayVec::<_, 3>::new();
 
-            positions.push((&placeholder.argument, FormatParamUsage::Argument));
-            if let Some(FormatCount::Argument(position)) = &placeholder.format_options.width {
-                positions.push((position, FormatParamUsage::Width));
-            }
-            if let Some(FormatCount::Argument(position)) = &placeholder.format_options.precision {
-                positions.push((position, FormatParamUsage::Precision));
-            }
+                positions.push((&placeholder.argument, FormatParamUsage::Argument));
+                if let Some(FormatCount::Argument(position)) = &placeholder.format_options.width {
+                    positions.push((position, FormatParamUsage::Width));
+                }
+                if let Some(FormatCount::Argument(position)) = &placeholder.format_options.precision {
+                    positions.push((position, FormatParamUsage::Precision));
+                }
 
-            positions
-        },
-        FormatArgsPiece::Literal(_) => ArrayVec::new(),
-    })
-}
+                positions
+            },
+            FormatArgsPiece::Literal(_) => ArrayVec::new(),
+        })
+    }
 
-/// Returns true if the format argument at `index` is referred to by multiple format params
-fn is_aliased(format_args: &rustc_ast::FormatArgs, index: usize) -> bool {
-    format_arg_positions(format_args)
-        .filter(|(position, _)| position.index == Ok(index))
-        .at_most_one()
-        .is_err()
+    /// Returns true if the format argument at `index` is referred to by multiple format params
+    fn is_aliased(&self, index: usize) -> bool {
+        self.format_arg_positions()
+            .filter(|(position, _)| position.index == Ok(index))
+            .at_most_one()
+            .is_err()
+    }
 }
 
 fn count_needed_derefs<'tcx, I>(mut ty: Ty<'tcx>, mut iter: I) -> (usize, Ty<'tcx>)
