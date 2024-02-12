@@ -110,6 +110,7 @@ struct RwLock {
     /// must load the clock of the last write and must not
     /// add happens-before orderings between shared reader
     /// locks.
+    /// This is only relevant when there is an active reader.
     data_race_reader: VClock,
 }
 
@@ -485,6 +486,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Entry::Vacant(_) => return false, // we did not even own this lock
         }
         if let Some(data_race) = &this.machine.data_race {
+            // Add this to the shared-release clock of all concurrent readers.
             data_race.validate_lock_release_shared(
                 &mut rwlock.data_race_reader,
                 reader,
@@ -539,17 +541,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             rwlock.writer = None;
             trace!("rwlock_writer_unlock: {:?} unlocked by {:?}", id, expected_writer);
-            // Release memory to both reader and writer vector clocks
-            //  since this writer happens-before both the union of readers once they are finished
-            //  and the next writer
+            // Release memory to next lock holder.
             if let Some(data_race) = &this.machine.data_race {
                 data_race.validate_lock_release(
                     &mut rwlock.data_race,
-                    current_writer,
-                    current_span,
-                );
-                data_race.validate_lock_release(
-                    &mut rwlock.data_race_reader,
                     current_writer,
                     current_span,
                 );
