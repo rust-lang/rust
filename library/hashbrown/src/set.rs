@@ -2820,7 +2820,7 @@ mod test_set {
                 assert_eq!(last_i, 49);
             }
 
-            for _ in &s {
+            if !s.is_empty() {
                 panic!("s should be empty!");
             }
 
@@ -2834,6 +2834,7 @@ mod test_set {
         use core::hash;
 
         #[derive(Debug)]
+        #[allow(dead_code)]
         struct Foo(&'static str, i32);
 
         impl PartialEq for Foo {
