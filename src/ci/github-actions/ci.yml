@@ -131,7 +131,7 @@ x--expand-yaml-anchors--remove:
           release: true
           # Inherit the full path from the Windows environment, with MSYS2's */bin/
           # dirs placed in front. This lets us run Windows-native Python etc.
-          path-type: inherit
+          path-type: strict
           install: >
             make
             git

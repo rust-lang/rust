@@ -103,7 +103,7 @@ jobs:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
-          path-type: inherit
+          path-type: strict
           install: "make git dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
@@ -508,7 +508,7 @@ jobs:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
-          path-type: inherit
+          path-type: strict
           install: "make git dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
@@ -647,7 +647,7 @@ jobs:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
-          path-type: inherit
+          path-type: strict
           install: "make git dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
