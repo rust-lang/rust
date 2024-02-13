@@ -1,20 +1,5 @@
-warning: mutable reference of mutable static is discouraged
-  --> $DIR/thread-local-static.rs:10:23
-   |
-LL |     std::mem::swap(x, &mut STATIC_VAR_2)
-   |                       ^^^^^^^^^^^^^^^^^ mutable reference of mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: reference of mutable static is a hard error from 2024 edition
-   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
-   = note: `#[warn(static_mut_ref)]` on by default
-help: mutable references are dangerous since if there's any other pointer or reference used for that static while the reference lives, that's UB; use `addr_of_mut!` instead to create a raw pointer
-   |
-LL |     std::mem::swap(x, addr_of_mut!(STATIC_VAR_2))
-   |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/thread-local-static.rs:10:28
+  --> $DIR/thread-local-static.rs:11:28
    |
 LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    |                            ^^^^^^^^^^^^ use of mutable static
@@ -22,7 +7,7 @@ LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/thread-local-static.rs:8:12
+  --> $DIR/thread-local-static.rs:9:12
    |
 LL | const fn g(x: &mut [u32; 8]) {
    |            ^
@@ -32,13 +17,13 @@ LL | const fn g(x: &mut [u32; 8]) {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
-  --> $DIR/thread-local-static.rs:10:28
+  --> $DIR/thread-local-static.rs:11:28
    |
 LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    |                            ^^^^^^^^^^^^
 
 error[E0658]: mutable references are not allowed in constant functions
-  --> $DIR/thread-local-static.rs:10:23
+  --> $DIR/thread-local-static.rs:11:23
    |
 LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    |                       ^^^^^^^^^^^^^^^^^
@@ -47,7 +32,7 @@ LL |     std::mem::swap(x, &mut STATIC_VAR_2)
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0133, E0625, E0658.
 For more information about an error, try `rustc --explain E0133`.

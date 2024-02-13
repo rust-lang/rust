@@ -963,14 +963,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 owner_id,
                 ..
             }) => Some((hir::HirId::make_owner(owner_id.def_id), &sig.decl, ident, false)),
-            Node::Expr(&hir::Expr { hir_id, kind: hir::ExprKind::Closure(..), .. })
-                if let Node::Item(&hir::Item {
-                    ident,
-                    kind: hir::ItemKind::Fn(ref sig, ..),
-                    owner_id,
-                    ..
-                }) = self.tcx.parent_hir_node(hir_id) =>
-            {
+            Node::Expr(&hir::Expr {
+                hir_id,
+                kind:
+                    hir::ExprKind::Closure(hir::Closure {
+                        kind: hir::ClosureKind::Coroutine(..), ..
+                    }),
+                ..
+            }) => {
+                let (ident, sig, owner_id) = match self.tcx.parent_hir_node(hir_id) {
+                    Node::Item(&hir::Item {
+                        ident,
+                        kind: hir::ItemKind::Fn(ref sig, ..),
+                        owner_id,
+                        ..
+                    }) => (ident, sig, owner_id),
+                    Node::TraitItem(&hir::TraitItem {
+                        ident,
+                        kind: hir::TraitItemKind::Fn(ref sig, ..),
+                        owner_id,
+                        ..
+                    }) => (ident, sig, owner_id),
+                    Node::ImplItem(&hir::ImplItem {
+                        ident,
+                        kind: hir::ImplItemKind::Fn(ref sig, ..),
+                        owner_id,
+                        ..
+                    }) => (ident, sig, owner_id),
+                    _ => return None,
+                };
                 Some((
                     hir::HirId::make_owner(owner_id.def_id),
                     &sig.decl,

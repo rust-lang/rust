@@ -1073,12 +1073,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // for instance
                                         self.tcx.at(span).type_of(*def_id).instantiate_identity()
                                             != rcvr_ty
-                                            && self
-                                                .tcx
-                                                .at(span)
-                                                .type_of(*def_id)
-                                                .instantiate_identity()
-                                                != rcvr_ty
                                     }
                                     (Mode::Path, false, _) => true,
                                     _ => false,
@@ -1092,7 +1086,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         inherent_impls_candidate.sort();
                         inherent_impls_candidate.dedup();
 
-                        // number of type to shows at most.
+                        // number of types to show at most
                         let limit = if inherent_impls_candidate.len() == 5 { 5 } else { 4 };
                         let type_candidates = inherent_impls_candidate
                             .iter()
