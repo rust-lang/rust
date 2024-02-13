@@ -884,7 +884,10 @@ impl<T, A: Allocator> Rc<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn pin_in(value: T, alloc: A) -> Pin<Self> {
+    pub fn pin_in(value: T, alloc: A) -> Pin<Self>
+    where
+        A: 'static,
+    {
         unsafe { Pin::new_unchecked(Rc::new_in(value, alloc)) }
     }
 
