@@ -14,6 +14,19 @@ LL |     <T as Trait>::Assoc: Trait,
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`normalize_param_env_4`)
 
-error: aborting due to 2 previous errors
+error[E0275]: overflow evaluating the requirement `T: Trait`
+  --> $DIR/normalize-param-env-4.rs:31:19
+   |
+LL |     impls_trait::<T>();
+   |                   ^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`normalize_param_env_4`)
+note: required by a bound in `impls_trait`
+  --> $DIR/normalize-param-env-4.rs:14:19
+   |
+LL | fn impls_trait<T: Trait>() {}
+   |                   ^^^^^ required by this bound in `impls_trait`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

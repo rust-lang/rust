@@ -10,6 +10,23 @@ help: this trait has no implementations, consider adding one
 LL | trait Trait2<'a> {
    | ^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `for<'a> (): Trait2<'a>` is not satisfied
+  --> $DIR/issue-35570.rs:8:66
+   |
+LL |   fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
+   |  __________________________________________________________________^
+LL | |
+LL | |
+LL | |     let _e: (usize, usize) = unsafe{mem::transmute(param)};
+LL | | }
+   | |_^ the trait `for<'a> Trait2<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-35570.rs:4:1
+   |
+LL | trait Trait2<'a> {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

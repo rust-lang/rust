@@ -6,6 +6,7 @@ fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'
     //~^ ERROR reference has a longer lifetime than the data it references
     // Do not infer ordering from closure argument types.
     let z: Option<&'a &'b usize> = None;
+    //~^ ERROR may not live long enough
 }
 
 fn main() {}

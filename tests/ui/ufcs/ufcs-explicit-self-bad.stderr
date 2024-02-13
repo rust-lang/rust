@@ -118,7 +118,25 @@ note: ...does not necessarily outlive the anonymous lifetime defined here
 LL |     fn dummy3(self: &&Bar<T>) {}
    |                      ^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0610]: `isize` is a primitive type and therefore doesn't have fields
+  --> $DIR/ufcs-explicit-self-bad.rs:10:14
+   |
+LL |         self.f + x
+   |              ^
 
-Some errors have detailed explanations: E0053, E0307, E0308.
+error[E0599]: no method named `foo` found for struct `Box<Foo>` in the current scope
+  --> $DIR/ufcs-explicit-self-bad.rs:55:24
+   |
+LL |     println!("{}", foo.foo(2));
+   |                        ^^^ method not found in `Box<Foo>`
+
+error[E0599]: no method named `bar` found for struct `Box<Bar<isize>>` in the current scope
+  --> $DIR/ufcs-explicit-self-bad.rs:60:39
+   |
+LL |     println!("{} {}", bar.foo(2), bar.bar(2));
+   |                                       ^^^ method not found in `Box<Bar<isize>>`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0053, E0307, E0308, E0599, E0610.
 For more information about an error, try `rustc --explain E0053`.

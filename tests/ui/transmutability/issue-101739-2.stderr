@@ -25,6 +25,13 @@ LL | |         >,
 note: required by a bound in `BikeshedIntrinsicFrom`
   --> $SRC_DIR/core/src/mem/transmutability.rs:LL:COL
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-101739-2.rs:22:13
+   |
+LL |             ASSUME_ALIGNMENT,
+   |             ^^^^^^^^^^^^^^^^ expected `Assume`, found `bool`
 
-For more information about this error, try `rustc --explain E0107`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.

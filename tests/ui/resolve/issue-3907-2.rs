@@ -10,5 +10,6 @@ struct S {
 
 fn bar(_x: Foo) {}
 //~^ ERROR E0038
+//~| ERROR E0277
 
 fn main() {}

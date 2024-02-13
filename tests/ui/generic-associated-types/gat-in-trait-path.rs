@@ -30,4 +30,6 @@ fn f(_arg : Box<dyn for<'a> Foo<A<'a> = &'a ()>>) {}
 fn main() {
   let foo = Fooer(5);
   f(Box::new(foo));
+  //[base]~^ the trait `Foo` cannot be made into an object
+  //[base]~| the trait `Foo` cannot be made into an object
 }
