@@ -239,7 +239,7 @@ fn import_on_the_fly(
                 if matches!(location, TypeLocation::TypeBound) {
                     matches!(ty, ModuleDef::Trait(_))
                 } else if matches!(location, TypeLocation::ImplTrait) {
-                    matches!(ty, ModuleDef::Trait(_)) || matches!(ty, ModuleDef::Module(_))
+                    matches!(ty, ModuleDef::Trait(_) | ModuleDef::Module(_))
                 } else {
                     true
                 }
