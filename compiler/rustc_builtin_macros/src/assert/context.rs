@@ -1,7 +1,6 @@
 use rustc_ast::{
     ptr::P,
-    token,
-    token::Delimiter,
+    token::{self, Delimiter, IdentIsRaw},
     tokenstream::{DelimSpan, TokenStream, TokenTree},
     BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MethodCall, Mutability,
     Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
@@ -170,7 +169,10 @@ impl<'cx, 'a> Context<'cx, 'a> {
         ];
         let captures = self.capture_decls.iter().flat_map(|cap| {
             [
-                TokenTree::token_joint_hidden(token::Ident(cap.ident.name, false), cap.ident.span),
+                TokenTree::token_joint_hidden(
+                    token::Ident(cap.ident.name, IdentIsRaw::No),
+                    cap.ident.span,
+                ),
                 TokenTree::token_alone(token::Comma, self.span),
             ]
         });

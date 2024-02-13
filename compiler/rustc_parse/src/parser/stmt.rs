@@ -691,7 +691,7 @@ impl<'a> Parser<'a> {
                                                     token.kind,
                                                     token::Ident(
                                                         kw::For | kw::Loop | kw::While,
-                                                        false
+                                                        token::IdentIsRaw::No
                                                     ) | token::OpenDelim(Delimiter::Brace)
                                                 )
                                         })

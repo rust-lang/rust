@@ -1,3 +1,4 @@
+use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
@@ -416,7 +417,7 @@ fn parse_reg<'a>(
 ) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
     let result = match p.token.uninterpolate().kind {
-        token::Ident(name, false) => ast::InlineAsmRegOrRegClass::RegClass(name),
+        token::Ident(name, IdentIsRaw::No) => ast::InlineAsmRegOrRegClass::RegClass(name),
         token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
             *explicit_reg = true;
             ast::InlineAsmRegOrRegClass::Reg(symbol)

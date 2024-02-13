@@ -1,4 +1,4 @@
-use rustc_ast::token::{self, Delimiter};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw};
 use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
@@ -142,7 +142,7 @@ fn parse_ident<'sess>(
     if let Some(tt) = iter.next()
         && let TokenTree::Token(token, _) = tt
     {
-        if let Some((elem, false)) = token.ident() {
+        if let Some((elem, IdentIsRaw::No)) = token.ident() {
             return Ok(elem);
         }
         let token_str = pprust::token_to_string(token);

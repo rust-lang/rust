@@ -201,6 +201,6 @@ impl<'a> Parser<'a> {
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
+fn get_macro_ident(token: &Token) -> Option<(Ident, token::IdentIsRaw)> {
     token.ident().filter(|(ident, _)| ident.name != kw::Underscore)
 }

@@ -11,6 +11,7 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
+use ast::token::IdentIsRaw;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
@@ -499,7 +500,7 @@ impl<'a> Parser<'a> {
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
-        if !is_raw && ident.is_reserved() {
+        if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -511,7 +512,7 @@ impl<'a> Parser<'a> {
         Ok(ident)
     }
 
-    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentIsRaw)> {
         match self.token.ident() {
             Some(ident) => Ok(ident),
             None => self.expected_ident_found(recover),
@@ -568,7 +569,7 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
             true
@@ -598,7 +599,7 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
             self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });

@@ -3,6 +3,7 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
+use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
@@ -1079,7 +1080,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
+            Some((ident @ Ident { name: kw::Underscore, .. }, IdentIsRaw::No)) => {
                 self.bump();
                 Ok(ident)
             }
@@ -1965,7 +1966,7 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err(true)?;
         if ident.name == kw::Underscore {
             self.sess.gated_spans.gate(sym::unnamed_fields, lo);
-        } else if !is_raw && ident.is_reserved() {
+        } else if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis = Visibility {
@@ -2743,7 +2744,7 @@ impl<'a> Parser<'a> {
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
         let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, false)) => {
+            Some((ident, IdentIsRaw::No)) => {
                 this.bump();
                 ident
             }

@@ -1821,7 +1821,7 @@ impl KeywordIdents {
             match tt {
                 // Only report non-raw idents.
                 TokenTree::Token(token, _) => {
-                    if let Some((ident, false)) = token.ident() {
+                    if let Some((ident, token::IdentIsRaw::No)) = token.ident() {
                         self.check_ident_token(cx, UnderMacro(true), ident);
                     }
                 }

@@ -21,6 +21,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::parser;
 use crate::parser::attr::InnerAttrPolicy;
+use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
@@ -264,7 +265,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_ident_found(
         &mut self,
         recover: bool,
-    ) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+    ) -> PResult<'a, (Ident, IdentIsRaw)> {
         if let TokenKind::DocComment(..) = self.prev_token.kind {
             return Err(self.dcx().create_err(DocCommentDoesNotDocumentAnything {
                 span: self.prev_token.span,
@@ -290,11 +291,11 @@ impl<'a> Parser<'a> {
         let bad_token = self.token.clone();
 
         // suggest prepending a keyword in identifier position with `r#`
-        let suggest_raw = if let Some((ident, false)) = self.token.ident()
+        let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.is_raw_guess()
             && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
         {
-            recovered_ident = Some((ident, true));
+            recovered_ident = Some((ident, IdentIsRaw::Yes));
 
             // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
             // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
@@ -320,7 +321,7 @@ impl<'a> Parser<'a> {
         let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
             let (invalid, valid) = self.token.span.split_at(len as u32);
 
-            recovered_ident = Some((Ident::new(valid_portion, valid), false));
+            recovered_ident = Some((Ident::new(valid_portion, valid), IdentIsRaw::No));
 
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
@@ -653,9 +654,9 @@ impl<'a> Parser<'a> {
         // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
         // that in the parser requires unbounded lookahead, so we only add a hint to the existing
         // error rather than replacing it entirely.
-        if ((self.prev_token.kind == TokenKind::Ident(sym::c, false)
+        if ((self.prev_token.kind == TokenKind::Ident(sym::c, IdentIsRaw::No)
             && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
-            || (self.prev_token.kind == TokenKind::Ident(sym::cr, false)
+            || (self.prev_token.kind == TokenKind::Ident(sym::cr, IdentIsRaw::No)
                 && matches!(
                     &self.token.kind,
                     TokenKind::Literal(token::Lit { kind: token::Str, .. }) | token::Pound
