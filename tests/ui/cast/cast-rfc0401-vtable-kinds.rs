@@ -4,16 +4,10 @@
 
 #![feature(unsized_tuple_coercion)]
 
-trait Foo<T> {
-    fn foo(&self, _: T) -> u32 { 42 }
-}
-
 trait Bar { //~ WARN trait `Bar` is never used
     fn bar(&self) { println!("Bar!"); }
 }
 
-impl<T> Foo<T> for () {}
-impl Foo<u32> for u32 { fn foo(&self, _: u32) -> u32 { self+43 } }
 impl Bar for () {}
 
 #[repr(C)]

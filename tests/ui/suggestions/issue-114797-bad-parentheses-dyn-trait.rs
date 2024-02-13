@@ -3,9 +3,9 @@
 
 trait Trait {}
 
-fn assert_send(ptr: *mut dyn Trait) -> *mut dyn (Trait + Send) {
+fn assert_send() -> *mut dyn (Trait + Send) {
     //~^ ERROR incorrect parentheses around trait bounds
-    ptr as _
+    loop {}
 }
 
 fn foo2(_: &dyn (Trait + Send)) {}
