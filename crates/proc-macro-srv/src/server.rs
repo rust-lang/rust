@@ -17,7 +17,6 @@ pub mod rust_analyzer_span;
 mod symbol;
 pub mod token_id;
 pub use symbol::*;
-use syntax::ast::{self, IsString};
 use tt::Spacing;
 
 fn delim_to_internal<S>(d: proc_macro::Delimiter, span: bridge::DelimSpan<S>) -> tt::Delimiter<S> {
@@ -52,32 +51,6 @@ fn spacing_to_external(spacing: Spacing) -> proc_macro::Spacing {
     match spacing {
         Spacing::Alone => proc_macro::Spacing::Alone,
         Spacing::Joint => proc_macro::Spacing::Joint,
-    }
-}
-
-fn literal_to_external(literal_kind: ast::LiteralKind) -> Option<proc_macro::bridge::LitKind> {
-    match literal_kind {
-        ast::LiteralKind::String(data) => Some(if data.is_raw() {
-            bridge::LitKind::StrRaw(data.raw_delimiter_count()?)
-        } else {
-            bridge::LitKind::Str
-        }),
-
-        ast::LiteralKind::ByteString(data) => Some(if data.is_raw() {
-            bridge::LitKind::ByteStrRaw(data.raw_delimiter_count()?)
-        } else {
-            bridge::LitKind::ByteStr
-        }),
-        ast::LiteralKind::CString(data) => Some(if data.is_raw() {
-            bridge::LitKind::CStrRaw(data.raw_delimiter_count()?)
-        } else {
-            bridge::LitKind::CStr
-        }),
-        ast::LiteralKind::IntNumber(_) => Some(bridge::LitKind::Integer),
-        ast::LiteralKind::FloatNumber(_) => Some(bridge::LitKind::Float),
-        ast::LiteralKind::Char(_) => Some(bridge::LitKind::Char),
-        ast::LiteralKind::Byte(_) => Some(bridge::LitKind::Byte),
-        ast::LiteralKind::Bool(_) => None,
     }
 }
 

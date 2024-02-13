@@ -1329,9 +1329,9 @@ dependencies = [
  "paths",
  "proc-macro-api",
  "proc-macro-test",
+ "ra-ap-rustc_lexer",
  "span",
  "stdx",
- "syntax",
  "tt",
 ]
 

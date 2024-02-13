@@ -13,11 +13,10 @@ use std::{
 use ::tt::{TextRange, TextSize};
 use proc_macro::bridge::{self, server};
 use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
-use syntax::ast::{self, IsString};
 
 use crate::server::{
-    delim_to_external, delim_to_internal, literal_to_external, token_stream::TokenStreamBuilder,
-    LiteralFormatter, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
+    delim_to_external, delim_to_internal, token_stream::TokenStreamBuilder, LiteralFormatter,
+    Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
     pub use ::tt::*;
@@ -71,32 +70,57 @@ impl server::FreeFunctions for RaSpanServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        let literal = ast::Literal::parse(s).ok_or(())?;
-        let literal = literal.tree();
+        use proc_macro::bridge::LitKind;
+        use rustc_lexer::{LiteralKind, Token, TokenKind};
 
-        let kind = literal_to_external(literal.kind()).ok_or(())?;
+        let mut tokens = rustc_lexer::tokenize(s);
+        let minus_or_lit = tokens.next().unwrap_or(Token { kind: TokenKind::Eof, len: 0 });
 
-        // FIXME: handle more than just int and float suffixes
-        let suffix = match literal.kind() {
-            ast::LiteralKind::FloatNumber(num) => num.suffix().map(ToString::to_string),
-            ast::LiteralKind::IntNumber(num) => num.suffix().map(ToString::to_string),
-            _ => None,
+        let lit = if minus_or_lit.kind == TokenKind::Minus {
+            let lit = tokens.next().ok_or(())?;
+            if !matches!(
+                lit.kind,
+                TokenKind::Literal {
+                    kind: LiteralKind::Int { .. } | LiteralKind::Float { .. },
+                    ..
+                }
+            ) {
+                return Err(());
+            }
+            lit
+        } else {
+            minus_or_lit
         };
 
-        let text = match literal.kind() {
-            ast::LiteralKind::String(data) => data.text_without_quotes().to_string(),
-            ast::LiteralKind::ByteString(data) => data.text_without_quotes().to_string(),
-            ast::LiteralKind::CString(data) => data.text_without_quotes().to_string(),
-            _ => s.to_string(),
-        };
-        let text = if let Some(ref suffix) = suffix { text.strip_suffix(suffix) } else { None }
-            .unwrap_or(&text);
+        if tokens.next().is_some() {
+            return Err(());
+        }
 
-        let suffix = suffix.map(|suffix| Symbol::intern(self.interner, &suffix));
+        let TokenKind::Literal { kind, suffix_start } = lit.kind else { return Err(()) };
+        let kind = match kind {
+            LiteralKind::Int { .. } => LitKind::Integer,
+            LiteralKind::Float { .. } => LitKind::Float,
+            LiteralKind::Char { .. } => LitKind::Char,
+            LiteralKind::Byte { .. } => LitKind::Byte,
+            LiteralKind::Str { .. } => LitKind::Str,
+            LiteralKind::ByteStr { .. } => LitKind::ByteStr,
+            LiteralKind::CStr { .. } => LitKind::CStr,
+            LiteralKind::RawStr { n_hashes } => LitKind::StrRaw(n_hashes.unwrap_or_default()),
+            LiteralKind::RawByteStr { n_hashes } => {
+                LitKind::ByteStrRaw(n_hashes.unwrap_or_default())
+            }
+            LiteralKind::RawCStr { n_hashes } => LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+        };
+
+        let (lit, suffix) = s.split_at(suffix_start as usize);
+        let suffix = match suffix {
+            "" | "_" => None,
+            suffix => Some(Symbol::intern(self.interner, suffix)),
+        };
 
         Ok(bridge::Literal {
             kind,
-            symbol: Symbol::intern(self.interner, text),
+            symbol: Symbol::intern(self.interner, lit),
             suffix,
             span: self.call_site,
         })
