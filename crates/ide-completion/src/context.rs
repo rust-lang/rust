@@ -202,6 +202,7 @@ impl TypeLocation {
             }
             TypeLocation::AssocConstEq => false,
             TypeLocation::AssocTypeEq => true,
+            TypeLocation::ImplTrait => false,
             _ => true,
         }
     }
