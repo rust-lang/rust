@@ -262,6 +262,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     },
                 );
 
+                let coroutine_kind_ty = self.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::ClosureSynthetic,
+                    span: expr_span,
+                });
                 let coroutine_upvars_ty = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::ClosureSynthetic,
                     span: expr_span,
@@ -279,7 +283,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         sig.to_coroutine(
                             tcx,
                             parent_args,
-                            closure_kind_ty,
+                            coroutine_kind_ty,
                             tcx.coroutine_for_closure(expr_def_id),
                             coroutine_upvars_ty,
                         )

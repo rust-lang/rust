@@ -90,16 +90,12 @@ pub enum InstanceDef<'tcx> {
     /// and dispatch to the `FnMut::call_mut` instance for the closure.
     ClosureOnceShim { call_once: DefId, track_caller: bool },
 
-    /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once` or
-    /// `<[Fn coroutine-closure] as FnMut>::call_mut`.
+    /// `<[FnMut/Fn coroutine-closure] as FnOnce>::call_once`
     ///
     /// The body generated here differs significantly from the `ClosureOnceShim`,
     /// since we need to generate a distinct coroutine type that will move the
     /// closure's upvars *out* of the closure.
-    ConstructCoroutineInClosureShim {
-        coroutine_closure_def_id: DefId,
-        target_kind: ty::ClosureKind,
-    },
+    ConstructCoroutineInClosureShim { coroutine_closure_def_id: DefId },
 
     /// `<[coroutine] as Future>::poll`, but for coroutines produced when `AsyncFnOnce`
     /// is called on a coroutine-closure whose closure kind greater than `FnOnce`, or
@@ -107,7 +103,7 @@ pub enum InstanceDef<'tcx> {
     ///
     /// This will select the body that is produced by the `ByMoveBody` transform, and thus
     /// take and use all of its upvars by-move rather than by-ref.
-    CoroutineKindShim { coroutine_def_id: DefId, target_kind: ty::ClosureKind },
+    CoroutineKindShim { coroutine_def_id: DefId },
 
     /// Compiler-generated accessor for thread locals which returns a reference to the thread local
     /// the `DefId` defines. This is used to export thread locals from dylibs on platforms lacking
@@ -192,9 +188,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ClosureOnceShim { call_once: def_id, track_caller: _ }
             | ty::InstanceDef::ConstructCoroutineInClosureShim {
                 coroutine_closure_def_id: def_id,
-                target_kind: _,
             }
-            | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id, target_kind: _ }
+            | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
             | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
@@ -651,10 +646,7 @@ impl<'tcx> Instance<'tcx> {
                 Some(Instance { def: ty::InstanceDef::Item(coroutine_def_id), args })
             } else {
                 Some(Instance {
-                    def: ty::InstanceDef::CoroutineKindShim {
-                        coroutine_def_id,
-                        target_kind: args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
-                    },
+                    def: ty::InstanceDef::CoroutineKindShim { coroutine_def_id },
                     args,
                 })
             }

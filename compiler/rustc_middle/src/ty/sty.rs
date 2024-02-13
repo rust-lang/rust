@@ -483,7 +483,7 @@ impl<'tcx> CoroutineClosureSignature<'tcx> {
         self.to_coroutine(
             tcx,
             parent_args,
-            Ty::from_closure_kind(tcx, goal_kind),
+            Ty::from_coroutine_closure_kind(tcx, goal_kind),
             coroutine_def_id,
             tupled_upvars_ty,
         )
@@ -2452,6 +2452,21 @@ impl<'tcx> Ty<'tcx> {
         match kind {
             ty::ClosureKind::Fn => tcx.types.i8,
             ty::ClosureKind::FnMut => tcx.types.i16,
+            ty::ClosureKind::FnOnce => tcx.types.i32,
+        }
+    }
+
+    /// Like [`Ty::to_opt_closure_kind`], but it caps the "maximum" closure kind
+    /// to `FnMut`. This is because although we have three capability states,
+    /// `AsyncFn`/`AsyncFnMut`/`AsyncFnOnce`, we only need to distinguish two coroutine
+    /// bodies: by-ref and by-value.
+    ///
+    /// This method should be used when constructing a `Coroutine` out of a
+    /// `CoroutineClosure`, when the `Coroutine`'s `kind` field is being populated
+    /// directly from the `CoroutineClosure`'s `kind`.
+    pub fn from_coroutine_closure_kind(tcx: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Ty<'tcx> {
+        match kind {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => tcx.types.i16,
             ty::ClosureKind::FnOnce => tcx.types.i32,
         }
     }

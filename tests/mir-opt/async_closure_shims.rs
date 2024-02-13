@@ -30,8 +30,6 @@ async fn call_once(f: impl AsyncFnOnce(i32)) {
 }
 
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}.coroutine_closure_by_move.0.mir
-// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}.coroutine_closure_by_mut.0.mir
-// EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.coroutine_by_mut.0.mir
 // EMIT_MIR async_closure_shims.main-{closure#0}-{closure#0}-{closure#0}.coroutine_by_move.0.mir
 pub fn main() {
     block_on(async {

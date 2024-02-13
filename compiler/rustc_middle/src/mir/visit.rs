@@ -345,8 +345,10 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::Virtual(_def_id, _) |
                         ty::InstanceDef::ThreadLocalShim(_def_id) |
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
-                        ty::InstanceDef::ConstructCoroutineInClosureShim { coroutine_closure_def_id: _def_id, target_kind: _ } |
-                        ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id, target_kind: _ } |
+                        ty::InstanceDef::ConstructCoroutineInClosureShim {
+                            coroutine_closure_def_id: _def_id,
+                        } |
+                        ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id } |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
 
                         ty::InstanceDef::FnPtrShim(_def_id, ty) |
