@@ -125,11 +125,15 @@ the [`TypeckResults::node_type()`][node_type] method inside of bodies.
 
 ## Creating Types programmatically
 
-A common usecase for creating types programmatically is when we want to check if a type implements a trait. We have a section on this in the [Trait Checking](trait_checking.md) chapter, but given the importance of this topic, we will also cover it here.
+A common usecase for creating types programmatically is when we want to check if a type implements a trait. We have
+a section on this in the [Trait Checking](trait_checking.md) chapter, but given the importance of this topic, we will
+also cover it a bit here.
 
-When we refer to "type" in this context, we refer to `ty::Ty`. To create a `ty::Ty` programmatically, we rely on `Ty::new_*` methods. These methods create a `TyKind` and then wrap it in a `Ty` struct.
+When we refer to "type" in this context, we refer to `ty::Ty`. To create a `ty::Ty` programmatically, we rely on
+`Ty::new_*` methods. These methods create a `TyKind` and then wrap it in a `Ty` struct.
 
-This means we have access to all the primitive types, such as `Ty::new_char`, `Ty::new_bool`, `Ty::new_int`, etc. We can also create more complex types, such as slices, tuples, and references.
+This means we have access to all the primitive types, such as `Ty::new_char`, `Ty::new_bool`, `Ty::new_int`, etc.
+We can also create more complex types, such as slices, tuples, and references.
 
 Here's an example of how to create a `Ty` for a slice of `u8`, i.e. `[u8]`
 
