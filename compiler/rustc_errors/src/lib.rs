@@ -1364,19 +1364,6 @@ impl DiagCtxtInner {
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        if let Expect(expect_id) | ForceWarning(Some(expect_id)) = diagnostic.level {
-            // The `LintExpectationId` can be stable or unstable depending on when it was created.
-            // Diagnostics created before the definition of `HirId`s are unstable and can not yet
-            // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
-            // a stable one by the `LintLevelsBuilder`.
-            if let LintExpectationId::Unstable { .. } = expect_id {
-                self.unstable_expect_diagnostics.push(diagnostic);
-                return None;
-            }
-            self.suppressed_expected_diag = true;
-            self.fulfilled_expectations.insert(expect_id.normalize());
-        }
-
         match diagnostic.level {
             Fatal | Error if self.treat_next_err_as_bug() => {
                 // `Fatal` and `Error` can be promoted to `Bug`.
@@ -1418,9 +1405,24 @@ impl DiagCtxtInner {
                 }
                 return None;
             }
-            Allow | Expect(_) => {
-                TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+            Allow => {
                 return None;
+            }
+            Expect(expect_id) | ForceWarning(Some(expect_id)) => {
+                // Diagnostics created before the definition of `HirId`s are
+                // unstable and can not yet be stored. Instead, they are
+                // buffered until the `LintExpectationId` is replaced by a
+                // stable one by the `LintLevelsBuilder`.
+                if let LintExpectationId::Unstable { .. } = expect_id {
+                    self.unstable_expect_diagnostics.push(diagnostic);
+                    return None;
+                }
+                self.fulfilled_expectations.insert(expect_id.normalize());
+                if let Expect(_) = diagnostic.level {
+                    TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+                    self.suppressed_expected_diag = true;
+                    return None;
+                }
             }
             _ => {}
         }
