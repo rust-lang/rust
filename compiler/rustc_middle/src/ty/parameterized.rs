@@ -134,4 +134,5 @@ parameterized_over_tcx! {
     ty::Predicate,
     ty::Clause,
     ty::ClauseKind,
+    ty::ImplTraitHeader
 }

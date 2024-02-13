@@ -1,6 +1,5 @@
 //! As explained in [`crate::usefulness`], values and patterns are made from constructors applied to
 //! fields. This file defines types that represent patterns in this way.
-use std::cell::Cell;
 use std::fmt;
 
 use smallvec::{smallvec, SmallVec};
@@ -10,12 +9,20 @@ use crate::TypeCx;
 
 use self::Constructor::*;
 
+/// A globally unique id to distinguish patterns.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct PatId(u32);
+impl PatId {
+    fn new() -> Self {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static PAT_ID: AtomicU32 = AtomicU32::new(0);
+        PatId(PAT_ID.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
-/// a pattern in this form.
-/// This also uses interior mutability to keep track of whether the pattern has been found reachable
-/// during analysis. For this reason they cannot be cloned.
-/// A `DeconstructedPat` will almost always come from user input; the only exception are some
-/// `Wildcard`s introduced during specialization.
+/// a pattern in this form. A `DeconstructedPat` will almost always come from user input; the only
+/// exception are some `Wildcard`s introduced during pattern lowering.
 ///
 /// Note that the number of fields may not match the fields declared in the original struct/variant.
 /// This happens if a private or `non_exhaustive` field is uninhabited, because the code mustn't
@@ -28,19 +35,13 @@ pub struct DeconstructedPat<Cx: TypeCx> {
     /// Extra data to store in a pattern. `None` if the pattern is a wildcard that does not
     /// correspond to a user-supplied pattern.
     data: Option<Cx::PatData>,
-    /// Whether removing this arm would change the behavior of the match expression.
-    useful: Cell<bool>,
+    /// Globally-unique id used to track usefulness at the level of subpatterns.
+    pub(crate) uid: PatId,
 }
 
 impl<Cx: TypeCx> DeconstructedPat<Cx> {
     pub fn wildcard(ty: Cx::Ty) -> Self {
-        DeconstructedPat {
-            ctor: Wildcard,
-            fields: Vec::new(),
-            ty,
-            data: None,
-            useful: Cell::new(false),
-        }
+        DeconstructedPat { ctor: Wildcard, fields: Vec::new(), ty, data: None, uid: PatId::new() }
     }
 
     pub fn new(
@@ -49,7 +50,7 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
         ty: Cx::Ty,
         data: Cx::PatData,
     ) -> Self {
-        DeconstructedPat { ctor, fields, ty, data: Some(data), useful: Cell::new(false) }
+        DeconstructedPat { ctor, fields, ty, data: Some(data), uid: PatId::new() }
     }
 
     pub(crate) fn is_or_pat(&self) -> bool {
@@ -107,39 +108,16 @@ impl<Cx: TypeCx> DeconstructedPat<Cx> {
         }
     }
 
-    /// We keep track for each pattern if it was ever useful during the analysis. This is used with
-    /// `redundant_subpatterns` to report redundant subpatterns arising from or patterns.
-    pub(crate) fn set_useful(&self) {
-        self.useful.set(true)
-    }
-    pub(crate) fn is_useful(&self) -> bool {
-        if self.useful.get() {
-            true
-        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_useful()) {
-            // We always expand or patterns in the matrix, so we will never see the actual
-            // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
-            // marked as useful itself, only its children will. We recover this information here.
-            self.set_useful();
-            true
-        } else {
-            false
+    /// Walk top-down and call `it` in each place where a pattern occurs
+    /// starting with the root pattern `walk` is called on. If `it` returns
+    /// false then we will descend no further but siblings will be processed.
+    pub fn walk<'a>(&'a self, it: &mut impl FnMut(&'a Self) -> bool) {
+        if !it(self) {
+            return;
         }
-    }
 
-    /// Report the subpatterns that were not useful, if any.
-    pub(crate) fn redundant_subpatterns(&self) -> Vec<&Self> {
-        let mut subpats = Vec::new();
-        self.collect_redundant_subpatterns(&mut subpats);
-        subpats
-    }
-    fn collect_redundant_subpatterns<'a>(&'a self, subpats: &mut Vec<&'a Self>) {
-        // We don't look at subpatterns if we already reported the whole pattern as redundant.
-        if !self.is_useful() {
-            subpats.push(self);
-        } else {
-            for p in self.iter_fields() {
-                p.collect_redundant_subpatterns(subpats);
-            }
+        for p in self.iter_fields() {
+            p.walk(it)
         }
     }
 }
@@ -282,12 +260,6 @@ impl<'p, Cx: TypeCx> PatOrWild<'p, Cx> {
         match self {
             PatOrWild::Wild => (0..ctor_arity).map(|_| PatOrWild::Wild).collect(),
             PatOrWild::Pat(pat) => pat.specialize(other_ctor, ctor_arity),
-        }
-    }
-
-    pub(crate) fn set_useful(&self) {
-        if let PatOrWild::Pat(pat) = self {
-            pat.set_useful()
         }
     }
 }

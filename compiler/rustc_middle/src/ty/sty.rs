@@ -208,7 +208,7 @@ impl<'tcx> ClosureArgs<'tcx> {
         }
     }
 
-    /// Returns the substitutions of the closure's parent.
+    /// Returns the generic parameters of the closure's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
     }
@@ -615,7 +615,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
         }
     }
 
-    /// Returns the substitutions of the coroutine's parent.
+    /// Returns the generic parameters of the coroutine's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
     }
@@ -819,7 +819,7 @@ impl<'tcx> UpvarArgs<'tcx> {
 ///   inherited from the item that defined the inline const,
 /// - R represents the type of the constant.
 ///
-/// When the inline const is instantiated, `R` is substituted as the actual inferred
+/// When the inline const is instantiated, `R` is instantiated as the actual inferred
 /// type of the constant. The reason that `R` is represented as an extra type parameter
 /// is the same reason that [`ClosureArgs`] have `CS` and `U` as type parameters:
 /// inline const can reference lifetimes that are internal to the creating function.
@@ -858,7 +858,7 @@ impl<'tcx> InlineConstArgs<'tcx> {
         }
     }
 
-    /// Returns the substitutions of the inline const's parent.
+    /// Returns the generic parameters of the inline const's parent.
     pub fn parent_args(self) -> &'tcx [GenericArg<'tcx>] {
         self.split().parent_args
     }
@@ -1105,13 +1105,13 @@ where
 pub struct AliasTy<'tcx> {
     /// The parameters of the associated or opaque item.
     ///
-    /// For a projection, these are the substitutions for the trait and the
-    /// GAT substitutions, if there are any.
+    /// For a projection, these are the generic parameters for the trait and the
+    /// GAT parameters, if there are any.
     ///
-    /// For an inherent projection, they consist of the self type and the GAT substitutions,
+    /// For an inherent projection, they consist of the self type and the GAT parameters,
     /// if there are any.
     ///
-    /// For RPIT the substitutions are for the generics of the function,
+    /// For RPIT the generic parameters are for the generics of the function,
     /// while for TAIT it is used for the generic parameters of the alias.
     pub args: GenericArgsRef<'tcx>,
 
@@ -1235,15 +1235,15 @@ impl<'tcx> AliasTy<'tcx> {
 
 /// The following methods work only with inherent associated type projections.
 impl<'tcx> AliasTy<'tcx> {
-    /// Transform the substitutions to have the given `impl` args as the base and the GAT args on top of that.
+    /// Transform the generic parameters to have the given `impl` args as the base and the GAT args on top of that.
     ///
     /// Does the following transformation:
     ///
     /// ```text
     /// [Self, P_0...P_m] -> [I_0...I_n, P_0...P_m]
     ///
-    ///     I_i impl subst
-    ///     P_j GAT subst
+    ///     I_i impl args
+    ///     P_j GAT args
     /// ```
     pub fn rebase_inherent_args_onto_impl(
         self,
@@ -1690,7 +1690,7 @@ impl<'tcx> Ty<'tcx> {
         debug_assert_eq!(
             closure_args.len(),
             tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 3,
-            "closure constructed with incorrect substitutions"
+            "closure constructed with incorrect generic parameters"
         );
         Ty::new(tcx, Closure(def_id, closure_args))
     }
@@ -1704,7 +1704,7 @@ impl<'tcx> Ty<'tcx> {
         debug_assert_eq!(
             closure_args.len(),
             tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
-            "closure constructed with incorrect substitutions"
+            "closure constructed with incorrect generic parameters"
         );
         Ty::new(tcx, CoroutineClosure(def_id, closure_args))
     }
@@ -1718,7 +1718,7 @@ impl<'tcx> Ty<'tcx> {
         debug_assert_eq!(
             coroutine_args.len(),
             tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 6,
-            "coroutine constructed with incorrect number of substitutions"
+            "coroutine constructed with incorrect number of generic parameters"
         );
         Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
@@ -2530,7 +2530,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// Returns `true` when the outermost type cannot be further normalized,
-    /// resolved, or substituted. This includes all primitive types, but also
+    /// resolved, or instantiated. This includes all primitive types, but also
     /// things like ADTs and trait objects, sice even if their arguments or
     /// nested types may be further simplified, the outermost [`TyKind`] or
     /// type constructor remains the same.

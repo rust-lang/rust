@@ -542,9 +542,10 @@ where
         trace!("{:?}", self.dump_place(&place));
         // Sanity-check the type we ended up with.
         if cfg!(debug_assertions) {
-            let normalized_place_ty = self.subst_from_current_frame_and_normalize_erasing_regions(
-                mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
-            )?;
+            let normalized_place_ty = self
+                .instantiate_from_current_frame_and_normalize_erasing_regions(
+                    mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+                )?;
             if !mir_assign_valid_types(
                 *self.tcx,
                 self.param_env,

@@ -91,10 +91,6 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             return None;
         };
 
-        if new_ty.references_error() {
-            return None;
-        }
-
         self.state.steps.push((self.state.cur_ty, kind));
         debug!(
             "autoderef stage #{:?} is {:?} from {:?}",
@@ -136,6 +132,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     fn overloaded_deref_ty(&mut self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         debug!("overloaded_deref_ty({:?})", ty);
         let tcx = self.infcx.tcx;
+
+        if ty.references_error() {
+            return None;
+        }
 
         // <ty as Deref>
         let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);

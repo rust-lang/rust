@@ -29,7 +29,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
         let mir_def_id = body.source.def_id().expect_local();
 
-        if !self.tcx().is_closure_or_coroutine(mir_def_id.to_def_id()) {
+        if !self.tcx().is_closure_like(mir_def_id.to_def_id()) {
             return;
         }
 

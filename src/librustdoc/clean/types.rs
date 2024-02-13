@@ -2542,14 +2542,14 @@ pub(crate) enum TypeBindingKind {
 /// ```
 ///
 /// `public_fn`'s docs will show it as returning `Vec<i32>`, since `PrivAlias` is private.
-/// [`SubstParam`] is used to record that `T` should be mapped to `i32`.
-pub(crate) enum SubstParam {
+/// [`InstantiationParam`] is used to record that `T` should be mapped to `i32`.
+pub(crate) enum InstantiationParam {
     Type(Type),
     Lifetime(Lifetime),
     Constant,
 }
 
-impl SubstParam {
+impl InstantiationParam {
     pub(crate) fn as_ty(&self) -> Option<&Type> {
         if let Self::Type(ty) = self { Some(ty) } else { None }
     }

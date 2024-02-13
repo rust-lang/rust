@@ -541,13 +541,15 @@ impl<'tcx> TyCtxt<'tcx> {
         Ok(())
     }
 
-    /// Returns `true` if `def_id` refers to a closure (e.g., `|x| x * 2`). Note
-    /// that closures have a `DefId`, but the closure *expression* also
-    /// has a `HirId` that is located within the context where the
-    /// closure appears (and, sadly, a corresponding `NodeId`, since
-    /// those are not yet phased out). The parent of the closure's
-    /// `DefId` will also be the context where it appears.
-    pub fn is_closure_or_coroutine(self, def_id: DefId) -> bool {
+    /// Returns `true` if `def_id` refers to a closure, coroutine, or coroutine-closure
+    /// (i.e. an async closure). These are all represented by `hir::Closure`, and all
+    /// have the same `DefKind`.
+    ///
+    /// Note that closures have a `DefId`, but the closure *expression* also has a
+    // `HirId` that is located within the context where the closure appears (and, sadly,
+    // a corresponding `NodeId`, since those are not yet phased out). The parent of
+    // the closure's `DefId` will also be the context where it appears.
+    pub fn is_closure_like(self, def_id: DefId) -> bool {
         matches!(self.def_kind(def_id), DefKind::Closure)
     }
 

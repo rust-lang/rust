@@ -1796,7 +1796,7 @@ fn maybe_expand_private_type_alias<'tcx>(
                     } else {
                         Lifetime::elided()
                     };
-                    args.insert(param.def_id.to_def_id(), SubstParam::Lifetime(cleaned));
+                    args.insert(param.def_id.to_def_id(), InstantiationParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;
             }
@@ -1813,9 +1813,15 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(ty) = type_ {
-                    args.insert(param.def_id.to_def_id(), SubstParam::Type(clean_ty(ty, cx)));
+                    args.insert(
+                        param.def_id.to_def_id(),
+                        InstantiationParam::Type(clean_ty(ty, cx)),
+                    );
                 } else if let Some(default) = *default {
-                    args.insert(param.def_id.to_def_id(), SubstParam::Type(clean_ty(default, cx)));
+                    args.insert(
+                        param.def_id.to_def_id(),
+                        InstantiationParam::Type(clean_ty(default, cx)),
+                    );
                 }
                 indices.types += 1;
             }
@@ -1832,7 +1838,7 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(_) = const_ {
-                    args.insert(param.def_id.to_def_id(), SubstParam::Constant);
+                    args.insert(param.def_id.to_def_id(), InstantiationParam::Constant);
                 }
                 // FIXME(const_generics_defaults)
                 indices.consts += 1;
@@ -1840,7 +1846,9 @@ fn maybe_expand_private_type_alias<'tcx>(
         }
     }
 
-    Some(cx.enter_alias(args, def_id.to_def_id(), |cx| clean_ty(&ty, cx)))
+    Some(cx.enter_alias(args, def_id.to_def_id(), |cx| {
+        cx.with_param_env(def_id.to_def_id(), |cx| clean_ty(&ty, cx))
+    }))
 }
 
 pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
@@ -1892,6 +1900,9 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer | TyKind::Err(_) | TyKind::Typeof(..) | TyKind::InferDelegation(..) => Infer,
+        TyKind::AnonAdt(..) => {
+            unimplemented!("Anonymous structs or unions are not supported yet")
+        }
     }
 }
 

@@ -12,7 +12,6 @@ const fn g(x: &mut [u32; 8]) {
     //~^^ ERROR thread-local statics cannot be accessed
     //~| ERROR mutable references are not allowed
     //~| ERROR use of mutable static is unsafe
-    //~| referencing statics
 }
 
 fn main() {}

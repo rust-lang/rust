@@ -635,7 +635,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 | hir::Node::ImplItem(hir::ImplItem { generics, .. })
                     if param_ty =>
                 {
-                    // We skip the 0'th subst (self) because we do not want
+                    // We skip the 0'th arg (self) because we do not want
                     // to consider the predicate as not suggestible if the
                     // self type is an arg position `impl Trait` -- instead,
                     // we handle that by adding ` + Bound` below.
@@ -2343,7 +2343,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
     ) {
         // First, look for an `ExprBindingObligation`, which means we can get
-        // the unsubstituted predicate list of the called function. And check
+        // the uninstantiated predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
         if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)

@@ -34,8 +34,8 @@
 //! impl<T, I: Iterator<Item=T>> SpecExtend<T> for I { /* default impl */ }
 //! ```
 //!
-//! We get that the subst for `impl2` are `[T, std::vec::IntoIter<T>]`. `T` is
-//! constrained to be `<I as Iterator>::Item`, so we check only
+//! We get that the generic pamameters for `impl2` are `[T, std::vec::IntoIter<T>]`.
+//! `T` is constrained to be `<I as Iterator>::Item`, so we check only
 //! `std::vec::IntoIter<T>` for repeated parameters, which it doesn't have. The
 //! predicates of `impl1` are only `T: Sized`, which is also a predicate of
 //! `impl2`. So this specialization is sound.
@@ -65,7 +65,7 @@
 //! cause use after frees with purely safe code in the same way as specializing
 //! on traits with methods can.
 
-use crate::errors::SubstsOnOverriddenImpl;
+use crate::errors::GenericArgsOnOverriddenImpl;
 use crate::{constrained_generic_params as cgp, errors};
 
 use rustc_data_structures::fx::FxHashSet;
@@ -179,8 +179,8 @@ fn check_constness(
 }
 
 /// Given a specializing impl `impl1`, and the base impl `impl2`, returns two
-/// substitutions `(S1, S2)` that equate their trait references. The returned
-/// types are expressed in terms of the generics of `impl1`.
+/// generic parameters `(S1, S2)` that equate their trait references.
+/// The returned types are expressed in terms of the generics of `impl1`.
 ///
 /// Example
 ///
@@ -228,13 +228,13 @@ fn get_impl_args(
     let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_args) = infcx.fully_resolve(impl2_args) else {
         let span = tcx.def_span(impl1_def_id);
-        let guar = tcx.dcx().emit_err(SubstsOnOverriddenImpl { span });
+        let guar = tcx.dcx().emit_err(GenericArgsOnOverriddenImpl { span });
         return Err(guar);
     };
     Ok((impl1_args, impl2_args))
 }
 
-/// Returns a list of all of the unconstrained subst of the given impl.
+/// Returns a list of all of the unconstrained generic parameters of the given impl.
 ///
 /// For example given the impl:
 ///
@@ -425,9 +425,7 @@ fn check_predicates<'tcx>(
 
     let mut res = Ok(());
     for (clause, span) in impl1_predicates {
-        if !impl2_predicates
-            .iter()
-            .any(|pred2| trait_predicates_eq(tcx, clause.as_predicate(), *pred2, span))
+        if !impl2_predicates.iter().any(|pred2| trait_predicates_eq(clause.as_predicate(), *pred2))
         {
             res = res.and(check_specialization_on(tcx, clause, span))
         }
@@ -459,10 +457,8 @@ fn check_predicates<'tcx>(
 ///
 /// So we make that check in this function and try to raise a helpful error message.
 fn trait_predicates_eq<'tcx>(
-    _tcx: TyCtxt<'tcx>,
     predicate1: ty::Predicate<'tcx>,
     predicate2: ty::Predicate<'tcx>,
-    _span: Span,
 ) -> bool {
     // FIXME(effects)
     predicate1 == predicate2

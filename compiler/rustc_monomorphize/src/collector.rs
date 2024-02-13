@@ -62,7 +62,7 @@
 //! syntactic items in the source code. We find them by walking the HIR of the
 //! crate, and whenever we hit upon a public function, method, or static item,
 //! we create a mono item consisting of the items DefId and, since we only
-//! consider non-generic items, an empty type-substitution set. (In eager
+//! consider non-generic items, an empty type-parameters set. (In eager
 //! collection mode, during incremental compilation, all non-generic functions
 //! are considered as roots, as well as when the `-Clink-dead-code` option is
 //! specified. Functions marked `#[no_mangle]` and functions called by inlinable
@@ -1162,7 +1162,7 @@ fn create_fn_mono_item<'tcx>(
     let def_id = instance.def_id();
     if tcx.sess.opts.unstable_opts.profile_closures
         && def_id.is_local()
-        && tcx.is_closure_or_coroutine(def_id)
+        && tcx.is_closure_like(def_id)
     {
         crate::util::dump_closure_profile(tcx, instance);
     }
@@ -1347,18 +1347,17 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let polarity = tcx.impl_polarity(item.owner_id);
-    if matches!(polarity, ty::ImplPolarity::Negative) {
+    let Some(impl_) = tcx.impl_trait_header(item.owner_id) else {
+        return;
+    };
+
+    if matches!(impl_.skip_binder().polarity, ty::ImplPolarity::Negative) {
         return;
     }
 
     if tcx.generics_of(item.owner_id).own_requires_monomorphization() {
         return;
     }
-
-    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
-        return;
-    };
 
     // Lifetimes never affect trait selection, so we are allowed to eagerly
     // instantiate an instance of an impl method if the impl (and method,
@@ -1376,18 +1375,18 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
     };
     let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = trait_ref.instantiate(tcx, impl_args);
+    let trait_ref = impl_.instantiate(tcx, impl_args).trait_ref;
 
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl
     // items, we never actually check that the predicates of this impl are satisfied
     // in a empty reveal-all param env (i.e. with no assumptions).
     //
-    // Even though this impl has no type or const substitutions, because we don't
+    // Even though this impl has no type or const generic parameters, because we don't
     // consider higher-ranked predicates such as `for<'a> &'a mut [u8]: Copy` to
     // be trivially false. We must now check that the impl has no impossible-to-satisfy
     // predicates.
-    if tcx.subst_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_args)) {
+    if tcx.instantiate_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_args)) {
         return;
     }
 
@@ -1404,7 +1403,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
 
         // As mentioned above, the method is legal to eagerly instantiate if it
-        // only has lifetime substitutions. This is validated by
+        // only has lifetime generic parameters. This is validated by
         let args = trait_ref.args.extend_to(tcx, method.def_id, only_region_params);
         let instance = ty::Instance::expect_resolve(tcx, param_env, method.def_id, args);
 

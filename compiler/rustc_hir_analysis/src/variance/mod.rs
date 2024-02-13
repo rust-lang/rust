@@ -172,16 +172,16 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 polarity: _,
             }) => {
-                for subst in &args[1..] {
-                    subst.visit_with(&mut collector);
+                for arg in &args[1..] {
+                    arg.visit_with(&mut collector);
                 }
             }
             ty::ClauseKind::Projection(ty::ProjectionPredicate {
                 projection_ty: ty::AliasTy { args, .. },
                 term,
             }) => {
-                for subst in &args[1..] {
-                    subst.visit_with(&mut collector);
+                for arg in &args[1..] {
+                    arg.visit_with(&mut collector);
                 }
                 term.visit_with(&mut collector);
             }

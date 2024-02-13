@@ -357,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PlaceOp::Deref => None,
             PlaceOp::Index => {
                 // We would need to recover the `T` used when we resolve `<_ as Index<T>>::index`
-                // in try_index_step. This is the subst at index 1.
+                // in try_index_step. This is the arg at index 1.
                 //
                 // Note: we should *not* use `expr_ty` of index_expr here because autoderef
                 // during coercions can cause type of index_expr to differ from `T` (#72002).

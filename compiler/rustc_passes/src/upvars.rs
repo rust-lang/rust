@@ -11,7 +11,7 @@ use rustc_span::Span;
 
 pub fn provide(providers: &mut Providers) {
     providers.upvars_mentioned = |tcx, def_id| {
-        if !tcx.is_closure_or_coroutine(def_id) {
+        if !tcx.is_closure_like(def_id) {
             return None;
         }
 

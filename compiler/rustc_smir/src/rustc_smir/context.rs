@@ -369,7 +369,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn instance_ty(&self, def: InstanceDef) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
-        assert!(!instance.has_non_region_param(), "{instance:?} needs further substitution");
+        assert!(!instance.has_non_region_param(), "{instance:?} needs further instantiation");
         instance.ty(tables.tcx, ParamEnv::reveal_all()).stable(&mut *tables)
     }
 

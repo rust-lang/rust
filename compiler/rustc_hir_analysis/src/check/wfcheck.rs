@@ -118,9 +118,9 @@ where
             return Err(err);
         } else {
             // HACK(oli-obk): tests/ui/specialization/min_specialization/specialize_on_type_error.rs
-            // causes an error (span_delayed_bug) during normalization, without reporting an error,
-            // so we need to act as if no error happened, in order to let our callers continue and
-            // report an error later in check_impl_items_against_trait.
+            // causes an delayed bug during normalization, without reporting an error, so we need
+            // to act as if no error happened, in order to let our callers continue and report an
+            // error later in check_impl_items_against_trait.
             return Ok(());
         }
     }
@@ -245,9 +245,9 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
         hir::ItemKind::Impl(impl_) => {
-            let is_auto = tcx
-                .impl_trait_ref(def_id)
-                .is_some_and(|trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
+            let header = tcx.impl_trait_header(def_id);
+            let is_auto = header
+                .is_some_and(|header| tcx.trait_is_auto(header.skip_binder().trait_ref.def_id));
             let mut res = Ok(());
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
@@ -259,11 +259,12 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     .emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
-            match tcx.impl_polarity(def_id) {
-                ty::ImplPolarity::Positive => {
+            match header.map(|h| h.skip_binder().polarity) {
+                // `None` means this is an inherent impl
+                Some(ty::ImplPolarity::Positive) | None => {
                     res = res.and(check_impl(tcx, item, impl_.self_ty, &impl_.of_trait));
                 }
-                ty::ImplPolarity::Negative => {
+                Some(ty::ImplPolarity::Negative) => {
                     let ast::ImplPolarity::Negative(span) = impl_.polarity else {
                         bug!("impl_polarity query disagrees with impl's polarity in AST");
                     };
@@ -280,7 +281,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                         .emit());
                     }
                 }
-                ty::ImplPolarity::Reservation => {
+                Some(ty::ImplPolarity::Reservation) => {
                     // FIXME: what amount of WF checking do we need for reservation impls?
                 }
             }
@@ -618,7 +619,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
     // The bounds we that we would require from `to_check`
     let mut bounds = FxHashSet::default();
 
-    let (regions, types) = GATSubstCollector::visit(gat_def_id.to_def_id(), to_check);
+    let (regions, types) = GATArgsCollector::visit(gat_def_id.to_def_id(), to_check);
 
     // If both regions and types are empty, then this GAT isn't in the
     // set of types we are checking, and we shouldn't try to do clause analysis
@@ -787,34 +788,34 @@ fn test_region_obligations<'tcx>(
 /// `<P0 as Trait<P1..Pn>>::GAT<Pn..Pm>` and adds the arguments `P0..Pm` into
 /// the two vectors, `regions` and `types` (depending on their kind). For each
 /// parameter `Pi` also track the index `i`.
-struct GATSubstCollector<'tcx> {
+struct GATArgsCollector<'tcx> {
     gat: DefId,
-    // Which region appears and which parameter index its substituted for
+    // Which region appears and which parameter index its instantiated with
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
-    // Which params appears and which parameter index its substituted for
+    // Which params appears and which parameter index its instantiated with
     types: FxHashSet<(Ty<'tcx>, usize)>,
 }
 
-impl<'tcx> GATSubstCollector<'tcx> {
+impl<'tcx> GATArgsCollector<'tcx> {
     fn visit<T: TypeFoldable<TyCtxt<'tcx>>>(
         gat: DefId,
         t: T,
     ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
         let mut visitor =
-            GATSubstCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
+            GATArgsCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATSubstCollector<'tcx> {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GATArgsCollector<'tcx> {
     type BreakTy = !;
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
             ty::Alias(ty::Projection, p) if p.def_id == self.gat => {
-                for (idx, subst) in p.args.iter().enumerate() {
-                    match subst.unpack() {
+                for (idx, arg) in p.args.iter().enumerate() {
+                    match arg.unpack() {
                         GenericArgKind::Lifetime(lt) if !lt.is_bound() => {
                             self.regions.insert((lt, idx));
                         }
@@ -1407,14 +1408,14 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         }
     }
 
-    // Check that trait predicates are WF when params are substituted by their defaults.
+    // Check that trait predicates are WF when params are instantiated with their defaults.
     // We don't want to overly constrain the predicates that may be written but we want to
     // catch cases where a default my never be applied such as `struct Foo<T: Copy = String>`.
     // Therefore we check if a predicate which contains a single type param
-    // with a concrete default is WF with that default substituted.
+    // with a concrete default is WF with that default instantiated.
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
-    // First we build the defaulted substitution.
+    // First we build the defaulted generic parameters.
     let args = GenericArgs::for_item(tcx, def_id.to_def_id(), |param, _| {
         match param.kind {
             GenericParamDefKind::Lifetime => {
@@ -1428,7 +1429,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     let default_ty = tcx.type_of(param.def_id).instantiate_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ty.has_param() {
-                        // ... then substitute it with the default.
+                        // ... then instantiate it with the default.
                         return default_ty.into();
                     }
                 }
@@ -1441,7 +1442,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     let default_ct = tcx.const_param_default(param.def_id).instantiate_identity();
                     // ... and it's not a dependent default, ...
                     if !default_ct.has_param() {
-                        // ... then substitute it with the default.
+                        // ... then instantiate it with the default.
                         return default_ct.into();
                     }
                 }
@@ -1451,7 +1452,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
         }
     });
 
-    // Now we build the substituted predicates.
+    // Now we build the instantiated predicates.
     let default_obligations = predicates
         .predicates
         .iter()
@@ -1483,23 +1484,25 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             }
             let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
-            let substituted_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
+            let instantiated_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
-            if substituted_pred.has_non_region_param() || param_count.params.len() > 1 || has_region
+            if instantiated_pred.has_non_region_param()
+                || param_count.params.len() > 1
+                || has_region
             {
                 None
-            } else if predicates.predicates.iter().any(|&(p, _)| p == substituted_pred) {
+            } else if predicates.predicates.iter().any(|&(p, _)| p == instantiated_pred) {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
-                Some((substituted_pred, sp))
+                Some((instantiated_pred, sp))
             }
         })
         .map(|(pred, sp)| {
             // Convert each of those into an obligation. So if you have
             // something like `struct Foo<T: Copy = String>`, we would
-            // take that predicate `T: Copy`, substitute to `String: Copy`
+            // take that predicate `T: Copy`, instantiated with `String: Copy`
             // (actually that happens in the previous `flat_map` call),
             // and then try to prove it (in this case, we'll fail).
             //
@@ -1635,6 +1638,12 @@ fn check_method_receiver<'tcx>(
     let receiver_ty = sig.inputs()[0];
     let receiver_ty = wfcx.normalize(span, None, receiver_ty);
 
+    // If the receiver already has errors reported, consider it valid to avoid
+    // unnecessary errors (#58712).
+    if receiver_ty.references_error() {
+        return Ok(());
+    }
+
     if tcx.features().arbitrary_self_types {
         if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
@@ -1749,9 +1758,7 @@ fn receiver_is_valid<'tcx>(
             }
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-            // If the receiver already has errors reported due to it, consider it valid to avoid
-            // unnecessary errors (#58712).
-            return receiver_ty.references_error();
+            return false;
         }
     }
 

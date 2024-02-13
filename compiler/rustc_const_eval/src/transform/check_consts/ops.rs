@@ -409,11 +409,6 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
         Status::Unstable(sym::const_refs_to_cell)
     }
-    fn importance(&self) -> DiagnosticImportance {
-        // The cases that cannot possibly work will already emit a `CellBorrow`, so we should
-        // not additionally emit a feature gate error if activating the feature gate won't work.
-        DiagnosticImportance::Secondary
-    }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         ccx.tcx
             .sess
@@ -427,6 +422,11 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
 /// it in the future for static items.
 pub struct CellBorrow;
 impl<'tcx> NonConstOp<'tcx> for CellBorrow {
+    fn importance(&self) -> DiagnosticImportance {
+        // Most likely the code will try to do mutation with these borrows, which
+        // triggers its own errors. Only show this one if that does not happen.
+        DiagnosticImportance::Secondary
+    }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         // FIXME: Maybe a more elegant solution to this if else case
         if let hir::ConstContext::Static(_) = ccx.const_kind() {
@@ -459,8 +459,8 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
     }
 
     fn importance(&self) -> DiagnosticImportance {
-        // If there were primary errors (like non-const function calls), do not emit further
-        // errors about mutable references.
+        // Most likely the code will try to do mutation with these borrows, which
+        // triggers its own errors. Only show this one if that does not happen.
         DiagnosticImportance::Secondary
     }
 

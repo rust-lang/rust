@@ -133,7 +133,7 @@ where
         if V::SHALLOW {
             ControlFlow::Continue(())
         } else {
-            assoc_args.iter().try_for_each(|subst| subst.visit_with(self))
+            assoc_args.iter().try_for_each(|arg| arg.visit_with(self))
         }
     }
 
@@ -209,7 +209,7 @@ where
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
                     // as visible/reachable even if `Type` is private.
-                    // Ideally, associated types should be substituted in the same way as
+                    // Ideally, associated types should be instantiated in the same way as
                     // free type aliases, but this isn't done yet.
                     return ControlFlow::Continue(());
                 }
@@ -230,7 +230,7 @@ where
                 } else if kind == ty::Projection {
                     self.visit_projection_ty(data)
                 } else {
-                    data.args.iter().try_for_each(|subst| subst.visit_with(self))
+                    data.args.iter().try_for_each(|arg| arg.visit_with(self))
                 };
             }
             ty::Dynamic(predicates, ..) => {

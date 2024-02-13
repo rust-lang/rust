@@ -345,6 +345,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 BareFn,
                 Never,
                 Tup,
+                AnonAdt,
                 Path,
                 OpaqueDef,
                 TraitObject,

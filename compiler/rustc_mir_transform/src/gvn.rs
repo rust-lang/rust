@@ -853,10 +853,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_discriminant(&mut self, place: VnIndex) -> Option<VnIndex> {
         if let Value::Aggregate(enum_ty, variant, _) = *self.get(place)
-            && let AggregateTy::Def(enum_did, enum_substs) = enum_ty
+            && let AggregateTy::Def(enum_did, enum_args) = enum_ty
             && let DefKind::Enum = self.tcx.def_kind(enum_did)
         {
-            let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_substs);
+            let enum_ty = self.tcx.type_of(enum_did).instantiate(self.tcx, enum_args);
             let discr = self.ecx.discriminant_for_variant(enum_ty, variant).ok()?;
             return Some(self.insert_scalar(discr.to_scalar(), discr.layout.ty));
         }
@@ -899,13 +899,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 assert!(!fields.is_empty());
                 (AggregateTy::Tuple, FIRST_VARIANT)
             }
-            AggregateKind::Closure(did, substs)
-            | AggregateKind::CoroutineClosure(did, substs)
-            | AggregateKind::Coroutine(did, substs) => {
-                (AggregateTy::Def(did, substs), FIRST_VARIANT)
-            }
-            AggregateKind::Adt(did, variant_index, substs, _, None) => {
-                (AggregateTy::Def(did, substs), variant_index)
+            AggregateKind::Closure(did, args)
+            | AggregateKind::CoroutineClosure(did, args)
+            | AggregateKind::Coroutine(did, args) => (AggregateTy::Def(did, args), FIRST_VARIANT),
+            AggregateKind::Adt(did, variant_index, args, _, None) => {
+                (AggregateTy::Def(did, args), variant_index)
             }
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,

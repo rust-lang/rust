@@ -44,7 +44,7 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 ///
 /// # Liveness
 ///
-/// When performing a substitution, we must take care not to introduce uses of dangling locals.
+/// When performing an instantiation, we must take care not to introduce uses of dangling locals.
 /// To ensure this, we walk the body with the `MaybeStorageDead` dataflow analysis:
 /// - if we want to replace `*x` by reborrow `*y` and `y` may be dead, we allow replacement and
 ///   mark storage statements on `y` for removal;
@@ -55,7 +55,7 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 ///
 /// For `&mut` borrows, we also need to preserve the uniqueness property:
 /// we must avoid creating a state where we interleave uses of `*_1` and `_2`.
-/// To do it, we only perform full substitution of mutable borrows:
+/// To do it, we only perform full instantiation of mutable borrows:
 /// we replace either all or none of the occurrences of `*_1`.
 ///
 /// Some care has to be taken when `_1` is copied in other locals.
@@ -63,10 +63,10 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 ///   _3 = *_1;
 ///   _4 = _1
 ///   _5 = *_4
-/// In such cases, fully substituting `_1` means fully substituting all of the copies.
+/// In such cases, fully instantiating `_1` means fully instantiating all of the copies.
 ///
 /// For immutable borrows, we do not need to preserve such uniqueness property,
-/// so we perform all the possible substitutions without removing the `_1 = &_2` statement.
+/// so we perform all the possible instantiations without removing the `_1 = &_2` statement.
 pub struct ReferencePropagation;
 
 impl<'tcx> MirPass<'tcx> for ReferencePropagation {

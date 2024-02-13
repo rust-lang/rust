@@ -155,7 +155,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
                 // Collect opaque types nested within the associated type bounds of this opaque type.
                 // We use identity args here, because we already know that the opaque type uses
-                // only generic parameters, and thus substituting would not give us more information.
+                // only generic parameters, and thus instantiating would not give us more information.
                 for (pred, span) in self
                     .tcx
                     .explicit_item_bounds(alias_ty.def_id)
@@ -211,7 +211,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 // in the same impl block.
                 if let Some(parent_trait_ref) = self.parent_trait_ref() {
                     // If the trait ref of the associated item and the impl differs,
-                    // then we can't use the impl's identity substitutions below, so
+                    // then we can't use the impl's identity args below, so
                     // just skip.
                     if alias_ty.trait_ref(self.tcx) == parent_trait_ref {
                         let parent = self.parent().expect("we should have a parent here");
@@ -258,11 +258,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     for field in variant.fields.iter() {
                         // Don't use the `ty::Adt` args, we either
                         // * found the opaque in the args
-                        // * will find the opaque in the unsubstituted fields
-                        // The only other situation that can occur is that after substituting,
+                        // * will find the opaque in the uninstantiated fields
+                        // The only other situation that can occur is that after instantiating,
                         // some projection resolves to an opaque that we would have otherwise
-                        // not found. While we could substitute and walk those, that would mean we
-                        // would have to walk all substitutions of an Adt, which can quickly
+                        // not found. While we could instantiate and walk those, that would mean we
+                        // would have to walk all generic parameters of an Adt, which can quickly
                         // degenerate into looking at an exponential number of types.
                         let ty = self.tcx.type_of(field.did).instantiate_identity();
                         self.visit_spanned(self.tcx.def_span(field.did), ty);
@@ -306,7 +306,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInAssocTypeCollector<'tcx> {
                     .parent_trait_ref()
                     .expect("impl trait in assoc type collector used on non-assoc item");
                 // If the trait ref of the associated item and the impl differs,
-                // then we can't use the impl's identity substitutions below, so
+                // then we can't use the impl's identity args below, so
                 // just skip.
                 if alias_ty.trait_ref(self.0.tcx) == parent_trait_ref {
                     let parent = self.0.parent().expect("we should have a parent here");

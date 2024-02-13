@@ -251,8 +251,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             None => "M",
         });
 
-        // Encode impl generic params if the substitutions contain parameters (implying
-        // polymorphization is enabled) and this isn't an inherent impl.
+        // Encode impl generic params if the generic parameters contain non-region parameters
+        // (implying polymorphization is enabled) and this isn't an inherent impl.
         if impl_trait_ref.is_some() && args.iter().any(|a| a.has_non_region_param()) {
             self.path_generic_args(
                 |this| {
@@ -748,7 +748,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             | DefPathData::GlobalAsm
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
-            | DefPathData::LifetimeNs(_) => {
+            | DefPathData::LifetimeNs(_)
+            | DefPathData::AnonAdt => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
             }
         };

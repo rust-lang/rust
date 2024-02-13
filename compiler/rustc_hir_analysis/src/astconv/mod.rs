@@ -214,7 +214,7 @@ pub struct GenericArgCountResult {
     pub correct: Result<(), GenericArgCountMismatch>,
 }
 
-pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
+pub trait CreateInstantiationsForGenericArgsCtxt<'a, 'tcx> {
     fn args_for_def_id(&mut self, def_id: DefId) -> (Option<&'a GenericArgs<'tcx>>, bool);
 
     fn provided_kind(
@@ -366,8 +366,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if generics.has_self {
             if generics.parent.is_some() {
-                // The parent is a trait so it should have at least one subst
-                // for the `Self` type.
+                // The parent is a trait so it should have at least one
+                // generic parameter for the `Self` type.
                 assert!(!parent_args.is_empty())
             } else {
                 // This item (presumably a trait) needs a self-type.
@@ -402,7 +402,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return (tcx.mk_args(parent_args), arg_count);
         }
 
-        struct SubstsForAstPathCtxt<'a, 'tcx> {
+        struct InstantiationsForAstPathCtxt<'a, 'tcx> {
             astconv: &'a (dyn AstConv<'tcx> + 'a),
             def_id: DefId,
             generic_args: &'a GenericArgs<'tcx>,
@@ -411,7 +411,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             infer_args: bool,
         }
 
-        impl<'a, 'tcx> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for SubstsForAstPathCtxt<'a, 'tcx> {
+        impl<'a, 'tcx> CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>
+            for InstantiationsForAstPathCtxt<'a, 'tcx>
+        {
             fn args_for_def_id(&mut self, did: DefId) -> (Option<&'a GenericArgs<'tcx>>, bool) {
                 if did == self.def_id {
                     (Some(self.generic_args), self.infer_args)
@@ -556,7 +558,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let mut args_ctx = SubstsForAstPathCtxt {
+        let mut args_ctx = InstantiationsForAstPathCtxt {
             astconv: self,
             def_id,
             span,
@@ -1671,9 +1673,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .is_accessible_from(self.item_def_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
-                            let trait_ref = tcx.impl_trait_ref(impl_def_id);
-                            trait_ref.is_some_and(|trait_ref| {
-                                let impl_ = trait_ref.instantiate(
+                            let impl_header = tcx.impl_trait_header(impl_def_id);
+                            impl_header.is_some_and(|header| {
+                                let header = header.instantiate(
                                     tcx,
                                     infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
                                 );
@@ -1685,11 +1687,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 infcx
                                     .can_eq(
                                         ty::ParamEnv::empty(),
-                                        impl_.self_ty(),
+                                        header.trait_ref.self_ty(),
                                         value,
-                                    )
+                                    ) && header.polarity != ty::ImplPolarity::Negative
                             })
-                            && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                         })
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))
@@ -1735,13 +1736,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 // Find all the types that have an `impl` for the trait.
                 tcx.all_impls(trait_def_id)
-                    .filter(|impl_def_id| {
+                    .filter_map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
+                    .filter(|header| {
                         // Consider only accessible traits
                         tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
-                            && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
+                            && header.skip_binder().polarity != ty::ImplPolarity::Negative
                     })
-                    .filter_map(|impl_def_id| tcx.impl_trait_ref(impl_def_id))
-                    .map(|impl_| impl_.instantiate_identity().self_ty())
+                    .map(|header| header.instantiate_identity().trait_ref.self_ty())
                     // We don't care about blanket impls.
                     .filter(|self_ty| !self_ty.has_non_region_param())
                     .map(|self_ty| tcx.erase_regions(self_ty).to_string())
@@ -2412,8 +2413,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let self_ty = self.tcx().type_of(parent).instantiate_identity();
             let generic_self_ty = ty::GenericArg::from(self_ty);
-            let substs = self.tcx().mk_args_from_iter(std::iter::once(generic_self_ty));
-            sig.instantiate(self.tcx(), substs)
+            let args = self.tcx().mk_args_from_iter(std::iter::once(generic_self_ty));
+            sig.instantiate(self.tcx(), args)
         } else {
             sig.instantiate_identity()
         };
@@ -2456,6 +2457,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {
                 Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.ast_ty_to_ty(t)))
+            }
+            hir::TyKind::AnonAdt(item_id) => {
+                let did = item_id.owner_id.def_id;
+                let adt_def = tcx.adt_def(did);
+                let generics = tcx.generics_of(did);
+
+                debug!("ast_ty_to_ty_inner(AnonAdt): generics={:?}", generics);
+                let args = ty::GenericArgs::for_item(tcx, did.to_def_id(), |param, _| {
+                    tcx.mk_param_from_def(param)
+                });
+                debug!("ast_ty_to_ty_inner(AnonAdt): args={:?}", args);
+
+                Ty::new_adt(tcx, adt_def, tcx.mk_args(args))
             }
             hir::TyKind::BareFn(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, ast_ty.span);

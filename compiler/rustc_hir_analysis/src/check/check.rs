@@ -80,6 +80,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     check_transparent(tcx, def);
     check_packed(tcx, span, def);
+    check_unnamed_fields(tcx, def);
 }
 
 fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
@@ -89,6 +90,58 @@ fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     check_transparent(tcx, def);
     check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def);
+    check_unnamed_fields(tcx, def);
+}
+
+/// Check the representation of adts with unnamed fields.
+fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
+    if def.is_enum() {
+        return;
+    }
+    let variant = def.non_enum_variant();
+    if !variant.has_unnamed_fields() {
+        return;
+    }
+    if !def.is_anonymous() {
+        let adt_kind = def.descr();
+        let span = tcx.def_span(def.did());
+        let unnamed_fields = variant
+            .fields
+            .iter()
+            .filter(|f| f.is_unnamed())
+            .map(|f| {
+                let span = tcx.def_span(f.did);
+                errors::UnnamedFieldsReprFieldDefined { span }
+            })
+            .collect::<Vec<_>>();
+        debug_assert_ne!(unnamed_fields.len(), 0, "expect unnamed fields in this adt");
+        let adt_name = tcx.item_name(def.did());
+        if !def.repr().c() {
+            tcx.dcx().emit_err(errors::UnnamedFieldsRepr::MissingReprC {
+                span,
+                adt_kind,
+                adt_name,
+                unnamed_fields,
+                sugg_span: span.shrink_to_lo(),
+            });
+        }
+    }
+    for field in variant.fields.iter().filter(|f| f.is_unnamed()) {
+        let field_ty = tcx.type_of(field.did).instantiate_identity();
+        if let Some(adt) = field_ty.ty_adt_def()
+            && !adt.is_anonymous()
+            && !adt.repr().c()
+        {
+            let field_ty_span = tcx.def_span(adt.did());
+            tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
+                span: tcx.def_span(field.did),
+                field_ty_span,
+                field_ty,
+                field_adt_kind: adt.descr(),
+                sugg_span: field_ty_span.shrink_to_lo(),
+            });
+        }
+    }
 }
 
 /// Check that the fields of the `union` do not need dropping.
@@ -474,8 +527,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl { of_trait } => {
-            if of_trait && let Some(impl_trait_ref) = tcx.impl_trait_ref(def_id) {
-                check_impl_items_against_trait(tcx, def_id, impl_trait_ref.instantiate_identity());
+            if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
+                check_impl_items_against_trait(
+                    tcx,
+                    def_id,
+                    impl_trait_header.instantiate_identity(),
+                );
                 check_on_unimplemented(tcx, def_id);
             }
         }
@@ -666,19 +723,19 @@ pub(super) fn check_specialization_validity<'tcx>(
 fn check_impl_items_against_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_id: LocalDefId,
-    impl_trait_ref: ty::TraitRef<'tcx>,
+    impl_trait_header: ty::ImplTraitHeader<'tcx>,
 ) {
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
-    if impl_trait_ref.references_error() {
+    if impl_trait_header.references_error() {
         return;
     }
 
     let impl_item_refs = tcx.associated_item_def_ids(impl_id);
 
     // Negative impls are not expected to have any items
-    match tcx.impl_polarity(impl_id) {
+    match impl_trait_header.polarity {
         ty::ImplPolarity::Reservation | ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
             if let [first_item_ref, ..] = impl_item_refs {
@@ -695,7 +752,7 @@ fn check_impl_items_against_trait<'tcx>(
         }
     }
 
-    let trait_def = tcx.trait_def(impl_trait_ref.def_id);
+    let trait_def = tcx.trait_def(impl_trait_header.trait_ref.def_id);
 
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
@@ -714,10 +771,10 @@ fn check_impl_items_against_trait<'tcx>(
                 ));
             }
             ty::AssocKind::Fn => {
-                compare_impl_method(tcx, ty_impl_item, ty_trait_item, impl_trait_ref);
+                compare_impl_method(tcx, ty_impl_item, ty_trait_item, impl_trait_header.trait_ref);
             }
             ty::AssocKind::Type => {
-                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, impl_trait_ref);
+                compare_impl_ty(tcx, ty_impl_item, ty_trait_item, impl_trait_header.trait_ref);
             }
         }
 
@@ -737,7 +794,7 @@ fn check_impl_items_against_trait<'tcx>(
         let mut must_implement_one_of: Option<&[Ident]> =
             trait_def.must_implement_one_of.as_deref();
 
-        for &trait_item_id in tcx.associated_item_def_ids(impl_trait_ref.def_id) {
+        for &trait_item_id in tcx.associated_item_def_ids(impl_trait_header.trait_ref.def_id) {
             let leaf_def = ancestors.leaf_def(tcx, trait_item_id);
 
             let is_implemented = leaf_def
@@ -815,7 +872,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         if let Some(missing_items) = must_implement_one_of {
             let attr_span = tcx
-                .get_attr(impl_trait_ref.def_id, sym::rustc_must_implement_one_of)
+                .get_attr(impl_trait_header.trait_ref.def_id, sym::rustc_must_implement_one_of)
                 .map(|attr| attr.span);
 
             missing_items_must_implement_one_of_err(
@@ -1030,7 +1087,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             match t.kind() {
                 ty::Tuple(list) => list.iter().try_for_each(|t| check_non_exhaustive(tcx, t)),
                 ty::Array(ty, _) => check_non_exhaustive(tcx, *ty),
-                ty::Adt(def, subst) => {
+                ty::Adt(def, args) => {
                     if !def.did().is_local() {
                         let non_exhaustive = def.is_variant_list_non_exhaustive()
                             || def
@@ -1042,13 +1099,13 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                             return ControlFlow::Break((
                                 def.descr(),
                                 def.did(),
-                                subst,
+                                args,
                                 non_exhaustive,
                             ));
                         }
                     }
                     def.all_fields()
-                        .map(|field| field.ty(tcx, subst))
+                        .map(|field| field.ty(tcx, args))
                         .try_for_each(|t| check_non_exhaustive(tcx, t))
                 }
                 _ => ControlFlow::Continue(()),

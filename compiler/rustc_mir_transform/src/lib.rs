@@ -436,7 +436,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     //
     // We manually filter the predicates, skipping anything that's not
     // "global". We are in a potentially generic context
-    // (e.g. we are evaluating a function without substituting generic
+    // (e.g. we are evaluating a function without instantiating generic
     // parameters, so this filtering serves two purposes:
     //
     // 1. We skip evaluating any predicates that we would
@@ -576,10 +576,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &inline::Inline,
             // Code from other crates may have storage markers, so this needs to happen after inlining.
             &remove_storage_markers::RemoveStorageMarkers,
-            // Inlining and substitution may introduce ZST and useless drops.
+            // Inlining and instantiation may introduce ZST and useless drops.
             &remove_zsts::RemoveZsts,
             &remove_unneeded_drops::RemoveUnneededDrops,
-            // Type substitution may create uninhabited enums.
+            // Type instantiation may create uninhabited enums.
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &unreachable_prop::UnreachablePropagation,
             &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
@@ -673,7 +673,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 }
 
 /// Fetch all the promoteds of an item and prepare their MIR bodies to be ready for
-/// constant evaluation once all substitutions become known.
+/// constant evaluation once all generic parameters become known.
 fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_>> {
     if tcx.is_constructor(def.to_def_id()) {
         return tcx.arena.alloc(IndexVec::new());

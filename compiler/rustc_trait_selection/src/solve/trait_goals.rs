@@ -39,15 +39,18 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
     ) -> Result<Candidate<'tcx>, NoSolution> {
         let tcx = ecx.tcx();
 
-        let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+        let impl_trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if !drcx.args_may_unify(goal.predicate.trait_ref.args, impl_trait_ref.skip_binder().args) {
+        if !drcx.args_may_unify(
+            goal.predicate.trait_ref.args,
+            impl_trait_header.skip_binder().trait_ref.args,
+        ) {
             return Err(NoSolution);
         }
 
-        let impl_polarity = tcx.impl_polarity(impl_def_id);
         // An upper bound of the certainty of this goal, used to lower the certainty
         // of reservation impl to ambiguous during coherence.
+        let impl_polarity = impl_trait_header.skip_binder().polarity;
         let maximal_certainty = match impl_polarity {
             ty::ImplPolarity::Positive | ty::ImplPolarity::Negative => {
                 match impl_polarity == goal.predicate.polarity {
@@ -63,7 +66,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id);
-            let impl_trait_ref = impl_trait_ref.instantiate(tcx, impl_args);
+            let impl_trait_ref = impl_trait_header.instantiate(tcx, impl_args).trait_ref;
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = tcx
@@ -877,8 +880,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let a_tail_ty = tail_field_ty.instantiate(tcx, a_args);
         let b_tail_ty = tail_field_ty.instantiate(tcx, b_args);
 
-        // Substitute just the unsizing params from B into A. The type after
-        // this substitution must be equal to B. This is so we don't unsize
+        // Instantiate just the unsizing params from B into A. The type after
+        // this instantiation must be equal to B. This is so we don't unsize
         // unrelated type parameters.
         let new_a_args = tcx.mk_args_from_iter(
             a_args
@@ -927,7 +930,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let (&a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
         let &b_last_ty = b_tys.last().unwrap();
 
-        // Substitute just the tail field of B., and require that they're equal.
+        // Instantiate just the tail field of B., and require that they're equal.
         let unsized_a_ty =
             Ty::new_tup_from_iter(tcx, a_rest_tys.iter().copied().chain([b_last_ty]));
         self.eq(goal.param_env, unsized_a_ty, b_ty)?;

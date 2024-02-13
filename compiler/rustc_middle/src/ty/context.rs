@@ -715,8 +715,16 @@ impl<'tcx> TyCtxt<'tcx> {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
+        is_anonymous: bool,
     ) -> ty::AdtDef<'tcx> {
-        self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
+        self.mk_adt_def_from_data(ty::AdtDefData::new(
+            self,
+            did,
+            kind,
+            variants,
+            repr,
+            is_anonymous,
+        ))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
@@ -2307,6 +2315,20 @@ impl<'tcx> TyCtxt<'tcx> {
     /// (probably due to hashing spans in `ModChild`ren).
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
+    /// Given an `impl_id`, return the trait it implements.
+    /// Return `None` if this is an inherent impl.
+    pub fn impl_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
+        Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
+    }
+
+    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+        self.impl_trait_header(def_id)
+            .map_or(ty::ImplPolarity::Positive, |h| h.skip_binder().polarity)
     }
 }
 

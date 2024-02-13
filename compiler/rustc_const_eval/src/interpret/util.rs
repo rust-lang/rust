@@ -19,11 +19,11 @@ where
     }
 
     struct FoundParam;
-    struct UsedParamsNeedSubstVisitor<'tcx> {
+    struct UsedParamsNeedInstantiationVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
     }
 
-    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedSubstVisitor<'tcx> {
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedInstantiationVisitor<'tcx> {
         type BreakTy = FoundParam;
 
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -34,21 +34,22 @@ where
             match *ty.kind() {
                 ty::Param(_) => ControlFlow::Break(FoundParam),
                 ty::Closure(def_id, args)
+                | ty::CoroutineClosure(def_id, args, ..)
                 | ty::Coroutine(def_id, args, ..)
                 | ty::FnDef(def_id, args) => {
                     let instance = ty::InstanceDef::Item(def_id);
                     let unused_params = self.tcx.unused_generic_params(instance);
-                    for (index, subst) in args.into_iter().enumerate() {
+                    for (index, arg) in args.into_iter().enumerate() {
                         let index = index
                             .try_into()
                             .expect("more generic parameters than can fit into a `u32`");
                         // Only recurse when generic parameters in fns, closures and coroutines
                         // are used and have to be instantiated.
                         //
-                        // Just in case there are closures or coroutines within this subst,
+                        // Just in case there are closures or coroutines within this arg,
                         // recurse.
-                        if unused_params.is_used(index) && subst.has_param() {
-                            return subst.visit_with(self);
+                        if unused_params.is_used(index) && arg.has_param() {
+                            return arg.visit_with(self);
                         }
                     }
                     ControlFlow::Continue(())
@@ -65,7 +66,7 @@ where
         }
     }
 
-    let mut vis = UsedParamsNeedSubstVisitor { tcx };
+    let mut vis = UsedParamsNeedInstantiationVisitor { tcx };
     if matches!(ty.visit_with(&mut vis), ControlFlow::Break(FoundParam)) {
         throw_inval!(TooGeneric);
     } else {
