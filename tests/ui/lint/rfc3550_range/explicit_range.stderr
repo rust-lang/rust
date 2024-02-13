@@ -1,0 +1,80 @@
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:10:17
+   |
+LL | pub fn f_std(_: Range<usize>) { }
+   |                 ^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/explicit_range.rs:3:9
+   |
+LL | #![deny(explicit_range)]
+   |         ^^^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:11:17
+   |
+LL | pub fn f_inc(_: RangeInclusive<usize>) { }
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:12:18
+   |
+LL | pub fn f_from(_: RangeFrom<usize>) { }
+   |                  ^^^^^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:14:18
+   |
+LL | pub fn f_core(_: core::ops::Range<usize>) { }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:15:18
+   |
+LL | pub fn f_arr(_: [Range<usize>; 2]) { }
+   |                  ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:16:21
+   |
+LL | pub fn f_slice(_: &[Range<usize>]) { }
+   |                     ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:17:24
+   |
+LL | pub fn f_ptr(_: *const Range<usize>) { }
+   |                        ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:18:18
+   |
+LL | pub fn f_ref(_: &Range<usize>) { }
+   |                  ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:19:22
+   |
+LL | pub fn f_tup(_: (u8, Range<usize>)) { }
+   |                      ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:20:43
+   |
+LL | pub fn f_wrapped(_: std::mem::MaybeUninit<Range<usize>>) {}
+   |                                           ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:21:24
+   |
+LL | pub fn f_generic<T>(_: Range<T>) {}
+   |                        ^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:32:19
+   |
+LL |     fn bar(range: Range<usize>) {}
+   |                   ^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

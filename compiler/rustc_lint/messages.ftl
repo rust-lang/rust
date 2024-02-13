@@ -589,3 +589,5 @@ lint_unused_result = unused result of type `{$ty}`
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
+
+lint_explicit_range = explicit usage of range type

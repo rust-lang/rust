@@ -81,6 +81,7 @@ mod traits;
 mod types;
 mod unit_bindings;
 mod unused;
+mod rfc3550_range;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
@@ -115,6 +116,7 @@ use traits::*;
 use types::*;
 use unit_bindings::*;
 use unused::*;
+use rfc3550_range::*;
 
 /// Useful for other parts of the compiler / Clippy.
 pub use builtin::{MissingDoc, SoftLints};
@@ -230,6 +232,8 @@ late_lint_methods!(
             MissingDebugImplementations: MissingDebugImplementations,
             MissingDoc: MissingDoc,
             AsyncFnInTrait: AsyncFnInTrait,
+            // Explicit Range
+            ExplicitRange: ExplicitRange,
         ]
     ]
 );

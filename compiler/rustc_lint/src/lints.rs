@@ -1838,3 +1838,7 @@ pub struct UnitBindingsDiag {
     #[label]
     pub label: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_explicit_range)]
+pub struct ExplicitRangeDiag;
