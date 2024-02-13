@@ -33,11 +33,15 @@ pub fn check_trait<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let lang_items = tcx.lang_items();
     let checker = Checker { tcx, trait_def_id, impl_def_id };
-    let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
-    res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
-    res = res.and(
-        checker.check(lang_items.const_param_ty_trait(), visit_implementation_of_const_param_ty),
-    );
+    let mut res = checker.check(lang_items.drop_trait(), |tcx, id| {
+        visit_implementation_of_drop(tcx, id, impl_header)
+    });
+    res = res.and(checker.check(lang_items.copy_trait(), |tcx, id| {
+        visit_implementation_of_copy(tcx, id, impl_header)
+    }));
+    res = res.and(checker.check(lang_items.const_param_ty_trait(), |tcx, id| {
+        visit_implementation_of_const_param_ty(tcx, id, impl_header)
+    }));
     res = res.and(
         checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized),
     );
@@ -62,12 +66,13 @@ impl<'tcx> Checker<'tcx> {
     }
 }
 
-fn visit_implementation_of_drop(
-    tcx: TyCtxt<'_>,
+fn visit_implementation_of_drop<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
+    header: ty::ImplTraitHeader<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     // Destructors only work on local ADT types.
-    match tcx.type_of(impl_did).instantiate_identity().kind() {
+    match header.trait_ref.self_ty().kind() {
         ty::Adt(def, _) if def.did().is_local() => return Ok(()),
         ty::Error(_) => return Ok(()),
         _ => {}
@@ -78,13 +83,14 @@ fn visit_implementation_of_drop(
     Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span }))
 }
 
-fn visit_implementation_of_copy(
-    tcx: TyCtxt<'_>,
+fn visit_implementation_of_copy<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
+    impl_header: ty::ImplTraitHeader<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let self_type = tcx.type_of(impl_did).instantiate_identity();
+    let self_type = impl_header.trait_ref.self_ty();
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -92,7 +98,7 @@ fn visit_implementation_of_copy(
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
-    if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
+    if let ty::ImplPolarity::Negative = impl_header.polarity {
         return Ok(());
     }
 
@@ -114,16 +120,17 @@ fn visit_implementation_of_copy(
     }
 }
 
-fn visit_implementation_of_const_param_ty(
-    tcx: TyCtxt<'_>,
+fn visit_implementation_of_const_param_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
+    header: ty::ImplTraitHeader<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let self_type = tcx.type_of(impl_did).instantiate_identity();
+    let self_type = header.trait_ref.self_ty();
     assert!(!self_type.has_escaping_bound_vars());
 
     let param_env = tcx.param_env(impl_did);
 
-    if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
+    if let ty::ImplPolarity::Negative = header.polarity {
         return Ok(());
     }
 
