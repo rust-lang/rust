@@ -371,6 +371,12 @@ impl From<Recovered> for bool {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum Trailing {
+    No,
+    Yes,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TokenDescription {
     ReservedIdentifier,
@@ -797,10 +803,10 @@ impl<'a> Parser<'a> {
         sep: SeqSep,
         expect: TokenExpectType,
         mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, Recovered)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
         let mut first = true;
         let mut recovered = Recovered::No;
-        let mut trailing = false;
+        let mut trailing = Trailing::No;
         let mut v = ThinVec::new();
 
         while !self.expect_any_with_type(kets, expect) {
@@ -914,7 +920,7 @@ impl<'a> Parser<'a> {
                 }
             }
             if sep.trailing_sep_allowed && self.expect_any_with_type(kets, expect) {
-                trailing = true;
+                trailing = Trailing::Yes;
                 break;
             }
 
@@ -992,7 +998,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, Recovered)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing, Recovered)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
@@ -1004,7 +1010,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
         if matches!(recovered, Recovered::No) {
             self.eat(ket);
@@ -1021,7 +1027,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.expect(bra)?;
         self.parse_seq_to_end(ket, sep, f)
     }
@@ -1033,7 +1039,7 @@ impl<'a> Parser<'a> {
         &mut self,
         delim: Delimiter,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.parse_unspanned_seq(
             &token::OpenDelim(delim),
             &token::CloseDelim(delim),
@@ -1048,7 +1054,7 @@ impl<'a> Parser<'a> {
     fn parse_paren_comma_seq<T>(
         &mut self,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
+    ) -> PResult<'a, (ThinVec<T>, Trailing)> {
         self.parse_delim_comma_seq(Delimiter::Parenthesis, f)
     }
 

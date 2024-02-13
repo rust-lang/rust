@@ -1,7 +1,8 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Recovered, TrailingToken,
+    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Recovered, Trailing,
+    TrailingToken,
 };
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
@@ -1459,7 +1460,7 @@ impl<'a> Parser<'a> {
         let (variants, _) = if self.token == TokenKind::Semi {
             self.dcx().emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
-            (thin_vec![], false)
+            (thin_vec![], Trailing::No)
         } else {
             self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant(id.span))
                 .map_err(|mut err| {

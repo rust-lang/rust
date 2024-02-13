@@ -4,7 +4,7 @@ use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Recovered, Restrictions,
-    SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
+    SemiColonMode, SeqSep, TokenExpectType, TokenType, Trailing, TrailingToken,
 };
 
 use crate::errors;
@@ -1561,7 +1561,7 @@ impl<'a> Parser<'a> {
                 return Ok(self.recover_seq_parse_error(Delimiter::Parenthesis, lo, err));
             }
         };
-        let kind = if es.len() == 1 && !trailing_comma {
+        let kind = if es.len() == 1 && matches!(trailing_comma, Trailing::No) {
             // `(e)` is parenthesized `e`.
             ExprKind::Paren(es.into_iter().next().unwrap())
         } else {
