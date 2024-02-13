@@ -8,7 +8,7 @@ LL |         x.foobar();
    |           ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Foobar` which provides `foobar` is implemented but not in scope; perhaps you want to import it
    |
 LL +     use crate::foo::foobar::Foobar;
    |
@@ -27,7 +27,7 @@ LL |     x.bar();
    |       ^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Bar` which provides `bar` is implemented but not in scope; perhaps you want to import it
    |
 LL + use crate::foo::Bar;
    |
@@ -54,7 +54,7 @@ LL |     let y = u32::from_str("33");
    |                  ^^^^^^^^ function or associated item not found in `u32`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `FromStr` which provides `from_str` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::str::FromStr;
    |

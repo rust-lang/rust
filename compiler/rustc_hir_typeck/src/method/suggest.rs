@@ -275,7 +275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .span_if_local(def_id)
                     .unwrap_or_else(|| self.tcx.def_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
-                self.suggest_valid_traits(&mut err, out_of_scope_traits, true);
+                self.suggest_valid_traits(&mut err, item_name, out_of_scope_traits, true);
                 err.emit();
             }
 
@@ -2890,6 +2890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_valid_traits(
         &self,
         err: &mut DiagnosticBuilder<'_>,
+        item_name: Ident,
         valid_out_of_scope_traits: Vec<DefId>,
         explain: bool,
     ) -> bool {
@@ -2908,9 +2909,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.help("items from traits can only be used if the trait is in scope");
             }
             let msg = format!(
-                "the following {traits_are} implemented but not in scope; \
-                 perhaps add a `use` for {one_of_them}:",
-                traits_are = if candidates.len() == 1 { "trait is" } else { "traits are" },
+                "{this_trait_is} implemented but not in scope; perhaps you want to import \
+                 {one_of_them}",
+                this_trait_is = if candidates.len() == 1 {
+                    format!(
+                        "trait `{}` which provides `{item_name}` is",
+                        self.tcx.item_name(candidates[0]),
+                    )
+                } else {
+                    format!("the following traits which provide `{item_name}` are")
+                },
                 one_of_them = if candidates.len() == 1 { "it" } else { "one of them" },
             );
 
@@ -3118,7 +3126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if self.suggest_valid_traits(err, valid_out_of_scope_traits, true) {
+        if self.suggest_valid_traits(err, item_name, valid_out_of_scope_traits, true) {
             return;
         }
 
@@ -3404,7 +3412,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [] => {}
                 [trait_info] if trait_info.def_id.is_local() => {
                     if impls_trait(trait_info.def_id) {
-                        self.suggest_valid_traits(err, vec![trait_info.def_id], false);
+                        self.suggest_valid_traits(err, item_name, vec![trait_info.def_id], false);
                     } else {
                         err.subdiagnostic(
                             self.dcx(),
@@ -3431,7 +3439,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                     for (i, trait_info) in trait_infos.iter().enumerate() {
                         if impls_trait(trait_info.def_id) {
-                            self.suggest_valid_traits(err, vec![trait_info.def_id], false);
+                            self.suggest_valid_traits(
+                                err,
+                                item_name,
+                                vec![trait_info.def_id],
+                                false,
+                            );
                         }
                         msg.push_str(&format!(
                             "\ncandidate #{}: `{}`",
