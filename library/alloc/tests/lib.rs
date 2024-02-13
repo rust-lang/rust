@@ -13,6 +13,7 @@
 #![feature(core_intrinsics)]
 #![feature(extract_if)]
 #![feature(exact_size_is_empty)]
+#![feature(generic_nonzero)]
 #![feature(linked_list_cursors)]
 #![feature(map_try_insert)]
 #![feature(new_uninit)]

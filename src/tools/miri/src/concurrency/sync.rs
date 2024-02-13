@@ -1,5 +1,4 @@
 use std::collections::{hash_map::Entry, VecDeque};
-use std::num::NonZeroU32;
 use std::ops::Not;
 
 use log::trace;
@@ -26,12 +25,12 @@ macro_rules! declare_id {
         /// 0 is used to indicate that the id was not yet assigned and,
         /// therefore, is not a valid identifier.
         #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-        pub struct $name(NonZeroU32);
+        pub struct $name(std::num::NonZero<u32>);
 
         impl SyncId for $name {
             // Panics if `id == 0`.
             fn from_u32(id: u32) -> Self {
-                Self(NonZeroU32::new(id).unwrap())
+                Self(std::num::NonZero::new(id).unwrap())
             }
             fn to_u32(&self) -> u32 {
                 self.0.get()
@@ -44,11 +43,11 @@ macro_rules! declare_id {
                 // therefore, need to shift by one when converting from an index
                 // into a vector.
                 let shifted_idx = u32::try_from(idx).unwrap().checked_add(1).unwrap();
-                $name(NonZeroU32::new(shifted_idx).unwrap())
+                $name(std::num::NonZero::new(shifted_idx).unwrap())
             }
             fn index(self) -> usize {
                 // See the comment in `Self::new`.
-                // (This cannot underflow because self is NonZeroU32.)
+                // (This cannot underflow because `self.0` is `NonZero<u32>`.)
                 usize::try_from(self.0.get() - 1).unwrap()
             }
         }

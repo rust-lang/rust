@@ -13,7 +13,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
@@ -113,7 +113,7 @@ pub enum StabilityLevel {
         /// Reason for the current stability level.
         reason: UnstableReason,
         /// Relevant `rust-lang/rust` issue.
-        issue: Option<NonZeroU32>,
+        issue: Option<NonZero<u32>>,
         is_soft: bool,
         /// If part of a feature is stabilized and a new feature is added for the remaining parts,
         /// then the `implied_by` attribute is used to indicate which now-stable feature previously
@@ -442,7 +442,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
                 // is a name/value pair string literal.
                 issue_num = match issue.unwrap().as_str() {
                     "none" => None,
-                    issue => match issue.parse::<NonZeroU32>() {
+                    issue => match issue.parse::<NonZero<u32>>() {
                         Ok(num) => Some(num),
                         Err(err) => {
                             sess.dcx().emit_err(

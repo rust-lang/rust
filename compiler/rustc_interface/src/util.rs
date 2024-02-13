@@ -107,7 +107,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     use rustc_query_impl::QueryCtxt;
     use rustc_query_system::query::{deadlock, QueryContext};
 
-    let registry = sync::Registry::new(std::num::NonZeroUsize::new(threads).unwrap());
+    let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
 
     if !sync::is_dyn_thread_safe() {
         return run_in_thread_with_globals(edition, || {

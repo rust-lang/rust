@@ -2,7 +2,7 @@ use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
@@ -306,7 +306,7 @@ fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_W
     result
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     cfg_if::cfg_if! {
         if #[cfg(any(
             target_os = "android",
@@ -338,7 +338,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                         // some old MIPS kernels were buggy and zero-initialized the mask if
                         // none was explicitly set.
                         // In that case we use the sysconf fallback.
-                        if let Some(count) = NonZeroUsize::new(count) {
+                        if let Some(count) = NonZero::new(count) {
                             return Ok(count)
                         }
                     }
@@ -351,7 +351,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     let count = cpus as usize;
                     // Cover the unusual situation where we were able to get the quota but not the affinity mask
                     let count = count.min(quota);
-                    Ok(unsafe { NonZeroUsize::new_unchecked(count) })
+                    Ok(unsafe { NonZero::new_unchecked(count) })
                 }
             }
         } else if #[cfg(any(
@@ -375,7 +375,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     ) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         if count > 0 {
-                            return Ok(NonZeroUsize::new_unchecked(count));
+                            return Ok(NonZero::new_unchecked(count));
                         }
                     }
                 }
@@ -397,7 +397,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                             }
                         }
                         libc::_cpuset_destroy(set);
-                        if let Some(count) = NonZeroUsize::new(count) {
+                        if let Some(count) = NonZero::new(count) {
                             return Ok(count);
                         }
                     }
@@ -433,7 +433,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                 }
             }
 
-            Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
+            Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
         } else if #[cfg(target_os = "nto")] {
             unsafe {
                 use libc::_syspage_ptr;
@@ -441,7 +441,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     Err(io::const_io_error!(io::ErrorKind::NotFound, "No syspage available"))
                 } else {
                     let cpus = (*_syspage_ptr).num_cpu;
-                    NonZeroUsize::new(cpus as usize)
+                    NonZero::new(cpus as usize)
                         .ok_or(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"))
                 }
             }
@@ -456,7 +456,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
                 }
 
-                Ok(NonZeroUsize::new_unchecked(sinfo.cpu_count as usize))
+                Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))
             }
         } else {
             // FIXME: implement on vxWorks, Redox, l4re
