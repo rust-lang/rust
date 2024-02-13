@@ -1004,6 +1004,7 @@ fn visit_instance_use<'tcx>(
             }
         }
         ty::InstanceDef::DropGlue(_, Some(_))
+        | ty::InstanceDef::AsyncDropGlueCtorShim(_, _)
         | ty::InstanceDef::VTableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }

@@ -3,8 +3,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::GenericArgs;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, CoroutineArgs, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArgs, CAPTURE_STRUCT_LOCAL};
+use rustc_span::source_map::respan;
 use rustc_target::abi::{FieldIdx, VariantIdx, FIRST_VARIANT};
 
 use rustc_index::{Idx, IndexVec};
@@ -126,6 +128,9 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceDef::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
+        ty::InstanceDef::AsyncDropGlueCtorShim(def_id, ty) => {
+            build_async_destructor_ctor_shim(tcx, def_id, ty)
+        }
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
         }
@@ -1011,6 +1016,241 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     };
     let source = MirSource::from_instance(ty::InstanceDef::FnPtrAddrShim(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
+}
+
+fn build_async_destructor_ctor_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> Body<'tcx> {
+    let span = tcx.def_span(def_id);
+    let Some(sig) = tcx
+        .fn_sig(def_id)
+        .instantiate(tcx, &[tcx.lifetimes.re_erased.into(), self_ty.into()])
+        .no_bound_vars()
+    else {
+        span_bug!(span, "AsyncDestruct::async_destruct with bound vars for `{self_ty}`");
+    };
+
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let source_info = SourceInfo::outermost(span);
+
+    let mut locals = local_decls_for_sig(&sig, span);
+    let return_local = Local::new(0);
+    let self_ptr = Local::new(1);
+
+    #[derive(Clone, Copy)]
+    enum GlueStrategy<'tcx> {
+        Empty,
+        AsyncDropProjection,
+        Slice { elem_ty: Ty<'tcx>, is_array: bool },
+    }
+
+    let strategy = match *self_ty.kind() {
+        kind @ (ty::Array(elem_ty, _) | ty::Slice(elem_ty)) => {
+            GlueStrategy::Slice { is_array: matches!(kind, ty::Array(..)), elem_ty }
+        }
+
+        // TODO: Reject bad ones
+        ty::Foreign(_)
+        | ty::Adt(_, _)
+        | ty::Dynamic(_, _, _)
+        | ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _)
+        | ty::Tuple(_)
+        | ty::Alias(_, _)
+        | ty::Param(_)
+        | ty::Bound(_, _)
+        | ty::Placeholder(_)
+        | ty::Infer(_)
+        | ty::Error(_) => {
+            if self_ty.is_async_drop(tcx, param_env) {
+                GlueStrategy::AsyncDropProjection
+            } else {
+                GlueStrategy::Empty
+            }
+        }
+
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Str
+        | ty::RawPtr(_)
+        | ty::Ref(_, _, _)
+        | ty::FnDef(_, _)
+        | ty::FnPtr(_)
+        | ty::Never => GlueStrategy::Empty,
+    };
+
+    let mut blocks;
+    match strategy {
+        GlueStrategy::Empty => {
+            let ready_unit_fn = tcx.require_lang_item(LangItem::FutureReadyUnitCtor, Some(span));
+
+            blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
+            let ready_unit_bb = BasicBlock::new(0);
+            let return_bb = BasicBlock::new(1);
+
+            blocks[ready_unit_bb].terminator = Some(Terminator {
+                source_info,
+                kind: TerminatorKind::Call {
+                    func: Operand::function_handle(
+                        tcx,
+                        ready_unit_fn,
+                        [/* HOST */ tcx.consts.false_.into()],
+                        span,
+                    ),
+                    args: Vec::new(),
+                    destination: return_local.into(),
+                    target: Some(return_bb),
+                    unwind: UnwindAction::Continue,
+                    call_source: CallSource::Misc,
+                    fn_span: span,
+                },
+            });
+
+            blocks[return_bb].terminator =
+                Some(Terminator { source_info, kind: TerminatorKind::Return });
+        }
+
+        GlueStrategy::AsyncDropProjection => {
+            let pin_new_unchecked_fn = tcx.require_lang_item(LangItem::PinNewUnchecked, Some(span));
+            let async_drop_fn = tcx
+                .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDrop, Some(span)))[1];
+
+            let self_mut_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, self_ty);
+            let self_pin_mut_ref_ty = tcx
+                .type_of(tcx.require_lang_item(LangItem::Pin, Some(span)))
+                .instantiate(tcx, &[self_mut_ref_ty.into()]); // TODO: no lifetime argument?
+
+            locals.raw.reserve(2);
+            let self_mut_ref =
+                locals.push(LocalDecl::with_source_info(self_mut_ref_ty, source_info));
+            let self_pin_mut_ref =
+                locals.push(LocalDecl::with_source_info(self_pin_mut_ref_ty, source_info));
+
+            blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 3);
+            let pin_new_unchecked_bb = BasicBlock::new(0);
+            let async_drop_bb = BasicBlock::new(1);
+            let return_bb = BasicBlock::new(2);
+
+            blocks[pin_new_unchecked_bb].statements = vec![
+                Statement { source_info, kind: StatementKind::StorageLive(self_mut_ref) },
+                Statement {
+                    source_info,
+                    kind: StatementKind::Assign(Box::new((
+                        self_mut_ref.into(),
+                        Rvalue::Ref(
+                            tcx.lifetimes.re_erased,
+                            BorrowKind::Mut { kind: MutBorrowKind::Default },
+                            tcx.mk_place_deref(self_ptr.into()),
+                        ),
+                    ))),
+                },
+                Statement { source_info, kind: StatementKind::StorageLive(self_pin_mut_ref) },
+            ];
+            blocks[pin_new_unchecked_bb].terminator = Some(Terminator {
+                source_info,
+                kind: TerminatorKind::Call {
+                    func: Operand::function_handle(
+                        tcx,
+                        pin_new_unchecked_fn,
+                        [self_mut_ref_ty.into(), /* HOST */ tcx.consts.false_.into()],
+                        span,
+                    ),
+                    args: vec![respan(span, Operand::Move(self_mut_ref.into()))],
+                    destination: self_pin_mut_ref.into(),
+                    target: Some(async_drop_bb),
+                    unwind: UnwindAction::Continue,
+                    call_source: CallSource::Misc,
+                    fn_span: span,
+                },
+            });
+            blocks[async_drop_bb].terminator = Some(Terminator {
+                source_info,
+                kind: TerminatorKind::Call {
+                    func: Operand::function_handle(tcx, async_drop_fn, [self_ty.into()], span),
+                    args: vec![respan(span, Operand::Move(self_pin_mut_ref.into()))],
+                    destination: return_local.into(),
+                    target: Some(return_bb),
+                    unwind: UnwindAction::Continue,
+                    call_source: CallSource::Misc,
+                    fn_span: span,
+                },
+            });
+
+            blocks[return_bb].statements = vec![
+                Statement { source_info, kind: StatementKind::StorageDead(self_pin_mut_ref) },
+                Statement { source_info, kind: StatementKind::StorageDead(self_mut_ref) },
+            ];
+            blocks[return_bb].terminator =
+                Some(Terminator { source_info, kind: TerminatorKind::Return });
+        }
+        GlueStrategy::Slice { elem_ty, is_array } => {
+            let slice_async_destructor_fn =
+                tcx.require_lang_item(LangItem::SliceAsyncDestructorCtor, Some(span));
+
+            blocks = IndexVec::from_elem_n(BasicBlockData::new(None), 2);
+            let slice_async_destructor_bb = BasicBlock::new(0);
+            let return_bb = BasicBlock::new(1);
+
+            let slice_ptr = if is_array {
+                let slice_ptr_ty = Ty::new_mut_ptr(tcx, Ty::new_slice(tcx, elem_ty));
+                let slice_ptr = locals.push(LocalDecl::with_source_info(slice_ptr_ty, source_info));
+
+                blocks[slice_async_destructor_bb].statements = vec![Statement {
+                    source_info,
+                    kind: StatementKind::Assign(Box::new((
+                        slice_ptr.into(),
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            Operand::Move(self_ptr.into()),
+                            slice_ptr_ty,
+                        ),
+                    ))),
+                }];
+                slice_ptr
+            } else {
+                self_ptr
+            };
+
+            blocks[slice_async_destructor_bb].terminator = Some(Terminator {
+                source_info,
+                kind: TerminatorKind::Call {
+                    func: Operand::function_handle(
+                        tcx,
+                        slice_async_destructor_fn,
+                        [
+                            tcx.lifetimes.re_erased.into(),
+                            elem_ty.into(),
+                            /* HOST */ tcx.consts.false_.into(),
+                        ],
+                        span,
+                    ),
+                    args: vec![respan(span, Operand::Move(slice_ptr.into()))],
+                    destination: return_local.into(),
+                    target: Some(return_bb),
+                    unwind: UnwindAction::Continue,
+                    call_source: CallSource::Misc,
+                    fn_span: span,
+                },
+            });
+
+            if is_array {
+                blocks[return_bb].statements =
+                    vec![Statement { source_info, kind: StatementKind::StorageDead(slice_ptr) }];
+            }
+            blocks[return_bb].terminator =
+                Some(Terminator { source_info, kind: TerminatorKind::Return });
+        }
+    }
+
+    let source = MirSource::from_instance(ty::InstanceDef::AsyncDropGlueCtorShim(def_id, self_ty));
+    new_body(source, blocks, locals, sig.inputs().len(), span)
 }
 
 fn build_construct_coroutine_by_move_shim<'tcx>(

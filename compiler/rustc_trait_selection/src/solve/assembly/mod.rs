@@ -233,6 +233,11 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
+    fn consider_builtin_async_destruct_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
     fn consider_builtin_destruct_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -503,6 +508,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_coroutine_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)
+        } else if lang_items.async_destruct_trait() == Some(trait_def_id) {
+            G::consider_builtin_async_destruct_candidate(self, goal)
         } else if lang_items.destruct_trait() == Some(trait_def_id) {
             G::consider_builtin_destruct_candidate(self, goal)
         } else if lang_items.transmute_trait() == Some(trait_def_id) {

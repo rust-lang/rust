@@ -2314,6 +2314,73 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Returns the type of the async destructor of this type.
+    pub fn async_destructor_ty(
+        tcx: TyCtxt<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> Ty<'tcx> {
+        let self_ty = args.type_at(0);
+        let existential_lifetime = args.region_at(1);
+        debug_assert_eq!(args.len(), 2);
+
+        match self_ty.kind() {
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => tcx
+                .type_of(tcx.require_lang_item(hir::LangItem::SliceAsyncDestructor, None))
+                .instantiate(tcx, tcx.mk_args(&[existential_lifetime.into(), (*elem_ty).into()])),
+
+            ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
+                let assoc_items = tcx.associated_item_def_ids(
+                    tcx.require_lang_item(hir::LangItem::AsyncDestruct, None),
+                );
+                Ty::new_projection(tcx, assoc_items[0], args)
+            }
+
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Adt(..)
+            | ty::Str
+            | ty::RawPtr(_)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Tuple(_)
+            | ty::Error(_)
+            | ty::Infer(IntVar(_) | FloatVar(_))
+            | ty::Coroutine(..) => {
+                // This condition is conservative, evaluating to false
+                // in some unclear cases. However `AsyncDrop` as with
+                // `Drop` impl must not contain any new bounds that
+                // don't exist for struct definition, thus it is not
+                // ambiguous with any parameters.
+                if self_ty.is_async_drop(tcx, param_env) {
+                    let assoc_items = tcx.associated_item_def_ids(
+                        tcx.require_lang_item(hir::LangItem::AsyncDrop, None),
+                    );
+                    Ty::new_projection(tcx, assoc_items[0], args)
+                } else {
+                    tcx.type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, None))
+                        .instantiate_identity()
+                }
+            }
+
+            ty::Bound(..)
+            | ty::Foreign(_)
+            | ty::Placeholder(_)
+            | ty::Infer(FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                bug!("`async_destructor_ty` applied to unexpected type: {:?}", self_ty)
+            }
+        }
+    }
+
     /// Returns the type of metadata for (potentially fat) pointers to this type,
     /// or the struct tail if the metadata type cannot be determined.
     pub fn ptr_metadata_ty_or_tail(

@@ -125,6 +125,13 @@ pub enum InstanceDef<'tcx> {
     /// glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
+    // /// Compiler-generated `<T as AsyncDroppable>::AsyncInPlaceDropper::poll` implementation.
+    // ///
+    // /// The `DefId` is for `core::ptr::drop_in_place`.
+    // /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
+    // /// glue.
+    // AsyncDropGlue(DefId, Option<Ty<'tcx>>),
+    //
     /// Compiler-generated `<T as Clone>::clone` implementation.
     ///
     /// For all types that automatically implement `Copy`, a trivial `Clone` impl is provided too.
@@ -139,6 +146,12 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The `DefId` is for `FnPtr::addr`, the `Ty` is the type `T`.
     FnPtrAddrShim(DefId, Ty<'tcx>),
+
+    /// `core::future::async_drop::async_drop_in_place::<'_, T>`.
+    ///
+    /// The `DefId` is for `core::future::async_drop::async_drop_in_place`, the `Ty`
+    /// is the type `T`.
+    AsyncDropGlueCtorShim(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> Instance<'tcx> {
@@ -176,7 +189,9 @@ impl<'tcx> Instance<'tcx> {
             InstanceDef::Item(def) => tcx
                 .upstream_monomorphizations_for(def)
                 .and_then(|monos| monos.get(&self.args).cloned()),
-            InstanceDef::DropGlue(_, Some(_)) => tcx.upstream_drop_glue_for(self.args),
+            InstanceDef::DropGlue(_, Some(_)) | InstanceDef::AsyncDropGlueCtorShim(_, _) => {
+                tcx.upstream_drop_glue_for(self.args)
+            }
             _ => None,
         }
     }
@@ -201,7 +216,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | ty::InstanceDef::CoroutineKindShim { coroutine_def_id: def_id }
             | InstanceDef::DropGlue(def_id, _)
             | InstanceDef::CloneShim(def_id, _)
-            | InstanceDef::FnPtrAddrShim(def_id, _) => def_id,
+            | InstanceDef::FnPtrAddrShim(def_id, _)
+            | InstanceDef::AsyncDropGlueCtorShim(def_id, _) => def_id,
         }
     }
 
@@ -209,9 +225,9 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn def_id_if_not_guaranteed_local_codegen(self) -> Option<DefId> {
         match self {
             ty::InstanceDef::Item(def) => Some(def),
-            ty::InstanceDef::DropGlue(def_id, Some(_)) | InstanceDef::ThreadLocalShim(def_id) => {
-                Some(def_id)
-            }
+            ty::InstanceDef::DropGlue(def_id, Some(_))
+            | InstanceDef::AsyncDropGlueCtorShim(def_id, _)
+            | InstanceDef::ThreadLocalShim(def_id) => Some(def_id),
             InstanceDef::VTableShim(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
@@ -313,7 +329,8 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::ThreadLocalShim(..)
             | InstanceDef::FnPtrAddrShim(..)
             | InstanceDef::FnPtrShim(..)
-            | InstanceDef::DropGlue(_, Some(_)) => false,
+            | InstanceDef::DropGlue(_, Some(_))
+            | InstanceDef::AsyncDropGlueCtorShim(..) => false,
             InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::ConstructCoroutineInClosureShim { .. }
             | InstanceDef::CoroutineKindShim { .. }
@@ -360,6 +377,7 @@ fn fmt_instance(
         InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
         InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
         InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::AsyncDropGlueCtorShim(_, ty) => write!(f, " - shim({ty})"),
     }
 }
 
@@ -576,6 +594,12 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let args = tcx.mk_args(&[ty.into()]);
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
+    }
+
+    pub fn resolve_async_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, None);
+        let args = tcx.mk_args(&[tcx.lifetimes.re_erased.into(), ty.into()]);
         Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, args)
     }
 

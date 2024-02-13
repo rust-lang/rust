@@ -54,6 +54,24 @@ fn resolve_instance<'tcx>(
                 debug!(" => trivial drop glue");
                 ty::InstanceDef::DropGlue(def_id, None)
             }
+        } else if Some(def_id) == tcx.lang_items().async_drop_in_place_fn() {
+            let ty = args.type_at(1);
+
+            debug!(" => nontrivial async drop glue ctor");
+            match *ty.kind() {
+                ty::Closure(..)
+                | ty::CoroutineClosure(..)
+                | ty::Coroutine(..)
+                | ty::Tuple(..)
+                | ty::Adt(..)
+                | ty::Dynamic(..)
+                | ty::Array(..)
+                | ty::Slice(..) => {}
+                // Async drop glue ctor shims can only be built from ADTs.
+                _ => return Ok(None),
+            }
+
+            ty::InstanceDef::AsyncDropGlueCtorShim(def_id, ty)
         } else {
             debug!(" => free item");
             // FIXME(effects): we may want to erase the effect param if that is present on this item.
