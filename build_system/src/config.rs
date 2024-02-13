@@ -312,7 +312,10 @@ impl ConfigInfo {
     }
 
     pub fn setup_gcc_path(&mut self) -> Result<(), String> {
-        let config_file = self.compute_path(self.config_file.as_deref().unwrap_or("config.toml"));
+        let config_file = match self.config_file.as_deref() {
+            Some(config_file) => config_file.into(),
+            None => self.compute_path("config.toml"),
+        };
         let ConfigFile {
             gcc_path,
             download_gccjit,
