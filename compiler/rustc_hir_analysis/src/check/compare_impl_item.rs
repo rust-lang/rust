@@ -734,7 +734,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 remapped_types.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
-                let reported = tcx.dcx().span_delayed_bug(
+                let reported = tcx.dcx().span_assert_has_errors(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
@@ -917,7 +917,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                         .with_note(format!("hidden type inferred to be `{}`", self.ty))
                         .emit()
                 }
-                _ => self.tcx.dcx().delayed_bug("should've been able to remap region"),
+                _ => self.tcx.dcx().assert_has_errors("should've been able to remap region"),
             };
             return Err(guar);
         };
@@ -1276,7 +1276,7 @@ fn compare_number_of_generics<'tcx>(
     // inheriting the generics from will also have mismatched arguments, and
     // we'll report an error for that instead. Delay a bug for safety, though.
     if trait_.is_impl_trait_in_trait() {
-        return Err(tcx.dcx().delayed_bug(
+        return Err(tcx.dcx().assert_has_errors(
             "errors comparing numbers of generics of trait/impl functions were not emitted",
         ));
     }

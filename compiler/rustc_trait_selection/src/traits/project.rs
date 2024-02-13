@@ -1471,7 +1471,7 @@ pub fn compute_inherent_assoc_ty_args<'a, 'b, 'tcx>(
     match selcx.infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, impl_ty, self_ty) {
         Ok(mut ok) => obligations.append(&mut ok.obligations),
         Err(_) => {
-            tcx.dcx().span_delayed_bug(
+            tcx.dcx().span_assert_has_errors(
                 cause.span,
                 format!(
                     "{self_ty:?} was a subtype of {impl_ty:?} during selection but now it is not"
@@ -2016,7 +2016,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
             | ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
                 // These traits have no associated types.
-                selcx.tcx().dcx().span_delayed_bug(
+                selcx.tcx().dcx().span_assert_has_errors(
                     obligation.cause.span,
                     format!("Cannot project an associated type from `{impl_source:?}`"),
                 );

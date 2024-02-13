@@ -266,7 +266,8 @@ impl<'a> Parser<'a> {
             if let Some(attr_range) = self.capture_state.inner_attr_ranges.remove(&inner_attr.id) {
                 inner_attr_replace_ranges.push(attr_range);
             } else {
-                self.dcx().span_delayed_bug(inner_attr.span, "Missing token range for attribute");
+                self.dcx()
+                    .span_assert_has_errors(inner_attr.span, "Missing token range for attribute");
             }
         }
 

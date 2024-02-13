@@ -37,7 +37,7 @@ pub(super) fn failed_to_match_macro<'cx>(
         tracker
             .cx
             .dcx()
-            .span_delayed_bug(sp, "Macro matching returned a success on the second try");
+            .span_assert_has_errors(sp, "Macro matching returned a success on the second try");
     }
 
     if let Some(result) = tracker.result {
@@ -154,7 +154,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
                 // but for that it must have emitted an error already
-                self.cx.dcx().span_delayed_bug(
+                self.cx.dcx().span_assert_has_errors(
                     self.root_span,
                     "should not collect detailed info for successful macro match",
                 );

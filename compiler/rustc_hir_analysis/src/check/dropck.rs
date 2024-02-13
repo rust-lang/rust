@@ -67,7 +67,7 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            let reported = tcx.dcx().span_delayed_bug(
+            let reported = tcx.dcx().span_assert_has_errors(
                 span,
                 format!("should have been rejected by coherence check: {dtor_self_type}"),
             );

@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             }
                                         };
                                         self.report_error(span, error);
-                                        self.dcx().span_delayed_bug(span, CG_BUG_STR);
+                                        self.dcx().span_assert_has_errors(span, CG_BUG_STR);
                                     }
 
                                     return Res::Err;

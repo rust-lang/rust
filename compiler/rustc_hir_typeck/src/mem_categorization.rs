@@ -533,9 +533,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
         let ty = self.typeck_results.node_type(pat_hir_id);
         let ty::Adt(adt_def, _) = ty.kind() else {
-            self.tcx()
-                .dcx()
-                .span_delayed_bug(span, "struct or tuple struct pattern not applied to an ADT");
+            self.tcx().dcx().span_assert_has_errors(
+                span,
+                "struct or tuple struct pattern not applied to an ADT",
+            );
             return Err(());
         };
 
@@ -568,9 +569,10 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
-                self.tcx()
-                    .dcx()
-                    .span_delayed_bug(span, "struct or tuple struct pattern not applied to an ADT");
+                self.tcx().dcx().span_assert_has_errors(
+                    span,
+                    "struct or tuple struct pattern not applied to an ADT",
+                );
                 Err(())
             }
         }
@@ -583,7 +585,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         match ty.kind() {
             ty::Tuple(args) => Ok(args.len()),
             _ => {
-                self.tcx().dcx().span_delayed_bug(span, "tuple pattern not applied to a tuple");
+                self.tcx()
+                    .dcx()
+                    .span_assert_has_errors(span, "tuple pattern not applied to a tuple");
                 Err(())
             }
         }

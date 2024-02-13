@@ -900,7 +900,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) = path_resolution;
         match res {
             Res::Err => {
-                let e = tcx.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
+                let e = tcx
+                    .dcx()
+                    .span_assert_has_errors(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 return Ty::new_error(tcx, e);
             }
@@ -1085,7 +1087,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let variant = match res {
             Res::Err => {
-                let e = tcx.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
+                let e =
+                    tcx.dcx().span_assert_has_errors(pat.span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 on_error(e);
                 return Ty::new_error(tcx, e);

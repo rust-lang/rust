@@ -948,7 +948,7 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
             // Abort due to errors (there must be an error if an unnamed field
             //  has any type kind other than an anonymous adt or a named adt)
             ty_kind => {
-                self.tcx.dcx().span_delayed_bug(
+                self.tcx.dcx().span_assert_has_errors(
                     field.ty.span,
                     format!("Unexpected TyKind in FieldUniquenessCheckContext::check_field(): {ty_kind:?}"),
                 );

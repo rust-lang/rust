@@ -303,7 +303,7 @@ where
                     // ignore this, we presume it will yield an error
                     // later, since if a type variable is not resolved by
                     // this point it never will be
-                    self.tcx.dcx().span_delayed_bug(
+                    self.tcx.dcx().span_assert_has_errors(
                         origin.span(),
                         format!("unresolved inference variable in outlives: {v:?}"),
                     );

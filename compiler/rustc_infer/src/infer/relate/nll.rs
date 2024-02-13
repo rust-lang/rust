@@ -557,7 +557,7 @@ where
         match b.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
-                self.infcx.dcx().span_delayed_bug(
+                self.infcx.dcx().span_assert_has_errors(
                     self.delegate.span(),
                     format!("unexpected inference var {b:?}",),
                 );

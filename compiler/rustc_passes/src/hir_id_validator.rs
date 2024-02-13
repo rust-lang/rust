@@ -31,7 +31,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
         if !errors.is_empty() {
             let message = errors.iter().fold(String::new(), |s1, s2| s1 + "\n" + s2);
-            tcx.dcx().delayed_bug(message);
+            tcx.dcx().assert_has_errors(message);
         }
     }
 }

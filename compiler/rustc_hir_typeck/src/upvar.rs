@@ -846,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                self.dcx().span_delayed_bug(
+                self.dcx().span_assert_has_errors(
                     closure_span,
                     format!(
                         "two identical projections: ({:?}, {:?})",

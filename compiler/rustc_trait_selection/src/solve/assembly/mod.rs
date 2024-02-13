@@ -15,7 +15,7 @@ use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{fast_reject, TypeFoldable};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
-use rustc_span::{ErrorGuaranteed, DUMMY_SP};
+use rustc_span::ErrorGuaranteed;
 use std::fmt::Debug;
 
 pub(super) mod structural_traits;
@@ -611,10 +611,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
             ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
             ty::Alias(ty::Inherent | ty::Weak, _) => {
-                self.tcx().sess.dcx().span_delayed_bug(
-                    DUMMY_SP,
-                    format!("could not normalize {self_ty}, it is not WF"),
-                );
+                self.tcx()
+                    .sess
+                    .dcx()
+                    .delayed_bug(format!("could not normalize {self_ty}, it is not WF"));
                 return;
             }
         };

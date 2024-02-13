@@ -564,7 +564,8 @@ impl<'tcx> TyCtxt<'tcx> {
             |span, def_id| {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
-                self.dcx().span_delayed_bug(span, format!("encountered unmarked API: {def_id:?}"));
+                self.dcx()
+                    .span_assert_has_errors(span, format!("encountered unmarked API: {def_id:?}"));
             },
         )
     }

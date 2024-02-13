@@ -152,9 +152,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Equate expected input tys with those in the MIR.
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
             if argument_index + 1 >= body.local_decls.len() {
-                self.tcx()
-                    .dcx()
-                    .span_delayed_bug(body.span, "found more normalized_input_ty than local_decls");
+                self.tcx().dcx().span_assert_has_errors(
+                    body.span,
+                    "found more normalized_input_ty than local_decls",
+                );
                 break;
             }
 

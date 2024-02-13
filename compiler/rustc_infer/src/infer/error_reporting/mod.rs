@@ -518,9 +518,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx
-            .dcx()
-            .span_delayed_bug(self.tcx.def_span(generic_param_scope), "expected region errors")
+        self.tcx.dcx().span_assert_has_errors(
+            self.tcx.def_span(generic_param_scope),
+            "expected region errors",
+        )
     }
 
     // This method goes through all the errors and try to group certain types

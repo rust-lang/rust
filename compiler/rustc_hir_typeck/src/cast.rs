@@ -141,7 +141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Error(_) => {
                 let reported = self
                     .dcx()
-                    .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
+                    .span_assert_has_errors(span, format!("`{t:?}` should be sized but is not?"));
                 return Err(reported);
             }
         })

@@ -241,7 +241,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                     .instantiate(self.tcx, impl_args)
                                     .visit_with(self);
                             } else {
-                                self.tcx.dcx().span_delayed_bug(
+                                self.tcx.dcx().span_assert_has_errors(
                                     self.tcx.def_span(assoc.def_id),
                                     "item had incorrect args",
                                 );
@@ -337,7 +337,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInAssocTypeCollector<'tcx> {
                                 .instantiate(self.0.tcx, impl_args)
                                 .visit_with(self);
                         } else {
-                            self.0.tcx.dcx().span_delayed_bug(
+                            self.0.tcx.dcx().span_assert_has_errors(
                                 self.0.tcx.def_span(assoc.def_id),
                                 "item had incorrect args",
                             );

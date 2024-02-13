@@ -1333,7 +1333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let variant = match def {
             Res::Err => {
                 let guar =
-                    self.dcx().span_delayed_bug(path_span, "`Res::Err` but no error emitted");
+                    self.dcx().span_assert_has_errors(path_span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(guar);
                 return Err(guar);
             }

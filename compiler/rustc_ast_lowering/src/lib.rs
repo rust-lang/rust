@@ -747,7 +747,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let res = self.resolver.get_import_res(id).present_items();
         let res: SmallVec<_> = res.map(|res| self.lower_res(res)).collect();
         if res.is_empty() {
-            self.dcx().span_delayed_bug(span, "no resolution for an import");
+            self.dcx().span_assert_has_errors(span, "no resolution for an import");
             return smallvec![Res::Err];
         }
         res
@@ -1286,7 +1286,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = match &t.kind {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => {
-                hir::TyKind::Err(self.dcx().span_delayed_bug(t.span, "TyKind::Err lowered"))
+                hir::TyKind::Err(self.dcx().span_assert_has_errors(t.span, "TyKind::Err lowered"))
             }
             // Lower the anonymous structs or unions in a nested lowering context.
             //
@@ -1499,7 +1499,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
             TyKind::CVarArgs => {
-                let guar = self.dcx().span_delayed_bug(
+                let guar = self.dcx().span_assert_has_errors(
                     t.span,
                     "`TyKind::CVarArgs` should have been handled elsewhere",
                 );
@@ -1643,8 +1643,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     if let Some(old_def_id) = self.orig_opt_local_def_id(param) {
                         old_def_id
                     } else {
-                        self.dcx()
-                            .span_delayed_bug(lifetime.ident.span, "no def-id for fresh lifetime");
+                        self.dcx().span_assert_has_errors(
+                            lifetime.ident.span,
+                            "no def-id for fresh lifetime",
+                        );
                         continue;
                     }
                 }
@@ -2576,7 +2578,7 @@ impl<'hir> GenericArgsCtor<'hir> {
                 let span = lcx.lower_span(span);
 
                 let Some(host_param_id) = lcx.host_param_id else {
-                    lcx.dcx().span_delayed_bug(
+                    lcx.dcx().span_assert_has_errors(
                         span,
                         "no host param id for call in const yet no errors reported",
                     );

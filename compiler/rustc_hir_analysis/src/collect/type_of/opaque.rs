@@ -209,7 +209,7 @@ impl TaitConstraintLocator<'_> {
         if let Some(hir_sig) = hir_node.fn_sig()
             && hir_sig.decl.output.get_infer_ret_ty().is_some()
         {
-            let guar = self.tcx.dcx().span_delayed_bug(
+            let guar = self.tcx.dcx().span_assert_has_errors(
                 hir_sig.decl.output.span(),
                 "inferring return types and opaque types do not mix well",
             );

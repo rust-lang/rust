@@ -561,7 +561,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match self.successors[ln] {
             Some(successor) => self.assigned_on_entry(successor, var),
             None => {
-                self.ir.tcx.dcx().delayed_bug("no successor");
+                self.ir.tcx.dcx().assert_has_errors("no successor");
                 true
             }
         }
@@ -970,7 +970,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // Now that we know the label we're going to,
                 // look it up in the continue loop nodes table
                 self.cont_ln.get(&sc).cloned().unwrap_or_else(|| {
-                    self.ir.tcx.dcx().span_delayed_bug(expr.span, "continue to unknown label");
+                    self.ir
+                        .tcx
+                        .dcx()
+                        .span_assert_has_errors(expr.span, "continue to unknown label");
                     self.ir.add_live_node(ErrNode)
                 })
             }

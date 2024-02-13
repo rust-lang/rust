@@ -498,7 +498,7 @@ impl<'tcx> AdtDef<'tcx> {
                     ErrorHandled::Reported(..) => "enum discriminant evaluation failed",
                     ErrorHandled::TooGeneric(..) => "enum discriminant depends on generics",
                 };
-                tcx.dcx().span_delayed_bug(tcx.def_span(expr_did), msg);
+                tcx.dcx().span_assert_has_errors(tcx.def_span(expr_did), msg);
                 None
             }
         }

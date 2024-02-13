@@ -283,8 +283,8 @@ pub struct LayoutCx<'tcx, C> {
 impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
-    fn delayed_bug(&self, txt: String) {
-        self.tcx.dcx().delayed_bug(txt);
+    fn assert_has_errors(&self, txt: String) {
+        self.tcx.dcx().assert_has_errors(txt);
     }
 
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef {

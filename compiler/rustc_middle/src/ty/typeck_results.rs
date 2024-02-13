@@ -410,7 +410,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
         self.pat_binding_modes().get(id).copied().or_else(|| {
-            s.dcx().span_delayed_bug(sp, "missing binding mode");
+            s.dcx().span_assert_has_errors(sp, "missing binding mode");
             None
         })
     }

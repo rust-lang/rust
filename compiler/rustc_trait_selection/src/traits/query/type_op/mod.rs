@@ -190,7 +190,7 @@ where
                 }
             }
             if !progress {
-                return Err(infcx.dcx().span_delayed_bug(
+                return Err(infcx.dcx().span_assert_has_errors(
                     span,
                     format!("ambiguity processing {obligations:?} from {self:?}"),
                 ));

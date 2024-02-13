@@ -828,7 +828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span: item_span,
                         ..
                     })) => {
-                        tcx.dcx().span_delayed_bug(
+                        tcx.dcx().span_assert_has_errors(
                             *item_span,
                             "auto trait is invoked with no method error, but no error reported?",
                         );

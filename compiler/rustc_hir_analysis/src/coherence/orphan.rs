@@ -454,7 +454,7 @@ fn lint_auto_trait_impl<'tcx>(
     impl_def_id: LocalDefId,
 ) {
     if trait_ref.args.len() != 1 {
-        tcx.dcx().span_delayed_bug(
+        tcx.dcx().span_assert_has_errors(
             tcx.def_span(impl_def_id),
             "auto traits cannot have generic parameters",
         );

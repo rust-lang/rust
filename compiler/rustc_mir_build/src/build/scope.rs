@@ -657,7 +657,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             let Some(drops) = self.scopes.breakable_scopes[break_index].continue_drops.as_mut()
             else {
-                self.tcx.dcx().span_delayed_bug(
+                self.tcx.dcx().span_assert_has_errors(
                     source_info.span,
                     "unlabelled `continue` within labelled block",
                 );

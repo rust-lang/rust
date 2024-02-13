@@ -112,7 +112,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         sig_id.ok_or_else(|| {
             self.tcx
                 .dcx()
-                .span_delayed_bug(span, "LoweringContext: couldn't resolve delegation item")
+                .span_assert_has_errors(span, "LoweringContext: couldn't resolve delegation item")
         })
     }
 

@@ -662,7 +662,8 @@ impl<'tcx> OnUnimplementedDirective {
 
             Ok(None)
         } else {
-            let reported = tcx.dcx().delayed_bug("of_item: neither meta_item_list nor value_str");
+            let reported =
+                tcx.dcx().assert_has_errors("of_item: neither meta_item_list nor value_str");
             return Err(reported);
         };
         debug!("of_item({:?}) = {:?}", item_def_id, result);

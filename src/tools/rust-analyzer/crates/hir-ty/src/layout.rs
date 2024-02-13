@@ -114,7 +114,7 @@ struct LayoutCx<'a> {
 impl<'a> LayoutCalculator for LayoutCx<'a> {
     type TargetDataLayoutRef = &'a TargetDataLayout;
 
-    fn delayed_bug(&self, txt: String) {
+    fn assert_has_errors(&self, txt: String) {
         never!("{}", txt);
     }
 

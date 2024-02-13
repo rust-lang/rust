@@ -177,7 +177,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // this point it never will be
                 self.tcx
                     .dcx()
-                    .delayed_bug(format!("unresolved inference variable in outlives: {v:?}"));
+                    .assert_has_errors(format!("unresolved inference variable in outlives: {v:?}"));
                 // add a bound that never holds
                 VerifyBound::AnyBound(vec![])
             }

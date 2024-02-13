@@ -266,7 +266,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| match ty {
                         None => {
-                            let guar = this.dcx().span_delayed_bug(
+                            let guar = this.dcx().span_assert_has_errors(
                                 span,
                                 "expected to lower type alias type, but it was missing",
                             );
@@ -925,7 +925,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| match ty {
                         None => {
-                            let guar = this.dcx().span_delayed_bug(
+                            let guar = this.dcx().span_assert_has_errors(
                                 i.span,
                                 "expected to lower associated type, but it was missing",
                             );
@@ -1068,7 +1068,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr<'hir> {
         match block {
             Some(block) => self.lower_block_expr(block),
-            None => self.expr_err(span, self.dcx().span_delayed_bug(span, "no block")),
+            None => self.expr_err(span, self.dcx().span_assert_has_errors(span, "no block")),
         }
     }
 
@@ -1078,7 +1078,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 &[],
                 match expr {
                     Some(expr) => this.lower_expr_mut(expr),
-                    None => this.expr_err(span, this.dcx().span_delayed_bug(span, "no block")),
+                    None => {
+                        this.expr_err(span, this.dcx().span_assert_has_errors(span, "no block"))
+                    }
                 },
             )
         })

@@ -32,7 +32,7 @@ where
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
 
-    fn delayed_bug(&self, txt: String);
+    fn assert_has_errors(&self, txt: String);
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef;
 
     fn scalar_pair<FieldIdx: Idx, VariantIdx: Idx>(
@@ -259,7 +259,7 @@ pub trait LayoutCalculator {
         let only_variant = &variants[VariantIdx::new(0)];
         for field in only_variant {
             if field.is_unsized() {
-                self.delayed_bug("unsized field in union".to_string());
+                self.assert_has_errors("unsized field in union".to_string());
             }
 
             align = align.max(field.align);
@@ -1092,7 +1092,7 @@ fn univariant<
     for &i in &inverse_memory_index {
         let field = &fields[i];
         if !sized {
-            this.delayed_bug(format!(
+            this.assert_has_errors(format!(
                 "univariant: field #{} comes after unsized field",
                 offsets.len(),
             ));

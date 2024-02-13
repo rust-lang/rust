@@ -947,6 +947,28 @@ impl DiagCtxt {
     pub fn set_must_produce_diag(&self) {
         self.inner.borrow_mut().must_produce_diag = true;
     }
+
+    /// Asserts that an error has already been printed.
+    pub fn assert_has_errors(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+        if let Some(guar) = self.has_errors() {
+            guar
+        } else {
+            panic!("`assert_has_errors` failed: {:?}", msg.into());
+        }
+    }
+
+    /// Asserts that an error has already been printed.
+    pub fn span_assert_has_errors(
+        &self,
+        sp: impl Into<MultiSpan>,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> ErrorGuaranteed {
+        if let Some(guar) = self.has_errors() {
+            guar
+        } else {
+            panic!("`span_assert_has_errors` failed: {:?}, {:?}", msg.into(), sp.into());
+        }
+    }
 }
 
 // This `impl` block contains only the public diagnostic creation/emission API.
@@ -1098,14 +1120,14 @@ impl DiagCtxt {
         self.create_err(err).emit()
     }
 
-    /// Ensures that an error is printed. See `Level::DelayedBug`.
+    /// Ensures that an error will be emitted later. See `Level::DelayedBug`.
     // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
     #[track_caller]
     pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
     }
 
-    /// Ensures that an error is printed. See `Level::DelayedBug`.
+    /// Ensures that an error will be emitted later. See `Level::DelayedBug`.
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
@@ -1566,8 +1588,11 @@ pub enum Level {
 
     /// This is a strange one: lets you register an error without emitting it. If compilation ends
     /// without any other errors occurring, this will be emitted as a bug. Otherwise, it will be
-    /// silently dropped. I.e. "expect other errors are emitted" semantics. Useful on code paths
+    /// silently dropped. I.e. "expect more errors will be emitted" semantics. Useful on code paths
     /// that should only be reached when compiling erroneous code.
+    ///
+    /// Note: if you want "expect errors have already been emitted" semantics, use the simpler
+    /// `DiagCtxt::assert_has_errors` method.
     DelayedBug,
 
     /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation

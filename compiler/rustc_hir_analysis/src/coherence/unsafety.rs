@@ -83,7 +83,7 @@ pub(super) fn check_item(
 
         (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
             // Reported in AST validation
-            tcx.dcx().span_delayed_bug(item.span, "unsafe negative impl");
+            tcx.dcx().span_assert_has_errors(item.span, "unsafe negative impl");
             Ok(())
         }
         (_, _, Unsafety::Normal, hir::ImplPolarity::Negative(_))

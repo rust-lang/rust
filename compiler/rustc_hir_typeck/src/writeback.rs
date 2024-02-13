@@ -222,7 +222,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
                 // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().dcx().span_delayed_bug(e.span, format!("bad base: `{base:?}`"));
+                self.tcx().dcx().span_assert_has_errors(e.span, format!("bad base: `{base:?}`"));
             }
             if let Some(base_ty) = base_ty
                 && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
@@ -317,7 +317,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {
                 self.tcx()
                     .dcx()
-                    .span_delayed_bug(p.span, format!("unexpected generic param: {p:?}"));
+                    .span_assert_has_errors(p.span, format!("unexpected generic param: {p:?}"));
             }
         }
     }

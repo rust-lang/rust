@@ -519,7 +519,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 trait_ref,
                                 span,
                             ) {
-                                GetSafeTransmuteErrorAndReason::Silent => return self.dcx().span_delayed_bug(span, "silent safe transmute error"),
+                                GetSafeTransmuteErrorAndReason::Silent => return self.dcx().span_assert_has_errors(span, "silent safe transmute error"),
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
                                     safe_transmute_explanation,
@@ -3481,7 +3481,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         expected_trait_ref.self_ty().error_reported()?;
 
         let Some(found_trait_ty) = found_trait_ref.self_ty().no_bound_vars() else {
-            return Err(self.dcx().delayed_bug("bound vars outside binder"));
+            return Err(self.dcx().assert_has_errors("bound vars outside binder"));
         };
 
         let found_did = match *found_trait_ty.kind() {
@@ -3495,7 +3495,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if !self.reported_signature_mismatch.borrow_mut().insert((span, found_span)) {
             // We check closures twice, with obligations flowing in different directions,
             // but we want to complain about them only once.
-            return Err(self.dcx().span_delayed_bug(span, "already_reported"));
+            return Err(self.dcx().span_assert_has_errors(span, "already_reported"));
         }
 
         let mut not_tupled = false;

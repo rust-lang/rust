@@ -294,7 +294,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: LocalDefId) {
         let target_features = self.tcx.asm_target_features(enclosing_id.to_def_id());
         let Some(asm_arch) = self.tcx.sess.asm_arch else {
-            self.tcx.dcx().delayed_bug("target architecture does not support asm");
+            self.tcx.dcx().assert_has_errors("target architecture does not support asm");
             return;
         };
         for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {

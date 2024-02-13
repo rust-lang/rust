@@ -286,7 +286,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        ecx.tcx().dcx().span_delayed_bug(
+        ecx.tcx().dcx().span_assert_has_errors(
             ecx.tcx().def_span(goal.predicate.def_id()),
             "associated types not allowed on auto traits",
         );

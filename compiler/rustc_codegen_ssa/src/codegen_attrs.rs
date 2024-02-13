@@ -90,8 +90,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             if let Fn | AssocFn | Variant | Ctor(..) = def_kind {
                 Some(tcx.fn_sig(did))
             } else {
-                tcx.dcx()
-                    .span_delayed_bug(attr.span, "this attribute can only be applied to functions");
+                tcx.dcx().span_assert_has_errors(
+                    attr.span,
+                    "this attribute can only be applied to functions",
+                );
                 None
             }
         };

@@ -1339,7 +1339,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.dcx().span_delayed_bug(
+        self.tcx.dcx().span_assert_has_errors(
             lifetime_ref.ident.span,
             format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
         );
@@ -1473,7 +1473,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.dcx().span_delayed_bug(
+        self.tcx.dcx().span_assert_has_errors(
             self.tcx.hir().span(hir_id),
             format!("could not resolve {param_def_id:?}"),
         );

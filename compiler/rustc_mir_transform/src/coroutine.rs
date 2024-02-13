@@ -1615,7 +1615,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 (args.discr_ty(tcx), coroutine_kind.movability() == hir::Movability::Movable)
             }
             _ => {
-                tcx.dcx().span_delayed_bug(
+                tcx.dcx().span_assert_has_errors(
                     body.span,
                     format!("unexpected coroutine type {coroutine_ty}"),
                 );

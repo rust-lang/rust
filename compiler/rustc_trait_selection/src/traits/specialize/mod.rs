@@ -459,7 +459,8 @@ fn report_conflicting_impls<'tcx>(
                 decorate(tcx, &overlap, impl_span, &mut err);
                 err.emit()
             } else {
-                tcx.dcx().span_delayed_bug(impl_span, "impl should have failed the orphan check")
+                tcx.dcx()
+                    .span_assert_has_errors(impl_span, "impl should have failed the orphan check")
             };
             Err(reported)
         }

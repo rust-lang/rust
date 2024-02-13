@@ -223,7 +223,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
             let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
-                let reported = infcx.dcx().span_delayed_bug(
+                let reported = infcx.dcx().span_assert_has_errors(
                     decl.hidden_type.span,
                     format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
@@ -1089,7 +1089,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         if result.is_err() {
-            self.infcx.dcx().span_delayed_bug(
+            self.infcx.dcx().span_assert_has_errors(
                 self.body.span,
                 "failed re-defining predefined opaques in mir typeck",
             );

@@ -431,7 +431,7 @@ where
                 // We have an inconsistency. This can happen if one of the two
                 // results is tainted by errors. In this case, delay a bug to
                 // ensure compilation is doomed.
-                qcx.dep_context().sess().dcx().delayed_bug(format!(
+                qcx.dep_context().sess().dcx().assert_has_errors(format!(
                     "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
                         computed={:#?}\nfed={:#?}",
                     query.dep_kind(),

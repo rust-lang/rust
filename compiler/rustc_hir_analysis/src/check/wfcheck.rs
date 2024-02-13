@@ -1088,8 +1088,10 @@ fn check_type_defn<'tcx>(
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
-                        tcx.dcx()
-                            .span_delayed_bug(item.span, format!("inference variables in {ty:?}"));
+                        tcx.dcx().span_assert_has_errors(
+                            item.span,
+                            format!("inference variables in {ty:?}"),
+                        );
                         // Just treat unresolved type expression as if it needs drop.
                         true
                     } else {
@@ -1872,7 +1874,7 @@ fn check_variances_for_type_defn<'tcx>(
             //
             // if they aren't in the same order, then the user has written invalid code, and already
             // got an error about it (or I'm wrong about this)
-            tcx.dcx().span_delayed_bug(
+            tcx.dcx().span_assert_has_errors(
                 hir_param.span,
                 "hir generics and ty generics in different order",
             );

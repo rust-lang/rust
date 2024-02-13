@@ -244,7 +244,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
                     if assigned_ty.needs_drop(self.tcx, self.param_env) {
                         // This would be unsafe, but should be outright impossible since we reject such unions.
-                        self.tcx.dcx().span_delayed_bug(
+                        self.tcx.dcx().span_assert_has_errors(
                             self.source_info.span,
                             format!("union fields that need dropping should be impossible: {assigned_ty}")
                         );

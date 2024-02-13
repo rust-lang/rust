@@ -804,7 +804,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
             if new_trait_ref.has_non_region_bound_vars() {
-                this.dcx().span_delayed_bug(
+                this.dcx().span_assert_has_errors(
                     this.span,
                     "tried to select method from HRTB with non-lifetime bound vars",
                 );
