@@ -11,7 +11,7 @@ pub enum B {
 
 #[inline]
 pub fn _u32(a: u32) -> i32 {
-    if unsafe { is_val_statically_known(a) } { 1 } else { 0 }
+    if is_val_statically_known(a) { 1 } else { 0 }
 }
 
 // CHECK-LABEL: @_u32_true(
@@ -30,7 +30,7 @@ pub fn _u32_false(a: u32) -> i32 {
 
 #[inline]
 pub fn _bool(b: bool) -> i32 {
-    if unsafe { is_val_statically_known(b) } { 3 } else { 2 }
+    if is_val_statically_known(b) { 3 } else { 2 }
 }
 
 // CHECK-LABEL: @_bool_true(

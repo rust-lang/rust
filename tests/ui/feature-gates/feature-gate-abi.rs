@@ -14,8 +14,10 @@ trait Tuple { }
 // Functions
 extern "rust-intrinsic" fn f1() {} //~ ERROR intrinsics are subject to change
                                    //~^ ERROR intrinsic must be in
+                                   //~| ERROR unrecognized intrinsic function: `f1`
 extern "platform-intrinsic" fn f2() {} //~ ERROR platform intrinsics are experimental
                                        //~^ ERROR intrinsic must be in
+                                       //~| ERROR unrecognized intrinsic function: `f2`
 extern "rust-call" fn f4(_: ()) {} //~ ERROR rust-call ABI is subject to change
 
 // Methods in trait definition

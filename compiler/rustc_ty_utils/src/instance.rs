@@ -28,7 +28,8 @@ fn resolve_instance<'tcx>(
             tcx.normalize_erasing_regions(param_env, args),
         )
     } else {
-        let def = if matches!(tcx.def_kind(def_id), DefKind::Fn) && tcx.is_intrinsic(def_id) {
+        let def = if matches!(tcx.def_kind(def_id), DefKind::Fn) && tcx.intrinsic(def_id).is_some()
+        {
             debug!(" => intrinsic");
             ty::InstanceDef::Intrinsic(def_id)
         } else if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
