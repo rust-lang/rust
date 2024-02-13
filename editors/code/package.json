@@ -68,7 +68,9 @@
         "typescript": "^5.1.6"
     },
     "activationEvents": [
+        "workspaceContains:Cargo.toml",
         "workspaceContains:*/Cargo.toml",
+        "workspaceContains:rust-project.json",
         "workspaceContains:*/rust-project.json"
     ],
     "main": "./out/main",
