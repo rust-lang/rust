@@ -143,7 +143,9 @@ impl PrevCovspan {
     }
 
     fn into_dup(self) -> DuplicateCovspan {
-        let Self { original_span: _, span, bcb, merged_spans: _, is_closure } = self;
+        let Self { original_span, span, bcb, merged_spans: _, is_closure } = self;
+        // Only unmodified spans end up in `pending_dups`.
+        debug_assert_eq!(original_span, span);
         DuplicateCovspan { span, bcb, is_closure }
     }
 
@@ -290,9 +292,9 @@ impl<'a> SpansRefiner<'a> {
                 self.take_curr(); // Discards curr.
             } else if curr.is_closure {
                 self.carve_out_span_for_closure();
-            } else if prev.original_span == curr.span {
-                // `prev` and `curr` have the same span, or would have had the
-                // same span before `prev` was modified by other spans.
+            } else if prev.original_span == prev.span && prev.span == curr.span {
+                // Prev and curr have the same span, and prev's span hasn't
+                // been modified by other spans.
                 self.update_pending_dups();
             } else {
                 self.cutoff_prev_at_overlapping_curr();
@@ -481,6 +483,12 @@ impl<'a> SpansRefiner<'a> {
         // impossible for `curr` to dominate any previous coverage span.
         debug_assert!(!self.basic_coverage_blocks.dominates(curr_bcb, prev_bcb));
 
+        // `prev` is a duplicate of `curr`, so add it to the list of pending dups.
+        // If it dominates `curr`, it will be removed by the subsequent discard step.
+        let prev = self.take_prev().into_dup();
+        debug!(?prev, "adding prev to pending dups");
+        self.pending_dups.push(prev);
+
         let initial_pending_count = self.pending_dups.len();
         if initial_pending_count > 0 {
             self.pending_dups
@@ -492,42 +500,6 @@ impl<'a> SpansRefiner<'a> {
                     "  discarded {n_discarded} of {initial_pending_count} pending_dups that dominated curr",
                 );
             }
-        }
-
-        if self.basic_coverage_blocks.dominates(prev_bcb, curr_bcb) {
-            debug!(
-                "  different bcbs but SAME spans, and prev dominates curr. Discard prev={:?}",
-                self.prev()
-            );
-            self.cutoff_prev_at_overlapping_curr();
-        // If one span dominates the other, associate the span with the code from the dominated
-        // block only (`curr`), and discard the overlapping portion of the `prev` span. (Note
-        // that if `prev.span` is wider than `prev.original_span`, a coverage span will still
-        // be created for `prev`s block, for the non-overlapping portion, left of `curr.span`.)
-        //
-        // For example:
-        //     match somenum {
-        //         x if x < 1 => { ... }
-        //     }...
-        //
-        // The span for the first `x` is referenced by both the pattern block (every time it is
-        // evaluated) and the arm code (only when matched). The counter will be applied only to
-        // the dominated block. This allows coverage to track and highlight things like the
-        // assignment of `x` above, if the branch is matched, making `x` available to the arm
-        // code; and to track and highlight the question mark `?` "try" operator at the end of
-        // a function call returning a `Result`, so the `?` is covered when the function returns
-        // an `Err`, and not counted as covered if the function always returns `Ok`.
-        } else {
-            // Save `prev` in `pending_dups`. (`curr` will become `prev` in the next iteration.)
-            // If the `curr` span is later discarded, `pending_dups` can be discarded as
-            // well; but if `curr` is added to refined_spans, the `pending_dups` will also be added.
-            debug!(
-                "  different bcbs but SAME spans, and neither dominates, so keep curr for \
-                next iter, and, pending upcoming spans (unless overlapping) add prev={:?}",
-                self.prev()
-            );
-            let prev = self.take_prev().into_dup();
-            self.pending_dups.push(prev);
         }
     }
 
