@@ -96,11 +96,16 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 
 ## Creating Types Programmatically
 
-Traits are often generic over a type e.g. `Borrow<T>` is generic over `T`, and rust allows us to implement a trait for
-a specific type. For example, we can implement `Borrow<str>` for a hypothetical type `Foo`. Let's suppose that we
-would like to find whether our type actually implements `Borrow<[u8]>`. To do so, we need to supply a type that
-represents `[u8]`, but `[u8]` is also a generic, it's a slice over `u8`. We can create this type using Ty::new_slice
-method. The following code demonstrates how to do this:
+Traits are often generic over a type parameter, e.g. `Borrow<T>` is generic
+over `T`. Rust allows us to implement a trait for a specific type. For example,
+we can implement `Borrow<[u8]>` for a hypothetical type `Foo`. Let's suppose
+that we would like to find whether our type actually implements `Borrow<[u8]>`.
+
+To do so, we can use the same `implements_trait` function as above, and supply
+a parameter type that represents `[u8]`. Since `[u8]` is a specialization of
+`[T]`, we can use the  [`Ty::new_slice`][new_slice] method to create a type
+that represents `[T]` and supply `u8` as a type parameter. The following code
+demonstrates how to do this:
 
 ```rust
 
@@ -108,17 +113,19 @@ use rustc_middle::ty::Ty;
 use clippy_utils::ty::implements_trait;
 use rustc_span::symbol::sym;
 
-let ty = todo!();
+let ty = todo!("Get the `Foo` type to check for a trait implementation");
 let borrow_id = cx.tcx.get_diagnostic_item(sym::Borrow).unwrap(); // avoid unwrap in real code
-if implements_trait(cx, ty, borrow_id, &[Ty::new_slice(cx.tcx, cx.tcx.types.u8).into()]) {
-    todo!()
+let slice_bytes = Ty::new_slice(cx.tcx, cx.tcx.types.u8);
+let generic_param = slice_bytes.into();
+if implements_trait(cx, ty, borrow_id, &[generic_param]) {
+    todo!("Rest of lint implementation")
 }
 ```
 
-Here, we use `Ty::new_slice` to create a type that represents `[T]` and supply `u8` as a type parameter, and then we go
-on normally with `implements_trait` function. The [Ty] struct allows us to create types programmatically, and it's
-useful when we need to create types that we can't obtain through the usual means.
-
+In essence, the [`Ty`] struct allows us to create types programmatically in a
+representation that can be used by the compiler and the query engine. We then
+use the `rustc_middle::Ty` of the type we are interested in, and query the
+compiler to see if it indeed implements the trait we are interested in.
 
 
 [DefId]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
@@ -129,5 +136,6 @@ useful when we need to create types that we can't obtain through the usual means
 [symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [symbol_index]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/sym/index.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
-[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
+[`Ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [rust]: https://github.com/rust-lang/rust
+[new_slice]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_slice
