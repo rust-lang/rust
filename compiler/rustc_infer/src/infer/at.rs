@@ -285,13 +285,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
-        at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-            fields
-                .sub(a_is_expected)
-                .relate(a, b)
-                .map(move |_| InferOk { value: (), obligations: fields.obligations })
-        })
+        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
+        fields
+            .sub(a_is_expected)
+            .relate(a, b)
+            .map(move |_| InferOk { value: (), obligations: fields.obligations })
     }
 
     /// Makes `a == b`; the expectation is set by the call to
@@ -302,13 +300,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
-        at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-            fields
-                .equate(a_is_expected)
-                .relate(a, b)
-                .map(move |_| InferOk { value: (), obligations: fields.obligations })
-        })
+        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
+        fields
+            .equate(a_is_expected)
+            .relate(a, b)
+            .map(move |_| InferOk { value: (), obligations: fields.obligations })
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -317,13 +313,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
-        at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-            fields
-                .lub(a_is_expected)
-                .relate(a, b)
-                .map(move |t| InferOk { value: t, obligations: fields.obligations })
-        })
+        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
+        fields
+            .lub(a_is_expected)
+            .relate(a, b)
+            .map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -332,13 +326,11 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
         T: Relate<'tcx>,
     {
         let Trace { at, trace, a_is_expected } = self;
-        at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
-            fields
-                .glb(a_is_expected)
-                .relate(a, b)
-                .map(move |t| InferOk { value: t, obligations: fields.obligations })
-        })
+        let mut fields = at.infcx.combine_fields(trace, at.param_env, define_opaque_types);
+        fields
+            .glb(a_is_expected)
+            .relate(a, b)
+            .map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 }
 
