@@ -6,10 +6,11 @@ use std::{
 };
 
 use proc_macro::bridge::{self, server};
+use syntax::ast::{self, IsString};
 
 use crate::server::{
-    delim_to_external, delim_to_internal, token_stream::TokenStreamBuilder, LiteralFormatter,
-    Symbol, SymbolInternerRef, SYMBOL_INTERNER,
+    delim_to_external, delim_to_internal, literal_to_external, token_stream::TokenStreamBuilder,
+    LiteralFormatter, Symbol, SymbolInternerRef, SYMBOL_INTERNER,
 };
 mod tt {
     pub use proc_macro_api::msg::TokenId;
@@ -62,11 +63,33 @@ impl server::FreeFunctions for TokenIdServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        // FIXME: keep track of LitKind and Suffix
+        let literal = ast::Literal::parse(s).ok_or(())?;
+        let literal = literal.tree();
+
+        let kind = literal_to_external(literal.kind()).ok_or(())?;
+
+        // FIXME: handle more than just int and float suffixes
+        let suffix = match literal.kind() {
+            ast::LiteralKind::FloatNumber(num) => num.suffix().map(ToString::to_string),
+            ast::LiteralKind::IntNumber(num) => num.suffix().map(ToString::to_string),
+            _ => None,
+        };
+
+        let text = match literal.kind() {
+            ast::LiteralKind::String(data) => data.text_without_quotes().to_string(),
+            ast::LiteralKind::ByteString(data) => data.text_without_quotes().to_string(),
+            ast::LiteralKind::CString(data) => data.text_without_quotes().to_string(),
+            _ => s.to_string(),
+        };
+        let text = if let Some(ref suffix) = suffix { text.strip_suffix(suffix) } else { None }
+            .unwrap_or(&text);
+
+        let suffix = suffix.map(|suffix| Symbol::intern(self.interner, &suffix));
+
         Ok(bridge::Literal {
-            kind: bridge::LitKind::Err,
-            symbol: Symbol::intern(self.interner, s),
-            suffix: None,
+            kind,
+            symbol: Symbol::intern(self.interner, text),
+            suffix,
             span: self.call_site,
         })
     }
