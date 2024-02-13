@@ -120,6 +120,9 @@ pub struct ConfigInfo {
     pub sysroot_path: String,
     pub gcc_path: String,
     config_file: Option<String>,
+    // This is used in particular in rust compiler bootstrap because it doesn't run at the root
+    // of the `cg_gcc` folder, making it complicated for us to get access to local files we need
+    // like `libgccjit.version` or `config.toml`.
     cg_gcc_path: Option<PathBuf>,
     // Needed for the `info` command which doesn't want to actually download the lib if needed,
     // just to set the `gcc_path` field to display it.
@@ -526,7 +529,7 @@ impl ConfigInfo {
     --sysroot-panic-abort  : Build the sysroot without unwinding support
     --config-file          : Location of the config file to be used
     --cg_gcc-path          : Location of the rustc_codegen_gcc root folder (used
-                             for accessing any file from the project)"
+                             when ran from another directory)"
         );
     }
 }
