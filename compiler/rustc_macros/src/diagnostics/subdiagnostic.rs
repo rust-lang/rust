@@ -521,7 +521,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     );
                 }
                 SlugOrRawFluent::RawFluent(raw) => {
-                    calls.extend(quote! { let #message = #f(#diag, #raw); });
+                    calls.extend(quote! { let #message = #raw; });
                 }
             }
 

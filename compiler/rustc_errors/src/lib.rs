@@ -17,6 +17,7 @@
 #![feature(error_reporter)]
 #![feature(extract_if)]
 #![feature(generic_nonzero)]
+#![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -655,6 +656,17 @@ impl DiagCtxt {
     ) -> String {
         let inner = self.inner.borrow();
         inner.eagerly_translate_to_string(message, args)
+    }
+
+    pub fn raw_translate<'a>(
+        &self,
+        slug: &str,
+        raw: &str,
+        args: impl Iterator<Item = DiagnosticArg<'a>>,
+    ) -> String {
+        let inner = self.inner.borrow();
+        let args = crate::translation::to_fluent_args(args);
+        inner.emitter.raw_translate_message(slug, raw, &args)
     }
 
     // This is here to not allow mutation of flags;

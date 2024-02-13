@@ -38,12 +38,12 @@ pub type FluentBundle =
     IntoDynSyncSend<fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>>;
 
 #[cfg(not(parallel_compiler))]
-fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
+pub fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
     IntoDynSyncSend(fluent_bundle::bundle::FluentBundle::new(locales))
 }
 
 #[cfg(parallel_compiler)]
-fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
+pub fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
     IntoDynSyncSend(fluent_bundle::bundle::FluentBundle::new_concurrent(locales))
 }
 

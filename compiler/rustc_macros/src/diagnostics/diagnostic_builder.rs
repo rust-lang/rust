@@ -59,6 +59,8 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
     /// Error codes are a optional part of the struct attribute - this is only set to detect
     /// multiple specifications.
     pub code: SpannedOption<()>,
+
+    pub args: Vec<TokenStream>,
 }
 
 impl HasFieldMap for DiagnosticDeriveVariantBuilder {
@@ -109,6 +111,7 @@ impl DiagnosticDeriveKind {
                 formatting_init: TokenStream::new(),
                 slug: None,
                 code: None,
+                args: Vec::new(),
             };
             f(builder, variant)
         });
@@ -275,11 +278,19 @@ impl DiagnosticDeriveVariantBuilder {
         let ident = field.ident.as_ref().unwrap();
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
-        quote! {
-            diag.arg(
-                stringify!(#ident),
-                #field_binding
-            );
+        if matches!(self.slug.value_ref(), Some(SlugOrRawFluent::RawFluent(_))) {
+            // Cloning should not be necessary once there are no `diag.arg` calls.
+            self.args.push(quote! {
+                args.insert(stringify!(#ident).into(), #field_binding.clone().into_diagnostic_arg());
+            });
+            quote! {}
+        } else {
+            quote! {
+                diag.arg(
+                    stringify!(#ident),
+                    #field_binding
+                );
+            }
         }
     }
 
@@ -422,9 +433,10 @@ impl DiagnosticDeriveVariantBuilder {
                         );
                     }),
                     SlugOrRawFluent::RawFluent(raw) => Ok(quote! {
+                        let raw = dcx.raw_translate("foo", #raw, args.iter());
                         diag.span_suggestions_with_style(
                             #span_field,
-                            #raw,
+                            raw,
                             #code_field,
                             #applicability,
                             #style
@@ -455,7 +467,10 @@ impl DiagnosticDeriveVariantBuilder {
                 }
             }
             SlugOrRawFluent::RawFluent(raw) => {
-                quote! { diag.#fn_name(#field_binding, #raw); }
+                quote! {
+                    let raw = dcx.raw_translate("foo", #raw, args.iter());
+                    diag.#fn_name(#field_binding, raw);
+                }
             }
         }
     }
@@ -470,7 +485,10 @@ impl DiagnosticDeriveVariantBuilder {
                 }
             }
             SlugOrRawFluent::RawFluent(raw) => {
-                quote! { diag.#kind(#raw); }
+                quote! {
+                    let raw = dcx.raw_translate("foo", #raw, args.iter());
+                    diag.#kind(raw);
+                }
             }
         }
     }

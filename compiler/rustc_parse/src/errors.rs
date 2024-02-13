@@ -25,7 +25,7 @@ pub(crate) struct AmbiguousPlus {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_maybe_recover_from_bad_type_plus, code = E0178)]
+#[diag_raw(message = "expected a path on the left-hand side of `+`, not `{$ty}`", code = E0178)]
 pub(crate) struct BadTypePlus {
     pub ty: String,
     #[primary_span]
@@ -37,7 +37,7 @@ pub(crate) struct BadTypePlus {
 #[derive(Subdiagnostic)]
 pub(crate) enum BadTypePlusSub {
     #[suggestion(
-        parse_add_paren,
+        message = "try adding parentheses",
         code = "{sum_with_parens}",
         applicability = "machine-applicable"
     )]
@@ -46,12 +46,12 @@ pub(crate) enum BadTypePlusSub {
         #[primary_span]
         span: Span,
     },
-    #[label(parse_forgot_paren)]
+    #[label(message = "perhaps you forgot parentheses?")]
     ForgotParen {
         #[primary_span]
         span: Span,
     },
-    #[label(parse_expect_path)]
+    #[label(message = "expected a path")]
     ExpectPath {
         #[primary_span]
         span: Span,

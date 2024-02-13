@@ -28,6 +28,18 @@ impl<'a> DiagnosticDerive<'a> {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
+            let args = if matches!(builder.slug.value_ref(), Some(SlugOrRawFluent::RawFluent(_))) {
+                let args = builder.args;
+                quote! {
+                    use rustc_data_structures::fx::FxHashMap;
+                    use rustc_errors::{DiagnosticArgName, DiagnosticArgValue, IntoDiagnosticArg};
+                    let mut args: FxHashMap<DiagnosticArgName, DiagnosticArgValue> = Default::default();
+                    #(#args)*
+                }
+            } else {
+                quote! {}
+            };
+
             let init = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
@@ -60,10 +72,11 @@ impl<'a> DiagnosticDerive<'a> {
                 }
                 Some(SlugOrRawFluent::RawFluent(raw)) => {
                     quote! {
+                        let raw = dcx.raw_translate("foo", #raw, args.iter());
                         let mut diag = rustc_errors::DiagnosticBuilder::new(
                             dcx,
                             level,
-                            #raw,
+                            raw,
                         );
                     }
                 }
@@ -71,6 +84,7 @@ impl<'a> DiagnosticDerive<'a> {
 
             let formatting_init = &builder.formatting_init;
             quote! {
+                #args
                 #init
                 #formatting_init
                 #preamble
@@ -87,6 +101,7 @@ impl<'a> DiagnosticDerive<'a> {
                 where G: rustc_errors::EmissionGuarantee
             {
 
+                #[allow(rustc::potential_query_instability)]
                 #[track_caller]
                 fn into_diagnostic(
                     self,
