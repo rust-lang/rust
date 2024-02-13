@@ -1,7 +1,7 @@
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
-use rustc_span::{BytePos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
 use crate::coverage::spans::from_mir::SpanFromMir;
@@ -102,7 +102,7 @@ impl CurrCovspan {
 
     fn into_prev(self) -> PrevCovspan {
         let Self { span, bcb, is_closure } = self;
-        PrevCovspan { span, bcb, merged_spans: vec![span], is_closure }
+        PrevCovspan { original_span: span, span, bcb, merged_spans: vec![span], is_closure }
     }
 
     fn into_refined(self) -> RefinedCovspan {
@@ -115,6 +115,7 @@ impl CurrCovspan {
 
 #[derive(Debug)]
 struct PrevCovspan {
+    original_span: Span,
     span: Span,
     bcb: BasicCoverageBlock,
     /// List of all the original spans from MIR that have been merged into this
@@ -142,12 +143,12 @@ impl PrevCovspan {
     }
 
     fn into_dup(self) -> DuplicateCovspan {
-        let Self { span, bcb, merged_spans: _, is_closure } = self;
+        let Self { original_span: _, span, bcb, merged_spans: _, is_closure } = self;
         DuplicateCovspan { span, bcb, is_closure }
     }
 
     fn refined_copy(&self) -> RefinedCovspan {
-        let &Self { span, bcb, merged_spans: _, is_closure } = self;
+        let &Self { original_span: _, span, bcb, merged_spans: _, is_closure } = self;
         RefinedCovspan { span, bcb, is_closure }
     }
 
@@ -220,11 +221,6 @@ struct SpansRefiner<'a> {
     /// If that `curr` was discarded, `prev` retains its value from the previous iteration.
     some_prev: Option<PrevCovspan>,
 
-    /// Assigned from `curr.span` from the previous iteration. The `prev_original_span`
-    /// **must not be mutated** (except when advancing to the next `prev`), even if `prev.span()`
-    /// is mutated.
-    prev_original_span: Span,
-
     /// One or more coverage spans with the same `Span` but different `BasicCoverageBlock`s, and
     /// no `BasicCoverageBlock` in this list dominates another `BasicCoverageBlock` in the list.
     /// If a new `curr` span also fits this criteria (compared to an existing list of
@@ -253,7 +249,6 @@ impl<'a> SpansRefiner<'a> {
             sorted_spans_iter: sorted_spans.into_iter(),
             some_curr: None,
             some_prev: None,
-            prev_original_span: DUMMY_SP,
             pending_dups: Vec::new(),
             refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),
         };
@@ -295,7 +290,7 @@ impl<'a> SpansRefiner<'a> {
                 self.take_curr(); // Discards curr.
             } else if curr.is_closure {
                 self.carve_out_span_for_closure();
-            } else if self.prev_original_span == curr.span {
+            } else if prev.original_span == curr.span {
                 // `prev` and `curr` have the same span, or would have had the
                 // same span before `prev` was modified by other spans.
                 self.update_pending_dups();
@@ -395,7 +390,6 @@ impl<'a> SpansRefiner<'a> {
     /// Advance `prev` to `curr` (if any), and `curr` to the next coverage span in sorted order.
     fn next_coverage_span(&mut self) -> bool {
         if let Some(curr) = self.some_curr.take() {
-            self.prev_original_span = curr.span;
             self.some_prev = Some(curr.into_prev());
         }
         while let Some(curr) = self.sorted_spans_iter.next() {
@@ -448,9 +442,7 @@ impl<'a> SpansRefiner<'a> {
         }
 
         if has_post_closure_span {
-            // Mutate `prev.span()` to start after the closure (and discard curr).
-            // (**NEVER** update `prev_original_span` because it affects the assumptions
-            // about how the coverage spans are ordered.)
+            // Mutate `prev.span` to start after the closure (and discard curr).
             self.prev_mut().span = self.prev().span.with_lo(right_cutoff);
             debug!("  Mutated prev.span to start after the closure. prev={:?}", self.prev());
 
@@ -467,12 +459,12 @@ impl<'a> SpansRefiner<'a> {
         }
     }
 
-    /// Called if `curr.span` equals `prev_original_span` (and potentially equal to all
+    /// Called if `curr.span` equals `prev.original_span` (and potentially equal to all
     /// `pending_dups` spans, if any). Keep in mind, `prev.span()` may have been changed.
     /// If prev.span() was merged into other spans (with matching BCB, for instance),
-    /// `prev.span.hi()` will be greater than (further right of) `prev_original_span.hi()`.
+    /// `prev.span.hi()` will be greater than (further right of) `prev.original_span.hi()`.
     /// If prev.span() was split off to the right of a closure, prev.span().lo() will be
-    /// greater than prev_original_span.lo(). The actual span of `prev_original_span` is
+    /// greater than prev.original_span.lo(). The actual span of `prev.original_span` is
     /// not as important as knowing that `prev()` **used to have the same span** as `curr()`,
     /// which means their sort order is still meaningful for determining the dominator
     /// relationship.
@@ -510,7 +502,7 @@ impl<'a> SpansRefiner<'a> {
             self.cutoff_prev_at_overlapping_curr();
         // If one span dominates the other, associate the span with the code from the dominated
         // block only (`curr`), and discard the overlapping portion of the `prev` span. (Note
-        // that if `prev.span` is wider than `prev_original_span`, a coverage span will still
+        // that if `prev.span` is wider than `prev.original_span`, a coverage span will still
         // be created for `prev`s block, for the non-overlapping portion, left of `curr.span`.)
         //
         // For example:
