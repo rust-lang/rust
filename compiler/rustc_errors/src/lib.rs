@@ -1377,35 +1377,40 @@ impl DiagCtxtInner {
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        // Note that because this comes before the `match` below,
-        // `-Zeagerly-emit-delayed-bugs` continues to work even after we've
-        // issued an error and stopped recording new delayed bugs.
-        if diagnostic.level == DelayedBug && self.flags.eagerly_emit_delayed_bugs {
-            diagnostic.level = Error;
-        }
-
         match diagnostic.level {
-            // This must come after the possible promotion of `DelayedBug` to
-            // `Error` above.
             Fatal | Error if self.treat_next_err_as_bug() => {
+                // `Fatal` and `Error` can be promoted to `Bug`.
                 diagnostic.level = Bug;
             }
             DelayedBug => {
-                // If we have already emitted at least one error, we don't need
-                // to record the delayed bug, because it'll never be used.
-                return if let Some(guar) = self.has_errors() {
-                    Some(guar)
+                // Note that because we check these conditions first,
+                // `-Zeagerly-emit-delayed-bugs` and `-Ztreat-err-as-bug`
+                // continue to work even after we've issued an error and
+                // stopped recording new delayed bugs.
+                if self.flags.eagerly_emit_delayed_bugs {
+                    // `DelayedBug` can be promoted to `Error` or `Bug`.
+                    if self.treat_next_err_as_bug() {
+                        diagnostic.level = Bug;
+                    } else {
+                        diagnostic.level = Error;
+                    }
                 } else {
-                    let backtrace = std::backtrace::Backtrace::capture();
-                    // This `unchecked_error_guaranteed` is valid. It is where the
-                    // `ErrorGuaranteed` for delayed bugs originates. See
-                    // `DiagCtxtInner::drop`.
-                    #[allow(deprecated)]
-                    let guar = ErrorGuaranteed::unchecked_error_guaranteed();
-                    self.delayed_bugs
-                        .push((DelayedDiagInner::with_backtrace(diagnostic, backtrace), guar));
-                    Some(guar)
-                };
+                    // If we have already emitted at least one error, we don't need
+                    // to record the delayed bug, because it'll never be used.
+                    return if let Some(guar) = self.has_errors() {
+                        Some(guar)
+                    } else {
+                        let backtrace = std::backtrace::Backtrace::capture();
+                        // This `unchecked_error_guaranteed` is valid. It is where the
+                        // `ErrorGuaranteed` for delayed bugs originates. See
+                        // `DiagCtxtInner::drop`.
+                        #[allow(deprecated)]
+                        let guar = ErrorGuaranteed::unchecked_error_guaranteed();
+                        self.delayed_bugs
+                            .push((DelayedDiagInner::with_backtrace(diagnostic, backtrace), guar));
+                        Some(guar)
+                    };
+                }
             }
             Warning if !self.flags.can_emit_warnings => {
                 if diagnostic.has_future_breakage() {
