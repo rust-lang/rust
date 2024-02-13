@@ -559,10 +559,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     walk_stmt(self, ex);
                 }
-
-                fn visit_body(&mut self, body: &'v hir::Body<'v>) {
-                    hir::intravisit::walk_body(self, body);
-                }
             }
 
             let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
