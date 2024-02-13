@@ -43,6 +43,9 @@
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
+#if LLVM_VERSION_GE(19, 0)
+#include "llvm/Support/PGOOptions.h"
+#endif
 #include "llvm/Transforms/Instrumentation/GCOVProfiler.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
@@ -749,6 +752,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::IRInstr, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
@@ -758,6 +764,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::IRUse, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
     PGOOpt = PGOOptions(PGOSampleUsePath, "", "",
@@ -766,6 +775,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::SampleUse, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
     PGOOpt = PGOOptions("", "", "",
@@ -774,6 +786,9 @@ LLVMRustOptimize(
                         FS,
 #endif
                         PGOOptions::NoAction, PGOOptions::NoCSAction,
+#if LLVM_VERSION_GE(19, 0)
+                        PGOOptions::ColdFuncOpt::Default,
+#endif
                         DebugInfoForProfiling);
   }
 
