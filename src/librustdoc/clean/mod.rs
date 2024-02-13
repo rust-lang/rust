@@ -254,16 +254,14 @@ fn clean_poly_trait_ref_with_bindings<'tcx>(
 }
 
 fn clean_lifetime<'tcx>(lifetime: &hir::Lifetime, cx: &mut DocContext<'tcx>) -> Lifetime {
-    let def = cx.tcx.named_bound_var(lifetime.hir_id);
     if let Some(
-        rbv::ResolvedArg::EarlyBound(node_id)
-        | rbv::ResolvedArg::LateBound(_, _, node_id)
-        | rbv::ResolvedArg::Free(_, node_id),
-    ) = def
+        rbv::ResolvedArg::EarlyBound(did)
+        | rbv::ResolvedArg::LateBound(_, _, did)
+        | rbv::ResolvedArg::Free(_, did),
+    ) = cx.tcx.named_bound_var(lifetime.hir_id)
+        && let Some(lt) = cx.args.get(&did).and_then(|arg| arg.as_lt())
     {
-        if let Some(lt) = cx.args.get(&node_id).and_then(|p| p.as_lt()).cloned() {
-            return lt;
-        }
+        return lt.clone();
     }
     Lifetime(lifetime.ident.name)
 }
@@ -1791,12 +1789,12 @@ fn maybe_expand_private_type_alias<'tcx>(
                     _ => None,
                 });
                 if let Some(lt) = lifetime {
-                    let cleaned = if !lt.is_anonymous() {
+                    let lt = if !lt.is_anonymous() {
                         clean_lifetime(lt, cx)
                     } else {
                         Lifetime::elided()
                     };
-                    args.insert(param.def_id.to_def_id(), InstantiationParam::Lifetime(cleaned));
+                    args.insert(param.def_id.to_def_id(), GenericArg::Lifetime(lt));
                 }
                 indices.lifetimes += 1;
             }
@@ -1805,44 +1803,20 @@ fn maybe_expand_private_type_alias<'tcx>(
                 let type_ = generic_args.args.iter().find_map(|arg| match arg {
                     hir::GenericArg::Type(ty) => {
                         if indices.types == j {
-                            return Some(ty);
+                            return Some(*ty);
                         }
                         j += 1;
                         None
                     }
                     _ => None,
                 });
-                if let Some(ty) = type_ {
-                    args.insert(
-                        param.def_id.to_def_id(),
-                        InstantiationParam::Type(clean_ty(ty, cx)),
-                    );
-                } else if let Some(default) = *default {
-                    args.insert(
-                        param.def_id.to_def_id(),
-                        InstantiationParam::Type(clean_ty(default, cx)),
-                    );
+                if let Some(ty) = type_.or(*default) {
+                    args.insert(param.def_id.to_def_id(), GenericArg::Type(clean_ty(ty, cx)));
                 }
                 indices.types += 1;
             }
-            hir::GenericParamKind::Const { .. } => {
-                let mut j = 0;
-                let const_ = generic_args.args.iter().find_map(|arg| match arg {
-                    hir::GenericArg::Const(ct) => {
-                        if indices.consts == j {
-                            return Some(ct);
-                        }
-                        j += 1;
-                        None
-                    }
-                    _ => None,
-                });
-                if let Some(_) = const_ {
-                    args.insert(param.def_id.to_def_id(), InstantiationParam::Constant);
-                }
-                // FIXME(const_generics_defaults)
-                indices.consts += 1;
-            }
+            // FIXME(#82852): Instantiate const parameters.
+            hir::GenericParamKind::Const { .. } => {}
         }
     }
 
