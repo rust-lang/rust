@@ -1288,7 +1288,7 @@ impl<'a> Parser<'a> {
         err: &mut ComparisonOperatorsCannotBeChained,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) -> bool /* advanced the cursor */ {
+    ) -> Recovered {
         if let ExprKind::Binary(op, l1, r1) = &inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind
                 && ident.as_str().parse::<i32>().is_err()
@@ -1296,7 +1296,7 @@ impl<'a> Parser<'a> {
             {
                 // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
                 // suggestion being the only one to apply is high.
-                return false;
+                return Recovered::No;
             }
             return match (op.node, &outer_op.node) {
                 // `x == y == z`
@@ -1315,7 +1315,7 @@ impl<'a> Parser<'a> {
                         span: inner_op.span.shrink_to_hi(),
                         middle_term: expr_to_str(r1),
                     });
-                    false // Keep the current parse behavior, where the AST is `(x < y) < z`.
+                    Recovered::No // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
                 (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
@@ -1329,12 +1329,12 @@ impl<'a> Parser<'a> {
                                 left: r1.span.shrink_to_lo(),
                                 right: r2.span.shrink_to_hi(),
                             });
-                            true
+                            Recovered::Yes
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
                             self.restore_snapshot(snapshot);
-                            false
+                            Recovered::Yes
                         }
                     }
                 }
@@ -1349,19 +1349,19 @@ impl<'a> Parser<'a> {
                                 left: l1.span.shrink_to_lo(),
                                 right: r1.span.shrink_to_hi(),
                             });
-                            true
+                            Recovered::Yes
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
                             self.restore_snapshot(snapshot);
-                            false
+                            Recovered::No
                         }
                     }
                 }
-                _ => false,
+                _ => Recovered::No,
             };
         }
-        false
+        Recovered::No
     }
 
     /// Produces an error if comparison operators are chained (RFC #558).
@@ -1489,8 +1489,9 @@ impl<'a> Parser<'a> {
 
                         // If it looks like a genuine attempt to chain operators (as opposed to a
                         // misformatted turbofish, for instance), suggest a correct form.
-                        if self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op)
-                        {
+                        let recovered = self
+                            .attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
+                        if matches!(recovered, Recovered::Yes) {
                             self.dcx().emit_err(err);
                             mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                         } else {
@@ -1502,7 +1503,7 @@ impl<'a> Parser<'a> {
                 let recover =
                     self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
                 self.dcx().emit_err(err);
-                if recover {
+                if matches!(recover, Recovered::Yes) {
                     return mk_err_expr(self, inner_op.span.to(self.prev_token.span));
                 }
             }
