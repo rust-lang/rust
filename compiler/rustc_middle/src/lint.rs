@@ -207,6 +207,11 @@ pub fn explain_lint_level_source(
     err: &mut Diagnostic,
 ) {
     let name = lint.name_lower();
+    if let Level::Allow = level {
+        // Do not point at `#[allow(compat_lint)]` as the reason for a compatibility lint
+        // triggering. (#121009)
+        return;
+    }
     match src {
         LintLevelSource::Default => {
             err.note_once(format!("`#[{}({})]` on by default", level.as_str(), name));

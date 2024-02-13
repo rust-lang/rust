@@ -139,11 +139,6 @@ LL | #[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-note: the lint level is defined here
-  --> $DIR/generate-mod.rs:30:10
-   |
-LL | #[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this warning originates in the derive macro `generate_mod::CheckDeriveLint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 Future breakage diagnostic:
@@ -155,10 +150,5 @@ LL | #[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83583 <https://github.com/rust-lang/rust/issues/83583>
-note: the lint level is defined here
-  --> $DIR/generate-mod.rs:30:10
-   |
-LL | #[derive(generate_mod::CheckDeriveLint)] // OK, lint is suppressed
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this warning originates in the derive macro `generate_mod::CheckDeriveLint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
