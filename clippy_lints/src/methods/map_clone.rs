@@ -121,10 +121,10 @@ fn handle_path(
         if let ty::Adt(_, args) = cx.typeck_results().expr_ty(recv).kind()
             && let args = args.as_slice()
             && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
-            && ty.is_ref()
             && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
-            && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
-            && lst.iter().all(|l| l.as_type() == Some(*ty))
+            && let ty::Adt(_, args) = cx.typeck_results().expr_ty(e).kind()
+            && let args = args.as_slice()
+            && args.iter().find_map(|generic_arg| generic_arg.as_type()) == Some(*ty)
         {
             lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
         }
