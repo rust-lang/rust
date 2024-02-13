@@ -16,6 +16,7 @@ pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
+#[rustfmt::skip]
 async fn call_once(f: impl async FnOnce(DropMe)) {
     f(DropMe("world")).await;
 }
