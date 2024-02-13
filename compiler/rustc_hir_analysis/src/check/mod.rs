@@ -56,7 +56,7 @@ type variable is an instance of a type parameter. That is,
 given a generic function `fn foo<T>(t: T)`, while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
 is treated in abstract. However, when `foo()` is called, `T` will be
-substituted for a fresh type variable `N`. This variable will
+instantiated with a fresh type variable `N`. This variable will
 eventually be resolved to some concrete type (which might itself be
 a type parameter).
 

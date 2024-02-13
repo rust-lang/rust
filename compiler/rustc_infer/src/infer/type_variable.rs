@@ -118,7 +118,7 @@ pub enum TypeVariableOriginKind {
     AdjustmentType,
 
     /// In type check, when we are type checking a function that
-    /// returns `-> dyn Foo`, we substitute a type variable for the
+    /// returns `-> dyn Foo`, we instantiate a type variable with the
     /// return type for diagnostic purposes.
     DynReturnFn,
     LatticeVariable,

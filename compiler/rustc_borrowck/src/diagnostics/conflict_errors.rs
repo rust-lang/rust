@@ -691,7 +691,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
-        // These types seem reasonably opaque enough that they could be substituted with their
+        // These types seem reasonably opaque enough that they could be instantiated with their
         // borrowed variants in a function body when we see a move error.
         let borrow_level = match *ty.kind() {
             ty::Param(_) => tcx
@@ -3158,7 +3158,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         // Define a fallback for when we can't match a closure.
         let fallback = || {
-            let is_closure = self.infcx.tcx.is_closure_or_coroutine(self.mir_def_id().to_def_id());
+            let is_closure = self.infcx.tcx.is_closure_like(self.mir_def_id().to_def_id());
             if is_closure {
                 None
             } else {
@@ -3369,7 +3369,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         sig: ty::PolyFnSig<'tcx>,
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
-        let is_closure = self.infcx.tcx.is_closure_or_coroutine(did.to_def_id());
+        let is_closure = self.infcx.tcx.is_closure_like(did.to_def_id());
         let fn_hir_id = self.infcx.tcx.local_def_id_to_hir_id(did);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
 

@@ -213,6 +213,7 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
         ("x86", "rdrand") => LLVMFeature::new("rdrnd"),
         ("x86", "bmi1") => LLVMFeature::new("bmi"),
         ("x86", "cmpxchg16b") => LLVMFeature::new("cx16"),
+        ("x86", "lahfsahf") => LLVMFeature::new("sahf"),
         ("aarch64", "rcpc2") => LLVMFeature::new("rcpc-immo"),
         ("aarch64", "dpb") => LLVMFeature::new("ccpp"),
         ("aarch64", "dpb2") => LLVMFeature::new("ccdp"),

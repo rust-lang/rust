@@ -323,7 +323,7 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
 /// and `U` as parameter 1.
 ///
 /// Trait references also appear in object types like `Foo<U>`, but in
-/// that case the `Self` parameter is absent from the substitutions.
+/// that case the `Self` parameter is absent from the generic parameters.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct TraitRef<'tcx> {
@@ -406,7 +406,7 @@ impl<'tcx> IntoDiagnosticArg for TraitRef<'tcx> {
 /// ```ignore (illustrative)
 /// exists T. T: Trait<'a, 'b, X, Y>
 /// ```
-/// The substitutions don't include the erased `Self`, only trait
+/// The generic parameters don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
@@ -481,8 +481,8 @@ impl<'tcx> ExistentialProjection<'tcx> {
     /// reference.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.parent(self.def_id);
-        let subst_count = tcx.generics_of(def_id).count() - 1;
-        let args = tcx.mk_args(&self.args[..subst_count]);
+        let args_count = tcx.generics_of(def_id).count() - 1;
+        let args = tcx.mk_args(&self.args[..args_count]);
         ty::ExistentialTraitRef { def_id, args }
     }
 
@@ -534,12 +534,12 @@ impl<'tcx> PolyExistentialProjection<'tcx> {
 }
 
 impl<'tcx> Clause<'tcx> {
-    /// Performs a substitution suitable for going from a
+    /// Performs a instantiation suitable for going from a
     /// poly-trait-ref to supertraits that must hold if that
     /// poly-trait-ref holds. This is slightly different from a normal
-    /// substitution in terms of what happens with bound regions. See
+    /// instantiation in terms of what happens with bound regions. See
     /// lengthy comment below for details.
-    pub fn subst_supertrait(
+    pub fn instantiate_supertrait(
         self,
         tcx: TyCtxt<'tcx>,
         trait_ref: &ty::PolyTraitRef<'tcx>,
@@ -556,7 +556,7 @@ impl<'tcx> Clause<'tcx> {
         // we can deduce that `for<'x> T: Bar<'x,'x>`. Basically, if we
         // knew that `Foo<'x>` (for any 'x) then we also know that
         // `Bar<'x,'x>` (for any 'x). This more-or-less falls out from
-        // normal substitution.
+        // normal instantiation.
         //
         // In terms of why this is sound, the idea is that whenever there
         // is an impl of `T:Foo<'a>`, it must show that `T:Bar<'a,'a>`
@@ -582,7 +582,7 @@ impl<'tcx> Clause<'tcx> {
         // - We start out with `for<'x> T: Foo1<'x>`. In this case, `'x`
         //   has a De Bruijn index of 1. We want to produce `for<'x,'b> T: Bar1<'x,'b>`,
         //   where both `'x` and `'b` would have a DB index of 1.
-        //   The substitution from the input trait-ref is therefore going to be
+        //   The instantiation from the input trait-ref is therefore going to be
         //   `'a => 'x` (where `'x` has a DB index of 1).
         // - The supertrait-ref is `for<'b> Bar1<'a,'b>`, where `'a` is an
         //   early-bound parameter and `'b` is a late-bound parameter with a
@@ -591,17 +591,17 @@ impl<'tcx> Clause<'tcx> {
         //   a DB index of 1, and thus we'll have `for<'x,'b> Bar1<'x,'b>`
         //   just as we wanted.
         //
-        // There is only one catch. If we just apply the substitution `'a
-        // => 'x` to `for<'b> Bar1<'a,'b>`, the substitution code will
-        // adjust the DB index because we substituting into a binder (it
+        // There is only one catch. If we just apply the instantiation `'a
+        // => 'x` to `for<'b> Bar1<'a,'b>`, the instantiation code will
+        // adjust the DB index because we instantiating into a binder (it
         // tries to be so smart...) resulting in `for<'x> for<'b>
         // Bar1<'x,'b>` (we have no syntax for this, so use your
         // imagination). Basically the 'x will have DB index of 2 and 'b
         // will have DB index of 1. Not quite what we want. So we apply
-        // the substitution to the *contents* of the trait reference,
+        // the instantiation to the *contents* of the trait reference,
         // rather than the trait reference itself (put another way, the
-        // substitution code expects equal binding levels in the values
-        // from the substitution and the value being substituted into, and
+        // instantiation code expects equal binding levels in the values
+        // from the instantiation and the value being instantiated into, and
         // this trick achieves that).
 
         // Working through the second example:

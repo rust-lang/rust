@@ -15,7 +15,7 @@ use rustc_hir_analysis::astconv::generics::{
     check_generic_arg_count_for_call, create_args_for_parent_generic_args,
 };
 use rustc_hir_analysis::astconv::{
-    AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
+    AstConv, CreateInstantiationsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
     GenericArgCountResult, IsMethodCall, PathSeg,
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
@@ -187,8 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given the args that we just converted from the HIR, try to
-    /// canonicalize them and store them as user-given substitutions
-    /// (i.e., substitutions that must be respected by the NLL check).
+    /// canonicalize them and store them as user-given parameters
+    /// (i.e., parameters that must be respected by the NLL check).
     ///
     /// This should be invoked **before any unifications have
     /// occurred**, so that annotations like `Vec<_>` are preserved
@@ -741,7 +741,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return Err(TypeError::Mismatch);
                 }
 
-                // Record all the argument types, with the substitutions
+                // Record all the argument types, with the args
                 // produced from the above subtyping unification.
                 Ok(Some(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect()))
             })
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Now we have to compare the types that the user *actually*
         // provided against the types that were *expected*. If the user
-        // did not provide any types, then we want to substitute inference
+        // did not provide any types, then we want to instantiate inference
         // variables. If the user provided some types, we may still need
         // to add defaults. If the user provided *too many* types, that's
         // a problem.
@@ -1261,14 +1261,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
 
-        struct CreateCtorSubstsContext<'a, 'tcx> {
+        struct CreateCtorInstantiationsContext<'a, 'tcx> {
             fcx: &'a FnCtxt<'a, 'tcx>,
             span: Span,
             path_segs: &'a [PathSeg],
             infer_args_for_err: &'a FxHashSet<usize>,
             segments: &'tcx [hir::PathSegment<'tcx>],
         }
-        impl<'tcx, 'a> CreateSubstsForGenericArgsCtxt<'a, 'tcx> for CreateCtorSubstsContext<'a, 'tcx> {
+        impl<'tcx, 'a> CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>
+            for CreateCtorInstantiationsContext<'a, 'tcx>
+        {
             fn args_for_def_id(
                 &mut self,
                 def_id: DefId,
@@ -1392,7 +1394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 has_self,
                 self_ty.map(|s| s.raw),
                 &arg_count,
-                &mut CreateCtorSubstsContext {
+                &mut CreateCtorInstantiationsContext {
                     fcx: self,
                     span,
                     path_segs: &path_segs,
@@ -1410,18 +1412,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.add_required_obligations_for_hir(span, def_id, args, hir_id);
 
-        // Substitute the values for the type parameters into the type of
+        // Instantiate the values for the type parameters into the type of
         // the referenced item.
         let ty = tcx.type_of(def_id);
         assert!(!args.has_escaping_bound_vars());
         assert!(!ty.skip_binder().has_escaping_bound_vars());
-        let ty_substituted = self.normalize(span, ty.instantiate(tcx, args));
+        let ty_instantiated = self.normalize(span, ty.instantiate(tcx, args));
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
             // is inherent, there is no `Self` parameter; instead, the impl needs
             // type parameters, which we can infer by unifying the provided `Self`
-            // with the substituted impl type.
+            // with the instantiated impl type.
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
             let self_ty = self.normalize(span, self_ty);
@@ -1442,13 +1444,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        debug!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_substituted);
+        debug!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_instantiated);
         self.write_args(hir_id, args);
 
-        (ty_substituted, res)
+        (ty_instantiated, res)
     }
 
-    /// Add all the obligations that are required, substituting and normalized appropriately.
+    /// Add all the obligations that are required, instantiated and normalized appropriately.
     pub(crate) fn add_required_obligations_for_hir(
         &self,
         span: Span,

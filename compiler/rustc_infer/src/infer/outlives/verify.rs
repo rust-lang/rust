@@ -277,7 +277,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// ```
     ///
     /// If we were given the `DefId` of `Foo::Bar`, we would return
-    /// `'a`. You could then apply the substitutions from the
+    /// `'a`. You could then apply the instantiations from the
     /// projection to convert this into your namespace. This also
     /// works if the user writes `where <Self as Foo<'a>>::Bar: 'a` on
     /// the trait. In fact, it works by searching for just such a

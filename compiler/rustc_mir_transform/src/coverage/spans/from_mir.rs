@@ -138,7 +138,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
             let (span, visible_macro) =
                 unexpand_into_body_span_with_visible_macro(expn_span, body_span)?;
 
-            Some(SpanFromMir::new(span, visible_macro, bcb, is_closure_or_coroutine(statement)))
+            Some(SpanFromMir::new(span, visible_macro, bcb, is_closure_like(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
@@ -153,7 +153,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     })
 }
 
-fn is_closure_or_coroutine(statement: &Statement<'_>) -> bool {
+fn is_closure_like(statement: &Statement<'_>) -> bool {
     match statement.kind {
         StatementKind::Assign(box (_, Rvalue::Aggregate(box ref agg_kind, _))) => match agg_kind {
             AggregateKind::Closure(_, _)

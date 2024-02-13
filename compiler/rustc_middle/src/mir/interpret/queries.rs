@@ -11,13 +11,13 @@ use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
+    /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
     /// that can't take any generic arguments like statics, const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
-        // In some situations def_id will have substitutions within scope, but they aren't allowed
-        // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
+        // In some situations def_id will have generic parameters within scope, but they aren't allowed
+        // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
         // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
@@ -29,10 +29,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Resolves and evaluates a constant.
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
-    /// substitutions and environment are used to resolve the constant. Alternatively if the
-    /// constant has generic parameters in scope the substitutions are used to evaluate the value of
+    /// generic parameters and environment are used to resolve the constant. Alternatively if the
+    /// constant has generic parameters in scope the generic parameters are used to evaluate the value of
     /// the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
-    /// constant `bar::<T>()` requires a substitution for `T`, if the substitution for `T` is still
+    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is still
     /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
     /// returned.
     #[instrument(level = "debug", skip(self))]
@@ -214,13 +214,13 @@ impl<'tcx> TyCtxtAt<'tcx> {
 }
 
 impl<'tcx> TyCtxtEnsure<'tcx> {
-    /// Evaluates a constant without providing any substitutions. This is useful to evaluate consts
+    /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
     /// that can't take any generic arguments like statics, const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) {
-        // In some situations def_id will have substitutions within scope, but they aren't allowed
-        // to be used. So we can't use `Instance::mono`, instead we feed unresolved substitutions
+        // In some situations def_id will have generic parameters within scope, but they aren't allowed
+        // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
         // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self.tcx, def_id);

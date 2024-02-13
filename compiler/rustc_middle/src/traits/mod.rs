@@ -721,7 +721,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 }
 
 /// Identifies a particular impl in the source, along with a set of
-/// substitutions from the impl's type/lifetime parameters. The
+/// generic parameters from the impl's type/lifetime parameters. The
 /// `nested` vector corresponds to the nested obligations attached to
 /// the impl's type parameters.
 ///

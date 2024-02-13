@@ -229,7 +229,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 /// Here, we should fetch the explicit predicates, which
 /// will give us `U: 'static` and `U: Outer`. The latter we
 /// can ignore, but we will want to process `U: 'static`,
-/// applying the substitution as above.
+/// applying the instantiation as above.
 fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -316,7 +316,7 @@ fn check_explicit_predicates<'tcx>(
 /// Here, when processing the type of field `outer`, we would request the
 /// set of implicit predicates computed for `Inner` thus far. This will
 /// initially come back empty, but in next round we will get `U: 'b`.
-/// We then apply the substitution `['b => 'a, U => T]` and thus get the
+/// We then apply the instantiation `['b => 'a, U => T]` and thus get the
 /// requirement that `T: 'a` holds for `Outer`.
 fn check_inferred_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -334,7 +334,7 @@ fn check_inferred_predicates<'tcx>(
 
     for (&predicate, &span) in predicates.as_ref().skip_binder() {
         // `predicate` is `U: 'b` in the example above.
-        // So apply the substitution to get `T: 'a`.
+        // So apply the instantiation to get `T: 'a`.
         let ty::OutlivesPredicate(arg, region) =
             predicates.rebind(predicate).instantiate(tcx, args);
         insert_outlives_predicate(tcx, arg, region, span, required_predicates);

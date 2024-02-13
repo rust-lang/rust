@@ -814,7 +814,7 @@ impl<'tcx> OnUnimplementedFormatString {
                             tcx.dcx(),
                             self.span,
                             E0231,
-                            "only named substitution parameters are allowed"
+                            "only named generic parameters are allowed"
                         )
                         .emit();
                         result = Err(reported);

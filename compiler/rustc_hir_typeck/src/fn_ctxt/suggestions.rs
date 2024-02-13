@@ -2133,17 +2133,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
-        let (adt, substs, unwrap) = match expected.kind() {
+        let (adt, args, unwrap) = match expected.kind() {
             // In case Option<NonZero*> is wanted, but * is provided, suggest calling new
-            ty::Adt(adt, substs) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
-                let nonzero_type = substs.type_at(0); // Unwrap option type.
-                let ty::Adt(adt, substs) = nonzero_type.kind() else {
+            ty::Adt(adt, args) if tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+                let nonzero_type = args.type_at(0); // Unwrap option type.
+                let ty::Adt(adt, args) = nonzero_type.kind() else {
                     return false;
                 };
-                (adt, substs, "")
+                (adt, args, "")
             }
             // In case `NonZero<*>` is wanted but `*` is provided, also add `.unwrap()` to satisfy types.
-            ty::Adt(adt, substs) => (adt, substs, ".unwrap()"),
+            ty::Adt(adt, args) => (adt, args, ".unwrap()"),
             _ => return false,
         };
 
@@ -2165,7 +2165,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ("NonZeroI128", tcx.types.i128),
         ];
 
-        let int_type = substs.type_at(0);
+        let int_type = args.type_at(0);
 
         let Some(nonzero_alias) = coercable_types.iter().find_map(|(nonzero_alias, t)| {
             if *t == int_type && self.can_coerce(expr_ty, *t) { Some(nonzero_alias) } else { None }

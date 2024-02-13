@@ -7,7 +7,7 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-use crate::infer::canonical::substitute::{substitute_value, CanonicalExt};
+use crate::infer::canonical::instantiate::{instantiate_value, CanonicalExt};
 use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
@@ -189,18 +189,18 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        let InferOk { value: result_subst, mut obligations } =
-            self.query_response_substitution(cause, param_env, original_values, query_response)?;
+        let InferOk { value: result_args, mut obligations } =
+            self.query_response_instantiation(cause, param_env, original_values, query_response)?;
 
         obligations.extend(self.query_outlives_constraints_into_obligations(
             cause,
             param_env,
             &query_response.value.region_constraints.outlives,
-            &result_subst,
+            &result_args,
         ));
 
         let user_result: R =
-            query_response.substitute_projected(self.tcx, &result_subst, |q_r| q_r.value.clone());
+            query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
 
         Ok(InferOk { value: user_result, obligations })
     }
@@ -225,11 +225,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// basic operations as `instantiate_query_response_and_region_obligations` but
     /// it returns its result differently:
     ///
-    /// - It creates a substitution `S` that maps from the original
+    /// - It creates an instantiation `S` that maps from the original
     ///   query variables to the values computed in the query
     ///   result. If any errors arise, they are propagated back as an
     ///   `Err` result.
-    /// - In the case of a successful substitution, we will append
+    /// - In the case of a successful instantiation, we will append
     ///   `QueryOutlivesConstraint` values onto the
     ///   `output_query_region_constraints` vector for the solver to
     ///   use (if an error arises, some values may also be pushed, but
@@ -239,7 +239,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ///   that must be processed. In this case, those subobligations
     ///   are propagated back in the return value.
     /// - Finally, the query result (of type `R`) is propagated back,
-    ///   after applying the substitution `S`.
+    ///   after applying the instantiation `S`.
     pub fn instantiate_nll_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -251,8 +251,13 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
-        let InferOk { value: result_subst, mut obligations } = self
-            .query_response_substitution_guess(cause, param_env, original_values, query_response)?;
+        let InferOk { value: result_args, mut obligations } = self
+            .query_response_instantiation_guess(
+                cause,
+                param_env,
+                original_values,
+                query_response,
+            )?;
 
         // Compute `QueryOutlivesConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
@@ -262,7 +267,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
-            let result_value = query_response.substitute_projected(self.tcx, &result_subst, |v| {
+            let result_value = query_response.instantiate_projected(self.tcx, &result_args, |v| {
                 v.var_values[BoundVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
@@ -321,7 +326,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.outlives.extend(
             query_response.value.region_constraints.outlives.iter().filter_map(|&r_c| {
-                let r_c = substitute_value(self.tcx, &result_subst, r_c);
+                let r_c = instantiate_value(self.tcx, &result_args, r_c);
 
                 // Screen out `'a: 'a` cases.
                 let ty::OutlivesPredicate(k1, r2) = r_c.0;
@@ -336,26 +341,26 @@ impl<'tcx> InferCtxt<'tcx> {
                 .region_constraints
                 .member_constraints
                 .iter()
-                .map(|p_c| substitute_value(self.tcx, &result_subst, p_c.clone())),
+                .map(|p_c| instantiate_value(self.tcx, &result_args, p_c.clone())),
         );
 
         let user_result: R =
-            query_response.substitute_projected(self.tcx, &result_subst, |q_r| q_r.value.clone());
+            query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
 
         Ok(InferOk { value: user_result, obligations })
     }
 
     /// Given the original values and the (canonicalized) result from
-    /// computing a query, returns a substitution that can be applied
+    /// computing a query, returns an instantiation that can be applied
     /// to the query result to convert the result back into the
     /// original namespace.
     ///
-    /// The substitution also comes accompanied with subobligations
+    /// The instantiation also comes accompanied with subobligations
     /// that arose from unification; these might occur if (for
     /// example) we are doing lazy normalization and the value
     /// assigned to a type variable is unified with an unnormalized
     /// projection.
-    fn query_response_substitution<R>(
+    fn query_response_instantiation<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -366,11 +371,11 @@ impl<'tcx> InferCtxt<'tcx> {
         R: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         debug!(
-            "query_response_substitution(original_values={:#?}, query_response={:#?})",
+            "query_response_instantiation(original_values={:#?}, query_response={:#?})",
             original_values, query_response,
         );
 
-        let mut value = self.query_response_substitution_guess(
+        let mut value = self.query_response_instantiation_guess(
             cause,
             param_env,
             original_values,
@@ -378,7 +383,7 @@ impl<'tcx> InferCtxt<'tcx> {
         )?;
 
         value.obligations.extend(
-            self.unify_query_response_substitution_guess(
+            self.unify_query_response_instantiation_guess(
                 cause,
                 param_env,
                 original_values,
@@ -392,7 +397,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     /// Given the original values and the (canonicalized) result from
-    /// computing a query, returns a **guess** at a substitution that
+    /// computing a query, returns a **guess** at an instantiation that
     /// can be applied to the query result to convert the result back
     /// into the original namespace. This is called a **guess**
     /// because it uses a quick heuristic to find the values for each
@@ -401,7 +406,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// variable instead. Therefore, the result of this method must be
     /// properly unified
     #[instrument(level = "debug", skip(self, cause, param_env))]
-    fn query_response_substitution_guess<R>(
+    fn query_response_instantiation_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -450,7 +455,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let ty::Bound(debruijn, b) = *result_value.kind() {
                         // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
 
-                        // We only allow a `ty::INNERMOST` index in substitutions.
+                        // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.var] = Some(*original_value);
                     }
@@ -460,7 +465,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let ty::ReBound(debruijn, br) = *result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
-                        // We only allow a `ty::INNERMOST` index in substitutions.
+                        // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[br.var] = Some(*original_value);
                     }
@@ -469,7 +474,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let ty::ConstKind::Bound(debruijn, b) = result_value.kind() {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
-                        // We only allow a `ty::INNERMOST` index in substitutions.
+                        // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b] = Some(*original_value);
                     }
@@ -477,10 +482,10 @@ impl<'tcx> InferCtxt<'tcx> {
             }
         }
 
-        // Create a result substitution: if we found a value for a
+        // Create result arguments: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let result_subst = CanonicalVarValues {
+        let result_args = CanonicalVarValues {
             var_values: self.tcx.mk_args_from_iter(
                 query_response.variables.iter().enumerate().map(|(index, info)| {
                     if info.universe() != ty::UniverseIndex::ROOT {
@@ -511,8 +516,8 @@ impl<'tcx> InferCtxt<'tcx> {
 
         // Carry all newly resolved opaque types to the caller's scope
         for &(a, b) in &query_response.value.opaque_types {
-            let a = substitute_value(self.tcx, &result_subst, a);
-            let b = substitute_value(self.tcx, &result_subst, b);
+            let a = instantiate_value(self.tcx, &result_args, a);
+            let b = instantiate_value(self.tcx, &result_args, b);
             debug!(?a, ?b, "constrain opaque type");
             // We use equate here instead of, for example, just registering the
             // opaque type's hidden value directly, because we may be instantiating
@@ -532,7 +537,7 @@ impl<'tcx> InferCtxt<'tcx> {
             );
         }
 
-        Ok(InferOk { value: result_subst, obligations })
+        Ok(InferOk { value: result_args, obligations })
     }
 
     /// Given a "guess" at the values for the canonical variables in
@@ -540,13 +545,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// query result. Often, but not always, this is a no-op, because
     /// we already found the mapping in the "guessing" step.
     ///
-    /// See also: `query_response_substitution_guess`
-    fn unify_query_response_substitution_guess<R>(
+    /// See also: [`Self::query_response_instantiation_guess`]
+    fn unify_query_response_instantiation_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
-        result_subst: &CanonicalVarValues<'tcx>,
+        result_args: &CanonicalVarValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
     ) -> InferResult<'tcx, ()>
     where
@@ -554,15 +559,15 @@ impl<'tcx> InferCtxt<'tcx> {
     {
         // A closure that yields the result value for the given
         // canonical variable; this is taken from
-        // `query_response.var_values` after applying the substitution
-        // `result_subst`.
-        let substituted_query_response = |index: BoundVar| -> GenericArg<'tcx> {
-            query_response.substitute_projected(self.tcx, result_subst, |v| v.var_values[index])
+        // `query_response.var_values` after applying the instantiation
+        // by `result_args`.
+        let instantiated_query_response = |index: BoundVar| -> GenericArg<'tcx> {
+            query_response.instantiate_projected(self.tcx, result_args, |v| v.var_values[index])
         };
 
         // Unify the original value for each variable with the value
-        // taken from `query_response` (after applying `result_subst`).
-        self.unify_canonical_vars(cause, param_env, original_values, substituted_query_response)
+        // taken from `query_response` (after applying `result_args`).
+        self.unify_canonical_vars(cause, param_env, original_values, instantiated_query_response)
     }
 
     /// Converts the region constraints resulting from a query into an
@@ -571,11 +576,11 @@ impl<'tcx> InferCtxt<'tcx> {
         &'a self,
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        unsubstituted_region_constraints: &'a [QueryOutlivesConstraint<'tcx>],
-        result_subst: &'a CanonicalVarValues<'tcx>,
+        uninstantiated_region_constraints: &'a [QueryOutlivesConstraint<'tcx>],
+        result_args: &'a CanonicalVarValues<'tcx>,
     ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
-        unsubstituted_region_constraints.iter().map(move |&constraint| {
-            let predicate = substitute_value(self.tcx, result_subst, constraint);
+        uninstantiated_region_constraints.iter().map(move |&constraint| {
+            let predicate = instantiate_value(self.tcx, result_args, constraint);
             self.query_outlives_constraint_to_obligation(predicate, cause.clone(), param_env)
         })
     }

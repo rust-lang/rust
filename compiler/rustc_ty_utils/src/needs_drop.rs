@@ -264,9 +264,9 @@ fn drop_tys_helper<'tcx>(
     ) -> NeedsDropResult<Vec<Ty<'tcx>>> {
         iter.into_iter().try_fold(Vec::new(), |mut vec, subty| {
             match subty.kind() {
-                ty::Adt(adt_id, subst) => {
+                ty::Adt(adt_id, args) => {
                     for subty in tcx.adt_drop_tys(adt_id.did())? {
-                        vec.push(EarlyBinder::bind(subty).instantiate(tcx, subst));
+                        vec.push(EarlyBinder::bind(subty).instantiate(tcx, args));
                     }
                 }
                 _ => vec.push(subty),
@@ -300,7 +300,10 @@ fn drop_tys_helper<'tcx>(
         } else {
             let field_tys = adt_def.all_fields().map(|field| {
                 let r = tcx.type_of(field.did).instantiate(tcx, args);
-                debug!("drop_tys_helper: Subst into {:?} with {:?} getting {:?}", field, args, r);
+                debug!(
+                    "drop_tys_helper: Instantiate into {:?} with {:?} getting {:?}",
+                    field, args, r
+                );
                 r
             });
             if only_significant {
@@ -363,7 +366,7 @@ fn adt_drop_tys<'tcx>(
     .map(|components| tcx.mk_type_list(&components))
 }
 // If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
-// a `tcx.make_ty(def, identity_args)` and as such it is legal to substitute the generic parameters
+// a `tcx.make_ty(def, identity_args)` and as such it is legal to instantiate the generic parameters
 // of the ADT into the outputted `ty`s.
 fn adt_significant_drop_tys(
     tcx: TyCtxt<'_>,

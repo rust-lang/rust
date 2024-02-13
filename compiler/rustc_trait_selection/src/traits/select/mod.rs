@@ -1684,7 +1684,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Return `Yes` if the obligation's predicate type applies to the env_predicate, and
     /// `No` if it does not. Return `Ambiguous` in the case that the projection type is a GAT,
-    /// and applying this env_predicate constrains any of the obligation's GAT substitutions.
+    /// and applying this env_predicate constrains any of the obligation's GAT parameters.
     ///
     /// This behavior is a somewhat of a hack to prevent over-constraining inference variables
     /// in cases like #91762.
@@ -2681,7 +2681,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     }
 
     /// Returns the obligations that are implied by instantiating an
-    /// impl or trait. The obligations are substituted and fully
+    /// impl or trait. The obligations are instantiated and fully
     /// normalized. This is used when confirming an impl or default
     /// impl.
     #[instrument(level = "debug", skip(self, cause, param_env))]
@@ -2706,7 +2706,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         //    U: Iterator, U: Sized,
         //    V: Iterator, V: Sized,
         //    <U as Iterator>::Item: Copy
-        // When we substitute, say, `V => IntoIter<u32>, U => $0`, the last
+        // When we instantiate, say, `V => IntoIter<u32>, U => $0`, the last
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.

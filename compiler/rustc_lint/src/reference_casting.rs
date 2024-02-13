@@ -1,6 +1,7 @@
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_middle::ty::{self, TypeAndMut};
+use rustc_middle::ty::layout::LayoutOf as _;
+use rustc_middle::ty::{self, layout::TyAndLayout, TypeAndMut};
 use rustc_span::sym;
 
 use crate::{lints::InvalidReferenceCastingDiag, LateContext, LateLintPass, LintContext};
@@ -38,13 +39,19 @@ declare_lint_pass!(InvalidReferenceCasting => [INVALID_REFERENCE_CASTING]);
 impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some((e, pat)) = borrow_or_assign(cx, expr) {
-            if matches!(pat, PatternKind::Borrow { mutbl: Mutability::Mut } | PatternKind::Assign) {
-                let init = cx.expr_or_init(e);
+            let init = cx.expr_or_init(e);
+            let orig_cast = if init.span != e.span { Some(init.span) } else { None };
 
-                let Some(ty_has_interior_mutability) = is_cast_from_ref_to_mut_ptr(cx, init) else {
-                    return;
-                };
-                let orig_cast = if init.span != e.span { Some(init.span) } else { None };
+            // small cache to avoid recomputing needlesly computing peel_casts of init
+            let mut peel_casts = {
+                let mut peel_casts_cache = None;
+                move || *peel_casts_cache.get_or_insert_with(|| peel_casts(cx, init))
+            };
+
+            if matches!(pat, PatternKind::Borrow { mutbl: Mutability::Mut } | PatternKind::Assign)
+                && let Some(ty_has_interior_mutability) =
+                    is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
+            {
                 let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
 
                 cx.emit_span_lint(
@@ -60,6 +67,23 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
                             orig_cast,
                             ty_has_interior_mutability,
                         }
+                    },
+                );
+            }
+
+            if let Some((from_ty_layout, to_ty_layout, e_alloc)) =
+                is_cast_to_bigger_memory_layout(cx, init, &mut peel_casts)
+            {
+                cx.emit_span_lint(
+                    INVALID_REFERENCE_CASTING,
+                    expr.span,
+                    InvalidReferenceCastingDiag::BiggerLayout {
+                        orig_cast,
+                        alloc: e_alloc.span,
+                        from_ty: from_ty_layout.ty,
+                        from_size: from_ty_layout.layout.size().bytes(),
+                        to_ty: to_ty_layout.ty,
+                        to_size: to_ty_layout.layout.size().bytes(),
                     },
                 );
             }
@@ -124,6 +148,7 @@ fn borrow_or_assign<'tcx>(
 fn is_cast_from_ref_to_mut_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     orig_expr: &'tcx Expr<'tcx>,
+    mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
 ) -> Option<bool> {
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
@@ -132,7 +157,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
         return None;
     }
 
-    let (e, need_check_freeze) = peel_casts(cx, orig_expr);
+    let (e, need_check_freeze) = peel_casts();
 
     let start_ty = cx.typeck_results().node_type(e.hir_id);
     if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
@@ -146,6 +171,49 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
             !inner_ty.is_freeze(cx.tcx, cx.param_env) && inner_ty.has_concrete_skeleton();
         (!need_check_freeze || !inner_ty_has_interior_mutability)
             .then_some(inner_ty_has_interior_mutability)
+    } else {
+        None
+    }
+}
+
+fn is_cast_to_bigger_memory_layout<'tcx>(
+    cx: &LateContext<'tcx>,
+    orig_expr: &'tcx Expr<'tcx>,
+    mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
+) -> Option<(TyAndLayout<'tcx>, TyAndLayout<'tcx>, Expr<'tcx>)> {
+    let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
+
+    let ty::RawPtr(TypeAndMut { ty: inner_end_ty, mutbl: _ }) = end_ty.kind() else {
+        return None;
+    };
+
+    let (e, _) = peel_casts();
+    let start_ty = cx.typeck_results().node_type(e.hir_id);
+
+    let ty::Ref(_, inner_start_ty, _) = start_ty.kind() else {
+        return None;
+    };
+
+    // try to find the underlying allocation
+    let e_alloc = cx.expr_or_init(e);
+    let e_alloc =
+        if let ExprKind::AddrOf(_, _, inner_expr) = e_alloc.kind { inner_expr } else { e_alloc };
+    let alloc_ty = cx.typeck_results().node_type(e_alloc.hir_id);
+
+    // if we do not find it we bail out, as this may not be UB
+    // see https://github.com/rust-lang/unsafe-code-guidelines/issues/256
+    if alloc_ty.is_any_ptr() {
+        return None;
+    }
+
+    let from_layout = cx.layout_of(*inner_start_ty).ok()?;
+    let alloc_layout = cx.layout_of(alloc_ty).ok()?;
+    let to_layout = cx.layout_of(*inner_end_ty).ok()?;
+
+    if to_layout.layout.size() > from_layout.layout.size()
+        && to_layout.layout.size() > alloc_layout.layout.size()
+    {
+        Some((from_layout, to_layout, *e_alloc))
     } else {
         None
     }

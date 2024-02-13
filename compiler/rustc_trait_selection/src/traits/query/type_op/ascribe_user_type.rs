@@ -116,7 +116,7 @@ fn relate_mir_and_user_args<'tcx>(
         ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
     }
 
-    // Now prove the well-formedness of `def_id` with `substs`.
+    // Now prove the well-formedness of `def_id` with `args`.
     // Note for some items, proving the WF of `ty` is not sufficient because the
     // well-formedness of an item may depend on the WF of gneneric args not present in the
     // item's type. Currently this is true for associated consts, e.g.:

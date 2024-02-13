@@ -124,7 +124,7 @@ pub trait Context {
     /// Get the body of an Instance which is already monomorphized.
     fn instance_body(&self, instance: InstanceDef) -> Option<Body>;
 
-    /// Get the instance type with generic substitutions applied and lifetimes erased.
+    /// Get the instance type with generic instantiations applied and lifetimes erased.
     fn instance_ty(&self, instance: InstanceDef) -> Ty;
 
     /// Get the instantiation types.

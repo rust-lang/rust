@@ -72,8 +72,8 @@ fn representability_adt_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Representab
     // At this point, we know that the item of the ADT type is representable;
     // but the type parameters may cause a cycle with an upstream type
     let params_in_repr = tcx.params_in_repr(adt.did());
-    for (i, subst) in args.iter().enumerate() {
-        if let ty::GenericArgKind::Type(ty) = subst.unpack() {
+    for (i, arg) in args.iter().enumerate() {
+        if let ty::GenericArgKind::Type(ty) = arg.unpack() {
             if params_in_repr.contains(i as u32) {
                 rtry!(representability_ty(tcx, ty));
             }
@@ -102,8 +102,8 @@ fn params_in_repr_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, params_in_repr: &mut
     match *ty.kind() {
         ty::Adt(adt, args) => {
             let inner_params_in_repr = tcx.params_in_repr(adt.did());
-            for (i, subst) in args.iter().enumerate() {
-                if let ty::GenericArgKind::Type(ty) = subst.unpack() {
+            for (i, arg) in args.iter().enumerate() {
+                if let ty::GenericArgKind::Type(ty) = arg.unpack() {
                     if inner_params_in_repr.contains(i as u32) {
                         params_in_repr_ty(tcx, ty, params_in_repr);
                     }
