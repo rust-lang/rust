@@ -28,7 +28,7 @@ pub fn main_inner(profile: Profile) {
     } else {
         // then we try to retrieve it from the `target` folder.
         let commit = include_str!("../libgccjit.version").trim();
-        Path::new("target/libgccjit").join(commit)
+        Path::new("build/libgccjit").join(commit)
     };
 
     let gcc_path = Path::new(&gcc_path)
