@@ -73,6 +73,7 @@ pub enum ProjectWorkspace {
         cfg_overrides: CfgOverrides,
         toolchain: Option<Version>,
         target_layout: Result<String, String>,
+        cargo_config_extra_env: FxHashMap<String, String>,
     },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json {
@@ -115,7 +116,8 @@ impl fmt::Debug for ProjectWorkspace {
                 rustc_cfg,
                 cfg_overrides,
                 toolchain,
-                target_layout: data_layout,
+                target_layout,
+                cargo_config_extra_env,
             } => f
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
@@ -128,7 +130,8 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
                 .field("toolchain", &toolchain)
-                .field("data_layout", &data_layout)
+                .field("data_layout", &target_layout)
+                .field("cargo_config_extra_env", &cargo_config_extra_env)
                 .finish(),
             ProjectWorkspace::Json {
                 project,
@@ -320,6 +323,8 @@ impl ProjectWorkspace {
                 })?;
                 let cargo = CargoWorkspace::new(meta);
 
+                let cargo_config_extra_env =
+                    cargo_config_env(cargo_toml, &config.extra_env, sysroot_ref);
                 ProjectWorkspace::Cargo {
                     cargo,
                     build_scripts: WorkspaceBuildScripts::default(),
@@ -329,6 +334,7 @@ impl ProjectWorkspace {
                     cfg_overrides,
                     toolchain,
                     target_layout: data_layout.map_err(|it| it.to_string()),
+                    cargo_config_extra_env,
                 }
             }
         };
@@ -589,6 +595,7 @@ impl ProjectWorkspace {
                 build_scripts,
                 toolchain: _,
                 target_layout: _,
+                cargo_config_extra_env: _,
             } => {
                 cargo
                     .packages()
@@ -700,6 +707,7 @@ impl ProjectWorkspace {
                 build_scripts,
                 toolchain,
                 target_layout,
+                cargo_config_extra_env: _,
             } => cargo_to_crate_graph(
                 load,
                 rustc.as_ref().map(|a| a.as_ref()).ok(),
@@ -742,6 +750,7 @@ impl ProjectWorkspace {
                     rustc_cfg,
                     cfg_overrides,
                     toolchain,
+                    cargo_config_extra_env,
                     build_scripts: _,
                     target_layout: _,
                 },
@@ -752,6 +761,7 @@ impl ProjectWorkspace {
                     rustc_cfg: o_rustc_cfg,
                     cfg_overrides: o_cfg_overrides,
                     toolchain: o_toolchain,
+                    cargo_config_extra_env: o_cargo_config_extra_env,
                     build_scripts: _,
                     target_layout: _,
                 },
@@ -762,6 +772,7 @@ impl ProjectWorkspace {
                     && cfg_overrides == o_cfg_overrides
                     && toolchain == o_toolchain
                     && sysroot == o_sysroot
+                    && cargo_config_extra_env == o_cargo_config_extra_env
             }
             (
                 Self::Json { project, sysroot, rustc_cfg, toolchain, target_layout: _ },
@@ -1597,4 +1608,32 @@ fn create_cfg_options(rustc_cfg: Vec<CfgFlag>) -> CfgOptions {
     cfg_options.extend(rustc_cfg);
     cfg_options.insert_atom("debug_assertions".into());
     cfg_options
+}
+
+fn cargo_config_env(
+    cargo_toml: &ManifestPath,
+    extra_env: &FxHashMap<String, String>,
+    sysroot: Option<&Sysroot>,
+) -> FxHashMap<String, String> {
+    let Ok(program) = Sysroot::discover_tool(sysroot, toolchain::Tool::Cargo) else {
+        return Default::default();
+    };
+    let mut cargo_config = Command::new(program);
+    cargo_config.envs(extra_env);
+    cargo_config
+        .current_dir(cargo_toml.parent())
+        .args(["-Z", "unstable-options", "config", "get", "env"])
+        .env("RUSTC_BOOTSTRAP", "1");
+    // if successful we receive `env.key.value = "value" per entry
+    tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
+    utf8_stdout(cargo_config).map(parse_output_cargo_config_env).unwrap_or_default()
+}
+
+fn parse_output_cargo_config_env(stdout: String) -> FxHashMap<String, String> {
+    stdout
+        .lines()
+        .filter_map(|l| l.strip_prefix("env."))
+        .filter_map(|l| l.split_once(".value = "))
+        .map(|(key, value)| (key.to_owned(), value.trim_matches('"').to_owned()))
+        .collect()
 }
