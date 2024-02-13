@@ -5,6 +5,7 @@
 
 pub const fn is_zst<T: ?Sized>() -> usize {
     if std::mem::size_of::<T>() == 0 {
+        //~^ ERROR the size for values of type `T` cannot be known at compilation time
         1
     } else {
         0

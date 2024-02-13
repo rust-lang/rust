@@ -22,5 +22,7 @@ fn fetcher() -> Box<dyn Fetcher> {
 
 pub fn foo() {
     let fetcher = fetcher();
+    //~^ ERROR the trait `Fetcher` cannot be made into an object
     let _ = fetcher.get();
+    //~^ ERROR the trait `Fetcher` cannot be made into an object
 }

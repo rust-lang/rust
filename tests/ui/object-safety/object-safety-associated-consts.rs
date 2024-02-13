@@ -12,7 +12,7 @@ trait Bar {
 fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
     //[curr]~^ ERROR E0038
     t
-    //[object_safe_for_dispatch]~^ ERROR E0038
+    //~^ ERROR E0038
 }
 
 fn main() {

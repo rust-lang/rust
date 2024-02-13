@@ -13,7 +13,7 @@ where
     //~^ ERROR cannot find type `Cow` in this scope [E0412]
 {
     fn from(text: T) -> Self {
-        LabelText::Plain(text.into())
+        LabelText::Plain(text.into()) //~ ERROR expected function, found `LabelText`
     }
 }
 

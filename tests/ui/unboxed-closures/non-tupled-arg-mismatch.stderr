@@ -7,6 +7,21 @@ LL | fn a<F: Fn<usize>>(f: F) {}
 note: required by a bound in `Fn`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+  --> $DIR/non-tupled-arg-mismatch.rs:7:5
+   |
+LL |     a(|_: usize| {});
+   |     ^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: expected trait `Fn<usize>`
+              found trait `Fn(usize)`
+note: required by a bound in `a`
+  --> $DIR/non-tupled-arg-mismatch.rs:3:9
+   |
+LL | fn a<F: Fn<usize>>(f: F) {}
+   |         ^^^^^^^^^ required by this bound in `a`
 
-For more information about this error, try `rustc --explain E0059`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0059, E0308.
+For more information about an error, try `rustc --explain E0059`.

@@ -31,7 +31,18 @@ help: consider restricting type parameter `I`
 LL | fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
    |         +++++
 
-error: aborting due to 4 previous errors
+error[E0277]: the trait bound `I: Foo` is not satisfied
+  --> $DIR/E0229.rs:13:37
+   |
+LL | fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
+   |                                     ^^ the trait `Foo` is not implemented for `I`
+   |
+help: consider restricting type parameter `I`
+   |
+LL | fn baz<I: Foo>(x: &<I as Foo<A=Bar>>::A) {}
+   |         +++++
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0229, E0277.
 For more information about an error, try `rustc --explain E0229`.

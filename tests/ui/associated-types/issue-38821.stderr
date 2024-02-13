@@ -18,7 +18,7 @@ LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Co
    |                                                                       +++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-  --> $DIR/issue-38821.rs:38:1
+  --> $DIR/issue-38821.rs:40:1
    |
 LL | pub enum ColumnInsertValue<Col, Expr> where
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
@@ -36,7 +36,7 @@ LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Co
    |                                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
-  --> $DIR/issue-38821.rs:38:1
+  --> $DIR/issue-38821.rs:40:1
    |
 LL | / pub enum ColumnInsertValue<Col, Expr> where
 LL | |
@@ -283,6 +283,38 @@ LL | impl<T: NotNull> IntoNullable for T {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 16 previous errors
+error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
+  --> $DIR/issue-38821.rs:23:10
+   |
+LL | #[derive(Debug, Copy, Clone)]
+   |          ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
+   |
+note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
+  --> $DIR/issue-38821.rs:9:18
+   |
+LL | impl<T: NotNull> IntoNullable for T {
+   |         -------  ^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not satisfied
+  --> $DIR/issue-38821.rs:23:23
+   |
+LL | #[derive(Debug, Copy, Clone)]
+   |                       ^^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`, which is required by `<Col as Expression>::SqlType: IntoNullable`
+   |
+note: required for `<Col as Expression>::SqlType` to implement `IntoNullable`
+  --> $DIR/issue-38821.rs:9:18
+   |
+LL | impl<T: NotNull> IntoNullable for T {
+   |         -------  ^^^^^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 18 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

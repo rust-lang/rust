@@ -15,7 +15,7 @@ LL |     fn bar<T>(&self, t: T);
    = note: required for the cast from `&T` to `&dyn Bar`
 
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/object-safety-generics.rs:26:5
+  --> $DIR/object-safety-generics.rs:27:5
    |
 LL |     t as &dyn Bar
    |     ^ `Bar` cannot be made into an object

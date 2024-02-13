@@ -42,4 +42,5 @@ fn foo<T: Overlap<U>, U>(x: T::Assoc) -> T::Assoc {
 
 fn main() {
     foo::<for<'a> fn(&'a (), ()), for<'a> fn(&'a (), ())>(3usize);
+    //[next]~^ ERROR: cannot satisfy
 }
