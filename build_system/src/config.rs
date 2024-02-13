@@ -191,12 +191,7 @@ impl ConfigInfo {
     }
 
     fn download_gccjit_if_needed(&mut self) -> Result<(), String> {
-        let output_dir = Path::new(
-            std::env::var("CARGO_TARGET_DIR")
-                .as_deref()
-                .unwrap_or("target"),
-        )
-        .join("libgccjit");
+        let output_dir = Path::new(crate::BUILD_DIR).join("libgccjit");
 
         let commit_hash_file = self.compute_path("libgccjit.version");
         let content = fs::read_to_string(&commit_hash_file).map_err(|_| {
@@ -523,7 +518,11 @@ fn download_gccjit(
             &"--retry",
             &"3",
             &"-SRfL",
-            if with_progress_bar { &"--progress-bar" } else { &"-s" },
+            if with_progress_bar {
+                &"--progress-bar"
+            } else {
+                &"-s"
+            },
             &url.as_str(),
         ],
         Some(&output_dir),
@@ -538,9 +537,9 @@ fn download_gccjit(
                 &"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
                 &format!(
                     "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
-                    url,
-                    tempfile_name,
-                ).as_str(),
+                    url, tempfile_name,
+                )
+                .as_str(),
             ],
             Some(&output_dir),
         );

@@ -29,3 +29,4 @@ tools/llvmint-2
 llvm
 build_system/target
 config.toml
+build

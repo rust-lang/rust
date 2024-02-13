@@ -485,19 +485,25 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     Ok(())
 }
 
-fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
+fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     let toolchain = format!(
         "+{channel}-{host}",
         channel = get_toolchain()?, // May also include date
         host = args.config_info.host_triple
     );
-    let rust_dir = Some(Path::new("rust"));
+    let rust_dir_path = Path::new(crate::BUILD_DIR).join("rust");
     // If the repository was already cloned, command will fail, so doesn't matter.
     let _ = run_command_with_output_and_env(
-        &[&"git", &"clone", &"https://github.com/rust-lang/rust.git"],
+        &[
+            &"git",
+            &"clone",
+            &"https://github.com/rust-lang/rust.git",
+            &rust_dir_path,
+        ],
         None,
         Some(env),
     );
+    let rust_dir: Option<&Path> = Some(&rust_dir_path);
     run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
     run_command_with_output_and_env(&[&"git", &"fetch"], rust_dir, Some(env))?;
     let rustc_commit = match rustc_version_info(env.get("RUSTC").map(|s| s.as_str()))?.commit_hash {
@@ -561,8 +567,9 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
             String::new()
         }
     };
+    let file_path = rust_dir_path.join("config.toml");
     std::fs::write(
-        "rust/config.toml",
+        &file_path,
         &format!(
             r#"change-id = 115898
 
@@ -587,13 +594,19 @@ download-ci-llvm = false
             llvm_filecheck = llvm_filecheck.trim(),
         ),
     )
-    .map_err(|error| format!("Failed to write into `rust/config.toml`: {:?}", error))?;
-    Ok(())
+    .map_err(|error| {
+        format!(
+            "Failed to write into `{}`: {:?}",
+            file_path.display(),
+            error
+        )
+    })?;
+    Ok(rust_dir_path)
 }
 
 fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     let mut env = env.clone();
-    setup_rustc(&mut env, args)?;
+    let rust_dir = setup_rustc(&mut env, args)?;
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rustc asm test suite");
 
@@ -621,7 +634,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             )
             .as_str(),
         ],
-        Some(Path::new("rust")),
+        Some(&rust_dir),
         Some(&env),
     )?;
     Ok(())
@@ -761,11 +774,11 @@ fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         println!("Not using GCC master branch. Skipping `extended_rand_tests`.");
         return Ok(());
     }
-    let path = Path::new("rand");
-    run_cargo_command(&[&"clean"], Some(path), env, args)?;
+    let path = Path::new(crate::BUILD_DIR).join("rand");
+    run_cargo_command(&[&"clean"], Some(&path), env, args)?;
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rust-random/rand");
-    run_cargo_command(&[&"test", &"--workspace"], Some(path), env, args)?;
+    run_cargo_command(&[&"test", &"--workspace"], Some(&path), env, args)?;
     Ok(())
 }
 
@@ -774,8 +787,8 @@ fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String>
         println!("Not using GCC master branch. Skipping `extended_regex_example_tests`.");
         return Ok(());
     }
-    let path = Path::new("regex");
-    run_cargo_command(&[&"clean"], Some(path), env, args)?;
+    let path = Path::new(crate::BUILD_DIR).join("regex");
+    run_cargo_command(&[&"clean"], Some(&path), env, args)?;
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rust-lang/regex example shootout-regex-dna");
     let mut env = env.clone();
@@ -788,14 +801,14 @@ fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String>
     // Make sure `[codegen mono items] start` doesn't poison the diff
     run_cargo_command(
         &[&"build", &"--example", &"shootout-regex-dna"],
-        Some(path),
+        Some(&path),
         &env,
         args,
     )?;
 
     run_cargo_command_with_callback(
         &[&"run", &"--example", &"shootout-regex-dna"],
-        Some(path),
+        Some(&path),
         &env,
         args,
         |cargo_command, cwd, env| {
@@ -838,6 +851,7 @@ fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         env.get("RUSTFLAGS").cloned().unwrap_or_default()
     );
     env.insert("RUSTFLAGS".to_string(), rustflags);
+    let path = Path::new(crate::BUILD_DIR).join("regex");
     run_cargo_command(
         &[
             &"test",
@@ -850,7 +864,7 @@ fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"-Zunstable-options",
             &"-q",
         ],
-        Some(Path::new("regex")),
+        Some(&path),
         &env,
         args,
     )?;
@@ -928,17 +942,15 @@ fn should_remove_test(file_path: &Path) -> Result<bool, String> {
 
 fn test_rustc_inner<F>(env: &Env, args: &TestArg, prepare_files_callback: F) -> Result<(), String>
 where
-    F: Fn() -> Result<bool, String>,
+    F: Fn(&Path) -> Result<bool, String>,
 {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rust-lang/rust");
     let mut env = env.clone();
-    setup_rustc(&mut env, args)?;
-
-    let rust_path = Path::new("rust");
+    let rust_path = setup_rustc(&mut env, args)?;
 
     walk_dir(
-        "rust/tests/ui",
+        rust_path.join("tests/ui"),
         |dir| {
             let dir_name = dir.file_name().and_then(|name| name.to_str()).unwrap_or("");
             if [
@@ -1001,7 +1013,7 @@ where
 
     walk_dir(rust_path.join("tests/ui"), dir_handling, file_handling)?;
 
-    if !prepare_files_callback()? {
+    if !prepare_files_callback(&rust_path)? {
         // FIXME: create a function "display_if_not_quiet" or something along the line.
         println!("Keeping all UI tests");
     }
@@ -1027,7 +1039,7 @@ where
                     &"-path",
                     &"*/auxiliary/*",
                 ],
-                Some(rust_path),
+                Some(&rust_path),
             )?
             .stdout,
         )
@@ -1072,18 +1084,18 @@ where
             &"--rustc-args",
             &rustc_args,
         ],
-        Some(rust_path),
+        Some(&rust_path),
         Some(&env),
     )?;
     Ok(())
 }
 
 fn test_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    test_rustc_inner(env, args, || Ok(false))
+    test_rustc_inner(env, args, |_| Ok(false))
 }
 
 fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    test_rustc_inner(env, args, || {
+    test_rustc_inner(env, args, |rust_path| {
         // Removing all tests.
         run_command(
             &[
@@ -1098,7 +1110,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
                 &"*/auxiliary/*",
                 &"-delete",
             ],
-            Some(Path::new("rust")),
+            Some(rust_path),
         )?;
         // Putting back only the failing ones.
         let path = "tests/failing-ui-tests.txt";
@@ -1108,10 +1120,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
                 .map(|line| line.trim())
                 .filter(|line| !line.is_empty())
             {
-                run_command(
-                    &[&"git", &"checkout", &"--", &file],
-                    Some(Path::new("rust")),
-                )?;
+                run_command(&[&"git", &"checkout", &"--", &file], Some(&rust_path))?;
             }
         } else {
             println!(
@@ -1124,7 +1133,7 @@ fn test_failing_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
 }
 
 fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
-    test_rustc_inner(env, args, || {
+    test_rustc_inner(env, args, |rust_path| {
         // Removing the failing tests.
         let path = "tests/failing-ui-tests.txt";
         if let Ok(files) = std::fs::read_to_string(path) {
@@ -1133,7 +1142,7 @@ fn test_successful_rustc(env: &Env, args: &TestArg) -> Result<(), String> {
                 .map(|line| line.trim())
                 .filter(|line| !line.is_empty())
             {
-                let path = Path::new("rust").join(file);
+                let path = rust_path.join(file);
                 remove_file(&path)?;
             }
         } else {

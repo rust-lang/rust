@@ -11,6 +11,8 @@ mod rustc_info;
 mod test;
 mod utils;
 
+const BUILD_DIR: &str = "build";
+
 macro_rules! arg_error {
     ($($err:tt)*) => {{
         eprintln!($($err)*);

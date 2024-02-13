@@ -1,6 +1,7 @@
 use crate::utils::{remove_file, run_command};
 
 use std::fs::remove_dir_all;
+use std::path::Path;
 
 #[derive(Default)]
 enum CleanArg {
@@ -46,11 +47,13 @@ fn clean_all() -> Result<(), String> {
         "build_sysroot/sysroot",
         "build_sysroot/sysroot_src",
         "build_sysroot/target",
-        "regex",
-        "simple-raytracer",
     ];
     for dir in dirs_to_remove {
         let _ = remove_dir_all(dir);
+    }
+    let dirs_to_remove = ["regex", "rand", "simple-raytracer"];
+    for dir in dirs_to_remove {
+        let _ = remove_dir_all(Path::new(crate::BUILD_DIR).join(dir));
     }
 
     let files_to_remove = ["build_sysroot/Cargo.lock", "perf.data", "perf.data.old"];
@@ -64,16 +67,8 @@ fn clean_all() -> Result<(), String> {
 }
 
 fn clean_ui_tests() -> Result<(), String> {
-    run_command(
-        &[
-            &"find",
-            &"rust/build/x86_64-unknown-linux-gnu/test/ui/",
-            &"-name",
-            &"stamp",
-            &"-delete",
-        ],
-        None,
-    )?;
+    let path = Path::new(crate::BUILD_DIR).join("rust/build/x86_64-unknown-linux-gnu/test/ui/");
+    run_command(&[&"find", &path, &"-name", &"stamp", &"-delete"], None)?;
     Ok(())
 }
 
