@@ -49,19 +49,10 @@ jobs:
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools
 
-    - name: Download artifact
-      run: curl -LO https://github.com/antoyo/gcc/releases/latest/download/gcc-13.deb
-
-    - name: Setup path to libgccjit
-      run: |
-          sudo dpkg --force-overwrite -i gcc-13.deb
-          echo 'gcc-path = "/usr/lib/"' > config.toml
-
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
+        echo 'download-gccjit = true' > config.toml
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -78,6 +69,15 @@ jobs:
         # TODO: remove --features master when it is back to the default.
         ./y.sh build --features master
         # TODO: remove --features master when it is back to the default.
+
+    - name: Set env (part 2)
+      run: |
+        # Set the `LD_LIBRARY_PATH` and `LIBRARY_PATH` env variables...
+        echo "LD_LIBRARY_PATH="$(./y.sh info | grep -v Using) >> $GITHUB_ENV
+        echo "LIBRARY_PATH="$(./y.sh info | grep -v Using) >> $GITHUB_ENV
+
+    - name: Build (part 2)
+      run: |
         cargo test --features master
         ./y.sh clean all
 
