@@ -187,12 +187,12 @@ impl clean::GenericParamDef {
         cx: &'a Context<'tcx>,
     ) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| match &self.kind {
-            clean::GenericParamDefKind::Lifetime { outlives } => {
+            clean::GenericParamDefKind::Lifetime(param) => {
                 write!(f, "{}", self.name)?;
 
-                if !outlives.is_empty() {
+                if !param.outlives.is_empty() {
                     f.write_str(": ")?;
-                    for (i, lt) in outlives.iter().enumerate() {
+                    for (i, lt) in param.outlives.iter().enumerate() {
                         if i != 0 {
                             f.write_str(" + ")?;
                         }
@@ -202,26 +202,26 @@ impl clean::GenericParamDef {
 
                 Ok(())
             }
-            clean::GenericParamDefKind::Type { bounds, default, .. } => {
+            clean::GenericParamDefKind::Type(param) => {
                 f.write_str(self.name.as_str())?;
 
-                if !bounds.is_empty() {
+                if !param.bounds.is_empty() {
                     f.write_str(": ")?;
-                    print_generic_bounds(bounds, cx).fmt(f)?;
+                    print_generic_bounds(&param.bounds, cx).fmt(f)?;
                 }
 
-                if let Some(ref ty) = default {
+                if let Some(ref ty) = param.default {
                     f.write_str(" = ")?;
                     ty.print(cx).fmt(f)?;
                 }
 
                 Ok(())
             }
-            clean::GenericParamDefKind::Const { ty, default, .. } => {
+            clean::GenericParamDefKind::Const(param) => {
                 write!(f, "const {}: ", self.name)?;
-                ty.print(cx).fmt(f)?;
+                param.ty.print(cx).fmt(f)?;
 
-                if let Some(default) = default {
+                if let Some(default) = &param.default {
                     f.write_str(" = ")?;
                     if f.alternate() {
                         write!(f, "{default}")?;

@@ -453,18 +453,17 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
     fn from_tcx(kind: clean::GenericParamDefKind, tcx: TyCtxt<'_>) -> Self {
         use clean::GenericParamDefKind::*;
         match kind {
-            Lifetime { outlives } => GenericParamDefKind::Lifetime {
-                outlives: outlives.into_iter().map(convert_lifetime).collect(),
+            Lifetime(param) => GenericParamDefKind::Lifetime {
+                outlives: param.outlives.into_iter().map(convert_lifetime).collect(),
             },
-            Type { bounds, default, synthetic } => GenericParamDefKind::Type {
-                bounds: bounds.into_tcx(tcx),
-                default: default.map(|x| (*x).into_tcx(tcx)),
-                synthetic,
+            Type(param) => GenericParamDefKind::Type {
+                bounds: param.bounds.into_tcx(tcx),
+                default: param.default.map(|ty| ty.into_tcx(tcx)),
+                synthetic: param.synthetic,
             },
-            Const { ty, default, is_host_effect: _ } => GenericParamDefKind::Const {
-                type_: (*ty).into_tcx(tcx),
-                default: default.map(|x| *x),
-            },
+            Const(param) => {
+                GenericParamDefKind::Const { type_: param.ty.into_tcx(tcx), default: param.default }
+            }
         }
     }
 }
@@ -476,38 +475,7 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
             BoundPredicate { ty, bounds, bound_params } => WherePredicate::BoundPredicate {
                 type_: ty.into_tcx(tcx),
                 bounds: bounds.into_tcx(tcx),
-                generic_params: bound_params
-                    .into_iter()
-                    .map(|x| {
-                        let name = x.name.to_string();
-                        let kind = match x.kind {
-                            clean::GenericParamDefKind::Lifetime { outlives } => {
-                                GenericParamDefKind::Lifetime {
-                                    outlives: outlives.iter().map(|lt| lt.0.to_string()).collect(),
-                                }
-                            }
-                            clean::GenericParamDefKind::Type { bounds, default, synthetic } => {
-                                GenericParamDefKind::Type {
-                                    bounds: bounds
-                                        .into_iter()
-                                        .map(|bound| bound.into_tcx(tcx))
-                                        .collect(),
-                                    default: default.map(|ty| (*ty).into_tcx(tcx)),
-                                    synthetic,
-                                }
-                            }
-                            clean::GenericParamDefKind::Const {
-                                ty,
-                                default,
-                                is_host_effect: _,
-                            } => GenericParamDefKind::Const {
-                                type_: (*ty).into_tcx(tcx),
-                                default: default.map(|d| *d),
-                            },
-                        };
-                        GenericParamDef { name, kind }
-                    })
-                    .collect(),
+                generic_params: bound_params.into_iter().map(|param| param.into_tcx(tcx)).collect(),
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
                 lifetime: convert_lifetime(lifetime),

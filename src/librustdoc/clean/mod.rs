@@ -506,32 +506,31 @@ fn clean_generic_param_def<'tcx>(
 ) -> GenericParamDef {
     let (name, kind) = match def.kind {
         ty::GenericParamDefKind::Lifetime => {
-            (def.name, GenericParamDefKind::Lifetime { outlives: ThinVec::new() })
+            (def.name, LifetimeParam { outlives: ThinVec::new() }.into())
         }
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
-            let default = if has_default {
-                Some(clean_middle_ty(
+            let default = has_default.then(|| {
+                clean_middle_ty(
                     ty::Binder::dummy(cx.tcx.type_of(def.def_id).instantiate_identity()),
                     cx,
                     Some(def.def_id),
                     None,
-                ))
-            } else {
-                None
-            };
+                )
+            });
             (
                 def.name,
-                GenericParamDefKind::Type {
-                    bounds: ThinVec::new(), // These are filled in from the where-clauses.
-                    default: default.map(Box::new),
+                TypeParam {
+                    bounds: ThinVec::new(), // These are filled in from the where-clause.
+                    default,
                     synthetic,
-                },
+                }
+                .into(),
             )
         }
         ty::GenericParamDefKind::Const { has_default, is_host_effect } => (
             def.name,
-            GenericParamDefKind::Const {
-                ty: Box::new(clean_middle_ty(
+            ConstParam {
+                ty: clean_middle_ty(
                     ty::Binder::dummy(
                         cx.tcx
                             .type_of(def.def_id)
@@ -541,15 +540,13 @@ fn clean_generic_param_def<'tcx>(
                     cx,
                     Some(def.def_id),
                     None,
-                )),
-                default: match has_default {
-                    true => Some(Box::new(
-                        cx.tcx.const_param_default(def.def_id).instantiate_identity().to_string(),
-                    )),
-                    false => None,
-                },
+                ),
+                default: has_default.then(|| {
+                    cx.tcx.const_param_default(def.def_id).instantiate_identity().to_string()
+                }),
                 is_host_effect,
-            },
+            }
+            .into(),
         ),
     };
 
@@ -576,7 +573,7 @@ fn clean_generic_param<'tcx>(
             } else {
                 ThinVec::new()
             };
-            (param.name.ident().name, GenericParamDefKind::Lifetime { outlives })
+            (param.name.ident().name, LifetimeParam { outlives }.into())
         }
         hir::GenericParamKind::Type { ref default, synthetic } => {
             let bounds = if let Some(generics) = generics {
@@ -591,21 +588,18 @@ fn clean_generic_param<'tcx>(
             };
             (
                 param.name.ident().name,
-                GenericParamDefKind::Type {
-                    bounds,
-                    default: default.map(|t| clean_ty(t, cx)).map(Box::new),
-                    synthetic,
-                },
+                TypeParam { bounds, default: default.map(|t| clean_ty(t, cx)), synthetic }.into(),
             )
         }
         hir::GenericParamKind::Const { ty, default, is_host_effect } => (
             param.name.ident().name,
-            GenericParamDefKind::Const {
-                ty: Box::new(clean_ty(ty, cx)),
+            ConstParam {
+                ty: clean_ty(ty, cx),
                 default: default
-                    .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
+                    .map(|ct| ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string()),
                 is_host_effect,
-            },
+            }
+            .into(),
         ),
     };
 
@@ -643,8 +637,8 @@ pub(crate) fn clean_generics<'tcx>(
         .filter(|param| is_impl_trait(param))
         .map(|param| {
             let param = clean_generic_param(cx, Some(generics), param);
-            let GenericParamDefKind::Type { bounds, .. } = &param.kind else { unreachable!() };
-            cx.impl_trait_bounds.insert(param.def_id.into(), bounds.to_vec());
+            let GenericParamDefKind::Type(ty_param) = &param.kind else { unreachable!() };
+            cx.impl_trait_bounds.insert(param.def_id.into(), ty_param.bounds.to_vec());
             param
         })
         .collect::<Vec<_>>();
@@ -702,10 +696,10 @@ pub(crate) fn clean_generics<'tcx>(
     for param in generics.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
         let mut param = clean_generic_param(cx, Some(generics), param);
         match &mut param.kind {
-            GenericParamDefKind::Lifetime { outlives } => {
+            GenericParamDefKind::Lifetime(lt_param) => {
                 if let Some(region_pred) = region_predicates.get_mut(&Lifetime(param.name)) {
                     // We merge bounds in the `where` clause.
-                    for outlive in outlives.drain(..) {
+                    for outlive in lt_param.outlives.drain(..) {
                         let outlive = GenericBound::Outlives(outlive);
                         if !region_pred.contains(&outlive) {
                             region_pred.push(outlive);
@@ -713,10 +707,10 @@ pub(crate) fn clean_generics<'tcx>(
                     }
                 }
             }
-            GenericParamDefKind::Type { bounds, synthetic: false, .. } => {
+            GenericParamDefKind::Type(ty_param) if !ty_param.synthetic => {
                 if let Some(bound_pred) = bound_predicates.get_mut(&Type::Generic(param.name)) {
                     // We merge bounds in the `where` clause.
-                    for bound in bounds.drain(..) {
+                    for bound in ty_param.bounds.drain(..) {
                         if !bound_pred.0.contains(&bound) {
                             bound_pred.0.push(bound);
                         }
@@ -1063,17 +1057,15 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
         for (pos, literal) in meta_item_list.iter().filter_map(|meta| meta.lit()).enumerate() {
             match literal.kind {
                 ast::LitKind::Int(a, _) => {
-                    let gen = func.generics.params.remove(0);
+                    let param = func.generics.params.remove(0);
                     if let GenericParamDef {
-                        name,
-                        kind: GenericParamDefKind::Const { ty, .. },
-                        ..
-                    } = gen
+                        name, kind: GenericParamDefKind::Const(param), ..
+                    } = param
                     {
-                        func.decl
-                            .inputs
-                            .values
-                            .insert(a.get() as _, Argument { name, type_: *ty, is_const: true });
+                        func.decl.inputs.values.insert(
+                            a.get() as _,
+                            Argument { name, type_: param.ty, is_const: true },
+                        );
                     } else {
                         panic!("unexpected non const in position {pos}");
                     }
@@ -3149,11 +3141,8 @@ fn clean_bound_vars<'tcx>(
                 Some(GenericParamDef {
                     name,
                     def_id,
-                    kind: GenericParamDefKind::Type {
-                        bounds: ThinVec::new(),
-                        default: None,
-                        synthetic: false,
-                    },
+                    kind: TypeParam { bounds: ThinVec::new(), default: None, synthetic: false }
+                        .into(),
                 })
             }
             // FIXME(non_lifetime_binders): Support higher-ranked const parameters.

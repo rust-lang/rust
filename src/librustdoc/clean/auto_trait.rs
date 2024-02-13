@@ -632,19 +632,19 @@ where
         existing_predicates.extend(final_bounds);
 
         for param in generic_params.iter_mut() {
-            match param.kind {
-                GenericParamDefKind::Type { ref mut default, ref mut bounds, .. } => {
+            match &mut param.kind {
+                GenericParamDefKind::Type(ty_param) => {
                     // We never want something like `impl<T=Foo>`.
-                    default.take();
+                    ty_param.default.take();
                     let generic_ty = Type::Generic(param.name);
                     if !has_sized.contains(&generic_ty) {
-                        bounds.insert(0, GenericBound::maybe_sized(self.cx));
+                        ty_param.bounds.insert(0, GenericBound::maybe_sized(self.cx));
                     }
                 }
                 GenericParamDefKind::Lifetime { .. } => {}
-                GenericParamDefKind::Const { ref mut default, .. } => {
+                GenericParamDefKind::Const(ct_param) => {
                     // We never want something like `impl<const N: usize = 10>`
-                    default.take();
+                    ct_param.default.take();
                 }
             }
         }

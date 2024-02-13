@@ -1325,16 +1325,52 @@ impl WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
-    Lifetime { outlives: ThinVec<Lifetime> },
-    Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
-    // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>>, is_host_effect: bool },
+    Lifetime(Box<LifetimeParam>),
+    Type(Box<TypeParam>),
+    Const(Box<ConstParam>),
 }
 
 impl GenericParamDefKind {
     pub(crate) fn is_type(&self) -> bool {
         matches!(self, GenericParamDefKind::Type { .. })
     }
+}
+
+impl From<LifetimeParam> for GenericParamDefKind {
+    fn from(param: LifetimeParam) -> Self {
+        Self::Lifetime(Box::new(param))
+    }
+}
+
+impl From<TypeParam> for GenericParamDefKind {
+    fn from(param: TypeParam) -> Self {
+        Self::Type(Box::new(param))
+    }
+}
+
+impl From<ConstParam> for GenericParamDefKind {
+    fn from(param: ConstParam) -> Self {
+        Self::Const(Box::new(param))
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct LifetimeParam {
+    pub(crate) outlives: ThinVec<Lifetime>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct TypeParam {
+    pub(crate) bounds: ThinVec<GenericBound>,
+    pub(crate) default: Option<Type>,
+    pub(crate) synthetic: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct ConstParam {
+    pub(crate) ty: Type,
+    pub(crate) default: Option<String>,
+    pub(crate) is_host_effect: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1346,14 +1382,14 @@ pub(crate) struct GenericParamDef {
 
 impl GenericParamDef {
     pub(crate) fn lifetime(def_id: DefId, name: Symbol) -> Self {
-        Self { name, def_id, kind: GenericParamDefKind::Lifetime { outlives: ThinVec::new() } }
+        Self { name, def_id, kind: LifetimeParam { outlives: ThinVec::new() }.into() }
     }
 
     pub(crate) fn is_synthetic_param(&self) -> bool {
-        match self.kind {
-            GenericParamDefKind::Lifetime { .. } => false,
-            GenericParamDefKind::Const { is_host_effect, .. } => is_host_effect,
-            GenericParamDefKind::Type { synthetic, .. } => synthetic,
+        match &self.kind {
+            GenericParamDefKind::Lifetime(_) => false,
+            GenericParamDefKind::Const(param) => param.is_host_effect,
+            GenericParamDefKind::Type(param) => param.synthetic,
         }
     }
 
@@ -1362,8 +1398,8 @@ impl GenericParamDef {
     }
 
     pub(crate) fn get_bounds(&self) -> Option<&[GenericBound]> {
-        match self.kind {
-            GenericParamDefKind::Type { ref bounds, .. } => Some(bounds),
+        match &self.kind {
+            GenericParamDefKind::Type(param) => Some(&param.bounds),
             _ => None,
         }
     }
@@ -2561,7 +2597,7 @@ mod size_asserts {
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 32);
-    static_assert_size!(GenericParamDef, 40);
+    static_assert_size!(GenericParamDef, 32);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
     static_assert_size!(ItemKind, 56);
