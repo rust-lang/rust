@@ -248,7 +248,7 @@ pub trait Hash {
 // Separate module to reexport the macro `Hash` from prelude without the trait `Hash`.
 pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Hash`.
-    #[rustc_builtin_macro]
+    #[rustc_builtin_macro(Hash, attributes(skip))]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics)]
     pub macro Hash($item:item) {

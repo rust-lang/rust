@@ -438,6 +438,8 @@ declare_features! (
     (unstable, deprecated_safe, "1.61.0", Some(94978)),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (unstable, deprecated_suggestion, "1.61.0", Some(94785)),
+    /// Allows using the `#[skip]` attribute in derives
+    (unstable, derive_skip, "CURRENT_RUSTC_VERSION", Some(121050)),
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (unstable, diagnostic_namespace, "1.73.0", Some(111996)),
     /// Controls errors in trait implementations.

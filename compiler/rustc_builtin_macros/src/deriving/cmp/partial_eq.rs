@@ -23,6 +23,7 @@ pub fn expand_deriving_partial_eq(
             cx,
             span,
             substr,
+            sym::PartialEq,
             |cx, fold| match fold {
                 CsFold::Single(field) => {
                     let [other_expr] = &field.other_selflike_exprs[..] else {
@@ -98,7 +99,7 @@ pub fn expand_deriving_partial_eq(
         ret_ty: Path(path_local!(bool)),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: combine_substructure(Box::new(|a, b, c| cs_eq(a, b, c))),
+        combine_substructure: combine_substructure(Box::new(cs_eq)),
     }];
 
     let trait_def = TraitDef {
