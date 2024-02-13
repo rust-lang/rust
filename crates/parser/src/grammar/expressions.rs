@@ -694,7 +694,7 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                     //     S { field ..S::default() }
                     // }
                     name_ref_or_index(p);
-                    p.error("expected colon");
+                    p.error("expected `:`");
                 } else {
                     // test_err record_literal_field_eq_recovery
                     // fn main() {
@@ -705,7 +705,7 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                         p.bump(T![:]);
                     } else if p.nth_at(1, T![=]) {
                         name_ref_or_index(p);
-                        p.err_and_bump("expected colon");
+                        p.err_and_bump("expected `:`");
                     }
                     expr(p);
                 }

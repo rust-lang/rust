@@ -38,4 +38,4 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 26: expected colon
+error 26: expected `:`

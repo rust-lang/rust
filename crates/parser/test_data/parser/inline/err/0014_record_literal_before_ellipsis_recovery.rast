@@ -45,5 +45,5 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 25: expected colon
+error 25: expected `:`
 error 25: expected COMMA
