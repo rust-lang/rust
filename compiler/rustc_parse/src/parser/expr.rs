@@ -3,7 +3,7 @@ use super::diagnostics::SnapshotParser;
 use super::pat::{CommaRecoveryMode, Expected, RecoverColon, RecoverComma};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
+    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Recovered, Restrictions,
     SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
 
@@ -3093,10 +3093,10 @@ impl<'a> Parser<'a> {
                 if !require_comma {
                     arm_body = Some(expr);
                     this.eat(&token::Comma);
-                    Ok(false)
+                    Ok(Recovered::No)
                 } else if let Some(body) = this.parse_arm_body_missing_braces(&expr, arrow_span) {
                     arm_body = Some(body);
-                    Ok(true)
+                    Ok(Recovered::Yes)
                 } else {
                     let expr_span = expr.span;
                     arm_body = Some(expr);
@@ -3177,7 +3177,7 @@ impl<'a> Parser<'a> {
                         this.dcx().emit_err(errors::MissingCommaAfterMatchArm {
                             span: arm_span.shrink_to_hi(),
                         });
-                        return Ok(true);
+                        return Ok(Recovered::Yes);
                     }
                     Err(err)
                 });

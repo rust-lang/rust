@@ -22,6 +22,7 @@ use crate::fluent_generated as fluent;
 use crate::parser;
 use crate::parser::attr::InnerAttrPolicy;
 use ast::token::IdentIsRaw;
+use parser::Recovered;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
@@ -430,7 +431,7 @@ impl<'a> Parser<'a> {
         &mut self,
         edible: &[TokenKind],
         inedible: &[TokenKind],
-    ) -> PResult<'a, bool /* recovered */> {
+    ) -> PResult<'a, Recovered> {
         debug!("expected_one_of_not_found(edible: {:?}, inedible: {:?})", edible, inedible);
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
@@ -533,7 +534,7 @@ impl<'a> Parser<'a> {
                     sugg: ExpectedSemiSugg::ChangeToSemi(self.token.span),
                 });
                 self.bump();
-                return Ok(true);
+                return Ok(Recovered::Yes);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(Delimiter::Brace)
                     || ((t.can_begin_expr() || t.can_begin_item())
@@ -557,7 +558,7 @@ impl<'a> Parser<'a> {
                     unexpected_token_label: Some(self.token.span),
                     sugg: ExpectedSemiSugg::AddSemi(span),
                 });
-                return Ok(true);
+                return Ok(Recovered::Yes);
             }
         }
 
@@ -712,7 +713,7 @@ impl<'a> Parser<'a> {
         if self.check_too_many_raw_str_terminators(&mut err) {
             if expected.contains(&TokenType::Token(token::Semi)) && self.eat(&token::Semi) {
                 err.emit();
-                return Ok(true);
+                return Ok(Recovered::Yes);
             } else {
                 return Err(err);
             }
@@ -1224,7 +1225,7 @@ impl<'a> Parser<'a> {
                 |p| p.parse_generic_arg(None),
             );
             match x {
-                Ok((_, _, false)) => {
+                Ok((_, _, Recovered::No)) => {
                     if self.eat(&token::Gt) {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
@@ -1248,7 +1249,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
-                Ok((_, _, true)) => {}
+                Ok((_, _, Recovered::Yes)) => {}
                 Err(err) => {
                     err.cancel();
                 }
@@ -1841,10 +1842,7 @@ impl<'a> Parser<'a> {
 
     /// Creates a `DiagnosticBuilder` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
-    pub(super) fn unexpected_try_recover(
-        &mut self,
-        t: &TokenKind,
-    ) -> PResult<'a, bool /* recovered */> {
+    pub(super) fn unexpected_try_recover(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
         let token_str = pprust::token_kind_to_string(t);
         let this_token_str = super::token_descr(&self.token);
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {

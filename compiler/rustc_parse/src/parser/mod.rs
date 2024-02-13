@@ -358,6 +358,19 @@ pub enum FollowedByType {
     No,
 }
 
+/// Whether a function performed recovery
+#[derive(Copy, Clone, Debug)]
+pub enum Recovered {
+    No,
+    Yes,
+}
+
+impl From<Recovered> for bool {
+    fn from(r: Recovered) -> bool {
+        matches!(r, Recovered::Yes)
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TokenDescription {
     ReservedIdentifier,
@@ -456,11 +469,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Expects and consumes the token `t`. Signals an error if the next token is not `t`.
-    pub fn expect(&mut self, t: &TokenKind) -> PResult<'a, bool /* recovered */> {
+    pub fn expect(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
         if self.expected_tokens.is_empty() {
             if self.token == *t {
                 self.bump();
-                Ok(false)
+                Ok(Recovered::No)
             } else {
                 self.unexpected_try_recover(t)
             }
@@ -476,13 +489,13 @@ impl<'a> Parser<'a> {
         &mut self,
         edible: &[TokenKind],
         inedible: &[TokenKind],
-    ) -> PResult<'a, bool /* recovered */> {
+    ) -> PResult<'a, Recovered> {
         if edible.contains(&self.token.kind) {
             self.bump();
-            Ok(false)
+            Ok(Recovered::No)
         } else if inedible.contains(&self.token.kind) {
             // leave it in the input
-            Ok(false)
+            Ok(Recovered::No)
         } else if self.token.kind != token::Eof
             && self.last_unexpected_token_span == Some(self.token.span)
         {
@@ -784,9 +797,9 @@ impl<'a> Parser<'a> {
         sep: SeqSep,
         expect: TokenExpectType,
         mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, bool /* recovered */)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, Recovered)> {
         let mut first = true;
-        let mut recovered = false;
+        let mut recovered = Recovered::No;
         let mut trailing = false;
         let mut v = ThinVec::new();
 
@@ -801,12 +814,12 @@ impl<'a> Parser<'a> {
                 } else {
                     // check for separator
                     match self.expect(t) {
-                        Ok(false) /* not recovered */ => {
+                        Ok(Recovered::No) => {
                             self.current_closure.take();
                         }
-                        Ok(true) /* recovered */ => {
+                        Ok(Recovered::Yes) => {
                             self.current_closure.take();
-                            recovered = true;
+                            recovered = Recovered::Yes;
                             break;
                         }
                         Err(mut expect_err) => {
@@ -979,7 +992,7 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, bool /* recovered */)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, Recovered)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
@@ -993,7 +1006,7 @@ impl<'a> Parser<'a> {
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
-        if !recovered {
+        if matches!(recovered, Recovered::No) {
             self.eat(ket);
         }
         Ok((val, trailing))
