@@ -1813,6 +1813,11 @@ extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
     ImportName,
     Path,
     ConvertedExports,
+  #if LLVM_VERSION_GE(19, 0)
+  // FIXME: on everything but ARM64EC this argument is ignored. On that
+  // platform passing this value _may_ be incorrect.
+    ConvertedExports,
+  #endif
     static_cast<llvm::COFF::MachineTypes>(Machine),
     MinGW);
   if (Error) {
