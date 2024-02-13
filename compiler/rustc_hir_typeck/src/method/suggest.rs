@@ -1086,7 +1086,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         inherent_impls_candidate.sort();
                         inherent_impls_candidate.dedup();
 
-                        // number of type to shows at most.
+                        // number of types to show at most
                         let limit = if inherent_impls_candidate.len() == 5 { 5 } else { 4 };
                         let type_candidates = inherent_impls_candidate
                             .iter()
