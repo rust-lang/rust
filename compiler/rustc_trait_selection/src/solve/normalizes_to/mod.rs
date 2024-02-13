@@ -814,6 +814,59 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         })
     }
 
+    fn consider_builtin_async_destruct_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let discriminant_ty = match *self_ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Array(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Pat(..)
+            | ty::Never
+            | ty::Adt(_, _)
+            | ty::Str
+            | ty::Slice(_)
+            | ty::Dynamic(_, _, _)
+            | ty::Tuple(_)
+            | ty::Error(_) => self_ty.async_destructor_ty(ecx.tcx(), goal.param_env),
+
+            // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
+            // types, which return `<self_ty as DiscriminantKind>::Discriminant`
+            // (or ICE in the case of placeholders). Projecting a type to itself
+            // is never really productive.
+            ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+                return Err(NoSolution);
+            }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Foreign(..)
+            | ty::Bound(..) => bug!(
+                "unexpected self ty `{:?}` when normalizing `<T as AsyncDestruct>::AsyncDestructor`",
+                goal.predicate.self_ty()
+            ),
+        };
+
+        ecx.probe_misc_candidate("builtin async destruct").enter(|ecx| {
+            ecx.eq(goal.param_env, goal.predicate.term, discriminant_ty.into())
+                .expect("expected goal term to be fully unconstrained");
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
+
     fn consider_builtin_destruct_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
