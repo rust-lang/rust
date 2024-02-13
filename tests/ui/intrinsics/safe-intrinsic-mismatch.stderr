@@ -1,17 +1,17 @@
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `size_of`
-  --> $DIR/safe-intrinsic-mismatch.rs:5:5
+  --> $DIR/safe-intrinsic-mismatch.rs:6:5
    |
 LL |     fn size_of<T>() -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `assume`
-  --> $DIR/safe-intrinsic-mismatch.rs:9:5
+  --> $DIR/safe-intrinsic-mismatch.rs:10:5
    |
 LL |     fn assume(b: bool);
    |     ^^^^^^^^^^^^^^^^^^
 
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `size_of`
-  --> $DIR/safe-intrinsic-mismatch.rs:5:5
+  --> $DIR/safe-intrinsic-mismatch.rs:6:5
    |
 LL |     fn size_of<T>() -> usize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,12 +19,35 @@ LL |     fn size_of<T>() -> usize;
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `assume`
-  --> $DIR/safe-intrinsic-mismatch.rs:9:5
+  --> $DIR/safe-intrinsic-mismatch.rs:10:5
    |
 LL |     fn assume(b: bool);
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 4 previous errors
+error: intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `const_deallocate`
+  --> $DIR/safe-intrinsic-mismatch.rs:15:1
+   |
+LL | const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0308]: intrinsic has wrong type
+  --> $DIR/safe-intrinsic-mismatch.rs:15:26
+   |
+LL | const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+   |                          ^ expected unsafe fn, found normal fn
+   |
+   = note: expected signature `unsafe fn(_, _, _)`
+              found signature `fn(_, _, _)`
+
+error[E0094]: intrinsic has wrong number of const parameters: found 0, expected 1
+  --> $DIR/safe-intrinsic-mismatch.rs:21:31
+   |
+LL |     unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+   |                               ^ expected 1 const parameter
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0094, E0308.
+For more information about an error, try `rustc --explain E0094`.
