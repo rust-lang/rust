@@ -537,18 +537,29 @@ impl Rewrite for ast::Lifetime {
 impl Rewrite for ast::GenericBound {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match *self {
-            ast::GenericBound::Trait(ref poly_trait_ref, modifiers) => {
+            ast::GenericBound::Trait(
+                ref poly_trait_ref,
+                ast::TraitBoundModifiers {
+                    constness,
+                    asyncness,
+                    polarity,
+                },
+            ) => {
                 let snippet = context.snippet(self.span());
                 let has_paren = snippet.starts_with('(') && snippet.ends_with(')');
-                let mut constness = modifiers.constness.as_str().to_string();
+                let mut constness = constness.as_str().to_string();
                 if !constness.is_empty() {
                     constness.push(' ');
                 }
-                let polarity = modifiers.polarity.as_str();
+                let mut asyncness = asyncness.as_str().to_string();
+                if !asyncness.is_empty() {
+                    asyncness.push(' ');
+                }
+                let polarity = polarity.as_str();
                 let shape = shape.offset_left(constness.len() + polarity.len())?;
                 poly_trait_ref
                     .rewrite(context, shape)
-                    .map(|s| format!("{constness}{polarity}{s}"))
+                    .map(|s| format!("{constness}{asyncness}{polarity}{s}"))
                     .map(|s| if has_paren { format!("({})", s) } else { s })
             }
             ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite(context, shape),
