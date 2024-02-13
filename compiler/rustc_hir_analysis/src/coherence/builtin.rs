@@ -32,45 +32,42 @@ pub fn check_trait<'tcx>(
     impl_header: ty::ImplTraitHeader<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let lang_items = tcx.lang_items();
-    let checker = Checker { tcx, trait_def_id, impl_def_id };
-    let mut res = checker.check(lang_items.drop_trait(), |tcx, id| {
-        visit_implementation_of_drop(tcx, id, impl_header)
-    });
-    res = res.and(checker.check(lang_items.copy_trait(), |tcx, id| {
-        visit_implementation_of_copy(tcx, id, impl_header)
-    }));
-    res = res.and(checker.check(lang_items.const_param_ty_trait(), |tcx, id| {
-        visit_implementation_of_const_param_ty(tcx, id, impl_header)
-    }));
+    let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
+    let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
+    res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
+    res = res.and(
+        checker.check(lang_items.const_param_ty_trait(), visit_implementation_of_const_param_ty),
+    );
     res = res.and(
         checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized),
     );
-    res.and(checker.check(lang_items.dispatch_from_dyn_trait(), |tcx, id| {
-        visit_implementation_of_dispatch_from_dyn(tcx, id, impl_header.trait_ref)
-    }))
+    res.and(
+        checker
+            .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn),
+    )
 }
 
 struct Checker<'tcx> {
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     impl_def_id: LocalDefId,
+    impl_header: ty::ImplTraitHeader<'tcx>,
 }
 
 impl<'tcx> Checker<'tcx> {
     fn check(
         &self,
         trait_def_id: Option<DefId>,
-        f: impl FnOnce(TyCtxt<'tcx>, LocalDefId) -> Result<(), ErrorGuaranteed>,
+        f: impl FnOnce(&Self) -> Result<(), ErrorGuaranteed>,
     ) -> Result<(), ErrorGuaranteed> {
-        if Some(self.trait_def_id) == trait_def_id { f(self.tcx, self.impl_def_id) } else { Ok(()) }
+        if Some(self.trait_def_id) == trait_def_id { f(self) } else { Ok(()) }
     }
 }
 
-fn visit_implementation_of_drop<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_did: LocalDefId,
-    header: ty::ImplTraitHeader<'tcx>,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
     // Destructors only work on local ADT types.
     match header.trait_ref.self_ty().kind() {
         ty::Adt(def, _) if def.did().is_local() => return Ok(()),
@@ -83,11 +80,10 @@ fn visit_implementation_of_drop<'tcx>(
     Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span }))
 }
 
-fn visit_implementation_of_copy<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_did: LocalDefId,
-    impl_header: ty::ImplTraitHeader<'tcx>,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let impl_header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let self_type = impl_header.trait_ref.self_ty();
@@ -120,11 +116,10 @@ fn visit_implementation_of_copy<'tcx>(
     }
 }
 
-fn visit_implementation_of_const_param_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_did: LocalDefId,
-    header: ty::ImplTraitHeader<'tcx>,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
     let self_type = header.trait_ref.self_ty();
     assert!(!self_type.has_escaping_bound_vars());
 
@@ -148,10 +143,9 @@ fn visit_implementation_of_const_param_ty<'tcx>(
     }
 }
 
-fn visit_implementation_of_coerce_unsized(
-    tcx: TyCtxt<'_>,
-    impl_did: LocalDefId,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let impl_did = checker.impl_def_id;
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
@@ -161,11 +155,11 @@ fn visit_implementation_of_coerce_unsized(
     tcx.at(span).ensure().coerce_unsized_info(impl_did)
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_did: LocalDefId,
-    trait_ref: ty::TraitRef<'tcx>,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
+    let trait_ref = header.trait_ref;
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let span = tcx.def_span(impl_did);
