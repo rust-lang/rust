@@ -317,6 +317,15 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                 && let implied_bindings = path.args.map_or([].as_slice(), |a| a.bindings)
                 && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
                 && let Some(bound) = find_bound_in_supertraits(cx, def_id, implied_args, &supertraits)
+                // If the implied bound has a type binding that also exists in the implied-by trait,
+                // then we shouldn't lint. See #11880 for an example.
+                && let assocs = cx.tcx.associated_items(bound.trait_def_id)
+                && !implied_bindings.iter().any(|binding| {
+                    assocs
+                        .filter_by_name_unhygienic(binding.ident.name)
+                        .next()
+                        .is_some_and(|assoc| assoc.kind == ty::AssocKind::Type)
+                    })
             {
                 emit_lint(cx, poly_trait, opaque_ty, index, implied_bindings, bound);
             }

@@ -121,4 +121,33 @@ mod issue11435 {
     fn f3() -> impl Trait4<i8, X = i32, Y = i128> {}
 }
 
+fn issue11880() {
+    trait X {
+        type T;
+        type U;
+    }
+    trait Y: X {
+        type T;
+        type V;
+    }
+    impl X for () {
+        type T = i32;
+        type U = String;
+    }
+    impl Y for () {
+        type T = u32;
+        type V = Vec<u8>;
+    }
+
+    // Can't constrain `X::T` through `Y`
+    fn f() -> impl X<T = i32> + Y {}
+    fn f2() -> impl X<T = i32> + Y<T = u32> {}
+
+    // X::T is never constrained in the first place, so it can be omitted
+    // and left unconstrained
+    fn f3() -> impl Y {}
+    fn f4() -> impl Y<T = u32> {}
+    fn f5() -> impl Y<T = u32, U = String> {}
+}
+
 fn main() {}
