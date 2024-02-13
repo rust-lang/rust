@@ -90,7 +90,7 @@ fn should_polymorphize<'tcx>(
     def_id: DefId,
     instance: ty::InstanceDef<'tcx>,
 ) -> bool {
-    // If an instance's MIR body is not polymorphic then the modified substitutions that are
+    // If an instance's MIR body is not polymorphic then the modified generic parameters that are
     // derived from polymorphization's result won't make any difference.
     if !instance.has_polymorphic_mir_body() {
         return false;

@@ -128,7 +128,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         debug!(?predicates);
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
-            pred.subst_supertrait(tcx, &trait_ref)
+            pred.instantiate_supertrait(tcx, &trait_ref)
                 .as_trait_clause()
                 .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
         });

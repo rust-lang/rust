@@ -679,7 +679,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// inference context that contains each of the bound values
     /// within instantiated as a fresh variable. The `f` closure is
     /// invoked with the new infcx, along with the instantiated value
-    /// `V` and a substitution `S`. This substitution `S` maps from
+    /// `V` and a instantiation `S`. This instantiation `S` maps from
     /// the bound values in `C` to their instantiated values in `V`
     /// (in other words, `S(C) = V`).
     pub fn build_with_canonical<T>(
@@ -691,8 +691,8 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let infcx = self.build();
-        let (value, subst) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
-        (infcx, value, subst)
+        let (value, args) = infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
+        (infcx, value, args)
     }
 
     pub fn build(&mut self) -> InferCtxt<'tcx> {
@@ -1194,13 +1194,13 @@ impl<'tcx> InferCtxt<'tcx> {
             }
             GenericParamDefKind::Type { .. } => {
                 // Create a type inference variable for the given
-                // type parameter definition. The substitutions are
+                // type parameter definition. The generic parameters are
                 // for actual parameters that may be referred to by
                 // the default of this type parameter, if it exists.
                 // e.g., `struct Foo<A, B, C = (A, B)>(...);` when
                 // used in a path such as `Foo::<T, U>::new()` will
                 // use an inference variable for `C` with `[T, U]`
-                // as the substitutions for the default, `(T, U)`.
+                // as the generic parameters for the default, `(T, U)`.
                 let ty_var_id = self.inner.borrow_mut().type_variables().new_var(
                     self.universe(),
                     TypeVariableOrigin {
@@ -1256,7 +1256,7 @@ impl<'tcx> InferCtxt<'tcx> {
         ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(effect_vid), ty).into()
     }
 
-    /// Given a set of generics defined on a type or impl, returns a substitution mapping each
+    /// Given a set of generics defined on a type or impl, returns the generic parameters mapping each
     /// type/region parameter to a fresh inference variable.
     pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgsRef<'tcx> {
         GenericArgs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
@@ -1411,7 +1411,7 @@ impl<'tcx> InferCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         if !value.has_infer() {
-            return value; // Avoid duplicated subst-folding.
+            return value; // Avoid duplicated type-folding.
         }
         let mut r = InferenceLiteralEraser { tcx: self.tcx };
         value.fold_with(&mut r)
@@ -1458,7 +1458,7 @@ impl<'tcx> InferCtxt<'tcx> {
     // Instantiates the bound variables in a given binder with fresh inference
     // variables in the current universe.
     //
-    // Use this method if you'd like to find some substitution of the binder's
+    // Use this method if you'd like to find some generic parameters of the binder's
     // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
     // that corresponds to your use case, consider whether or not you should
     // use [`InferCtxt::enter_forall`] instead.
@@ -1603,10 +1603,10 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Resolves and evaluates a constant.
     ///
     /// The constant can be located on a trait like `<A as B>::C`, in which case the given
-    /// substitutions and environment are used to resolve the constant. Alternatively if the
-    /// constant has generic parameters in scope the substitutions are used to evaluate the value of
+    /// generic parameters and environment are used to resolve the constant. Alternatively if the
+    /// constant has generic parameters in scope the instantiations are used to evaluate the value of
     /// the constant. For example in `fn foo<T>() { let _ = [0; bar::<T>()]; }` the repeat count
-    /// constant `bar::<T>()` requires a substitution for `T`, if the substitution for `T` is still
+    /// constant `bar::<T>()` requires a instantiation for `T`, if the instantiation for `T` is still
     /// too generic for the constant to be evaluated then `Err(ErrorHandled::TooGeneric)` is
     /// returned.
     ///
@@ -1652,7 +1652,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let unevaluated = ty::UnevaluatedConst { def: unevaluated.def, args: args_erased };
 
         // The return value is the evaluated value which doesn't contain any reference to inference
-        // variables, thus we don't need to substitute back the original values.
+        // variables, thus we don't need to instantiate back the original values.
         tcx.const_eval_resolve_for_typeck(param_env_erased, unevaluated, span)
     }
 

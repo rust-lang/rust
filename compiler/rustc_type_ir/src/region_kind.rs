@@ -64,17 +64,17 @@ use self::RegionKind::*;
 ///
 /// ## Bound Regions
 ///
-/// These are regions that are stored behind a binder and must be substituted
+/// These are regions that are stored behind a binder and must be instantiated
 /// with some concrete region before being used. There are two kind of
 /// bound regions: early-bound, which are bound in an item's `Generics`,
-/// and are substituted by an `GenericArgs`, and late-bound, which are part of
-/// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are substituted by
+/// and are instantiated by an `GenericArgs`, and late-bound, which are part of
+/// higher-ranked types (e.g., `for<'a> fn(&'a ())`), and are instantiated by
 /// the likes of `liberate_late_bound_regions`. The distinction exists
 /// because higher-ranked lifetimes aren't supported in all places. See [1][2].
 ///
 /// Unlike `Param`s, bound regions are not supposed to exist "in the wild"
 /// outside their binder, e.g., in types passed to type inference, and
-/// should first be substituted (by placeholder regions, free regions,
+/// should first be instantiated (by placeholder regions, free regions,
 /// or region variables).
 ///
 /// ## Placeholder and Free Regions
@@ -101,7 +101,7 @@ use self::RegionKind::*;
 /// `RePlaceholder` is designed for this purpose. In these contexts,
 /// there's also the risk that some inference variable laying around will
 /// get unified with your placeholder region: if you want to check whether
-/// `for<'a> Foo<'_>: 'a`, and you substitute your bound region `'a`
+/// `for<'a> Foo<'_>: 'a`, and you instantiate your bound region `'a`
 /// with a placeholder region `'%a`, the variable `'_` would just be
 /// instantiated to the placeholder region `'%a`, which is wrong because
 /// the inference variable is supposed to satisfy the relation

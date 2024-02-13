@@ -491,7 +491,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     let kind = tcx.def_kind(def_id);
     let is_function = match kind {
         DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-        _ => tcx.is_closure_or_coroutine(def_id),
+        _ => tcx.is_closure_like(def_id),
     };
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{i:?} in ")?,

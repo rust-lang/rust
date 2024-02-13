@@ -346,7 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
-            ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected, expr),
+            ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected),
             ExprKind::Repeat(element, ref count) => {
                 self.check_expr_repeat(element, count, expected, expr)
             }
@@ -1487,7 +1487,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         block: &'tcx hir::ConstBlock,
         expected: Expectation<'tcx>,
-        _expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let body = self.tcx.hir().body(block.body);
 
@@ -1721,7 +1720,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
                 seen_fields.insert(ident, field.span);
-                self.write_field_index(field.hir_id, i);
+                // FIXME: handle nested fields
+                self.write_field_index(field.hir_id, i, Vec::new());
 
                 // We don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
@@ -1801,7 +1801,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // consistency. But they should be merged as much as possible.
             let fru_tys = if self.tcx.features().type_changing_struct_update {
                 if adt.is_struct() {
-                    // Make some fresh substitutions for our ADT type.
+                    // Make some fresh generic parameters for our ADT type.
                     let fresh_args = self.fresh_args_for_item(base_expr.span, adt.did());
                     // We do subtyping on the FRU fields first, so we can
                     // learn exactly what types we expect the base expr
@@ -2367,24 +2367,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did(), body_hir_id);
-                    let fields = &base_def.non_enum_variant().fields;
-                    if let Some((index, field)) = fields
-                        .iter_enumerated()
-                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
-                    {
+                    let mut adt_def = *base_def;
+                    let mut last_ty = None;
+                    let mut nested_fields = Vec::new();
+                    let mut index = None;
+                    while let Some(idx) = self.tcx.find_field((adt_def.did(), ident)) {
+                        let &mut first_idx = index.get_or_insert(idx);
+                        let field = &adt_def.non_enum_variant().fields[idx];
                         let field_ty = self.field_ty(expr.span, field, args);
-                        // Save the index of all fields regardless of their visibility in case
-                        // of error recovery.
-                        self.write_field_index(expr.hir_id, index);
-                        let adjustments = self.adjust_steps(&autoderef);
-                        if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            self.apply_adjustments(base, adjustments);
-                            self.register_predicates(autoderef.into_obligations());
-
-                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                            return field_ty;
+                        if let Some(ty) = last_ty {
+                            nested_fields.push((ty, idx));
                         }
-                        private_candidate = Some((adjustments, base_def.did()));
+                        if field.ident(self.tcx).normalize_to_macros_2_0() == ident {
+                            // Save the index of all fields regardless of their visibility in case
+                            // of error recovery.
+                            self.write_field_index(expr.hir_id, first_idx, nested_fields);
+                            let adjustments = self.adjust_steps(&autoderef);
+                            if field.vis.is_accessible_from(def_scope, self.tcx) {
+                                self.apply_adjustments(base, adjustments);
+                                self.register_predicates(autoderef.into_obligations());
+
+                                self.tcx.check_stability(
+                                    field.did,
+                                    Some(expr.hir_id),
+                                    expr.span,
+                                    None,
+                                );
+                                return field_ty;
+                            }
+                            private_candidate = Some((adjustments, base_def.did()));
+                            break;
+                        }
+                        last_ty = Some(field_ty);
+                        adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
                     }
                 }
                 ty::Tuple(tys) => {
@@ -2395,7 +2410,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 self.apply_adjustments(base, adjustments);
                                 self.register_predicates(autoderef.into_obligations());
 
-                                self.write_field_index(expr.hir_id, FieldIdx::from_usize(index));
+                                self.write_field_index(
+                                    expr.hir_id,
+                                    FieldIdx::from_usize(index),
+                                    Vec::new(),
+                                );
                                 return field_ty;
                             }
                         }

@@ -515,6 +515,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyKind::Infer, &TyKind::Infer) => true,
+            (TyKind::AnonAdt(l_item_id), TyKind::AnonAdt(r_item_id)) => l_item_id == r_item_id,
             _ => false,
         }
     }
@@ -1108,7 +1109,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
-            TyKind::Err(_) | TyKind::Infer | TyKind::Never | TyKind::InferDelegation(..) => {},
+            TyKind::Err(_) | TyKind::Infer | TyKind::Never | TyKind::InferDelegation(..) | TyKind::AnonAdt(_) => {},
         }
     }
 

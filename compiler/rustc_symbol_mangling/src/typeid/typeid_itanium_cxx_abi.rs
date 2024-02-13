@@ -261,12 +261,7 @@ fn encode_predicates<'tcx>(
 }
 
 /// Encodes a region using the Itanium C++ ABI as a vendor extended type.
-fn encode_region<'tcx>(
-    _tcx: TyCtxt<'tcx>,
-    region: Region<'tcx>,
-    dict: &mut FxHashMap<DictKey<'tcx>, usize>,
-    _options: EncodeTyOptions,
-) -> String {
+fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>, usize>) -> String {
     // u6region[I[<region-disambiguator>][<region-index>]E] as vendor extended type
     let mut s = String::new();
     match region.kind() {
@@ -314,7 +309,7 @@ fn encode_args<'tcx>(
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(region) => {
-                    s.push_str(&encode_region(tcx, region, dict, options));
+                    s.push_str(&encode_region(region, dict));
                 }
                 GenericArgKind::Type(ty) => {
                     s.push_str(&encode_ty(tcx, ty, dict, options));
@@ -387,7 +382,8 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
             | hir::definitions::DefPathData::MacroNs(..)
-            | hir::definitions::DefPathData::LifetimeNs(..) => {
+            | hir::definitions::DefPathData::LifetimeNs(..)
+            | hir::definitions::DefPathData::AnonAdt => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });
@@ -703,7 +699,7 @@ fn encode_ty<'tcx>(
                 ty::DynStar => "u7dynstarI",
             });
             s.push_str(&encode_predicates(tcx, predicates, dict, options));
-            s.push_str(&encode_region(tcx, *region, dict, options));
+            s.push_str(&encode_region(*region, dict));
             s.push('E');
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -735,7 +731,6 @@ fn encode_ty<'tcx>(
 fn transform_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
-    _options: EncodeTyOptions,
 ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
     let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
         .iter()
@@ -967,7 +962,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         ty::Dynamic(predicates, _region, kind) => {
             ty = Ty::new_dynamic(
                 tcx,
-                transform_predicates(tcx, predicates, options),
+                transform_predicates(tcx, predicates),
                 tcx.lifetimes.re_erased,
                 *kind,
             );

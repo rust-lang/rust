@@ -8,6 +8,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 
 use std::array::IntoIter;
@@ -115,6 +116,12 @@ pub enum DefKind {
     Impl {
         of_trait: bool,
     },
+    /// A closure, coroutine, or coroutine-closure.
+    ///
+    /// These are all represented with the same `ExprKind::Closure` in the AST and HIR,
+    /// which makes it difficult to distinguish these during def collection. Therefore,
+    /// we treat them all the same, and code which needs to distinguish them can match
+    /// or `hir::ClosureKind` or `type_of`.
     Closure,
 }
 
@@ -225,6 +232,7 @@ impl DefKind {
 
     pub fn def_path_data(self, name: Symbol) -> DefPathData {
         match self {
+            DefKind::Struct | DefKind::Union if name == kw::Empty => DefPathData::AnonAdt,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union

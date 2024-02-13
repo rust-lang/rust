@@ -110,7 +110,9 @@ fn cs_clone_simple(
                 && !seen_type_names.insert(name)
             {
                 // Already produced an assertion for this type.
-            } else {
+                // Anonymous structs or unions must be eliminated as they cannot be
+                // type parameters.
+            } else if !field.ty.kind.is_anon_adt() {
                 // let _: AssertParamIsClone<FieldTy>;
                 super::assert_ty_bounds(
                     cx,

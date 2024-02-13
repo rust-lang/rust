@@ -1786,7 +1786,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
                     ty::ClauseKind::Trait(data) => {
-                        // The order here needs to match what we would get from `subst_supertrait`
+                        // The order here needs to match what we would get from
+                        // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
                         let pred_bound_vars = bound_predicate.bound_vars();
                         let mut all_bound_vars = bound_vars.clone();
                         all_bound_vars.extend(pred_bound_vars.iter());

@@ -248,6 +248,12 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, TyEncodable, TyDecodable, HashStable)]
+pub struct ImplTraitHeader<'tcx> {
+    pub trait_ref: ty::TraitRef<'tcx>,
+    pub polarity: ImplPolarity,
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub enum ImplSubject<'tcx> {
     Trait(TraitRef<'tcx>),
@@ -728,7 +734,7 @@ impl From<ty::ConstVid> for TermVid {
 /// the `GenericPredicates` are expressed in terms of the bound type
 /// parameters of the impl/trait/whatever, an `InstantiatedPredicates` instance
 /// represented a set of bounds for some particular instantiation,
-/// meaning that the generic parameters have been substituted with
+/// meaning that the generic parameters have been instantiated with
 /// their values.
 ///
 /// Example:
@@ -1130,6 +1136,8 @@ bitflags! {
         /// Indicates whether this variant was obtained as part of recovering from
         /// a syntactic error. May be incomplete or bogus.
         const IS_RECOVERED = 1 << 1;
+        /// Indicates whether this variant has unnamed fields.
+        const HAS_UNNAMED_FIELDS = 1 << 2;
     }
 }
 rustc_data_structures::external_bitflags_debug! { VariantFlags }
@@ -1143,7 +1151,7 @@ pub struct VariantDef {
     /// `DefId` that identifies the variant's constructor.
     /// If this variant is a struct variant, then this is `None`.
     pub ctor: Option<(CtorKind, DefId)>,
-    /// Variant or struct name.
+    /// Variant or struct name, maybe empty for anonymous adt (struct or union).
     pub name: Symbol,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
@@ -1180,11 +1188,12 @@ impl VariantDef {
         parent_did: DefId,
         recovered: bool,
         is_field_list_non_exhaustive: bool,
+        has_unnamed_fields: bool,
     ) -> Self {
         debug!(
             "VariantDef::new(name = {:?}, variant_did = {:?}, ctor = {:?}, discr = {:?},
-             fields = {:?}, adt_kind = {:?}, parent_did = {:?})",
-            name, variant_did, ctor, discr, fields, adt_kind, parent_did,
+             fields = {:?}, adt_kind = {:?}, parent_did = {:?}, has_unnamed_fields = {:?})",
+            name, variant_did, ctor, discr, fields, adt_kind, parent_did, has_unnamed_fields,
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
@@ -1194,6 +1203,10 @@ impl VariantDef {
 
         if recovered {
             flags |= VariantFlags::IS_RECOVERED;
+        }
+
+        if has_unnamed_fields {
+            flags |= VariantFlags::HAS_UNNAMED_FIELDS;
         }
 
         VariantDef { def_id: variant_did.unwrap_or(parent_did), ctor, name, discr, fields, flags }
@@ -1209,6 +1222,12 @@ impl VariantDef {
     #[inline]
     pub fn is_recovered(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_RECOVERED)
+    }
+
+    /// Does this variant contains unnamed fields
+    #[inline]
+    pub fn has_unnamed_fields(&self) -> bool {
+        self.flags.intersects(VariantFlags::HAS_UNNAMED_FIELDS)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1373,6 +1392,11 @@ impl<'tcx> FieldDef {
     /// Computes the `Ident` of this variant by looking up the `Span`
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.did).unwrap())
+    }
+
+    /// Returns whether the field is unnamed
+    pub fn is_unnamed(&self) -> bool {
+        self.name == rustc_span::symbol::kw::Underscore
     }
 }
 
@@ -1584,17 +1608,16 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
-        let impl_trait_ref1 = self.impl_trait_ref(def_id1);
-        let impl_trait_ref2 = self.impl_trait_ref(def_id2);
+        let impl1 = self.impl_trait_header(def_id1).unwrap().instantiate_identity();
+        let impl2 = self.impl_trait_header(def_id2).unwrap().instantiate_identity();
+
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if impl_trait_ref1.is_some_and(|tr| tr.instantiate_identity().references_error())
-            || impl_trait_ref2.is_some_and(|tr| tr.instantiate_identity().references_error())
-        {
+        if impl1.references_error() || impl2.references_error() {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
 
-        match (self.impl_polarity(def_id1), self.impl_polarity(def_id2)) {
+        match (impl1.polarity, impl2.polarity) {
             (ImplPolarity::Reservation, _) | (_, ImplPolarity::Reservation) => {
                 // `#[rustc_reservation_impl]` impls don't overlap with anything
                 return Some(ImplOverlapKind::Permitted { marker: false });
@@ -1609,10 +1632,9 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let is_marker_overlap = {
-            let is_marker_impl = |trait_ref: Option<EarlyBinder<TraitRef<'_>>>| -> bool {
-                trait_ref.is_some_and(|tr| self.trait_def(tr.skip_binder().def_id).is_marker)
-            };
-            is_marker_impl(impl_trait_ref1) && is_marker_impl(impl_trait_ref2)
+            let is_marker_impl =
+                |trait_ref: TraitRef<'_>| -> bool { self.trait_def(trait_ref.def_id).is_marker };
+            is_marker_impl(impl1.trait_ref) && is_marker_impl(impl2.trait_ref)
         };
 
         if is_marker_overlap {
@@ -1654,7 +1676,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
+    /// Returns the possibly-auto-generated MIR of a [`ty::InstanceDef`].
     #[instrument(skip(self), level = "debug")]
     pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> &'tcx Body<'tcx> {
         match instance {

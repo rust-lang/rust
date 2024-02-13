@@ -235,7 +235,7 @@ impl<'tcx> Const<'tcx> {
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
         // does not provide the parents generics to anonymous constants. We still allow generic const
         // parameters by themselves however, e.g. `N`. These constants would cause an ICE if we were to
-        // ever try to substitute the generic parameters in their bodies.
+        // ever try to instantiate the generic parameters in their bodies.
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(
                 _,

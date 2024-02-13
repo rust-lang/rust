@@ -734,11 +734,21 @@ impl<'tcx> Cx<'tcx> {
                 });
                 ExprKind::Loop { body }
             }
-            hir::ExprKind::Field(source, ..) => ExprKind::Field {
-                lhs: self.mirror_expr(source),
-                variant_index: FIRST_VARIANT,
-                name: self.typeck_results.field_index(expr.hir_id),
-            },
+            hir::ExprKind::Field(source, ..) => {
+                let mut kind = ExprKind::Field {
+                    lhs: self.mirror_expr(source),
+                    variant_index: FIRST_VARIANT,
+                    name: self.typeck_results.field_index(expr.hir_id),
+                };
+                let nested_field_tys_and_indices =
+                    self.typeck_results.nested_field_tys_and_indices(expr.hir_id);
+                for &(ty, idx) in nested_field_tys_and_indices {
+                    let expr = Expr { temp_lifetime, ty, span: source.span, kind };
+                    let lhs = self.thir.exprs.push(expr);
+                    kind = ExprKind::Field { lhs, variant_index: FIRST_VARIANT, name: idx };
+                }
+                kind
+            }
             hir::ExprKind::Cast(source, cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
                 let user_provided_types = self.typeck_results.user_provided_types();
@@ -801,7 +811,7 @@ impl<'tcx> Cx<'tcx> {
         let user_provided_type = match res {
             // A reference to something callable -- e.g., a fn, method, or
             // a tuple-struct or tuple-variant. This has the type of a
-            // `Fn` but with the user-given substitutions.
+            // `Fn` but with the user-given generic parameters.
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::AssocFn, _)
             | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _)
@@ -812,7 +822,7 @@ impl<'tcx> Cx<'tcx> {
 
             // A unit struct/variant which is used as a value (e.g.,
             // `None`). This has the type of the enum/struct that defines
-            // this variant -- but with the substitutions given by the
+            // this variant -- but with the generic parameters given by the
             // user.
             Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => {
                 self.user_args_applied_to_ty_of_hir_id(hir_id).map(Box::new)

@@ -175,7 +175,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                         let pred = bound_predicate.rebind(pred);
-                        // A `Self` within the original bound will be substituted with a
+                        // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self = match pred.skip_binder().term.unpack() {
                             ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),

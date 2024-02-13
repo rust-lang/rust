@@ -235,7 +235,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             NullaryOp(ref null_op, ty) => {
-                let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
+                let ty = self.instantiate_from_current_frame_and_normalize_erasing_regions(ty)?;
                 let layout = self.layout_of(ty)?;
                 if let mir::NullOp::SizeOf | mir::NullOp::AlignOf = null_op
                     && layout.is_unsized()
@@ -276,7 +276,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
                 let cast_ty =
-                    self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty)?;
+                    self.instantiate_from_current_frame_and_normalize_erasing_regions(cast_ty)?;
                 self.cast(&src, cast_kind, cast_ty, &dest)?;
             }
 

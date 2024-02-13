@@ -1016,6 +1016,8 @@ pub struct Resolver<'a, 'tcx> {
     binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,
 
     underscore_disambiguator: u32,
+    /// Disambiguator for anonymous adts.
+    empty_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
@@ -1367,6 +1369,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
+            empty_disambiguator: 0,
             empty_module,
             module_map,
             block_map: Default::default(),
@@ -1734,6 +1737,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
             self.underscore_disambiguator
+        } else if ident.name == kw::Empty {
+            self.empty_disambiguator += 1;
+            self.empty_disambiguator
         } else {
             0
         };

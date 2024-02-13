@@ -2107,9 +2107,9 @@ pub enum TyKind {
     /// A tuple (`(A, B, C, D,...)`).
     Tup(ThinVec<P<Ty>>),
     /// An anonymous struct type i.e. `struct { foo: Type }`
-    AnonStruct(ThinVec<FieldDef>),
+    AnonStruct(NodeId, ThinVec<FieldDef>),
     /// An anonymous union type i.e. `union { bar: Type }`
-    AnonUnion(ThinVec<FieldDef>),
+    AnonUnion(NodeId, ThinVec<FieldDef>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -2160,6 +2160,10 @@ impl TyKind {
         } else {
             None
         }
+    }
+
+    pub fn is_anon_adt(&self) -> bool {
+        matches!(self, TyKind::AnonStruct(..) | TyKind::AnonUnion(..))
     }
 }
 

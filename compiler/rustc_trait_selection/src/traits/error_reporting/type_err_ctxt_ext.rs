@@ -615,8 +615,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         let UnsatisfiedConst(unsatisfied_const) = self
                             .maybe_add_note_for_unsatisfied_const(
-                                &obligation,
-                                trait_ref,
                                 &trait_predicate,
                                 &mut err,
                                 span,
@@ -1480,8 +1478,6 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
 
     fn maybe_add_note_for_unsatisfied_const(
         &self,
-        obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
         trait_predicate: &ty::PolyTraitPredicate<'tcx>,
         err: &mut Diagnostic,
         span: Span,
@@ -1980,13 +1976,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .tcx
             .all_impls(trait_pred.def_id())
             .filter_map(|def_id| {
-                if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative
+                let imp = self.tcx.impl_trait_header(def_id).unwrap().skip_binder();
+                if imp.polarity == ty::ImplPolarity::Negative
                     || !self.tcx.is_user_visible_dep(def_id.krate)
                 {
                     return None;
                 }
-
-                let imp = self.tcx.impl_trait_ref(def_id).unwrap().skip_binder();
+                let imp = imp.trait_ref;
 
                 self.fuzzy_match_tys(trait_pred.skip_binder().self_ty(), imp.self_ty(), false).map(
                     |similarity| ImplCandidate { trait_ref: imp, similarity, impl_def_id: def_id },
@@ -2165,12 +2161,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .tcx
                 .all_impls(def_id)
                 // Ignore automatically derived impls and `!Trait` impls.
-                .filter(|&def_id| {
-                    self.tcx.impl_polarity(def_id) != ty::ImplPolarity::Negative
+                .filter_map(|def_id| self.tcx.impl_trait_header(def_id))
+                .map(ty::EarlyBinder::instantiate_identity)
+                .filter(|header| {
+                    header.polarity != ty::ImplPolarity::Negative
                         || self.tcx.is_automatically_derived(def_id)
                 })
-                .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
-                .map(ty::EarlyBinder::instantiate_identity)
+                .map(|header| header.trait_ref)
                 .filter(|trait_ref| {
                     let self_ty = trait_ref.self_ty();
                     // Avoid mentioning type parameters.
@@ -2426,16 +2423,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // known, since we don't dispatch based on region
                 // relationships.
 
-                // Pick the first substitution that still contains inference variables as the one
+                // Pick the first generic parameter that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
                 // a more general error.
-                let subst = data.trait_ref.args.iter().find(|s| s.has_non_region_infer());
+                let arg = data.trait_ref.args.iter().find(|s| s.has_non_region_infer());
 
-                let mut err = if let Some(subst) = subst {
+                let mut err = if let Some(arg) = arg {
                     self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
-                        subst,
+                        arg,
                         ErrorCode::E0283,
                         true,
                     )
@@ -2473,9 +2470,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 if ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer {
                     if let Some(e) = self.tainted_by_errors()
-                        && subst.is_none()
+                        && arg.is_none()
                     {
-                        // If `subst.is_none()`, then this is probably two param-env
+                        // If `arg.is_none()`, then this is probably two param-env
                         // candidates or impl candidates that are equal modulo lifetimes.
                         // Therefore, if we've already emitted an error, just skip this
                         // one, since it's not particularly actionable.
@@ -2509,7 +2506,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 }
 
-                if let Some(ty::GenericArgKind::Type(_)) = subst.map(|subst| subst.unpack())
+                if let Some(ty::GenericArgKind::Type(_)) = arg.map(|arg| arg.unpack())
                     && let Some(body_id) =
                         self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
                 {
@@ -2687,23 +2684,23 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     // other `Foo` impls are incoherent.
                     return guar;
                 }
-                let subst = data
+                let arg = data
                     .projection_ty
                     .args
                     .iter()
                     .chain(Some(data.term.into_arg()))
                     .find(|g| g.has_non_region_infer());
-                if let Some(subst) = subst {
+                if let Some(arg) = arg {
                     self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
-                        subst,
+                        arg,
                         ErrorCode::E0284,
                         true,
                     )
                     .with_note(format!("cannot satisfy `{predicate}`"))
                 } else {
-                    // If we can't find a substitution, just print a generic error
+                    // If we can't find a generic parameter, just print a generic error
                     struct_span_code_err!(
                         self.dcx(),
                         span,
@@ -2722,18 +2719,18 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                let subst = data.walk().find(|g| g.is_non_region_infer());
-                if let Some(subst) = subst {
+                let arg = data.walk().find(|g| g.is_non_region_infer());
+                if let Some(arg) = arg {
                     let err = self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
-                        subst,
+                        arg,
                         ErrorCode::E0284,
                         true,
                     );
                     err
                 } else {
-                    // If we can't find a substitution, just print a generic error
+                    // If we can't find a generic parameter, just print a generic error
                     struct_span_code_err!(
                         self.dcx(),
                         span,
@@ -3359,8 +3356,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn maybe_add_note_for_unsatisfied_const(
         &self,
-        _obligation: &PredicateObligation<'tcx>,
-        _trait_ref: ty::PolyTraitRef<'tcx>,
         _trait_predicate: &ty::PolyTraitPredicate<'tcx>,
         _err: &mut Diagnostic,
         _span: Span,

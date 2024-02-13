@@ -1,6 +1,6 @@
 use super::IsMethodCall;
 use crate::astconv::{
-    errors::prohibit_assoc_ty_binding, CreateSubstsForGenericArgsCtxt, ExplicitLateBound,
+    errors::prohibit_assoc_ty_binding, CreateInstantiationsForGenericArgsCtxt, ExplicitLateBound,
     GenericArgCountMismatch, GenericArgCountResult, GenericArgPosition,
 };
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
@@ -177,9 +177,9 @@ pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
     has_self: bool,
     self_ty: Option<Ty<'tcx>>,
     arg_count: &GenericArgCountResult,
-    ctx: &mut impl CreateSubstsForGenericArgsCtxt<'a, 'tcx>,
+    ctx: &mut impl CreateInstantiationsForGenericArgsCtxt<'a, 'tcx>,
 ) -> GenericArgsRef<'tcx> {
-    // Collect the segments of the path; we need to substitute arguments
+    // Collect the segments of the path; we need to instantiate arguments
     // for parameters throughout the entire path (wherever there are
     // generic parameters).
     let mut parent_defs = tcx.generics_of(def_id);
@@ -191,7 +191,7 @@ pub fn create_args_for_parent_generic_args<'tcx: 'a, 'a>(
     }
 
     // We manually build up the generic arguments, rather than using convenience
-    // methods in `subst.rs`, so that we can iterate over the arguments and
+    // methods in `rustc_middle/src/ty/generic_args.rs`, so that we can iterate over the arguments and
     // parameters in lock-step linearly, instead of trying to match each pair.
     let mut args: SmallVec<[ty::GenericArg<'tcx>; 8]> = SmallVec::with_capacity(count);
     // Iterate over each segment of the path.

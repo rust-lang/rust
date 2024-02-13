@@ -356,22 +356,13 @@ pub fn const_validate_mplace<'mir, 'tcx>(
     let mut inner = false;
     while let Some((mplace, path)) = ref_tracking.todo.pop() {
         let mode = match ecx.tcx.static_mutability(cid.instance.def_id()) {
-            Some(_) if cid.promoted.is_some() => {
-                // Promoteds in statics are consts that re allowed to point to statics.
-                CtfeValidationMode::Const {
-                    allow_immutable_unsafe_cell: false,
-                    allow_extern_static_ptrs: true,
-                }
-            }
+            _ if cid.promoted.is_some() => CtfeValidationMode::Promoted,
             Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`
             None => {
                 // In normal `const` (not promoted), the outermost allocation is always only copied,
                 // so having `UnsafeCell` in there is okay despite them being in immutable memory.
                 let allow_immutable_unsafe_cell = cid.promoted.is_none() && !inner;
-                CtfeValidationMode::Const {
-                    allow_immutable_unsafe_cell,
-                    allow_extern_static_ptrs: false,
-                }
+                CtfeValidationMode::Const { allow_immutable_unsafe_cell }
             }
         };
         ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;

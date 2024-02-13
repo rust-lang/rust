@@ -50,7 +50,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // `tests/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
-            // We normalize the `fn_sig` again after substituting at a later point.
+            // We normalize the `fn_sig` again after instantiating at a later point.
             let mut sig = match *ty.kind() {
                 ty::FnDef(def_id, args) => tcx
                     .fn_sig(def_id)
@@ -163,7 +163,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // a separate def-id for these bodies.
             if let InstanceDef::CoroutineKindShim { target_kind, .. } = instance.def {
                 // Grab the parent coroutine-closure. It has the same args for the purposes
-                // of substitution, so this will be okay to do.
+                // of instantiation, so this will be okay to do.
                 let ty::CoroutineClosure(_, coroutine_closure_args) = *tcx
                     .instantiate_and_normalize_erasing_regions(
                         args,

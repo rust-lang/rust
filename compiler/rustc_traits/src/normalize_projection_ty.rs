@@ -42,7 +42,7 @@ fn normalize_projection_ty<'tcx>(
             );
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
-            // are recursive (given some substitution of the opaque's type variables).
+            // are recursive (given some generic parameters of the opaque's type variables).
             // In that case, we may only realize a cycle error when calling
             // `normalize_erasing_regions` in mono.
             if !ocx.infcx.next_trait_solver() {

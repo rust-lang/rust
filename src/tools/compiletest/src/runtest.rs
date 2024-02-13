@@ -4316,10 +4316,11 @@ impl<'test> TestCx<'test> {
             let mut seen_allocs = indexmap::IndexSet::new();
 
             // The alloc-id appears in pretty-printed allocations.
-            let re =
+            static ALLOC_ID_PP_RE: Lazy<Regex> = Lazy::new(|| {
                 Regex::new(r"╾─*a(lloc)?([0-9]+)(\+0x[0-9]+)?(<imm>)?( \([0-9]+ ptr bytes\))?─*╼")
-                    .unwrap();
-            normalized = re
+                    .unwrap()
+            });
+            normalized = ALLOC_ID_PP_RE
                 .replace_all(&normalized, |caps: &Captures<'_>| {
                     // Renumber the captured index.
                     let index = caps.get(2).unwrap().as_str().to_string();
@@ -4332,8 +4333,9 @@ impl<'test> TestCx<'test> {
                 .into_owned();
 
             // The alloc-id appears in a sentence.
-            let re = Regex::new(r"\balloc([0-9]+)\b").unwrap();
-            normalized = re
+            static ALLOC_ID_RE: Lazy<Regex> =
+                Lazy::new(|| Regex::new(r"\balloc([0-9]+)\b").unwrap());
+            normalized = ALLOC_ID_RE
                 .replace_all(&normalized, |caps: &Captures<'_>| {
                     let index = caps.get(1).unwrap().as_str().to_string();
                     let (index, _) = seen_allocs.insert_full(index);

@@ -336,12 +336,12 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         let projection_ty = if let ty::AssocKind::Fn = assoc_kind {
             let mut emitted_bad_param_err = None;
-            // If we have an method return type bound, then we need to substitute
+            // If we have an method return type bound, then we need to instantiate
             // the method's early bound params with suitable late-bound params.
             let mut num_bound_vars = candidate.bound_vars().len();
             let args =
                 candidate.skip_binder().args.extend_to(tcx, assoc_item.def_id, |param, _| {
-                    let subst = match param.kind {
+                    let arg = match param.kind {
                         ty::GenericParamDefKind::Lifetime => ty::Region::new_bound(
                             tcx,
                             ty::INNERMOST,
@@ -379,7 +379,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         }
                     };
                     num_bound_vars += 1;
-                    subst
+                    arg
                 });
 
             // Next, we need to check that the return-type notation is being used on
@@ -402,12 +402,13 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
             // Finally, move the fn return type's bound vars over to account for the early bound
             // params (and trait ref's late bound params). This logic is very similar to
-            // `Predicate::subst_supertrait`, and it's no coincidence why.
+            // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
+            // and it's no coincidence why.
             let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-            let subst_output = ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args);
+            let instantiation_output = ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args);
 
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
-            ty::Binder::bind_with_vars(subst_output, bound_vars)
+            ty::Binder::bind_with_vars(instantiation_output, bound_vars)
         } else {
             // Append the generic arguments of the associated type to the `trait_ref`.
             candidate.map_bound(|trait_ref| {

@@ -266,7 +266,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
                 // universe just created. Otherwise, we can end up with something like `for<'a> I: 'a`,
                 // which isn't quite what we want. Ideally, we want either an implied
                 // `for<'a where I: 'a> I: 'a` or we want to "lazily" check these hold when we
-                // substitute concrete regions. There is design work to be done here; until then,
+                // instantiate concrete regions. There is design work to be done here; until then,
                 // however, this allows experimenting potential GAT features without running into
                 // well-formedness issues.
                 let new_obligations = obligations
@@ -1115,7 +1115,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
 /// as Trait>::Item`. The result is always a type (and possibly
 /// additional obligations). If ambiguity arises, which implies that
 /// there are unresolved type variables in the projection, we will
-/// substitute a fresh type variable `$X` and generate a new
+/// instantiate it with a fresh type variable `$X` and generate a new
 /// obligation `<T as Trait>::Item == $X` for later.
 pub fn normalize_projection_type<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
@@ -1400,7 +1400,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             cause.span,
             cause.body_id,
             // FIXME(inherent_associated_types): Since we can't pass along the self type to the
-            // cause code, inherent projections will be printed with identity substitutions in
+            // cause code, inherent projections will be printed with identity instantiation in
             // diagnostics which is not ideal.
             // Consider creating separate cause codes for this specific situation.
             if span.is_dummy() {

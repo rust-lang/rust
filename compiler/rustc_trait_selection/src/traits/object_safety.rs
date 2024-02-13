@@ -263,7 +263,7 @@ fn predicates_reference_self(
     predicates
         .predicates
         .iter()
-        .map(|&(predicate, sp)| (predicate.subst_supertrait(tcx, &trait_ref), sp))
+        .map(|&(predicate, sp)| (predicate.instantiate_supertrait(tcx, &trait_ref), sp))
         .filter_map(|predicate| predicate_references_self(tcx, predicate))
         .collect()
 }
@@ -607,7 +607,7 @@ fn virtual_call_violations_for_method<'tcx>(
     errors
 }
 
-/// Performs a type substitution to produce the version of `receiver_ty` when `Self = self_ty`.
+/// Performs a type instantiation to produce the version of `receiver_ty` when `Self = self_ty`.
 /// For example, for `receiver_ty = Rc<Self>` and `self_ty = Foo`, returns `Rc<Foo>`.
 fn receiver_for_self_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -682,7 +682,7 @@ fn object_ty_for_trait<'tcx>(
 ///   ```
 ///
 ///   where `Foo[X => Y]` means "the same type as `Foo`, but with `X` replaced with `Y`"
-///   (substitution notation).
+///   (instantiation notation).
 ///
 /// Some examples of receiver types and their required obligation:
 /// - `&'a mut self` requires `&'a mut Self: DispatchFromDyn<&'a mut dyn Trait>`,

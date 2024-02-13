@@ -108,9 +108,9 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
-    /// This exists purely for testing the interactions between span_delayed_bug and incremental.
-    query trigger_span_delayed_bug(key: DefId) {
-        desc { "triggering a span delayed bug for testing incremental" }
+    /// This exists purely for testing the interactions between delayed bugs and incremental.
+    query trigger_delayed_bug(key: DefId) {
+        desc { "triggering a delayed bug for testing incremental" }
     }
 
     /// Collects the list of all tools registered using `#![register_tool]`.
@@ -846,15 +846,11 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Given an `impl_id`, return the trait it implements.
+    /// Given an `impl_id`, return the trait it implements along with some header information.
     /// Return `None` if this is an inherent impl.
-    query impl_trait_ref(impl_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
+    query impl_trait_header(impl_id: DefId) -> Option<ty::EarlyBinder<ty::ImplTraitHeader<'tcx>>> {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
-        separate_provide_extern
-    }
-    query impl_polarity(impl_id: DefId) -> ty::ImplPolarity {
-        desc { |tcx| "computing implementation polarity of `{}`", tcx.def_path_str(impl_id) }
         separate_provide_extern
     }
 
@@ -2078,9 +2074,9 @@ rustc_queries! {
         desc { "normalizing `{:?}`", goal.value.value.value }
     }
 
-    query subst_and_check_impossible_predicates(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
+    query instantiate_and_check_impossible_predicates(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
         desc { |tcx|
-            "checking impossible substituted predicates: `{}`",
+            "checking impossible instantiated predicates: `{}`",
             tcx.def_path_str(key.0)
         }
     }
@@ -2216,6 +2212,10 @@ rustc_queries! {
     query cross_crate_inlinable(def_id: DefId) -> bool {
         desc { "whether the item should be made inlinable across crates" }
         separate_provide_extern
+    }
+
+    query find_field((def_id, ident): (DefId, rustc_span::symbol::Ident)) -> Option<rustc_target::abi::FieldIdx> {
+        desc { |tcx| "find the index of maybe nested field `{ident}` in `{}`", tcx.def_path_str(def_id) }
     }
 }
 

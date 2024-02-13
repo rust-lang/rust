@@ -313,18 +313,17 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
     }
 
-    fn insert_field_def_ids(&mut self, def_id: LocalDefId, vdata: &ast::VariantData) {
-        if vdata.fields().iter().any(|field| field.is_placeholder) {
+    fn insert_field_def_ids(&mut self, def_id: LocalDefId, fields: &[ast::FieldDef]) {
+        if fields.iter().any(|field| field.is_placeholder) {
             // The fields are not expanded yet.
             return;
         }
-        let def_ids = vdata.fields().iter().map(|field| self.r.local_def_id(field.id).to_def_id());
+        let def_ids = fields.iter().map(|field| self.r.local_def_id(field.id).to_def_id());
         self.r.field_def_ids.insert(def_id, self.r.tcx.arena.alloc_from_iter(def_ids));
     }
 
-    fn insert_field_visibilities_local(&mut self, def_id: DefId, vdata: &ast::VariantData) {
-        let field_vis = vdata
-            .fields()
+    fn insert_field_visibilities_local(&mut self, def_id: DefId, fields: &[ast::FieldDef]) {
+        let field_vis = fields
             .iter()
             .map(|field| field.vis.span.until(field.ident.map_or(field.ty.span, |i| i.span)))
             .collect();
@@ -629,6 +628,50 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
     }
 
+    fn build_reduced_graph_for_struct_variant(
+        &mut self,
+        fields: &[ast::FieldDef],
+        ident: Ident,
+        def_id: LocalDefId,
+        adt_res: Res,
+        adt_vis: ty::Visibility,
+        adt_span: Span,
+    ) {
+        let parent_scope = &self.parent_scope;
+        let parent = parent_scope.module;
+        let expansion = parent_scope.expansion;
+
+        // Define a name in the type namespace if it is not anonymous.
+        self.r.define(parent, ident, TypeNS, (adt_res, adt_vis, adt_span, expansion));
+        self.r.feed_visibility(def_id, adt_vis);
+
+        // Record field names for error reporting.
+        self.insert_field_def_ids(def_id, fields);
+        self.insert_field_visibilities_local(def_id.to_def_id(), fields);
+
+        for field in fields {
+            match &field.ty.kind {
+                ast::TyKind::AnonStruct(id, nested_fields)
+                | ast::TyKind::AnonUnion(id, nested_fields) => {
+                    let local_def_id = self.r.local_def_id(*id);
+                    let def_id = local_def_id.to_def_id();
+                    let def_kind = self.r.tcx.def_kind(local_def_id);
+                    let res = Res::Def(def_kind, def_id);
+                    self.build_reduced_graph_for_struct_variant(
+                        &nested_fields,
+                        Ident::empty(),
+                        local_def_id,
+                        res,
+                        // Anonymous adts inherit visibility from their parent adts.
+                        adt_vis,
+                        field.ty.span,
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &'b Item) {
         let parent_scope = &self.parent_scope;
@@ -716,12 +759,14 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref vdata, _) => {
-                // Define a name in the type namespace.
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
-
-                // Record field names for error reporting.
-                self.insert_field_def_ids(local_def_id, vdata);
-                self.insert_field_visibilities_local(def_id, vdata);
+                self.build_reduced_graph_for_struct_variant(
+                    vdata.fields(),
+                    ident,
+                    local_def_id,
+                    res,
+                    vis,
+                    sp,
+                );
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
@@ -755,7 +800,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
                     self.r.feed_visibility(ctor_def_id, ctor_vis);
                     // We need the field visibility spans also for the constructor for E0603.
-                    self.insert_field_visibilities_local(ctor_def_id.to_def_id(), vdata);
+                    self.insert_field_visibilities_local(ctor_def_id.to_def_id(), vdata.fields());
 
                     self.r
                         .struct_constructors
@@ -764,11 +809,14 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             ItemKind::Union(ref vdata, _) => {
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
-
-                // Record field names for error reporting.
-                self.insert_field_def_ids(local_def_id, vdata);
-                self.insert_field_visibilities_local(def_id, vdata);
+                self.build_reduced_graph_for_struct_variant(
+                    vdata.fields(),
+                    ident,
+                    local_def_id,
+                    res,
+                    vis,
+                    sp,
+                );
             }
 
             // These items do not add names to modules.
@@ -1461,8 +1509,8 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         }
 
         // Record field names for error reporting.
-        self.insert_field_def_ids(def_id, &variant.data);
-        self.insert_field_visibilities_local(def_id.to_def_id(), &variant.data);
+        self.insert_field_def_ids(def_id, variant.data.fields());
+        self.insert_field_visibilities_local(def_id.to_def_id(), variant.data.fields());
 
         visit::walk_variant(self, variant);
     }

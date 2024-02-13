@@ -328,6 +328,7 @@ impl<'a> State<'a> {
             hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
+            hir::TyKind::AnonAdt(..) => self.word("/* anonymous adt */"),
         }
         self.end()
     }
@@ -728,26 +729,30 @@ impl<'a> State<'a> {
             }
             hir::VariantData::Struct { .. } => {
                 self.print_where_clause(generics);
-                self.nbsp();
-                self.bopen();
-                self.hardbreak_if_not_bol();
-
-                for field in struct_def.fields() {
-                    self.hardbreak_if_not_bol();
-                    self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(self.attrs(field.hir_id));
-                    self.print_ident(field.ident);
-                    self.word_nbsp(":");
-                    self.print_type(field.ty);
-                    self.word(",");
-                }
-
-                self.bclose(span)
+                self.print_variant_struct(span, struct_def.fields())
             }
         }
     }
 
-    fn print_variant(&mut self, v: &hir::Variant<'_>) {
+    fn print_variant_struct(&mut self, span: rustc_span::Span, fields: &[hir::FieldDef<'_>]) {
+        self.nbsp();
+        self.bopen();
+        self.hardbreak_if_not_bol();
+
+        for field in fields {
+            self.hardbreak_if_not_bol();
+            self.maybe_print_comment(field.span.lo());
+            self.print_outer_attributes(self.attrs(field.hir_id));
+            self.print_ident(field.ident);
+            self.word_nbsp(":");
+            self.print_type(field.ty);
+            self.word(",");
+        }
+
+        self.bclose(span)
+    }
+
+    pub fn print_variant(&mut self, v: &hir::Variant<'_>) {
         self.head("");
         let generics = hir::Generics::empty();
         self.print_struct(&v.data, generics, v.ident.name, v.span, false);

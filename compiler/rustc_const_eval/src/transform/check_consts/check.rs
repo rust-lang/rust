@@ -619,9 +619,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if base_ty.is_unsafe_ptr() {
                     if place_ref.projection.is_empty() {
                         let decl = &self.body.local_decls[place_ref.local];
-                        if let LocalInfo::StaticRef { def_id, .. } = *decl.local_info() {
-                            let span = decl.source_info.span;
-                            self.check_static(def_id, span);
+                        // If this is a static, then this is not really dereferencing a pointer,
+                        // just directly accessing a static. That is not subject to any feature
+                        // gates (except for the one about whether statics can even be used, but
+                        // that is checked already by `visit_operand`).
+                        if let LocalInfo::StaticRef { .. } = *decl.local_info() {
                             return;
                         }
                     }

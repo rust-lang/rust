@@ -143,7 +143,7 @@ pub enum TyKind<I: Interner> {
     /// For example, the type `List<i32>` would be represented using the `AdtDef`
     /// for `struct List<T>` and the args `[i32]`.
     ///
-    /// Note that generic parameters in fields only get lazily substituted
+    /// Note that generic parameters in fields only get lazily instantiated
     /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, args))`.
     Adt(I::AdtDef, I::GenericArgs),
 
@@ -197,14 +197,14 @@ pub enum TyKind<I: Interner> {
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
-    /// Closure args contain both the - potentially substituted - generic parameters
+    /// Closure args contain both the - potentially instantiated - generic parameters
     /// of its parent and some synthetic parameters. See the documentation for
     /// `ClosureArgs` for more details.
     Closure(I::DefId, I::GenericArgs),
 
     /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
     ///
-    /// Coroutine-closure args contain both the - potentially substituted - generic
+    /// Coroutine-closure args contain both the - potentially instantiated - generic
     /// parameters of its parent and some synthetic parameters. See the documentation
     /// for `CoroutineClosureArgs` for more details.
     CoroutineClosure(I::DefId, I::GenericArgs),

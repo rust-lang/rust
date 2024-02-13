@@ -557,23 +557,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
             |impl_def_id| {
-                // Before we create the substitutions and everything, first
+                // Before we create the generic parameters and everything, first
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
-                let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
-                if !drcx.args_may_unify(obligation_args, impl_trait_ref.skip_binder().args) {
+                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
+                if !drcx
+                    .args_may_unify(obligation_args, impl_trait_header.skip_binder().trait_ref.args)
+                {
                     return;
                 }
                 if self.reject_fn_ptr_impls(
                     impl_def_id,
                     obligation,
-                    impl_trait_ref.skip_binder().self_ty(),
+                    impl_trait_header.skip_binder().trait_ref.self_ty(),
                 ) {
                     return;
                 }
 
                 self.infcx.probe(|_| {
-                    if let Ok(_args) = self.match_impl(impl_def_id, impl_trait_ref, obligation) {
+                    if let Ok(_args) = self.match_impl(impl_def_id, impl_trait_header, obligation) {
                         candidates.vec.push(ImplCandidate(impl_def_id));
                     }
                 });
