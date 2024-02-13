@@ -10,7 +10,7 @@ LL |     fn a(&self) {}
    |        - the method is available for `()` here
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `A` which provides `a` is implemented but not in scope; perhaps you want to import it
    |
 LL + use xcrate_issue_43189_b::xcrate_issue_43189_a::A;
    |

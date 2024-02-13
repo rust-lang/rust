@@ -5,7 +5,7 @@ LL |     1u32.method();
    |          ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
+help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
 LL + use foo::Bar;
    |
@@ -27,7 +27,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
    |                                            ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
+help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
 LL + use foo::Bar;
    |
@@ -52,7 +52,7 @@ LL |     'a'.method();
    |         ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use foo::Bar;
    |
@@ -68,7 +68,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&'a')).method();
    |                                           ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use foo::Bar;
    |
@@ -89,7 +89,7 @@ LL |         fn method(&self) {}
    |            ------ the method is available for `i32` here
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use no_method_suggested_traits::foo::PubPub;
    |
@@ -105,7 +105,7 @@ LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
    |                                            ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use no_method_suggested_traits::foo::PubPub;
    |
