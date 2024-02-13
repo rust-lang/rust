@@ -58,14 +58,15 @@ LL |     S::a(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
+help: there is an associated constant `B` with a similar name
+  --> $DIR/item-privacy.rs:29:9
+   |
+LL |         const B: u8 = 0;
+   |         ^^^^^^^^^^^
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use method::A;
    |
-help: there is an associated constant with a similar name
-   |
-LL |     S::B(&S);
-   |        ~
 
 error[E0599]: no function or associated item named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:80:8
@@ -77,14 +78,15 @@ LL |     S::b(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
+help: there is an associated constant `B` with a similar name
+  --> $DIR/item-privacy.rs:29:9
+   |
+LL |         const B: u8 = 0;
+   |         ^^^^^^^^^^^
 help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
 LL + use method::B;
    |
-help: there is an associated constant with a similar name
-   |
-LL |     S::B(&S);
-   |        ~
 
 error[E0624]: method `a` is private
   --> $DIR/item-privacy.rs:84:14
