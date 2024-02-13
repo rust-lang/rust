@@ -21,18 +21,18 @@
 +         _2 = Option::<T>::Some(_1);
           StorageDead(_3);
 -         _4 = discriminant(_2);
--         switchInt(move _4) -> [0: bb1, 1: bb3, otherwise: bb2];
+-         switchInt(move _4) -> [0: bb2, 1: bb3, otherwise: bb1];
 +         _4 = const 1_isize;
-+         switchInt(const 1_isize) -> [0: bb1, 1: bb3, otherwise: bb2];
++         switchInt(const 1_isize) -> [0: bb2, 1: bb3, otherwise: bb1];
       }
   
       bb1: {
-          StorageLive(_6);
-          _6 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
+          unreachable;
       }
   
       bb2: {
-          unreachable;
+          StorageLive(_6);
+          _6 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
       }
   
       bb3: {

@@ -14,20 +14,20 @@
           StorageLive(_2);
           _2 = Test1::C;
           _3 = discriminant(_2);
--         switchInt(move _3) -> [0: bb3, 1: bb4, 2: bb1, otherwise: bb2];
-+         switchInt(move _3) -> [0: bb6, 1: bb6, 2: bb1, otherwise: bb6];
+-         switchInt(move _3) -> [0: bb3, 1: bb4, 2: bb2, otherwise: bb1];
++         switchInt(move _3) -> [0: bb6, 1: bb6, 2: bb2, otherwise: bb6];
       }
   
       bb1: {
+          unreachable;
+      }
+  
+      bb2: {
           StorageLive(_5);
           _5 = const "C";
           _1 = &(*_5);
           StorageDead(_5);
           goto -> bb5;
-      }
-  
-      bb2: {
-          unreachable;
       }
   
       bb3: {

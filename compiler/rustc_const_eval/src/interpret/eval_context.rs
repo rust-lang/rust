@@ -288,7 +288,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
                 write!(f, "inside closure")
             } else {
-                // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever
+                // Note: this triggers a `must_produce_diag` state, which means that if we ever
                 // get here we must emit a diagnostic. We should never display a `FrameInfo` unless
                 // we actually want to emit a warning or error to the user.
                 write!(f, "inside `{}`", self.instance)
@@ -304,7 +304,7 @@ impl<'tcx> FrameInfo<'tcx> {
             errors::FrameNote { where_: "closure", span, instance: String::new(), times: 0 }
         } else {
             let instance = format!("{}", self.instance);
-            // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever get
+            // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
             errors::FrameNote { where_: "instance", span, instance, times: 0 }

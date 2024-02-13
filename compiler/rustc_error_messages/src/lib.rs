@@ -376,7 +376,7 @@ impl From<Cow<'static, str>> for DiagnosticMessage {
     }
 }
 
-/// A workaround for good_path_delayed_bug ICEs when formatting types in disabled lints.
+/// A workaround for must_produce_diag ICEs when formatting types in disabled lints.
 ///
 /// Delays formatting until `.into(): DiagnosticMessage` is used.
 pub struct DelayDm<F>(pub F);

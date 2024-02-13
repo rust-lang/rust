@@ -28,18 +28,18 @@
 +         StorageLive(_3);
 +         StorageLive(_5);
 +         _3 = discriminant(_2);
-+         switchInt(move _3) -> [0: bb1, 1: bb3, otherwise: bb2];
++         switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
       }
   
       bb1: {
-+         StorageLive(_4);
-+         _4 = cfg!(debug_assertions);
-+         assume(_4);
-+         _5 = unreachable_unchecked::precondition_check() -> [return: bb2, unwind unreachable];
++         unreachable;
 +     }
 + 
 +     bb2: {
-+         unreachable;
++         StorageLive(_4);
++         _4 = cfg!(debug_assertions);
++         assume(_4);
++         _5 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
 +     }
 + 
 +     bb3: {
