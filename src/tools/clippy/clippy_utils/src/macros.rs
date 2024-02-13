@@ -33,10 +33,15 @@ const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::writeln_macro,
 ];
 
+/// Returns true if a given Macro `Symbol` is a format macro (e.g. `println!`)
+pub fn is_format_macro_name(name: Symbol) -> bool {
+    FORMAT_MACRO_DIAG_ITEMS.contains(&name)
+}
+
 /// Returns true if a given Macro `DefId` is a format macro (e.g. `println!`)
 pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
     if let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) {
-        FORMAT_MACRO_DIAG_ITEMS.contains(&name)
+        is_format_macro_name(&name)
     } else {
         false
     }
