@@ -116,6 +116,10 @@ pub unsafe trait Allocator {
     /// The returned block may have a larger size than specified by `layout.size()`, and may or may
     /// not have its contents initialized.
     ///
+    /// The returned block of memory remains valid as long as it is [*currently allocated*] and the shorter of:
+    ///   - the borrow-checker lifetime of the allocator type itself.
+    ///   - as long as at the allocator and all its clones has not been dropped.
+    ///
     /// # Errors
     ///
     /// Returning `Err` indicates that either memory is exhausted or `layout` does not meet
