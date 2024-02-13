@@ -194,7 +194,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3, $n4: $t4) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
-                    rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
+                    rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
                     RegisterArgument::into_register($n2),
                     RegisterArgument::into_register($n3),
@@ -210,7 +210,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
-                    rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
+                    rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
                     RegisterArgument::into_register($n2),
                     RegisterArgument::into_register($n3),
@@ -226,7 +226,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
-                    rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
+                    rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
                     RegisterArgument::into_register($n2),
                     0,0,
@@ -241,7 +241,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1) -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
-                    rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
+                    rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     RegisterArgument::into_register($n1),
                     0,0,0,
                     return_type_is_abort!($r)
@@ -255,7 +255,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f() -> $r {
             ReturnValue::from_registers(stringify!($f), unsafe { do_usercall(
-                    rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
+                    rtunwrap!(Some, NonZero::new(Usercalls::$f as Register)),
                     0,0,0,0,
                     return_type_is_abort!($r)
             ) })

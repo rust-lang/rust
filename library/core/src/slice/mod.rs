@@ -11,7 +11,7 @@ use crate::fmt;
 use crate::hint;
 use crate::intrinsics::exact_div;
 use crate::mem::{self, SizedTypeProperties};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{Bound, OneSidedRange, Range, RangeBounds};
 use crate::panic::debug_assert_nounwind;
 use crate::ptr;
@@ -1086,7 +1086,7 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     pub fn windows(&self, size: usize) -> Windows<'_, T> {
-        let size = NonZeroUsize::new(size).expect("window size must be non-zero");
+        let size = NonZero::new(size).expect("window size must be non-zero");
         Windows::new(self, size)
     }
 

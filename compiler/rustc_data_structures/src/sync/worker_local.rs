@@ -1,7 +1,7 @@
 use parking_lot::Mutex;
 use std::cell::Cell;
 use std::cell::OnceCell;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ops::Deref;
 use std::ptr;
 use std::sync::Arc;
@@ -31,7 +31,7 @@ impl RegistryId {
 }
 
 struct RegistryData {
-    thread_limit: NonZeroUsize,
+    thread_limit: NonZero<usize>,
     threads: Mutex<usize>,
 }
 
@@ -61,7 +61,7 @@ thread_local! {
 
 impl Registry {
     /// Creates a registry which can hold up to `thread_limit` threads.
-    pub fn new(thread_limit: NonZeroUsize) -> Self {
+    pub fn new(thread_limit: NonZero<usize>) -> Self {
         Registry(Arc::new(RegistryData { thread_limit, threads: Mutex::new(0) }))
     }
 

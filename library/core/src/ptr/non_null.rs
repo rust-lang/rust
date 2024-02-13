@@ -6,7 +6,7 @@ use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
 use crate::mem::SizedTypeProperties;
 use crate::mem::{self, MaybeUninit};
-use crate::num::NonZeroUsize;
+use crate::num::{NonZero, NonZeroUsize};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr;
 use crate::ptr::Unique;
@@ -295,7 +295,7 @@ impl<T: ?Sized> NonNull<T> {
     pub fn addr(self) -> NonZeroUsize {
         // SAFETY: The pointer is guaranteed by the type to be non-null,
         // meaning that the address will be non-zero.
-        unsafe { NonZeroUsize::new_unchecked(self.pointer.addr()) }
+        unsafe { NonZero::new_unchecked(self.pointer.addr()) }
     }
 
     /// Creates a new pointer with the given address.
