@@ -25,10 +25,11 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
 
-pub fn check_trait(
-    tcx: TyCtxt<'_>,
+pub fn check_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     impl_def_id: LocalDefId,
+    impl_header: ty::ImplTraitHeader<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let lang_items = tcx.lang_items();
     let checker = Checker { tcx, trait_def_id, impl_def_id };
@@ -40,10 +41,9 @@ pub fn check_trait(
     res = res.and(
         checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized),
     );
-    res.and(
-        checker
-            .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn),
-    )
+    res.and(checker.check(lang_items.dispatch_from_dyn_trait(), |tcx, id| {
+        visit_implementation_of_dispatch_from_dyn(tcx, id, impl_header.trait_ref)
+    }))
 }
 
 struct Checker<'tcx> {
@@ -151,9 +151,10 @@ fn visit_implementation_of_coerce_unsized(
     tcx.at(span).ensure().coerce_unsized_info(impl_did)
 }
 
-fn visit_implementation_of_dispatch_from_dyn(
-    tcx: TyCtxt<'_>,
+fn visit_implementation_of_dispatch_from_dyn<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
+    trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
@@ -161,10 +162,9 @@ fn visit_implementation_of_dispatch_from_dyn(
 
     let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
 
-    let source = tcx.type_of(impl_did).instantiate_identity();
+    let source = trait_ref.self_ty();
     assert!(!source.has_escaping_bound_vars());
     let target = {
-        let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
         assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
 
         trait_ref.args.type_at(1)

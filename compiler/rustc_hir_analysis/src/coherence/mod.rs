@@ -142,7 +142,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
 
         res = res.and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def));
         res = res.and(tcx.ensure().orphan_check_impl(impl_def_id));
-        res = res.and(builtin::check_trait(tcx, def_id, impl_def_id));
+        res = res.and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
     }
 
     res
