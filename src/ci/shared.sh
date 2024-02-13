@@ -52,6 +52,10 @@ function isLinux {
     [[ "${OSTYPE}" = "linux-gnu" ]]
 }
 
+function isKnownToBeMingwBuild {
+    isGitHubActions && [[ "${CI_JOB_NAME}" == *mingw ]]
+}
+
 function isCiBranch {
     if [[ $# -ne 1 ]]; then
         echo "usage: $0 <branch-name>"
