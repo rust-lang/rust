@@ -8,7 +8,7 @@ LL | pub fn function(_x: Box<SomeTrait>) {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: `--force-warn bare-trait-objects` implied by `--force-warn rust-2018-idioms`
    = help: to override `--force-warn rust-2018-idioms` add `#[allow(bare_trait_objects)]`
-help: use `dyn`
+help: if this is an object-safe trait, use `dyn`
    |
 LL | pub fn function(_x: Box<dyn SomeTrait>) {}
    |                         +++
