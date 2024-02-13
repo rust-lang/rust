@@ -286,10 +286,16 @@ pub struct FieldInfo {
     pub other_selflike_exprs: Vec<P<Expr>>,
 }
 
+#[derive(Copy, Clone)]
+pub enum IsTuple {
+    No,
+    Yes,
+}
+
 /// Fields for a static method
 pub enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
-    Unnamed(Vec<Span>, bool /*is tuple*/),
+    Unnamed(Vec<Span>, IsTuple),
     /// Normal structs/struct variants.
     Named(Vec<(Ident, Span)>),
 }
@@ -1439,7 +1445,10 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let is_tuple = matches!(struct_def, ast::VariantData::Tuple(..));
+        let is_tuple = match struct_def {
+            ast::VariantData::Tuple(..) => IsTuple::Yes,
+            _ => IsTuple::No,
+        };
         match (just_spans.is_empty(), named_idents.is_empty()) {
             (false, false) => cx
                 .dcx()
