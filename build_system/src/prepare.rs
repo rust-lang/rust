@@ -152,11 +152,11 @@ fn clone_and_setup<F>(repo_url: &str, checkout_commit: &str, extra: Option<F>) -
 where
     F: Fn(&Path) -> Result<(), String>,
 {
-    let clone_result = git_clone(repo_url, None, false)?;
+    let clone_result = git_clone(repo_url, Some(&Path::new(crate::BUILD_DIR)), false)?;
     if !clone_result.ran_clone {
         println!("`{}` has already been cloned", clone_result.repo_name);
     }
-    let repo_path = Path::new(&clone_result.repo_name);
+    let repo_path = Path::new(crate::BUILD_DIR).join(&clone_result.repo_name);
     run_command(&[&"git", &"checkout", &"--", &"."], Some(&repo_path))?;
     run_command(&[&"git", &"checkout", &checkout_commit], Some(&repo_path))?;
     let filter = format!("-{}-", clone_result.repo_name);
@@ -219,8 +219,7 @@ impl PrepareArg {
     --only-libcore           : Only setup libcore and don't clone other repositories
     --cross                  : Apply the patches needed to do cross-compilation
     --libgccjit12-patches    : Apply patches needed for libgccjit12
-    --help                   : Show this help
-"#
+    --help                   : Show this help"#
         )
     }
 }

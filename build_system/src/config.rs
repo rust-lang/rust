@@ -523,7 +523,11 @@ fn download_gccjit(
             &"--retry",
             &"3",
             &"-SRfL",
-            if with_progress_bar { &"--progress-bar" } else { &"-s" },
+            if with_progress_bar {
+                &"--progress-bar"
+            } else {
+                &"-s"
+            },
             &url.as_str(),
         ],
         Some(&output_dir),
@@ -538,9 +542,9 @@ fn download_gccjit(
                 &"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
                 &format!(
                     "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
-                    url,
-                    tempfile_name,
-                ).as_str(),
+                    url, tempfile_name,
+                )
+                .as_str(),
             ],
             Some(&output_dir),
         );
