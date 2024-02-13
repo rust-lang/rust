@@ -71,6 +71,14 @@ fn dont_lint_primitive() {
     let _ = std::mem::replace(&mut pint, 0);
 }
 
+// lint is disabled for expressions that are not used because changing to `take` is not the
+// recommended fix. Additionally, the `replace` is #[must_use], so that lint will provide
+// the correct suggestion
+fn dont_lint_not_used() {
+    let mut s = String::from("foo");
+    std::mem::replace(&mut s, String::default());
+}
+
 fn main() {
     replace_option_with_none();
     replace_with_default();

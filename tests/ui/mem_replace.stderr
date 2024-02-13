@@ -119,31 +119,31 @@ LL |     let _ = std::mem::replace(&mut slice, &[]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut slice)`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace.rs:89:13
+  --> $DIR/mem_replace.rs:97:13
    |
 LL |     let _ = std::mem::replace(&mut s, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut s)`
 
 error: replacing an `Option` with `None`
-  --> $DIR/mem_replace.rs:119:13
+  --> $DIR/mem_replace.rs:127:13
    |
 LL |     let _ = std::mem::replace(&mut f.0, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `f.0.take()`
 
 error: replacing an `Option` with `None`
-  --> $DIR/mem_replace.rs:120:13
+  --> $DIR/mem_replace.rs:128:13
    |
 LL |     let _ = std::mem::replace(&mut *f, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `(*f).take()`
 
 error: replacing an `Option` with `None`
-  --> $DIR/mem_replace.rs:121:13
+  --> $DIR/mem_replace.rs:129:13
    |
 LL |     let _ = std::mem::replace(&mut b.opt, None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider `Option::take()` instead: `b.opt.take()`
 
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace.rs:123:13
+  --> $DIR/mem_replace.rs:131:13
    |
 LL |     let _ = std::mem::replace(&mut b.val, String::default());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::mem::take(&mut b.val)`
