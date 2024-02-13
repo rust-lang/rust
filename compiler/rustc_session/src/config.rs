@@ -3226,7 +3226,7 @@ pub(crate) mod dep_tracking {
     };
     use std::collections::BTreeMap;
     use std::hash::{DefaultHasher, Hash};
-    use std::num::NonZeroUsize;
+    use std::num::NonZero;
     use std::path::PathBuf;
 
     pub trait DepTrackingHash {
@@ -3268,7 +3268,7 @@ pub(crate) mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(
         bool,
         usize,
-        NonZeroUsize,
+        NonZero<usize>,
         u64,
         Hash64,
         String,

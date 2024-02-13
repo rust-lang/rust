@@ -406,13 +406,14 @@ fn result_opt_conversions() {
 
 #[test]
 fn result_try_trait_v2_branch() {
-    use core::num::NonZeroU32;
+    use core::num::NonZero;
     use core::ops::{ControlFlow::*, Try};
+
     assert_eq!(Ok::<i32, i32>(4).branch(), Continue(4));
     assert_eq!(Err::<i32, i32>(4).branch(), Break(Err(4)));
-    let one = NonZeroU32::new(1).unwrap();
-    assert_eq!(Ok::<(), NonZeroU32>(()).branch(), Continue(()));
-    assert_eq!(Err::<(), NonZeroU32>(one).branch(), Break(Err(one)));
-    assert_eq!(Ok::<NonZeroU32, ()>(one).branch(), Continue(one));
-    assert_eq!(Err::<NonZeroU32, ()>(()).branch(), Break(Err(())));
+    let one = NonZero::new(1).unwrap();
+    assert_eq!(Ok::<(), NonZero<u32>>(()).branch(), Continue(()));
+    assert_eq!(Err::<(), NonZero<u32>>(one).branch(), Break(Err(one)));
+    assert_eq!(Ok::<NonZero<u32>, ()>(one).branch(), Continue(one));
+    assert_eq!(Err::<NonZero<u32>, ()>(()).branch(), Break(Err(())));
 }

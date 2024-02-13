@@ -1,5 +1,5 @@
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::Try;
 
 /// An iterator that links two iterators together, in a chain.
@@ -96,7 +96,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, mut n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, mut n: usize) -> Result<(), NonZero<usize>> {
         if let Some(ref mut a) = self.a {
             n = match a.advance_by(n) {
                 Ok(()) => return Ok(()),
@@ -110,7 +110,7 @@ where
             // we don't fuse the second iterator
         }
 
-        NonZeroUsize::new(n).map_or(Ok(()), Err)
+        NonZero::new(n).map_or(Ok(()), Err)
     }
 
     #[inline]
@@ -182,7 +182,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, mut n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, mut n: usize) -> Result<(), NonZero<usize>> {
         if let Some(ref mut b) = self.b {
             n = match b.advance_back_by(n) {
                 Ok(()) => return Ok(()),
@@ -196,7 +196,7 @@ where
             // we don't fuse the second iterator
         }
 
-        NonZeroUsize::new(n).map_or(Ok(()), Err)
+        NonZero::new(n).map_or(Ok(()), Err)
     }
 
     #[inline]

@@ -1,6 +1,6 @@
 use crate::ffi::CStr;
 use crate::io;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::os::windows::io::AsRawHandle;
 use crate::os::windows::io::HandleOrNull;
 use crate::ptr;
@@ -110,7 +110,7 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     let res = unsafe {
         let mut sysinfo: c::SYSTEM_INFO = crate::mem::zeroed();
         c::GetSystemInfo(&mut sysinfo);
@@ -121,7 +121,7 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             io::ErrorKind::NotFound,
             "The number of hardware threads is not known for the target platform",
         )),
-        cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus) }),
+        cpus => Ok(unsafe { NonZero::new_unchecked(cpus) }),
     }
 }
 

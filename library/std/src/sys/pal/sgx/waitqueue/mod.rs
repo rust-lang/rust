@@ -16,7 +16,7 @@ mod tests;
 mod spin_mutex;
 mod unsafe_list;
 
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{Deref, DerefMut};
 use crate::panic::{self, AssertUnwindSafe};
 use crate::time::Duration;
@@ -252,7 +252,7 @@ impl WaitQueue {
                 entry_guard.wake = true;
             }
 
-            if let Some(count) = NonZeroUsize::new(count) {
+            if let Some(count) = NonZero::new(count) {
                 Ok(WaitGuard { mutex_guard: Some(guard), notified_tcs: NotifiedTcs::All { count } })
             } else {
                 Err(guard)
