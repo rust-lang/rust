@@ -191,12 +191,7 @@ impl ConfigInfo {
     }
 
     fn download_gccjit_if_needed(&mut self) -> Result<(), String> {
-        let output_dir = Path::new(
-            std::env::var("CARGO_TARGET_DIR")
-                .as_deref()
-                .unwrap_or("target"),
-        )
-        .join("libgccjit");
+        let output_dir = Path::new(crate::BUILD_DIR).join("libgccjit");
 
         let commit_hash_file = self.compute_path("libgccjit.version");
         let content = fs::read_to_string(&commit_hash_file).map_err(|_| {
