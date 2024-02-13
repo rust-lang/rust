@@ -177,7 +177,7 @@ fn compute_return_type_match(
     self_type: hir::Type,
     ret_type: &hir::Type,
 ) -> CompletionRelevanceReturnType {
-    if match_types(ctx.completion, &self_type, &ret_type).is_some() {
+    if match_types(ctx.completion, &self_type, ret_type).is_some() {
         // fn([..]) -> Self
         CompletionRelevanceReturnType::DirectConstructor
     } else if ret_type
