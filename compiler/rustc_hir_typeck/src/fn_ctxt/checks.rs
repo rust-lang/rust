@@ -740,8 +740,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         // We're done if we found errors, but we already emitted them.
-        if let Some(reported) = reported {
-            assert!(errors.is_empty());
+        if let Some(reported) = reported
+            && errors.is_empty()
+        {
             return reported;
         }
         assert!(!errors.is_empty());
