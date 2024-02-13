@@ -1356,17 +1356,17 @@ impl DiagCtxtInner {
     fn emit_diagnostic(&mut self, mut diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
         assert!(diagnostic.level.can_be_top_or_sub().0);
 
-        if let Some(expectation_id) = diagnostic.level.get_expectation_id() {
+        if let Expect(expect_id) | ForceWarning(Some(expect_id)) = diagnostic.level {
             // The `LintExpectationId` can be stable or unstable depending on when it was created.
             // Diagnostics created before the definition of `HirId`s are unstable and can not yet
             // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
             // a stable one by the `LintLevelsBuilder`.
-            if let LintExpectationId::Unstable { .. } = expectation_id {
+            if let LintExpectationId::Unstable { .. } = expect_id {
                 self.unstable_expect_diagnostics.push(diagnostic);
                 return None;
             }
             self.suppressed_expected_diag = true;
-            self.fulfilled_expectations.insert(expectation_id.normalize());
+            self.fulfilled_expectations.insert(expect_id.normalize());
         }
 
         if diagnostic.has_future_breakage() {
@@ -1792,13 +1792,6 @@ impl Level {
 
     pub fn is_failure_note(&self) -> bool {
         matches!(*self, FailureNote)
-    }
-
-    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
-        match self {
-            Expect(id) | ForceWarning(Some(id)) => Some(*id),
-            _ => None,
-        }
     }
 
     // Can this level be used in a top-level diagnostic message and/or a
