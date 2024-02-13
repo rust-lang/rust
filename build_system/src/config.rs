@@ -190,6 +190,83 @@ impl ConfigInfo {
         command
     }
 
+    fn download_gccjit(
+        &self,
+        output_dir: &Path,
+        libgccjit_so_name: &str,
+        commit: &str,
+    ) -> Result<(), String> {
+        // Download time!
+        let tempfile_name = format!("{}.download", libgccjit_so_name);
+        let tempfile = output_dir.join(&tempfile_name);
+        let is_in_ci = std::env::var("GITHUB_ACTIONS").is_ok();
+
+        let url = format!(
+            "https://github.com/antoyo/gcc/releases/download/master-{}/libgccjit.so",
+            commit,
+        );
+
+        println!("Downloading `{}`...", url);
+        // Try curl. If that fails and we are on windows, fallback to PowerShell.
+        let mut ret = run_command_with_output(
+            &[
+                &"curl",
+                &"--speed-time",
+                &"30",
+                &"--speed-limit",
+                &"10", // timeout if speed is < 10 bytes/sec for > 30 seconds
+                &"--connect-timeout",
+                &"30", // timeout if cannot connect within 30 seconds
+                &"-o",
+                &tempfile_name,
+                &"--retry",
+                &"3",
+                &"-SRfL",
+                if is_in_ci { &"-s" } else { &"--progress-bar" },
+                &url.as_str(),
+            ],
+            Some(&output_dir),
+        );
+        if ret.is_err() && cfg!(windows) {
+            eprintln!("Fallback to PowerShell");
+            ret = run_command_with_output(
+                &[
+                    &"PowerShell.exe",
+                    &"/nologo",
+                    &"-Command",
+                    &"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
+                    &format!(
+                        "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
+                        url,
+                        tempfile_name,
+                    ).as_str(),
+                ],
+                Some(&output_dir),
+            );
+        }
+        ret?;
+
+        let libgccjit_so = output_dir.join(libgccjit_so_name);
+        // If we reach this point, it means the file was correctly downloaded, so let's
+        // rename it!
+        std::fs::rename(&tempfile, &libgccjit_so).map_err(|err| {
+            format!(
+                "Failed to rename `{}` into `{}`: {:?}",
+                tempfile.display(),
+                libgccjit_so.display(),
+                err,
+            )
+        })?;
+
+        println!("Downloaded libgccjit.so version {} successfully!", commit);
+        // We need to create a link named `libgccjit.so.0` because that's what the linker is
+        // looking for.
+        create_symlink(
+            &libgccjit_so,
+            output_dir.join(&format!("{}.0", libgccjit_so_name)),
+        )
+    }
+
     fn download_gccjit_if_needed(&mut self) -> Result<(), String> {
         let output_dir = Path::new(
             std::env::var("CARGO_TARGET_DIR")
@@ -206,6 +283,8 @@ impl ConfigInfo {
             )
         })?;
         let commit = content.trim();
+        // This is a very simple check to ensure this is not a path. For the rest, it'll just fail
+        // when trying to download the file so we should be fine.
         if commit.contains('/') || commit.contains('\\') {
             return Err(format!(
                 "{}: invalid commit hash `{}`",
@@ -234,72 +313,7 @@ impl ConfigInfo {
         let libgccjit_so_name = "libgccjit.so";
         let libgccjit_so = output_dir.join(libgccjit_so_name);
         if !libgccjit_so.is_file() && !self.no_download {
-            // Download time!
-            let tempfile_name = "libgccjit.so.download";
-            let tempfile = output_dir.join(tempfile_name);
-            let is_in_ci = std::env::var("GITHUB_ACTIONS").is_ok();
-
-            let url = format!(
-                "https://github.com/antoyo/gcc/releases/download/master-{}/libgccjit.so",
-                commit,
-            );
-
-            println!("Downloading `{}`...", url);
-            // Try curl. If that fails and we are on windows, fallback to PowerShell.
-            let mut ret = run_command_with_output(
-                &[
-                    &"curl",
-                    &"--speed-time",
-                    &"30",
-                    &"--speed-limit",
-                    &"10", // timeout if speed is < 10 bytes/sec for > 30 seconds
-                    &"--connect-timeout",
-                    &"30", // timeout if cannot connect within 30 seconds
-                    &"-o",
-                    &tempfile_name,
-                    &"--retry",
-                    &"3",
-                    &"-SRfL",
-                    if is_in_ci { &"-s" } else { &"--progress-bar" },
-                    &url.as_str(),
-                ],
-                Some(&output_dir),
-            );
-            if ret.is_err() && cfg!(windows) {
-                eprintln!("Fallback to PowerShell");
-                ret = run_command_with_output(
-                    &[
-                        &"PowerShell.exe",
-                        &"/nologo",
-                        &"-Command",
-                        &"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
-                        &format!(
-                            "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
-                            url,
-                            tempfile_name,
-                        ).as_str(),
-                    ],
-                    Some(&output_dir),
-                );
-            }
-            ret?;
-
-            // If we reach this point, it means the file was correctly downloaded, so let's
-            // rename it!
-            std::fs::rename(&tempfile, &libgccjit_so).map_err(|err| {
-                format!(
-                    "Failed to rename `{}` into `{}`: {:?}",
-                    tempfile.display(),
-                    libgccjit_so.display(),
-                    err,
-                )
-            })?;
-
-            println!("Downloaded libgccjit.so version {} successfully!", commit);
-            create_symlink(
-                &libgccjit_so,
-                output_dir.join(&format!("{}.0", libgccjit_so_name)),
-            )?;
+            self.download_gccjit(&output_dir, libgccjit_so_name, commit)?;
         }
 
         self.gcc_path = output_dir.display().to_string();
