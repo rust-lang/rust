@@ -155,16 +155,11 @@ struct SpansRefiner<'a> {
     /// iteration.
     some_curr: Option<CoverageSpan>,
 
-    /// The original `span` for `curr`, in case `curr.span()` is modified. The `curr_original_span`
-    /// **must not be mutated** (except when advancing to the next `curr`), even if `curr.span()`
-    /// is mutated.
-    curr_original_span: Span,
-
     /// The CoverageSpan from a prior iteration; typically assigned from that iteration's `curr`.
     /// If that `curr` was discarded, `prev` retains its value from the previous iteration.
     some_prev: Option<CoverageSpan>,
 
-    /// Assigned from `curr_original_span` from the previous iteration. The `prev_original_span`
+    /// Assigned from `curr.span` from the previous iteration. The `prev_original_span`
     /// **must not be mutated** (except when advancing to the next `prev`), even if `prev.span()`
     /// is mutated.
     prev_original_span: Span,
@@ -196,7 +191,6 @@ impl<'a> SpansRefiner<'a> {
             basic_coverage_blocks,
             sorted_spans_iter: sorted_spans.into_iter(),
             some_curr: None,
-            curr_original_span: DUMMY_SP,
             some_prev: None,
             prev_original_span: DUMMY_SP,
             pending_dups: Vec::new(),
@@ -340,8 +334,8 @@ impl<'a> SpansRefiner<'a> {
     /// Advance `prev` to `curr` (if any), and `curr` to the next `CoverageSpan` in sorted order.
     fn next_coverage_span(&mut self) -> bool {
         if let Some(curr) = self.some_curr.take() {
+            self.prev_original_span = curr.span;
             self.some_prev = Some(curr);
-            self.prev_original_span = self.curr_original_span;
         }
         while let Some(curr) = self.sorted_spans_iter.next() {
             debug!("FOR curr={:?}", curr);
@@ -356,9 +350,6 @@ impl<'a> SpansRefiner<'a> {
                     closure?); prev={prev:?}",
                 );
             } else {
-                // Save a copy of the original span for `curr` in case the `CoverageSpan` is changed
-                // by `self.curr_mut().merge_from(prev)`.
-                self.curr_original_span = curr.span;
                 self.some_curr.replace(curr);
                 self.maybe_flush_pending_dups();
                 return true;
