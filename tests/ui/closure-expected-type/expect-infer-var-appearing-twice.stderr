@@ -9,8 +9,8 @@ LL | |
 LL | |     });
    | |______^ expected due to this
    |
-   = note: expected closure signature `fn(_, _) -> _`
-              found closure signature `fn(u32, i32) -> _`
+   = note: expected closure signature `fn(_, u32) -> _`
+              found closure signature `fn(_, i32) -> _`
 note: required by a bound in `with_closure`
   --> $DIR/expect-infer-var-appearing-twice.rs:2:14
    |
