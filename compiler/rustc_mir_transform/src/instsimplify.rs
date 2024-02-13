@@ -289,9 +289,9 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         if args.is_empty() {
             return;
         }
-        let ty = args.type_at(0);
 
-        let known_is_valid = intrinsic_assert_panics(self.tcx, self.param_env, ty, intrinsic_name);
+        let known_is_valid =
+            intrinsic_assert_panics(self.tcx, self.param_env, args[0], intrinsic_name);
         match known_is_valid {
             // We don't know the layout or it's not validity assertion at all, don't touch it
             None => {}
@@ -310,10 +310,11 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
 fn intrinsic_assert_panics<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
+    arg: ty::GenericArg<'tcx>,
     intrinsic_name: Symbol,
 ) -> Option<bool> {
     let requirement = ValidityRequirement::from_intrinsic(intrinsic_name)?;
+    let ty = arg.expect_ty();
     Some(!tcx.check_validity_requirement((requirement, param_env.and(ty))).ok()?)
 }
 
@@ -322,9 +323,8 @@ fn resolve_rust_intrinsic<'tcx>(
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
     if let ty::FnDef(def_id, args) = *func_ty.kind() {
-        if tcx.is_intrinsic(def_id) {
-            return Some((tcx.item_name(def_id), args));
-        }
+        let name = tcx.intrinsic(def_id)?;
+        return Some((name, args));
     }
     None
 }
