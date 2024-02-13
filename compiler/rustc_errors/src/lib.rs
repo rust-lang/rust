@@ -435,7 +435,6 @@ struct DiagCtxtInner {
     lint_err_guars: Vec<ErrorGuaranteed>,
     /// The delayed bugs and their error guarantees.
     delayed_bugs: Vec<(DelayedDiagnostic, ErrorGuaranteed)>,
-    good_path_delayed_bugs: Vec<DelayedDiagnostic>,
 
     /// The number of stashed errors. Unlike the other counts, this can go up
     /// and down, so it doesn't guarantee anything.
@@ -446,13 +445,18 @@ struct DiagCtxtInner {
     /// The warning count shown to the user at the end.
     deduplicated_warn_count: usize,
 
+    emitter: Box<DynEmitter>,
+
+    /// Must we produce a diagnostic to justify the use of the expensive
+    /// `trimmed_def_paths` function?
+    must_produce_diag: bool,
+
     /// Has this diagnostic context printed any diagnostics? (I.e. has
     /// `self.emitter.emit_diagnostic()` been called?
     has_printed: bool,
 
-    emitter: Box<DynEmitter>,
     /// This flag indicates that an expected diagnostic was emitted and suppressed.
-    /// This is used for the `good_path_delayed_bugs` check.
+    /// This is used for the `must_produce_diag` check.
     suppressed_expected_diag: bool,
 
     /// This set contains the code of all emitted diagnostics to avoid
@@ -533,11 +537,6 @@ fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
 pub static TRACK_DIAGNOSTIC: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
-enum DelayedBugKind {
-    Normal,
-    GoodPath,
-}
-
 #[derive(Copy, Clone, Default)]
 pub struct DiagCtxtFlags {
     /// If false, warning-level lints are suppressed.
@@ -563,11 +562,16 @@ impl Drop for DiagCtxtInner {
         self.emit_stashed_diagnostics();
 
         if self.err_guars.is_empty() {
-            self.flush_delayed(DelayedBugKind::Normal)
+            self.flush_delayed()
         }
 
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
-            self.flush_delayed(DelayedBugKind::GoodPath);
+            if self.must_produce_diag {
+                panic!(
+                    "must_produce_diag: trimmed_def_paths called but no diagnostics emitted; \
+                       use `DelayDm` for lints or `with_no_trimmed_paths` for debugging"
+                );
+            }
         }
 
         if self.check_unstable_expect_diagnostics {
@@ -609,12 +613,12 @@ impl DiagCtxt {
                 err_guars: Vec::new(),
                 lint_err_guars: Vec::new(),
                 delayed_bugs: Vec::new(),
-                good_path_delayed_bugs: Vec::new(),
                 stashed_err_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
-                has_printed: false,
                 emitter,
+                must_produce_diag: false,
+                has_printed: false,
                 suppressed_expected_diag: false,
                 taught_diagnostics: Default::default(),
                 emitted_diagnostic_codes: Default::default(),
@@ -666,13 +670,14 @@ impl DiagCtxt {
         inner.stashed_err_count = 0;
         inner.deduplicated_err_count = 0;
         inner.deduplicated_warn_count = 0;
+        inner.must_produce_diag = false;
         inner.has_printed = false;
+        inner.suppressed_expected_diag = false;
 
         // actually free the underlying memory (which `clear` would not do)
         inner.err_guars = Default::default();
         inner.lint_err_guars = Default::default();
         inner.delayed_bugs = Default::default();
-        inner.good_path_delayed_bugs = Default::default();
         inner.taught_diagnostics = Default::default();
         inner.emitted_diagnostic_codes = Default::default();
         inner.emitted_diagnostics = Default::default();
@@ -934,7 +939,13 @@ impl DiagCtxt {
     }
 
     pub fn flush_delayed(&self) {
-        self.inner.borrow_mut().flush_delayed(DelayedBugKind::Normal);
+        self.inner.borrow_mut().flush_delayed();
+    }
+
+    /// Used when trimmed_def_paths is called and we must produce a diagnostic
+    /// to justify its cost.
+    pub fn set_must_produce_diag(&self) {
+        self.inner.borrow_mut().must_produce_diag = true;
     }
 }
 
@@ -1108,13 +1119,6 @@ impl DiagCtxt {
         DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
     }
 
-    /// Ensures that a diagnostic is printed. See `Level::GoodPathDelayedBug`.
-    // No `#[rustc_lint_diagnostics]` because bug messages aren't user-facing.
-    #[track_caller]
-    pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
-        DiagnosticBuilder::<()>::new(self, GoodPathDelayedBug, msg).emit()
-    }
-
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
@@ -1266,19 +1270,17 @@ impl DiagCtxtInner {
         if diagnostic.has_future_breakage() {
             // Future breakages aren't emitted if they're Level::Allow,
             // but they still need to be constructed and stashed below,
-            // so they'll trigger the good-path bug check.
+            // so they'll trigger the must_produce_diag check.
             self.suppressed_expected_diag = true;
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        if matches!(diagnostic.level, DelayedBug | GoodPathDelayedBug)
-            && self.flags.eagerly_emit_delayed_bugs
-        {
+        if diagnostic.level == DelayedBug && self.flags.eagerly_emit_delayed_bugs {
             diagnostic.level = Error;
         }
 
         match diagnostic.level {
-            // This must come after the possible promotion of `DelayedBug`/`GoodPathDelayedBug` to
+            // This must come after the possible promotion of `DelayedBug` to
             // `Error` above.
             Fatal | Error if self.treat_next_err_as_bug() => {
                 diagnostic.level = Bug;
@@ -1296,12 +1298,6 @@ impl DiagCtxtInner {
                 self.delayed_bugs
                     .push((DelayedDiagnostic::with_backtrace(diagnostic, backtrace), guar));
                 return Some(guar);
-            }
-            GoodPathDelayedBug => {
-                let backtrace = std::backtrace::Backtrace::capture();
-                self.good_path_delayed_bugs
-                    .push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
-                return None;
             }
             Warning if !self.flags.can_emit_warnings => {
                 if diagnostic.has_future_breakage() {
@@ -1414,22 +1410,13 @@ impl DiagCtxtInner {
         self.emit_diagnostic(Diagnostic::new(FailureNote, msg));
     }
 
-    fn flush_delayed(&mut self, kind: DelayedBugKind) {
-        let (bugs, note1) = match kind {
-            DelayedBugKind::Normal => (
-                std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect(),
-                "no errors encountered even though delayed bugs were created",
-            ),
-            DelayedBugKind::GoodPath => (
-                std::mem::take(&mut self.good_path_delayed_bugs),
-                "no warnings or errors encountered even though good path delayed bugs were created",
-            ),
-        };
-        let note2 = "those delayed bugs will now be shown as internal compiler errors";
-
-        if bugs.is_empty() {
+    fn flush_delayed(&mut self) {
+        if self.delayed_bugs.is_empty() {
             return;
         }
+
+        let bugs: Vec<_> =
+            std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
 
         // If backtraces are enabled, also print the query stack
         let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
@@ -1454,6 +1441,8 @@ impl DiagCtxtInner {
                 // frame them better (e.g. separate warnings from them). Also,
                 // make it a note so it doesn't count as an error, because that
                 // could trigger `-Ztreat-err-as-bug`, which we don't want.
+                let note1 = "no errors encountered even though delayed bugs were created";
+                let note2 = "those delayed bugs will now be shown as internal compiler errors";
                 self.emit_diagnostic(Diagnostic::new(Note, note1));
                 self.emit_diagnostic(Diagnostic::new(Note, note2));
             }
@@ -1462,7 +1451,7 @@ impl DiagCtxtInner {
                 if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
 
             // "Undelay" the delayed bugs (into plain `Bug`s).
-            if !matches!(bug.level, DelayedBug | GoodPathDelayedBug) {
+            if bug.level != DelayedBug {
                 // NOTE(eddyb) not panicking here because we're already producing
                 // an ICE, and the more information the merrier.
                 bug.subdiagnostic(InvalidFlushedDelayedDiagnosticLevel {
@@ -1534,7 +1523,6 @@ impl DelayedDiagnostic {
 /// Fatal              yes       FatalAbort/FatalError(*)  yes        -     -
 /// Error              yes       ErrorGuaranteed           yes        -     yes
 /// DelayedBug         yes       ErrorGuaranteed           yes        -     -
-/// GoodPathDelayedBug -         ()                        yes        -     -
 /// ForceWarning       -         ()                        yes        -     lint-only
 /// Warning            -         ()                        yes        yes   yes
 /// Note               -         ()                        rare       yes   -
@@ -1566,20 +1554,6 @@ pub enum Level {
     /// silently dropped. I.e. "expect other errors are emitted" semantics. Useful on code paths
     /// that should only be reached when compiling erroneous code.
     DelayedBug,
-
-    /// Like `DelayedBug`, but weaker: lets you register an error without emitting it. If
-    /// compilation ends without any other diagnostics being emitted (and without an expected lint
-    /// being suppressed), this will be emitted as a bug. Otherwise, it will be silently dropped.
-    /// I.e. "expect other diagnostics are emitted (or suppressed)" semantics. Useful on code paths
-    /// that should only be reached when emitting diagnostics, e.g. for expensive one-time
-    /// diagnostic formatting operations.
-    ///
-    /// FIXME(nnethercote) good path delayed bugs are semantically strange: if printed they produce
-    /// an ICE, but they don't satisfy `is_error` and they don't guarantee an error is emitted.
-    /// Plus there's the extra complication with expected (suppressed) lints. They have limited
-    /// use, and are used in very few places, and "good path" isn't a good name. It would be good
-    /// to remove them.
-    GoodPathDelayedBug,
 
     /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation
     /// from finishing.
@@ -1625,7 +1599,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | Fatal | Error | DelayedBug | GoodPathDelayedBug => {
+            Bug | Fatal | Error | DelayedBug => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             ForceWarning(_) | Warning => {
@@ -1645,7 +1619,7 @@ impl Level {
 
     pub fn to_str(self) -> &'static str {
         match self {
-            Bug | DelayedBug | GoodPathDelayedBug => "error: internal compiler error",
+            Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error => "error",
             ForceWarning(_) | Warning => "warning",
             Note | OnceNote => "note",
@@ -1670,8 +1644,8 @@ impl Level {
     // subdiagnostic message?
     fn can_be_top_or_sub(&self) -> (bool, bool) {
         match self {
-            Bug | DelayedBug | Fatal | Error | GoodPathDelayedBug | ForceWarning(_)
-            | FailureNote | Allow | Expect(_) => (true, false),
+            Bug | DelayedBug | Fatal | Error | ForceWarning(_) | FailureNote | Allow
+            | Expect(_) => (true, false),
 
             Warning | Note | Help => (true, true),
 

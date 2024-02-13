@@ -237,8 +237,7 @@ impl Diagnostic {
         match self.level {
             Level::Bug | Level::Fatal | Level::Error | Level::DelayedBug => true,
 
-            Level::GoodPathDelayedBug
-            | Level::ForceWarning(_)
+            Level::ForceWarning(_)
             | Level::Warning
             | Level::Note
             | Level::OnceNote
