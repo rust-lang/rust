@@ -1,14 +1,12 @@
-error[E0275]: overflow evaluating the requirement `T: Trait<_>`
-   |
-   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_45814`)
-note: required for `T` to implement `Trait<_>`
-  --> $DIR/issue-45814.rs:9:20
+error[E0119]: conflicting implementations of trait `Trait<_>`
+  --> $DIR/issue-45814.rs:10:1
    |
 LL | default impl<T, U> Trait<T> for U {}
-   |                    ^^^^^^^^     ^
-   = note: 128 redundant requirements hidden
-   = note: required for `T` to implement `Trait<_>`
+   | --------------------------------- first implementation here
+LL |
+LL | impl<T> Trait<<T as Iterator>::Item> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0119`.

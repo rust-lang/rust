@@ -20,5 +20,5 @@ default impl<T> Foo for T {
 
 fn main() {
     println!("{}", MyStruct.foo_one());
-    //~^ ERROR the method
+    //~^ ERROR no method named `foo_one` found for struct `MyStruct` in the current scope
 }
