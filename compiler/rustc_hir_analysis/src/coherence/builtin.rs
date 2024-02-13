@@ -15,7 +15,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
@@ -95,18 +95,20 @@ fn visit_implementation_of_copy(
     if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
         return Ok(());
     }
-    let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
 
-    let cause = traits::ObligationCause::misc(span, impl_did);
+    let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(tcx, fields, LangItem::Copy, impl_did, span))
         }
         Err(CopyImplementationError::NotAnAdt) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnNonAdt { span }))
         }
         Err(CopyImplementationError::HasDestructor) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span }))
         }
     }
@@ -124,15 +126,16 @@ fn visit_implementation_of_const_param_ty(
     if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
         return Ok(());
     }
-    let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
 
-    let cause = traits::ObligationCause::misc(span, impl_did);
+    let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
     match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(tcx, fields, LangItem::ConstParamTy, impl_did, span))
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
         }
     }
