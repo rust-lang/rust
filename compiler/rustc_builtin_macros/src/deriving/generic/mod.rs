@@ -188,6 +188,7 @@ use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::lint::builtin::BYTE_SLICE_IN_PACKED_STRUCT_WITH_DERIVE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
+use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::iter;
 use std::ops::Not;
@@ -263,6 +264,7 @@ pub enum FieldlessVariantsStrategy {
 }
 
 /// All the data about the data structure/method being derived upon.
+#[derive(Debug)]
 pub struct Substructure<'a> {
     /// ident of self
     pub type_ident: Ident,
@@ -273,6 +275,7 @@ pub struct Substructure<'a> {
 }
 
 /// Summary of the relevant parts of a struct/enum field.
+#[derive(Debug)]
 pub struct FieldInfo {
     pub span: Span,
     /// None for tuple structs/normal enum variants, Some for normal
@@ -284,6 +287,37 @@ pub struct FieldInfo {
     /// The expressions corresponding to references to this field in
     /// the other selflike arguments.
     pub other_selflike_exprs: Vec<P<Expr>>,
+    /// The derives for which this field should be ignored
+    pub skipped_derives: SkippedDerives,
+}
+
+/// Derives for which this field should be ignored
+#[derive(Debug)]
+pub enum SkippedDerives {
+    /// No `#[skip]`
+    None,
+    /// `#[skip(Trait, Names)]`
+    List(SmallVec<[Symbol; 1]>),
+    /// `#[skip]` with no arguments
+    All,
+}
+
+impl SkippedDerives {
+    pub fn add(&mut self, derive: Symbol) {
+        match self {
+            Self::None => *self = Self::List(SmallVec::from([derive])),
+            Self::List(idents) => idents.push(derive),
+            Self::All => (),
+        }
+    }
+
+    pub fn is_skipped(&self, derive: Symbol) -> bool {
+        match self {
+            Self::None => false,
+            Self::List(idents) => idents.contains(&derive),
+            Self::All => true,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -293,6 +327,7 @@ pub enum IsTuple {
 }
 
 /// Fields for a static method
+#[derive(Debug)]
 pub enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
     Unnamed(Vec<Span>, IsTuple),
@@ -301,6 +336,7 @@ pub enum StaticFields {
 }
 
 /// A summary of the possible sets of fields.
+#[derive(Debug)]
 pub enum SubstructureFields<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
@@ -1214,8 +1250,14 @@ impl<'a> MethodDef<'a> {
                 .collect();
 
             let self_expr = discr_exprs.remove(0);
-            let other_selflike_exprs = discr_exprs;
-            let discr_field = FieldInfo { span, name: None, self_expr, other_selflike_exprs };
+            let other_selflike_exprs = descr_exprs;
+            let discr_field = FieldInfo {
+                span,
+                name: None,
+                self_expr,
+                other_selflike_exprs,
+                skipped_derives: SkippedDerives::None,
+            };
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
@@ -1518,7 +1560,12 @@ impl<'a> TraitDef<'a> {
             .collect()
     }
 
-    fn create_fields<F>(&self, struct_def: &'a VariantData, mk_exprs: F) -> Vec<FieldInfo>
+    fn create_fields<F>(
+        &self,
+        cx: &ExtCtxt<'_>,
+        struct_def: &'a VariantData,
+        mk_exprs: F,
+    ) -> Vec<FieldInfo>
     where
         F: Fn(usize, &ast::FieldDef, Span) -> Vec<P<ast::Expr>>,
     {
@@ -1533,11 +1580,54 @@ impl<'a> TraitDef<'a> {
                 let mut exprs: Vec<_> = mk_exprs(i, struct_field, sp);
                 let self_expr = exprs.remove(0);
                 let other_selflike_exprs = exprs;
+                let mut skipped_derives = SkippedDerives::None;
+                let skip_enabled = cx.ecfg.features.derive_skip
+                    || struct_field.span.allows_unstable(sym::derive_skip);
+                for skip_attr in attr::filter_by_name(&struct_field.attrs, sym::skip) {
+                    if !skip_enabled {
+                        rustc_session::parse::feature_err(
+                            &cx.sess,
+                            sym::derive_skip,
+                            skip_attr.span,
+                            "the `#[skip]` attribute is experimental",
+                        )
+                        .emit();
+                    }
+                    let Some(skip_attr) = ast::Attribute::meta_kind(skip_attr) else {
+                        unreachable!()
+                    };
+
+                    // FIXME: better errors
+                    match skip_attr {
+                        ast::MetaItemKind::Word => {
+                            skipped_derives = SkippedDerives::All;
+                            break;
+                        }
+                        ast::MetaItemKind::List(items) => {
+                            for item in items {
+                                let ast::NestedMetaItem::MetaItem(ast::MetaItem {
+                                    path,
+                                    kind: ast::MetaItemKind::Word,
+                                    ..
+                                }) = item
+                                else {
+                                    cx.dcx().span_err(item.span(), "incorrect skip argument");
+                                    continue;
+                                };
+                                skipped_derives.add(path.segments[0].ident.name);
+                            }
+                        }
+                        ast::MetaItemKind::NameValue(lit) => {
+                            cx.dcx().span_err(lit.span, "invalid skip attribute");
+                        }
+                    }
+                }
                 FieldInfo {
                     span: sp.with_ctxt(self.span.ctxt()),
                     name: struct_field.ident,
                     self_expr,
                     other_selflike_exprs,
+                    skipped_derives,
                 }
             })
             .collect()
@@ -1553,7 +1643,7 @@ impl<'a> TraitDef<'a> {
         struct_def: &'a VariantData,
         prefixes: &[String],
     ) -> Vec<FieldInfo> {
-        self.create_fields(struct_def, |i, _struct_field, sp| {
+        self.create_fields(cx, struct_def, |i, _struct_field, sp| {
             prefixes
                 .iter()
                 .map(|prefix| {
@@ -1571,7 +1661,7 @@ impl<'a> TraitDef<'a> {
         struct_def: &'a VariantData,
         is_packed: bool,
     ) -> Vec<FieldInfo> {
-        self.create_fields(struct_def, |i, struct_field, sp| {
+        self.create_fields(cx, struct_def, |i, struct_field, sp| {
             selflike_args
                 .iter()
                 .map(|selflike_arg| {
@@ -1667,6 +1757,7 @@ pub fn cs_fold<F>(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substructure: &Substructure<'_>,
+    trait_name: Symbol,
     mut f: F,
 ) -> P<Expr>
 where
@@ -1674,6 +1765,11 @@ where
 {
     match substructure.fields {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
+            let all_fields = all_fields
+                .iter()
+                .filter(|fi| !fi.skipped_derives.is_skipped(trait_name))
+                .collect::<Vec<&FieldInfo>>();
+
             if all_fields.is_empty() {
                 return f(cx, CsFold::Fieldless);
             }
@@ -1686,7 +1782,7 @@ where
 
             let base_expr = f(cx, CsFold::Single(base_field));
 
-            let op = |old, field: &FieldInfo| {
+            let op = |old, field: &&FieldInfo| {
                 let new = f(cx, CsFold::Single(field));
                 f(cx, CsFold::Combine(field.span, old, new))
             };

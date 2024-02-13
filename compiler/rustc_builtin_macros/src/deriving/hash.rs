@@ -35,9 +35,7 @@ pub fn expand_deriving_hash(
             ret_ty: Unit,
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                hash_substructure(a, b, c)
-            })),
+            combine_substructure: combine_substructure(Box::new(hash_substructure)),
         }],
         associated_types: Vec::new(),
         is_const,
@@ -62,8 +60,11 @@ fn hash_substructure(cx: &ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'
 
     let (stmts, match_expr) = match substr.fields {
         Struct(_, fields) | EnumMatching(.., fields) => {
-            let stmts =
-                fields.iter().map(|field| call_hash(field.span, field.self_expr.clone())).collect();
+            let stmts = fields
+                .iter()
+                .filter(|fi| !fi.skipped_derives.is_skipped(sym::Hash))
+                .map(|field| call_hash(field.span, field.self_expr.clone()))
+                .collect();
             (stmts, None)
         }
         EnumDiscr(discr_field, match_expr) => {

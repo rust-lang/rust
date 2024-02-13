@@ -698,6 +698,7 @@ symbols! {
         derive,
         derive_const,
         derive_default_enum,
+        derive_skip,
         destruct,
         destructuring_assignment,
         diagnostic,

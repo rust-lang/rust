@@ -35,9 +35,7 @@ pub fn expand_deriving_debug(
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
-            combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                show_substructure(a, b, c)
-            })),
+            combine_substructure: combine_substructure(Box::new(show_substructure)),
         }],
         associated_types: Vec::new(),
         is_const,
@@ -90,6 +88,10 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
             cx.expr_addr_of(field.span, field.self_expr.clone())
         }
     }
+    let fields = fields
+        .iter()
+        .filter(|fi| !fi.skipped_derives.is_skipped(sym::Debug))
+        .collect::<ThinVec<_>>();
 
     if fields.is_empty() {
         // Special case for no fields.

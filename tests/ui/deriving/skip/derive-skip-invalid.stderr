@@ -1,0 +1,20 @@
+error: invalid skip attribute
+  --> $DIR/derive-skip-invalid.rs:5:24
+   |
+LL | struct KeyVal(#[skip = "Debug"] usize);
+   |                        ^^^^^^^
+
+error: incorrect skip argument
+  --> $DIR/derive-skip-invalid.rs:8:22
+   |
+LL | struct BadArg(#[skip("Debug")] usize);
+   |                      ^^^^^^^
+
+error: cannot find attribute `skip` in this scope
+  --> $DIR/derive-skip-invalid.rs:12:20
+   |
+LL | struct SkipClone(#[skip] usize);
+   |                    ^^^^
+
+error: aborting due to 3 previous errors
+
