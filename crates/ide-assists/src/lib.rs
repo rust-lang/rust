@@ -60,11 +60,6 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
-
 mod assist_config;
 mod assist_context;
 #[cfg(test)]
