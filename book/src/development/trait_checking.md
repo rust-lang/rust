@@ -94,6 +94,27 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 }
 ```
 
+## Creating traits programmatically
+
+Traits are often generic over a type e.g. `Borrow<T>` is generic over `T`, and rust allows us to implement a trait for a specific type. For example, we can implement `Borrow<str>` for a hypothetical type `Foo`. Let's suppose that we would like to find whether our type actually implements `Borrow<[u8]>`. To do so, we need to supply a type that represents `[u8]`, but `[u8]` is also a generic, it's a slice over `u8`. We can create this type using Ty::new_slice method. The following code demonstrates how to do this:
+
+```rust
+
+use rustc_middle::ty::Ty;
+use clippy_utils::ty::implements_trait;
+use rustc_span::symbol::sym;
+
+let ty = todo!();
+let borrow_id = cx.tcx.get_diagnostic_item(sym::Borrow).unwrap(); // avoid unwrap in real code
+if implements_trait(cx, ty, borrow_id, &[Ty::new_slice(cx.tcx, cx.tcx.types.u8).into()]) {
+    todo!()
+}
+```
+
+Here, we use `Ty::new_slice` to create a type that represents `[T]` and supply `u8` as a type parameter, and then we go on normally with `implements_trait` function. The [Ty] struct allows us to create types programmatically, and it's useful when we need to create types that we can't obtain through the usual means.
+
+
+
 [DefId]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [diagnostic_items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
 [lang_items]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/lang_items/struct.LanguageItems.html
@@ -102,4 +123,5 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 [symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [symbol_index]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/sym/index.html
 [TyCtxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html
+[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [rust]: https://github.com/rust-lang/rust
