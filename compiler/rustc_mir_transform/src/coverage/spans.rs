@@ -221,11 +221,10 @@ impl<'a> SpansRefiner<'a> {
             let prev = self.prev();
             let curr = self.curr();
 
-            if curr.is_mergeable(prev) {
+            if prev.is_mergeable(curr) {
                 debug!("  same bcb (and neither is a closure), merge with prev={prev:?}");
-                let prev = self.take_prev();
-                self.curr_mut().merge_from(&prev);
-            // Note that curr.span may now differ from curr_original_span
+                let curr = self.take_curr();
+                self.prev_mut().merge_from(&curr);
             } else if prev.span.hi() <= curr.span.lo() {
                 debug!(
                     "  different bcbs and disjoint spans, so keep curr for next iter, and add prev={prev:?}",
@@ -284,11 +283,6 @@ impl<'a> SpansRefiner<'a> {
     #[track_caller]
     fn curr(&self) -> &CoverageSpan {
         self.some_curr.as_ref().unwrap_or_else(|| bug!("some_curr is None (curr)"))
-    }
-
-    #[track_caller]
-    fn curr_mut(&mut self) -> &mut CoverageSpan {
-        self.some_curr.as_mut().unwrap_or_else(|| bug!("some_curr is None (curr_mut)"))
     }
 
     /// If called, then the next call to `next_coverage_span()` will *not* update `prev` with the
