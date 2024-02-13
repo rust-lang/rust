@@ -1421,7 +1421,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ),
                         );
                     }
-                } else if let Mode::Path = mode {
+                } else if let Mode::Path = mode
+                    && args.unwrap_or(&[]).is_empty()
+                {
                     // We have an associated item syntax and we found something that isn't an fn.
                     err.span_suggestion_verbose(
                         span,
