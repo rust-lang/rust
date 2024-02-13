@@ -3,7 +3,7 @@ use crate::spec::{base, Target};
 pub fn target() -> Target {
     let mut base = base::windows_uwp_msvc::opts();
     base.cpu = "x86-64".into();
-    base.features = "+cx16,+sse3".into();
+    base.features = "+cx16,+sse3,+sahf".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(128);
 
