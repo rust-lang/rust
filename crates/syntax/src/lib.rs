@@ -182,28 +182,6 @@ impl SourceFile {
     }
 }
 
-impl ast::Literal {
-    pub fn parse(text: &str) -> Option<Parse<ast::Literal>> {
-        let lexed = parser::LexedStr::new(text);
-        let parser_input = lexed.to_input();
-        let parser_output = parser::TopEntryPoint::Expr.parse(&parser_input);
-        let (green, mut errors, _) = parsing::build_tree(lexed, parser_output);
-        let root = SyntaxNode::new_root(green.clone());
-
-        errors.extend(validation::validate(&root));
-
-        if root.kind() == SyntaxKind::LITERAL {
-            Some(Parse {
-                green,
-                errors: if errors.is_empty() { None } else { Some(errors.into()) },
-                _ty: PhantomData,
-            })
-        } else {
-            None
-        }
-    }
-}
-
 impl ast::TokenTree {
     pub fn reparse_as_comma_separated_expr(self) -> Parse<ast::MacroEagerInput> {
         let tokens = self.syntax().descendants_with_tokens().filter_map(NodeOrToken::into_token);
