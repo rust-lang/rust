@@ -5,6 +5,7 @@ mod build;
 mod cargo;
 mod clean;
 mod config;
+mod info;
 mod prepare;
 mod rustc_info;
 mod test;
@@ -29,6 +30,7 @@ Available commands for build_system:
     prepare  : Run prepare command
     build    : Run build command
     test     : Run test command
+    info:    : Run info command
     --help   : Show this message"
     );
 }
@@ -39,6 +41,7 @@ pub enum Command {
     Prepare,
     Build,
     Test,
+    Info,
 }
 
 fn main() {
@@ -52,6 +55,7 @@ fn main() {
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
         Some("test") => Command::Test,
+        Some("info") => Command::Info,
         Some("--help") => {
             usage();
             process::exit(0);
@@ -70,6 +74,7 @@ fn main() {
         Command::Prepare => prepare::run(),
         Command::Build => build::run(),
         Command::Test => test::run(),
+        Command::Info => info::run(),
     } {
         eprintln!("Command failed to run: {e}");
         process::exit(1);

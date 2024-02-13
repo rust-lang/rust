@@ -31,7 +31,10 @@ fn get_runners() -> Runners {
         "--test-failing-rustc",
         ("Run failing rustc tests", test_failing_rustc),
     );
-    runners.insert("--projects", ("Run the tests of popular crates", test_projects));
+    runners.insert(
+        "--projects",
+        ("Run the tests of popular crates", test_projects),
+    );
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
     runners.insert("--clean", ("Empty cargo target directory", clean));
     runners.insert("--build-sysroot", ("Build sysroot", build_sysroot));
@@ -109,7 +112,7 @@ fn show_usage() {
 struct TestArg {
     no_default_features: bool,
     build_only: bool,
-    gcc_path: Option<String>,
+    use_system_gcc: bool,
     runners: BTreeSet<String>,
     flags: Vec<String>,
     backend: Option<String>,
@@ -121,7 +124,6 @@ struct TestArg {
 
 impl TestArg {
     fn new() -> Result<Option<Self>, String> {
-        let mut use_system_gcc = false;
         let mut test_arg = Self::default();
 
         // We skip binary name and the `test` command.
@@ -147,7 +149,10 @@ impl TestArg {
                         return Err("Expected an argument after `--features`, found nothing".into())
                     }
                 },
-                "--use-system-gcc" => use_system_gcc = true,
+                "--use-system-gcc" => {
+                    println!("Using system GCC");
+                    test_arg.use_system_gcc = true;
+                }
                 "--build-only" => test_arg.build_only = true,
                 "--use-backend" => match args.next() {
                     Some(backend) if !backend.is_empty() => test_arg.backend = Some(backend),
@@ -179,11 +184,6 @@ impl TestArg {
                         return Err(format!("Unknown option {}", arg));
                     }
                 }
-            }
-
-            if use_system_gcc {
-                println!("Using system GCC");
-                test_arg.gcc_path = Some("gcc".to_string());
             }
         }
         match (test_arg.current_part, test_arg.nb_parts) {
@@ -703,7 +703,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         //"https://github.com/rust-lang/cargo", // TODO: very slow, only run on master?
     ];
 
-    let run_tests = |projects_path, iter: &mut dyn Iterator<Item=&&str>| -> Result<(), String> {
+    let run_tests = |projects_path, iter: &mut dyn Iterator<Item = &&str>| -> Result<(), String> {
         for project in iter {
             let clone_result = git_clone(project, Some(projects_path), true)?;
             let repo_path = Path::new(&clone_result.repo_dir);
@@ -727,8 +727,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         let start = current_part * count;
         // We remove the projects we don't want to test.
         run_tests(projects_path, &mut projects.iter().skip(start).take(count))?;
-    }
-    else {
+    } else {
         run_tests(projects_path, &mut projects.iter())?;
     }
 
@@ -1166,15 +1165,17 @@ pub fn run() -> Result<(), String> {
     };
     let mut env: HashMap<String, String> = std::env::vars().collect();
 
-    args.config_info.setup_gcc_path(None)?;
-    env.insert(
-        "LIBRARY_PATH".to_string(),
-        args.config_info.gcc_path.clone(),
-    );
-    env.insert(
-        "LD_LIBRARY_PATH".to_string(),
-        args.config_info.gcc_path.clone(),
-    );
+    if !args.use_system_gcc {
+        args.config_info.setup_gcc_path()?;
+        env.insert(
+            "LIBRARY_PATH".to_string(),
+            args.config_info.gcc_path.clone(),
+        );
+        env.insert(
+            "LD_LIBRARY_PATH".to_string(),
+            args.config_info.gcc_path.clone(),
+        );
+    }
 
     build_if_no_backend(&env, &args)?;
     if args.build_only {
@@ -1182,7 +1183,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     }
 
-    args.config_info.setup(&mut env, args.gcc_path.as_deref())?;
+    args.config_info.setup(&mut env, args.use_system_gcc)?;
 
     if args.runners.is_empty() {
         run_all(&env, &args)?;
