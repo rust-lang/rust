@@ -34,6 +34,7 @@ fn load_cargo_with_overrides(
         cfg_overrides,
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
+        cargo_config_extra_env: Default::default(),
     };
     to_crate_graph(project_workspace)
 }
@@ -53,6 +54,7 @@ fn load_cargo_with_fake_sysroot(
         cfg_overrides: Default::default(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
+        cargo_config_extra_env: Default::default(),
     };
     project_workspace.to_crate_graph(
         &mut {
@@ -332,6 +334,7 @@ fn smoke_test_real_sysroot_cargo() {
         cfg_overrides: Default::default(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
+        cargo_config_extra_env: Default::default(),
     };
     project_workspace.to_crate_graph(
         &mut {

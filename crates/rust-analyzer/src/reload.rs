@@ -468,8 +468,19 @@ impl GlobalState {
                     None => ws.find_sysroot_proc_macro_srv()?,
                 };
 
+                let env = match ws {
+                    ProjectWorkspace::Cargo { cargo_config_extra_env, .. } => {
+                        cargo_config_extra_env
+                            .iter()
+                            .chain(self.config.extra_env())
+                            .map(|(a, b)| (a.clone(), b.clone()))
+                            .collect()
+                    }
+                    _ => Default::default(),
+                };
                 tracing::info!("Using proc-macro server at {path}");
-                ProcMacroServer::spawn(path.clone()).map_err(|err| {
+
+                ProcMacroServer::spawn(path.clone(), &env).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );
