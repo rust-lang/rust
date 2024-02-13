@@ -87,38 +87,28 @@ pub trait TypeVisitor<I: Interner>: Sized {
     #[cfg(not(feature = "nightly"))]
     type BreakTy;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> ControlFlow<Self::BreakTy>
-    where
-        I::Binder<T>: TypeSuperVisitable<I>,
-    {
+    fn visit_binder<T: TypeVisitable<I>>(
+        &mut self,
+        t: &I::Binder<T>,
+    ) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self)
     }
 
-    fn visit_ty(&mut self, t: I::Ty) -> ControlFlow<Self::BreakTy>
-    where
-        I::Ty: TypeSuperVisitable<I>,
-    {
+    fn visit_ty(&mut self, t: I::Ty) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self)
     }
 
     // The default region visitor is a no-op because `Region` is non-recursive
-    // and has no `super_visit_with` method to call. That also explains the
-    // lack of `I::Region: TypeSuperVisitable<I>` bound.
+    // and has no `super_visit_with` method to call.
     fn visit_region(&mut self, _r: I::Region) -> ControlFlow<Self::BreakTy> {
         ControlFlow::Continue(())
     }
 
-    fn visit_const(&mut self, c: I::Const) -> ControlFlow<Self::BreakTy>
-    where
-        I::Const: TypeSuperVisitable<I>,
-    {
+    fn visit_const(&mut self, c: I::Const) -> ControlFlow<Self::BreakTy> {
         c.super_visit_with(self)
     }
 
-    fn visit_predicate(&mut self, p: I::Predicate) -> ControlFlow<Self::BreakTy>
-    where
-        I::Predicate: TypeSuperVisitable<I>,
-    {
+    fn visit_predicate(&mut self, p: I::Predicate) -> ControlFlow<Self::BreakTy> {
         p.super_visit_with(self)
     }
 }
@@ -327,13 +317,7 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T
-where
-    I::Ty: Flags,
-    I::Region: Flags,
-    I::Const: Flags,
-    I::Predicate: Flags,
-{
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         let res =
             self.visit_with(&mut HasTypeFlagsVisitor { flags }) == ControlFlow::Break(FoundFlags);
@@ -381,19 +365,13 @@ impl std::fmt::Debug for HasTypeFlagsVisitor {
 // are present, regardless of whether those bound variables are used. This
 // is important for anonymization of binders in `TyCtxt::erase_regions`. We
 // specifically detect this case in `visit_binder`.
-impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor
-where
-    I::Ty: Flags,
-    I::Region: Flags,
-    I::Const: Flags,
-    I::Predicate: Flags,
-{
+impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> ControlFlow<Self::BreakTy>
-    where
-        I::Binder<T>: TypeSuperVisitable<I>,
-    {
+    fn visit_binder<T: TypeVisitable<I>>(
+        &mut self,
+        t: &I::Binder<T>,
+    ) -> ControlFlow<Self::BreakTy> {
         // If we're looking for the HAS_BINDER_VARS flag, check if the
         // binder has vars. This won't be present in the binder's bound
         // value, so we need to check here too.
@@ -480,19 +458,13 @@ struct HasEscapingVarsVisitor {
     outer_index: ty::DebruijnIndex,
 }
 
-impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor
-where
-    I::Ty: Flags,
-    I::Region: Flags,
-    I::Const: Flags,
-    I::Predicate: Flags,
-{
+impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     type BreakTy = FoundEscapingVars;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> ControlFlow<Self::BreakTy>
-    where
-        I::Binder<T>: TypeSuperVisitable<I>,
-    {
+    fn visit_binder<T: TypeVisitable<I>>(
+        &mut self,
+        t: &I::Binder<T>,
+    ) -> ControlFlow<Self::BreakTy> {
         self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
         self.outer_index.shift_out(1);
@@ -550,19 +522,10 @@ where
 
 struct HasErrorVisitor;
 
-impl<I: Interner> TypeVisitor<I> for HasErrorVisitor
-where
-    I::Ty: Flags,
-    I::Region: Flags,
-    I::Const: Flags,
-    I::Predicate: Flags,
-{
+impl<I: Interner> TypeVisitor<I> for HasErrorVisitor {
     type BreakTy = I::ErrorGuaranteed;
 
-    fn visit_ty(&mut self, t: <I as Interner>::Ty) -> ControlFlow<Self::BreakTy>
-    where
-        <I as Interner>::Ty: TypeSuperVisitable<I>,
-    {
+    fn visit_ty(&mut self, t: <I as Interner>::Ty) -> ControlFlow<Self::BreakTy> {
         if let ty::Error(guar) = t.kind() {
             ControlFlow::Break(guar)
         } else {
@@ -570,10 +533,7 @@ where
         }
     }
 
-    fn visit_const(&mut self, c: <I as Interner>::Const) -> ControlFlow<Self::BreakTy>
-    where
-        <I as Interner>::Const: TypeSuperVisitable<I>,
-    {
+    fn visit_const(&mut self, c: <I as Interner>::Const) -> ControlFlow<Self::BreakTy> {
         if let ty::ConstKind::Error(guar) = c.kind() {
             ControlFlow::Break(guar)
         } else {
