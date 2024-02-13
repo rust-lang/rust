@@ -289,6 +289,61 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
+    pub(super) fn suggest_push_for_append(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        let ty::error::ExpectedFound { expected: _, found } = exp_found;
+        let body = if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(cause.body_id) {
+            self.tcx.hir().body(body_id)
+        } else {
+            return;
+        };
+
+        struct MethodCallVisitor<'tcx> {
+            pub method: Option<Span>,
+            pub recv: Option<&'tcx hir::Expr<'tcx>>,
+            pub err_span: Span,
+        }
+
+        impl<'v> Visitor<'v> for MethodCallVisitor<'v> {
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                if let hir::ExprKind::MethodCall(method, recv, args, _) = ex.kind {
+                    if args.len() == 1
+                        && args[0].span.eq(&self.err_span)
+                        && method.ident.name.as_str() == "append"
+                    {
+                        self.method = Some(method.ident.span);
+                        self.recv = Some(recv);
+                    }
+                }
+                walk_expr(self, ex);
+            }
+        }
+
+        let mut finder = MethodCallVisitor { method: None, err_span: span, recv: None };
+        finder.visit_body(body);
+
+        if let Some(typecheck) = self.typeck_results.as_ref()
+            && let Some(method_call) = finder.method
+            && let Some(vec_def_id) = self.tcx.get_diagnostic_item(sym::Vec)
+            && let Some(recv_ty) = finder.recv.and_then(|recv| typecheck.expr_ty_opt(recv))
+            && let ty::Adt(def, _) = recv_ty.kind()
+            && def.did() == vec_def_id
+            && (recv_ty.contains(*found) || recv_ty.has_infer_types())
+        {
+            diag.span_suggestion_verbose(
+                method_call,
+                "you might want to use `push` to add new element to `Vec`",
+                "push",
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
     pub(super) fn suggest_function_pointers(
         &self,
         cause: &ObligationCause<'tcx>,

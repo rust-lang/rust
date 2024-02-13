@@ -2005,6 +2005,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
                 self.suggest_function_pointers(cause, span, &exp_found, diag);
+                self.suggest_push_for_append(cause, span, &exp_found, diag);
             }
         }
 

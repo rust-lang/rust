@@ -1,0 +1,50 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-87212-suggest-push.rs:5:18
+   |
+LL |     stuff.append(Thing);
+   |           ------ ^^^^^ expected `&mut Vec<Thing>`, found `Thing`
+   |           |
+   |           arguments to this method are incorrect
+   |
+   = note: expected mutable reference `&mut Vec<Thing>`
+                         found struct `Thing`
+note: method defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: you might want to use `push` to add new element to `Vec`
+   |
+LL |     stuff.push(Thing);
+   |           ~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-87212-suggest-push.rs:11:18
+   |
+LL |     stuff.append(Thing);
+   |           ------ ^^^^^ expected `&mut Vec<_>`, found `Thing`
+   |           |
+   |           arguments to this method are incorrect
+   |
+   = note: expected mutable reference `&mut Vec<_>`
+                         found struct `Thing`
+note: method defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+help: you might want to use `push` to add new element to `Vec`
+   |
+LL |     stuff.push(Thing);
+   |           ~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/issue-87212-suggest-push.rs:17:18
+   |
+LL |     stuff.append(Thing);
+   |           ------ ^^^^^ expected `&mut Vec<i32>`, found `Thing`
+   |           |
+   |           arguments to this method are incorrect
+   |
+   = note: expected mutable reference `&mut Vec<i32>`
+                         found struct `Thing`
+note: method defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
