@@ -322,10 +322,9 @@ impl Session {
         }
     }
 
-    /// Used for code paths of expensive computations that should only take place when
-    /// warnings or errors are emitted. If no messages are emitted ("good path"), then
-    /// it's likely a bug.
-    pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
+    /// Record the fact that we called `trimmed_def_paths`, and do some
+    /// checking about whether its cost was justified.
+    pub fn record_trimmed_def_paths(&self) {
         if self.opts.unstable_opts.print_type_sizes
             || self.opts.unstable_opts.query_dep_graph
             || self.opts.unstable_opts.dump_mir.is_some()
@@ -336,7 +335,7 @@ impl Session {
             return;
         }
 
-        self.dcx().good_path_delayed_bug(msg)
+        self.dcx().set_must_produce_diag()
     }
 
     #[inline]
@@ -546,8 +545,8 @@ impl Session {
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
                     if self.dcx().can_emit_warnings() {
                         // We only call `msg` in case we can actually emit warnings.
-                        // Otherwise, this could cause a `good_path_delayed_bug` to
-                        // trigger (issue #79546).
+                        // Otherwise, this could cause a `must_produce_diag` ICE
+                        // (issue #79546).
                         self.dcx().emit_warn(errors::OptimisationFuelExhausted { msg: msg() });
                     }
                     fuel.out_of_fuel = true;
