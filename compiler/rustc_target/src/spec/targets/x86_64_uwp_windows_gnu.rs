@@ -3,7 +3,7 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, Target};
 pub fn target() -> Target {
     let mut base = base::windows_uwp_gnu::opts();
     base.cpu = "x86-64".into();
-    base.features = "+cx16,+sse3".into();
+    base.features = "+cx16,+sse3,+sahf".into();
     base.plt_by_default = false;
     // Use high-entropy 64 bit address space for ASLR
     base.add_pre_link_args(
