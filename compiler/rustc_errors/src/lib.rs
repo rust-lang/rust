@@ -1360,10 +1360,13 @@ impl DiagCtxtInner {
             // Future breakages aren't emitted if they're Level::Allow,
             // but they still need to be constructed and stashed below,
             // so they'll trigger the must_produce_diag check.
-            self.suppressed_expected_diag = true;
+            assert!(matches!(diagnostic.level, Error | Warning | Allow));
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
+        // We call TRACK_DIAGNOSTIC with an empty closure for the cases that
+        // return early *and* have some kind of side-effect, except where
+        // noted.
         match diagnostic.level {
             Fatal | Error if self.treat_next_err_as_bug() => {
                 // `Fatal` and `Error` can be promoted to `Bug`.
@@ -1387,6 +1390,9 @@ impl DiagCtxtInner {
                     return if let Some(guar) = self.has_errors() {
                         Some(guar)
                     } else {
+                        // No `TRACK_DIAGNOSTIC` call is needed, because the
+                        // incremental session is deleted if there is a delayed
+                        // bug. This also saves us from cloning the diagnostic.
                         let backtrace = std::backtrace::Backtrace::capture();
                         // This `unchecked_error_guaranteed` is valid. It is where the
                         // `ErrorGuaranteed` for delayed bugs originates. See
@@ -1401,11 +1407,17 @@ impl DiagCtxtInner {
             }
             Warning if !self.flags.can_emit_warnings => {
                 if diagnostic.has_future_breakage() {
+                    // The side-effect is at the top of this method.
                     TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
                 }
                 return None;
             }
             Allow => {
+                if diagnostic.has_future_breakage() {
+                    // The side-effect is at the top of this method.
+                    TRACK_DIAGNOSTIC(diagnostic, &mut |_| None);
+                    self.suppressed_expected_diag = true;
+                }
                 return None;
             }
             Expect(expect_id) | ForceWarning(Some(expect_id)) => {
@@ -1414,6 +1426,9 @@ impl DiagCtxtInner {
                 // buffered until the `LintExpectationId` is replaced by a
                 // stable one by the `LintLevelsBuilder`.
                 if let LintExpectationId::Unstable { .. } = expect_id {
+                    // We don't call TRACK_DIAGNOSTIC because we wait for the
+                    // unstable ID to be updated, whereupon the diagnostic will
+                    // be passed into this method again.
                     self.unstable_expect_diagnostics.push(diagnostic);
                     return None;
                 }
