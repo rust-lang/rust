@@ -27,21 +27,21 @@
 +         _1 = const E::V1(0_i32);
           StorageLive(_2);
 -         _3 = discriminant(_1);
--         switchInt(move _3) -> [0: bb3, 1: bb1, otherwise: bb2];
+-         switchInt(move _3) -> [0: bb3, 1: bb2, otherwise: bb1];
 +         _3 = const 0_isize;
-+         switchInt(const 0_isize) -> [0: bb3, 1: bb1, otherwise: bb2];
++         switchInt(const 0_isize) -> [0: bb3, 1: bb2, otherwise: bb1];
       }
   
       bb1: {
+          unreachable;
+      }
+  
+      bb2: {
           StorageLive(_5);
           _5 = ((_1 as V2).0: i32);
           _2 = _5;
           StorageDead(_5);
           goto -> bb4;
-      }
-  
-      bb2: {
-          unreachable;
       }
   
       bb3: {
