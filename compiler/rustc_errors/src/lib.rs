@@ -1356,6 +1356,14 @@ impl DiagCtxtInner {
     fn emit_diagnostic(&mut self, mut diagnostic: DiagInner) -> Option<ErrorGuaranteed> {
         assert!(diagnostic.level.can_be_top_or_sub().0);
 
+        if diagnostic.has_future_breakage() {
+            // Future breakages aren't emitted if they're Level::Allow,
+            // but they still need to be constructed and stashed below,
+            // so they'll trigger the must_produce_diag check.
+            self.suppressed_expected_diag = true;
+            self.future_breakage_diagnostics.push(diagnostic.clone());
+        }
+
         if let Expect(expect_id) | ForceWarning(Some(expect_id)) = diagnostic.level {
             // The `LintExpectationId` can be stable or unstable depending on when it was created.
             // Diagnostics created before the definition of `HirId`s are unstable and can not yet
@@ -1367,14 +1375,6 @@ impl DiagCtxtInner {
             }
             self.suppressed_expected_diag = true;
             self.fulfilled_expectations.insert(expect_id.normalize());
-        }
-
-        if diagnostic.has_future_breakage() {
-            // Future breakages aren't emitted if they're Level::Allow,
-            // but they still need to be constructed and stashed below,
-            // so they'll trigger the must_produce_diag check.
-            self.suppressed_expected_diag = true;
-            self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
         match diagnostic.level {
