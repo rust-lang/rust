@@ -2316,6 +2316,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
+
+    /// Given an `impl_id`, return the trait it implements.
+    /// Return `None` if this is an inherent impl.
+    pub fn impl_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
+        Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
+    }
+
+    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+        self.impl_trait_header(def_id)
+            .map_or(ty::ImplPolarity::Positive, |h| h.skip_binder().polarity)
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead

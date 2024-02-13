@@ -79,8 +79,7 @@ pub fn provide(providers: &mut Providers) {
         trait_def,
         adt_def,
         fn_sig,
-        impl_trait_ref,
-        impl_polarity,
+        impl_trait_header,
         coroutine_kind,
         coroutine_for_closure,
         collect_mod_item_types,
@@ -600,7 +599,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         hir::ItemKind::Impl { .. } => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
-            tcx.ensure().impl_trait_ref(def_id);
+            tcx.ensure().impl_trait_header(def_id);
             tcx.ensure().predicates_of(def_id);
         }
         hir::ItemKind::Trait(..) => {
@@ -1499,19 +1498,20 @@ fn suggest_impl_trait<'tcx>(
     None
 }
 
-fn impl_trait_ref(
+fn impl_trait_header(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
+) -> Option<ty::EarlyBinder<ty::ImplTraitHeader<'_>>> {
     let icx = ItemCtxt::new(tcx, def_id);
-    let impl_ = tcx.hir().expect_item(def_id).expect_impl();
+    let item = tcx.hir().expect_item(def_id);
+    let impl_ = item.expect_impl();
     impl_
         .of_trait
         .as_ref()
         .map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id).instantiate_identity();
 
-            if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
+            let trait_ref = if let Some(ErrorGuaranteed { .. }) = check_impl_constness(
                 tcx,
                 tcx.is_const_trait_impl_raw(def_id.to_def_id()),
                 ast_trait_ref,
@@ -1536,9 +1536,12 @@ fn impl_trait_ref(
                 icx.astconv().instantiate_mono_trait_ref(trait_ref, selfty)
             } else {
                 icx.astconv().instantiate_mono_trait_ref(ast_trait_ref, selfty)
-            }
+            };
+            ty::EarlyBinder::bind(ty::ImplTraitHeader {
+                trait_ref,
+                polarity: polarity_of_impl(tcx, def_id,  impl_, item.span)
+            })
         })
-        .map(ty::EarlyBinder::bind)
 }
 
 fn check_impl_constness(
@@ -1566,43 +1569,34 @@ fn check_impl_constness(
     }))
 }
 
-fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
+fn polarity_of_impl(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    impl_: &hir::Impl<'_>,
+    span: Span,
+) -> ty::ImplPolarity {
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
-    let item = tcx.hir().expect_item(def_id);
-    match &item.kind {
-        hir::ItemKind::Impl(hir::Impl {
-            polarity: hir::ImplPolarity::Negative(span),
-            of_trait,
-            ..
-        }) => {
+    match &impl_ {
+        hir::Impl { polarity: hir::ImplPolarity::Negative(span), of_trait, .. } => {
             if is_rustc_reservation {
                 let span = span.to(of_trait.as_ref().map_or(*span, |t| t.path.span));
                 tcx.dcx().span_err(span, "reservation impls can't be negative");
             }
             ty::ImplPolarity::Negative
         }
-        hir::ItemKind::Impl(hir::Impl {
-            polarity: hir::ImplPolarity::Positive,
-            of_trait: None,
-            ..
-        }) => {
+        hir::Impl { polarity: hir::ImplPolarity::Positive, of_trait: None, .. } => {
             if is_rustc_reservation {
-                tcx.dcx().span_err(item.span, "reservation impls can't be inherent");
+                tcx.dcx().span_err(span, "reservation impls can't be inherent");
             }
             ty::ImplPolarity::Positive
         }
-        hir::ItemKind::Impl(hir::Impl {
-            polarity: hir::ImplPolarity::Positive,
-            of_trait: Some(_),
-            ..
-        }) => {
+        hir::Impl { polarity: hir::ImplPolarity::Positive, of_trait: Some(_), .. } => {
             if is_rustc_reservation {
                 ty::ImplPolarity::Reservation
             } else {
                 ty::ImplPolarity::Positive
             }
         }
-        item => bug!("impl_polarity: {:?} not an impl", item),
     }
 }
 

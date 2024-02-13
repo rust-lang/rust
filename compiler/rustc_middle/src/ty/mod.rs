@@ -248,6 +248,12 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
+#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, TyEncodable, TyDecodable, HashStable)]
+pub struct ImplTraitHeader<'tcx> {
+    pub trait_ref: ty::TraitRef<'tcx>,
+    pub polarity: ImplPolarity,
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub enum ImplSubject<'tcx> {
     Trait(TraitRef<'tcx>),
@@ -1602,17 +1608,16 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
-        let impl_trait_ref1 = self.impl_trait_ref(def_id1);
-        let impl_trait_ref2 = self.impl_trait_ref(def_id2);
+        let impl1 = self.impl_trait_header(def_id1).unwrap().instantiate_identity();
+        let impl2 = self.impl_trait_header(def_id2).unwrap().instantiate_identity();
+
         // If either trait impl references an error, they're allowed to overlap,
         // as one of them essentially doesn't exist.
-        if impl_trait_ref1.is_some_and(|tr| tr.instantiate_identity().references_error())
-            || impl_trait_ref2.is_some_and(|tr| tr.instantiate_identity().references_error())
-        {
+        if impl1.references_error() || impl2.references_error() {
             return Some(ImplOverlapKind::Permitted { marker: false });
         }
 
-        match (self.impl_polarity(def_id1), self.impl_polarity(def_id2)) {
+        match (impl1.polarity, impl2.polarity) {
             (ImplPolarity::Reservation, _) | (_, ImplPolarity::Reservation) => {
                 // `#[rustc_reservation_impl]` impls don't overlap with anything
                 return Some(ImplOverlapKind::Permitted { marker: false });
@@ -1627,10 +1632,9 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         let is_marker_overlap = {
-            let is_marker_impl = |trait_ref: Option<EarlyBinder<TraitRef<'_>>>| -> bool {
-                trait_ref.is_some_and(|tr| self.trait_def(tr.skip_binder().def_id).is_marker)
-            };
-            is_marker_impl(impl_trait_ref1) && is_marker_impl(impl_trait_ref2)
+            let is_marker_impl =
+                |trait_ref: TraitRef<'_>| -> bool { self.trait_def(trait_ref.def_id).is_marker };
+            is_marker_impl(impl1.trait_ref) && is_marker_impl(impl2.trait_ref)
         };
 
         if is_marker_overlap {

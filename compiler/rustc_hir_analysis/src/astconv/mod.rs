@@ -1673,9 +1673,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         .is_accessible_from(self.item_def_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
-                            let trait_ref = tcx.impl_trait_ref(impl_def_id);
-                            trait_ref.is_some_and(|trait_ref| {
-                                let impl_ = trait_ref.instantiate(
+                            let impl_header = tcx.impl_trait_header(impl_def_id);
+                            impl_header.is_some_and(|header| {
+                                let header = header.instantiate(
                                     tcx,
                                     infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
                                 );
@@ -1687,11 +1687,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 infcx
                                     .can_eq(
                                         ty::ParamEnv::empty(),
-                                        impl_.self_ty(),
+                                        header.trait_ref.self_ty(),
                                         value,
-                                    )
+                                    ) && header.polarity != ty::ImplPolarity::Negative
                             })
-                            && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                         })
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))
@@ -1737,13 +1736,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 // Find all the types that have an `impl` for the trait.
                 tcx.all_impls(trait_def_id)
-                    .filter(|impl_def_id| {
+                    .filter_map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
+                    .filter(|header| {
                         // Consider only accessible traits
                         tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
-                            && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
+                            && header.skip_binder().polarity != ty::ImplPolarity::Negative
                     })
-                    .filter_map(|impl_def_id| tcx.impl_trait_ref(impl_def_id))
-                    .map(|impl_| impl_.instantiate_identity().self_ty())
+                    .map(|header| header.instantiate_identity().trait_ref.self_ty())
                     // We don't care about blanket impls.
                     .filter(|self_ty| !self_ty.has_non_region_param())
                     .map(|self_ty| tcx.erase_regions(self_ty).to_string())

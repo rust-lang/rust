@@ -2412,8 +2412,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         impl_def_id: DefId,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Normalized<'tcx, GenericArgsRef<'tcx>> {
-        let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
-        match self.match_impl(impl_def_id, impl_trait_ref, obligation) {
+        let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
+        match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
             Err(()) => {
                 // FIXME: A rematch may fail when a candidate cache hit occurs
@@ -2446,7 +2446,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn match_impl(
         &mut self,
         impl_def_id: DefId,
-        impl_trait_ref: EarlyBinder<ty::TraitRef<'tcx>>,
+        impl_trait_header: EarlyBinder<ty::ImplTraitHeader<'tcx>>,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
         let placeholder_obligation =
@@ -2455,12 +2455,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
 
-        let impl_trait_ref = impl_trait_ref.instantiate(self.tcx(), impl_args);
-        if impl_trait_ref.references_error() {
+        let impl_trait_header = impl_trait_header.instantiate(self.tcx(), impl_args);
+        if impl_trait_header.references_error() {
             return Err(());
         }
 
-        debug!(?impl_trait_ref);
+        debug!(?impl_trait_header);
 
         let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
             ensure_sufficient_stack(|| {
@@ -2469,7 +2469,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    impl_trait_ref,
+                    impl_trait_header.trait_ref,
                 )
             });
 
@@ -2490,9 +2490,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             })?;
         nested_obligations.extend(obligations);
 
-        if !self.is_intercrate()
-            && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
-        {
+        if !self.is_intercrate() && impl_trait_header.polarity == ty::ImplPolarity::Reservation {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());
         }

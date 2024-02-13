@@ -3134,12 +3134,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self
                         .tcx
                         .all_impls(candidate.def_id)
-                        .filter(|imp_did| {
-                            self.tcx.impl_polarity(*imp_did) == ty::ImplPolarity::Negative
+                        .map(|imp_did| {
+                            self.tcx.impl_trait_header(imp_did).expect(
+                                "inherent impls can't be candidates, only trait impls can be",
+                            )
                         })
-                        .any(|imp_did| {
-                            let imp =
-                                self.tcx.impl_trait_ref(imp_did).unwrap().instantiate_identity();
+                        .filter(|header| {
+                            header.skip_binder().polarity == ty::ImplPolarity::Negative
+                        })
+                        .any(|header| {
+                            let imp = header.instantiate_identity().trait_ref;
                             let imp_simp =
                                 simplify_type(self.tcx, imp.self_ty(), TreatParams::ForLookup);
                             imp_simp.is_some_and(|s| s == simp_rcvr_ty)
