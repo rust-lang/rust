@@ -304,6 +304,10 @@ fn typeck_with_fallback<'tcx>(
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 
+    // We clone the defined opaque types during writeback in the new solver
+    // because we have to use them during normalization.
+    let _ = fcx.infcx.take_opaque_types();
+
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.
     assert_eq!(typeck_results.hir_owner, id.owner);

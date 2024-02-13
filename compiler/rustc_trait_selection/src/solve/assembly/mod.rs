@@ -276,11 +276,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &mut self,
         goal: Goal<'tcx, G>,
     ) -> Vec<Candidate<'tcx>> {
-        let Some(normalized_self_ty) =
-            self.try_normalize_ty(goal.param_env, goal.predicate.self_ty())
+        let Ok(normalized_self_ty) =
+            self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            debug!("overflow while evaluating self type");
-            return self.forced_ambiguity(MaybeCause::Overflow);
+            return vec![];
         };
 
         if normalized_self_ty.is_ty_var() {
@@ -635,19 +634,12 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return;
         }
 
-        match self.try_normalize_ty(goal.param_env, alias_ty.self_ty()) {
-            // Recurse on the self type of the projection.
-            Some(next_self_ty) => {
-                self.assemble_alias_bound_candidates_recur(next_self_ty, goal, candidates);
+        // Recurse on the self type of the projection.
+        match self.structurally_normalize_ty(goal.param_env, alias_ty.self_ty()) {
+            Ok(next_self_ty) => {
+                self.assemble_alias_bound_candidates_recur(next_self_ty, goal, candidates)
             }
-            // Bail if we overflow when normalizing, adding an ambiguous candidate.
-            None => {
-                if let Ok(result) =
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
-                {
-                    candidates.push(Candidate { source: CandidateSource::AliasBound, result });
-                }
-            }
+            Err(NoSolution) => {}
         }
     }
 
@@ -857,19 +849,11 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let result = self.probe_misc_candidate("coherence unknowable").enter(|ecx| {
             let trait_ref = goal.predicate.trait_ref(tcx);
-            #[derive(Debug)]
-            struct Overflow;
-            let lazily_normalize_ty = |ty| match ecx.try_normalize_ty(goal.param_env, ty) {
-                Some(ty) => Ok(ty),
-                None => Err(Overflow),
-            };
+            let lazily_normalize_ty = |ty| ecx.structurally_normalize_ty(goal.param_env, ty);
 
-            match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty) {
-                Err(Overflow) => {
-                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
-                }
-                Ok(Ok(())) => Err(NoSolution),
-                Ok(Err(_)) => {
+            match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty)? {
+                Ok(()) => Err(NoSolution),
+                Err(_) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }
             }

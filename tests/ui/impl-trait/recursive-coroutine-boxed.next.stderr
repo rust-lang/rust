@@ -1,0 +1,23 @@
+error[E0282]: type annotations needed
+  --> $DIR/recursive-coroutine-boxed.rs:10:23
+   |
+LL |         let mut gen = Box::pin(foo());
+   |                       ^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `Box`
+...
+LL |         let mut r = gen.as_mut().resume(());
+   |                         ------ type must be known at this point
+   |
+help: consider specifying the generic argument
+   |
+LL |         let mut gen = Box::<T>::pin(foo());
+   |                          +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/recursive-coroutine-boxed.rs:10:32
+   |
+LL |         let mut gen = Box::pin(foo());
+   |                                ^^^^^ cannot infer type for opaque type `impl Coroutine<Yield = (), Return = ()>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
