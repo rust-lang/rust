@@ -94,7 +94,7 @@ impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
 }
 ```
 
-## Creating traits programmatically
+## Creating Types Programmatically
 
 Traits are often generic over a type e.g. `Borrow<T>` is generic over `T`, and rust allows us to implement a trait for
 a specific type. For example, we can implement `Borrow<str>` for a hypothetical type `Foo`. Let's suppose that we
