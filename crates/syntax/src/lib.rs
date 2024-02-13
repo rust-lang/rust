@@ -188,7 +188,7 @@ impl SourceFile {
 }
 
 impl ast::Literal {
-    pub fn parse(text: &str) -> Parse<ast::Literal> {
+    pub fn parse(text: &str) -> Option<Parse<ast::Literal>> {
         let lexed = parser::LexedStr::new(text);
         let parser_input = lexed.to_input();
         let parser_output = parser::TopEntryPoint::Expr.parse(&parser_input);
@@ -197,11 +197,14 @@ impl ast::Literal {
 
         errors.extend(validation::validate(&root));
 
-        assert_eq!(root.kind(), SyntaxKind::LITERAL);
-        Parse {
-            green,
-            errors: if errors.is_empty() { None } else { Some(errors.into()) },
-            _ty: PhantomData,
+        if root.kind() == SyntaxKind::LITERAL {
+            Some(Parse {
+                green,
+                errors: if errors.is_empty() { None } else { Some(errors.into()) },
+                _ty: PhantomData,
+            })
+        } else {
+            None
         }
     }
 }

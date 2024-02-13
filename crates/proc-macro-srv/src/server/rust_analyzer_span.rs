@@ -71,7 +71,7 @@ impl server::FreeFunctions for RaSpanServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        let literal = ast::Literal::parse(s);
+        let literal = ast::Literal::parse(s).ok_or(())?;
         let literal = literal.tree();
 
         let kind = literal_to_external(literal.kind()).ok_or(())?;
