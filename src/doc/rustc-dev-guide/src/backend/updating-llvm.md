@@ -91,7 +91,6 @@ so let's go through each in detail.
    Some commands you should execute are:
 
    * `./x build src/llvm-project` - test that LLVM still builds
-   * `./x build src/tools/lld` - same for LLD
    * `./x build` - build the rest of rustc
 
    You'll likely need to update [`llvm-wrapper/*.cpp`][`llvm-wrapper`]
