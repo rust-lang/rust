@@ -61,10 +61,7 @@ enum GoalEvaluationKind {
     Nested { is_normalizes_to_hack: IsNormalizesToHack },
 }
 
-trait CanonicalResponseExt {
-    fn has_no_inference_or_external_constraints(&self) -> bool;
-}
-
+#[extension]
 impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
         self.value.external_constraints.region_constraints.is_empty()
