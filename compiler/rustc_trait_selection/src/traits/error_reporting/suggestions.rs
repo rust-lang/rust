@@ -3041,7 +3041,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             this = "the implicit `Sized` requirement on this type parameter";
                         }
                         if let Some(hir::Node::TraitItem(hir::TraitItem {
-                            ident,
+                            generics,
                             kind: hir::TraitItemKind::Type(bounds, None),
                             ..
                         })) = tcx.hir().get_if_local(item_def_id)
@@ -3053,7 +3053,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             let (span, separator) = if let [.., last] = bounds {
                                 (last.span().shrink_to_hi(), " +")
                             } else {
-                                (ident.span.shrink_to_hi(), ":")
+                                (generics.span.shrink_to_hi(), ":")
                             };
                             err.span_suggestion_verbose(
                                 span,
