@@ -77,6 +77,7 @@ type Res = def::Res<NodeId>;
 mod build_reduced_graph;
 mod check_unused;
 mod def_collector;
+mod desugar;
 mod diagnostics;
 mod effective_visibilities;
 mod errors;
