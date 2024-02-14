@@ -254,10 +254,18 @@ impl Sysroot {
                 .ok()?;
                 let current_dir =
                     AbsPathBuf::try_from(&*format!("{sysroot_src_dir}/sysroot")).ok()?;
+
+                let mut cargo_config = CargoConfig::default();
+                // the sysroot uses `public-dependency`, so we make cargo think it's a nightly
+                cargo_config.extra_env.insert(
+                    "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS".to_owned(),
+                    "nightly".to_owned(),
+                );
+
                 let res = CargoWorkspace::fetch_metadata(
                     &sysroot_cargo_toml,
                     &current_dir,
-                    &CargoConfig::default(),
+                    &cargo_config,
                     None,
                     &|_| (),
                 )
