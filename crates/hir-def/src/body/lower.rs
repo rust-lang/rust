@@ -416,6 +416,11 @@ impl ExprCollector<'_> {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
+            ast::Expr::BecomeExpr(e) => {
+                let expr =
+                    e.expr().map(|e| self.collect_expr(e)).unwrap_or_else(|| self.missing_expr());
+                self.alloc_expr(Expr::Become { expr }, syntax_ptr)
+            }
             ast::Expr::YieldExpr(e) => {
                 self.is_lowering_coroutine = true;
                 let expr = e.expr().map(|e| self.collect_expr(e));

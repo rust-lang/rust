@@ -531,6 +531,9 @@ impl InferenceContext<'_> {
                     self.consume_expr(expr);
                 }
             }
+            &Expr::Become { expr } => {
+                self.consume_expr(expr);
+            }
             Expr::RecordLit { fields, spread, .. } => {
                 if let &Some(expr) = spread {
                     self.consume_expr(expr);
