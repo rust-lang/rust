@@ -74,6 +74,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Bound, Deref};
 
@@ -519,6 +520,23 @@ pub struct TyCtxtFeed<'tcx, KEY: Copy> {
     key: KEY,
 }
 
+/// The same as `TyCtxtFeed`, but does not contain a `TyCtxt`.
+/// Use this to pass around when you have a `TyCtxt` elsewhere.
+/// Just an optimization to save space and not store hundreds of
+/// `TyCtxtFeed` in the resolver.
+#[derive(Copy, Clone)]
+pub struct Feed<'tcx, KEY: Copy> {
+    _tcx: PhantomData<TyCtxt<'tcx>>,
+    // Do not allow direct access, as downstream code must not mutate this field.
+    key: KEY,
+}
+
+impl<T: fmt::Debug + Copy> fmt::Debug for Feed<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.key.fmt(f)
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
         TyCtxtFeed { tcx: self, key: () }
@@ -543,6 +561,23 @@ impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
     #[inline(always)]
     pub fn key(&self) -> KEY {
         self.key
+    }
+
+    #[inline(always)]
+    pub fn downgrade(self) -> Feed<'tcx, KEY> {
+        Feed { _tcx: PhantomData, key: self.key }
+    }
+}
+
+impl<'tcx, KEY: Copy> Feed<'tcx, KEY> {
+    #[inline(always)]
+    pub fn key(&self) -> KEY {
+        self.key
+    }
+
+    #[inline(always)]
+    pub fn upgrade(self, tcx: TyCtxt<'tcx>) -> TyCtxtFeed<'tcx, KEY> {
+        TyCtxtFeed { tcx, key: self.key }
     }
 }
 
