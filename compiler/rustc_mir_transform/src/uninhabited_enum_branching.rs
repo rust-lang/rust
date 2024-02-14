@@ -78,6 +78,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
         trace!("UninhabitedEnumBranching starting for {:?}", body.source);
 
         let mut removable_switchs = Vec::new();
+        let mut otherwise_is_last_variant_switchs = Vec::new();
 
         for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
             trace!("processing block {:?}", bb);
@@ -92,7 +93,7 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
                 tcx.param_env_reveal_all_normalized(body.source.def_id()).and(discriminant_ty),
             );
 
-            let allowed_variants = if let Ok(layout) = layout {
+            let mut allowed_variants = if let Ok(layout) = layout {
                 variant_discriminants(&layout, discriminant_ty, tcx)
             } else {
                 continue;
@@ -103,18 +104,29 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             let terminator = bb_data.terminator();
             let TerminatorKind::SwitchInt { targets, .. } = &terminator.kind else { bug!() };
 
-            let mut reachable_count = 0;
             for (index, (val, _)) in targets.iter().enumerate() {
-                if allowed_variants.contains(&val) {
-                    reachable_count += 1;
-                } else {
+                if !allowed_variants.remove(&val) {
                     removable_switchs.push((bb, index));
                 }
             }
 
-            if reachable_count == allowed_variants.len() {
+            if allowed_variants.is_empty() {
                 removable_switchs.push((bb, targets.iter().count()));
+            } else if allowed_variants.len() == 1
+                && !body.basic_blocks[targets.otherwise()].is_empty_unreachable()
+            {
+                #[allow(rustc::potential_query_instability)]
+                let last_variant = *allowed_variants.iter().next().unwrap();
+                otherwise_is_last_variant_switchs.push((bb, last_variant));
             }
+        }
+
+        for (bb, last_variant) in otherwise_is_last_variant_switchs {
+            let bb_data = &mut body.basic_blocks.as_mut()[bb];
+            let terminator = bb_data.terminator_mut();
+            let TerminatorKind::SwitchInt { targets, .. } = &mut terminator.kind else { bug!() };
+            targets.add_target(last_variant, targets.otherwise());
+            removable_switchs.push((bb, targets.iter().count()));
         }
 
         if removable_switchs.is_empty() {

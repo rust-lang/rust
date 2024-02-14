@@ -9,7 +9,7 @@
       bb0: {
           _2 = discriminant(_1);
 -         switchInt(move _2) -> [0: bb2, 1: bb3, otherwise: bb1];
-+         switchInt(move _2) -> [0: bb5, 1: bb3, otherwise: bb1];
++         switchInt(move _2) -> [0: bb5, 1: bb3, 2: bb1, otherwise: bb5];
       }
   
       bb1: {

@@ -23,7 +23,7 @@
           StorageDead(_3);
           StorageDead(_2);
           _5 = discriminant((_1.0: std::option::Option<u8>));
-          switchInt(move _5) -> [1: bb1, otherwise: bb3];
+          switchInt(move _5) -> [1: bb1, 0: bb3, otherwise: bb5];
       }
   
       bb1: {
@@ -45,6 +45,10 @@
       bb4: {
           StorageDead(_1);
           return;
+      }
+  
+      bb5: {
+          unreachable;
       }
   }
   
