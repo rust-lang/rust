@@ -609,6 +609,7 @@ impl SubdiagnosticVariant {
     /// `#[error(parser::add_paren, no_span)]` or `#[suggestion(code = "...")]`. Returns the
     /// `SubdiagnosticKind` and the diagnostic slug, if specified.
     pub(super) fn from_attr(
+        generated_slug: &str,
         attr: &Attribute,
         fields: &impl HasFieldMap,
     ) -> Result<Option<SubdiagnosticVariant>, DiagnosticDeriveError> {
@@ -750,7 +751,7 @@ impl SubdiagnosticVariant {
                         .emit();
                         return Ok(());
                     };
-                    slug = Some(SlugOrRawFluent::RawFluent(value.parse::<LitStr>()?));
+                    slug = Some(SlugOrRawFluent::RawFluent(generated_slug.to_string(), value.parse::<LitStr>()?));
                 },
                 ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                     let code_init = build_suggestion_code(
@@ -884,4 +885,25 @@ pub(super) fn should_generate_arg(field: &Field) -> bool {
 
 pub(super) fn is_doc_comment(attr: &Attribute) -> bool {
     attr.path().segments.last().unwrap().ident == "doc"
+}
+
+pub(super) fn slugify(inpt: &str) -> String {
+    let mut slug = Vec::with_capacity(inpt.len());
+    for c in inpt.chars() {
+        match c {
+            'A'..='Z' => {
+                if !slug.is_empty() {
+                    slug.push('_');
+                }
+                slug.extend(char::to_lowercase(c));
+            }
+            '-' => {
+                slug.push('_');
+            }
+            _ => {
+                slug.push(c);
+            }
+        }
+    }
+    slug.into_iter().collect()
 }

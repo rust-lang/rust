@@ -6,8 +6,8 @@ use crate::diagnostics::error::{
 use crate::diagnostics::utils::{
     build_field_mapping, build_suggestion_code, is_doc_comment, new_code_ident,
     report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
-    should_generate_arg, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap,
-    SetOnce, SpannedOption, SubdiagnosticKind,
+    should_generate_arg, slugify, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap,
+    HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -61,8 +61,14 @@ impl SubdiagnosticDeriveBuilder {
                 }
             }
 
+            let generated_slug = slugify(&structure.ast().ident.to_string());
             structure.bind_with(|_| synstructure::BindStyle::Move);
             let variants_ = structure.each_variant(|variant| {
+                let mut generated_slug = generated_slug.clone();
+                if matches!(ast.data, syn::Data::Enum(..)) {
+                    generated_slug.push_str("_");
+                    generated_slug.push_str(&slugify(&variant.ast().ident.to_string()));
+                }
                 let mut builder = SubdiagnosticDeriveVariantBuilder {
                     parent: &self,
                     variant,
@@ -73,6 +79,7 @@ impl SubdiagnosticDeriveBuilder {
                     applicability: None,
                     has_suggestion_parts: false,
                     is_enum,
+                    generated_slug,
                 };
                 builder.into_tokens().unwrap_or_else(|v| v.to_compile_error())
             });
@@ -132,6 +139,8 @@ struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
     /// Set to true when this variant is an enum variant rather than just the body of a struct.
     is_enum: bool,
+
+    generated_slug: String,
 }
 
 impl<'parent, 'a> HasFieldMap for SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
@@ -186,7 +195,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         for attr in self.variant.ast().attrs {
             let Some(SubdiagnosticVariant { kind, slug, no_span }) =
-                SubdiagnosticVariant::from_attr(attr, self)?
+                SubdiagnosticVariant::from_attr(&self.generated_slug, attr, self)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
                 // subdiagnostics.
@@ -520,7 +529,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                         quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
                     );
                 }
-                SlugOrRawFluent::RawFluent(raw) => {
+                SlugOrRawFluent::RawFluent(_, raw) => {
                     calls.extend(quote! { let #message = #raw; });
                 }
             }

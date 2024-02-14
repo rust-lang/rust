@@ -28,7 +28,7 @@ impl<'a> DiagnosticDerive<'a> {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let args = if matches!(builder.slug.value_ref(), Some(SlugOrRawFluent::RawFluent(_))) {
+            let args = if matches!(builder.slug.value_ref(), Some(SlugOrRawFluent::RawFluent(_, _))) {
                 let args = builder.args;
                 quote! {
                     use rustc_data_structures::fx::FxHashMap;
@@ -70,9 +70,9 @@ impl<'a> DiagnosticDerive<'a> {
                         );
                     }
                 }
-                Some(SlugOrRawFluent::RawFluent(raw)) => {
+                Some(SlugOrRawFluent::RawFluent(slug, raw)) => {
                     quote! {
-                        let raw = dcx.raw_translate("foo", #raw, args.iter());
+                        let raw = dcx.raw_translate(#slug, #raw, args.iter());
                         let mut diag = rustc_errors::DiagnosticBuilder::new(
                             dcx,
                             level,
@@ -176,7 +176,7 @@ impl<'a> LintDiagnosticDerive<'a> {
                         crate::fluent_generated::#slug.into()
                     }
                 }
-                Some(SlugOrRawFluent::RawFluent(raw)) => {
+                Some(SlugOrRawFluent::RawFluent(_, raw)) => {
                     quote! {
                         #raw
                     }

@@ -2,6 +2,8 @@ mod diagnostic;
 mod diagnostic_builder;
 mod error;
 mod subdiagnostic;
+#[cfg(test)]
+mod tests;
 mod utils;
 
 use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};

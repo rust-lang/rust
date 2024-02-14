@@ -5,8 +5,8 @@ use crate::diagnostics::error::{
 };
 use crate::diagnostics::utils::{
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
-    should_generate_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy,
-    FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    should_generate_arg, slugify, type_is_bool, type_is_unit, type_matches_path, FieldInfo,
+    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
@@ -29,10 +29,10 @@ pub(crate) enum SlugOrRawFluent {
     ///
     /// e.g. `#[diag(foo_bar)]`
     Slug(Path),
-    /// Literal string containing the Fluent message.
+    /// Literal string containing the Fluent message and its computed slug.
     ///
     /// e.g. `#[diag_raw(message = "raw fluent content")]`
-    RawFluent(LitStr),
+    RawFluent(String, LitStr),
 }
 
 /// Tracks persistent information required for a specific variant when building up individual calls
@@ -60,6 +60,7 @@ pub(crate) struct DiagnosticDeriveVariantBuilder {
     /// multiple specifications.
     pub code: SpannedOption<()>,
 
+    pub generated_slug: String,
     pub args: Vec<TokenStream>,
 }
 
@@ -96,8 +97,14 @@ impl DiagnosticDeriveKind {
             }
         }
 
+        let generated_slug = slugify(&structure.ast().ident.to_string());
         structure.bind_with(|_| synstructure::BindStyle::Move);
         let variants = structure.each_variant(|variant| {
+            let mut generated_slug = generated_slug.clone();
+            if matches!(ast.data, syn::Data::Enum(..)) {
+                generated_slug.push_str("_");
+                generated_slug.push_str(&slugify(&variant.ast().ident.to_string()));
+            }
             let span = match structure.ast().data {
                 syn::Data::Struct(..) => span,
                 // There isn't a good way to get the span of the variant, so the variant's
@@ -111,6 +118,7 @@ impl DiagnosticDeriveKind {
                 formatting_init: TokenStream::new(),
                 slug: None,
                 code: None,
+                generated_slug,
                 args: Vec::new(),
             };
             f(builder, variant)
@@ -157,9 +165,10 @@ impl DiagnosticDeriveVariantBuilder {
     /// Parse a `SubdiagnosticKind` from an `Attribute`.
     fn parse_subdiag_attribute(
         &self,
+        generated_slug: &str,
         attr: &Attribute,
     ) -> Result<Option<(SubdiagnosticKind, SlugOrRawFluent, bool)>, DiagnosticDeriveError> {
-        let Some(subdiag) = SubdiagnosticVariant::from_attr(attr, self)? else {
+        let Some(subdiag) = SubdiagnosticVariant::from_attr(generated_slug, attr, self)? else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(None);
@@ -228,7 +237,10 @@ impl DiagnosticDeriveVariantBuilder {
 
                 if path.is_ident("message") {
                     self.slug.set_once(
-                        SlugOrRawFluent::RawFluent(nested.parse::<LitStr>()?),
+                        SlugOrRawFluent::RawFluent(
+                            self.generated_slug.clone(),
+                            nested.parse::<LitStr>()?,
+                        ),
                         path.span().unwrap(),
                     );
                     return Ok(());
@@ -252,7 +264,9 @@ impl DiagnosticDeriveVariantBuilder {
             return Ok(tokens);
         }
 
-        let Some((subdiag, slug, _no_span)) = self.parse_subdiag_attribute(attr)? else {
+        let Some((subdiag, slug, _no_span)) =
+            self.parse_subdiag_attribute(&self.generated_slug, attr)?
+        else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(quote! {});
@@ -278,7 +292,7 @@ impl DiagnosticDeriveVariantBuilder {
         let ident = field.ident.as_ref().unwrap();
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
-        if matches!(self.slug.value_ref(), Some(SlugOrRawFluent::RawFluent(_))) {
+        if matches!(self.slug.value_ref(), Some(SlugOrRawFluent::RawFluent(_, _))) {
             // Cloning should not be necessary once there are no `diag.arg` calls.
             self.args.push(quote! {
                 args.insert(stringify!(#ident).into(), #field_binding.clone().into_diagnostic_arg());
@@ -370,7 +384,14 @@ impl DiagnosticDeriveVariantBuilder {
             _ => (),
         }
 
-        let Some((subdiag, slug, _no_span)) = self.parse_subdiag_attribute(attr)? else {
+        let mut generated_slug = self.generated_slug.clone();
+        if let Some(field_name) = &info.binding.ast().ident {
+            generated_slug.push_str("_");
+            generated_slug.push_str(&slugify(&field_name.to_string()));
+        }
+        let Some((subdiag, slug, _no_span)) =
+            self.parse_subdiag_attribute(&generated_slug, attr)?
+        else {
             // Some attributes aren't errors - like documentation comments - but also aren't
             // subdiagnostics.
             return Ok(quote! {});
@@ -432,8 +453,8 @@ impl DiagnosticDeriveVariantBuilder {
                             #style
                         );
                     }),
-                    SlugOrRawFluent::RawFluent(raw) => Ok(quote! {
-                        let raw = dcx.raw_translate("foo", #raw, args.iter());
+                    SlugOrRawFluent::RawFluent(slug, raw) => Ok(quote! {
+                        let raw = dcx.raw_translate(#slug, #raw, args.iter());
                         diag.span_suggestions_with_style(
                             #span_field,
                             raw,
@@ -466,9 +487,9 @@ impl DiagnosticDeriveVariantBuilder {
                     );
                 }
             }
-            SlugOrRawFluent::RawFluent(raw) => {
+            SlugOrRawFluent::RawFluent(slug, raw) => {
                 quote! {
-                    let raw = dcx.raw_translate("foo", #raw, args.iter());
+                    let raw = dcx.raw_translate(#slug, #raw, args.iter());
                     diag.#fn_name(#field_binding, raw);
                 }
             }
@@ -484,9 +505,9 @@ impl DiagnosticDeriveVariantBuilder {
                     diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
                 }
             }
-            SlugOrRawFluent::RawFluent(raw) => {
+            SlugOrRawFluent::RawFluent(slug, raw) => {
                 quote! {
-                    let raw = dcx.raw_translate("foo", #raw, args.iter());
+                    let raw = dcx.raw_translate(#slug, #raw, args.iter());
                     diag.#kind(raw);
                 }
             }
