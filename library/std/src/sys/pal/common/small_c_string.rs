@@ -17,20 +17,27 @@ const NUL_ERR: io::Error =
 #[inline]
 pub fn run_path_with_cstr<T, F>(path: &Path, f: F) -> io::Result<T>
 where
-    F: FnOnce(&CStr) -> io::Result<T>,
+    F: FnMut(&CStr) -> io::Result<T>,
 {
     run_with_cstr(path.as_os_str().as_encoded_bytes(), f)
 }
 
 #[inline]
-pub fn run_with_cstr<T, F>(bytes: &[u8], f: F) -> io::Result<T>
+pub fn run_with_cstr<T, F>(bytes: &[u8], mut f: F) -> io::Result<T>
 where
-    F: FnOnce(&CStr) -> io::Result<T>,
+    F: FnMut(&CStr) -> io::Result<T>,
 {
     if bytes.len() >= MAX_STACK_ALLOCATION {
-        return run_with_cstr_allocating(bytes, f);
+        run_with_cstr_allocating(bytes, &mut f)
+    } else {
+        unsafe { run_with_cstr_stack(bytes, &mut f) }
     }
+}
 
+unsafe fn run_with_cstr_stack<T>(
+    bytes: &[u8],
+    f: &mut dyn FnMut(&CStr) -> io::Result<T>,
+) -> io::Result<T> {
     let mut buf = MaybeUninit::<[u8; MAX_STACK_ALLOCATION]>::uninit();
     let buf_ptr = buf.as_mut_ptr() as *mut u8;
 
@@ -47,10 +54,10 @@ where
 
 #[cold]
 #[inline(never)]
-fn run_with_cstr_allocating<T, F>(bytes: &[u8], f: F) -> io::Result<T>
-where
-    F: FnOnce(&CStr) -> io::Result<T>,
-{
+fn run_with_cstr_allocating<T>(
+    bytes: &[u8],
+    f: &mut dyn FnMut(&CStr) -> io::Result<T>,
+) -> io::Result<T> {
     match CString::new(bytes) {
         Ok(s) => f(&s),
         Err(_) => Err(NUL_ERR),
