@@ -563,8 +563,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let suggest_confusable = |err: &mut Diagnostic| {
-            let call_name = call_ident?;
-            let callee_ty = callee_ty?;
+            let Some(call_name) = call_ident else {
+                return;
+            };
+            let Some(callee_ty) = callee_ty else {
+                return;
+            };
             let input_types: Vec<Ty<'_>> = provided_arg_tys.iter().map(|(ty, _)| *ty).collect();
             // Check for other methods in the following order
             //  - methods marked as `rustc_confusables` with the provided arguments
@@ -573,13 +577,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //  - methods with short levenshtein distance
 
             // Look for commonly confusable method names considering arguments.
-            if let Some(name) = self.confusable_method_name(
+            if let Some(_name) = self.confusable_method_name(
                 err,
                 callee_ty.peel_refs(),
                 call_name,
                 Some(input_types.clone()),
             ) {
-                return Some(name);
+                return;
             }
             // Look for method names with short levenshtein distance, considering arguments.
             if let Some((assoc, fn_sig)) = similar_assoc(call_name)
@@ -595,13 +599,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     assoc.name,
                     Applicability::MaybeIncorrect,
                 );
-                return Some(assoc.name);
+                return;
             }
             // Look for commonly confusable method names disregarding arguments.
-            if let Some(name) =
+            if let Some(_name) =
                 self.confusable_method_name(err, callee_ty.peel_refs(), call_name, None)
             {
-                return Some(name);
+                return;
             }
             // Look for similarly named methods with levenshtein distance with the right
             // number of arguments.
@@ -615,7 +619,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         assoc.name,
                     ),
                 );
-                return Some(assoc.name);
+                return;
             }
             // Fallthrough: look for similarly named methods with levenshtein distance.
             if let Some((assoc, _)) = similar_assoc(call_name) {
@@ -627,9 +631,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         assoc.name,
                     ),
                 );
-                return Some(assoc.name);
+                return;
             }
-            None
         };
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,
         // and treats error types differently
