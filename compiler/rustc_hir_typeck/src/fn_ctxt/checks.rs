@@ -563,80 +563,73 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let suggest_confusable = |err: &mut Diagnostic| {
-            if let Some(call_name) = call_ident
-                && let Some(callee_ty) = callee_ty
-            {
-                let input_types: Vec<Ty<'_>> = provided_arg_tys.iter().map(|(ty, _)| *ty).collect();
-                // Check for other methods in the following order
-                //  - methods marked as `rustc_confusables` with the provided arguments
-                //  - methods with the same argument type/count and short levenshtein distance
-                //  - methods marked as `rustc_confusables` (done)
-                //  - methods with short levenshtein distance
+            let call_name = call_ident?;
+            let callee_ty = callee_ty?;
+            let input_types: Vec<Ty<'_>> = provided_arg_tys.iter().map(|(ty, _)| *ty).collect();
+            // Check for other methods in the following order
+            //  - methods marked as `rustc_confusables` with the provided arguments
+            //  - methods with the same argument type/count and short levenshtein distance
+            //  - methods marked as `rustc_confusables` (done)
+            //  - methods with short levenshtein distance
 
-                // Look for commonly confusable method names considering arguments.
-                self.confusable_method_name(
-                    err,
-                    callee_ty.peel_refs(),
-                    call_name,
-                    Some(input_types.clone()),
-                )
-                .or_else(|| {
-                    // Look for method names with short levenshtein distance, considering arguments.
-                    if let Some((assoc, fn_sig)) = similar_assoc(call_name)
-                        && fn_sig.inputs()[1..]
-                            .iter()
-                            .zip(input_types.iter())
-                            .all(|(expected, found)| self.can_coerce(*expected, *found))
-                        && fn_sig.inputs()[1..].len() == input_types.len()
-                    {
-                        err.span_suggestion_verbose(
-                            call_name.span,
-                            format!("you might have meant to use `{}`", assoc.name),
-                            assoc.name,
-                            Applicability::MaybeIncorrect,
-                        );
-                        return Some(assoc.name);
-                    }
-                    None
-                })
-                .or_else(|| {
-                    // Look for commonly confusable method names disregarding arguments.
-                    self.confusable_method_name(err, callee_ty.peel_refs(), call_name, None)
-                })
-                .or_else(|| {
-                    // Look for similarly named methods with levenshtein distance with the right
-                    // number of arguments.
-                    if let Some((assoc, fn_sig)) = similar_assoc(call_name)
-                        && fn_sig.inputs()[1..].len() == input_types.len()
-                    {
-                        err.span_note(
-                            tcx.def_span(assoc.def_id),
-                            format!(
-                                "there's is a method with similar name `{}`, but the arguments \
-                                 don't match",
-                                assoc.name,
-                            ),
-                        );
-                        return Some(assoc.name);
-                    }
-                    None
-                })
-                .or_else(|| {
-                    // Fallthrough: look for similarly named methods with levenshtein distance.
-                    if let Some((assoc, _)) = similar_assoc(call_name) {
-                        err.span_note(
-                            tcx.def_span(assoc.def_id),
-                            format!(
-                                "there's is a method with similar name `{}`, but their argument \
-                                 count doesn't match",
-                                assoc.name,
-                            ),
-                        );
-                        return Some(assoc.name);
-                    }
-                    None
-                });
+            // Look for commonly confusable method names considering arguments.
+            if let Some(name) = self.confusable_method_name(
+                err,
+                callee_ty.peel_refs(),
+                call_name,
+                Some(input_types.clone()),
+            ) {
+                return Some(name);
             }
+            // Look for method names with short levenshtein distance, considering arguments.
+            if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                && fn_sig.inputs()[1..]
+                    .iter()
+                    .zip(input_types.iter())
+                    .all(|(expected, found)| self.can_coerce(*expected, *found))
+                && fn_sig.inputs()[1..].len() == input_types.len()
+            {
+                err.span_suggestion_verbose(
+                    call_name.span,
+                    format!("you might have meant to use `{}`", assoc.name),
+                    assoc.name,
+                    Applicability::MaybeIncorrect,
+                );
+                return Some(assoc.name);
+            }
+            // Look for commonly confusable method names disregarding arguments.
+            if let Some(name) =
+                self.confusable_method_name(err, callee_ty.peel_refs(), call_name, None)
+            {
+                return Some(name);
+            }
+            // Look for similarly named methods with levenshtein distance with the right
+            // number of arguments.
+            if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                && fn_sig.inputs()[1..].len() == input_types.len()
+            {
+                err.span_note(
+                    tcx.def_span(assoc.def_id),
+                    format!(
+                        "there's is a method with similar name `{}`, but the arguments don't match",
+                        assoc.name,
+                    ),
+                );
+                return Some(assoc.name);
+            }
+            // Fallthrough: look for similarly named methods with levenshtein distance.
+            if let Some((assoc, _)) = similar_assoc(call_name) {
+                err.span_note(
+                    tcx.def_span(assoc.def_id),
+                    format!(
+                        "there's is a method with similar name `{}`, but their argument count \
+                         doesn't match",
+                        assoc.name,
+                    ),
+                );
+                return Some(assoc.name);
+            }
+            None
         };
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,
         // and treats error types differently
