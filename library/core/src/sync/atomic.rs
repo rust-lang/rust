@@ -27,8 +27,9 @@
 //! Rust atomics currently follow the same rules as [C++20 atomics][cpp], specifically `atomic_ref`.
 //! Basically, creating a *shared reference* to one of the Rust atomic types corresponds to creating
 //! an `atomic_ref` in C++; the `atomic_ref` is destroyed when the lifetime of the shared reference
-//! ends. (A Rust atomic type that is exclusively owned or behind a mutable reference does *not*
-//! correspond to an "atomic object" in C++, since it can be accessed via non-atomic operations.)
+//! ends. A Rust atomic type that is exclusively owned or behind a mutable reference does *not*
+//! correspond to an “atomic object” in C++, since the underlying primitive can be mutably accessed,
+//! for example with `get_mut`, to perform non-atomic operations.
 //!
 //! [cpp]: https://en.cppreference.com/w/cpp/atomic
 //!
