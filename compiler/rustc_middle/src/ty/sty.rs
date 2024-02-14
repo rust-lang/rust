@@ -942,6 +942,16 @@ where
     }
 }
 
+impl<'tcx, T> rustc_type_ir::BoundVars<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
+    fn bound_vars(&self) -> &'tcx List<ty::BoundVariableKind> {
+        self.bound_vars
+    }
+
+    fn has_no_bound_vars(&self) -> bool {
+        self.bound_vars.is_empty()
+    }
+}
+
 impl<'tcx, T> Binder<'tcx, T> {
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
@@ -1808,6 +1818,7 @@ impl<'tcx> Ty<'tcx> {
         self.0.0
     }
 
+    // FIXME(compiler-errors): Think about removing this.
     #[inline(always)]
     pub fn flags(self) -> TypeFlags {
         self.0.0.flags
