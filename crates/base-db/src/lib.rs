@@ -135,7 +135,7 @@ impl<Db: ?Sized + SourceDatabaseExt> SourceDatabaseExt2 for Db {
         durability: Durability,
     ) {
         let bytes = text.as_bytes();
-        let compressed = lz4_flex::compress_prepend_size(&bytes);
+        let compressed = lz4_flex::compress_prepend_size(bytes);
         self.set_compressed_file_text_with_durability(
             file_id,
             Arc::from(compressed.as_slice()),

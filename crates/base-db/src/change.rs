@@ -68,8 +68,8 @@ impl FileChange {
             let source_root = db.source_root(source_root_id);
             let durability = durability(&source_root);
             // XXX: can't actually remove the file, just reset the text
-            let text = text.as_ref().map(String::as_str).unwrap_or_else(|| "");
-            db.set_file_text_with_durability(file_id, text, durability)
+            let text = text.unwrap_or_default();
+            db.set_file_text_with_durability(file_id, &text, durability)
         }
         if let Some(crate_graph) = self.crate_graph {
             db.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH);
