@@ -62,7 +62,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
-use rustc_span::def_id::{DefPathHash, StableCrateId};
+use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
@@ -522,7 +522,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
+
+    /// Do not use outside the resolver, use `create_def` instead.
     pub fn feed_local_def_id(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
+        if key != CRATE_DEF_ID {
+            // Ensure we will re-feed this query by ensuring that the feeding query is
+            // reexecuted.
+            self.dep_graph.assert_eval_always();
+        }
         TyCtxtFeed { tcx: self, key }
     }
 
