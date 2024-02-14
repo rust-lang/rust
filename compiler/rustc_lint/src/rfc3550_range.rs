@@ -1,11 +1,96 @@
-use crate::lints::{ ExplicitRangeDiag, TraitImplRangeDiag };
+use crate::lints::{ExplicitRangeDiag, TraitImplRangeDiag};
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{Ty, Binder, FnSig};
-use rustc_middle::ty;
 use rustc_session::config::CrateType;
-use std::iter;
+
+fn crate_is_library<'tcx>(cx: &LateContext<'tcx>) -> bool {
+    for t in cx.tcx.crate_types() {
+        if matches!(t, CrateType::Executable | CrateType::ProcMacro) {
+            return false;
+        }
+    }
+
+    true
+}
+
+struct TyVisitor<'cx, 'tcx> {
+    cx: &'cx LateContext<'tcx>,
+    ranges: [DefId; 3],
+}
+
+impl<'cx, 'tcx> TyVisitor<'cx, 'tcx> {
+    fn new(cx: &'cx LateContext<'tcx>) -> Self {
+        let ranges = [
+            hir::LangItem::Range,
+            hir::LangItem::RangeFrom,
+            hir::LangItem::RangeInclusiveStruct,
+        ].map(|x| cx.tcx.lang_items().get(x).unwrap());
+
+        Self {
+            cx,
+            ranges,
+        }
+    }
+
+    // Recursively search for instances of `Range` in the type
+    fn check_ty(&self, hir_ty: hir::Ty<'_>) -> Result<(), rustc_span::Span> {
+        match hir_ty.kind {
+            hir::TyKind::Path(qpath) => {
+                match self.cx.qpath_res(&qpath, hir_ty.hir_id) {
+                    hir::def::Res::Def(_, def_id) => {
+                        if let Some(local_id) = def_id.as_local()
+                        && !self.cx.effective_visibilities.is_exported(local_id) {
+                            return Ok(());
+                        }
+
+                        if self.ranges.contains(&def_id) {
+                            return Err(hir_ty.span);
+                        }
+                    }
+                    // hir::def::Res::PrimTy(_) => todo!(),
+                    // hir::def::Res::SelfTyParam { trait_ } => todo!(),
+                    // hir::def::Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => todo!(),
+                    // hir::def::Res::SelfCtor(_) => todo!(),
+                    // hir::def::Res::Local(_) => todo!(),
+                    // hir::def::Res::ToolMod => todo!(),
+                    // hir::def::Res::NonMacroAttr(_) => todo!(),
+                    // hir::def::Res::Err => todo!(),
+                    _ => (),
+                }
+
+                let hir::QPath::Resolved(_, path) = qpath else { return Ok(()); };
+
+                for segment in path.segments {
+                    for hir_arg in segment.args().args {
+                        if let hir::GenericArg::Type(&hir_ty) = hir_arg {
+                            self.check_ty(hir_ty)?;
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+            hir::TyKind::Array(hir_ty, _) |
+            hir::TyKind::Slice(hir_ty) |
+            hir::TyKind::Ptr(hir::MutTy { ty: hir_ty, .. }) |
+            hir::TyKind::Ref(_, hir::MutTy { ty: hir_ty, .. }) => self.check_ty(*hir_ty),
+            // ty::FnPtr(sig) => sig.skip_binder().inputs_and_output.iter().any(|ty| check_ty(cx, ranges, ty)),
+            // ty::Dynamic(_, _, _) => todo!(),
+            hir::TyKind::Tup(hir_tys) => {
+                if let Some(span) = hir_tys.iter().find_map(|hir_ty| self.check_ty(*hir_ty).err()) {
+                    Err(span)
+                } else {
+                    Ok(())
+                }
+            }
+            // ty::Alias(_, alias) => check_ty(cx, ranges, alias.to_ty(cx.tcx)),
+            // ty::Param(param) => param.,
+
+            _ => Ok(()),
+        }
+    }
+}
 
 declare_lint! {
     /// The `explicit_range` lint detects uses of `Range`, `RangeInclusive`, 
@@ -54,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
         def_id: rustc_span::def_id::LocalDefId
     ) {
         // Only run for libraries
-        if cx.tcx.crate_types().iter().any(|&t| matches!(t, CrateType::Executable | CrateType::ProcMacro)) {
+        if !crate_is_library(cx) {
             return;
         }
 
@@ -65,72 +150,16 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
             return;
         }
 
-        let ranges = [
-            hir::LangItem::Range,
-            hir::LangItem::RangeFrom,
-            hir::LangItem::RangeInclusiveStruct,
-        ].map(|x| cx.tcx.lang_items().get(x).unwrap());
-
-        // Recursively search for instances of `Range` in the type
-        fn search_range<'hir, 'tcx>(cx: &LateContext<'tcx>, ranges: &[DefId; 3], hir_ty: hir::Ty<'hir>, ty: Ty<'tcx>) -> Result<(), rustc_span::Span> {
-            match (hir_ty.kind, ty.kind()) {
-                (hir::TyKind::Path(hir::QPath::Resolved(_, path)), ty::Adt(adt_def, args)) => {
-                    // Ignore `param: Self`, which is covered by `trait_impl_range`
-                    match path.res {
-                        hir::def::Res::Def(_, _) |
-                        hir::def::Res::Local(_) => (),
-                        // SelfTyParam, SelfTyAlias, etc
-                        _ => return Ok(()),
-                    }
-                    
-                    if ranges.contains(&adt_def.did()) {
-                        return Err(hir_ty.span);
-                    }
-
-                    let hir_args = path.segments.last().unwrap().args().args;
-
-                    if let Some(span) = iter::zip(hir_args, args.iter()).find_map(|(hir_arg, arg)| {
-                        if let (hir::GenericArg::Type(&hir_ty), Some(ty)) = (hir_arg, arg.as_type()) {
-                            search_range(cx, ranges, hir_ty, ty).err()
-                        } else {
-                            None
-                        }
-                    }) {
-                        Err(span)
-                    } else {
-                        Ok(())
-                    }
-                }
-                (hir::TyKind::Array(hir_ty, _), ty::Array(ty, _)) |
-                (hir::TyKind::Slice(hir_ty), ty::Slice(ty)) |
-                (hir::TyKind::Ptr(hir::MutTy { ty: hir_ty, .. }), ty::RawPtr(ty::TypeAndMut { ty, .. })) |
-                (hir::TyKind::Ref(_, hir::MutTy { ty: hir_ty, .. }), ty::Ref(_, ty, _)) => search_range(cx, ranges, *hir_ty, *ty),
-                // ty::FnPtr(sig) => sig.skip_binder().inputs_and_output.iter().any(|ty| search_range(cx, ranges, ty)),
-                // ty::Dynamic(_, _, _) => todo!(),
-                (hir::TyKind::Tup(hir_tys), ty::Tuple(tys)) => {
-                    if let Some(span) = iter::zip(hir_tys, tys.iter()).find_map(|(hir_ty, ty)| search_range(cx, ranges, *hir_ty, ty).err()) {
-                        Err(span)
-                    } else {
-                        Ok(())
-                    }
-                }
-                // ty::Alias(_, alias) => search_range(cx, ranges, alias.to_ty(cx.tcx)),
-                // ty::Param(param) => param.,
-
-                _ => Ok(()),
-            }
-        }
-
-        let sig: Binder<'_, FnSig<'_>> = cx.tcx.fn_sig(def_id).instantiate_identity();
+        let visitor = TyVisitor::new(cx);
         
-        let mut inputs = iter::zip(decl.inputs, sig.skip_binder().inputs());
+        let mut inputs = decl.inputs.iter();
         // Skip implicit `self` arg
         if decl.implicit_self.has_implicit_self() {
             inputs.next();
         }
 
-        for (h, ty) in inputs {
-            if let Err(span) = search_range(cx, &ranges, *h, *ty) {
+        for h in inputs {
+            if let Err(span) = visitor.check_ty(*h) {
                 cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
             }
         }
@@ -170,90 +199,13 @@ impl<'tcx> LateLintPass<'tcx> for TraitImplRange {
         item: &'tcx hir::Item<'tcx>
     ) {
         // Only run for libraries
-        if cx.tcx.crate_types().iter().any(|&t| matches!(t, CrateType::Executable | CrateType::ProcMacro)) {
+        if !crate_is_library(cx) {
             return;
         }
 
-        let ranges = [
-            hir::LangItem::Range,
-            hir::LangItem::RangeFrom,
-            hir::LangItem::RangeInclusiveStruct,
-        ].map(|x| cx.tcx.lang_items().get(x).unwrap());
-
-        // Recursively search for instances of `Range` in the type
-        fn search_range<'hir, 'tcx>(cx: &LateContext<'tcx>, ranges: &[DefId; 3], hir_ty: hir::Ty<'hir>) -> Result<(), rustc_span::Span> {
-            match hir_ty.kind {
-                hir::TyKind::Path(qpath) => {
-                    match cx.qpath_res(&qpath, hir_ty.hir_id) {
-                        hir::def::Res::Def(_, def_id) => {
-                            if let Some(local_id) = def_id.as_local()
-                            && !cx.effective_visibilities.is_exported(local_id) {
-                                return Ok(());
-                            }
-
-                            if ranges.contains(&def_id) {
-                                return Err(hir_ty.span);
-                            }
-                        }
-                        // hir::def::Res::PrimTy(_) => todo!(),
-                        // hir::def::Res::SelfTyParam { trait_ } => todo!(),
-                        // hir::def::Res::SelfTyAlias { alias_to, forbid_generic, is_trait_impl } => todo!(),
-                        // hir::def::Res::SelfCtor(_) => todo!(),
-                        // hir::def::Res::Local(_) => todo!(),
-                        // hir::def::Res::ToolMod => todo!(),
-                        // hir::def::Res::NonMacroAttr(_) => todo!(),
-                        // hir::def::Res::Err => todo!(),
-                        _ => (),
-                    }
-
-                    let hir::QPath::Resolved(_, path) = qpath else { return Ok(()); };
-
-                    for segment in path.segments {
-                        for hir_arg in segment.args().args {
-                            if let hir::GenericArg::Type(&hir_ty) = hir_arg {
-                                search_range(cx, ranges, hir_ty)?;
-                            }
-                        }
-                    }
-
-                    Ok(())
-                }
-                hir::TyKind::Array(hir_ty, _) |
-                hir::TyKind::Slice(hir_ty) |
-                hir::TyKind::Ptr(hir::MutTy { ty: hir_ty, .. }) |
-                hir::TyKind::Ref(_, hir::MutTy { ty: hir_ty, .. }) => search_range(cx, ranges, *hir_ty),
-                // ty::FnPtr(sig) => sig.skip_binder().inputs_and_output.iter().any(|ty| search_range(cx, ranges, ty)),
-                // ty::Dynamic(_, _, _) => todo!(),
-                hir::TyKind::Tup(hir_tys) => {
-                    if let Some(span) = hir_tys.iter().find_map(|hir_ty| search_range(cx, ranges, *hir_ty).err()) {
-                        Err(span)
-                    } else {
-                        Ok(())
-                    }
-                }
-                // ty::Alias(_, alias) => search_range(cx, ranges, alias.to_ty(cx.tcx)),
-                // ty::Param(param) => param.,
-
-                _ => Ok(()),
-            }
-        }
+        let visitor = TyVisitor::new(cx);
 
         match item.kind {
-            hir::ItemKind::Static(ty, _, _) |
-            hir::ItemKind::Const(ty, _, _) |
-            hir::ItemKind::TyAlias(ty, _) => {
-                if !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
-                    return;
-                }
-
-                if let Err(span) = search_range(cx, &ranges, *ty) {
-                    cx.emit_span_lint(TRAIT_IMPL_RANGE, span, TraitImplRangeDiag)
-                }
-            },
-            // hir::ItemKind::Enum(_, _) => todo!(),
-            // hir::ItemKind::Struct(_, _) => todo!(),
-            // hir::ItemKind::Union(_, _) => todo!(),
-            // hir::ItemKind::Trait(_, _, _, _, _) => todo!(),
             hir::ItemKind::Impl(imp) => {
                 let Some(of_trait) = imp.of_trait else { return };
                 let Some(trait_def_id) = of_trait.trait_def_id() else { return };
@@ -273,14 +225,14 @@ impl<'tcx> LateLintPass<'tcx> for TraitImplRange {
                     return;
                 }
 
-                if let Err(span) = search_range(cx, &ranges, *imp.self_ty) {
+                if let Err(span) = visitor.check_ty(*imp.self_ty) {
                     cx.emit_span_lint(TRAIT_IMPL_RANGE, span, TraitImplRangeDiag);
                 }
 
                 for segment in of_trait.path.segments {
                     for hir_arg in segment.args().args {
                         if let hir::GenericArg::Type(&hir_ty) = hir_arg {
-                            if let Err(span) = search_range(cx, &ranges, hir_ty) {
+                            if let Err(span) = visitor.check_ty(hir_ty) {
                                 cx.emit_span_lint(TRAIT_IMPL_RANGE, span, TraitImplRangeDiag);
                             }
                         }
