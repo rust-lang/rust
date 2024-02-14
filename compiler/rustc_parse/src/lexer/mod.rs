@@ -691,7 +691,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
 
     fn cook_common(
         &self,
-        kind: token::LitKind,
+        mut kind: token::LitKind,
         mode: Mode,
         start: BytePos,
         end: BytePos,
@@ -699,7 +699,6 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
         postfix_len: u32,
         unescape: fn(&str, Mode, &mut dyn FnMut(Range<usize>, Result<(), EscapeError>)),
     ) -> (token::LitKind, Symbol) {
-        let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
@@ -711,10 +710,8 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 let lo = content_start + BytePos(start);
                 let hi = lo + BytePos(end - start);
                 let span = self.mk_sp(lo, hi);
-                if err.is_fatal() {
-                    has_fatal_err = true;
-                }
-                emit_unescape_error(
+                let is_fatal = err.is_fatal();
+                if let Some(_guar) = emit_unescape_error(
                     self.dcx(),
                     lit_content,
                     span_with_quotes,
@@ -722,13 +719,16 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                     mode,
                     range,
                     err,
-                );
+                ) {
+                    assert!(is_fatal);
+                    kind = token::Err;
+                }
             }
         });
 
         // We normally exclude the quotes for the symbol, but for errors we
         // include it because it results in clearer error messages.
-        if !has_fatal_err {
+        if kind != token::Err {
             (kind, Symbol::intern(lit_content))
         } else {
             (token::Err, self.symbol_from_to(start, end))
