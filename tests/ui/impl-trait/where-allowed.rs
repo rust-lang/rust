@@ -44,6 +44,7 @@ fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
 
 // Allowed
 fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
+//~^ ERROR: type annotations needed
 
 // Disallowed
 fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
@@ -58,9 +59,11 @@ fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
 fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` is not allowed in the parameters of `Fn` trait bounds
 //~| ERROR nested `impl Trait` is not allowed
+//~| ERROR: type annotations needed
 
 // Allowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
+//~^ ERROR: type annotations needed
 
 // Disallowed
 fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
@@ -77,6 +80,7 @@ fn in_impl_Trait_in_parameters(_: impl Iterator<Item = impl Iterator>) { panic!(
 // Allowed
 fn in_impl_Trait_in_return() -> impl IntoIterator<Item = impl IntoIterator> {
     vec![vec![0; 10], vec![12; 7], vec![8; 3]]
+    //~^ ERROR: no function or associated item named `into_vec` found for slice `[_]`
 }
 
 // Disallowed
@@ -118,11 +122,13 @@ trait DummyTrait {
 impl DummyTrait for () {
     type Out = impl Debug;
     //~^ ERROR `impl Trait` in associated types is unstable
+    //~| ERROR unconstrained opaque type
 
     fn in_trait_impl_parameter(_: impl Debug) { }
     // Allowed
 
     fn in_trait_impl_return() -> impl Debug { () }
+    //~^ ERROR `in_trait_impl_return` has an incompatible type for trait
     // Allowed
 }
 

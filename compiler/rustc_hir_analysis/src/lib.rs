@@ -178,8 +178,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
             let _ = tcx.ensure().coherent_trait(trait_def_id);
         }
         // these queries are executed for side-effects (error reporting):
-        res.and(tcx.ensure().crate_inherent_impls(()))
-            .and(tcx.ensure().crate_inherent_impls_overlap_check(()))
+        let _ = tcx.ensure().crate_inherent_impls(());
+        let _ = tcx.ensure().crate_inherent_impls_overlap_check(());
+        res
     })?;
 
     if tcx.features().rustc_attrs {

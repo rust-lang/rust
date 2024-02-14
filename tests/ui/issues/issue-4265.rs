@@ -5,6 +5,7 @@ struct Foo {
 impl Foo {
     fn bar() {
         Foo { baz: 0 }.bar();
+        //~^ ERROR: no method named `bar` found
     }
 
     fn bar() { //~ ERROR duplicate definitions
