@@ -51,7 +51,16 @@ LL |   type Y<'a>;
 LL | impl<T> X for T {
    | ^^^^^^^^^^^^^^^ missing `Y` in implementation
 
-error: aborting due to 4 previous errors
+error: lifetime may not live long enough
+  --> $DIR/gat-trait-path-missing-lifetime.rs:8:3
+   |
+LL |   fn foo<'a, T1: X<Y = T1>>(t : T1) -> T1::Y<'a> {
+   |   ^^^^^^^--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   |      |
+   |   |      lifetime `'a` defined here
+   |   requires that `'a` must outlive `'static`
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0046, E0049, E0107.
 For more information about an error, try `rustc --explain E0046`.

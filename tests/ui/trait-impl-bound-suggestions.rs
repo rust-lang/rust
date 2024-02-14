@@ -10,19 +10,21 @@ struct ConstrainedStruct<X: Copy> {
 }
 
 #[allow(dead_code)]
-trait InsufficientlyConstrainedGeneric<X=()> {
+trait InsufficientlyConstrainedGeneric<X=()> where Self: Sized {
     fn return_the_constrained_type(&self, x: X) -> ConstrainedStruct<X> {
         //~^ ERROR the trait bound `X: Copy` is not satisfied
         ConstrainedStruct { x }
+        //~^ ERROR the trait bound `X: Copy` is not satisfied
     }
 }
 
 // Regression test for #120838
 #[allow(dead_code)]
-trait InsufficientlyConstrainedGenericWithEmptyWhere<X=()> where {
+trait InsufficientlyConstrainedGenericWithEmptyWhere<X=()> where Self: Sized {
     fn return_the_constrained_type(&self, x: X) -> ConstrainedStruct<X> {
         //~^ ERROR the trait bound `X: Copy` is not satisfied
         ConstrainedStruct { x }
+        //~^ ERROR the trait bound `X: Copy` is not satisfied
     }
 }
 

@@ -19,7 +19,7 @@ mod assert {
         //~^ ERROR: the constant `ASSUME_ALIGNMENT` is not of type `Assume`
             Src,
             Context,
-            ASSUME_ALIGNMENT,
+            ASSUME_ALIGNMENT, //~ ERROR: mismatched types
             ASSUME_LIFETIMES,
             ASSUME_VALIDITY,
             ASSUME_VISIBILITY,

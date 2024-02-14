@@ -3116,10 +3116,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             obligation.param_env,
             trait_ref.args.const_at(3),
         ) else {
-            span_bug!(
+            self.dcx().span_delayed_bug(
                 span,
-                "Unable to construct rustc_transmute::Assume where it was previously possible"
+                "Unable to construct rustc_transmute::Assume where it was previously possible",
             );
+            return GetSafeTransmuteErrorAndReason::Silent;
         };
 
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
