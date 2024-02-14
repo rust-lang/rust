@@ -40,6 +40,9 @@ use crate::lint::init_lints;
 pub(crate) struct GlobalTestOptions {
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
     pub(crate) no_crate_inject: bool,
+    /// Whether inserting extra indent spaces in code block,
+    /// default is `false`, only `true` for generating code link of Rust playground
+    pub(crate) insert_indent_space: bool,
     /// Additional crate-level attributes to add to doctests.
     pub(crate) attrs: Vec<String>,
 }
@@ -221,7 +224,8 @@ pub(crate) fn run_tests(
 fn scrape_test_config(attrs: &[ast::Attribute]) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;
 
-    let mut opts = GlobalTestOptions { no_crate_inject: false, attrs: Vec::new() };
+    let mut opts =
+        GlobalTestOptions { no_crate_inject: false, attrs: Vec::new(), insert_indent_space: false };
 
     let test_attrs: Vec<_> = attrs
         .iter()
@@ -725,7 +729,17 @@ pub(crate) fn make_test(
         // /// ``` <- end of the inner main
         line_offset += 1;
 
-        prog.extend([&main_pre, everything_else, &main_post].iter().cloned());
+        // add extra 4 spaces for each line to offset the code block
+        let content = if opts.insert_indent_space {
+            everything_else
+                .lines()
+                .map(|line| format!("    {}", line))
+                .collect::<Vec<String>>()
+                .join("\n")
+        } else {
+            everything_else.to_string()
+        };
+        prog.extend([&main_pre, content.as_str(), &main_post].iter().cloned());
     }
 
     debug!("final doctest:\n{prog}");
