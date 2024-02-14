@@ -164,6 +164,60 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
             }
         }
     }
+
+
+    fn check_item(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        item: &'tcx hir::Item<'tcx>
+    ) {
+        // Only run for libraries
+        if !crate_is_library(cx) {
+            return;
+        }
+        if !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
+            return;
+        }
+
+        let visitor = TyVisitor::new(cx);
+
+        match item.kind {
+            hir::ItemKind::Static(ty, _, _) |
+            hir::ItemKind::Const(ty, _, _) |
+            hir::ItemKind::TyAlias(ty, _) => {
+                if let Err(span) = visitor.check_ty(*ty) {
+                    cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
+                }
+            },
+            hir::ItemKind::Enum(enu, _) => {
+                for v in enu.variants {
+                    for field in v.data.fields() {
+                        if !cx.effective_visibilities.is_exported(field.def_id) {
+                            continue;
+                        }
+
+                        if let Err(span) = visitor.check_ty(*field.ty) {
+                            cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
+                        }
+                    }
+                }
+            },
+            hir::ItemKind::Struct(data, _) |
+            hir::ItemKind::Union(data, _) => {
+                for field in data.fields() {
+                    if !cx.effective_visibilities.is_exported(field.def_id) {
+                        continue;
+                    }
+
+                    if let Err(span) = visitor.check_ty(*field.ty) {
+                        cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
+                    }
+                }
+            },
+
+            _ => (),
+        }
+    }
 }
 
 declare_lint! {

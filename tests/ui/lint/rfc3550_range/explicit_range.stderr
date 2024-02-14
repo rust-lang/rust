@@ -76,5 +76,41 @@ error: explicit usage of range type
 LL |     fn bar(range: Range<usize>) {}
    |                   ^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:39:22
+   |
+LL | pub const PUB_CONST: Range<usize> = 1..3;
+   |                      ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:40:24
+   |
+LL | pub static PUB_STATIC: Range<usize> = 1..3;
+   |                        ^^^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:41:21
+   |
+LL | pub type PubAlias = Range<u8>;
+   |                     ^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:56:7
+   |
+LL |     A(Range<u32>),
+   |       ^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:60:20
+   |
+LL |     pub pub_field: Range<u32>,
+   |                    ^^^^^^^^^^
+
+error: explicit usage of range type
+  --> $DIR/explicit_range.rs:61:40
+   |
+LL |     pub wrapped: std::mem::MaybeUninit<Range<usize>>,
+   |                                        ^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
 
