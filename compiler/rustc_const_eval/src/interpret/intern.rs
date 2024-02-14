@@ -49,7 +49,8 @@ fn intern_shallow<'rt, 'mir, 'tcx, T, M: CompileTimeMachine<'mir, 'tcx, T>>(
 ) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, ()> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
-    let Some((_kind, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) else {
+    // FIXME(#120456) - is `swap_remove` correct?
+    let Some((_kind, mut alloc)) = ecx.memory.alloc_map.swap_remove(&alloc_id) else {
         return Err(());
     };
     // Set allocation mutability as appropriate. This is used by LLVM to put things into

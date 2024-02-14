@@ -138,7 +138,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
-                self.set.remove(&lid);
+                // FIXME(rust/#120456) - is `swap_remove` correct?
+                self.set.swap_remove(&lid);
             }
         }
     }
@@ -146,7 +147,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
-                self.set.remove(&lid);
+                // FIXME(rust/#120456) - is `swap_remove` correct?
+                self.set.swap_remove(&lid);
             }
         }
     }

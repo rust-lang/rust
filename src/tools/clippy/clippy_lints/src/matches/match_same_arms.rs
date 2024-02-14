@@ -415,6 +415,7 @@ fn pat_contains_local(pat: &Pat<'_>, id: HirId) -> bool {
 /// Returns true if all the bindings in the `Pat` are in `ids` and vice versa
 fn bindings_eq(pat: &Pat<'_>, mut ids: HirIdSet) -> bool {
     let mut result = true;
-    pat.each_binding_or_first(&mut |_, id, _, _| result &= ids.remove(&id));
+    // FIXME(rust/#120456) - is `swap_remove` correct?
+    pat.each_binding_or_first(&mut |_, id, _, _| result &= ids.swap_remove(&id));
     result && ids.is_empty()
 }

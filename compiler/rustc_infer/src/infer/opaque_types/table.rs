@@ -20,7 +20,8 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         if let Some(idx) = idx {
             self.opaque_types.get_mut(&key).unwrap().hidden_type = idx;
         } else {
-            match self.opaque_types.remove(&key) {
+            // FIXME(#120456) - is `swap_remove` correct?
+            match self.opaque_types.swap_remove(&key) {
                 None => bug!("reverted opaque type inference that was never registered: {:?}", key),
                 Some(_) => {}
             }

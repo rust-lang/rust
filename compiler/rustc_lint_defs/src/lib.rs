@@ -708,7 +708,8 @@ impl LintBuffer {
     }
 
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
-        self.map.remove(&id).unwrap_or_default()
+        // FIXME(#120456) - is `swap_remove` correct?
+        self.map.swap_remove(&id).unwrap_or_default()
     }
 
     pub fn buffer_lint(

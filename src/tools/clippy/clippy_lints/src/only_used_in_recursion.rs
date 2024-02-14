@@ -153,7 +153,8 @@ impl Params {
             param.uses = Vec::new();
             let key = (param.fn_id, param.idx);
             self.by_fn.remove(&key);
-            self.by_id.remove(&id);
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.by_id.swap_remove(&id);
         }
     }
 

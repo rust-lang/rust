@@ -737,7 +737,8 @@ impl DiagCtxt {
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         let mut inner = self.inner.borrow_mut();
         let key = (span.with_parent(None), key);
-        let diag = inner.stashed_diagnostics.remove(&key)?;
+        // FIXME(#120456) - is `swap_remove` correct?
+        let diag = inner.stashed_diagnostics.swap_remove(&key)?;
         if diag.is_error() {
             if diag.is_lint.is_none() {
                 inner.stashed_err_count -= 1;
