@@ -2589,6 +2589,7 @@ extern "rust-intrinsic" {
 }
 
 #[cfg(bootstrap)]
+#[inline(always)]
 #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
 pub(crate) const fn debug_assertions() -> bool {
     cfg!(debug_assertions)
