@@ -1492,7 +1492,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
-        resolver.feed_visibility(CRATE_DEF_ID, ty::Visibility::Public);
+        resolver.feed_visibility(crate_feed, ty::Visibility::Public);
 
         resolver
     }
@@ -1540,9 +1540,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         Default::default()
     }
 
-    fn feed_visibility(&mut self, def_id: LocalDefId, vis: ty::Visibility) {
-        self.tcx.feed_local_def_id(def_id).visibility(vis.to_def_id());
-        self.visibilities_for_hashing.push((def_id, vis));
+    fn feed_visibility(&mut self, feed: Feed<'tcx, LocalDefId>, vis: ty::Visibility) {
+        let feed = feed.upgrade(self.tcx);
+        feed.visibility(vis.to_def_id());
+        self.visibilities_for_hashing.push((feed.def_id(), vis));
     }
 
     pub fn into_outputs(self) -> ResolverOutputs {
