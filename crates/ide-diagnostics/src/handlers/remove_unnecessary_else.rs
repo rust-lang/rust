@@ -387,4 +387,27 @@ fn test() {
 "#,
         );
     }
+
+    #[test]
+    fn no_diagnostic_if_tail_exists_in_else_branch() {
+        check_diagnostics_with_needless_return_disabled(
+            r#"
+fn test1(a: bool) {
+    let _x = if a {
+        return;
+    } else {
+        1
+    };
+}
+
+fn test2(a: bool) -> i32 {
+    if a {
+        return 1;
+    } else {
+        0
+    }
+}
+"#,
+        );
+    }
 }

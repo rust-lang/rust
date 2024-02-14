@@ -338,7 +338,13 @@ impl ExprValidator {
 
     fn check_for_unnecessary_else(&mut self, id: ExprId, expr: &Expr, body: &Body) {
         if let Expr::If { condition: _, then_branch, else_branch } = expr {
-            if else_branch.is_none() {
+            if let Some(else_branch) = else_branch {
+                // If else branch has a tail, it is an "expression" that produces a value,
+                // e.g. `let a = if { ... } else { ... };` and this `else` is not unnecessary
+                if let Expr::Block { tail: Some(_), .. } = body.exprs[*else_branch] {
+                    return;
+                }
+            } else {
                 return;
             }
             if let Expr::Block { statements, tail, .. } = &body.exprs[*then_branch] {
