@@ -444,6 +444,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     const fn as_const_str(&self) -> Option<&'static str> {
         let s = self.as_str();
+        // SAFETY: both cases are valid as the result
         if unsafe { core::intrinsics::is_val_statically_known(s.is_some()) } { s } else { None }
     }
 }
