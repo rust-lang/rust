@@ -1266,7 +1266,7 @@ pub fn expr_to_spanned_string<'a>(
                 );
                 Some((err, true))
             }
-            Ok(ast::LitKind::Err) => None,
+            Ok(ast::LitKind::Err(_)) => None,
             Err(err) => {
                 report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
                 None

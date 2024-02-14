@@ -481,8 +481,8 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 let mut kind = token::Integer;
                 if empty_int {
                     let span = self.mk_sp(start, end);
-                    self.dcx().emit_err(errors::NoDigitsLiteral { span });
-                    kind = token::Err;
+                    let guar = self.dcx().emit_err(errors::NoDigitsLiteral { span });
+                    kind = token::Err(guar);
                 } else if matches!(base, Base::Binary | Base::Octal) {
                     let base = base as u32;
                     let s = self.str_from_to(start + BytePos(2), end);
@@ -492,8 +492,9 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                             start + BytePos::from_usize(2 + idx + c.len_utf8()),
                         );
                         if c != '_' && c.to_digit(base).is_none() {
-                            self.dcx().emit_err(errors::InvalidDigitLiteral { span, base });
-                            kind = token::Err;
+                            let guar =
+                                self.dcx().emit_err(errors::InvalidDigitLiteral { span, base });
+                            kind = token::Err(guar);
                         }
                     }
                 }
@@ -711,7 +712,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 let hi = lo + BytePos(end - start);
                 let span = self.mk_sp(lo, hi);
                 let is_fatal = err.is_fatal();
-                if let Some(_guar) = emit_unescape_error(
+                if let Some(guar) = emit_unescape_error(
                     self.dcx(),
                     lit_content,
                     span_with_quotes,
@@ -721,18 +722,19 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                     err,
                 ) {
                     assert!(is_fatal);
-                    kind = token::Err;
+                    kind = token::Err(guar);
                 }
             }
         });
 
         // We normally exclude the quotes for the symbol, but for errors we
         // include it because it results in clearer error messages.
-        if kind != token::Err {
-            (kind, Symbol::intern(lit_content))
+        let sym = if !matches!(kind, token::Err(_)) {
+            Symbol::intern(lit_content)
         } else {
-            (token::Err, self.symbol_from_to(start, end))
-        }
+            self.symbol_from_to(start, end)
+        };
+        (kind, sym)
     }
 
     fn cook_unicode(

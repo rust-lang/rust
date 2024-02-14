@@ -144,7 +144,7 @@ impl LitKind {
                 buf.push(0);
                 LitKind::CStr(buf.into(), StrStyle::Raw(n))
             }
-            token::Err => LitKind::Err,
+            token::Err(guar) => LitKind::Err(guar),
         })
     }
 }
@@ -201,7 +201,7 @@ impl fmt::Display for LitKind {
                 }
             }
             LitKind::Bool(b) => write!(f, "{}", if b { "true" } else { "false" })?,
-            LitKind::Err => {
+            LitKind::Err(_) => {
                 // This only shows up in places like `-Zunpretty=hir` output, so we
                 // don't bother to produce something useful.
                 write!(f, "<bad-literal>")?;
@@ -237,7 +237,7 @@ impl MetaItemLit {
             LitKind::Char(_) => token::Char,
             LitKind::Int(..) => token::Integer,
             LitKind::Float(..) => token::Float,
-            LitKind::Err => token::Err,
+            LitKind::Err(guar) => token::Err(guar),
         };
 
         token::Lit::new(kind, self.symbol, self.suffix)

@@ -966,10 +966,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 {
                     lit
                 } else {
+                    let guar = self.dcx().has_errors().unwrap();
                     MetaItemLit {
                         symbol: kw::Empty,
                         suffix: None,
-                        kind: LitKind::Err,
+                        kind: LitKind::Err(guar),
                         span: DUMMY_SP,
                     }
                 };

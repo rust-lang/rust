@@ -64,7 +64,7 @@ impl server::FreeFunctions for TokenIdServer {
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
         // FIXME: keep track of LitKind and Suffix
         Ok(bridge::Literal {
-            kind: bridge::LitKind::Err,
+            kind: bridge::LitKind::Integer, // dummy
             symbol: Symbol::intern(self.interner, s),
             suffix: None,
             span: self.call_site,
@@ -187,7 +187,7 @@ impl server::TokenStream for TokenIdServer {
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
                         // FIXME: handle literal kinds
-                        kind: bridge::LitKind::Err,
+                        kind: bridge::LitKind::Integer, // dummy
                         symbol: Symbol::intern(self.interner, &lit.text),
                         // FIXME: handle suffixes
                         suffix: None,

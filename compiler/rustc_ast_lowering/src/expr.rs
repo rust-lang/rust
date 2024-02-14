@@ -124,8 +124,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let lit_kind = match LitKind::from_token_lit(*token_lit) {
                         Ok(lit_kind) => lit_kind,
                         Err(err) => {
-                            report_lit_error(&self.tcx.sess.parse_sess, err, *token_lit, e.span);
-                            LitKind::Err
+                            let guar = report_lit_error(
+                                &self.tcx.sess.parse_sess,
+                                err,
+                                *token_lit,
+                                e.span,
+                            );
+                            LitKind::Err(guar)
                         }
                     };
                     let lit = self.arena.alloc(respan(self.lower_span(e.span), lit_kind));
