@@ -597,19 +597,8 @@ impl<'a> Parser<'a> {
         let has_for = self.eat_keyword(kw::For);
         let missing_for_span = self.prev_token.span.between(self.token.span);
 
-        let ty_second = if self.token == token::DotDot {
-            // We need to report this error after `cfg` expansion for compatibility reasons
-            self.bump(); // `..`, do not add it to expected tokens
-
-            // AST validation later detects this `TyKind::Dummy` and emits an
-            // error. (#121072 will hopefully remove all this special handling
-            // of the obsolete `impl Trait for ..` and then this can go away.)
-            Some(self.mk_ty(self.prev_token.span, TyKind::Dummy))
-        } else if has_for || self.token.can_begin_type() {
-            Some(self.parse_ty()?)
-        } else {
-            None
-        };
+        let ty_second =
+            if has_for || self.token.can_begin_type() { Some(self.parse_ty()?) } else { None };
 
         generics.where_clause = self.parse_where_clause()?;
 

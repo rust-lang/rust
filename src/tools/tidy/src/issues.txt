@@ -3325,7 +3325,6 @@
 "ui/parser/issues/issue-24197.rs",
 "ui/parser/issues/issue-24375.rs",
 "ui/parser/issues/issue-24780.rs",
-"ui/parser/issues/issue-27255.rs",
 "ui/parser/issues/issue-30318.rs",
 "ui/parser/issues/issue-3036.rs",
 "ui/parser/issues/issue-31804.rs",
