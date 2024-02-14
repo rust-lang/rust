@@ -10,9 +10,10 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
+    data::adt::StructFlags,
     hir::Movability,
     lang_item::{LangItem, LangItemTarget},
-    AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId,
+    AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId, VariantId,
 };
 use hir_expand::name::name;
 
@@ -159,6 +160,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         debug!("impls_for_trait returned {} impls", result.len());
         result
     }
+
     fn impl_provided_for(&self, auto_trait_id: TraitId, kind: &chalk_ir::TyKind<Interner>) -> bool {
         debug!("impl_provided_for {:?}, {:?}", auto_trait_id, kind);
 
@@ -183,22 +185,22 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 (TyKind::Adt(id_a, _), TyKind::Adt(id_b, _)) => id_a == id_b,
                 (TyKind::AssociatedType(id_a, _), TyKind::AssociatedType(id_b, _)) => id_a == id_b,
                 (TyKind::Scalar(scalar_a), TyKind::Scalar(scalar_b)) => scalar_a == scalar_b,
-                (TyKind::Str, TyKind::Str) => true,
+                (TyKind::Error, TyKind::Error)
+                | (TyKind::Str, TyKind::Str)
+                | (TyKind::Slice(_), TyKind::Slice(_))
+                | (TyKind::Never, TyKind::Never)
+                | (TyKind::Array(_, _), TyKind::Array(_, _)) => true,
                 (TyKind::Tuple(arity_a, _), TyKind::Tuple(arity_b, _)) => arity_a == arity_b,
                 (TyKind::OpaqueType(id_a, _), TyKind::OpaqueType(id_b, _)) => id_a == id_b,
-                (TyKind::Slice(_), TyKind::Slice(_)) => true,
                 (TyKind::FnDef(id_a, _), TyKind::FnDef(id_b, _)) => id_a == id_b,
-                (TyKind::Ref(id_a, _, _), TyKind::Ref(id_b, _, _)) => id_a == id_b,
-                (TyKind::Raw(id_a, _), TyKind::Raw(id_b, _)) => id_a == id_b,
-                (TyKind::Never, TyKind::Never) => true,
-                (TyKind::Array(_, _), TyKind::Array(_, _)) => true,
+                (TyKind::Ref(id_a, _, _), TyKind::Ref(id_b, _, _))
+                | (TyKind::Raw(id_a, _), TyKind::Raw(id_b, _)) => id_a == id_b,
                 (TyKind::Closure(id_a, _), TyKind::Closure(id_b, _)) => id_a == id_b,
-                (TyKind::Coroutine(id_a, _), TyKind::Coroutine(id_b, _)) => id_a == id_b,
-                (TyKind::CoroutineWitness(id_a, _), TyKind::CoroutineWitness(id_b, _)) => {
+                (TyKind::Coroutine(id_a, _), TyKind::Coroutine(id_b, _))
+                | (TyKind::CoroutineWitness(id_a, _), TyKind::CoroutineWitness(id_b, _)) => {
                     id_a == id_b
                 }
                 (TyKind::Foreign(id_a), TyKind::Foreign(id_b)) => id_a == id_b,
-                (TyKind::Error, TyKind::Error) => true,
                 (_, _) => false,
             }
         };
@@ -653,7 +655,7 @@ pub(crate) fn trait_datum_query(
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
         marker: false,
-        fundamental: false,
+        fundamental: trait_data.fundamental,
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
@@ -715,33 +717,44 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
 pub(crate) fn adt_datum_query(
     db: &dyn HirDatabase,
     krate: CrateId,
-    adt_id: AdtId,
+    chalk_ir::AdtId(adt_id): AdtId,
 ) -> Arc<AdtDatum> {
     debug!("adt_datum {:?}", adt_id);
-    let chalk_ir::AdtId(adt_id) = adt_id;
     let generic_params = generics(db.upcast(), adt_id.into());
     let bound_vars_subst = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let where_clauses = convert_where_clauses(db, adt_id.into(), &bound_vars_subst);
 
-    let phantom_data_id = db
-        .lang_item(krate, LangItem::PhantomData)
-        .and_then(|item| item.as_struct())
-        .map(|item| item.into());
+    let (fundamental, phantom_data) = match adt_id {
+        hir_def::AdtId::StructId(s) => {
+            let flags = db.struct_data(s).flags;
+            (
+                flags.contains(StructFlags::IS_FUNDAMENTAL),
+                flags.contains(StructFlags::IS_PHANTOM_DATA),
+            )
+        }
+        // FIXME set fundamental flags correctly
+        hir_def::AdtId::UnionId(_) => (false, false),
+        hir_def::AdtId::EnumId(_) => (false, false),
+    };
     let flags = rust_ir::AdtFlags {
         upstream: adt_id.module(db.upcast()).krate() != krate,
-        // FIXME set fundamental flags correctly
-        fundamental: false,
-        phantom_data: phantom_data_id == Some(adt_id),
+        fundamental,
+        phantom_data,
     };
 
-    let variant_id_to_fields = |id| {
-        let field_types = db.field_types(id);
-        let fields = id
-            .variant_data(db.upcast())
-            .fields()
-            .iter()
-            .map(|(idx, _)| field_types[idx].clone().substitute(Interner, &bound_vars_subst))
-            .collect();
+    let variant_id_to_fields = |id: VariantId| {
+        let variant_data = &id.variant_data(db.upcast());
+        let fields = if variant_data.fields().is_empty() {
+            vec![]
+        } else {
+            let field_types = db.field_types(id);
+            variant_data
+                .fields()
+                .iter()
+                .map(|(idx, _)| field_types[idx].clone().substitute(Interner, &bound_vars_subst))
+                .filter(|it| !it.contains_unknown())
+                .collect()
+        };
         rust_ir::AdtVariantDatum { fields }
     };
 
