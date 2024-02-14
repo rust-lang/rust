@@ -27,6 +27,8 @@ pub fn run_with_cstr<T, F>(bytes: &[u8], mut f: F) -> io::Result<T>
 where
     F: FnMut(&CStr) -> io::Result<T>,
 {
+    // Dispatch and dyn erase the closure type to prevent mono bloat.
+    // See https://github.com/rust-lang/rust/pull/121101.
     if bytes.len() >= MAX_STACK_ALLOCATION {
         run_with_cstr_allocating(bytes, &mut f)
     } else {
@@ -34,6 +36,9 @@ where
     }
 }
 
+/// # Safety
+///
+/// `bytes` must have a length less than `MAX_STACK_ALLOCATION`.
 unsafe fn run_with_cstr_stack<T>(
     bytes: &[u8],
     f: &mut dyn FnMut(&CStr) -> io::Result<T>,
