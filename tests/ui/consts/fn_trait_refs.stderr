@@ -74,6 +74,24 @@ LL |     T: ~const FnMut<()> + ~const Destruct,
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/fn_trait_refs.rs:72:17
+   |
+LL |         assert!(test_one == (1, 1, 1));
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/fn_trait_refs.rs:75:17
+   |
+LL |         assert!(test_two == (2, 2));
+   |                 ^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:17:5
    |
@@ -148,24 +166,6 @@ LL | const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
 ...
 LL | }
    | - value is dropped here
-
-error[E0015]: cannot call non-const operator in constants
-  --> $DIR/fn_trait_refs.rs:72:17
-   |
-LL |         assert!(test_one == (1, 1, 1));
-   |                 ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
-
-error[E0015]: cannot call non-const operator in constants
-  --> $DIR/fn_trait_refs.rs:75:17
-   |
-LL |         assert!(test_two == (2, 2));
-   |                 ^^^^^^^^^^^^^^^^^^
-   |
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
 
 error: aborting due to 20 previous errors
 

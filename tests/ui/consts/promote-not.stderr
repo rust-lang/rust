@@ -19,26 +19,6 @@ LL | };
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:20:32
-   |
-LL |         let _x: &'static () = &foo();
-   |                 -----------    ^^^^^ creates a temporary value which is freed while still in use
-   |                 |
-   |                 type annotation requires that borrow lasts for `'static`
-LL |     }
-   |     - temporary value is freed at the end of this statement
-
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promote-not.rs:28:29
-   |
-LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
-   |             ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
-   |             |
-   |             type annotation requires that borrow lasts for `'static`
-LL | }
-   | - temporary value is freed at the end of this statement
-
-error[E0716]: temporary value dropped while borrowed
   --> $DIR/promote-not.rs:33:29
    |
 LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
@@ -56,6 +36,26 @@ LL |     let _val: &'static _ = &(Cell::new(1), 2).1;
    |               |
    |               type annotation requires that borrow lasts for `'static`
 LL | };
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:20:32
+   |
+LL |         let _x: &'static () = &foo();
+   |                 -----------    ^^^^^ creates a temporary value which is freed while still in use
+   |                 |
+   |                 type annotation requires that borrow lasts for `'static`
+LL |     }
+   |     - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promote-not.rs:28:29
+   |
+LL |     let _x: &'static i32 = &unsafe { U { x: 0 }.x };
+   |             ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |             |
+   |             type annotation requires that borrow lasts for `'static`
+LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed

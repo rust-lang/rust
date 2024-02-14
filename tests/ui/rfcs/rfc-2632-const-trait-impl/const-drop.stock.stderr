@@ -1,11 +1,3 @@
-error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> $DIR/const-drop.rs:19:32
-   |
-LL | const fn a<T: ~const Destruct>(_: T) {}
-   |                                ^      - value is dropped here
-   |                                |
-   |                                the destructor for this type cannot be evaluated in constant functions
-
 error[E0493]: destructor of `S<'_>` cannot be evaluated at compile-time
   --> $DIR/const-drop.rs:24:13
    |
@@ -13,6 +5,14 @@ LL |     let _ = S(&mut c);
    |             ^^^^^^^^^- value is dropped here
    |             |
    |             the destructor for this type cannot be evaluated in constant functions
+
+error[E0493]: destructor of `T` cannot be evaluated at compile-time
+  --> $DIR/const-drop.rs:19:32
+   |
+LL | const fn a<T: ~const Destruct>(_: T) {}
+   |                                ^      - value is dropped here
+   |                                |
+   |                                the destructor for this type cannot be evaluated in constant functions
 
 error: aborting due to 2 previous errors
 
