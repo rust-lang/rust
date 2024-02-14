@@ -1070,16 +1070,6 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {
         self.maybe_resolve_crate(name, CrateDepKind::Explicit, None).ok()
     }
-
-    pub fn unload_unused_crates(&mut self) {
-        for opt_cdata in &mut self.cstore.metas {
-            if let Some(cdata) = opt_cdata
-                && !cdata.used()
-            {
-                *opt_cdata = None;
-            }
-        }
-    }
 }
 
 fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {

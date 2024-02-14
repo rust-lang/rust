@@ -250,7 +250,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     let mut collector = LanguageItemCollector::new(tcx, resolver);
 
     // Collect lang items in other crates.
-    for &cnum in tcx.crates(()).iter() {
+    for &cnum in tcx.used_crates(()).iter() {
         for &(def_id, lang_item) in tcx.defined_lang_items(cnum).iter() {
             collector.collect_item(lang_item, def_id, None);
         }
