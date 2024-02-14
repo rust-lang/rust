@@ -1937,7 +1937,7 @@ fn run_rustfmt(
 
     let mut command = match snap.config.rustfmt() {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
-            // FIXME: This should use the sysroot's rustfmt if its loaded
+            // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.envs(snap.config.extra_env());
             cmd.args(extra_args);

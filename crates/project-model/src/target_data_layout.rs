@@ -28,8 +28,8 @@ pub fn get(
     };
     let sysroot = match config {
         RustcDataLayoutConfig::Cargo(sysroot, cargo_toml) => {
-            let cargo = Sysroot::discover_tool(sysroot, toolchain::Tool::Cargo)?;
-            let mut cmd = Command::new(cargo);
+            let mut cmd = Command::new(toolchain::Tool::Cargo.path());
+            Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
                 .args(["rustc", "--", "-Z", "unstable-options", "--print", "target-spec-json"])
@@ -48,8 +48,8 @@ pub fn get(
         RustcDataLayoutConfig::Rustc(sysroot) => sysroot,
     };
 
-    let rustc = Sysroot::discover_tool(sysroot, toolchain::Tool::Rustc)?;
-    let mut cmd = Command::new(rustc);
+    let mut cmd = Command::new(toolchain::Tool::Rustc.path());
+    Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
     cmd.envs(extra_env)
         .args(["-Z", "unstable-options", "--print", "target-spec-json"])
         .env("RUSTC_BOOTSTRAP", "1");

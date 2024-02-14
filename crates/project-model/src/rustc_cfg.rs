@@ -68,11 +68,11 @@ fn get_rust_cfgs(
     config: RustcCfgConfig<'_>,
 ) -> anyhow::Result<String> {
     let sysroot = match config {
-        RustcCfgConfig::Cargo(sysroot, cargo_oml) => {
-            let cargo = Sysroot::discover_tool(sysroot, toolchain::Tool::Cargo)?;
-            let mut cmd = Command::new(cargo);
+        RustcCfgConfig::Cargo(sysroot, cargo_toml) => {
+            let mut cmd = Command::new(toolchain::Tool::Cargo.path());
+            Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
             cmd.envs(extra_env);
-            cmd.current_dir(cargo_oml.parent())
+            cmd.current_dir(cargo_toml.parent())
                 .args(["rustc", "-Z", "unstable-options", "--print", "cfg"])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
@@ -90,9 +90,8 @@ fn get_rust_cfgs(
         RustcCfgConfig::Rustc(sysroot) => sysroot,
     };
 
-    let rustc = Sysroot::discover_tool(sysroot, toolchain::Tool::Rustc)?;
-    tracing::debug!(?rustc, "using explicit rustc from sysroot");
-    let mut cmd = Command::new(rustc);
+    let mut cmd = Command::new(toolchain::Tool::Rustc.path());
+    Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {

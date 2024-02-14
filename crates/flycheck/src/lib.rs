@@ -23,6 +23,7 @@ pub use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
     DiagnosticSpanMacroExpansion,
 };
+use toolchain::Tool;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum InvocationStrategy {
@@ -89,10 +90,10 @@ impl FlycheckHandle {
         id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
-        cargo: PathBuf,
+        sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
     ) -> FlycheckHandle {
-        let actor = FlycheckActor::new(id, sender, config, cargo, workspace_root);
+        let actor = FlycheckActor::new(id, sender, config, sysroot_root, workspace_root);
         let (sender, receiver) = unbounded::<StateChange>();
         let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("Flycheck".to_owned())
@@ -174,7 +175,7 @@ struct FlycheckActor {
     /// Either the workspace root of the workspace we are flychecking,
     /// or the project root of the project.
     root: AbsPathBuf,
-    cargo: PathBuf,
+    sysroot_root: Option<AbsPathBuf>,
     /// CargoHandle exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
     /// doesn't provide a way to read sub-process output without blocking, so we
@@ -195,11 +196,18 @@ impl FlycheckActor {
         id: usize,
         sender: Box<dyn Fn(Message) + Send>,
         config: FlycheckConfig,
-        cargo: PathBuf,
+        sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
-        FlycheckActor { id, sender, config, cargo, root: workspace_root, command_handle: None }
+        FlycheckActor {
+            id,
+            sender,
+            config,
+            sysroot_root,
+            root: workspace_root,
+            command_handle: None,
+        }
     }
 
     fn report_progress(&self, progress: Progress) {
@@ -334,7 +342,10 @@ impl FlycheckActor {
                 ansi_color_output,
                 target_dir,
             } => {
-                let mut cmd = Command::new(&self.cargo);
+                let mut cmd = Command::new(Tool::Cargo.path());
+                if let Some(sysroot_root) = &self.sysroot_root {
+                    cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
+                }
                 cmd.arg(command);
                 cmd.current_dir(&self.root);
 
