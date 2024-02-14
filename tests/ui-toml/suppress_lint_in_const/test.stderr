@@ -1,17 +1,5 @@
-error[E0080]: evaluation of `main::{constant#3}` failed
-  --> $DIR/test.rs:38:14
-   |
-LL |     const { &ARR[idx4()] }; // Ok, should not produce stderr, since `suppress-restriction-lint-in-const` is set true.
-   |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
-
-note: erroneous constant encountered
-  --> $DIR/test.rs:38:5
-   |
-LL |     const { &ARR[idx4()] }; // Ok, should not produce stderr, since `suppress-restriction-lint-in-const` is set true.
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
 error: indexing may panic
-  --> $DIR/test.rs:29:5
+  --> $DIR/test.rs:27:5
    |
 LL |     x[index];
    |     ^^^^^^^^
@@ -21,7 +9,7 @@ LL |     x[index];
    = help: to override `-D warnings` add `#[allow(clippy::indexing_slicing)]`
 
 error: indexing may panic
-  --> $DIR/test.rs:47:5
+  --> $DIR/test.rs:42:5
    |
 LL |     v[0];
    |     ^^^^
@@ -29,7 +17,7 @@ LL |     v[0];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/test.rs:48:5
+  --> $DIR/test.rs:43:5
    |
 LL |     v[10];
    |     ^^^^^
@@ -37,7 +25,7 @@ LL |     v[10];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/test.rs:49:5
+  --> $DIR/test.rs:44:5
    |
 LL |     v[1 << 3];
    |     ^^^^^^^^^
@@ -45,7 +33,7 @@ LL |     v[1 << 3];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/test.rs:55:5
+  --> $DIR/test.rs:50:5
    |
 LL |     v[N];
    |     ^^^^
@@ -53,19 +41,12 @@ LL |     v[N];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> $DIR/test.rs:56:5
+  --> $DIR/test.rs:51:5
    |
 LL |     v[M];
    |     ^^^^
    |
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/test.rs:16:24
-   |
-LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
-   |                        ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
+error: aborting due to 6 previous errors
 
-error: aborting due to 8 previous errors
-
-For more information about this error, try `rustc --explain E0080`.
