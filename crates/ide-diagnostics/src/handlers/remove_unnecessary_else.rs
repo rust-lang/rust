@@ -407,6 +407,18 @@ fn test2(a: bool) -> i32 {
         0
     }
 }
+
+fn test3(a: bool, b: bool, c: bool) {
+    let _x = if a {
+        return;
+    } else if b {
+        return;
+    } else if c {
+        1
+    } else {
+        return;
+    };
+}
 "#,
         );
     }

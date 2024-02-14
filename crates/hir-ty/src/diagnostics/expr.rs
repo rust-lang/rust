@@ -341,8 +341,23 @@ impl ExprValidator {
             if let Some(else_branch) = else_branch {
                 // If else branch has a tail, it is an "expression" that produces a value,
                 // e.g. `let a = if { ... } else { ... };` and this `else` is not unnecessary
-                if let Expr::Block { tail: Some(_), .. } = body.exprs[*else_branch] {
-                    return;
+                let mut branch = *else_branch;
+                loop {
+                    match body.exprs[branch] {
+                        Expr::Block { tail: Some(_), .. } => return,
+                        Expr::If { then_branch, else_branch, .. } => {
+                            if let Expr::Block { tail: Some(_), .. } = body.exprs[then_branch] {
+                                return;
+                            }
+                            if let Some(else_branch) = else_branch {
+                                // Continue checking for branches like `if { ... } else if { ... } else...`
+                                branch = else_branch;
+                                continue;
+                            }
+                        }
+                        _ => break,
+                    }
+                    break;
                 }
             } else {
                 return;
