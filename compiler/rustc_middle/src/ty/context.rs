@@ -1053,12 +1053,6 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Symbol,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        // This function modifies `self.definitions` using a side-effect.
-        // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
-
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
@@ -1086,6 +1080,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_def(self, parent: LocalDefId, name: Symbol, def_kind: DefKind) -> LocalDefId {
         let data = def_kind.def_path_data(name);
         let def_id = self.untracked.definitions.write().create_def(parent, data);
+
+        // This function modifies `self.definitions` using a side-effect.
+        // We need to ensure that these side effects are re-run by the incr. comp. engine.
+        // Depending on the forever-red node will tell the graph that the calling query
+        // needs to be re-evaluated.
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let feed = self.feed_local_def_id(def_id);
         feed.def_kind(def_kind);
