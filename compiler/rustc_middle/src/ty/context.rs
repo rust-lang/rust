@@ -60,7 +60,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_session::{Limit, MetadataKind, Session};
-use rustc_span::def_id::{DefPathHash, StableCrateId};
+use rustc_span::def_id::{DefPathHash, StableCrateId, CRATE_DEF_ID};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
@@ -544,8 +544,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_local_crate(self) -> TyCtxtFeed<'tcx, CrateNum> {
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
-    pub fn feed_local_def_id(self, key: LocalDefId) -> TyCtxtFeed<'tcx, LocalDefId> {
-        TyCtxtFeed { tcx: self, key }
+
+    pub fn feed_local_crate_def_id(self) -> TyCtxtFeed<'tcx, LocalDefId> {
+        TyCtxtFeed { tcx: self, key: CRATE_DEF_ID }
     }
 
     /// In order to break cycles involving `AnonConst`, we need to set the expected type by side
@@ -1123,7 +1124,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // needs to be re-evaluated.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
-        let feed = self.feed_local_def_id(def_id);
+        let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
         // Unique types created for closures participate in type privacy checking.
         // They have visibilities inherited from the module they are defined in.

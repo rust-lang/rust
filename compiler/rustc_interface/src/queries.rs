@@ -173,7 +173,7 @@ impl<'tcx> Queries<'tcx> {
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
                 feed.output_filenames(Arc::new(outputs));
 
-                let feed = tcx.feed_local_def_id(CRATE_DEF_ID);
+                let feed = tcx.feed_local_crate_def_id();
                 feed.def_kind(DefKind::Mod);
             });
             Ok(qcx)

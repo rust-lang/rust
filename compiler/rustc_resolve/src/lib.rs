@@ -1340,7 +1340,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
         let mut node_id_to_def_id = NodeMap::default();
-        let crate_feed = tcx.feed_local_def_id(CRATE_DEF_ID).downgrade();
+        let crate_feed = tcx.feed_local_crate_def_id().downgrade();
         node_id_to_def_id.insert(CRATE_NODE_ID, crate_feed);
 
         let mut invocation_parents = FxHashMap::default();
