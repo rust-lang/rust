@@ -252,6 +252,7 @@ pub struct ImplHeader<'tcx> {
 pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub polarity: ImplPolarity,
+    pub unsafety: hir::Unsafety,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]

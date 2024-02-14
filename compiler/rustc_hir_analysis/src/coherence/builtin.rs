@@ -15,7 +15,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::{self, suggest_constraining_type_params, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::misc::{
     type_allowed_to_implement_const_param_ty, type_allowed_to_implement_copy,
@@ -25,13 +25,14 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::collections::BTreeMap;
 
-pub fn check_trait(
-    tcx: TyCtxt<'_>,
+pub fn check_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     impl_def_id: LocalDefId,
+    impl_header: ty::ImplTraitHeader<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let lang_items = tcx.lang_items();
-    let checker = Checker { tcx, trait_def_id, impl_def_id };
+    let checker = Checker { tcx, trait_def_id, impl_def_id, impl_header };
     let mut res = checker.check(lang_items.drop_trait(), visit_implementation_of_drop);
     res = res.and(checker.check(lang_items.copy_trait(), visit_implementation_of_copy));
     res = res.and(
@@ -50,24 +51,25 @@ struct Checker<'tcx> {
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     impl_def_id: LocalDefId,
+    impl_header: ty::ImplTraitHeader<'tcx>,
 }
 
 impl<'tcx> Checker<'tcx> {
     fn check(
         &self,
         trait_def_id: Option<DefId>,
-        f: impl FnOnce(TyCtxt<'tcx>, LocalDefId) -> Result<(), ErrorGuaranteed>,
+        f: impl FnOnce(&Self) -> Result<(), ErrorGuaranteed>,
     ) -> Result<(), ErrorGuaranteed> {
-        if Some(self.trait_def_id) == trait_def_id { f(self.tcx, self.impl_def_id) } else { Ok(()) }
+        if Some(self.trait_def_id) == trait_def_id { f(self) } else { Ok(()) }
     }
 }
 
-fn visit_implementation_of_drop(
-    tcx: TyCtxt<'_>,
-    impl_did: LocalDefId,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
     // Destructors only work on local ADT types.
-    match tcx.type_of(impl_did).instantiate_identity().kind() {
+    match header.trait_ref.self_ty().kind() {
         ty::Adt(def, _) if def.did().is_local() => return Ok(()),
         ty::Error(_) => return Ok(()),
         _ => {}
@@ -78,13 +80,13 @@ fn visit_implementation_of_drop(
     Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span }))
 }
 
-fn visit_implementation_of_copy(
-    tcx: TyCtxt<'_>,
-    impl_did: LocalDefId,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let impl_header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let self_type = tcx.type_of(impl_did).instantiate_identity();
+    let self_type = impl_header.trait_ref.self_ty();
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -92,56 +94,58 @@ fn visit_implementation_of_copy(
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
-    if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
+    if let ty::ImplPolarity::Negative = impl_header.polarity {
         return Ok(());
     }
-    let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
 
-    let cause = traits::ObligationCause::misc(span, impl_did);
+    let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(tcx, fields, LangItem::Copy, impl_did, span))
         }
         Err(CopyImplementationError::NotAnAdt) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnNonAdt { span }))
         }
         Err(CopyImplementationError::HasDestructor) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span }))
         }
     }
 }
 
-fn visit_implementation_of_const_param_ty(
-    tcx: TyCtxt<'_>,
-    impl_did: LocalDefId,
-) -> Result<(), ErrorGuaranteed> {
-    let self_type = tcx.type_of(impl_did).instantiate_identity();
+fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
+    let self_type = header.trait_ref.self_ty();
     assert!(!self_type.has_escaping_bound_vars());
 
     let param_env = tcx.param_env(impl_did);
 
-    if let ty::ImplPolarity::Negative = tcx.impl_polarity(impl_did) {
+    if let ty::ImplPolarity::Negative = header.polarity {
         return Ok(());
     }
-    let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
 
-    let cause = traits::ObligationCause::misc(span, impl_did);
+    let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
     match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(tcx, fields, LangItem::ConstParamTy, impl_did, span))
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
         }
     }
 }
 
-fn visit_implementation_of_coerce_unsized(
-    tcx: TyCtxt<'_>,
-    impl_did: LocalDefId,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let impl_did = checker.impl_def_id;
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
@@ -151,20 +155,20 @@ fn visit_implementation_of_coerce_unsized(
     tcx.at(span).ensure().coerce_unsized_info(impl_did)
 }
 
-fn visit_implementation_of_dispatch_from_dyn(
-    tcx: TyCtxt<'_>,
-    impl_did: LocalDefId,
-) -> Result<(), ErrorGuaranteed> {
+fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let header = checker.impl_header;
+    let impl_did = checker.impl_def_id;
+    let trait_ref = header.trait_ref;
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let span = tcx.def_span(impl_did);
 
     let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
 
-    let source = tcx.type_of(impl_did).instantiate_identity();
+    let source = trait_ref.self_ty();
     assert!(!source.has_escaping_bound_vars());
     let target = {
-        let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
         assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
 
         trait_ref.args.type_at(1)
