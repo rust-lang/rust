@@ -430,6 +430,19 @@ impl<'a> Arguments<'a> {
             _ => None,
         }
     }
+
+    /// Same as `as_str`, but will only return a `Some` value if it can be determined at compile time.
+    #[inline]
+    const fn as_const_str(&self) -> Option<&'static str> {
+        let s = self.as_str();
+        // if unsafe { core::intrinsics::is_val_statically_known(matches!((self.pieces, self.args), ([], []) | ([_], []))) } {
+        if unsafe { core::intrinsics::is_val_statically_known(s) } {
+            s
+        } else {
+            None
+        }
+
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
