@@ -511,17 +511,30 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
         Some(commit_hash) => commit_hash,
         None => return Err("Couldn't retrieve rustc commit hash".to_string()),
     };
-    run_command_with_output_and_env(
-        &[
-            &"git",
-            &"fetch",
-            &"https://github.com/rust-lang/rust.git",
-            &rustc_commit.as_str(),
-            &"--depth=1",
-        ],
-        rust_dir,
-        Some(env),
-    )?;
+    let has_commit = {
+        if let Ok(ty) = run_command_with_env(
+            &[&"git", &"cat-file", &"-t", &rustc_commit.as_str()],
+            rust_dir,
+            Some(env),
+        ) {
+            String::from_utf8_lossy(&ty.stdout).to_string() == "commit"
+        } else {
+            false
+        }
+    };
+    if !has_commit {
+        run_command_with_output_and_env(
+            &[
+                &"git",
+                &"fetch",
+                &"https://github.com/rust-lang/rust.git",
+                &rustc_commit.as_str(),
+                &"--depth=1",
+            ],
+            rust_dir,
+            Some(env),
+        )?
+    };
     if rustc_commit != "unknown" {
         run_command_with_output_and_env(
             &[&"git", &"checkout", &rustc_commit],
