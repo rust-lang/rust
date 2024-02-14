@@ -111,8 +111,8 @@ fn implied_outlives_bounds<'a, 'tcx>(
     bounds
 }
 
-#[extension]
-pub impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'a, 'tcx>)]
+impl<'a, 'tcx: 'a> InferCtxt<'tcx> {
     /// Do *NOT* call this directly.
     fn implied_bounds_tys_compat(
         &'a self,

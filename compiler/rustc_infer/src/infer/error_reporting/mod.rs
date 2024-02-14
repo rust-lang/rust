@@ -2786,8 +2786,8 @@ pub enum FailureCode {
     Error0644,
 }
 
-#[extension]
-pub impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
+#[extension(pub trait ObligationCauseExt<'tcx>)]
+impl<'tcx> ObligationCause<'tcx> {
     fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode {
         use self::FailureCode::*;
         use crate::traits::ObligationCauseCode::*;

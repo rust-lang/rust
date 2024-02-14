@@ -216,8 +216,8 @@ pub trait ProofTreeVisitor<'tcx> {
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy>;
 }
 
-#[extension]
-pub impl<'tcx> ProofTreeInferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait ProofTreeInferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     fn visit_proof_tree<V: ProofTreeVisitor<'tcx>>(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,

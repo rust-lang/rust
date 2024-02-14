@@ -23,8 +23,8 @@ use std::fmt;
 use std::num::NonZero;
 use std::ops::Bound;
 
-#[extension]
-pub impl IntegerExt for Integer {
+#[extension(pub trait IntegerExt)]
+impl Integer {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
@@ -111,8 +111,8 @@ pub impl IntegerExt for Integer {
     }
 }
 
-#[extension]
-pub impl PrimitiveExt for Primitive {
+#[extension(pub trait PrimitiveExt)]
+impl Primitive {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {

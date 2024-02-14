@@ -191,8 +191,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-#[extension]
-impl ResolverAstLoweringExt for ResolverAstLowering {
+#[extension(trait ResolverAstLoweringExt)]
+impl ResolverAstLowering {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already

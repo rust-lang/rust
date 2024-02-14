@@ -42,8 +42,8 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn extension(_attr: TokenStream, input: TokenStream) -> TokenStream {
-    extension::extension(input)
+pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
+    extension::extension(attr, input)
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);

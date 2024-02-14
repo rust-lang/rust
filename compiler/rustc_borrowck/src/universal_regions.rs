@@ -794,8 +794,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     }
 }
 
-#[extension]
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
+#[extension(trait InferCtxtExt<'tcx>)]
+impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,

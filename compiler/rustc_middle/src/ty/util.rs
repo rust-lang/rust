@@ -96,8 +96,8 @@ impl<'tcx> Discr<'tcx> {
     }
 }
 
-#[extension]
-pub impl IntTypeExt for IntegerType {
+#[extension(pub trait IntTypeExt)]
+impl IntegerType {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
             IntegerType::Pointer(true) => tcx.types.isize,

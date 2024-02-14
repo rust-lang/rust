@@ -52,8 +52,8 @@ pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::AliasTy<'tcx>>;
 
 pub(super) struct InProgress;
 
-#[extension]
-pub impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
+#[extension(pub trait NormalizeExt<'tcx>)]
+impl<'tcx> At<'_, 'tcx> {
     /// Normalize a value using the `AssocTypeNormalizer`.
     ///
     /// This normalization should be used when the type contains inference variables or the

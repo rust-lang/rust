@@ -226,8 +226,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 }
 
-#[extension]
-pub impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Given the fully resolved, instantiated type for an opaque
     /// type, i.e., the value of an inference variable like C1 or C2
     /// (*), computes the "definition type" for an opaque type

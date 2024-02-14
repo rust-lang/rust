@@ -17,8 +17,8 @@ use std::fmt::Debug;
 
 pub use rustc_infer::infer::*;
 
-#[extension]
-pub impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
@@ -105,8 +105,8 @@ pub impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     }
 }
 
-#[extension]
-pub impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
+#[extension(pub trait InferCtxtBuilderExt<'tcx>)]
+impl<'tcx> InferCtxtBuilder<'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
     /// canonical key `canonical_key`, this method will create a new
     /// inference context, instantiate the key, and run your operation

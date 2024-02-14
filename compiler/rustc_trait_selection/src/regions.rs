@@ -3,8 +3,8 @@ use rustc_infer::infer::{InferCtxt, RegionResolutionError};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 
-#[extension]
-pub impl<'tcx> InferCtxtRegionExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtRegionExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Resolve regions, using the deep normalizer to normalize any type-outlives
     /// obligations in the process. This is in `rustc_trait_selection` because
     /// we need to normalize.

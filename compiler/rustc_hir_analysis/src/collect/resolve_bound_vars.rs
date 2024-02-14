@@ -28,8 +28,8 @@ use std::fmt;
 
 use crate::errors;
 
-#[extension]
-impl RegionExt for ResolvedArg {
+#[extension(trait RegionExt)]
+impl ResolvedArg {
     fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
         debug!("ResolvedArg::early: def_id={:?}", param.def_id);
         (param.def_id, ResolvedArg::EarlyBound(param.def_id.to_def_id()))

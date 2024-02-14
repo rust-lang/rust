@@ -236,8 +236,8 @@ pub fn suggest_restriction<'tcx>(
     }
 }
 
-#[extension]
-pub impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn suggest_restricting_param_bound(
         &self,
         err: &mut Diagnostic,

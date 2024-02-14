@@ -5,8 +5,8 @@ use rustc_middle::ty::{self, Ty};
 
 use crate::traits::{NormalizeExt, Obligation};
 
-#[extension]
-pub impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
+#[extension(pub trait StructurallyNormalizeExt<'tcx>)]
+impl<'tcx> At<'_, 'tcx> {
     fn structurally_normalize(
         &self,
         ty: Ty<'tcx>,

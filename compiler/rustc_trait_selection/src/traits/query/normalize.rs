@@ -22,8 +22,8 @@ use super::NoSolution;
 
 pub use rustc_middle::traits::query::NormalizationResult;
 
-#[extension]
-pub impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
+#[extension(pub trait QueryNormalizeExt<'tcx>)]
+impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer

@@ -57,8 +57,8 @@ use super::{
 
 pub use rustc_infer::traits::error_reporting::*;
 
-#[extension]
-pub impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn report_fulfillment_errors(
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
@@ -1326,8 +1326,8 @@ pub impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-#[extension]
-pub(super) impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub(super) trait InferCtxtPrivExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {

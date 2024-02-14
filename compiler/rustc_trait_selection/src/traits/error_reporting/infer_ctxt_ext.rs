@@ -11,8 +11,8 @@ use super::ArgKind;
 
 pub use rustc_infer::traits::error_reporting::*;
 
-#[extension]
-pub impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Given some node representing a fn-like thing in the HIR map,
     /// returns a span and `ArgKind` information that describes the
     /// arguments it expects. This can be supplied to

@@ -13,8 +13,8 @@ use rustc_middle::ty::{self, TyCtxt};
 
 /// FIXME(-Znext-solver): This or public because it is shared with the
 /// new trait solver implementation. We should deduplicate canonicalization.
-#[extension]
-pub impl<'tcx, V> CanonicalExt<'tcx, V> for Canonical<'tcx, V> {
+#[extension(pub trait CanonicalExt<'tcx, V>)]
+impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
     fn instantiate(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V

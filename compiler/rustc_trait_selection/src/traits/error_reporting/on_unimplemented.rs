@@ -38,8 +38,8 @@ static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
     sym::Trait,
 ];
 
-#[extension]
-pub impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,

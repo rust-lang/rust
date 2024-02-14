@@ -52,8 +52,8 @@ pub trait TraitEngine<'tcx>: 'tcx {
     ) -> Vec<PredicateObligation<'tcx>>;
 }
 
-#[extension]
-pub impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
+#[extension(pub trait TraitEngineExt<'tcx>)]
+impl<'tcx, T: ?Sized + TraitEngine<'tcx>> T {
     fn register_predicate_obligations(
         &mut self,
         infcx: &InferCtxt<'tcx>,

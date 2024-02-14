@@ -8,10 +8,12 @@ use syn::{
     Token, TraitItem, TraitItemConst, TraitItemFn, TraitItemMacro, TraitItemType, Type, Visibility,
 };
 
-pub(crate) fn extension(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // Parse the input tokens into a syntax tree
-    let Extension { attrs, generics, vis, trait_, self_ty, items } =
-        parse_macro_input!(input as Extension);
+pub(crate) fn extension(
+    attr: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    let ExtensionAttr { vis, trait_ } = parse_macro_input!(attr as ExtensionAttr);
+    let Impl { attrs, generics, self_ty, items } = parse_macro_input!(input as Impl);
     let headers: Vec<_> = items
         .iter()
         .map(|item| match item {
@@ -105,23 +107,32 @@ fn scrub_header(mut sig: Signature) -> Signature {
     sig
 }
 
-struct Extension {
-    attrs: Vec<Attribute>,
+struct ExtensionAttr {
     vis: Visibility,
-    generics: Generics,
     trait_: Path,
+}
+
+impl Parse for ExtensionAttr {
+    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
+        let vis = input.parse()?;
+        let _: Token![trait] = input.parse()?;
+        let trait_ = input.parse()?;
+        Ok(ExtensionAttr { vis, trait_ })
+    }
+}
+
+struct Impl {
+    attrs: Vec<Attribute>,
+    generics: Generics,
     self_ty: Type,
     items: Vec<ImplItem>,
 }
 
-impl Parse for Extension {
+impl Parse for Impl {
     fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
-        let vis = input.parse()?;
         let _: Token![impl] = input.parse()?;
         let generics = input.parse()?;
-        let trait_ = input.parse()?;
-        let _: Token![for] = input.parse()?;
         let self_ty = input.parse()?;
 
         let content;
@@ -131,6 +142,6 @@ impl Parse for Extension {
             items.push(content.parse()?);
         }
 
-        Ok(Extension { attrs, generics, vis, trait_, self_ty, items })
+        Ok(Impl { attrs, generics, self_ty, items })
     }
 }

@@ -5,8 +5,8 @@ use rustc_middle::mir::ProjectionElem;
 use rustc_middle::mir::{Body, Mutability, Place};
 use rustc_middle::ty::{self, TyCtxt};
 
-#[extension]
-pub impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
+#[extension(pub trait PlaceExt<'tcx>)]
+impl<'tcx> Place<'tcx> {
     /// Returns `true` if we can safely ignore borrows of this place.
     /// This is true whenever there is no action that the user can do
     /// to the place `self` that would invalidate the borrow. This is true

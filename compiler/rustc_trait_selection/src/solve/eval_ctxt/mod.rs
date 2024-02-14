@@ -131,8 +131,8 @@ pub enum GenerateProofTree {
     Never,
 }
 
-#[extension]
-pub impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtEvalExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Evaluates a goal from **outside** of the trait solver.
     ///
     /// Using this while inside of the solver is wrong as it uses a new
