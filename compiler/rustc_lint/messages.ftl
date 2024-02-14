@@ -595,3 +595,5 @@ lint_explicit_range = explicit usage of range type
 lint_trait_impl_range = public trait impl involving range type
 
 lint_range_syntax = usage of range syntax
+
+lint_range_bounds = usage of `RangeBounds` trait

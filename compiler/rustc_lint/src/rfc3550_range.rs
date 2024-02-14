@@ -1,8 +1,9 @@
-use crate::lints::{ExplicitRangeDiag, RangeSyntaxDiag, TraitImplRangeDiag};
+use crate::lints::{ExplicitRangeDiag, RangeBoundsDiag, RangeSyntaxDiag, TraitImplRangeDiag};
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::config::CrateType;
+use rustc_span::Symbol;
 
 fn crate_is_library<'tcx>(cx: &LateContext<'tcx>) -> bool {
     for t in cx.tcx.crate_types() {
@@ -367,6 +368,109 @@ declare_lint! {
     /// 
     /// [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
     pub(super) RANGE_BOUNDS,
-    Deny,
+    Allow,
     "usage of `RangeBounds` trait"
+}
+
+declare_lint_pass!(RangeBounds => [RANGE_BOUNDS]);
+
+struct BoundsVisitor<'cx, 'tcx> {
+    cx: &'cx LateContext<'tcx>,
+    range_bounds: [Symbol; 4],
+}
+
+impl<'cx, 'tcx> BoundsVisitor<'cx, 'tcx> {
+    fn new(cx: &'cx LateContext<'tcx>) -> Self {
+        let range_bounds = ["core", "ops", "range", "RangeBounds"].map(|x| Symbol::intern(x));
+
+        Self {
+            cx,
+            range_bounds,
+        }
+    }
+
+    fn is_range_bounds(&self, def_id: DefId) -> bool {
+        self.cx.match_def_path(def_id, &self.range_bounds)
+    }
+
+    fn check_bounds(&self, bounds: hir::GenericBounds<'_>) {
+        for bound in bounds {
+            let hir::GenericBound::Trait(of_trait, _) = bound else { continue };
+
+            if let Some(def_id) = of_trait.trait_ref.trait_def_id()
+            && self.is_range_bounds(def_id) {
+                self.cx.emit_span_lint(RANGE_BOUNDS, of_trait.span, RangeBoundsDiag);
+            }
+        }
+    }
+
+    fn check_generics(&self, generics: &'tcx hir::Generics<'_>) {
+        for pred in generics.predicates {
+            let hir::WherePredicate::BoundPredicate(pred) = pred else { continue }; 
+
+            self.check_bounds(pred.bounds);
+        }
+    }
+}
+
+impl<'tcx> LateLintPass<'tcx> for RangeBounds {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        kind: hir::intravisit::FnKind<'tcx>,
+        _decl: &'tcx hir::FnDecl<'tcx>,
+        _body: &'tcx hir::Body<'tcx>,
+        _span: rustc_span::Span,
+        def_id: rustc_span::def_id::LocalDefId
+    ) {
+        // Only run for libraries
+        if !crate_is_library(cx) {
+            return;
+        }
+
+        if !cx.effective_visibilities.is_exported(def_id) {
+            return;
+        }
+        if let hir::intravisit::FnKind::Closure = kind {
+            return;
+        }
+        
+        let Some(generics) = cx.generics else { return };
+
+        let visitor = BoundsVisitor::new(cx);
+        visitor.check_generics(generics);
+    }
+
+    fn check_item(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        item: &'tcx hir::Item<'tcx>
+    ) {
+        // Only run for libraries
+        if !crate_is_library(cx) {
+            return;
+        }
+
+        if !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
+            return;
+        }
+        let visitor = BoundsVisitor::new(cx);
+
+        match item.kind {
+            hir::ItemKind::Enum(_, generics) |
+            hir::ItemKind::Struct(_, generics) |
+            hir::ItemKind::Union(_, generics) => {
+                visitor.check_generics(generics);
+            }
+            hir::ItemKind::Trait(_, _, generics, bounds, _) => {
+                visitor.check_generics(generics);
+                visitor.check_bounds(bounds);
+            },
+            hir::ItemKind::Impl(imp) => {
+                visitor.check_generics(imp.generics);
+            },
+
+            _ => (),
+        }
+    }
 }

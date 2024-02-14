@@ -237,6 +237,7 @@ late_lint_methods!(
             // Range data gathering
             ExplicitRange: ExplicitRange,
             TraitImplRange: TraitImplRange,
+            RangeBounds: RangeBounds,
         ]
     ]
 );

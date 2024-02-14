@@ -1850,3 +1850,7 @@ pub struct TraitImplRangeDiag;
 #[derive(LintDiagnostic)]
 #[diag(lint_range_syntax)]
 pub struct RangeSyntaxDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_range_bounds)]
+pub struct RangeBoundsDiag;

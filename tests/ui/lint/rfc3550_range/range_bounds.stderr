@@ -1,0 +1,68 @@
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:11:17
+   |
+LL | pub fn f_std<R: RangeBounds<usize>>(range: R) {}
+   |                 ^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/range_bounds.rs:3:9
+   |
+LL | #![deny(range_bounds)]
+   |         ^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:12:18
+   |
+LL | pub fn f_core<R: core::ops::RangeBounds<usize>>(range: R) {}
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:13:33
+   |
+LL | pub fn f_impl_trait(range: impl RangeBounds<usize>) {}
+   |                                 ^^^^^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:14:24
+   |
+LL | pub fn f_generic<B, R: RangeBounds<B>>(range: R) {}
+   |                        ^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:15:38
+   |
+LL | pub fn f_where<R>(range: R) where R: RangeBounds<usize> {}
+   |                                      ^^^^^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:25:9
+   |
+LL | impl<R: RangeBounds<usize>> Pub<R> {
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:34:28
+   |
+LL |     pub fn bar(range: impl RangeBounds<usize>) {}
+   |                            ^^^^^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:37:23
+   |
+LL | pub struct Wrapper<R: RangeBounds<usize>>(R);
+   |                       ^^^^^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:39:21
+   |
+LL | pub trait Action<R: RangeBounds<usize>> {}
+   |                     ^^^^^^^^^^^^^^^^^^
+
+error: usage of `RangeBounds` trait
+  --> $DIR/range_bounds.rs:40:18
+   |
+LL | pub trait Super: RangeBounds<usize> {}
+   |                  ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
