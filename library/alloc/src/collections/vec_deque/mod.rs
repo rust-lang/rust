@@ -639,6 +639,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(6);
     /// assert_eq!(buf.get(1), Some(&4));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, index: usize) -> Option<&T> {
         if index < self.len {
@@ -669,6 +672,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// assert_eq!(buf[1], 7);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index < self.len {
@@ -702,6 +708,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.swap(0, 2);
     /// assert_eq!(buf, [5, 4, 3]);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time and O(1) space` using tmp variable
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&mut self, i: usize, j: usize) {
         assert!(i < self.len());
@@ -722,6 +731,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let buf: VecDeque<i32> = VecDeque::with_capacity(10);
     /// assert!(buf.capacity() >= 10);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
@@ -1208,6 +1220,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.push_back(1);
     /// assert_eq!(deque.len(), 1);
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.len
@@ -1225,6 +1240,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// deque.push_front(1);
     /// assert!(!deque.is_empty());
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.len == 0
@@ -1490,6 +1508,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// d.push_back(2);
     /// assert_eq!(d.front(), Some(&1));
     /// ```
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front(&self) -> Option<&T> {
         self.get(0)
@@ -1514,6 +1536,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// assert_eq!(d.front(), Some(&9));
     /// ```
+    ///
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         self.get_mut(0)
@@ -1534,6 +1560,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// d.push_back(2);
     /// assert_eq!(d.back(), Some(&2));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
         self.get(self.len.wrapping_sub(1))
@@ -1558,6 +1587,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// }
     /// assert_eq!(d.back(), Some(&9));
     /// ```
+    /// # Complexity
+    ///
+    /// Takes `O(1) time`
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         self.get_mut(self.len.wrapping_sub(1))
