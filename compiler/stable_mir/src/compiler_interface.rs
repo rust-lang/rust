@@ -71,7 +71,7 @@ pub trait Context {
     fn is_foreign_item(&self, item: DefId) -> bool;
 
     /// Returns the kind of a given foreign item.
-    fn foreign_item_kind(&self, def: ForeignDef) -> Option<ForeignItemKind>;
+    fn foreign_item_kind(&self, def: ForeignDef) -> ForeignItemKind;
 
     /// Returns the kind of a given algebraic data type
     fn adt_kind(&self, def: AdtDef) -> AdtKind;

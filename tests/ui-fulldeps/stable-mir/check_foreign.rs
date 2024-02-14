@@ -43,7 +43,7 @@ fn test_foreign() -> ControlFlow<()> {
     let c_items = c_mod.items();
     assert_eq!(c_items.len(), 3);
     for item in c_items {
-        let kind = item.kind().unwrap();
+        let kind = item.kind();
         match item.name().as_str() {
             "foo" => assert_matches!(kind, ForeignItemKind::Fn(..)),
             "bar" => assert_matches!(kind, ForeignItemKind::Static(..)),

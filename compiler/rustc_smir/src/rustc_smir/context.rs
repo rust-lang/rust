@@ -258,27 +258,19 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.tcx.is_foreign_item(tables[item])
     }
 
-    fn foreign_item_kind(&self, def: ForeignDef) -> Option<ForeignItemKind> {
-        let (def_id, hir_kind) = {
-            let tables = self.0.borrow();
-            let def_id = tables[def.def_id()];
-            let hir_kind = tables
-                .tcx
-                .hir()
-                .expect_foreign_item(rustc_hir::OwnerId { def_id: def_id.as_local()? })
-                .kind;
-            (def_id, hir_kind)
-        };
-        let kind = match hir_kind {
-            rustc_hir::ForeignItemKind::Fn(..) => {
-                ForeignItemKind::Fn(self.0.borrow_mut().fn_def(def_id))
-            }
-            rustc_hir::ForeignItemKind::Static(..) => {
-                ForeignItemKind::Static(self.0.borrow_mut().static_def(def_id))
-            }
-            rustc_hir::ForeignItemKind::Type => ForeignItemKind::Type(self.def_ty(def.def_id())),
-        };
-        Some(kind)
+    fn foreign_item_kind(&self, def: ForeignDef) -> ForeignItemKind {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[def.def_id()];
+        let tcx = tables.tcx;
+        use rustc_hir::def::DefKind;
+        match tcx.def_kind(def_id) {
+            DefKind::Fn => ForeignItemKind::Fn(tables.fn_def(def_id)),
+            DefKind::Static(..) => ForeignItemKind::Static(tables.static_def(def_id)),
+            DefKind::ForeignTy => ForeignItemKind::Type(
+                tables.intern_ty(rustc_middle::ty::Ty::new_foreign(tcx, def_id)),
+            ),
+            def_kind => unreachable!("Unexpected kind for a foreign item: {:?}", def_kind),
+        }
     }
 
     fn adt_kind(&self, def: AdtDef) -> AdtKind {

@@ -566,7 +566,7 @@ crate_def! {
 }
 
 impl ForeignDef {
-    pub fn kind(&self) -> Option<ForeignItemKind> {
+    pub fn kind(&self) -> ForeignItemKind {
         with(|cx| cx.foreign_item_kind(*self))
     }
 }
