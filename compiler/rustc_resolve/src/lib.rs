@@ -52,7 +52,7 @@ use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt, TyCtxtFeed};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
@@ -1251,7 +1251,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         def_kind: DefKind,
         expn_id: ExpnId,
         span: Span,
-    ) -> LocalDefId {
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = def_kind.def_path_data(name);
         assert!(
             !self.node_id_to_def_id.contains_key(&node_id),
@@ -1262,7 +1262,8 @@ impl<'tcx> Resolver<'_, 'tcx> {
         );
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let def_id = self.tcx.create_def(parent, name, def_kind).def_id();
+        let feed = self.tcx.create_def(parent, name, def_kind);
+        let def_id = feed.def_id();
 
         // Create the definition.
         if expn_id != ExpnId::root() {
@@ -1283,7 +1284,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         }
         assert_eq!(self.def_id_to_node_id.push(node_id), def_id);
 
-        def_id
+        feed
     }
 
     fn item_generics_num_lifetimes(&self, def_id: DefId) -> usize {
