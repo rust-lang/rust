@@ -319,7 +319,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // them.
         let mut fake_borrows = match_has_guard.then(FxIndexSet::default);
 
-        let mut otherwise = None;
+        let otherwise_block = self.cfg.start_new_block();
 
         // This will generate code to test scrutinee_place and
         // branch to the appropriate arm block
@@ -327,45 +327,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match_start_span,
             scrutinee_span,
             block,
-            &mut otherwise,
+            otherwise_block,
             candidates,
             &mut fake_borrows,
         );
 
-        if let Some(otherwise_block) = otherwise {
-            // See the doc comment on `match_candidates` for why we may have an
-            // otherwise block. Match checking will ensure this is actually
-            // unreachable.
-            let source_info = self.source_info(scrutinee_span);
+        // See the doc comment on `match_candidates` for why we may have an
+        // otherwise block. Match checking will ensure this is actually
+        // unreachable.
+        let source_info = self.source_info(scrutinee_span);
 
-            // Matching on a `scrutinee_place` with an uninhabited type doesn't
-            // generate any memory reads by itself, and so if the place "expression"
-            // contains unsafe operations like raw pointer dereferences or union
-            // field projections, we wouldn't know to require an `unsafe` block
-            // around a `match` equivalent to `std::intrinsics::unreachable()`.
-            // See issue #47412 for this hole being discovered in the wild.
-            //
-            // HACK(eddyb) Work around the above issue by adding a dummy inspection
-            // of `scrutinee_place`, specifically by applying `ReadForMatch`.
-            //
-            // NOTE: ReadForMatch also checks that the scrutinee is initialized.
-            // This is currently needed to not allow matching on an uninitialized,
-            // uninhabited value. If we get never patterns, those will check that
-            // the place is initialized, and so this read would only be used to
-            // check safety.
-            let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
+        // Matching on a `scrutinee_place` with an uninhabited type doesn't
+        // generate any memory reads by itself, and so if the place "expression"
+        // contains unsafe operations like raw pointer dereferences or union
+        // field projections, we wouldn't know to require an `unsafe` block
+        // around a `match` equivalent to `std::intrinsics::unreachable()`.
+        // See issue #47412 for this hole being discovered in the wild.
+        //
+        // HACK(eddyb) Work around the above issue by adding a dummy inspection
+        // of `scrutinee_place`, specifically by applying `ReadForMatch`.
+        //
+        // NOTE: ReadForMatch also checks that the scrutinee is initialized.
+        // This is currently needed to not allow matching on an uninitialized,
+        // uninhabited value. If we get never patterns, those will check that
+        // the place is initialized, and so this read would only be used to
+        // check safety.
+        let cause_matched_place = FakeReadCause::ForMatchedPlace(None);
 
-            if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
-                self.cfg.push_fake_read(
-                    otherwise_block,
-                    source_info,
-                    cause_matched_place,
-                    scrutinee_place,
-                );
-            }
-
-            self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
+        if let Some(scrutinee_place) = scrutinee_place_builder.try_to_place(self) {
+            self.cfg.push_fake_read(
+                otherwise_block,
+                source_info,
+                cause_matched_place,
+                scrutinee_place,
+            );
         }
+
+        self.cfg.terminate(otherwise_block, source_info, TerminatorKind::Unreachable);
 
         // Link each leaf candidate to the `pre_binding_block` of the next one.
         let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
@@ -1163,7 +1161,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
-        otherwise_block: &mut Option<BasicBlock>,
+        otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'pat, 'tcx>],
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
@@ -1210,7 +1208,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         start_block: BasicBlock,
-        otherwise_block: &mut Option<BasicBlock>,
+        otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
@@ -1243,11 +1241,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // never reach this point.
         if unmatched_candidates.is_empty() {
             let source_info = self.source_info(span);
-            if let Some(otherwise) = *otherwise_block {
-                self.cfg.goto(block, source_info, otherwise);
-            } else {
-                *otherwise_block = Some(block);
-            }
+            self.cfg.goto(block, source_info, otherwise_block);
             return;
         }
 
@@ -1428,7 +1422,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
         block: BasicBlock,
-        otherwise_block: &mut Option<BasicBlock>,
+        otherwise_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
@@ -1453,7 +1447,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let match_pairs = mem::take(&mut first_candidate.match_pairs);
         first_candidate.pre_binding_block = Some(block);
 
-        let mut otherwise = None;
+        let remainder_start = self.cfg.start_new_block();
         for match_pair in match_pairs {
             let PatKind::Or { ref pats } = &match_pair.pattern.kind else {
                 bug!("Or-patterns should have been sorted to the end");
@@ -1463,7 +1457,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             first_candidate.visit_leaves(|leaf_candidate| {
                 self.test_or_pattern(
                     leaf_candidate,
-                    &mut otherwise,
+                    remainder_start,
                     pats,
                     or_span,
                     &match_pair.place,
@@ -1471,8 +1465,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
             });
         }
-
-        let remainder_start = otherwise.unwrap_or_else(|| self.cfg.start_new_block());
 
         self.match_candidates(
             span,
@@ -1491,7 +1483,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn test_or_pattern<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
-        otherwise: &mut Option<BasicBlock>,
+        otherwise: BasicBlock,
         pats: &'pat [Box<Pat<'tcx>>],
         or_span: Span,
         place: &PlaceBuilder<'tcx>,
@@ -1503,8 +1495,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard, self))
             .collect();
         let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
-        let otherwise = if candidate.otherwise_block.is_some() {
-            &mut candidate.otherwise_block
+        let otherwise = if let Some(otherwise_block) = candidate.otherwise_block {
+            otherwise_block
         } else {
             otherwise
         };
@@ -1680,8 +1672,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         mut candidates: &'b mut [&'c mut Candidate<'pat, 'tcx>],
-        block: BasicBlock,
-        otherwise_block: &mut Option<BasicBlock>,
+        start_block: BasicBlock,
+        otherwise_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         // extract the match-pair from the highest priority candidate
@@ -1749,12 +1741,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("untested_candidates: {}", candidates.len());
 
         // The block that we should branch to if none of the
-        // `target_candidates` match. This is either the block where we
-        // start matching the untested candidates if there are any,
-        // otherwise it's the `otherwise_block`.
-        let remainder_start = &mut None;
-        let remainder_start =
-            if candidates.is_empty() { &mut *otherwise_block } else { remainder_start };
+        // `target_candidates` match.
+        let remainder_start = if !candidates.is_empty() {
+            let remainder_start = self.cfg.start_new_block();
+            self.match_candidates(
+                span,
+                scrutinee_span,
+                remainder_start,
+                otherwise_block,
+                candidates,
+                fake_borrows,
+            );
+            remainder_start
+        } else {
+            otherwise_block
+        };
 
         // For each outcome of test, process the candidates that still
         // apply. Collect a list of blocks where control flow will
@@ -1775,24 +1776,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     candidate_start
                 } else {
-                    *remainder_start.get_or_insert_with(|| self.cfg.start_new_block())
+                    remainder_start
                 }
             })
             .collect();
 
-        if !candidates.is_empty() {
-            let remainder_start = remainder_start.unwrap_or_else(|| self.cfg.start_new_block());
-            self.match_candidates(
-                span,
-                scrutinee_span,
-                remainder_start,
-                otherwise_block,
-                candidates,
-                fake_borrows,
-            );
-        }
-
-        self.perform_test(span, scrutinee_span, block, &match_place, &test, target_blocks);
+        // Perform the test, branching to one of N blocks.
+        self.perform_test(span, scrutinee_span, start_block, &match_place, &test, target_blocks);
     }
 
     /// Determine the fake borrows that are needed from a set of places that

@@ -1605,6 +1605,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         on_ambiguity: impl FnOnce(),
     ) -> ControlFlow<T, ()> {
         let mut idx = 0;
+        let mut in_parent_alias_type = false;
+
         loop {
             let (kind, alias_ty) = match *self_ty.kind() {
                 ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
@@ -1618,6 +1620,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             for bound in
                 self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
             {
+                // HACK: On subsequent recursions, we only care about bounds that don't
+                // share the same type as `self_ty`. This is because for truly rigid
+                // projections, we will never be able to equate, e.g. `<T as Tr>::A`
+                // with `<<T as Tr>::A as Tr>::A`.
+                if in_parent_alias_type {
+                    match bound.kind().skip_binder() {
+                        ty::ClauseKind::Trait(tr) if tr.self_ty() == self_ty => continue,
+                        ty::ClauseKind::Projection(p) if p.self_ty() == self_ty => continue,
+                        _ => {}
+                    }
+                }
+
                 for_each(self, bound, idx)?;
                 idx += 1;
             }
@@ -1627,6 +1641,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else {
                 return ControlFlow::Continue(());
             }
+
+            in_parent_alias_type = true;
         }
     }
 

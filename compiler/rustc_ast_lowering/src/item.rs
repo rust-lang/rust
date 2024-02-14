@@ -1068,7 +1068,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr<'hir> {
         match block {
             Some(block) => self.lower_block_expr(block),
-            None => self.expr_err(span, self.dcx().span_delayed_bug(span, "no block")),
+            None => self.expr_err(span, self.dcx().has_errors().unwrap()),
         }
     }
 

@@ -12,12 +12,12 @@ use std::ops::ControlFlow;
 fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     // CHECK-LABEL: fn too_complex(
     // CHECK: bb0: {
-    // CHECK:     switchInt(move {{_.*}}) -> [0: bb3, 1: bb1, otherwise: bb2];
+    // CHECK:     switchInt(move {{_.*}}) -> [0: bb3, 1: bb2, otherwise: bb1];
     // CHECK: bb1: {
+    // CHECK:     unreachable;
+    // CHECK: bb2: {
     // CHECK:     [[controlflow:_.*]] = ControlFlow::<usize, i32>::Break(
     // CHECK:     goto -> bb8;
-    // CHECK: bb2: {
-    // CHECK:     unreachable;
     // CHECK: bb3: {
     // CHECK:     [[controlflow]] = ControlFlow::<usize, i32>::Continue(
     // CHECK:     goto -> bb4;
@@ -50,13 +50,13 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK-LABEL: fn identity(
     // CHECK: bb0: {
     // CHECK:     [[x:_.*]] = _1;
-    // CHECK:     switchInt(move {{_.*}}) -> [0: bb7, 1: bb6, otherwise: bb2];
+    // CHECK:     switchInt(move {{_.*}}) -> [0: bb7, 1: bb6, otherwise: bb1];
     // CHECK: bb1: {
+    // CHECK:     unreachable;
+    // CHECK: bb2: {
     // CHECK:     {{_.*}} = (([[controlflow:_.*]] as Continue).0: i32);
     // CHECK:     _0 = Result::<i32, i32>::Ok(
     // CHECK:     goto -> bb4;
-    // CHECK: bb2: {
-    // CHECK:     unreachable;
     // CHECK: bb3: {
     // CHECK:     {{_.*}} = (([[controlflow]] as Break).0: std::result::Result<std::convert::Infallible, i32>);
     // CHECK:     _0 = Result::<i32, i32>::Err(
@@ -64,7 +64,7 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb4: {
     // CHECK:     return;
     // CHECK: bb5: {
-    // CHECK:     goto -> bb1;
+    // CHECK:     goto -> bb2;
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
@@ -93,11 +93,11 @@ fn dfa() {
     // CHECK:     {{_.*}} = DFA::A;
     // CHECK:     goto -> bb1;
     // CHECK: bb1: {
-    // CHECK:     switchInt({{.*}}) -> [0: bb4, 1: bb5, 2: bb6, 3: bb2, otherwise: bb3];
+    // CHECK:     switchInt({{.*}}) -> [0: bb4, 1: bb5, 2: bb6, 3: bb3, otherwise: bb2];
     // CHECK: bb2: {
-    // CHECK:     return;
-    // CHECK: bb3: {
     // CHECK:     unreachable;
+    // CHECK: bb3: {
+    // CHECK:     return;
     // CHECK: bb4: {
     // CHECK:     {{_.*}} = DFA::B;
     // CHECK:     goto -> bb1;

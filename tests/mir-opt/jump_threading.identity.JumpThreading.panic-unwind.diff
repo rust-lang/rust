@@ -56,10 +56,14 @@
           StorageLive(_11);
           StorageLive(_12);
           _10 = discriminant(_4);
-          switchInt(move _10) -> [0: bb7, 1: bb6, otherwise: bb2];
+          switchInt(move _10) -> [0: bb7, 1: bb6, otherwise: bb1];
       }
   
       bb1: {
+          unreachable;
+      }
+  
+      bb2: {
           StorageLive(_9);
           _9 = ((_3 as Continue).0: i32);
           _2 = _9;
@@ -68,10 +72,6 @@
           StorageDead(_2);
           StorageDead(_3);
           goto -> bb4;
-      }
-  
-      bb2: {
-          unreachable;
       }
   
       bb3: {
@@ -103,8 +103,8 @@
           StorageDead(_10);
           StorageDead(_4);
           _5 = discriminant(_3);
--         switchInt(move _5) -> [0: bb1, 1: bb3, otherwise: bb2];
-+         goto -> bb1;
+-         switchInt(move _5) -> [0: bb2, 1: bb3, otherwise: bb1];
++         goto -> bb2;
       }
   
       bb6: {

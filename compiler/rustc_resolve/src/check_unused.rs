@@ -92,7 +92,8 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
         } else {
             // This trait import is definitely used, in a way other than
             // method resolution.
-            self.r.maybe_unused_trait_imports.remove(&def_id);
+            // FIXME(#120456) - is `swap_remove` correct?
+            self.r.maybe_unused_trait_imports.swap_remove(&def_id);
             if let Some(i) = self.unused_imports.get_mut(&self.base_id) {
                 i.unused.remove(&id);
             }

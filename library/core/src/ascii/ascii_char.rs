@@ -58,7 +58,7 @@ use crate::mem::transmute;
 #[unstable(feature = "ascii_char", issue = "110998")]
 #[repr(u8)]
 pub enum AsciiChar {
-    /// U+0000
+    /// U+0000 (The default variant)
     #[unstable(feature = "ascii_char_variants", issue = "110998")]
     Null = 0,
     /// U+0001

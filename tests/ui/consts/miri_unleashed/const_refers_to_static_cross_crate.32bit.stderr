@@ -1,20 +1,5 @@
-warning: shared reference of mutable static is discouraged
-  --> $DIR/const_refers_to_static_cross_crate.rs:12:14
-   |
-LL |     unsafe { &static_cross_crate::ZERO }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ shared reference of mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: reference of mutable static is a hard error from 2024 edition
-   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
-   = note: `#[warn(static_mut_ref)]` on by default
-help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
-   |
-LL |     unsafe { addr_of!(static_cross_crate::ZERO) }
-   |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static_cross_crate.rs:10:1
+  --> $DIR/const_refers_to_static_cross_crate.rs:11:1
    |
 LL | const SLICE_MUT: &[u8; 1] = {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
@@ -79,7 +64,7 @@ LL |         U8_MUT3 => true,
 warning: skipping const checks
    |
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:12:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:13:15
    |
 LL |     unsafe { &static_cross_crate::ZERO }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,6 +84,6 @@ help: skipping check for `const_refs_to_static` feature
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors; 2 warnings emitted
+error: aborting due to 8 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

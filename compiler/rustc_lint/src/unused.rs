@@ -651,15 +651,24 @@ trait UnusedDelimLint {
 
     fn is_expr_delims_necessary(
         inner: &ast::Expr,
+        ctx: UnusedDelimsCtx,
         followed_by_block: bool,
-        followed_by_else: bool,
     ) -> bool {
+        let followed_by_else = ctx == UnusedDelimsCtx::AssignedValueLetElse;
+
         if followed_by_else {
             match inner.kind {
                 ast::ExprKind::Binary(op, ..) if op.node.is_lazy() => return true,
                 _ if classify::expr_trailing_brace(inner).is_some() => return true,
                 _ => {}
             }
+        }
+
+        // Check it's range in LetScrutineeExpr
+        if let ast::ExprKind::Range(..) = inner.kind
+            && matches!(ctx, UnusedDelimsCtx::LetScrutineeExpr)
+        {
+            return true;
         }
 
         // Check if LHS needs parens to prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`.
@@ -1007,8 +1016,7 @@ impl UnusedDelimLint for UnusedParens {
     ) {
         match value.kind {
             ast::ExprKind::Paren(ref inner) => {
-                let followed_by_else = ctx == UnusedDelimsCtx::AssignedValueLetElse;
-                if !Self::is_expr_delims_necessary(inner, followed_by_block, followed_by_else)
+                if !Self::is_expr_delims_necessary(inner, ctx, followed_by_block)
                     && value.attrs.is_empty()
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr
@@ -1334,7 +1342,7 @@ impl UnusedDelimLint for UnusedBraces {
                 // FIXME(const_generics): handle paths when #67075 is fixed.
                 if let [stmt] = inner.stmts.as_slice() {
                     if let ast::StmtKind::Expr(ref expr) = stmt.kind {
-                        if !Self::is_expr_delims_necessary(expr, followed_by_block, false)
+                        if !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
                             && (ctx != UnusedDelimsCtx::AnonConst
                                 || (matches!(expr.kind, ast::ExprKind::Lit(_))
                                     && !expr.span.from_expansion()))

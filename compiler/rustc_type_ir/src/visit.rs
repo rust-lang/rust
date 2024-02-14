@@ -45,8 +45,7 @@ use rustc_index::{Idx, IndexVec};
 use std::fmt;
 use std::ops::ControlFlow;
 
-use crate::Interner;
-use crate::Lrc;
+use crate::{self as ty, BoundVars, Interner, IntoKind, Lrc, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -88,38 +87,28 @@ pub trait TypeVisitor<I: Interner>: Sized {
     #[cfg(not(feature = "nightly"))]
     type BreakTy;
 
-    fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> ControlFlow<Self::BreakTy>
-    where
-        I::Binder<T>: TypeSuperVisitable<I>,
-    {
+    fn visit_binder<T: TypeVisitable<I>>(
+        &mut self,
+        t: &I::Binder<T>,
+    ) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self)
     }
 
-    fn visit_ty(&mut self, t: I::Ty) -> ControlFlow<Self::BreakTy>
-    where
-        I::Ty: TypeSuperVisitable<I>,
-    {
+    fn visit_ty(&mut self, t: I::Ty) -> ControlFlow<Self::BreakTy> {
         t.super_visit_with(self)
     }
 
     // The default region visitor is a no-op because `Region` is non-recursive
-    // and has no `super_visit_with` method to call. That also explains the
-    // lack of `I::Region: TypeSuperVisitable<I>` bound.
+    // and has no `super_visit_with` method to call.
     fn visit_region(&mut self, _r: I::Region) -> ControlFlow<Self::BreakTy> {
         ControlFlow::Continue(())
     }
 
-    fn visit_const(&mut self, c: I::Const) -> ControlFlow<Self::BreakTy>
-    where
-        I::Const: TypeSuperVisitable<I>,
-    {
+    fn visit_const(&mut self, c: I::Const) -> ControlFlow<Self::BreakTy> {
         c.super_visit_with(self)
     }
 
-    fn visit_predicate(&mut self, p: I::Predicate) -> ControlFlow<Self::BreakTy>
-    where
-        I::Predicate: TypeSuperVisitable<I>,
-    {
+    fn visit_predicate(&mut self, p: I::Predicate) -> ControlFlow<Self::BreakTy> {
         p.super_visit_with(self)
     }
 }
@@ -198,5 +187,365 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
 impl<I: Interner, T: TypeVisitable<I>, Ix: Idx> TypeVisitable<I> for IndexVec<Ix, T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
+pub trait Flags {
+    fn flags(&self) -> TypeFlags;
+    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex;
+}
+
+pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool;
+
+    /// Returns `true` if `self` has any late-bound regions that are either
+    /// bound by `binder` or bound by some binder outside of `binder`.
+    /// If `binder` is `ty::INNERMOST`, this indicates whether
+    /// there are any late-bound regions that appear free.
+    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool;
+
+    /// Returns `true` if this type has any regions that escape `binder` (and
+    /// hence are not bound by it).
+    fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.has_vars_bound_at_or_above(binder.shifted_in(1))
+    }
+
+    /// Return `true` if this type has regions that are not a part of the type.
+    /// For example, `for<'a> fn(&'a i32)` return `false`, while `fn(&'a i32)`
+    /// would return `true`. The latter can occur when traversing through the
+    /// former.
+    ///
+    /// See [`HasEscapingVarsVisitor`] for more information.
+    fn has_escaping_bound_vars(&self) -> bool {
+        self.has_vars_bound_at_or_above(ty::INNERMOST)
+    }
+
+    fn has_projections(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PROJECTION)
+    }
+
+    fn has_inherent_projections(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_INHERENT)
+    }
+
+    fn has_opaque_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
+    }
+
+    fn has_coroutines(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_COROUTINE)
+    }
+
+    fn references_error(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_ERROR)
+    }
+
+    fn error_reported(&self) -> Result<(), I::ErrorGuaranteed>;
+
+    fn has_non_region_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PARAM - TypeFlags::HAS_RE_PARAM)
+    }
+
+    fn has_infer_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_INFER)
+    }
+
+    fn has_infer_types(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_INFER)
+    }
+
+    fn has_non_region_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_INFER - TypeFlags::HAS_RE_INFER)
+    }
+
+    fn has_infer(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_INFER)
+    }
+
+    fn has_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PLACEHOLDER)
+    }
+
+    fn has_non_region_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PLACEHOLDER - TypeFlags::HAS_RE_PLACEHOLDER)
+    }
+
+    fn has_param(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_PARAM)
+    }
+
+    /// "Free" regions in this context means that it has any region
+    /// that is not (a) erased or (b) late-bound.
+    fn has_free_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+    }
+
+    fn has_erased_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_ERASED)
+    }
+
+    /// True if there are any un-erased free regions.
+    fn has_erasable_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
+    }
+
+    /// Indicates whether this value references only 'global'
+    /// generic parameters that are the same regardless of what fn we are
+    /// in. This is used for caching.
+    fn is_global(&self) -> bool {
+        !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
+    }
+
+    /// True if there are any late-bound regions
+    fn has_bound_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_BOUND)
+    }
+    /// True if there are any late-bound non-region variables
+    fn has_non_region_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_BOUND_VARS - TypeFlags::HAS_RE_BOUND)
+    }
+    /// True if there are any bound variables
+    fn has_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_BOUND_VARS)
+    }
+
+    /// Indicates whether this value still has parameters/placeholders/inference variables
+    /// which could be replaced later, in a way that would change the results of `impl`
+    /// specialization.
+    fn still_further_specializable(&self) -> bool {
+        self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitableExt<I> for T {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        let res =
+            self.visit_with(&mut HasTypeFlagsVisitor { flags }) == ControlFlow::Break(FoundFlags);
+        res
+    }
+
+    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder }).is_break()
+    }
+
+    fn error_reported(&self) -> Result<(), I::ErrorGuaranteed> {
+        if self.references_error() {
+            if let ControlFlow::Break(guar) = self.visit_with(&mut HasErrorVisitor) {
+                Err(guar)
+            } else {
+                panic!("type flags said there was an error, but now there is not")
+            }
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+struct FoundFlags;
+
+// FIXME: Optimize for checking for infer flags
+struct HasTypeFlagsVisitor {
+    flags: ty::TypeFlags,
+}
+
+impl std::fmt::Debug for HasTypeFlagsVisitor {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.flags.fmt(fmt)
+    }
+}
+
+// Note: this visitor traverses values down to the level of
+// `Ty`/`Const`/`Predicate`, but not within those types. This is because the
+// type flags at the outer layer are enough. So it's faster than it first
+// looks, particular for `Ty`/`Predicate` where it's just a field access.
+//
+// N.B. The only case where this isn't totally true is binders, which also
+// add `HAS_{RE,TY,CT}_LATE_BOUND` flag depending on the *bound variables* that
+// are present, regardless of whether those bound variables are used. This
+// is important for anonymization of binders in `TyCtxt::erase_regions`. We
+// specifically detect this case in `visit_binder`.
+impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
+    type BreakTy = FoundFlags;
+
+    fn visit_binder<T: TypeVisitable<I>>(
+        &mut self,
+        t: &I::Binder<T>,
+    ) -> ControlFlow<Self::BreakTy> {
+        // If we're looking for the HAS_BINDER_VARS flag, check if the
+        // binder has vars. This won't be present in the binder's bound
+        // value, so we need to check here too.
+        if self.flags.intersects(TypeFlags::HAS_BINDER_VARS) && !t.has_no_bound_vars() {
+            return ControlFlow::Break(FoundFlags);
+        }
+
+        t.super_visit_with(self)
+    }
+
+    #[inline]
+    fn visit_ty(&mut self, t: I::Ty) -> ControlFlow<Self::BreakTy> {
+        // Note: no `super_visit_with` call.
+        let flags = t.flags();
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_region(&mut self, r: I::Region) -> ControlFlow<Self::BreakTy> {
+        // Note: no `super_visit_with` call, as usual for `Region`.
+        let flags = r.flags();
+        if flags.intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_const(&mut self, c: I::Const) -> ControlFlow<Self::BreakTy> {
+        // Note: no `super_visit_with` call.
+        if c.flags().intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_predicate(&mut self, predicate: I::Predicate) -> ControlFlow<Self::BreakTy> {
+        // Note: no `super_visit_with` call.
+        if predicate.flags().intersects(self.flags) {
+            ControlFlow::Break(FoundFlags)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+struct FoundEscapingVars;
+
+/// An "escaping var" is a bound var whose binder is not part of `t`. A bound var can be a
+/// bound region or a bound type.
+///
+/// So, for example, consider a type like the following, which has two binders:
+///
+///    for<'a> fn(x: for<'b> fn(&'a isize, &'b isize))
+///    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
+///                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
+///
+/// This type has *bound regions* (`'a`, `'b`), but it does not have escaping regions, because the
+/// binders of both `'a` and `'b` are part of the type itself. However, if we consider the *inner
+/// fn type*, that type has an escaping region: `'a`.
+///
+/// Note that what I'm calling an "escaping var" is often just called a "free var". However,
+/// we already use the term "free var". It refers to the regions or types that we use to represent
+/// bound regions or type params on a fn definition while we are type checking its body.
+///
+/// To clarify, conceptually there is no particular difference between
+/// an "escaping" var and a "free" var. However, there is a big
+/// difference in practice. Basically, when "entering" a binding
+/// level, one is generally required to do some sort of processing to
+/// a bound var, such as replacing it with a fresh/placeholder
+/// var, or making an entry in the environment to represent the
+/// scope to which it is attached, etc. An escaping var represents
+/// a bound var for which this processing has not yet been done.
+struct HasEscapingVarsVisitor {
+    /// Anything bound by `outer_index` or "above" is escaping.
+    outer_index: ty::DebruijnIndex,
+}
+
+impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
+    type BreakTy = FoundEscapingVars;
+
+    fn visit_binder<T: TypeVisitable<I>>(
+        &mut self,
+        t: &I::Binder<T>,
+    ) -> ControlFlow<Self::BreakTy> {
+        self.outer_index.shift_in(1);
+        let result = t.super_visit_with(self);
+        self.outer_index.shift_out(1);
+        result
+    }
+
+    #[inline]
+    fn visit_ty(&mut self, t: I::Ty) -> ControlFlow<Self::BreakTy> {
+        // If the outer-exclusive-binder is *strictly greater* than
+        // `outer_index`, that means that `t` contains some content
+        // bound at `outer_index` or above (because
+        // `outer_exclusive_binder` is always 1 higher than the
+        // content in `t`). Therefore, `t` has some escaping vars.
+        if t.outer_exclusive_binder() > self.outer_index {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_region(&mut self, r: I::Region) -> ControlFlow<Self::BreakTy> {
+        // If the region is bound by `outer_index` or anything outside
+        // of outer index, then it escapes the binders we have
+        // visited.
+        if r.outer_exclusive_binder() > self.outer_index {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn visit_const(&mut self, ct: I::Const) -> ControlFlow<Self::BreakTy> {
+        // If the outer-exclusive-binder is *strictly greater* than
+        // `outer_index`, that means that `ct` contains some content
+        // bound at `outer_index` or above (because
+        // `outer_exclusive_binder` is always 1 higher than the
+        // content in `t`). Therefore, `t` has some escaping vars.
+        if ct.outer_exclusive_binder() > self.outer_index {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    #[inline]
+    fn visit_predicate(&mut self, predicate: I::Predicate) -> ControlFlow<Self::BreakTy> {
+        if predicate.outer_exclusive_binder() > self.outer_index {
+            ControlFlow::Break(FoundEscapingVars)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+}
+
+struct HasErrorVisitor;
+
+impl<I: Interner> TypeVisitor<I> for HasErrorVisitor {
+    type BreakTy = I::ErrorGuaranteed;
+
+    fn visit_ty(&mut self, t: <I as Interner>::Ty) -> ControlFlow<Self::BreakTy> {
+        if let ty::Error(guar) = t.kind() {
+            ControlFlow::Break(guar)
+        } else {
+            t.super_visit_with(self)
+        }
+    }
+
+    fn visit_const(&mut self, c: <I as Interner>::Const) -> ControlFlow<Self::BreakTy> {
+        if let ty::ConstKind::Error(guar) = c.kind() {
+            ControlFlow::Break(guar)
+        } else {
+            c.super_visit_with(self)
+        }
+    }
+
+    fn visit_region(&mut self, r: <I as Interner>::Region) -> ControlFlow<Self::BreakTy> {
+        if let ty::ReError(guar) = r.kind() {
+            ControlFlow::Break(guar)
+        } else {
+            ControlFlow::Continue(())
+        }
     }
 }

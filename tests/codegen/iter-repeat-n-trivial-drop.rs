@@ -47,7 +47,7 @@ pub fn iter_repeat_n_next(it: &mut std::iter::RepeatN<NotCopy>) -> Option<NotCop
 #[no_mangle]
 // CHECK-LABEL: @vec_extend_via_iter_repeat_n
 pub fn vec_extend_via_iter_repeat_n() -> Vec<u8> {
-    // CHECK: %[[ADDR:.+]] = tail call noundef dereferenceable_or_null(1234) ptr @__rust_alloc(i64 noundef 1234, i64 noundef 1)
+    // CHECK: %[[ADDR:.+]] = tail call {{(noalias )?}}noundef dereferenceable_or_null(1234) ptr @__rust_alloc(i64 noundef 1234, i64 noundef 1)
     // CHECK: tail call void @llvm.memset.p0.i64(ptr noundef nonnull align 1 dereferenceable(1234) %[[ADDR]], i8 42, i64 1234,
 
     let n = 1234_usize;

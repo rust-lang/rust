@@ -4,7 +4,7 @@ use crate::query::plumbing::CycleError;
 use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagCtxt, Diagnostic, DiagnosticBuilder, Level};
+use rustc_errors::{DiagCtxt, DiagnosticBuilder};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -628,15 +628,15 @@ pub fn print_query_stack<Qcx: QueryContext>(
         };
         if Some(count_printed) < num_frames || num_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
-            let mut diag = Diagnostic::new(
-                Level::FailureNote,
-                format!(
-                    "#{} [{:?}] {}",
-                    count_printed, query_info.query.dep_kind, query_info.query.description
-                ),
-            );
-            diag.span = query_info.job.span.into();
-            dcx.force_print_diagnostic(diag);
+            // FIXME: needs translation
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            #[allow(rustc::untranslatable_diagnostic)]
+            dcx.struct_failure_note(format!(
+                "#{} [{:?}] {}",
+                count_printed, query_info.query.dep_kind, query_info.query.description
+            ))
+            .with_span(query_info.job.span)
+            .emit();
             count_printed += 1;
         }
 

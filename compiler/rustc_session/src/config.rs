@@ -1435,12 +1435,16 @@ impl CheckCfg {
         //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs`.
+        //
+        // Don't forget to update `src/doc/unstable-book/src/compiler-flags/check-cfg.md`
+        // in the unstable book as well!
 
         ins!(sym::debug_assertions, no_values);
 
-        // These three are never set by rustc, but we set them anyway: they
-        // should not trigger a lint because `cargo doc`, `cargo test`, and
-        // `cargo miri run` (respectively) can set them.
+        // These four are never set by rustc, but we set them anyway: they
+        // should not trigger a lint because `cargo clippy`, `cargo doc`,
+        // `cargo test` and `cargo miri run` (respectively) can set them.
+        ins!(sym::clippy, no_values);
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
         ins!(sym::miri, no_values);

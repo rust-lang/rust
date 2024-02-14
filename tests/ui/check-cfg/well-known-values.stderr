@@ -1,6 +1,18 @@
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
   --> $DIR/well-known-values.rs:26:5
    |
+LL |     clippy = "_UNEXPECTED_VALUE",
+   |     ^^^^^^----------------------
+   |           |
+   |           help: remove the value
+   |
+   = note: no expected value for `clippy`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
+  --> $DIR/well-known-values.rs:28:5
+   |
 LL |     debug_assertions = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^----------------------
    |                     |
@@ -8,10 +20,9 @@ LL |     debug_assertions = "_UNEXPECTED_VALUE",
    |
    = note: no expected value for `debug_assertions`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
-   = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:28:5
+  --> $DIR/well-known-values.rs:30:5
    |
 LL |     doc = "_UNEXPECTED_VALUE",
    |     ^^^----------------------
@@ -22,7 +33,7 @@ LL |     doc = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:30:5
+  --> $DIR/well-known-values.rs:32:5
    |
 LL |     doctest = "_UNEXPECTED_VALUE",
    |     ^^^^^^^----------------------
@@ -33,7 +44,7 @@ LL |     doctest = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:32:5
+  --> $DIR/well-known-values.rs:34:5
    |
 LL |     miri = "_UNEXPECTED_VALUE",
    |     ^^^^----------------------
@@ -44,7 +55,7 @@ LL |     miri = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:34:5
+  --> $DIR/well-known-values.rs:36:5
    |
 LL |     overflow_checks = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^----------------------
@@ -55,7 +66,7 @@ LL |     overflow_checks = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:36:5
+  --> $DIR/well-known-values.rs:38:5
    |
 LL |     panic = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +75,7 @@ LL |     panic = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:38:5
+  --> $DIR/well-known-values.rs:40:5
    |
 LL |     proc_macro = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^----------------------
@@ -75,7 +86,7 @@ LL |     proc_macro = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:40:5
+  --> $DIR/well-known-values.rs:42:5
    |
 LL |     relocation_model = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +95,7 @@ LL |     relocation_model = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:42:5
+  --> $DIR/well-known-values.rs:44:5
    |
 LL |     sanitize = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -93,7 +104,7 @@ LL |     sanitize = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:44:5
+  --> $DIR/well-known-values.rs:46:5
    |
 LL |     target_abi = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -102,7 +113,7 @@ LL |     target_abi = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:46:5
+  --> $DIR/well-known-values.rs:48:5
    |
 LL |     target_arch = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,7 +122,7 @@ LL |     target_arch = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:48:5
+  --> $DIR/well-known-values.rs:50:5
    |
 LL |     target_endian = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +131,7 @@ LL |     target_endian = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:50:5
+  --> $DIR/well-known-values.rs:52:5
    |
 LL |     target_env = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -129,7 +140,7 @@ LL |     target_env = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:52:5
+  --> $DIR/well-known-values.rs:54:5
    |
 LL |     target_family = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +149,7 @@ LL |     target_family = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:54:5
+  --> $DIR/well-known-values.rs:56:5
    |
 LL |     target_feature = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -147,7 +158,7 @@ LL |     target_feature = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:56:5
+  --> $DIR/well-known-values.rs:58:5
    |
 LL |     target_has_atomic = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +167,7 @@ LL |     target_has_atomic = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:58:5
+  --> $DIR/well-known-values.rs:60:5
    |
 LL |     target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -165,7 +176,7 @@ LL |     target_has_atomic_equal_alignment = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:60:5
+  --> $DIR/well-known-values.rs:62:5
    |
 LL |     target_has_atomic_load_store = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +185,7 @@ LL |     target_has_atomic_load_store = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:62:5
+  --> $DIR/well-known-values.rs:64:5
    |
 LL |     target_os = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -183,7 +194,7 @@ LL |     target_os = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:64:5
+  --> $DIR/well-known-values.rs:66:5
    |
 LL |     target_pointer_width = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -192,7 +203,7 @@ LL |     target_pointer_width = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:66:5
+  --> $DIR/well-known-values.rs:68:5
    |
 LL |     target_thread_local = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^----------------------
@@ -203,7 +214,7 @@ LL |     target_thread_local = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:68:5
+  --> $DIR/well-known-values.rs:70:5
    |
 LL |     target_vendor = "_UNEXPECTED_VALUE",
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -212,7 +223,7 @@ LL |     target_vendor = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:70:5
+  --> $DIR/well-known-values.rs:72:5
    |
 LL |     test = "_UNEXPECTED_VALUE",
    |     ^^^^----------------------
@@ -223,7 +234,7 @@ LL |     test = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:72:5
+  --> $DIR/well-known-values.rs:74:5
    |
 LL |     unix = "_UNEXPECTED_VALUE",
    |     ^^^^----------------------
@@ -234,7 +245,7 @@ LL |     unix = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `_UNEXPECTED_VALUE`
-  --> $DIR/well-known-values.rs:74:5
+  --> $DIR/well-known-values.rs:76:5
    |
 LL |     windows = "_UNEXPECTED_VALUE",
    |     ^^^^^^^----------------------
@@ -245,7 +256,7 @@ LL |     windows = "_UNEXPECTED_VALUE",
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition value: `linuz`
-  --> $DIR/well-known-values.rs:80:7
+  --> $DIR/well-known-values.rs:82:7
    |
 LL | #[cfg(target_os = "linuz")] // testing that we suggest `linux`
    |       ^^^^^^^^^^^^-------
@@ -255,5 +266,5 @@ LL | #[cfg(target_os = "linuz")] // testing that we suggest `linux`
    = note: expected values for `target_os` are: `aix`, `android`, `cuda`, `dragonfly`, `emscripten`, `espidf`, `freebsd`, `fuchsia`, `haiku`, `hermit`, `horizon`, `hurd`, `illumos`, `ios`, `l4re`, `linux`, `macos`, `netbsd`, `none`, `nto`, `openbsd`, `psp`, `redox`, `solaris`, `solid_asp3`, `teeos`, `tvos`, `uefi`, `unknown`, `vita`, `vxworks`, `wasi`, `watchos`, `windows`, `xous`, `zkvm`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
-warning: 26 warnings emitted
+warning: 27 warnings emitted
 

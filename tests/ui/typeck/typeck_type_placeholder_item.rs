@@ -47,7 +47,7 @@ impl Test9 {
 
 fn test11(x: &usize) -> &_ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
-    &x
+    &x //~ ERROR cannot return reference to function parameter
 }
 
 unsafe fn test12(x: *const usize) -> *const *const _ {
@@ -229,3 +229,5 @@ fn evens_squared(n: usize) -> _ {
 
 const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
 //~^ ERROR the placeholder
+//~| ERROR cannot call non-const
+//~| ERROR cannot call non-const

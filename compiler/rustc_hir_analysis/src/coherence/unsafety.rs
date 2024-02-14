@@ -2,23 +2,23 @@
 //! crate or pertains to a type defined in this crate.
 
 use rustc_errors::{codes::*, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::Unsafety;
-use rustc_middle::ty::{TraitRef, TyCtxt};
+use rustc_middle::ty::{ImplPolarity::*, ImplTraitHeader, TraitDef, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::ErrorGuaranteed;
 
 pub(super) fn check_item(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-    trait_ref: TraitRef<'_>,
+    trait_header: ImplTraitHeader<'_>,
+    trait_def: &TraitDef,
 ) -> Result<(), ErrorGuaranteed> {
-    let item = tcx.hir().expect_item(def_id);
-    let impl_ = item.expect_impl();
-    let trait_def = tcx.trait_def(trait_ref.def_id);
-    let unsafe_attr = impl_.generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
-    match (trait_def.unsafety, unsafe_attr, impl_.unsafety, impl_.polarity) {
-        (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
+    let trait_ref = trait_header.trait_ref;
+    let unsafe_attr =
+        tcx.generics_of(def_id).params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
+    match (trait_def.unsafety, unsafe_attr, trait_header.unsafety, trait_header.polarity) {
+        (Unsafety::Normal, None, Unsafety::Unsafe, Positive | Reservation) => {
+            let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
                 tcx.def_span(def_id),
@@ -27,7 +27,7 @@ pub(super) fn check_item(
                 trait_ref.print_trait_sugared()
             )
             .with_span_suggestion_verbose(
-                item.span.with_hi(item.span.lo() + rustc_span::BytePos(7)),
+                span.with_hi(span.lo() + rustc_span::BytePos(7)),
                 "remove `unsafe` from this trait implementation",
                 "",
                 rustc_errors::Applicability::MachineApplicable,
@@ -35,10 +35,11 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
+        (Unsafety::Unsafe, _, Unsafety::Normal, Positive | Reservation) => {
+            let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
-                tcx.def_span(def_id),
+                span,
                 E0200,
                 "the trait `{}` requires an `unsafe impl` declaration",
                 trait_ref.print_trait_sugared()
@@ -50,7 +51,7 @@ pub(super) fn check_item(
                 trait_ref.print_trait_sugared()
             ))
             .with_span_suggestion_verbose(
-                item.span.shrink_to_lo(),
+                span.shrink_to_lo(),
                 "add `unsafe` to this trait implementation",
                 "unsafe ",
                 rustc_errors::Applicability::MaybeIncorrect,
@@ -58,10 +59,11 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
+        (Unsafety::Normal, Some(attr_name), Unsafety::Normal, Positive | Reservation) => {
+            let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
-                tcx.def_span(def_id),
+                span,
                 E0569,
                 "requires an `unsafe impl` declaration due to `#[{}]` attribute",
                 attr_name
@@ -73,7 +75,7 @@ pub(super) fn check_item(
                 trait_ref.print_trait_sugared()
             ))
             .with_span_suggestion_verbose(
-                item.span.shrink_to_lo(),
+                span.shrink_to_lo(),
                 "add `unsafe` to this trait implementation",
                 "unsafe ",
                 rustc_errors::Applicability::MaybeIncorrect,
@@ -81,14 +83,14 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
+        (_, _, Unsafety::Unsafe, Negative) => {
             // Reported in AST validation
-            tcx.dcx().span_delayed_bug(item.span, "unsafe negative impl");
+            assert!(tcx.dcx().has_errors().is_some(), "unsafe negative impl");
             Ok(())
         }
-        (_, _, Unsafety::Normal, hir::ImplPolarity::Negative(_))
-        | (Unsafety::Unsafe, _, Unsafety::Unsafe, hir::ImplPolarity::Positive)
-        | (Unsafety::Normal, Some(_), Unsafety::Unsafe, hir::ImplPolarity::Positive)
+        (_, _, Unsafety::Normal, Negative)
+        | (Unsafety::Unsafe, _, Unsafety::Unsafe, Positive | Reservation)
+        | (Unsafety::Normal, Some(_), Unsafety::Unsafe, Positive | Reservation)
         | (Unsafety::Normal, None, Unsafety::Normal, _) => Ok(()),
     }
 }

@@ -8,11 +8,6 @@ LL | impl<T: Clone, Add> Add for Foo<T> {
    |                ---  ^^^ not a trait
    |                |
    |                found this type parameter
-   |
-help: consider importing this trait instead
-   |
-LL + use std::ops::Add;
-   |
 
 error: aborting due to 1 previous error
 

@@ -35,6 +35,35 @@ LL | fn id<F>(f: Copy) -> usize {
    = note: the trait cannot be made into an object because it requires `Self: Sized`
    = note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
 
-error: aborting due to 1 previous error; 2 warnings emitted
+error[E0618]: expected function, found `(dyn Copy + 'static)`
+  --> $DIR/avoid-ice-on-warning-2.rs:11:5
+   |
+LL | fn id<F>(f: Copy) -> usize {
+   |          - `f` has type `(dyn Copy + 'static)`
+...
+LL |     f()
+   |     ^--
+   |     |
+   |     call expression requires function
 
-For more information about this error, try `rustc --explain E0038`.
+error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
+  --> $DIR/avoid-ice-on-warning-2.rs:4:10
+   |
+LL | fn id<F>(f: Copy) -> usize {
+   |          ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Copy + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL | fn id<F>(f: impl Copy) -> usize {
+   |             ++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn id<F>(f: &dyn Copy) -> usize {
+   |             ++++
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0038, E0277, E0618.
+For more information about an error, try `rustc --explain E0038`.

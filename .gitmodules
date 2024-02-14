@@ -33,7 +33,7 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/17.0-2023-12-14
+	branch = rustc/18.0-2024-02-13
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book

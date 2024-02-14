@@ -252,6 +252,7 @@ pub struct ImplHeader<'tcx> {
 pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
     pub polarity: ImplPolarity,
+    pub unsafety: hir::Unsafety,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
@@ -500,6 +501,16 @@ impl<'tcx> IntoKind for Ty<'tcx> {
 
     fn kind(self) -> TyKind<'tcx> {
         *self.kind()
+    }
+}
+
+impl<'tcx> rustc_type_ir::visit::Flags for Ty<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        self.0.flags
+    }
+
+    fn outer_exclusive_binder(&self) -> DebruijnIndex {
+        self.0.outer_exclusive_binder
     }
 }
 
