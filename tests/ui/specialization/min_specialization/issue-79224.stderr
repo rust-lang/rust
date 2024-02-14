@@ -34,6 +34,24 @@ help: consider further restricting this bound
 LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
 
-error: aborting due to 3 previous errors
+error[E0277]: the trait bound `B: Clone` is not satisfied
+  --> $DIR/issue-79224.rs:20:62
+   |
+LL |       fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+   |  ______________________________________________________________^
+LL | |
+LL | |
+LL | |
+LL | |         write!(f, "foo")
+LL | |     }
+   | |_____^ the trait `Clone` is not implemented for `B`, which is required by `B: ToOwned`
+   |
+   = note: required for `B` to implement `ToOwned`
+help: consider further restricting this bound
+   |
+LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
+   |                +++++++++++++++++++
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

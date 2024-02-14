@@ -26,6 +26,19 @@ impl<'tcx> rustc_type_ir::IntoKind for Region<'tcx> {
     }
 }
 
+impl<'tcx> rustc_type_ir::visit::Flags for Region<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        self.type_flags()
+    }
+
+    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
+        match **self {
+            ty::ReBound(debruijn, _) => debruijn.shifted_in(1),
+            _ => ty::INNERMOST,
+        }
+    }
+}
+
 impl<'tcx> Region<'tcx> {
     #[inline]
     pub fn new_early_param(

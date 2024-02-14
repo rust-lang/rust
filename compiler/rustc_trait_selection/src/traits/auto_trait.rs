@@ -524,13 +524,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             if let Entry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                smaller_deps.larger.swap_remove(&target);
                             }
 
                             if let Entry::Occupied(v) = vid_map.entry(*larger) {
                                 let larger_deps = v.into_mut();
                                 larger_deps.smaller.insert(*smaller);
-                                larger_deps.smaller.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                larger_deps.smaller.swap_remove(&target);
                             }
                         }
                         (&RegionTarget::RegionVid(v1), &RegionTarget::Region(r1)) => {
@@ -543,13 +545,15 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             if let Entry::Occupied(v) = vid_map.entry(*smaller) {
                                 let smaller_deps = v.into_mut();
                                 smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                smaller_deps.larger.swap_remove(&target);
                             }
 
                             if let Entry::Occupied(v) = vid_map.entry(*larger) {
                                 let larger_deps = v.into_mut();
                                 larger_deps.smaller.insert(*smaller);
-                                larger_deps.smaller.remove(&target);
+                                // FIXME(#120456) - is `swap_remove` correct?
+                                larger_deps.smaller.swap_remove(&target);
                             }
                         }
                     }

@@ -2,9 +2,10 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    BoundVar, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, RegionKind, TyKind,
-    UniverseIndex,
+    BoundVar, BoundVars, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, RegionKind,
+    TyKind, UniverseIndex,
 };
 
 pub trait Interner: Sized {
@@ -19,7 +20,10 @@ pub trait Interner: Sized {
     type GenericArg: Copy + DebugWithInfcx<Self> + Hash + Ord;
     type Term: Copy + Debug + Hash + Ord;
 
-    type Binder<T>;
+    type Binder<T: TypeVisitable<Self>>: BoundVars<Self> + TypeSuperVisitable<Self>;
+    type BoundVars: IntoIterator<Item = Self::BoundVar>;
+    type BoundVar;
+
     type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
 
     // Kinds of tys
@@ -28,7 +32,9 @@ pub trait Interner: Sized {
         + Hash
         + Ord
         + Into<Self::GenericArg>
-        + IntoKind<Kind = TyKind<Self>>;
+        + IntoKind<Kind = TyKind<Self>>
+        + TypeSuperVisitable<Self>
+        + Flags;
     type Tys: Copy + Debug + Hash + Ord + IntoIterator<Item = Self::Ty>;
     type AliasTy: Copy + DebugWithInfcx<Self> + Hash + Ord;
     type ParamTy: Copy + Debug + Hash + Ord;
@@ -48,7 +54,9 @@ pub trait Interner: Sized {
         + Ord
         + Into<Self::GenericArg>
         + IntoKind<Kind = ConstKind<Self>>
-        + ConstTy<Self>;
+        + ConstTy<Self>
+        + TypeSuperVisitable<Self>
+        + Flags;
     type AliasConst: Copy + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderConst: Copy + Debug + Hash + Ord + PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Ord;
@@ -62,7 +70,8 @@ pub trait Interner: Sized {
         + Hash
         + Ord
         + Into<Self::GenericArg>
-        + IntoKind<Kind = RegionKind<Self>>;
+        + IntoKind<Kind = RegionKind<Self>>
+        + Flags;
     type EarlyParamRegion: Copy + Debug + Hash + Ord;
     type LateParamRegion: Copy + Debug + Hash + Ord;
     type BoundRegion: Copy + Debug + Hash + Ord;
@@ -70,7 +79,7 @@ pub trait Interner: Sized {
     type PlaceholderRegion: Copy + Debug + Hash + Ord + PlaceholderLike;
 
     // Predicates
-    type Predicate: Copy + Debug + Hash + Eq;
+    type Predicate: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
     type TraitPredicate: Copy + Debug + Hash + Eq;
     type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
     type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
@@ -86,6 +95,9 @@ pub trait Interner: Sized {
     fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
     fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
     fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
+
+    /// Assert that an error has been delayed or emitted.
+    fn expect_error_or_delayed_bug();
 }
 
 /// Common capabilities of placeholder kinds

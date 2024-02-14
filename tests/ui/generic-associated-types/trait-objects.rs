@@ -14,6 +14,8 @@ fn min_size(x: &mut dyn for<'a> StreamingIterator<Item<'a> = &'a i32>) -> usize 
     //[base]~^ the trait `StreamingIterator` cannot be made into an object
     x.size_hint().0
     //[extended]~^ borrowed data escapes
+    //[base]~^^ the trait `StreamingIterator` cannot be made into an object
+    //[base]~| the trait `StreamingIterator` cannot be made into an object
 }
 
 fn main() {}

@@ -942,6 +942,16 @@ where
     }
 }
 
+impl<'tcx, T> rustc_type_ir::BoundVars<TyCtxt<'tcx>> for ty::Binder<'tcx, T> {
+    fn bound_vars(&self) -> &'tcx List<ty::BoundVariableKind> {
+        self.bound_vars
+    }
+
+    fn has_no_bound_vars(&self) -> bool {
+        self.bound_vars.is_empty()
+    }
+}
+
 impl<'tcx, T> Binder<'tcx, T> {
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
@@ -1808,6 +1818,7 @@ impl<'tcx> Ty<'tcx> {
         self.0.0
     }
 
+    // FIXME(compiler-errors): Think about removing this.
     #[inline(always)]
     pub fn flags(self) -> TypeFlags {
         self.0.0.flags
@@ -2362,6 +2373,20 @@ impl<'tcx> Ty<'tcx> {
     /// to represent the closure kind, because it has not yet been
     /// inferred. Once upvar inference (in `rustc_hir_analysis/src/check/upvar.rs`)
     /// is complete, that type variable will be unified.
+    ///
+    /// To be noted that you can use [`ClosureArgs::kind()`] or [`CoroutineClosureArgs::kind()`]
+    /// to get the same information, which you can get by calling [`GenericArgs::as_closure()`]
+    /// or [`GenericArgs::as_coroutine_closure()`], depending on the type of the closure.
+    ///
+    /// Otherwise, this method can be used as follows:
+    ///
+    /// ```rust,ignore (snippet of compiler code)
+    /// let TyKind::Closure(def_id, [closure_fn_kind_ty, ..]) = closure_ty.kind()
+    ///     && let Some(closure_kind) = closure_fn_kind_ty.expect_ty().to_opt_closure_kind()
+    /// {
+    ///     // your code
+    /// }
+    /// ```
     pub fn to_opt_closure_kind(self) -> Option<ty::ClosureKind> {
         match self.kind() {
             Int(int_ty) => match int_ty {

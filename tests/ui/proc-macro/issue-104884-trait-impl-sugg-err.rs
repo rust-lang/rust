@@ -14,7 +14,9 @@ struct PriorityQueueEntry<T> {
 //~^ ERROR can't compare `PriorityQueue<T>` with `PriorityQueue<T>`
 //~| ERROR the trait bound `PriorityQueue<T>: Eq` is not satisfied
 //~| ERROR can't compare `T` with `T`
+//~| ERROR `BinaryHeap<PriorityQueueEntry<T>>` is not an iterator
+//~| ERROR no field `height` on type `&PriorityQueue<T>`
 
 struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
-
+//~^ ERROR can't compare `BinaryHeap<PriorityQueueEntry<T>>` with `_`
 fn main() {}

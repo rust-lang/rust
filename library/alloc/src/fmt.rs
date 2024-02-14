@@ -278,6 +278,22 @@
 //! Hello, `     123` has 3 right-aligned characters
 //! ```
 //!
+//! When truncating these values, Rust uses [round half-to-even](https://en.wikipedia.org/wiki/Rounding#Rounding_half_to_even),
+//! which is the default rounding mode in IEEE 754.
+//! For example,
+//!
+//! ```
+//! print!("{0:.1$e}", 12345, 3);
+//! print!("{0:.1$e}", 12355, 3);
+//! ```
+//!
+//! Would return:
+//!
+//! ```text
+//! 1.234e4
+//! 1.236e4
+//! ```
+//!
 //! ## Localization
 //!
 //! In some programming languages, the behavior of string formatting functions

@@ -323,9 +323,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 }
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
-                ExprKind::Err => {
-                    hir::ExprKind::Err(self.dcx().span_delayed_bug(e.span, "lowered ExprKind::Err"))
-                }
+                ExprKind::Err => hir::ExprKind::Err(self.dcx().has_errors().unwrap()),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
                 ExprKind::Paren(_) | ExprKind::ForLoop { .. } => {

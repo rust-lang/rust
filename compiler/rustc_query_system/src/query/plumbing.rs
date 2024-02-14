@@ -429,16 +429,16 @@ where
             let formatter = query.format_value();
             if old_hash != new_hash {
                 // We have an inconsistency. This can happen if one of the two
-                // results is tainted by errors. In this case, delay a bug to
-                // ensure compilation is doomed.
-                qcx.dep_context().sess().dcx().delayed_bug(format!(
+                // results is tainted by errors.
+                assert!(
+                    qcx.dep_context().sess().dcx().has_errors().is_some(),
                     "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
                         computed={:#?}\nfed={:#?}",
                     query.dep_kind(),
                     key,
                     formatter(&result),
                     formatter(&cached_result),
-                ));
+                );
             }
         }
     }

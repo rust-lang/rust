@@ -1432,7 +1432,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         return;
                     }
                 };
-                let (sig, map) = tcx.instantiate_bound_regions(sig, |br| {
+                let (unnormalized_sig, map) = tcx.instantiate_bound_regions(sig, |br| {
                     use crate::renumber::RegionCtxt;
 
                     let region_ctxt_fn = || {
@@ -1454,7 +1454,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         region_ctxt_fn,
                     )
                 });
-                debug!(?sig);
+                debug!(?unnormalized_sig);
                 // IMPORTANT: We have to prove well formed for the function signature before
                 // we normalize it, as otherwise types like `<&'a &'b () as Trait>::Assoc`
                 // get normalized away, causing us to ignore the `'b: 'a` bound used by the function.
@@ -1464,7 +1464,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 //
                 // See #91068 for an example.
                 self.prove_predicates(
-                    sig.inputs_and_output.iter().map(|ty| {
+                    unnormalized_sig.inputs_and_output.iter().map(|ty| {
                         ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
                             ty.into(),
                         )))
@@ -1472,7 +1472,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     term_location.to_locations(),
                     ConstraintCategory::Boring,
                 );
-                let sig = self.normalize(sig, term_location);
+
+                let sig = self.normalize(unnormalized_sig, term_location);
+                // HACK(#114936): `WF(sig)` does not imply `WF(normalized(sig))`
+                // with built-in `Fn` implementations, since the impl may not be
+                // well-formed itself.
+                if sig != unnormalized_sig {
+                    self.prove_predicates(
+                        sig.inputs_and_output.iter().map(|ty| {
+                            ty::Binder::dummy(ty::PredicateKind::Clause(
+                                ty::ClauseKind::WellFormed(ty.into()),
+                            ))
+                        }),
+                        term_location.to_locations(),
+                        ConstraintCategory::Boring,
+                    );
+                }
+
                 self.check_call_dest(body, term, &sig, *destination, *target, term_location);
 
                 // The ordinary liveness rules will ensure that all

@@ -1539,6 +1539,7 @@ fn impl_trait_header(
             };
             ty::EarlyBinder::bind(ty::ImplTraitHeader {
                 trait_ref,
+                unsafety: impl_.unsafety,
                 polarity: polarity_of_impl(tcx, def_id,  impl_, item.span)
             })
         })

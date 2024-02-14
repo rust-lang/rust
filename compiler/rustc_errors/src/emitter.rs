@@ -1635,7 +1635,8 @@ impl HumanEmitter {
                     let mut to_add = FxHashMap::default();
 
                     for (depth, style) in depths {
-                        if multilines.remove(&depth).is_none() {
+                        // FIXME(#120456) - is `swap_remove` correct?
+                        if multilines.swap_remove(&depth).is_none() {
                             to_add.insert(depth, style);
                         }
                     }

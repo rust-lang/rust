@@ -9,9 +9,4 @@ LL |         FOO => todo!(),
    = note: for more information, see issue #120362 <https://github.com/rust-lang/rust/issues/120362>
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-note: the lint level is defined here
-  --> $DIR/issue-89088.rs:5:10
-   |
-LL | #![allow(indirect_structural_match)]
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
 

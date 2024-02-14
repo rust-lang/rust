@@ -67,20 +67,20 @@
           StorageLive(_7);
           _7 = Option::<i32>::Some(const 0_i32);
           _8 = discriminant(_7);
-          switchInt(move _8) -> [0: bb3, 1: bb1, otherwise: bb2];
+          switchInt(move _8) -> [0: bb3, 1: bb2, otherwise: bb1];
       }
   
       bb1: {
+          unreachable;
+      }
+  
+      bb2: {
           StorageLive(_9);
           _27 = const _;
           _9 = &(((*_27) as Some).0: i32);
 -         _6 = const ();
           StorageDead(_9);
           goto -> bb4;
-      }
-  
-      bb2: {
-          unreachable;
       }
   
       bb3: {

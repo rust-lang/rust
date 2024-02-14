@@ -192,13 +192,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             &mut obligations,
         );
 
-        obligations.extend(self.infcx.commit_if_ok(|_| {
+        obligations.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
                 .sup(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
                 .map(|InferOk { obligations, .. }| obligations)
-                .map_err(|_| Unimplemented)
-        })?);
+                .map_err(|_| Unimplemented)?,
+        );
 
         // FIXME(compiler-errors): I don't think this is needed.
         if let ty::Alias(ty::Projection, alias_ty) = placeholder_self_ty.kind() {
@@ -532,13 +532,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             &mut nested,
         );
 
-        nested.extend(self.infcx.commit_if_ok(|_| {
+        nested.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
                 .sup(DefineOpaqueTypes::No, obligation_trait_ref, upcast_trait_ref)
                 .map(|InferOk { obligations, .. }| obligations)
-                .map_err(|_| Unimplemented)
-        })?);
+                .map_err(|_| Unimplemented)?,
+        );
 
         // Check supertraits hold. This is so that their associated type bounds
         // will be checked in the code below.

@@ -382,7 +382,8 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 self.add_mutably_used_var(*vid);
             }
             self.prev_bind = None;
-            self.prev_move_to_closure.remove(vid);
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.prev_move_to_closure.swap_remove(vid);
         }
     }
 

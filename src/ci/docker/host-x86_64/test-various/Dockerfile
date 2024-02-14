@@ -59,6 +59,7 @@ ENV WASM_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_T
   tests/codegen \
   tests/assembly \
   library/core
+ENV CC_wasm32_unknown_unknown=clang-11
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \

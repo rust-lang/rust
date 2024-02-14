@@ -34,6 +34,38 @@ note: required by a bound in `Ord`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
    = note: this error originates in the derive macro `AddImpl` which comes from the expansion of the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error[E0277]: can't compare `BinaryHeap<PriorityQueueEntry<T>>` with `_`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:20:25
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |          ---------- in this derive macro expansion
+...
+LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `BinaryHeap<PriorityQueueEntry<T>> < _` and `BinaryHeap<PriorityQueueEntry<T>> > _`
+   |
+   = help: the trait `PartialOrd<_>` is not implemented for `BinaryHeap<PriorityQueueEntry<T>>`
+   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0599]: `BinaryHeap<PriorityQueueEntry<T>>` is not an iterator
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ `BinaryHeap<PriorityQueueEntry<T>>` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `BinaryHeap<PriorityQueueEntry<T>>: Iterator`
+           which is required by `&mut BinaryHeap<PriorityQueueEntry<T>>: Iterator`
+   = note: this error originates in the derive macro `AddImpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0609]: no field `height` on type `&PriorityQueue<T>`
+  --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:22
+   |
+LL | #[derive(PartialOrd, AddImpl)]
+   |                      ^^^^^^^ unknown field
+   |
+   = note: this error originates in the derive macro `AddImpl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0599, E0609.
+For more information about an error, try `rustc --explain E0277`.

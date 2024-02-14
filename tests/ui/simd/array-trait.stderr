@@ -12,6 +12,29 @@ error[E0077]: SIMD vector element type should be a primitive scalar (integer/flo
 LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
    | ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: unconstrained generic constant
+  --> $DIR/array-trait.rs:23:23
+   |
+LL | #[derive(Copy, Clone)]
+   |                ----- in this derive macro expansion
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   |                       ^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); S::SIZE]:`
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0077`.
+error[E0382]: use of moved value: `t`
+  --> $DIR/array-trait.rs:40:40
+   |
+LL |     let mut t = T::<i32x4>([0; 4]);
+   |         ----- move occurs because `t` has type `T<i32x4>`, which does not implement the `Copy` trait
+...
+LL |         for i in 0_i32..4 {
+   |         ----------------- inside of this loop
+LL |             assert_eq!(i, simd_extract(t, i as u32));
+   |                                        ^ value moved here, in previous iteration of loop
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0077, E0382.
+For more information about an error, try `rustc --explain E0077`.

@@ -620,42 +620,40 @@ impl<'tcx> InferCtxt<'tcx> {
         variables1: &OriginalQueryValues<'tcx>,
         variables2: impl Fn(BoundVar) -> GenericArg<'tcx>,
     ) -> InferResult<'tcx, ()> {
-        self.commit_if_ok(|_| {
-            let mut obligations = vec![];
-            for (index, value1) in variables1.var_values.iter().enumerate() {
-                let value2 = variables2(BoundVar::new(index));
+        let mut obligations = vec![];
+        for (index, value1) in variables1.var_values.iter().enumerate() {
+            let value2 = variables2(BoundVar::new(index));
 
-                match (value1.unpack(), value2.unpack()) {
-                    (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                        obligations.extend(
-                            self.at(cause, param_env)
-                                .eq(DefineOpaqueTypes::Yes, v1, v2)?
-                                .into_obligations(),
-                        );
-                    }
-                    (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
-                        if re1.is_erased() && re2.is_erased() =>
-                    {
-                        // no action needed
-                    }
-                    (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
-                        obligations.extend(
-                            self.at(cause, param_env)
-                                .eq(DefineOpaqueTypes::Yes, v1, v2)?
-                                .into_obligations(),
-                        );
-                    }
-                    (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                        let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
-                        obligations.extend(ok.into_obligations());
-                    }
-                    _ => {
-                        bug!("kind mismatch, cannot unify {:?} and {:?}", value1, value2,);
-                    }
+            match (value1.unpack(), value2.unpack()) {
+                (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
+                    obligations.extend(
+                        self.at(cause, param_env)
+                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                            .into_obligations(),
+                    );
+                }
+                (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
+                    if re1.is_erased() && re2.is_erased() =>
+                {
+                    // no action needed
+                }
+                (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
+                    obligations.extend(
+                        self.at(cause, param_env)
+                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                            .into_obligations(),
+                    );
+                }
+                (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
+                    let ok = self.at(cause, param_env).eq(DefineOpaqueTypes::Yes, v1, v2)?;
+                    obligations.extend(ok.into_obligations());
+                }
+                _ => {
+                    bug!("kind mismatch, cannot unify {:?} and {:?}", value1, value2,);
                 }
             }
-            Ok(InferOk { value: (), obligations })
-        })
+        }
+        Ok(InferOk { value: (), obligations })
     }
 }
 

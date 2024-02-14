@@ -98,7 +98,8 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 
     fn check_block_post(&mut self, cx: &LateContext<'tcx>, _: &'tcx rustc_hir::Block<'tcx>) {
         for hir_id in self.local_bindings.pop().unwrap() {
-            if let Some(span) = self.underscore_bindings.remove(&hir_id) {
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            if let Some(span) = self.underscore_bindings.swap_remove(&hir_id) {
                 span_lint_hir(
                     cx,
                     NO_EFFECT_UNDERSCORE_BINDING,
@@ -112,7 +113,8 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
 
     fn check_expr(&mut self, _: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
         if let Some(def_id) = path_to_local(expr) {
-            self.underscore_bindings.remove(&def_id);
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.underscore_bindings.swap_remove(&def_id);
         }
     }
 }

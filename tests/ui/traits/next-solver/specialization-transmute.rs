@@ -15,7 +15,7 @@ impl<T> Default for T {
     // This will be fixed by #111994
     fn intu(&self) -> &Self::Id {
         //~^ ERROR type annotations needed
-        self
+        self //~ ERROR cannot satisfy
     }
 }
 
@@ -25,6 +25,6 @@ fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
 
 use std::num::NonZeroU8;
 fn main() {
-    let s = transmute::<u8, Option<NonZeroU8>>(0); // this call should then error
+    let s = transmute::<u8, Option<NonZeroU8>>(0); //~ ERROR cannot satisfy
     assert_eq!(s, None);
 }

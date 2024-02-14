@@ -24,7 +24,15 @@ LL |     fn get(&self) -> T;
    = note: expected signature `fn(&MyType) -> MyType`
               found signature `fn(&MyType) -> usize`
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/coherence-blanket-conflicts-with-specific-multidispatch.rs:24:30
+   |
+LL |     fn get(&self) -> usize { (*self).clone() }
+   |                      -----   ^^^^^^^^^^^^^^^ expected `usize`, found `MyType`
+   |                      |
+   |                      expected `usize` because of return type
 
-Some errors have detailed explanations: E0053, E0119.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0053, E0119, E0308.
 For more information about an error, try `rustc --explain E0053`.

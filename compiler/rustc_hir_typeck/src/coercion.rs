@@ -98,8 +98,11 @@ struct CollectRetsVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for CollectRetsVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if let hir::ExprKind::Ret(_) = expr.kind {
-            self.ret_exprs.push(expr);
+        match expr.kind {
+            hir::ExprKind::Ret(_) => self.ret_exprs.push(expr),
+            // `return` in closures does not return from the outer function
+            hir::ExprKind::Closure(_) => return,
+            _ => {}
         }
         intravisit::walk_expr(self, expr);
     }
@@ -1845,13 +1848,31 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         }
 
         let parent_id = fcx.tcx.hir().get_parent_item(id);
-        let parent_item = fcx.tcx.hir_node_by_def_id(parent_id.def_id);
+        let mut parent_item = fcx.tcx.hir_node_by_def_id(parent_id.def_id);
+        // When suggesting return, we need to account for closures and async blocks, not just items.
+        for (_, node) in fcx.tcx.hir().parent_iter(id) {
+            match node {
+                hir::Node::Expr(&hir::Expr {
+                    kind: hir::ExprKind::Closure(hir::Closure { .. }),
+                    ..
+                }) => {
+                    parent_item = node;
+                    break;
+                }
+                hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => break,
+                _ => {}
+            }
+        }
 
-        if let (Some(expr), Some(_), Some((fn_id, fn_decl, _, _))) =
-            (expression, blk_id, fcx.get_node_fn_decl(parent_item))
-        {
+        if let (Some(expr), Some(_), Some(fn_decl)) = (expression, blk_id, parent_item.fn_decl()) {
             fcx.suggest_missing_break_or_return_expr(
-                &mut err, expr, fn_decl, expected, found, id, fn_id,
+                &mut err,
+                expr,
+                fn_decl,
+                expected,
+                found,
+                id,
+                parent_id.into(),
             );
         }
 

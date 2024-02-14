@@ -7,6 +7,7 @@ mod assert {
     where
         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>, //~ ERROR cannot find type `Dst` in this scope
         //~^ the constant `ASSUME_ALIGNMENT` is not of type `Assume`
+        //~| ERROR: mismatched types
     {
     }
 }

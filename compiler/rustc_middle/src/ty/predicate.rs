@@ -29,6 +29,16 @@ pub struct Predicate<'tcx>(
     pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
 );
 
+impl<'tcx> rustc_type_ir::visit::Flags for Predicate<'tcx> {
+    fn flags(&self) -> TypeFlags {
+        self.0.flags
+    }
+
+    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
+        self.0.outer_exclusive_binder
+    }
+}
+
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `ty::Binder<'tcx, PredicateKind<'tcx>>`.
     #[inline]
@@ -36,11 +46,13 @@ impl<'tcx> Predicate<'tcx> {
         self.0.internee
     }
 
+    // FIXME(compiler-errors): Think about removing this.
     #[inline(always)]
     pub fn flags(self) -> TypeFlags {
         self.0.flags
     }
 
+    // FIXME(compiler-errors): Think about removing this.
     #[inline(always)]
     pub fn outer_exclusive_binder(self) -> DebruijnIndex {
         self.0.outer_exclusive_binder

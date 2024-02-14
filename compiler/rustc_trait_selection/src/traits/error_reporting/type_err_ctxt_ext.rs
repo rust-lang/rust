@@ -236,9 +236,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        // It could be that we don't report an error because we have seen an `ErrorReported` from another source.
-        // We should probably be able to fix most of these, but some are delayed bugs that get a proper error
-        // after this function.
+        // It could be that we don't report an error because we have seen an `ErrorReported` from
+        // another source. We should probably be able to fix most of these, but some are delayed
+        // bugs that get a proper error after this function.
         reported.unwrap_or_else(|| self.dcx().delayed_bug("failed to report fulfillment errors"))
     }
 
@@ -519,7 +519,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 trait_ref,
                                 span,
                             ) {
-                                GetSafeTransmuteErrorAndReason::Silent => return self.dcx().span_delayed_bug(span, "silent safe transmute error"),
+                                GetSafeTransmuteErrorAndReason::Silent => {
+                                    return self.dcx().span_delayed_bug(
+                                        span, "silent safe transmute error"
+                                    );
+                                }
                                 GetSafeTransmuteErrorAndReason::Error {
                                     err_msg,
                                     safe_transmute_explanation,
@@ -3112,10 +3116,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             obligation.param_env,
             trait_ref.args.const_at(3),
         ) else {
-            span_bug!(
+            self.dcx().span_delayed_bug(
                 span,
-                "Unable to construct rustc_transmute::Assume where it was previously possible"
+                "Unable to construct rustc_transmute::Assume where it was previously possible",
             );
+            return GetSafeTransmuteErrorAndReason::Silent;
         };
 
         match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(

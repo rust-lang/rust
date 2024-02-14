@@ -23,6 +23,7 @@ impl Simd for i32x4 {
 pub struct T<S: Simd>([S::Lane; S::SIZE]);
 //~^ ERROR unconstrained generic constant
 //~| ERROR SIMD vector element type should be a primitive scalar
+//~| ERROR unconstrained generic constant
 
 extern "platform-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
@@ -37,6 +38,7 @@ pub fn main() {
         }
         for i in 0_i32..4 {
             assert_eq!(i, simd_extract(t, i as u32));
+            //~^ ERROR: use of moved value: `t`
         }
     }
 }

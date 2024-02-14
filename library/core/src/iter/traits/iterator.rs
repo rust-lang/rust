@@ -89,8 +89,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     ///
@@ -249,8 +247,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     /// assert_eq!(a.iter().count(), 3);
@@ -279,8 +275,6 @@ pub trait Iterator {
     /// returned, `last()` will then return the last element it saw.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -323,8 +317,6 @@ pub trait Iterator {
     /// [`next`]: Iterator::next
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// #![feature(iter_advance_by)]
@@ -431,8 +423,6 @@ pub trait Iterator {
     /// The method will panic if the given step is `0`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [0, 1, 2, 3, 4, 5];
@@ -1342,8 +1332,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     ///
@@ -1434,8 +1422,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3, 4];
     ///
@@ -1485,8 +1471,6 @@ pub trait Iterator {
     /// [`flatten`]: Iterator::flatten
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let words = ["alpha", "beta", "gamma"];
@@ -1765,8 +1749,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// // an iterator which alternates between Some and None
     /// struct Alternate {
@@ -1910,8 +1892,6 @@ pub trait Iterator {
     /// retaining ownership of the original iterator.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut words = ["hello", "world", "of", "Rust"].into_iter();
@@ -2220,8 +2200,6 @@ pub trait Iterator {
     /// [`partition_in_place()`]: Iterator::partition_in_place
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3193,8 +3171,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     /// let b: Vec<u32> = Vec::new();
@@ -3231,8 +3207,6 @@ pub trait Iterator {
     /// ```
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3420,8 +3394,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [(1, 2), (3, 4), (5, 6)];
     ///
@@ -3457,8 +3429,6 @@ pub trait Iterator {
     /// iterator over `T`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3537,8 +3507,6 @@ pub trait Iterator {
     /// original iterator is empty, the resulting iterator will also be empty.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3624,8 +3592,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     /// let sum: i32 = a.iter().sum();
@@ -3702,8 +3668,6 @@ pub trait Iterator {
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// #![feature(iter_order_by)]
@@ -3790,8 +3754,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(iter_order_by)]
     ///
@@ -3862,8 +3824,6 @@ pub trait Iterator {
     /// another with respect to the specified equality function.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// #![feature(iter_order_by)]

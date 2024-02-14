@@ -522,7 +522,8 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
     for (p, _) in predicates {
         if let Some(poly_trait_ref) = p.as_trait_clause() {
             if Some(poly_trait_ref.def_id()) == sized_trait {
-                types_without_default_bounds.remove(&poly_trait_ref.self_ty().skip_binder());
+                // FIXME(#120456) - is `swap_remove` correct?
+                types_without_default_bounds.swap_remove(&poly_trait_ref.self_ty().skip_binder());
                 continue;
             }
         }

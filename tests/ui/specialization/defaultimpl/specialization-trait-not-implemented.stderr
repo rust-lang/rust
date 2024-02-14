@@ -8,27 +8,15 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0599]: the method `foo_one` exists for struct `MyStruct`, but its trait bounds were not satisfied
+error[E0599]: no method named `foo_one` found for struct `MyStruct` in the current scope
   --> $DIR/specialization-trait-not-implemented.rs:22:29
    |
 LL | struct MyStruct;
-   | --------------- method `foo_one` not found for this struct because it doesn't satisfy `MyStruct: Foo`
+   | --------------- method `foo_one` not found for this struct
 ...
 LL |     println!("{}", MyStruct.foo_one());
-   |                             ^^^^^^^ method cannot be called on `MyStruct` due to unsatisfied trait bounds
+   |                             ^^^^^^^ method not found in `MyStruct`
    |
-note: trait bound `MyStruct: Foo` was not satisfied
-  --> $DIR/specialization-trait-not-implemented.rs:14:1
-   |
-LL | default impl<T> Foo for T {
-   | ^^^^^^^^^^^^^^^^---^^^^^-
-   | |
-   | unsatisfied trait bound introduced here
-note: the trait `Foo` must be implemented
-  --> $DIR/specialization-trait-not-implemented.rs:7:1
-   |
-LL | trait Foo {
-   | ^^^^^^^^^
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Foo` defines an item `foo_one`, perhaps you need to implement it
   --> $DIR/specialization-trait-not-implemented.rs:7:1

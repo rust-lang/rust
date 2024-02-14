@@ -3,6 +3,7 @@ FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
+  clang-15 \
   g++ \
   make \
   ninja-build \
@@ -45,6 +46,9 @@ ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
 ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnu
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
+
+# Fuchsia clang does not have wasm target enabled, use system clang.
+ENV CC_wasm32_unknown_unknown=clang-15
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
