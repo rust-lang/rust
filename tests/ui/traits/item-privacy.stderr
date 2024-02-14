@@ -12,7 +12,7 @@ help: trait `A` which provides `a` is implemented but not in scope; perhaps you 
    |
 LL + use method::A;
    |
-help: there is a method with a similar name
+help: there is a method `b` with a similar name
    |
 LL |     S.b();
    |       ~
@@ -34,7 +34,7 @@ help: trait `B` which provides `b` is implemented but not in scope; perhaps you 
    |
 LL + use method::B;
    |
-help: there is a method with a similar name
+help: there is a method `c` with a similar name
    |
 LL |     S.c();
    |       ~
@@ -111,7 +111,7 @@ help: trait `A` which provides `A` is implemented but not in scope; perhaps you 
    |
 LL + use assoc_const::A;
    |
-help: there is an associated constant with a similar name
+help: there is an associated constant `B` with a similar name
    |
 LL |     S::B;
    |        ~
@@ -130,7 +130,7 @@ help: trait `B` which provides `B` is implemented but not in scope; perhaps you 
    |
 LL + use assoc_const::B;
    |
-help: there is a method with a similar name
+help: there is a method `b` with a similar name
    |
 LL |     S::b;
    |        ~

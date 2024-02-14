@@ -14,7 +14,7 @@ help: trait `Trait` which provides `trait_method` is implemented but not in scop
    |
 LL + use reexported_trait::Trait;
    |
-help: there is a method with a similar name
+help: there is a method `trait_method_b` with a similar name
    |
 LL |     reexported_trait::FooStruct.trait_method_b();
    |                                 ~~~~~~~~~~~~~~
@@ -35,7 +35,7 @@ help: trait `TraitB` which provides `trait_method_b` is implemented but not in s
    |
 LL + use reexported_trait::TraitBRename;
    |
-help: there is a method with a similar name
+help: there is a method `trait_method` with a similar name
    |
 LL |     reexported_trait::FooStruct.trait_method();
    |                                 ~~~~~~~~~~~~

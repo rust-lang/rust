@@ -9,7 +9,7 @@ note: method is available for `Pin<&mut S>`
    |
 LL |     fn x(self: Pin<&mut Self>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: there is a method with a similar name
+help: there is a method `y` with a similar name
    |
 LL |     Pin::new(&S).y();
    |                  ~
@@ -25,7 +25,7 @@ note: method is available for `Pin<&S>`
    |
 LL |     fn y(self: Pin<&Self>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
-help: there is a method with a similar name
+help: there is a method `x` with a similar name
    |
 LL |     Pin::new(&mut S).x();
    |                      ~

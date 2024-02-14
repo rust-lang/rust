@@ -16,7 +16,7 @@ LL | struct Struct;
 LL |     Struct::fob();
    |             ^^^ function or associated item not found in `Struct`
    |
-help: there is an associated function with a similar name
+help: there is an associated function `foo` with a similar name
    |
 LL |     Struct::foo();
    |             ~~~

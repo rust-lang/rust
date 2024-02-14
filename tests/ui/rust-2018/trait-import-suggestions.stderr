@@ -12,7 +12,7 @@ help: trait `Foobar` which provides `foobar` is implemented but not in scope; pe
    |
 LL +     use crate::foo::foobar::Foobar;
    |
-help: there is a method with a similar name
+help: there is a method `bar` with a similar name
    |
 LL |         x.bar();
    |           ~~~
@@ -31,7 +31,7 @@ help: trait `Bar` which provides `bar` is implemented but not in scope; perhaps 
    |
 LL + use crate::foo::Bar;
    |
-help: there is a method with a similar name
+help: there is a method `foobar` with a similar name
    |
 LL |     x.foobar();
    |       ~~~~~~
@@ -42,7 +42,7 @@ error[E0599]: no method named `baz` found for type `u32` in the current scope
 LL |     x.baz();
    |       ^^^
    |
-help: there is a method with a similar name
+help: there is a method `bar` with a similar name
    |
 LL |     x.bar();
    |       ~~~
@@ -58,7 +58,7 @@ help: trait `FromStr` which provides `from_str` is implemented but not in scope;
    |
 LL + use std::str::FromStr;
    |
-help: there is an associated function with a similar name
+help: there is an associated function `from` with a similar name
    |
 LL |     let y = u32::from("33");
    |                  ~~~~

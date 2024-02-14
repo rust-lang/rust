@@ -7,7 +7,7 @@ LL |     fn owned(self: Box<Self>);
 LL |     x.owned();
    |       ^^^^^
    |
-help: there is a method with a similar name
+help: there is a method `to_owned` with a similar name
    |
 LL |     x.to_owned();
    |       ~~~~~~~~

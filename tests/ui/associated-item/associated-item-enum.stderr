@@ -7,7 +7,7 @@ LL | enum Enum { Variant }
 LL |     Enum::mispellable();
    |           ^^^^^^^^^^^ variant or associated item not found in `Enum`
    |
-help: there is an associated function with a similar name
+help: there is an associated function `misspellable` with a similar name
    |
 LL |     Enum::misspellable();
    |           ~~~~~~~~~~~~
@@ -21,7 +21,7 @@ LL | enum Enum { Variant }
 LL |     Enum::mispellable_trait();
    |           ^^^^^^^^^^^^^^^^^ variant or associated item not found in `Enum`
    |
-help: there is an associated function with a similar name
+help: there is an associated function `misspellable_trait` with a similar name
    |
 LL |     Enum::misspellable_trait();
    |           ~~~~~~~~~~~~~~~~~~
@@ -35,7 +35,7 @@ LL | enum Enum { Variant }
 LL |     Enum::MISPELLABLE;
    |           ^^^^^^^^^^^ variant or associated item not found in `Enum`
    |
-help: there is an associated constant with a similar name
+help: there is an associated constant `MISSPELLABLE` with a similar name
    |
 LL |     Enum::MISSPELLABLE;
    |           ~~~~~~~~~~~~

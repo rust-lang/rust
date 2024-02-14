@@ -12,7 +12,7 @@ LL +     use crate::m::TryIntoU32;
    |
 LL +     use std::convert::TryInto;
    |
-help: there is a method with a similar name
+help: there is a method `into` with a similar name
    |
 LL |         let _: u32 = 3u8.into().unwrap();
    |                          ~~~~

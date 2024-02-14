@@ -12,7 +12,7 @@ error[E0599]: no method named `g` found for reference `&Self` in the current sco
 LL |         self.g();
    |              ^
    |
-help: there is a method with a similar name
+help: there is a method `f` with a similar name
    |
 LL |         self.f();
    |              ~

@@ -78,7 +78,7 @@ note: if you're trying to build a new `👀`, consider using `👀::full_of_✨`
    |
 LL |     fn full_of_✨() -> 👀 {
    |     ^^^^^^^^^^^^^^^^^^^^^
-help: there is an associated function with a similar name
+help: there is an associated function `full_of_✨` with a similar name
    |
 LL |     👀::full_of_✨()
    |         ~~~~~~~~~~
