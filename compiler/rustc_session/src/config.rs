@@ -1558,7 +1558,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     user_cfg
 }
 
-pub(super) fn build_target_config(
+pub fn build_target_config(
     early_dcx: &EarlyDiagCtxt,
     opts: &Options,
     target_override: Option<Target>,

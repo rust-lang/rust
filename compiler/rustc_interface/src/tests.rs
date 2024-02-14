@@ -37,6 +37,17 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         output_file: None,
         temps_dir,
     };
+
+    let sysroot = match &sessopts.maybe_sysroot {
+        Some(sysroot) => sysroot.clone(),
+        None => {
+            rustc_session::filesearch::get_or_default_sysroot().expect("Failed finding sysroot")
+        }
+    };
+
+    let target_cfg =
+        rustc_session::config::build_target_config(&early_dcx, &sessopts, None, &sysroot);
+
     let sess = build_session(
         early_dcx,
         sessopts,
@@ -46,7 +57,8 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         vec![],
         Default::default(),
         None,
-        None,
+        target_cfg,
+        sysroot,
         "",
         None,
         Arc::default(),
