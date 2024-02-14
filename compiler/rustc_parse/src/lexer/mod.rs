@@ -16,7 +16,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
 mod diagnostics;
@@ -478,26 +478,26 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 }
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
+                let mut kind = token::Integer;
                 if empty_int {
                     let span = self.mk_sp(start, end);
                     self.dcx().emit_err(errors::NoDigitsLiteral { span });
-                    (token::Integer, sym::integer(0))
-                } else {
-                    if matches!(base, Base::Binary | Base::Octal) {
-                        let base = base as u32;
-                        let s = self.str_from_to(start + BytePos(2), end);
-                        for (idx, c) in s.char_indices() {
-                            let span = self.mk_sp(
-                                start + BytePos::from_usize(2 + idx),
-                                start + BytePos::from_usize(2 + idx + c.len_utf8()),
-                            );
-                            if c != '_' && c.to_digit(base).is_none() {
-                                self.dcx().emit_err(errors::InvalidDigitLiteral { span, base });
-                            }
+                    kind = token::Err;
+                } else if matches!(base, Base::Binary | Base::Octal) {
+                    let base = base as u32;
+                    let s = self.str_from_to(start + BytePos(2), end);
+                    for (idx, c) in s.char_indices() {
+                        let span = self.mk_sp(
+                            start + BytePos::from_usize(2 + idx),
+                            start + BytePos::from_usize(2 + idx + c.len_utf8()),
+                        );
+                        if c != '_' && c.to_digit(base).is_none() {
+                            self.dcx().emit_err(errors::InvalidDigitLiteral { span, base });
+                            kind = token::Err;
                         }
                     }
-                    (token::Integer, self.symbol_from_to(start, end))
                 }
+                (kind, self.symbol_from_to(start, end))
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
                 if empty_exponent {

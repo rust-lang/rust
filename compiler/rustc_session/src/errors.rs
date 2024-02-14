@@ -375,9 +375,6 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
     let token::Lit { kind, symbol, suffix, .. } = lit;
     let dcx = &sess.dcx;
     match err {
-        // `LexerError` is an error, but it was already reported
-        // by lexer, so here we don't report it the second time.
-        LitError::LexerError => {}
         LitError::InvalidSuffix => {
             if let Some(suffix) = suffix {
                 dcx.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix });

@@ -31,7 +31,6 @@ pub fn escape_byte_str_symbol(bytes: &[u8]) -> Symbol {
 
 #[derive(Debug)]
 pub enum LitError {
-    LexerError,
     InvalidSuffix,
     InvalidIntSuffix,
     InvalidFloatSuffix,
@@ -324,11 +323,7 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
     };
 
     let s = &s[if base != 10 { 2 } else { 0 }..];
-    u128::from_str_radix(s, base).map(|i| LitKind::Int(i.into(), ty)).map_err(|_| {
-        // Small bases are lexed as if they were base 10, e.g, the string
-        // might be `0b10201`. This will cause the conversion above to fail,
-        // but these kinds of errors are already reported by the lexer.
-        let from_lexer = base < 10 && s.chars().any(|c| c.to_digit(10).is_some_and(|d| d >= base));
-        if from_lexer { LitError::LexerError } else { LitError::IntTooLarge(base) }
-    })
+    u128::from_str_radix(s, base)
+        .map(|i| LitKind::Int(i.into(), ty))
+        .map_err(|_| LitError::IntTooLarge(base))
 }
