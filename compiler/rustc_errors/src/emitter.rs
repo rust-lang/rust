@@ -10,6 +10,7 @@
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileLines, FileName, SourceFile, Span};
 
+use crate::error::TranslateError;
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
@@ -559,6 +560,18 @@ pub struct SilentEmitter {
     pub fatal_note: String,
 }
 
+pub fn silent_translate<'a>(
+    message: &'a DiagnosticMessage,
+) -> Result<Cow<'_, str>, TranslateError<'_>> {
+    match message {
+        DiagnosticMessage::Str(msg) | DiagnosticMessage::Translated(msg) => Ok(Cow::Borrowed(msg)),
+        DiagnosticMessage::FluentIdentifier(identifier, _) => {
+            // Any value works here.
+            Ok(identifier.clone())
+        }
+    }
+}
+
 impl Translate for SilentEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         None
@@ -566,6 +579,16 @@ impl Translate for SilentEmitter {
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
         panic!("silent emitter attempted to translate message")
+    }
+
+    // Override `translate_message` for the silent emitter because eager translation of
+    // subdiagnostics result in a call to this.
+    fn translate_message<'a>(
+        &'a self,
+        message: &'a DiagnosticMessage,
+        _: &'a FluentArgs<'_>,
+    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
+        silent_translate(message)
     }
 }
 

@@ -846,7 +846,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         arm_ty,
                         arm_span,
                     ) {
-                        err.subdiagnostic(subdiag);
+                        err.subdiagnostic(self.dcx(), subdiag);
                     }
                     if let hir::Node::Expr(m) = self.tcx.parent_hir_node(scrut_hir_id)
                         && let hir::Node::Stmt(stmt) = self.tcx.parent_hir_node(m.hir_id)
@@ -892,7 +892,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     else_ty,
                     else_span,
                 ) {
-                    err.subdiagnostic(subdiag);
+                    err.subdiagnostic(self.dcx(), subdiag);
                 }
                 // don't suggest wrapping either blocks in `if .. {} else {}`
                 let is_empty_arm = |id| {

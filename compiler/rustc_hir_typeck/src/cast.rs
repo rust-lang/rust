@@ -993,19 +993,25 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.subdiagnostic(errors::DerefImplsIsEmpty {
-                        span: self.expr_span,
-                        deref_ty: fcx.ty_to_string(deref_ty),
-                    });
+                    err.subdiagnostic(
+                        fcx.dcx(),
+                        errors::DerefImplsIsEmpty {
+                            span: self.expr_span,
+                            deref_ty: fcx.ty_to_string(deref_ty),
+                        },
+                    );
                 }
 
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
                 // place of the cast.
-                err.subdiagnostic(errors::UseIsEmpty {
-                    lo: self.expr_span.shrink_to_lo(),
-                    hi: self.span.with_lo(self.expr_span.hi()),
-                    expr_ty: fcx.ty_to_string(self.expr_ty),
-                });
+                err.subdiagnostic(
+                    fcx.dcx(),
+                    errors::UseIsEmpty {
+                        lo: self.expr_span.shrink_to_lo(),
+                        hi: self.span.with_lo(self.expr_span.hi()),
+                        expr_ty: fcx.ty_to_string(self.expr_ty),
+                    },
+                );
             }
         }
     }
