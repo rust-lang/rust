@@ -270,16 +270,26 @@ When you edit your code locally, you are making changes to the version of
 rust-lang/rust that existed when you created your feature branch. As such, when
 you submit your PR it is possible that some of the changes that have been made
 to rust-lang/rust since then are in conflict with the changes you've made.
-
 When this happens, you need to resolve the conflicts before your changes can be
-merged. First, get a local copy of the conflicting changes: Checkout your local
-master branch with `git checkout master`, then `git pull upstream master` to
-update it with the most recent changes.
+merged. To do that, you need to rebase your work on top of rust-lang/rust.
 
 ### Rebasing
 
-You're now ready to start the rebasing process. Checkout the branch with your
-changes and execute `git rebase master`.
+To rebase your feature branch on top of the newest version of the master branch
+of rust-lang/rust, checkout your branch, and then run this command:
+
+```
+git pull --rebase https://github.com/rust-lang/rust.git master
+```
+
+> If you are met with the following error:
+> ```
+> error: cannot pull with rebase: Your index contains uncommitted changes.
+> error: please commit or stash them.
+> ```
+> it means that you have some uncommitted work in your working tree. In that
+> case, run `git stash` before rebasing, and then `git stash pop` after you
+> have rebased and fixed all conflicts.
 
 When you rebase a branch on master, all the changes on your branch are
 reapplied to the most recent version of master. In other words, Git tries to
