@@ -1048,9 +1048,14 @@ impl<'a> State<'a> {
             ast::TyKind::Infer => {
                 self.word("_");
             }
-            ast::TyKind::Err => {
+            ast::TyKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");
+                self.pclose();
+            }
+            ast::TyKind::Dummy => {
+                self.popen();
+                self.word("/*DUMMY*/");
                 self.pclose();
             }
             ast::TyKind::ImplicitSelf => {

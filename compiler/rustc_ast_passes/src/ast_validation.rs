@@ -881,7 +881,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         &item.vis,
                         errors::VisibilityNotPermittedNote::TraitImpl,
                     );
-                    if let TyKind::Err = self_ty.kind {
+                    // njn: use Dummy here
+                    if let TyKind::Err(_) = self_ty.kind {
                         this.dcx().emit_err(errors::ObsoleteAuto { span: item.span });
                     }
                     if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)

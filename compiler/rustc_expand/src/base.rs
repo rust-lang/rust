@@ -567,10 +567,13 @@ impl DummyResult {
     }
 
     /// A plain dummy type.
-    pub fn raw_ty(sp: Span, is_error: bool) -> P<ast::Ty> {
+    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
+        // FIXME(nnethercote): you might expect `ast::TyKind::Dummy` to be used here, but some
+        // values produced here end up being lowered to HIR, which `ast::TyKind::Dummy` does not
+        // support, so we use an empty tuple instead.
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
-            kind: if is_error { ast::TyKind::Err } else { ast::TyKind::Tup(ThinVec::new()) },
+            kind: ast::TyKind::Tup(ThinVec::new()),
             span: sp,
             tokens: None,
         })
@@ -611,7 +614,7 @@ impl MacResult for DummyResult {
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
-        Some(DummyResult::raw_ty(self.span, self.is_error))
+        Some(DummyResult::raw_ty(self.span))
     }
 
     fn make_arms(self: Box<DummyResult>) -> Option<SmallVec<[ast::Arm; 1]>> {
