@@ -858,6 +858,11 @@ impl<'a> Builder<'a> {
             Kind::Install => describe!(
                 install::Docs,
                 install::Std,
+                // During the Rust compiler (rustc) installation process, we copy the entire sysroot binary
+                // path (build/host/stage2/bin). Since the building tools also make their copy in the sysroot
+                // binary path, we must install rustc before the tools. Otherwise, the rust-installer will
+                // install the same binaries twice for each tool, leaving backup files (*.old) as a result.
+                install::Rustc,
                 install::Cargo,
                 install::RustAnalyzer,
                 install::Rustfmt,
@@ -866,7 +871,6 @@ impl<'a> Builder<'a> {
                 install::Miri,
                 install::LlvmTools,
                 install::Src,
-                install::Rustc,
             ),
             Kind::Run => describe!(
                 run::ExpandYamlAnchors,
