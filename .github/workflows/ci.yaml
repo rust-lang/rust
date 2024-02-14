@@ -65,6 +65,10 @@ jobs:
           rustup update --no-self-update ${{ env.RUST_CHANNEL }}
           rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
           rustup default ${{ env.RUST_CHANNEL }}
+      # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
+      - name: Install Rust Problem Matcher
+        if: matrix.os == 'ubuntu-latest'
+        run: echo "::add-matcher::.github/rust.json"
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
@@ -106,6 +110,10 @@ jobs:
       - name: clippy
         if: matrix.os == 'windows-latest'
         run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
+
+      - name: rustfmt
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt -- --check
 
   # Weird targets to catch non-portable code
   rust-cross:

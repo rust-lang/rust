@@ -9,27 +9,6 @@ use xshell::Shell;
 #[cfg(not(feature = "in-rust-tree"))]
 use xshell::cmd;
 
-#[cfg(not(feature = "in-rust-tree"))]
-#[test]
-fn check_code_formatting() {
-    let sh = &Shell::new().unwrap();
-    sh.change_dir(sourcegen::project_root());
-
-    let out = cmd!(sh, "rustup run stable rustfmt --version").read().unwrap();
-    if !out.contains("stable") {
-        panic!(
-            "Failed to run rustfmt from toolchain 'stable'. \
-                 Please run `rustup component add rustfmt --toolchain stable` to install it.",
-        )
-    }
-
-    let res = cmd!(sh, "rustup run stable cargo fmt -- --check").run();
-    if res.is_err() {
-        let _ = cmd!(sh, "rustup run stable cargo fmt").run();
-    }
-    res.unwrap()
-}
-
 #[test]
 fn check_lsp_extensions_docs() {
     let sh = &Shell::new().unwrap();
