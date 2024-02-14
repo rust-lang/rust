@@ -201,14 +201,24 @@ pub trait Write {
         impl<W: Write + ?Sized> SpecWriteFmt for &mut W {
             #[inline]
             default fn spec_write_fmt(mut self, args: Arguments<'_>) -> Result {
-                if let Some(s) = args.as_str() { self.write_str(s) } else { write(&mut self, args) }
+                if unsafe { core::intrinsics::is_val_statically_known(args) } {
+                    if let Some(s) = args.as_str() {
+                        return self.write_str(s);
+                    }
+                }
+                write(&mut self, args)
             }
         }
 
         impl<W: Write> SpecWriteFmt for &mut W {
             #[inline]
             fn spec_write_fmt(self, args: Arguments<'_>) -> Result {
-                if let Some(s) = args.as_str() { self.write_str(s) } else { write(self, args) }
+                if unsafe { core::intrinsics::is_val_statically_known(args) } {
+                    if let Some(s) = args.as_str() {
+                        return self.write_str(s);
+                    }
+                }
+                write(self, args)
             }
         }
 
@@ -1584,7 +1594,12 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
-        if let Some(s) = fmt.as_str() { self.buf.write_str(s) } else { write(self.buf, fmt) }
+        if unsafe { core::intrinsics::is_val_statically_known(fmt) } {
+            if let Some(s) = fmt.as_str() {
+                return self.write_str(s);
+            }
+        }
+        write(self.buf, fmt)
     }
 
     /// Flags for formatting
@@ -2275,7 +2290,12 @@ impl Write for Formatter<'_> {
 
     #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
-        if let Some(s) = args.as_str() { self.buf.write_str(s) } else { write(self.buf, args) }
+        if unsafe { core::intrinsics::is_val_statically_known(args) } {
+            if let Some(s) = args.as_str() {
+                return self.write_str(s);
+            }
+        }
+        write(self.buf, args)
     }
 }
 
