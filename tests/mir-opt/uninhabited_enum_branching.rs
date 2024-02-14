@@ -1,4 +1,6 @@
 //@ unit-test: UninhabitedEnumBranching
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+
 enum Empty {}
 
 // test matching an enum with uninhabited variants
