@@ -33,7 +33,7 @@ error[E0599]: no method named `inser` found for struct `rustc_confusables_across
 LL |     x.inser();
    |       ^^^^^
    |
-help: there is a method with a similar name
+help: there is a method `insert` with a similar name
    |
 LL |     x.insert();
    |       ~~~~~~

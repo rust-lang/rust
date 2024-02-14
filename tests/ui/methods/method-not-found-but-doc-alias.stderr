@@ -7,7 +7,7 @@ LL | struct Foo;
 LL |     Foo.quux();
    |         ^^^^
    |
-help: there is a method with a similar name
+help: there is a method `bar` with a similar name
    |
 LL |     Foo.bar();
    |         ~~~

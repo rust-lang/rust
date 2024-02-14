@@ -62,7 +62,7 @@ help: trait `TryInto` which provides `try_into` is implemented but not in scope;
    |
 LL + use std::convert::TryInto;
    |
-help: there is a method with a similar name
+help: there is a method `into` with a similar name
    |
 LL |     let _i: i16 = 0_i32.into().unwrap();
    |                         ~~~~

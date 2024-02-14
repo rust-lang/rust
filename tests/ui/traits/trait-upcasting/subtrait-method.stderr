@@ -10,7 +10,7 @@ note: `Baz` defines an item `c`, perhaps you need to implement it
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
-help: there is a method with a similar name
+help: there is a method `a` with a similar name
    |
 LL |     bar.a();
    |         ~
@@ -27,7 +27,7 @@ note: `Bar` defines an item `b`, perhaps you need to implement it
    |
 LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
-help: there is a method with a similar name
+help: there is a method `a` with a similar name
    |
 LL |     foo.a();
    |         ~
@@ -44,7 +44,7 @@ note: `Baz` defines an item `c`, perhaps you need to implement it
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
-help: there is a method with a similar name
+help: there is a method `a` with a similar name
    |
 LL |     foo.a();
    |         ~
@@ -61,7 +61,7 @@ note: `Bar` defines an item `b`, perhaps you need to implement it
    |
 LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
-help: there is a method with a similar name
+help: there is a method `a` with a similar name
    |
 LL |     foo.a();
    |         ~
@@ -78,7 +78,7 @@ note: `Baz` defines an item `c`, perhaps you need to implement it
    |
 LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
-help: there is a method with a similar name
+help: there is a method `a` with a similar name
    |
 LL |     foo.a();
    |         ~

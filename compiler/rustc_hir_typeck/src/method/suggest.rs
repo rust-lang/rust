@@ -1427,6 +1427,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let def_kind = similar_candidate.kind.as_def_kind();
         let an = self.tcx.def_kind_descr_article(def_kind, similar_candidate.def_id);
+        let msg = format!(
+            "there is {an} {} `{}` with a similar name",
+            self.tcx.def_kind_descr(def_kind, similar_candidate.def_id),
+            similar_candidate.name,
+        );
         // Methods are defined within the context of a struct and their first parameter
         // is always `self`, which represents the instance of the struct the method is
         // being called on Associated functions don’t take self as a parameter and they are
@@ -1443,7 +1448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // call expression the user wrote.
                     err.span_suggestion_verbose(
                         span,
-                        format!("there is {an} method with a similar name"),
+                        msg,
                         similar_candidate.name,
                         Applicability::MaybeIncorrect,
                     );
@@ -1453,8 +1458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_help(
                         tcx.def_span(similar_candidate.def_id),
                         format!(
-                            "there is {an} method `{}` with a similar name{}",
-                            similar_candidate.name,
+                            "{msg}{}",
                             if let None = args { "" } else { ", but with different arguments" },
                         ),
                     );
@@ -1466,22 +1470,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // function we found.
                 err.span_suggestion_verbose(
                     span,
-                    format!(
-                        "there is {an} {} with a similar name",
-                        self.tcx.def_kind_descr(def_kind, similar_candidate.def_id)
-                    ),
+                    msg,
                     similar_candidate.name,
                     Applicability::MaybeIncorrect,
                 );
             } else {
-                err.span_help(
-                    tcx.def_span(similar_candidate.def_id),
-                    format!(
-                        "there is {an} {} `{}` with a similar name",
-                        self.tcx.def_kind_descr(def_kind, similar_candidate.def_id),
-                        similar_candidate.name,
-                    ),
-                );
+                err.span_help(tcx.def_span(similar_candidate.def_id), msg);
             }
         } else if let Mode::Path = mode
             && args.unwrap_or(&[]).is_empty()
@@ -1489,24 +1483,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We have an associated item syntax and we found something that isn't an fn.
             err.span_suggestion_verbose(
                 span,
-                format!(
-                    "there is {an} {} with a similar name",
-                    self.tcx.def_kind_descr(def_kind, similar_candidate.def_id)
-                ),
+                msg,
                 similar_candidate.name,
                 Applicability::MaybeIncorrect,
             );
         } else {
             // The expression is a function or method call, but the item we found is an
             // associated const or type.
-            err.span_help(
-                tcx.def_span(similar_candidate.def_id),
-                format!(
-                    "there is {an} {} `{}` with a similar name",
-                    self.tcx.def_kind_descr(def_kind, similar_candidate.def_id),
-                    similar_candidate.name,
-                ),
-            );
+            err.span_help(tcx.def_span(similar_candidate.def_id), msg);
         }
     }
 

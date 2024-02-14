@@ -15,7 +15,7 @@ LL + use no_method_suggested_traits::foo::PubPub;
    |
 LL + use no_method_suggested_traits::qux::PrivPub;
    |
-help: there is a method with a similar name
+help: there is a method `method2` with a similar name
    |
 LL |     1u32.method2();
    |          ~~~~~~~
@@ -37,7 +37,7 @@ LL + use no_method_suggested_traits::foo::PubPub;
    |
 LL + use no_method_suggested_traits::qux::PrivPub;
    |
-help: there is a method with a similar name
+help: there is a method `method2` with a similar name
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method2();
    |                                            ~~~~~~~
@@ -56,7 +56,7 @@ help: trait `Bar` which provides `method` is implemented but not in scope; perha
    |
 LL + use foo::Bar;
    |
-help: there is a method with a similar name
+help: there is a method `method2` with a similar name
    |
 LL |     'a'.method2();
    |         ~~~~~~~
@@ -72,7 +72,7 @@ help: trait `Bar` which provides `method` is implemented but not in scope; perha
    |
 LL + use foo::Bar;
    |
-help: there is a method with a similar name
+help: there is a method `method2` with a similar name
    |
 LL |     std::rc::Rc::new(&mut Box::new(&'a')).method2();
    |                                           ~~~~~~~
@@ -93,7 +93,7 @@ help: trait `PubPub` which provides `method` is implemented but not in scope; pe
    |
 LL + use no_method_suggested_traits::foo::PubPub;
    |
-help: there is a method with a similar name
+help: there is a method `method3` with a similar name
    |
 LL |     1i32.method3();
    |          ~~~~~~~
@@ -109,7 +109,7 @@ help: trait `PubPub` which provides `method` is implemented but not in scope; pe
    |
 LL + use no_method_suggested_traits::foo::PubPub;
    |
-help: there is a method with a similar name
+help: there is a method `method3` with a similar name
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method3();
    |                                            ~~~~~~~
