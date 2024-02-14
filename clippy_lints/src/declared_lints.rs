@@ -51,6 +51,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON_INFO,
     crate::attrs::BLANKET_CLIPPY_RESTRICTION_LINTS_INFO,
     crate::attrs::DEPRECATED_CFG_ATTR_INFO,
+    crate::attrs::DEPRECATED_CLIPPY_CFG_ATTR_INFO,
     crate::attrs::DEPRECATED_SEMVER_INFO,
     crate::attrs::EMPTY_LINE_AFTER_DOC_COMMENTS_INFO,
     crate::attrs::EMPTY_LINE_AFTER_OUTER_ATTR_INFO,
