@@ -66,6 +66,10 @@ jobs:
           rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
           rustup default ${{ env.RUST_CHANNEL }}
 
+      - name: Install Rust Problem Matcher
+        if: matrix.os == 'ubuntu-latest'
+        run: echo "::add-matcher::.github/rust.json"
+
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
         with:
