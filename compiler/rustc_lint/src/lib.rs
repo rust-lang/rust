@@ -232,8 +232,9 @@ late_lint_methods!(
             MissingDebugImplementations: MissingDebugImplementations,
             MissingDoc: MissingDoc,
             AsyncFnInTrait: AsyncFnInTrait,
-            // Explicit Range
+            // Range data gathering
             ExplicitRange: ExplicitRange,
+            TraitImplRange: TraitImplRange,
         ]
     ]
 );

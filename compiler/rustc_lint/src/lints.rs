@@ -1842,3 +1842,7 @@ pub struct UnitBindingsDiag {
 #[derive(LintDiagnostic)]
 #[diag(lint_explicit_range)]
 pub struct ExplicitRangeDiag;
+
+#[derive(LintDiagnostic)]
+#[diag(lint_trait_impl_range)]
+pub struct TraitImplRangeDiag;

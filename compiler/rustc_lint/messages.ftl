@@ -591,3 +591,5 @@ lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
 
 lint_explicit_range = explicit usage of range type
+
+lint_trait_impl_range = public trait impl involving range type
