@@ -172,6 +172,8 @@ early_lint_methods!(
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
+            // Range data gathering
+            RangeSyntax: RangeSyntax,
         ]
     ]
 );

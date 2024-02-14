@@ -1,5 +1,5 @@
-use crate::lints::{ExplicitRangeDiag, TraitImplRangeDiag};
-use crate::{LateContext, LateLintPass, LintContext};
+use crate::lints::{ExplicitRangeDiag, RangeSyntaxDiag, TraitImplRangeDiag};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_session::config::CrateType;
@@ -327,8 +327,24 @@ declare_lint! {
     /// 
     /// [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
     pub(super) RANGE_SYNTAX,
-    Deny,
+    Allow,
     "usage of range syntax"
+}
+
+declare_lint_pass!(RangeSyntax => [RANGE_SYNTAX]);
+
+impl EarlyLintPass for RangeSyntax {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &rustc_ast::Expr) {
+        match expr.kind {
+            // Range, RangeInclusive - a..b, a..=b
+            rustc_ast::ExprKind::Range(Some(_), Some(_), _) |
+            // RangeFrom - a..
+            rustc_ast::ExprKind::Range(Some(_), None, _) => {
+                cx.emit_span_lint(RANGE_SYNTAX, expr.span, RangeSyntaxDiag);
+            }
+            _ => (),
+        }
+    }
 }
 
 declare_lint! {
