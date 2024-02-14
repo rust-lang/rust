@@ -2,9 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{
-    collections::VecDeque, fmt, fs, iter, path::PathBuf, process::Command, str::FromStr, sync,
-};
+use std::{collections::VecDeque, fmt, fs, iter, process::Command, str::FromStr, sync};
 
 use anyhow::{format_err, Context};
 use base_db::{
@@ -16,6 +14,7 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use stdx::always;
+use toolchain::Tool;
 use triomphe::Arc;
 
 use crate::{
@@ -163,12 +162,14 @@ impl fmt::Debug for ProjectWorkspace {
 
 fn get_toolchain_version(
     current_dir: &AbsPath,
-    cmd_path: Result<PathBuf, anyhow::Error>,
+    sysroot: Option<&Sysroot>,
+    tool: Tool,
     extra_env: &FxHashMap<String, String>,
     prefix: &str,
 ) -> Result<Option<Version>, anyhow::Error> {
     let cargo_version = utf8_stdout({
-        let mut cmd = Command::new(cmd_path?);
+        let mut cmd = Command::new(tool.path());
+        Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
         cmd.envs(extra_env);
         cmd.arg("--version").current_dir(current_dir);
         cmd
@@ -289,7 +290,8 @@ impl ProjectWorkspace {
 
                 let toolchain = get_toolchain_version(
                     cargo_toml.parent(),
-                    Sysroot::discover_tool(sysroot_ref, toolchain::Tool::Cargo),
+                    sysroot_ref,
+                    toolchain::Tool::Cargo,
                     &config.extra_env,
                     "cargo ",
                 )?;
@@ -370,9 +372,13 @@ impl ProjectWorkspace {
         let sysroot_ref = sysroot.as_ref().ok();
         let cfg_config = RustcCfgConfig::Rustc(sysroot_ref);
         let data_layout_config = RustcDataLayoutConfig::Rustc(sysroot_ref);
-        let rustc = Sysroot::discover_tool(sysroot_ref, toolchain::Tool::Rustc).map(Into::into);
-        let toolchain = match get_toolchain_version(project_json.path(), rustc, extra_env, "rustc ")
-        {
+        let toolchain = match get_toolchain_version(
+            project_json.path(),
+            sysroot_ref,
+            toolchain::Tool::Rustc,
+            extra_env,
+            "rustc ",
+        ) {
             Ok(it) => it,
             Err(e) => {
                 tracing::error!("{e}");
@@ -1615,10 +1621,8 @@ fn cargo_config_env(
     extra_env: &FxHashMap<String, String>,
     sysroot: Option<&Sysroot>,
 ) -> FxHashMap<String, String> {
-    let Ok(program) = Sysroot::discover_tool(sysroot, toolchain::Tool::Cargo) else {
-        return Default::default();
-    };
-    let mut cargo_config = Command::new(program);
+    let mut cargo_config = Command::new(Tool::Cargo.path());
+    Sysroot::set_rustup_toolchain_env(&mut cargo_config, sysroot);
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())

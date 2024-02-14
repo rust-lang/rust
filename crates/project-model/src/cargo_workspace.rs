@@ -243,7 +243,7 @@ impl CargoWorkspace {
         let targets = find_list_of_build_targets(config, cargo_toml, sysroot);
 
         let mut meta = MetadataCommand::new();
-        meta.cargo_path(Sysroot::discover_tool(sysroot, Tool::Cargo)?);
+        meta.cargo_path(Tool::Cargo.path());
         meta.manifest_path(cargo_toml.to_path_buf());
         match &config.features {
             CargoFeatures::All => {
@@ -291,6 +291,7 @@ impl CargoWorkspace {
 
         (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
             let mut command = meta.cargo_command();
+            Sysroot::set_rustup_toolchain_env(&mut command, sysroot);
             command.envs(&config.extra_env);
             let output = command.output()?;
             if !output.status.success() {
@@ -500,7 +501,8 @@ fn rustc_discover_host_triple(
     extra_env: &FxHashMap<String, String>,
     sysroot: Option<&Sysroot>,
 ) -> Option<String> {
-    let mut rustc = Command::new(Sysroot::discover_tool(sysroot, Tool::Rustc).ok()?);
+    let mut rustc = Command::new(Tool::Rustc.path());
+    Sysroot::set_rustup_toolchain_env(&mut rustc, sysroot);
     rustc.envs(extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);
@@ -528,8 +530,8 @@ fn cargo_config_build_target(
     extra_env: &FxHashMap<String, String>,
     sysroot: Option<&Sysroot>,
 ) -> Vec<String> {
-    let Ok(program) = Sysroot::discover_tool(sysroot, Tool::Cargo) else { return vec![] };
-    let mut cargo_config = Command::new(program);
+    let mut cargo_config = Command::new(Tool::Cargo.path());
+    Sysroot::set_rustup_toolchain_env(&mut cargo_config, sysroot);
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())

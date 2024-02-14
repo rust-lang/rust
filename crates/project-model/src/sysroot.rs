@@ -6,13 +6,13 @@
 
 use std::{env, fs, iter, ops, path::PathBuf, process::Command, sync::Arc};
 
-use anyhow::{format_err, Context, Result};
+use anyhow::{format_err, Result};
 use base_db::CrateName;
 use itertools::Itertools;
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
-use toolchain::{probe_for_binary, Tool};
+use toolchain::probe_for_binary;
 
 use crate::{utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath};
 
@@ -193,23 +193,9 @@ impl Sysroot {
         Ok(Sysroot::load(sysroot_dir, Some(sysroot_src_dir), metadata))
     }
 
-    pub fn discover_binary(&self, binary: &str) -> anyhow::Result<AbsPathBuf> {
-        toolchain::probe_for_binary(self.root.join("bin").join(binary).into())
-            .ok_or_else(|| anyhow::anyhow!("no rustc binary found in {}", self.root.join("bin")))
-            .and_then(|rustc| {
-                fs::metadata(&rustc).map(|_| AbsPathBuf::assert(rustc)).with_context(|| {
-                    format!(
-                        "failed to discover rustc in sysroot: {:?}",
-                        AsRef::<std::path::Path>::as_ref(&self.root)
-                    )
-                })
-            })
-    }
-
-    pub fn discover_tool(sysroot: Option<&Self>, tool: Tool) -> anyhow::Result<PathBuf> {
-        match sysroot {
-            Some(sysroot) => sysroot.discover_binary(tool.name()).map(Into::into),
-            None => Ok(tool.path()),
+    pub fn set_rustup_toolchain_env(cmd: &mut Command, sysroot: Option<&Self>) {
+        if let Some(sysroot) = sysroot {
+            cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(&sysroot.root));
         }
     }
 

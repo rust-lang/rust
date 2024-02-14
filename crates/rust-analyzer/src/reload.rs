@@ -24,7 +24,7 @@ use ide_db::{
 use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
-use project_model::{ProjectWorkspace, Sysroot, WorkspaceBuildScripts};
+use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
 use rustc_hash::FxHashSet;
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
@@ -468,16 +468,20 @@ impl GlobalState {
                     None => ws.find_sysroot_proc_macro_srv()?,
                 };
 
-                let env = match ws {
-                    ProjectWorkspace::Cargo { cargo_config_extra_env, .. } => {
-                        cargo_config_extra_env
-                            .iter()
-                            .chain(self.config.extra_env())
-                            .map(|(a, b)| (a.clone(), b.clone()))
-                            .collect()
-                    }
-                    _ => Default::default(),
-                };
+                let env =
+                    match ws {
+                        ProjectWorkspace::Cargo { cargo_config_extra_env, sysroot, .. } => {
+                            cargo_config_extra_env
+                                .iter()
+                                .chain(self.config.extra_env())
+                                .map(|(a, b)| (a.clone(), b.clone()))
+                                .chain(sysroot.as_ref().map(|it| {
+                                    ("RUSTUP_TOOLCHAIN".to_owned(), it.root().to_string())
+                                }))
+                                .collect()
+                        }
+                        _ => Default::default(),
+                    };
                 tracing::info!("Using proc-macro server at {path}");
 
                 ProcMacroServer::spawn(path.clone(), &env).map_err(|err| {
@@ -620,7 +624,7 @@ impl GlobalState {
                 0,
                 Box::new(move |msg| sender.send(msg).unwrap()),
                 config,
-                toolchain::cargo(),
+                None,
                 self.config.root_path().clone(),
             )],
             flycheck::InvocationStrategy::PerWorkspace => {
@@ -631,7 +635,7 @@ impl GlobalState {
                         ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((
                             id,
                             cargo.workspace_root(),
-                            Sysroot::discover_tool(sysroot.as_ref().ok(), toolchain::Tool::Cargo),
+                            sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
                         )),
                         ProjectWorkspace::Json { project, sysroot, .. } => {
                             // Enable flychecks for json projects if a custom flycheck command was supplied
@@ -640,23 +644,20 @@ impl GlobalState {
                                 FlycheckConfig::CustomCommand { .. } => Some((
                                     id,
                                     project.path(),
-                                    Sysroot::discover_tool(
-                                        sysroot.as_ref().ok(),
-                                        toolchain::Tool::Cargo,
-                                    ),
+                                    sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
                                 )),
                                 _ => None,
                             }
                         }
                         ProjectWorkspace::DetachedFiles { .. } => None,
                     })
-                    .map(|(id, root, cargo)| {
+                    .map(|(id, root, sysroot_root)| {
                         let sender = sender.clone();
                         FlycheckHandle::spawn(
                             id,
                             Box::new(move |msg| sender.send(msg).unwrap()),
                             config.clone(),
-                            cargo.unwrap_or_else(|_| toolchain::cargo()),
+                            sysroot_root,
                             root.to_path_buf(),
                         )
                     })
