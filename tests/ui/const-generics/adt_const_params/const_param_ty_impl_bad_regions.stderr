@@ -1,0 +1,22 @@
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_regions.rs:13:27
+   |
+LL | struct Bar<T>(T);
+   |               - this field does not implement `ConstParamTy`
+...
+LL | impl<'a> ConstParamTy for Bar<Foo<'a>> {}
+   |                           ^^^^^^^^^^^^
+   |
+note: the `ConstParamTy` impl for `Foo<'a>` requires that `'a: 'static`
+  --> $DIR/const_param_ty_impl_bad_regions.rs:10:15
+   |
+LL | struct Bar<T>(T);
+   |               ^
+help: consider restricting type parameter `'a`
+   |
+LL | impl<'a: 'static> ConstParamTy for Bar<Foo<'a>> {}
+   |        +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0204`.

@@ -74,9 +74,16 @@ hir_analysis_const_impl_for_non_const_trait =
     .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
     .adding = adding a non-const method body in the future would be a breaking change
 
+hir_analysis_const_param_ty_impl_on_infringing_inner_ty =
+    the trait `ConstParamTy` cannot be implemented for this type
+    .label = this type does not implement `ConstParamTy`
+
+hir_analysis_const_param_ty_impl_on_infringing_inner_ty_sugg =
+    consider annotating with `#[derive(ConstParamTy)]`
+
 hir_analysis_const_param_ty_impl_on_non_adt =
     the trait `ConstParamTy` may not be implemented for this type
-    .label = type is not a structure or enumeration
+    .label = the type `{$ty}` is not a structure or enumeration
 
 hir_analysis_const_specialize = cannot specialize on const impl with non-const impl
 

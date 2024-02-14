@@ -262,9 +262,33 @@ pub struct CopyImplOnNonAdt {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_const_param_ty_impl_on_non_adt)]
-pub struct ConstParamTyImplOnNonAdt {
+pub struct ConstParamTyImplOnNonAdt<'tcx> {
     #[primary_span]
     #[label]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_const_param_ty_impl_on_infringing_inner_ty)]
+pub struct ConstParamTyImplOnInfringingInnerTy {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub def_spans: Vec<Span>,
+    #[subdiagnostic]
+    pub suggs: Vec<ConstParamTyImplOnInfringingInnerTySugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_analysis_const_param_ty_impl_on_infringing_inner_ty_sugg,
+    applicability = "maybe-incorrect",
+    style = "verbose",
+    code = "#[derive(ConstParamTy)]\n"
+)]
+pub struct ConstParamTyImplOnInfringingInnerTySugg {
+    #[primary_span]
     pub span: Span,
 }
 
