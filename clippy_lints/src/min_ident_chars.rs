@@ -2,8 +2,8 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_item, Visitor};
-use rustc_hir::{GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind, UsePath};
+use rustc_hir::intravisit::{walk_item, walk_trait_item, Visitor};
+use rustc_hir::{GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind, TraitItem, UsePath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
@@ -64,6 +64,14 @@ impl LateLintPass<'_> for MinIdentChars {
         }
 
         walk_item(&mut IdentVisitor { conf: self, cx }, item);
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
+        if self.min_ident_chars_threshold == 0 {
+            return;
+        }
+
+        walk_trait_item(&mut IdentVisitor { conf: self, cx }, item);
     }
 
     // This is necessary as `Node::Pat`s are not visited in `visit_id`. :/

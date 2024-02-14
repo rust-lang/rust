@@ -37,6 +37,12 @@ struct Vec4 {
 
 struct AA<T, E>(T, E);
 
+trait Trait {
+    const A: u32 = 0;
+    type A;
+    fn a() {}
+}
+
 fn main() {
     // Allowed idents
     let w = 1;
