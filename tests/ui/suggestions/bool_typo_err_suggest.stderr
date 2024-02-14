@@ -15,7 +15,7 @@ error[E0425]: cannot find value `False` in this scope
 LL |     let y = False;
    |             ^^^^^ not found in this scope
    |
-help: you may want to use a bool value instead
+help: you may want to use a bool value instead (notice the capitalization difference)
    |
 LL |     let y = false;
    |             ~~~~~
