@@ -95,7 +95,7 @@ fn prepare_libcore(
     )?;
     if cross_compile {
         walk_dir(
-            "cross_patches",
+            "patches/cross_patches",
             |_| Ok(()),
             |file_path: &Path| {
                 patches.push(file_path.to_path_buf());
@@ -161,7 +161,7 @@ where
     run_command(&[&"git", &"checkout", &checkout_commit], Some(&repo_path))?;
     let filter = format!("-{}-", clone_result.repo_name);
     walk_dir(
-        "crate_patches",
+        "patches/crate_patches",
         |_| Ok(()),
         |file_path| {
             let patch = file_path.as_os_str().to_str().unwrap();
