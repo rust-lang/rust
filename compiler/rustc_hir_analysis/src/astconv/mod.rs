@@ -758,8 +758,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // since we should have emitten an error for them earlier, and they will
             // not be well-formed!
             if polarity == ty::ImplPolarity::Negative {
-                self.tcx().dcx().span_delayed_bug(
-                    binding.span,
+                assert!(
+                    self.tcx().dcx().has_errors().is_some(),
                     "negative trait bounds should not have bindings",
                 );
                 continue;
