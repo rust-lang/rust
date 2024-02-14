@@ -85,7 +85,7 @@ pub(super) fn check_item(
 
         (_, _, Unsafety::Unsafe, Negative) => {
             // Reported in AST validation
-            tcx.dcx().span_delayed_bug(tcx.def_span(def_id), "unsafe negative impl");
+            assert!(tcx.dcx().has_errors().is_some(), "unsafe negative impl");
             Ok(())
         }
         (_, _, Unsafety::Normal, Negative)

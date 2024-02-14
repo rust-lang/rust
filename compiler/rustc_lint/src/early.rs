@@ -431,14 +431,13 @@ pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
     for (id, lints) in cx.context.buffered.map {
-        for early_lint in lints {
-            sess.dcx().span_delayed_bug(
-                early_lint.span,
-                format!(
-                    "failed to process buffered lint here (dummy = {})",
-                    id == ast::DUMMY_NODE_ID
-                ),
+        if !lints.is_empty() {
+            assert!(
+                sess.dcx().has_errors().is_some(),
+                "failed to process buffered lint here (dummy = {})",
+                id == ast::DUMMY_NODE_ID
             );
+            break;
         }
     }
 }

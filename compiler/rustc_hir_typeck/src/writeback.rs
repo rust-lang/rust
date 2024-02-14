@@ -221,8 +221,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             if base_ty.is_none() {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
-                // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().dcx().span_delayed_bug(e.span, format!("bad base: `{base:?}`"));
+                // emitted. (#64638)
+                assert!(self.tcx().dcx().has_errors().is_some(), "bad base: `{base:?}`");
             }
             if let Some(base_ty) = base_ty
                 && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()

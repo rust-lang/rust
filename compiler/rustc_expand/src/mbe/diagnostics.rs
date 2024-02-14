@@ -34,10 +34,10 @@ pub(super) fn failed_to_match_macro<'cx>(
     if try_success_result.is_ok() {
         // Nonterminal parser recovery might turn failed matches into successful ones,
         // but for that it must have emitted an error already
-        tracker
-            .cx
-            .dcx()
-            .span_delayed_bug(sp, "Macro matching returned a success on the second try");
+        assert!(
+            tracker.cx.dcx().has_errors().is_some(),
+            "Macro matching returned a success on the second try"
+        );
     }
 
     if let Some(result) = tracker.result {
