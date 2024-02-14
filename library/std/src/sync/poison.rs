@@ -1,9 +1,13 @@
 use crate::error::Error;
 use crate::fmt;
+
+#[cfg(panic = "unwind")]
 use crate::sync::atomic::{AtomicBool, Ordering};
+#[cfg(panic = "unwind")]
 use crate::thread;
 
 pub struct Flag {
+    #[cfg(panic = "unwind")]
     failed: AtomicBool,
 }
 
@@ -21,7 +25,10 @@ pub struct Flag {
 impl Flag {
     #[inline]
     pub const fn new() -> Flag {
-        Flag { failed: AtomicBool::new(false) }
+        Flag {
+            #[cfg(panic = "unwind")]
+            failed: AtomicBool::new(false),
+        }
     }
 
     /// Check the flag for an unguarded borrow, where we only care about existing poison.
@@ -33,11 +40,15 @@ impl Flag {
     /// Check the flag for a guarded borrow, where we may also set poison when `done`.
     #[inline]
     pub fn guard(&self) -> LockResult<Guard> {
-        let ret = Guard { panicking: thread::panicking() };
+        let ret = Guard {
+            #[cfg(panic = "unwind")]
+            panicking: thread::panicking(),
+        };
         if self.get() { Err(PoisonError::new(ret)) } else { Ok(ret) }
     }
 
     #[inline]
+    #[cfg(panic = "unwind")]
     pub fn done(&self, guard: &Guard) {
         if !guard.panicking && thread::panicking() {
             self.failed.store(true, Ordering::Relaxed);
@@ -45,17 +56,30 @@ impl Flag {
     }
 
     #[inline]
+    #[cfg(not(panic = "unwind"))]
+    pub fn done(&self, _guard: &Guard) {}
+
+    #[inline]
+    #[cfg(panic = "unwind")]
     pub fn get(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
     }
 
+    #[inline(always)]
+    #[cfg(not(panic = "unwind"))]
+    pub fn get(&self) -> bool {
+        false
+    }
+
     #[inline]
     pub fn clear(&self) {
+        #[cfg(panic = "unwind")]
         self.failed.store(false, Ordering::Relaxed)
     }
 }
 
 pub struct Guard {
+    #[cfg(panic = "unwind")]
     panicking: bool,
 }
 
@@ -95,6 +119,8 @@ pub struct Guard {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PoisonError<T> {
     guard: T,
+    #[cfg(not(panic = "unwind"))]
+    _never: !,
 }
 
 /// An enumeration of possible errors associated with a [`TryLockResult`] which
@@ -165,9 +191,25 @@ impl<T> PoisonError<T> {
     ///
     /// This is generally created by methods like [`Mutex::lock`](crate::sync::Mutex::lock)
     /// or [`RwLock::read`](crate::sync::RwLock::read).
+    ///
+    /// This method may panic if std was built with `panic="abort"`.
+    #[cfg(panic = "unwind")]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard }
+    }
+
+    /// Creates a `PoisonError`.
+    ///
+    /// This is generally created by methods like [`Mutex::lock`](crate::sync::Mutex::lock)
+    /// or [`RwLock::read`](crate::sync::RwLock::read).
+    ///
+    /// This method may panic if std was built with `panic="abort"`.
+    #[cfg(not(panic = "unwind"))]
+    #[stable(feature = "sync_poison", since = "1.2.0")]
+    #[track_caller]
+    pub fn new(_guard: T) -> PoisonError<T> {
+        panic!("PoisonError created in a libstd built with panic=\"abort\"")
     }
 
     /// Consumes this error indicating that a lock is poisoned, returning the
@@ -225,6 +267,7 @@ impl<T> From<PoisonError<T>> for TryLockError<T> {
 impl<T> fmt::Debug for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(..) => "Poisoned(..)".fmt(f),
             TryLockError::WouldBlock => "WouldBlock".fmt(f),
         }
@@ -235,6 +278,7 @@ impl<T> fmt::Debug for TryLockError<T> {
 impl<T> fmt::Display for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(..) => "poisoned lock: another task failed inside",
             TryLockError::WouldBlock => "try_lock failed because the operation would block",
         }
@@ -247,6 +291,7 @@ impl<T> Error for TryLockError<T> {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(ref p) => p.description(),
             TryLockError::WouldBlock => "try_lock failed because the operation would block",
         }
@@ -255,6 +300,7 @@ impl<T> Error for TryLockError<T> {
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         match *self {
+            #[cfg(panic = "unwind")]
             TryLockError::Poisoned(ref p) => Some(p),
             _ => None,
         }
@@ -267,6 +313,7 @@ where
 {
     match result {
         Ok(t) => Ok(f(t)),
+        #[cfg(panic = "unwind")]
         Err(PoisonError { guard }) => Err(PoisonError::new(f(guard))),
     }
 }
