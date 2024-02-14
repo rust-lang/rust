@@ -651,6 +651,7 @@ compiler-team = [
     "@petrochenkov",
     "@davidtwco",
     "@estebank",
+    "@lcnr",
     "@oli-obk",
     "@pnkfelix",
     "@wesleywiser",
@@ -680,7 +681,6 @@ infra-ci = [
     "@Kobzol",
 ]
 rustdoc = [
-    "@jsha",
     "@GuillaumeGomez",
     "@notriddle",
     "@fmease",

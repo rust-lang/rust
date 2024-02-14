@@ -566,6 +566,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 {
                     return;
                 }
+
+                // For every `default impl`, there's always a non-default `impl`
+                // that will *also* apply. There's no reason to register a candidate
+                // for this impl, since it is *not* proof that the trait goal holds.
+                if self.tcx().defaultness(impl_def_id).is_default() {
+                    return;
+                }
+
                 if self.reject_fn_ptr_impls(
                     impl_def_id,
                     obligation,

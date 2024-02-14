@@ -78,6 +78,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::io::Write;
 use std::num::NonZeroUsize;
+use std::ops::DerefMut;
 use std::panic;
 use std::path::{Path, PathBuf};
 
@@ -666,22 +667,51 @@ impl DiagCtxt {
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
+        // Use destructuring so that if a field gets added to `DiagCtxtInner`, it's impossible to
+        // fail to update this method as well.
         let mut inner = self.inner.borrow_mut();
-        inner.stashed_err_count = 0;
-        inner.deduplicated_err_count = 0;
-        inner.deduplicated_warn_count = 0;
-        inner.must_produce_diag = false;
-        inner.has_printed = false;
-        inner.suppressed_expected_diag = false;
+        let DiagCtxtInner {
+            flags: _,
+            err_guars,
+            lint_err_guars,
+            delayed_bugs,
+            stashed_err_count,
+            deduplicated_err_count,
+            deduplicated_warn_count,
+            emitter: _,
+            must_produce_diag,
+            has_printed,
+            suppressed_expected_diag,
+            taught_diagnostics,
+            emitted_diagnostic_codes,
+            emitted_diagnostics,
+            stashed_diagnostics,
+            future_breakage_diagnostics,
+            check_unstable_expect_diagnostics,
+            unstable_expect_diagnostics,
+            fulfilled_expectations,
+            ice_file: _,
+        } = inner.deref_mut();
 
-        // actually free the underlying memory (which `clear` would not do)
-        inner.err_guars = Default::default();
-        inner.lint_err_guars = Default::default();
-        inner.delayed_bugs = Default::default();
-        inner.taught_diagnostics = Default::default();
-        inner.emitted_diagnostic_codes = Default::default();
-        inner.emitted_diagnostics = Default::default();
-        inner.stashed_diagnostics = Default::default();
+        // For the `Vec`s and `HashMap`s, we overwrite with an empty container to free the
+        // underlying memory (which `clear` would not do).
+        *err_guars = Default::default();
+        *lint_err_guars = Default::default();
+        *delayed_bugs = Default::default();
+        *stashed_err_count = 0;
+        *deduplicated_err_count = 0;
+        *deduplicated_warn_count = 0;
+        *must_produce_diag = false;
+        *has_printed = false;
+        *suppressed_expected_diag = false;
+        *taught_diagnostics = Default::default();
+        *emitted_diagnostic_codes = Default::default();
+        *emitted_diagnostics = Default::default();
+        *stashed_diagnostics = Default::default();
+        *future_breakage_diagnostics = Default::default();
+        *check_unstable_expect_diagnostics = false;
+        *unstable_expect_diagnostics = Default::default();
+        *fulfilled_expectations = Default::default();
     }
 
     /// Stash a given diagnostic with the given `Span` and [`StashKey`] as the key.
@@ -780,11 +810,12 @@ impl DiagCtxt {
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
             (0, _) => {
-                // Use `inner.emitter` directly, otherwise the warning might not be emitted, e.g.
-                // with a configuration like `--cap-lints allow --force-warn bare_trait_objects`.
-                inner
-                    .emitter
-                    .emit_diagnostic(Diagnostic::new(Warning, DiagnosticMessage::Str(warnings)));
+                // Use `ForceWarning` rather than `Warning` to guarantee emission, e.g. with a
+                // configuration like `--cap-lints allow --force-warn bare_trait_objects`.
+                inner.emit_diagnostic(Diagnostic::new(
+                    ForceWarning(None),
+                    DiagnosticMessage::Str(warnings),
+                ));
             }
             (_, 0) => {
                 inner.emit_diagnostic(Diagnostic::new(Error, errors));
@@ -812,20 +843,23 @@ impl DiagCtxt {
                 error_codes.sort();
                 if error_codes.len() > 1 {
                     let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
-                    inner.failure_note(format!(
+                    let msg1 = format!(
                         "Some errors have detailed explanations: {}{}",
                         error_codes[..limit].join(", "),
                         if error_codes.len() > 9 { "..." } else { "." }
-                    ));
-                    inner.failure_note(format!(
+                    );
+                    let msg2 = format!(
                         "For more information about an error, try `rustc --explain {}`.",
                         &error_codes[0]
-                    ));
+                    );
+                    inner.emit_diagnostic(Diagnostic::new(FailureNote, msg1));
+                    inner.emit_diagnostic(Diagnostic::new(FailureNote, msg2));
                 } else {
-                    inner.failure_note(format!(
+                    let msg = format!(
                         "For more information about this error, try `rustc --explain {}`.",
                         &error_codes[0]
-                    ));
+                    );
+                    inner.emit_diagnostic(Diagnostic::new(FailureNote, msg));
                 }
             }
         }
@@ -846,10 +880,6 @@ impl DiagCtxt {
     /// calling `-Zteach`.
     pub fn must_teach(&self, code: ErrCode) -> bool {
         self.inner.borrow_mut().taught_diagnostics.insert(code)
-    }
-
-    pub fn force_print_diagnostic(&self, db: Diagnostic) {
-        self.inner.borrow_mut().emitter.emit_diagnostic(db);
     }
 
     pub fn emit_diagnostic(&self, diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
@@ -1179,7 +1209,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Note, msg).with_span(span)
+        self.struct_note(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
@@ -1205,6 +1235,15 @@ impl DiagCtxt {
     #[track_caller]
     pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Help, msg)
+    }
+
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn struct_failure_note(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, ()> {
+        DiagnosticBuilder::new(self, FailureNote, msg)
     }
 
     #[rustc_lint_diagnostics]
@@ -1404,10 +1443,6 @@ impl DiagCtxtInner {
     fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
         self.has_errors_or_lint_errors()
             .or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
-    }
-
-    fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
-        self.emit_diagnostic(Diagnostic::new(FailureNote, msg));
     }
 
     fn flush_delayed(&mut self) {

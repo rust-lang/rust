@@ -2228,6 +2228,16 @@ pub(crate) enum GenericArg {
     Infer,
 }
 
+impl GenericArg {
+    pub(crate) fn as_lt(&self) -> Option<&Lifetime> {
+        if let Self::Lifetime(lt) = self { Some(lt) } else { None }
+    }
+
+    pub(crate) fn as_ty(&self) -> Option<&Type> {
+        if let Self::Type(ty) = self { Some(ty) } else { None }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
     AngleBracketed { args: Box<[GenericArg]>, bindings: ThinVec<TypeBinding> },
@@ -2528,35 +2538,6 @@ pub(crate) struct TypeBinding {
 pub(crate) enum TypeBindingKind {
     Equality { term: Term },
     Constraint { bounds: Vec<GenericBound> },
-}
-
-/// The type, lifetime, or constant that a private type alias's parameter should be
-/// replaced with when expanding a use of that type alias.
-///
-/// For example:
-///
-/// ```
-/// type PrivAlias<T> = Vec<T>;
-///
-/// pub fn public_fn() -> PrivAlias<i32> { vec![] }
-/// ```
-///
-/// `public_fn`'s docs will show it as returning `Vec<i32>`, since `PrivAlias` is private.
-/// [`InstantiationParam`] is used to record that `T` should be mapped to `i32`.
-pub(crate) enum InstantiationParam {
-    Type(Type),
-    Lifetime(Lifetime),
-    Constant,
-}
-
-impl InstantiationParam {
-    pub(crate) fn as_ty(&self) -> Option<&Type> {
-        if let Self::Type(ty) = self { Some(ty) } else { None }
-    }
-
-    pub(crate) fn as_lt(&self) -> Option<&Lifetime> {
-        if let Self::Lifetime(lt) = self { Some(lt) } else { None }
-    }
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

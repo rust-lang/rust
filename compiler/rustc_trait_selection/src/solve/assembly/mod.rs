@@ -337,6 +337,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let mut consider_impls_for_simplified_type = |simp| {
             if let Some(impls_for_type) = trait_impls.non_blanket_impls().get(&simp) {
                 for &impl_def_id in impls_for_type {
+                    // For every `default impl`, there's always a non-default `impl`
+                    // that will *also* apply. There's no reason to register a candidate
+                    // for this impl, since it is *not* proof that the trait goal holds.
+                    if tcx.defaultness(impl_def_id).is_default() {
+                        return;
+                    }
+
                     match G::consider_impl_candidate(self, goal, impl_def_id) {
                         Ok(candidate) => candidates.push(candidate),
                         Err(NoSolution) => (),
@@ -440,6 +447,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let trait_impls = tcx.trait_impls_of(goal.predicate.trait_def_id(tcx));
         for &impl_def_id in trait_impls.blanket_impls() {
+            // For every `default impl`, there's always a non-default `impl`
+            // that will *also* apply. There's no reason to register a candidate
+            // for this impl, since it is *not* proof that the trait goal holds.
+            if tcx.defaultness(impl_def_id).is_default() {
+                return;
+            }
+
             match G::consider_impl_candidate(self, goal, impl_def_id) {
                 Ok(candidate) => candidates.push(candidate),
                 Err(NoSolution) => (),
