@@ -172,13 +172,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 self.bound_from_components(components, visited)
             }
             Component::UnresolvedInferenceVariable(v) => {
-                // ignore this, we presume it will yield an error
-                // later, since if a type variable is not resolved by
-                // this point it never will be
+                // Ignore this, we presume it will yield an error later, since
+                // if a type variable is not resolved by this point it never
+                // will be.
                 self.tcx
                     .dcx()
                     .delayed_bug(format!("unresolved inference variable in outlives: {v:?}"));
-                // add a bound that never holds
+                // Add a bound that never holds.
                 VerifyBound::AnyBound(vec![])
             }
         }

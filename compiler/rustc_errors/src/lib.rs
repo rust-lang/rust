@@ -1315,6 +1315,9 @@ impl DiagCtxtInner {
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
+        // Note that because this comes before the `match` below,
+        // `-Zeagerly-emit-delayed-bugs` continues to work even after we've
+        // issued an error and stopped recording new delayed bugs.
         if diagnostic.level == DelayedBug && self.flags.eagerly_emit_delayed_bugs {
             diagnostic.level = Error;
         }
@@ -1326,18 +1329,20 @@ impl DiagCtxtInner {
                 diagnostic.level = Bug;
             }
             DelayedBug => {
-                // FIXME(eddyb) this should check for `has_errors` and stop pushing
-                // once *any* errors were emitted (and truncate `delayed_bugs`
-                // when an error is first emitted, also), but maybe there's a case
-                // in which that's not sound? otherwise this is really inefficient.
-                let backtrace = std::backtrace::Backtrace::capture();
-                // This `unchecked_error_guaranteed` is valid. It is where the
-                // `ErrorGuaranteed` for delayed bugs originates.
-                #[allow(deprecated)]
-                let guar = ErrorGuaranteed::unchecked_error_guaranteed();
-                self.delayed_bugs
-                    .push((DelayedDiagnostic::with_backtrace(diagnostic, backtrace), guar));
-                return Some(guar);
+                // If we have already emitted at least one error, we don't need
+                // to record the delayed bug, because it'll never be used.
+                return if let Some(guar) = self.has_errors_or_lint_errors() {
+                    Some(guar)
+                } else {
+                    let backtrace = std::backtrace::Backtrace::capture();
+                    // This `unchecked_error_guaranteed` is valid. It is where the
+                    // `ErrorGuaranteed` for delayed bugs originates.
+                    #[allow(deprecated)]
+                    let guar = ErrorGuaranteed::unchecked_error_guaranteed();
+                    self.delayed_bugs
+                        .push((DelayedDiagnostic::with_backtrace(diagnostic, backtrace), guar));
+                    Some(guar)
+                };
             }
             Warning if !self.flags.can_emit_warnings => {
                 if diagnostic.has_future_breakage() {
@@ -1403,6 +1408,16 @@ impl DiagCtxtInner {
             }
 
             if is_error {
+                // If we have any delayed bugs recorded, we can discard them
+                // because they won't be used. (This should only occur if there
+                // have been no errors previously emitted, because we don't add
+                // new delayed bugs once the first error is emitted.)
+                if !self.delayed_bugs.is_empty() {
+                    assert_eq!(self.lint_err_guars.len() + self.err_guars.len(), 0);
+                    self.delayed_bugs.clear();
+                    self.delayed_bugs.shrink_to_fit();
+                }
+
                 // This `unchecked_error_guaranteed` is valid. It is where the
                 // `ErrorGuaranteed` for errors and lint errors originates.
                 #[allow(deprecated)]

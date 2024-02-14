@@ -1,7 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::Span;
 use std::ops::ControlFlow;
 
 /// This method traverses the structure of `ty`, trying to find an
@@ -30,19 +29,16 @@ use std::ops::ControlFlow;
 /// that arose when the requirement was not enforced completely, see
 /// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
 pub fn search_for_structural_match_violation<'tcx>(
-    span: Span,
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    ty.visit_with(&mut Search { tcx, span, seen: FxHashSet::default() }).break_value()
+    ty.visit_with(&mut Search { tcx, seen: FxHashSet::default() }).break_value()
 }
 
 /// This implements the traversal over the structure of a given type to try to
 /// find instances of ADTs (specifically structs or enums) that do not implement
 /// `StructuralPartialEq`.
 struct Search<'tcx> {
-    span: Span,
-
     tcx: TyCtxt<'tcx>,
 
     /// Tracks ADTs previously encountered during search, so that
@@ -138,7 +134,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Search<'tcx> {
                 bug!("unexpected type during structural-match checking: {:?}", ty);
             }
             ty::Error(_) => {
-                self.tcx.dcx().span_delayed_bug(self.span, "ty::Error in structural-match check");
                 // We still want to check other types after encountering an error,
                 // as this may still emit relevant errors.
                 return ControlFlow::Continue(());

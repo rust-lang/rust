@@ -9,10 +9,14 @@ use crate::ptr;
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
 /// or a [`LocalWaker`] which provides customized wakeup behavior.
 ///
-/// [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
-///
 /// It consists of a data pointer and a [virtual function pointer table (vtable)][vtable]
 /// that customizes the behavior of the `RawWaker`.
+///
+/// `RawWaker`s are unsafe to use.
+/// Implementing the [`Wake`] trait is a safe alternative that requires memory allocation.
+///
+/// [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
+/// [`Wake`]: ../../alloc/task/trait.Wake.html
 #[derive(PartialEq, Debug)]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct RawWaker {
@@ -355,8 +359,12 @@ impl<'a> ContextBuilder<'a> {
 /// of `*waker = new_waker.clone()`, as the former will avoid cloning the waker
 /// unnecessarily if the two wakers [wake the same task](Self::will_wake).
 ///
+/// Constructing a `Waker` from a [`RawWaker`] is unsafe.
+/// Implementing the [`Wake`] trait is a safe alternative that requires memory allocation.
+///
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
+/// [`Wake`]: ../../alloc/task/trait.Wake.html
 #[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Waker {
@@ -438,9 +446,15 @@ impl Waker {
 
     /// Creates a new `Waker` from [`RawWaker`].
     ///
+    /// # Safety
+    ///
     /// The behavior of the returned `Waker` is undefined if the contract defined
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
-    /// Therefore this method is unsafe.
+    ///
+    /// (Authors wishing to avoid unsafe code may implement the [`Wake`] trait instead, at the
+    /// cost of a required heap allocation.)
+    ///
+    /// [`Wake`]: ../../alloc/task/trait.Wake.html
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]

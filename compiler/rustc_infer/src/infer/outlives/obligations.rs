@@ -300,9 +300,9 @@ where
                     self.components_must_outlive(origin, subcomponents, region, category);
                 }
                 Component::UnresolvedInferenceVariable(v) => {
-                    // ignore this, we presume it will yield an error
-                    // later, since if a type variable is not resolved by
-                    // this point it never will be
+                    // Ignore this, we presume it will yield an error later,
+                    // since if a type variable is not resolved by this point
+                    // it never will be.
                     self.tcx.dcx().span_delayed_bug(
                         origin.span(),
                         format!("unresolved inference variable in outlives: {v:?}"),

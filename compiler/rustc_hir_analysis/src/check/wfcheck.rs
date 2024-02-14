@@ -1865,13 +1865,13 @@ fn check_variances_for_type_defn<'tcx>(
         let hir_param = &hir_generics.params[index];
 
         if ty_param.def_id != hir_param.def_id.into() {
-            // valid programs always have lifetimes before types in the generic parameter list
+            // Valid programs always have lifetimes before types in the generic parameter list.
             // ty_generics are normalized to be in this required order, and variances are built
             // from ty generics, not from hir generics. but we need hir generics to get
-            // a span out
+            // a span out.
             //
-            // if they aren't in the same order, then the user has written invalid code, and already
-            // got an error about it (or I'm wrong about this)
+            // If they aren't in the same order, then the user has written invalid code, and already
+            // got an error about it (or I'm wrong about this).
             tcx.dcx().span_delayed_bug(
                 hir_param.span,
                 "hir generics and ty generics in different order",

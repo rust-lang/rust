@@ -153,8 +153,7 @@ impl<'tcx> ConstToPat<'tcx> {
             // a hard error when we don't have a valtree or when we find something in
             // the valtree that is not structural; then this can all be made a lot simpler.
 
-            let structural =
-                traits::search_for_structural_match_violation(self.span, self.tcx(), cv.ty());
+            let structural = traits::search_for_structural_match_violation(self.tcx(), cv.ty());
             debug!(
                 "search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
                 cv.ty(),

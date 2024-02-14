@@ -561,9 +561,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         .ok()?;
                     dest.into()
                 }
-                CastKind::FnPtrToPtr
-                | CastKind::PtrToPtr
-                | CastKind::PointerCoercion(
+                CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
+                    let src = self.evaluated[value].as_ref()?;
+                    let src = self.ecx.read_immediate(src).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
+                    ret.into()
+                }
+                CastKind::PointerCoercion(
                     ty::adjustment::PointerCoercion::MutToConstPointer
                     | ty::adjustment::PointerCoercion::ArrayToPointer
                     | ty::adjustment::PointerCoercion::UnsafeFnPointer,
@@ -571,8 +576,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let src = self.evaluated[value].as_ref()?;
                     let src = self.ecx.read_immediate(src).ok()?;
                     let to = self.ecx.layout_of(to).ok()?;
-                    let ret = self.ecx.ptr_to_ptr(&src, to).ok()?;
-                    ret.into()
+                    ImmTy::from_immediate(*src, to).into()
                 }
                 _ => return None,
             },
