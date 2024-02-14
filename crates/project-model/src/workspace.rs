@@ -625,7 +625,7 @@ impl ProjectWorkspace {
                         let extra_targets = cargo[pkg]
                             .targets
                             .iter()
-                            .filter(|&&tgt| cargo[tgt].kind == TargetKind::Lib)
+                            .filter(|&&tgt| matches!(cargo[tgt].kind, TargetKind::Lib { .. }))
                             .filter_map(|&tgt| cargo[tgt].root.parent())
                             .map(|tgt| tgt.normalize().to_path_buf())
                             .filter(|path| !path.starts_with(&pkg_root));
@@ -991,7 +991,7 @@ fn cargo_to_crate_graph(
 
         let mut lib_tgt = None;
         for &tgt in cargo[pkg].targets.iter() {
-            if cargo[tgt].kind != TargetKind::Lib && !cargo[pkg].is_member {
+            if !matches!(cargo[tgt].kind, TargetKind::Lib { .. }) && !cargo[pkg].is_member {
                 // For non-workspace-members, Cargo does not resolve dev-dependencies, so we don't
                 // add any targets except the library target, since those will not work correctly if
                 // they use dev-dependencies.
@@ -999,7 +999,7 @@ fn cargo_to_crate_graph(
                 // https://github.com/rust-lang/rust-analyzer/issues/11300
                 continue;
             }
-            let &TargetData { ref name, kind, is_proc_macro, ref root, .. } = &cargo[tgt];
+            let &TargetData { ref name, kind, ref root, .. } = &cargo[tgt];
 
             let Some(file_id) = load(root) else { continue };
 
@@ -1011,19 +1011,24 @@ fn cargo_to_crate_graph(
                 cfg_options.clone(),
                 file_id,
                 name,
-                is_proc_macro,
+                kind,
                 target_layout.clone(),
                 false,
                 toolchain.cloned(),
             );
-            if kind == TargetKind::Lib {
+            if let TargetKind::Lib { .. } = kind {
                 lib_tgt = Some((crate_id, name.clone()));
                 pkg_to_lib_crate.insert(pkg, crate_id);
             }
             // Even crates that don't set proc-macro = true are allowed to depend on proc_macro
             // (just none of the APIs work when called outside of a proc macro).
             if let Some(proc_macro) = libproc_macro {
-                add_proc_macro_dep(crate_graph, crate_id, proc_macro, is_proc_macro);
+                add_proc_macro_dep(
+                    crate_graph,
+                    crate_id,
+                    proc_macro,
+                    matches!(kind, TargetKind::Lib { is_proc_macro: true }),
+                );
             }
 
             pkg_crates.entry(pkg).or_insert_with(Vec::new).push((crate_id, kind));
@@ -1221,9 +1226,9 @@ fn handle_rustc_crates(
             };
 
             for &tgt in rustc_workspace[pkg].targets.iter() {
-                if rustc_workspace[tgt].kind != TargetKind::Lib {
+                let kind @ TargetKind::Lib { is_proc_macro } = rustc_workspace[tgt].kind else {
                     continue;
-                }
+                };
                 if let Some(file_id) = load(&rustc_workspace[tgt].root) {
                     let crate_id = add_target_crate_root(
                         crate_graph,
@@ -1233,7 +1238,7 @@ fn handle_rustc_crates(
                         cfg_options.clone(),
                         file_id,
                         &rustc_workspace[tgt].name,
-                        rustc_workspace[tgt].is_proc_macro,
+                        kind,
                         target_layout.clone(),
                         true,
                         toolchain.cloned(),
@@ -1242,12 +1247,7 @@ fn handle_rustc_crates(
                     // Add dependencies on core / std / alloc for this crate
                     public_deps.add_to_crate_graph(crate_graph, crate_id);
                     if let Some(proc_macro) = libproc_macro {
-                        add_proc_macro_dep(
-                            crate_graph,
-                            crate_id,
-                            proc_macro,
-                            rustc_workspace[tgt].is_proc_macro,
-                        );
+                        add_proc_macro_dep(crate_graph, crate_id, proc_macro, is_proc_macro);
                     }
                     rustc_pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
                 }
@@ -1309,7 +1309,7 @@ fn add_target_crate_root(
     cfg_options: CfgOptions,
     file_id: FileId,
     cargo_name: &str,
-    is_proc_macro: bool,
+    kind: TargetKind,
     target_layout: TargetLayoutLoadResult,
     rustc_crate: bool,
     toolchain: Option<Version>,
@@ -1359,7 +1359,7 @@ fn add_target_crate_root(
         cfg_options,
         potential_cfg_options,
         env,
-        is_proc_macro,
+        matches!(kind, TargetKind::Lib { is_proc_macro: true }),
         if rustc_crate {
             CrateOrigin::Rustc { name: pkg.name.clone() }
         } else if pkg.is_member {
@@ -1370,7 +1370,7 @@ fn add_target_crate_root(
         target_layout,
         toolchain,
     );
-    if is_proc_macro {
+    if let TargetKind::Lib { is_proc_macro: true } = kind {
         let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
             Some(it) => it.cloned().map(|path| Ok((Some(cargo_name.to_owned()), path))),
             None => Some(Err("crate has not yet been built".to_owned())),

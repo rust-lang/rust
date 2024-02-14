@@ -145,11 +145,11 @@ pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
-    if state.config.script_rebuild_on_save() && state.proc_macro_changed {
-        // reset the flag
-        state.proc_macro_changed = false;
-        // rebuild the proc macros
-        state.fetch_build_data_queue.request_op("ScriptRebuildOnSave".to_owned(), ());
+    if state.config.script_rebuild_on_save() && state.build_deps_changed {
+        state.build_deps_changed = false;
+        state
+            .fetch_build_data_queue
+            .request_op("build_deps_changed - save notification".to_owned(), ());
     }
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
@@ -158,7 +158,7 @@ pub(crate) fn handle_did_save_text_document(
             if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
                 state
                     .fetch_workspaces_queue
-                    .request_op(format!("DidSaveTextDocument {abs_path}"), false);
+                    .request_op(format!("workspace vfs file change saved {abs_path}"), false);
             }
         }
 

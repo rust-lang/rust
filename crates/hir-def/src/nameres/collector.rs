@@ -101,9 +101,9 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                             if it.disabled {
                                 CustomProcMacroExpander::disabled()
                             } else {
-                                CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId(
-                                    idx as u32,
-                                ))
+                                CustomProcMacroExpander::new(
+                                    hir_expand::proc_macro::ProcMacroId::new(idx as u32),
+                                )
                             },
                         )
                     })
@@ -2354,7 +2354,7 @@ impl ModCollector<'_, '_> {
                 resolved_res.resolved_def.take_macros().map(|it| db.macro_def(it))
             },
         ) {
-            // FIXME: if there were errors, this mightve been in the eager expansion from an
+            // FIXME: if there were errors, this might've been in the eager expansion from an
             // unresolved macro, so we need to push this into late macro resolution. see fixme above
             if res.err.is_none() {
                 // Legacy macros need to be expanded immediately, so that any macros they produce

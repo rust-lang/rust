@@ -52,7 +52,7 @@ use crate::{
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     state.proc_macro_clients = Arc::from_iter([]);
-    state.proc_macro_changed = false;
+    state.build_deps_changed = false;
 
     state.fetch_workspaces_queue.request_op("reload workspace request".to_owned(), false);
     Ok(())
@@ -60,7 +60,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow:
 
 pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     state.proc_macro_clients = Arc::from_iter([]);
-    state.proc_macro_changed = false;
+    state.build_deps_changed = false;
 
     state.fetch_build_data_queue.request_op("rebuild proc macros request".to_owned(), ());
     Ok(())

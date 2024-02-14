@@ -189,8 +189,6 @@ pub struct TargetData {
     pub root: AbsPathBuf,
     /// Kind of target
     pub kind: TargetKind,
-    /// Is this target a proc-macro
-    pub is_proc_macro: bool,
     /// Required features of the target without which it won't build
     pub required_features: Vec<String>,
 }
@@ -199,7 +197,10 @@ pub struct TargetData {
 pub enum TargetKind {
     Bin,
     /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
-    Lib,
+    Lib {
+        /// Is this target a proc-macro
+        is_proc_macro: bool,
+    },
     Example,
     Test,
     Bench,
@@ -216,8 +217,8 @@ impl TargetKind {
                 "bench" => TargetKind::Bench,
                 "example" => TargetKind::Example,
                 "custom-build" => TargetKind::BuildScript,
-                "proc-macro" => TargetKind::Lib,
-                _ if kind.contains("lib") => TargetKind::Lib,
+                "proc-macro" => TargetKind::Lib { is_proc_macro: true },
+                _ if kind.contains("lib") => TargetKind::Lib { is_proc_macro: false },
                 _ => continue,
             };
         }
@@ -371,7 +372,6 @@ impl CargoWorkspace {
                     name,
                     root: AbsPathBuf::assert(src_path.into()),
                     kind: TargetKind::new(&kind),
-                    is_proc_macro: *kind == ["proc-macro"],
                     required_features,
                 });
                 pkg_data.targets.push(tgt);

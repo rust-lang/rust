@@ -83,7 +83,7 @@ impl GlobalState {
         }
         if self.config.linked_or_discovered_projects() != old_config.linked_or_discovered_projects()
         {
-            self.fetch_workspaces_queue.request_op("linked projects changed".to_owned(), false)
+            self.fetch_workspaces_queue.request_op("discovered projects changed".to_owned(), false)
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -106,9 +106,11 @@ impl GlobalState {
         };
         let mut message = String::new();
 
-        if self.proc_macro_changed {
+        if self.build_deps_changed {
             status.health = lsp_ext::Health::Warning;
-            message.push_str("Proc-macros have changed and need to be rebuilt.\n\n");
+            message.push_str(
+                "Proc-macros and/or build scripts have changed and need to be rebuilt.\n\n",
+            );
         }
         if self.fetch_build_data_error().is_err() {
             status.health = lsp_ext::Health::Warning;
@@ -408,6 +410,10 @@ impl GlobalState {
                 if *force_reload_crate_graph {
                     self.recreate_crate_graph(cause);
                 }
+                if self.build_deps_changed && self.config.run_build_scripts() {
+                    self.build_deps_changed = false;
+                    self.fetch_build_data_queue.request_op("build_deps_changed".to_owned(), ());
+                }
                 // Current build scripts do not match the version of the active
                 // workspace, so there's nothing for us to update.
                 return;
@@ -419,6 +425,11 @@ impl GlobalState {
             // we don't care about build-script results, they are stale.
             // FIXME: can we abort the build scripts here?
             self.workspaces = Arc::new(workspaces);
+
+            if self.config.run_build_scripts() {
+                self.build_deps_changed = false;
+                self.fetch_build_data_queue.request_op("workspace updated".to_owned(), ());
+            }
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
