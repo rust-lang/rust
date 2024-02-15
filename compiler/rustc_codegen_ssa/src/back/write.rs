@@ -369,6 +369,10 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub incr_comp_session_dir: Option<PathBuf>,
     /// Channel back to the main control thread to send messages to
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
+    /// `true` if the codegen should be run in parallel.
+    ///
+    /// Depends on [`CodegenBackend::supports_parallel()`] and `-Zno_parallel_backend`.
+    pub parallel: bool,
 }
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
@@ -1129,6 +1133,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         target_arch: tcx.sess.target.arch.to_string(),
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
+        parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1399,7 +1404,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
                             .unwrap_or_else(|e| e);
                         work_items.insert(insertion_index, (work, cost));
-                        if !cgcx.opts.unstable_opts.no_parallel_backend {
+                        if cgcx.parallel {
                             helper.request_token();
                         }
                     }
@@ -1522,7 +1527,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if !cgcx.opts.unstable_opts.no_parallel_backend {
+                    if cgcx.parallel {
                         helper.request_token();
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
