@@ -1,0 +1,50 @@
+- // MIR for `issue_77355_opt` before ConstGoto
++ // MIR for `issue_77355_opt` after ConstGoto
+  
+  fn issue_77355_opt(_1: Foo) -> u64 {
+      debug num => _1;
+      let mut _0: u64;
+-     let mut _2: bool;
+-     let mut _3: isize;
++     let mut _2: isize;
+  
+      bb0: {
+-         StorageLive(_2);
+-         _3 = discriminant(_1);
+-         switchInt(move _3) -> [1: bb2, 2: bb2, otherwise: bb1];
++         _2 = discriminant(_1);
++         switchInt(move _2) -> [1: bb2, 2: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+-         _2 = const false;
++         _0 = const 42_u64;
+          goto -> bb3;
+      }
+  
+      bb2: {
+-         _2 = const true;
++         _0 = const 23_u64;
+          goto -> bb3;
+      }
+  
+      bb3: {
+-         switchInt(move _2) -> [0: bb5, otherwise: bb4];
+-     }
+- 
+-     bb4: {
+-         _0 = const 23_u64;
+-         goto -> bb6;
+-     }
+- 
+-     bb5: {
+-         _0 = const 42_u64;
+-         goto -> bb6;
+-     }
+- 
+-     bb6: {
+-         StorageDead(_2);
+          return;
+      }
+  }
+  

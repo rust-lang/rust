@@ -1,0 +1,102 @@
+- // MIR for `match_nested_if` before ConstGoto
++ // MIR for `match_nested_if` after ConstGoto
+  
+  fn match_nested_if() -> bool {
+      let mut _0: bool;
+      let _1: bool;
+-     let mut _2: ();
+-     let mut _3: bool;
+-     let mut _4: bool;
+-     let mut _5: bool;
+-     let mut _6: bool;
++     let mut _2: bool;
+      scope 1 {
+          debug val => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+-         _2 = ();
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = const true;
+-         switchInt(move _6) -> [0: bb2, otherwise: bb1];
++         _2 = const true;
++         switchInt(move _2) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+-         _5 = const true;
++         StorageDead(_2);
++         _1 = const true;
+          goto -> bb3;
+      }
+  
+      bb2: {
+-         _5 = const false;
++         StorageDead(_2);
++         _1 = const false;
+          goto -> bb3;
+      }
+  
+      bb3: {
+-         switchInt(move _5) -> [0: bb5, otherwise: bb4];
+-     }
+- 
+-     bb4: {
+-         StorageDead(_6);
+-         _4 = const true;
+-         goto -> bb6;
+-     }
+- 
+-     bb5: {
+-         StorageDead(_6);
+-         _4 = const false;
+-         goto -> bb6;
+-     }
+- 
+-     bb6: {
+-         switchInt(move _4) -> [0: bb8, otherwise: bb7];
+-     }
+- 
+-     bb7: {
+-         StorageDead(_5);
+-         _3 = const true;
+-         goto -> bb9;
+-     }
+- 
+-     bb8: {
+-         StorageDead(_5);
+-         _3 = const false;
+-         goto -> bb9;
+-     }
+- 
+-     bb9: {
+-         switchInt(move _3) -> [0: bb11, otherwise: bb10];
+-     }
+- 
+-     bb10: {
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         _1 = const true;
+-         goto -> bb12;
+-     }
+- 
+-     bb11: {
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         _1 = const false;
+-         goto -> bb12;
+-     }
+- 
+-     bb12: {
+-         StorageDead(_2);
+          _0 = _1;
+          StorageDead(_1);
+          return;
+      }
+  }
+  
