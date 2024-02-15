@@ -15,10 +15,6 @@ LL | |         }
    |
    = note:   expected enum `Option<u16>`
            found unit type `()`
-help: consider using a semicolon here, but this will discard any values in the match arms
-   |
-LL |         };
-   |          +
 
 error: aborting due to 1 previous error
 

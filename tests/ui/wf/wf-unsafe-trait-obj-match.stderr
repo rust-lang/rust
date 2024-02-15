@@ -11,10 +11,6 @@ LL | |     }
    |
    = note: expected reference `&S`
               found reference `&R`
-help: consider using a semicolon here, but this will discard any values in the match arms
-   |
-LL |     };
-   |      +
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/wf-unsafe-trait-obj-match.rs:26:21

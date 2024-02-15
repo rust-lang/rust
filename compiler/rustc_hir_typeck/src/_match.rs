@@ -118,7 +118,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         prior_arm_ty,
                         prior_arm_span,
                         scrut_span: scrut.span,
-                        scrut_hir_id: scrut.hir_id,
                         source: match_src,
                         prior_non_diverging_arms: prior_non_diverging_arms.clone(),
                         opt_suggest_box_span,
