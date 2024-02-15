@@ -1399,7 +1399,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
                             .unwrap_or_else(|e| e);
                         work_items.insert(insertion_index, (work, cost));
-                        if !cgcx.opts.unstable_opts.no_parallel_llvm {
+                        if !cgcx.opts.unstable_opts.no_parallel_backend {
                             helper.request_token();
                         }
                     }
@@ -1522,7 +1522,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if !cgcx.opts.unstable_opts.no_parallel_llvm {
+                    if !cgcx.opts.unstable_opts.no_parallel_backend {
                         helper.request_token();
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
