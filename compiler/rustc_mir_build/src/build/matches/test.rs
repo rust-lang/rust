@@ -673,6 +673,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
+            (TestKind::Len { .. }, _) => {
+                fully_matched = false;
+                None
+            }
 
             (TestKind::Range(test), &TestCase::Range(pat)) => {
                 if test.as_ref() == pat {
@@ -700,29 +704,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 None
             }
 
-            (&TestKind::Eq { .. } | &TestKind::Len { .. }, _) => {
-                // The call to `self.test(&match_pair)` below is not actually used to generate any
-                // MIR. Instead, we just want to compare with `test` (the parameter of the method)
-                // to see if it is the same.
-                //
-                // However, at this point we can still encounter or-patterns that were extracted
-                // from previous calls to `sort_candidate`, so we need to manually address that
-                // case to avoid panicking in `self.test()`.
-                if let TestCase::Or { .. } = &match_pair.test_case {
-                    return None;
-                }
-
-                // These are all binary tests.
-                //
-                // FIXME(#29623) we can be more clever here
-                let pattern_test = self.test(match_pair);
-                if pattern_test.kind == test.kind {
-                    fully_matched = true;
-                    Some(0)
-                } else {
-                    fully_matched = false;
-                    None
-                }
+            // FIXME(#29623): return `Some(1)` when the values are different.
+            (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val })
+                if test_val == case_val =>
+            {
+                fully_matched = true;
+                Some(0)
+            }
+            (TestKind::Eq { .. }, _) => {
+                fully_matched = false;
+                None
             }
         };
 
