@@ -16,8 +16,8 @@
    LL|      1|fn implicit_unit() {
    LL|      1|    let closure = || {
    LL|      0|        ();
-   LL|      1|    };
-   LL|      1|
+   LL|      0|    };
+   LL|       |
    LL|      1|    drop(closure);
    LL|      1|    // implicit return of `()`
    LL|      1|}

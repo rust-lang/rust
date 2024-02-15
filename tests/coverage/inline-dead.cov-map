@@ -22,13 +22,13 @@ Number of file 0 mappings: 4
     = (Zero + (c0 - Zero))
 
 Function name: inline_dead::main
-Raw bytes (14): 0x[01, 01, 00, 02, 01, 04, 01, 03, 0d, 01, 05, 06, 02, 02]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 04, 01, 03, 0a, 01, 06, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 2
-- Code(Counter(0)) at (prev + 4, 1) to (start + 3, 13)
-- Code(Counter(0)) at (prev + 5, 6) to (start + 2, 2)
+- Code(Counter(0)) at (prev + 4, 1) to (start + 3, 10)
+- Code(Counter(0)) at (prev + 6, 5) to (start + 1, 2)
 
 Function name: inline_dead::main::{closure#0}
 Raw bytes (23): 0x[01, 01, 02, 00, 06, 01, 00, 03, 01, 07, 17, 01, 16, 00, 01, 17, 00, 18, 03, 01, 05, 00, 06]
