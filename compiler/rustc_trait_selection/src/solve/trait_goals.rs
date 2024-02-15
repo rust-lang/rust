@@ -1,7 +1,10 @@
 //! Dealing with trait goals, i.e. `T: Trait<'a, U>`.
 
+use crate::traits::supertrait_def_ids;
+
 use super::assembly::{self, structural_traits, Candidate};
 use super::{EvalCtxt, GoalSource, SolverMode};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, Movability};
 use rustc_infer::traits::query::NoSolution;
@@ -663,13 +666,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let tcx = self.tcx();
         let Goal { predicate: (a_ty, _b_ty), .. } = goal;
 
-        // All of a's auto traits need to be in b's auto traits.
-        let auto_traits_compatible =
-            b_data.auto_traits().all(|b| a_data.auto_traits().any(|a| a == b));
-        if !auto_traits_compatible {
-            return vec![];
-        }
-
         let mut responses = vec![];
         // If the principal def ids match (or are both none), then we're not doing
         // trait upcasting. We're just removing auto traits (or shortening the lifetime).
@@ -757,6 +753,17 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> QueryResult<'tcx> {
         let param_env = goal.param_env;
 
+        // We may upcast to auto traits that are either explicitly listed in
+        // the object type's bounds, or implied by the principal trait ref's
+        // supertraits.
+        let a_auto_traits: FxIndexSet<DefId> = a_data
+            .auto_traits()
+            .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
+                supertrait_def_ids(self.tcx(), principal_def_id)
+                    .filter(|def_id| self.tcx().trait_is_auto(*def_id))
+            }))
+            .collect();
+
         // More than one projection in a_ty's bounds may match the projection
         // in b_ty's bound. Use this to first determine *which* apply without
         // having any inference side-effects. We process obligations because
@@ -806,7 +813,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 }
                 // Check that b_ty's auto traits are present in a_ty's bounds.
                 ty::ExistentialPredicate::AutoTrait(def_id) => {
-                    if !a_data.auto_traits().any(|source_def_id| source_def_id == def_id) {
+                    if !a_auto_traits.contains(&def_id) {
                         return Err(NoSolution);
                     }
                 }

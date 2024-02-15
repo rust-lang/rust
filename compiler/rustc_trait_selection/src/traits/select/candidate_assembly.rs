@@ -10,7 +10,7 @@ use std::ops::ControlFlow;
 
 use hir::def_id::DefId;
 use hir::LangItem;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
@@ -968,52 +968,61 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 //
                 // We always perform upcasting coercions when we can because of reason
                 // #2 (region bounds).
-                let auto_traits_compatible = b_data
-                    .auto_traits()
-                    // All of a's auto traits need to be in b's auto traits.
-                    .all(|b| a_data.auto_traits().any(|a| a == b));
-                if auto_traits_compatible {
-                    let principal_def_id_a = a_data.principal_def_id();
-                    let principal_def_id_b = b_data.principal_def_id();
-                    if principal_def_id_a == principal_def_id_b {
-                        // no cyclic
+                let principal_def_id_a = a_data.principal_def_id();
+                let principal_def_id_b = b_data.principal_def_id();
+                if principal_def_id_a == principal_def_id_b {
+                    // We may upcast to auto traits that are either explicitly listed in
+                    // the object type's bounds, or implied by the principal trait ref's
+                    // supertraits.
+                    let a_auto_traits: FxIndexSet<DefId> = a_data
+                        .auto_traits()
+                        .chain(principal_def_id_a.into_iter().flat_map(|principal_def_id| {
+                            util::supertrait_def_ids(self.tcx(), principal_def_id)
+                                .filter(|def_id| self.tcx().trait_is_auto(*def_id))
+                        }))
+                        .collect();
+                    let auto_traits_compatible = b_data
+                        .auto_traits()
+                        // All of a's auto traits need to be in b's auto traits.
+                        .all(|b| a_auto_traits.contains(&b));
+                    if auto_traits_compatible {
                         candidates.vec.push(BuiltinUnsizeCandidate);
-                    } else if principal_def_id_a.is_some() && principal_def_id_b.is_some() {
-                        // not casual unsizing, now check whether this is trait upcasting coercion.
-                        let principal_a = a_data.principal().unwrap();
-                        let target_trait_did = principal_def_id_b.unwrap();
-                        let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
-                        if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
-                            source,
-                            obligation.param_env,
-                            &obligation.cause,
-                        ) {
-                            if deref_trait_ref.def_id() == target_trait_did {
-                                return;
-                            }
+                    }
+                } else if principal_def_id_a.is_some() && principal_def_id_b.is_some() {
+                    // not casual unsizing, now check whether this is trait upcasting coercion.
+                    let principal_a = a_data.principal().unwrap();
+                    let target_trait_did = principal_def_id_b.unwrap();
+                    let source_trait_ref = principal_a.with_self_ty(self.tcx(), source);
+                    if let Some(deref_trait_ref) = self.need_migrate_deref_output_trait_object(
+                        source,
+                        obligation.param_env,
+                        &obligation.cause,
+                    ) {
+                        if deref_trait_ref.def_id() == target_trait_did {
+                            return;
                         }
+                    }
 
-                        for (idx, upcast_trait_ref) in
-                            util::supertraits(self.tcx(), source_trait_ref).enumerate()
-                        {
-                            self.infcx.probe(|_| {
-                                if upcast_trait_ref.def_id() == target_trait_did
-                                    && let Ok(nested) = self.match_upcast_principal(
-                                        obligation,
-                                        upcast_trait_ref,
-                                        a_data,
-                                        b_data,
-                                        a_region,
-                                        b_region,
-                                    )
-                                {
-                                    if nested.is_none() {
-                                        candidates.ambiguous = true;
-                                    }
-                                    candidates.vec.push(TraitUpcastingUnsizeCandidate(idx));
+                    for (idx, upcast_trait_ref) in
+                        util::supertraits(self.tcx(), source_trait_ref).enumerate()
+                    {
+                        self.infcx.probe(|_| {
+                            if upcast_trait_ref.def_id() == target_trait_did
+                                && let Ok(nested) = self.match_upcast_principal(
+                                    obligation,
+                                    upcast_trait_ref,
+                                    a_data,
+                                    b_data,
+                                    a_region,
+                                    b_region,
+                                )
+                            {
+                                if nested.is_none() {
+                                    candidates.ambiguous = true;
                                 }
-                            })
-                        }
+                                candidates.vec.push(TraitUpcastingUnsizeCandidate(idx));
+                            }
+                        })
                     }
                 }
             }
