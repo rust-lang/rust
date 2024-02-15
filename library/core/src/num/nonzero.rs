@@ -160,6 +160,27 @@ where
             }
         }
     }
+
+    /// Returns the contained value as a primitive type.
+    #[stable(feature = "nonzero", since = "1.28.0")]
+    #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
+    #[inline]
+    pub const fn get(self) -> T {
+        // FIXME: This can be changed to simply `self.0` once LLVM supports `!range` metadata
+        // for function arguments: https://github.com/llvm/llvm-project/issues/76628
+        //
+        // Rustc can set range metadata only if it loads `self` from
+        // memory somewhere. If the value of `self` was from by-value argument
+        // of some not-inlined function, LLVM don't have range metadata
+        // to understand that the value cannot be zero.
+        match Self::new(self.0) {
+            Some(Self(n)) => n,
+            None => {
+                // SAFETY: `NonZero` is guaranteed to only contain non-zero values, so this is unreachable.
+                unsafe { intrinsics::unreachable() }
+            }
+        }
+    }
 }
 
 macro_rules! impl_nonzero_fmt {
@@ -221,26 +242,6 @@ macro_rules! nonzero_integer {
         pub type $Ty = NonZero<$Int>;
 
         impl $Ty {
-            /// Returns the value as a primitive type.
-            #[$stability]
-            #[inline]
-            #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
-            pub const fn get(self) -> $Int {
-                // FIXME: Remove this after LLVM supports `!range` metadata for function
-                // arguments https://github.com/llvm/llvm-project/issues/76628
-                //
-                // Rustc can set range metadata only if it loads `self` from
-                // memory somewhere. If the value of `self` was from by-value argument
-                // of some not-inlined function, LLVM don't have range metadata
-                // to understand that the value cannot be zero.
-
-                // SAFETY: It is an invariant of this type.
-                unsafe {
-                    intrinsics::assume(self.0 != 0);
-                }
-                self.0
-            }
-
             /// The size of this non-zero integer type in bits.
             ///
             #[doc = concat!("This value is equal to [`", stringify!($Int), "::BITS`].")]
