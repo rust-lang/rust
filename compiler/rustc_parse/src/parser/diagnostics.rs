@@ -34,8 +34,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, FatalError, PErr, PResult,
+    pluralize, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, FatalError,
+    PErr, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -665,7 +665,7 @@ impl<'a> Parser<'a> {
         {
             err.note("you may be trying to write a c-string literal");
             err.note("c-string literals require Rust 2021 or later");
-            HelpUseLatestEdition::new().add_to_diagnostic(&mut err);
+            err.subdiagnostic(self.dcx(), HelpUseLatestEdition::new());
         }
 
         // `pub` may be used for an item or `pub(crate)`
@@ -1267,7 +1267,7 @@ impl<'a> Parser<'a> {
                 Ok(_) => {
                     if self.token == token::Eq {
                         let sugg = SuggAddMissingLetStmt { span: prev_span };
-                        sugg.add_to_diagnostic(err);
+                        err.subdiagnostic(self.dcx(), sugg);
                     }
                 }
                 Err(e) => {

@@ -26,8 +26,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic,
-    DiagnosticBuilder, ErrorGuaranteed, StashKey,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -2611,7 +2611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
             err.note("to `.await` a `Future`, switch to Rust 2018 or later");
-            HelpUseLatestEdition::new().add_to_diagnostic(&mut err);
+            err.subdiagnostic(self.dcx(), HelpUseLatestEdition::new());
         }
 
         err.emit()

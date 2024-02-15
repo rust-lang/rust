@@ -2,7 +2,7 @@ use crate::fluent_generated as fluent;
 use rustc_errors::DiagnosticArgValue;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessageOp,
+    IntoDiagnostic, Level, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -419,8 +419,8 @@ pub struct UnsafeNotInheritedLintNote {
     pub body_span: Span,
 }
 
-impl AddToDiagnostic for UnsafeNotInheritedLintNote {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for UnsafeNotInheritedLintNote {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.span_note(self.signature_span, fluent::mir_build_unsafe_fn_safe_body);
         let body_start = self.body_span.shrink_to_lo();
         let body_end = self.body_span.shrink_to_hi();
@@ -862,8 +862,8 @@ pub struct Variant {
     pub span: Span,
 }
 
-impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a, 'tcx> AddToDiagnostic<'a> for AdtDefinedHere<'tcx> {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);
 

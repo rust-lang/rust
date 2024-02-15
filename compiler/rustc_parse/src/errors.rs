@@ -4,7 +4,7 @@ use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    IntoDiagnostic, Level, SubdiagnosticMessageOp,
+    IntoDiagnostic, Level,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1007,7 +1007,7 @@ pub(crate) struct InvalidMetaItemSuggQuoteIdent {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    parse_sugg_escape_identifier,
+    message = "escape `{$ident_name}` to use it as an identifier",
     style = "verbose",
     applicability = "maybe-incorrect",
     code = "r#"
@@ -1101,17 +1101,17 @@ impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
         diag.arg("token", self.token);
 
         if let Some(sugg) = self.suggest_raw {
-            sugg.add_to_diagnostic(&mut diag);
+            diag.subdiagnostic(dcx, sugg);
         }
 
-        ExpectedIdentifierFound::new(token_descr, self.span).add_to_diagnostic(&mut diag);
+        diag.subdiagnostic(dcx, ExpectedIdentifierFound::new(token_descr, self.span));
 
         if let Some(sugg) = self.suggest_remove_comma {
-            sugg.add_to_diagnostic(&mut diag);
+            diag.subdiagnostic(dcx, sugg);
         }
 
         if let Some(help) = self.help_cannot_start_number {
-            help.add_to_diagnostic(&mut diag);
+            diag.subdiagnostic(dcx, help);
         }
 
         diag
@@ -1162,7 +1162,7 @@ impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
             diag.span_label(unexpected_token_label, fluent::parse_label_unexpected_token);
         }
 
-        self.sugg.add_to_diagnostic(&mut diag);
+        diag.subdiagnostic(dcx, self.sugg);
 
         diag
     }
@@ -1474,8 +1474,8 @@ pub(crate) struct FnTraitMissingParen {
     pub machine_applicable: bool,
 }
 
-impl AddToDiagnostic for FnTraitMissingParen {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for FnTraitMissingParen {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
         let applicability = if self.machine_applicable {
             Applicability::MachineApplicable

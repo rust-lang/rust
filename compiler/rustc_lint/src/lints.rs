@@ -5,8 +5,8 @@ use std::num::NonZero;
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diagnostic, DiagnosticBuilder,
-    DiagnosticMessage, DiagnosticStyledString, SubdiagnosticMessageOp, SuggestionStyle,
+    codes::*, AddToDiagnostic, Applicability, DecorateLint, DiagCtxt, Diagnostic,
+    DiagnosticBuilder, DiagnosticMessage, DiagnosticStyledString, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -267,8 +267,8 @@ pub struct SuggestChangingAssocTypes<'a, 'b> {
     pub ty: &'a rustc_hir::Ty<'b>,
 }
 
-impl AddToDiagnostic for SuggestChangingAssocTypes<'_, '_> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for SuggestChangingAssocTypes<'_, '_> {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound. Let's see if this type does that.
 
@@ -319,8 +319,8 @@ pub struct BuiltinTypeAliasGenericBoundsSuggestion {
     pub suggestions: Vec<(Span, String)>,
 }
 
-impl AddToDiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for BuiltinTypeAliasGenericBoundsSuggestion {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.multipart_suggestion(
             fluent::lint_suggestion,
             self.suggestions,
@@ -423,7 +423,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
                 fluent::lint_builtin_unpermitted_type_init_label_suggestion,
             );
         }
-        self.sub.add_to_diagnostic(diag);
+        diag.subdiagnostic(diag.dcx, self.sub);
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -436,8 +436,8 @@ pub struct BuiltinUnpermittedTypeInitSub {
     pub err: InitError,
 }
 
-impl AddToDiagnostic for BuiltinUnpermittedTypeInitSub {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for BuiltinUnpermittedTypeInitSub {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let mut err = self.err;
         loop {
             if let Some(span) = err.span {
@@ -487,8 +487,8 @@ pub struct BuiltinClashingExternSub<'a> {
     pub found: Ty<'a>,
 }
 
-impl AddToDiagnostic for BuiltinClashingExternSub<'_> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for BuiltinClashingExternSub<'_> {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let mut expected_str = DiagnosticStyledString::new();
         expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
         let mut found_str = DiagnosticStyledString::new();
@@ -765,8 +765,8 @@ pub struct HiddenUnicodeCodepointsDiagLabels {
     pub spans: Vec<(char, Span)>,
 }
 
-impl AddToDiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for HiddenUnicodeCodepointsDiagLabels {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         for (c, span) in self.spans {
             diag.span_label(span, format!("{c:?}"));
         }
@@ -779,8 +779,8 @@ pub enum HiddenUnicodeCodepointsDiagSub {
 }
 
 // Used because of multiple multipart_suggestion and note
-impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for HiddenUnicodeCodepointsDiagSub {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(
@@ -927,8 +927,8 @@ pub struct NonBindingLetSub {
     pub is_assign_desugar: bool,
 }
 
-impl AddToDiagnostic for NonBindingLetSub {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for NonBindingLetSub {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let can_suggest_binding = self.drop_fn_start_end.is_some() || !self.is_assign_desugar;
 
         if can_suggest_binding {
@@ -1207,8 +1207,8 @@ pub enum NonSnakeCaseDiagSub {
     SuggestionAndNote { span: Span },
 }
 
-impl AddToDiagnostic for NonSnakeCaseDiagSub {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for NonSnakeCaseDiagSub {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, fluent::lint_label);
@@ -1400,8 +1400,8 @@ pub enum OverflowingBinHexSign {
     Negative,
 }
 
-impl AddToDiagnostic for OverflowingBinHexSign {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for OverflowingBinHexSign {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         match self {
             OverflowingBinHexSign::Positive => {
                 diag.note(fluent::lint_positive_note);

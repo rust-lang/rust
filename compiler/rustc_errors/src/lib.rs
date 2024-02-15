@@ -1532,26 +1532,46 @@ impl DiagCtxtInner {
                 self.emit_diagnostic(Diagnostic::new(Note, note2));
             }
 
-            let mut bug =
-                if backtrace || self.ice_file.is_none() { bug.decorate(self) } else { bug.inner };
+            // This is a bit gnarly, but the `AddToDiagnostic` type uses a `DiagCtxt` to trigger
+            // translation. It could take an emitter or a `DiagCtxtInner` but it would make
+            // every other use of `AddToDiagnostic` more complex. This function is only invoked
+            // during the `Drop` of `DiagCtxtInner`, so we temporarily get a `T` from the `&mut T`
+            // here so we can put this back into a lock and back into a `DiagCtxt` to call the
+            // functions from `AddToDiagnostic`.
+            //
+            // FIXME(davidtwco): `AddToDiagnostic` should eventually be merged with
+            // `IntoDiagnostic`, and then the context determined by an associated type, depending
+            // on the needs of the specific diagnostic - once this is done, we can make these
+            // specific diagnostics take an emitter directly.
+            let bug = unsafe {
+                let old_dcx = std::ptr::read(self);
+                let (new_dcx, bug) = std::panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    let dcx = DiagCtxt { inner: Lock::new(old_dcx) };
 
-            // "Undelay" the delayed bugs (into plain `Bug`s).
-            if bug.level != DelayedBug {
-                // NOTE(eddyb) not panicking here because we're already producing
-                // an ICE, and the more information the merrier.
-                let subdiag = InvalidFlushedDelayedDiagnosticLevel {
-                    span: bug.span.primary_span().unwrap(),
-                    level: bug.level,
-                };
-                // FIXME: Cannot use `Diagnostic::subdiagnostic` which takes `DiagCtxt`, but it
-                // just uses `DiagCtxtInner` functions.
-                subdiag.add_to_diagnostic_with(&mut bug, |diag, msg| {
-                    let args = diag.args();
-                    let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-                    self.eagerly_translate(msg, args)
-                });
-            }
-            bug.level = Bug;
+                    let mut bug = if backtrace || self.ice_file.is_none() {
+                        bug.decorate(&dcx)
+                    } else {
+                        bug.inner
+                    };
+
+                    // "Undelay" the delayed bugs (into plain `Bug`s).
+                    if bug.level != DelayedBug {
+                        // NOTE(eddyb) not panicking here because we're already producing
+                        // an ICE, and the more information the merrier.
+                        let subdiag = InvalidFlushedDelayedDiagnosticLevel {
+                            span: bug.span.primary_span().unwrap(),
+                            level: bug.level,
+                        };
+                        subdiag.add_to_diagnostic(&dcx, &mut bug);
+                    }
+                    bug.level = Bug;
+
+                    (dcx.inner.into_inner(), bug)
+                }))
+                .unwrap_or_else(|_| std::process::abort());
+                std::ptr::write(self, new_dcx);
+                bug
+            };
 
             self.emit_diagnostic(bug);
         }
@@ -1583,15 +1603,7 @@ impl DelayedDiagnostic {
         DelayedDiagnostic { inner: diagnostic, note: backtrace }
     }
 
-    fn decorate(mut self, dcx: &DiagCtxtInner) -> Diagnostic {
-        // FIXME: Cannot use `Diagnostic::subdiagnostic` which takes `DiagCtxt`, but it
-        // just uses `DiagCtxtInner` functions.
-        let subdiag_with = |diag: &mut Diagnostic, msg| {
-            let args = diag.args();
-            let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-            dcx.eagerly_translate(msg, args)
-        };
-
+    fn decorate(mut self, dcx: &DiagCtxt) -> Diagnostic {
         match self.note.status() {
             BacktraceStatus::Captured => {
                 let inner = &self.inner;
@@ -1600,7 +1612,7 @@ impl DelayedDiagnostic {
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
                 };
-                subdiag.add_to_diagnostic_with(&mut self.inner, subdiag_with);
+                subdiag.add_to_diagnostic(dcx, &mut self.inner);
             }
             // Avoid the needless newline when no backtrace has been captured,
             // the display impl should just be a single line.
@@ -1611,7 +1623,7 @@ impl DelayedDiagnostic {
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
                 };
-                subdiag.add_to_diagnostic_with(&mut self.inner, subdiag_with);
+                subdiag.add_to_diagnostic(dcx, &mut self.inner);
             }
         }
 

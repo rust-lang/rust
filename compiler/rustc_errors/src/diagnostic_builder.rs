@@ -403,10 +403,25 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!((arg, with_arg)(
         name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
     ));
-    forward!((subdiagnostic, with_subdiagnostic)(
-        dcx: &DiagCtxt,
-        subdiagnostic: impl crate::AddToDiagnostic,
-    ));
+
+    /// See [`Diagnostic::subdiagnostic()`].
+    pub fn subdiagnostic(
+        &mut self,
+        dcx: &'a DiagCtxt,
+        subdiagnostic: impl crate::AddToDiagnostic<'a>,
+    ) -> &mut Self {
+        self.diag.as_mut().unwrap().subdiagnostic(dcx, subdiagnostic);
+        self
+    }
+    /// See [`Diagnostic::subdiagnostic()`].
+    pub fn with_subdiagnostic(
+        mut self,
+        dcx: &'a DiagCtxt,
+        subdiagnostic: impl crate::AddToDiagnostic<'a>,
+    ) -> Self {
+        self.diag.as_mut().unwrap().subdiagnostic(dcx, subdiagnostic);
+        self
+    }
 }
 
 impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {

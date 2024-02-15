@@ -19,15 +19,15 @@ use super::utils::SubdiagnosticVariant;
 
 /// The central struct for constructing the `add_to_diagnostic` method from an annotated struct.
 pub(crate) struct SubdiagnosticDeriveBuilder {
+    dcx: syn::Ident,
     diag: syn::Ident,
-    f: syn::Ident,
 }
 
 impl SubdiagnosticDeriveBuilder {
     pub(crate) fn new() -> Self {
+        let dcx = format_ident!("dcx");
         let diag = format_ident!("diag");
-        let f = format_ident!("f");
-        Self { diag, f }
+        Self { dcx, diag }
     }
 
     pub(crate) fn into_tokens(self, mut structure: Structure<'_>) -> TokenStream {
@@ -80,6 +80,7 @@ impl SubdiagnosticDeriveBuilder {
                     has_suggestion_parts: false,
                     is_enum,
                     generated_slug,
+                    args: Vec::new(),
                 };
                 builder.into_tokens().unwrap_or_else(|v| v.to_compile_error())
             });
@@ -91,14 +92,16 @@ impl SubdiagnosticDeriveBuilder {
             }
         };
 
+        let dcx = &self.dcx;
         let diag = &self.diag;
-        let f = &self.f;
         let ret = structure.gen_impl(quote! {
-            gen impl rustc_errors::AddToDiagnostic for @Self {
-                fn add_to_diagnostic_with<__F>(self, #diag: &mut rustc_errors::Diagnostic, #f: __F)
-                where
-                    __F: rustc_errors::SubdiagnosticMessageOp,
-                {
+            gen impl<'_ctxt> rustc_errors::AddToDiagnostic<'_ctxt> for @Self {
+                #[allow(rustc::potential_query_instability)]
+                fn add_to_diagnostic(
+                    self,
+                    #dcx: &'_ctxt rustc_errors::DiagCtxt,
+                    #diag: &mut rustc_errors::Diagnostic
+                ) {
                     #implementation
                 }
             }
@@ -140,6 +143,7 @@ struct SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     /// Set to true when this variant is an enum variant rather than just the body of a struct.
     is_enum: bool,
 
+    pub args: Vec<TokenStream>,
     generated_slug: String,
 }
 
@@ -230,6 +234,10 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         let ident = field.ident.as_ref().unwrap();
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
+
+        self.args.push(quote! {
+            args.insert(stringify!(#ident).into(), #field_binding.clone().into_diagnostic_arg());
+        });
 
         quote! {
             #diag.arg(
@@ -518,19 +526,28 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
         let span_field = self.span_field.value_ref();
 
+        let mut any_raw_fluent = false;
+
+        let dcx = &self.parent.dcx;
         let diag = &self.parent.diag;
-        let f = &self.parent.f;
         let mut calls = TokenStream::new();
         for (kind, slug, no_span) in kind_slugs {
             let message = format_ident!("__message");
             match slug {
                 SlugOrRawFluent::Slug(slug) => {
-                    calls.extend(
-                        quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
-                    );
+                    calls.extend(quote! {
+                        let args_ = #diag.args();
+                        let msg: rustc_errors::SubdiagnosticMessage = crate::fluent_generated::#slug.into();
+                        let msg = #diag.subdiagnostic_message_to_diagnostic_message(msg);
+                        let #message = #dcx.eagerly_translate_to_string(msg, args_);
+                    });
                 }
-                SlugOrRawFluent::RawFluent(_, raw) => {
-                    calls.extend(quote! { let #message = #raw; });
+                SlugOrRawFluent::RawFluent(slug, raw) => {
+                    any_raw_fluent = true;
+                    calls.extend(quote! {
+                        let raw = #dcx.raw_translate(#slug, #raw, args.iter());
+                        let #message = raw;
+                    });
                 }
             }
 
@@ -611,8 +628,21 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .map(|binding| self.generate_field_arg(binding))
             .collect();
 
+        let args = if any_raw_fluent {
+            let args = &self.args;
+            quote! {
+                use rustc_data_structures::fx::FxHashMap;
+                use rustc_errors::{DiagnosticArgName, DiagnosticArgValue, IntoDiagnosticArg};
+                let mut args: FxHashMap<DiagnosticArgName, DiagnosticArgValue> = Default::default();
+                #(#args)*
+            }
+        } else {
+            quote! {}
+        };
+
         let formatting_init = &self.formatting_init;
         Ok(quote! {
+            #args
             #init
             #formatting_init
             #attr_args

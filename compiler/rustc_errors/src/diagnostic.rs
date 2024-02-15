@@ -1,7 +1,7 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, ErrCode, Level,
-    MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, ErrCode,
+    Level, MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
@@ -66,18 +66,12 @@ impl Into<FluentValue<'static>> for DiagnosticArgValue {
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[rustc_diagnostic_item = "AddToDiagnostic"]
-pub trait AddToDiagnostic
+pub trait AddToDiagnostic<'a>
 where
     Self: Sized,
 {
     /// Add a subdiagnostic to an existing diagnostic.
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
-        self.add_to_diagnostic_with(diag, |_, m| m);
-    }
-
-    /// Add a subdiagnostic to an existing diagnostic where `f` is invoked on every message used
-    /// (to optionally perform eager translation).
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F);
+    fn add_to_diagnostic(self, dcx: &'a DiagCtxt, diag: &mut Diagnostic);
 }
 
 pub trait SubdiagnosticMessageOp =
@@ -855,16 +849,12 @@ impl Diagnostic {
     /// [rustc_macros::Subdiagnostic]). Performs eager translation of any translatable messages
     /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
     /// interpolated variables).
-    pub fn subdiagnostic(
+    pub fn subdiagnostic<'a>(
         &mut self,
-        dcx: &crate::DiagCtxt,
-        subdiagnostic: impl AddToDiagnostic,
+        dcx: &'a crate::DiagCtxt,
+        subdiagnostic: impl AddToDiagnostic<'a>,
     ) -> &mut Self {
-        subdiagnostic.add_to_diagnostic_with(self, |diag, msg| {
-            let args = diag.args();
-            let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-            dcx.eagerly_translate(msg, args)
-        });
+        subdiagnostic.add_to_diagnostic(dcx, self);
         self
     }
 
@@ -911,7 +901,7 @@ impl Diagnostic {
     /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
     /// combining it with the primary message of the diagnostic (if translatable, otherwise it just
     /// passes the user's string along).
-    pub(crate) fn subdiagnostic_message_to_diagnostic_message(
+    pub fn subdiagnostic_message_to_diagnostic_message(
         &self,
         attr: impl Into<SubdiagnosticMessage>,
     ) -> DiagnosticMessage {

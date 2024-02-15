@@ -1,7 +1,7 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diagnostic, DiagnosticMessage,
-    DiagnosticStyledString, IntoDiagnosticArg, MultiSpan, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticMessage,
+    DiagnosticStyledString, IntoDiagnosticArg, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::FnRetTy;
@@ -224,8 +224,8 @@ pub enum RegionOriginNote<'a> {
     },
 }
 
-impl AddToDiagnostic for RegionOriginNote<'_> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for RegionOriginNote<'_> {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let mut label_or_note = |span, msg: DiagnosticMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
@@ -285,8 +285,8 @@ pub enum LifetimeMismatchLabels {
     },
 }
 
-impl AddToDiagnostic for LifetimeMismatchLabels {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for LifetimeMismatchLabels {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
                 diag.span_label(param_span, fluent::infer_declared_different);
@@ -329,8 +329,8 @@ pub struct AddLifetimeParamsSuggestion<'a> {
     pub add_note: bool,
 }
 
-impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for AddLifetimeParamsSuggestion<'_> {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let mut mk_suggestion = || {
             let (
                 hir::Ty { kind: hir::TyKind::Ref(lifetime_sub, _), .. },
@@ -427,8 +427,8 @@ pub struct IntroducesStaticBecauseUnmetLifetimeReq {
     pub binding_span: Span,
 }
 
-impl AddToDiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(mut self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for IntroducesStaticBecauseUnmetLifetimeReq {
+    fn add_to_diagnostic(mut self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         self.unmet_requirements
             .push_span_label(self.binding_span, fluent::infer_msl_introduces_static);
         diag.span_note(self.unmet_requirements, fluent::infer_msl_unmet_req);
@@ -742,15 +742,13 @@ pub struct ConsiderBorrowingParamHelp {
     pub spans: Vec<Span>,
 }
 
-impl AddToDiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F) {
+impl<'a> AddToDiagnostic<'a> for ConsiderBorrowingParamHelp {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
-            // Seems like we can't call f() here as Into<DiagnosticMessage> is required
             type_param_span.push_span_label(span, fluent::infer_tid_consider_borrowing);
         }
-        let msg = f(diag, fluent::infer_tid_param_help.into());
-        diag.span_help(type_param_span, msg);
+        diag.span_help(type_param_span, fluent::infer_tid_param_help);
     }
 }
 
@@ -783,17 +781,15 @@ pub struct DynTraitConstraintSuggestion {
     pub ident: Ident,
 }
 
-impl AddToDiagnostic for DynTraitConstraintSuggestion {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F) {
+impl<'a> AddToDiagnostic<'a> for DynTraitConstraintSuggestion {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let mut multi_span: MultiSpan = vec![self.span].into();
         multi_span.push_span_label(self.span, fluent::infer_dtcs_has_lifetime_req_label);
         multi_span.push_span_label(self.ident.span, fluent::infer_dtcs_introduces_requirement);
-        let msg = f(diag, fluent::infer_dtcs_has_req_note.into());
-        diag.span_note(multi_span, msg);
-        let msg = f(diag, fluent::infer_dtcs_suggestion.into());
+        diag.span_note(multi_span, fluent::infer_dtcs_has_req_note);
         diag.span_suggestion_verbose(
             self.span.shrink_to_hi(),
-            msg,
+            fluent::infer_dtcs_suggestion,
             " + '_",
             Applicability::MaybeIncorrect,
         );
@@ -826,8 +822,8 @@ pub struct ReqIntroducedLocations {
     pub add_label: bool,
 }
 
-impl AddToDiagnostic for ReqIntroducedLocations {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(mut self, diag: &mut Diagnostic, f: F) {
+impl<'a> AddToDiagnostic<'a> for ReqIntroducedLocations {
+    fn add_to_diagnostic(mut self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         for sp in self.spans {
             self.span.push_span_label(sp, fluent::infer_ril_introduced_here);
         }
@@ -836,8 +832,7 @@ impl AddToDiagnostic for ReqIntroducedLocations {
             self.span.push_span_label(self.fn_decl_span, fluent::infer_ril_introduced_by);
         }
         self.span.push_span_label(self.cause_span, fluent::infer_ril_because_of);
-        let msg = f(diag, fluent::infer_ril_static_introduced_by.into());
-        diag.span_note(self.span, msg);
+        diag.span_note(self.span, fluent::infer_ril_static_introduced_by);
     }
 }
 
@@ -845,8 +840,8 @@ pub struct MoreTargeted {
     pub ident: Symbol,
 }
 
-impl AddToDiagnostic for MoreTargeted {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _f: F) {
+impl<'a> AddToDiagnostic<'a> for MoreTargeted {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.code(E0772);
         diag.primary_message(fluent::infer_more_targeted);
         diag.arg("ident", self.ident);
@@ -1264,12 +1259,11 @@ pub struct SuggestTuplePatternMany {
     pub compatible_variants: Vec<String>,
 }
 
-impl AddToDiagnostic for SuggestTuplePatternMany {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F) {
+impl<'a> AddToDiagnostic<'a> for SuggestTuplePatternMany {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.arg("path", self.path);
-        let message = f(diag, crate::fluent_generated::infer_stp_wrap_many.into());
         diag.multipart_suggestions(
-            message,
+            crate::fluent_generated::infer_stp_wrap_many,
             self.compatible_variants.into_iter().map(|variant| {
                 vec![
                     (self.cause_span.shrink_to_lo(), format!("{variant}(")),

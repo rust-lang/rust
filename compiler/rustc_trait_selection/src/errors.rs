@@ -1,7 +1,7 @@
 use crate::fluent_generated as fluent;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    EmissionGuarantee, IntoDiagnostic, Level, SubdiagnosticMessageOp,
+    EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_middle::ty::{self, ClosureKind, PolyTraitRef, Ty};
@@ -101,8 +101,8 @@ pub enum AdjustSignatureBorrow {
     RemoveBorrow { remove_borrow: Vec<(Span, String)> },
 }
 
-impl AddToDiagnostic for AdjustSignatureBorrow {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for AdjustSignatureBorrow {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("len", to_borrow.len());

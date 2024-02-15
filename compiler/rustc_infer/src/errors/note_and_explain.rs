@@ -1,6 +1,6 @@
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessageOp};
+use rustc_errors::{AddToDiagnostic, DiagCtxt, Diagnostic, IntoDiagnosticArg};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -159,18 +159,18 @@ impl RegionExplanation<'_> {
     }
 }
 
-impl AddToDiagnostic for RegionExplanation<'_> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F) {
+impl<'a> AddToDiagnostic<'a> for RegionExplanation<'_> {
+    fn add_to_diagnostic(self, dcx: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
-        let msg = f(diag, fluent::infer_region_explanation.into());
+        let message = dcx.eagerly_translate(fluent::infer_region_explanation, diag.args());
         if let Some(span) = self.desc.span {
-            diag.span_note(span, msg);
+            diag.span_note(span, message);
         } else {
-            diag.note(msg);
+            diag.note(message);
         }
     }
 }

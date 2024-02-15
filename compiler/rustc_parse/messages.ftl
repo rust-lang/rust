@@ -707,7 +707,6 @@ parse_sugg_add_semi = add `;` here
 parse_sugg_change_inner_attr_to_outer = to annotate the {$item}, change the attribute from inner to outer style
 
 parse_sugg_change_this_to_semi = change this to `;`
-parse_sugg_escape_identifier = escape `{$ident_name}` to use it as an identifier
 
 parse_sugg_remove_comma = remove this comma
 parse_sugg_remove_leading_vert_in_pattern = remove the `|`

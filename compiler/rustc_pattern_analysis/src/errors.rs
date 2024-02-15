@@ -1,4 +1,3 @@
-use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessageOp};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
@@ -56,20 +55,12 @@ pub struct OverlappingRangeEndpoints<'tcx> {
     pub overlap: Vec<Overlap<'tcx>>,
 }
 
+#[derive(Subdiagnostic)]
+#[label(message = "this range overlaps on `{$range}`...")]
 pub struct Overlap<'tcx> {
+    #[primary_span]
     pub span: Span,
     pub range: Pat<'tcx>,
-}
-
-impl<'tcx> AddToDiagnostic for Overlap<'tcx> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
-        let Overlap { span, range } = self;
-
-        // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
-        // does not support `#[subdiagnostic(eager)]`...
-        let message = format!("this range overlaps on `{range}`...");
-        diag.span_label(span, message);
-    }
 }
 
 #[derive(LintDiagnostic)]

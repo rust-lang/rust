@@ -3,8 +3,8 @@ use std::borrow::Cow;
 
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg,
-    MultiSpan, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticArgValue,
+    IntoDiagnosticArg, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -194,8 +194,8 @@ pub struct TypeMismatchFruTypo {
     pub expr: Option<String>,
 }
 
-impl AddToDiagnostic for TypeMismatchFruTypo {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for TypeMismatchFruTypo {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
@@ -369,8 +369,8 @@ pub struct RemoveSemiForCoerce {
     pub semi: Span,
 }
 
-impl AddToDiagnostic for RemoveSemiForCoerce {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+impl<'a> AddToDiagnostic<'a> for RemoveSemiForCoerce {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         let mut multispan: MultiSpan = self.semi.into();
         multispan.push_span_label(self.expr, fluent::hir_typeck_remove_semi_for_coerce_expr);
         multispan.push_span_label(self.ret, fluent::hir_typeck_remove_semi_for_coerce_ret);
@@ -541,18 +541,15 @@ pub enum CastUnknownPointerSub {
     From(Span),
 }
 
-impl AddToDiagnostic for CastUnknownPointerSub {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F) {
+impl<'a> AddToDiagnostic<'a> for CastUnknownPointerSub {
+    fn add_to_diagnostic(self, _: &'a DiagCtxt, diag: &mut Diagnostic) {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = f(diag, crate::fluent_generated::hir_typeck_label_to);
-                diag.span_label(span, msg);
-                let msg = f(diag, crate::fluent_generated::hir_typeck_note);
-                diag.note(msg);
+                diag.span_label(span, crate::fluent_generated::hir_typeck_label_to);
+                diag.note(crate::fluent_generated::hir_typeck_note);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = f(diag, crate::fluent_generated::hir_typeck_label_from);
-                diag.span_label(span, msg);
+                diag.span_label(span, crate::fluent_generated::hir_typeck_label_from);
             }
         }
     }
