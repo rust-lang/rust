@@ -1,7 +1,11 @@
 //@ check-pass
 //@ edition:2021
+//@ aux-build:non_local_macro.rs
+//@ rustc-env:CARGO=/usr/bin/cargo
 
 #![feature(inline_const)]
+
+extern crate non_local_macro;
 
 use std::fmt::{Debug, Display};
 
@@ -363,6 +367,14 @@ macro_rules! m {
 }
 
 m!();
+
+struct CargoUpdate;
+
+non_local_macro::non_local_impl!(CargoUpdate);
+//~^ WARN non-local `impl` definition
+
+non_local_macro::non_local_macro_rules!(my_macro);
+//~^ WARN non-local `macro_rules!` definition
 
 fn bitflags() {
     struct Flags;

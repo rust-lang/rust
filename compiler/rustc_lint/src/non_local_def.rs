@@ -1,9 +1,11 @@
 use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, Path, QPath, TyKind};
-use rustc_span::{def_id::DefId, sym, symbol::kw, MacroKind};
+use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::{sym, symbol::kw, ExpnKind, MacroKind};
 
 use smallvec::{smallvec, SmallVec};
 
-use crate::{lints::NonLocalDefinitionsDiag, LateContext, LateLintPass, LintContext};
+use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
+use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
     /// The `non_local_definitions` lint checks for `impl` blocks and `#[macro_export]`
@@ -76,6 +78,23 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
         {
             return;
         }
+
+        let cargo_update = || {
+            let oexpn = item.span.ctxt().outer_expn_data();
+            if let Some(def_id) = oexpn.macro_def_id
+                && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
+                && def_id.krate != LOCAL_CRATE
+                && std::env::var_os("CARGO").is_some()
+            {
+                Some(NonLocalDefinitionsCargoUpdateNote {
+                    macro_kind: macro_kind.descr(),
+                    macro_name,
+                    crate_name: cx.tcx.crate_name(def_id.krate),
+                })
+            } else {
+                None
+            }
+        };
 
         match item.kind {
             ItemKind::Impl(impl_) => {
@@ -162,6 +181,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             body_name: parent_opt_item_name
                                 .map(|s| s.to_ident_string())
                                 .unwrap_or_else(|| "<unnameable>".to_string()),
+                            cargo_update: cargo_update(),
                             const_anon,
                         },
                     )
@@ -179,6 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         body_name: parent_opt_item_name
                             .map(|s| s.to_ident_string())
                             .unwrap_or_else(|| "<unnameable>".to_string()),
+                        cargo_update: cargo_update(),
                     },
                 )
             }

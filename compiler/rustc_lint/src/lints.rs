@@ -1305,6 +1305,8 @@ pub enum NonLocalDefinitionsDiag {
         depth: u32,
         body_kind_descr: &'static str,
         body_name: String,
+        #[subdiagnostic]
+        cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
         #[suggestion(lint_const_anon, code = "_", applicability = "machine-applicable")]
         const_anon: Option<Span>,
     },
@@ -1313,7 +1315,21 @@ pub enum NonLocalDefinitionsDiag {
     #[note(lint_non_local)]
     #[note(lint_exception)]
     #[note(lint_non_local_definitions_deprecation)]
-    MacroRules { depth: u32, body_kind_descr: &'static str, body_name: String },
+    MacroRules {
+        depth: u32,
+        body_kind_descr: &'static str,
+        body_name: String,
+        #[subdiagnostic]
+        cargo_update: Option<NonLocalDefinitionsCargoUpdateNote>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[note(lint_non_local_definitions_cargo_update)]
+pub struct NonLocalDefinitionsCargoUpdateNote {
+    pub macro_kind: &'static str,
+    pub macro_name: Symbol,
+    pub crate_name: Symbol,
 }
 
 // pass_by_value.rs

@@ -411,6 +411,8 @@ lint_non_fmt_panic_unused =
     }
     .add_fmt_suggestion = or add a "{"{"}{"}"}" format string to use the message literally
 
+lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
+
 lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
 
 lint_non_local_definitions_impl = non-local `impl` definition, they should be avoided as they go against expectation
