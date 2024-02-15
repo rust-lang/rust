@@ -168,6 +168,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
+            TailCall { func: _, args: _, fn_span: _ } => todo!(),
+
             Drop { place, target, unwind, replace: _ } => {
                 let frame = self.frame();
                 let ty = place.ty(&frame.body.local_decls, *self.tcx).ty;

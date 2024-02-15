@@ -214,20 +214,6 @@ LL ~     }) else {
    |
 
 error: right curly brace `}` before `else` in a `let...else` statement not allowed
-  --> $DIR/bad-let-else-statement.rs:162:5
-   |
-LL |     } else {
-   |     ^
-   |
-help: wrap the expression in parentheses
-   |
-LL ~     let foo = become ({
-LL |
-LL |         ()
-LL ~     }) else {
-   |
-
-error: right curly brace `}` before `else` in a `let...else` statement not allowed
   --> $DIR/bad-let-else-statement.rs:172:5
    |
 LL |     } else {
@@ -431,18 +417,6 @@ LL | |     } else {
    = help: consider removing the `else` clause
 
 warning: irrefutable `let...else` pattern
-  --> $DIR/bad-let-else-statement.rs:159:5
-   |
-LL | /     let foo = become {
-LL | |
-LL | |         ()
-LL | |     } else {
-   | |_____^
-   |
-   = note: this pattern will always match, so the `else` clause is useless
-   = help: consider removing the `else` clause
-
-warning: irrefutable `let...else` pattern
   --> $DIR/bad-let-else-statement.rs:169:5
    |
 LL | /     let foo = |x: i32| {
@@ -512,6 +486,6 @@ LL |       b!(1); b!(2);
    = help: consider removing the `else` clause
    = note: this warning originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 20 previous errors; 18 warnings emitted
+error: aborting due to 19 previous errors; 17 warnings emitted
 
 For more information about this error, try `rustc --explain E0384`.

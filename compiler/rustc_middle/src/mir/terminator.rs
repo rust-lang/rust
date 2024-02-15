@@ -401,6 +401,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | UnwindTerminate(_)
             | CoroutineDrop
             | Return
+            | TailCall { .. }
             | Unreachable
             | Call { target: None, unwind: _, .. } => (&[]).into_iter().copied().chain(None),
             InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
@@ -438,6 +439,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | UnwindTerminate(_)
             | CoroutineDrop
             | Return
+            | TailCall { .. }
             | Unreachable
             | Call { target: None, unwind: _, .. } => (&mut []).into_iter().chain(None),
             InlineAsm { ref mut targets, unwind: UnwindAction::Cleanup(ref mut u), .. } => {
@@ -458,6 +460,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::CoroutineDrop
             | TerminatorKind::Yield { .. }
@@ -478,6 +481,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::CoroutineDrop
             | TerminatorKind::Yield { .. }
@@ -563,9 +567,12 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
         use TerminatorKind::*;
         match *self {
-            Return | UnwindResume | UnwindTerminate(_) | CoroutineDrop | Unreachable => {
-                TerminatorEdges::None
-            }
+            Return
+            | TailCall { .. }
+            | UnwindResume
+            | UnwindTerminate(_)
+            | CoroutineDrop
+            | Unreachable => TerminatorEdges::None,
 
             Goto { target } => TerminatorEdges::Single(target),
 
