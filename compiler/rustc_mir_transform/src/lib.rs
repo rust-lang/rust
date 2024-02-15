@@ -265,7 +265,8 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     let body = &tcx.mir_const(def).borrow();
 
     if body.return_ty().references_error() {
-        assert!(tcx.dcx().has_errors().is_some(), "mir_const_qualif: MIR had errors");
+        // It's possible to reach here without an error being emitted (#121103).
+        tcx.dcx().span_delayed_bug(body.span, "mir_const_qualif: MIR had errors");
         return Default::default();
     }
 

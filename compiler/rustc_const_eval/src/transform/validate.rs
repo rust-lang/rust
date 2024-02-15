@@ -98,6 +98,26 @@ impl<'tcx> MirPass<'tcx> for Validator {
                 }
             }
         }
+
+        // Enforce that coroutine-closure layouts are identical.
+        if let Some(layout) = body.coroutine_layout()
+            && let Some(by_move_body) = body.coroutine_by_move_body()
+            && let Some(by_move_layout) = by_move_body.coroutine_layout()
+        {
+            if layout != by_move_layout {
+                // If this turns out not to be true, please let compiler-errors know.
+                // It is possible to support, but requires some changes to the layout
+                // computation code.
+                cfg_checker.fail(
+                    Location::START,
+                    format!(
+                        "Coroutine layout differs from by-move coroutine layout:\n\
+                        layout: {layout:#?}\n\
+                        by_move_layout: {by_move_layout:#?}",
+                    ),
+                );
+            }
+        }
     }
 }
 

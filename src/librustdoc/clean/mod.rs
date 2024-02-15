@@ -523,7 +523,6 @@ fn clean_generic_param_def<'tcx>(
             (
                 def.name,
                 GenericParamDefKind::Type {
-                    did: def.def_id,
                     bounds: ThinVec::new(), // These are filled in from the where-clauses.
                     default: default.map(Box::new),
                     synthetic,
@@ -555,7 +554,7 @@ fn clean_generic_param_def<'tcx>(
         ),
     };
 
-    GenericParamDef { name, kind }
+    GenericParamDef { name, def_id: def.def_id, kind }
 }
 
 fn clean_generic_param<'tcx>(
@@ -594,7 +593,6 @@ fn clean_generic_param<'tcx>(
             (
                 param.name.ident().name,
                 GenericParamDefKind::Type {
-                    did: param.def_id.to_def_id(),
                     bounds,
                     default: default.map(|t| clean_ty(t, cx)).map(Box::new),
                     synthetic,
@@ -612,7 +610,7 @@ fn clean_generic_param<'tcx>(
         ),
     };
 
-    GenericParamDef { name, kind }
+    GenericParamDef { name, def_id: param.def_id.to_def_id(), kind }
 }
 
 /// Synthetic type-parameters are inserted after normal ones.
@@ -644,8 +642,8 @@ pub(crate) fn clean_generics<'tcx>(
             let param = clean_generic_param(cx, Some(gens), param);
             match param.kind {
                 GenericParamDefKind::Lifetime { .. } => unreachable!(),
-                GenericParamDefKind::Type { did, ref bounds, .. } => {
-                    cx.impl_trait_bounds.insert(did.into(), bounds.to_vec());
+                GenericParamDefKind::Type { ref bounds, .. } => {
+                    cx.impl_trait_bounds.insert(param.def_id.into(), bounds.to_vec());
                 }
                 GenericParamDefKind::Const { .. } => unreachable!(),
             }
@@ -1062,8 +1060,11 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
             match literal.kind {
                 ast::LitKind::Int(a, _) => {
                     let gen = func.generics.params.remove(0);
-                    if let GenericParamDef { name, kind: GenericParamDefKind::Const { ty, .. } } =
-                        gen
+                    if let GenericParamDef {
+                        name,
+                        kind: GenericParamDefKind::Const { ty, .. },
+                        ..
+                    } = gen
                     {
                         func.decl
                             .inputs
@@ -1167,7 +1168,7 @@ fn clean_fn_decl_with_args<'tcx>(
     FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
 }
 
-fn clean_fn_decl_from_did_and_sig<'tcx>(
+fn clean_poly_fn_sig<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: Option<DefId>,
     sig: ty::PolyFnSig<'tcx>,
@@ -1357,16 +1358,7 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
             }
         }
         ty::AssocKind::Fn => {
-            let sig = tcx.fn_sig(assoc_item.def_id).instantiate_identity();
-            let mut generics = clean_ty_generics(
-                cx,
-                tcx.generics_of(assoc_item.def_id),
-                tcx.explicit_predicates_of(assoc_item.def_id),
-            );
-            // FIXME: This does not place parameters in source order (late-bound ones come last)
-            generics.params.extend(clean_bound_vars(sig.bound_vars()));
-
-            let mut decl = clean_fn_decl_from_did_and_sig(cx, Some(assoc_item.def_id), sig);
+            let mut item = inline::build_function(cx, assoc_item.def_id);
 
             if assoc_item.fn_has_self_parameter {
                 let self_ty = match assoc_item.container {
@@ -1375,12 +1367,13 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     }
                     ty::TraitContainer => tcx.types.self_param,
                 };
-                let self_arg_ty = sig.input(0).skip_binder();
+                let self_arg_ty =
+                    tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
                 if self_arg_ty == self_ty {
-                    decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
+                    item.decl.inputs.values[0].type_ = Generic(kw::SelfUpper);
                 } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
                     if ty == self_ty {
-                        match decl.inputs.values[0].type_ {
+                        match item.decl.inputs.values[0].type_ {
                             BorrowedRef { ref mut type_, .. } => **type_ = Generic(kw::SelfUpper),
                             _ => unreachable!(),
                         }
@@ -1397,9 +1390,9 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     ty::ImplContainer => Some(assoc_item.defaultness(tcx)),
                     ty::TraitContainer => None,
                 };
-                MethodItem(Box::new(Function { generics, decl }), defaultness)
+                MethodItem(item, defaultness)
             } else {
-                TyMethodItem(Box::new(Function { generics, decl }))
+                TyMethodItem(item)
             }
         }
         ty::AssocKind::Type => {
@@ -2083,7 +2076,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::FnDef(..) | ty::FnPtr(_) => {
             // FIXME: should we merge the outer and inner binders somehow?
             let sig = bound_ty.skip_binder().fn_sig(cx.tcx);
-            let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
+            let decl = clean_poly_fn_sig(cx, None, sig);
             let generic_params = clean_bound_vars(sig.bound_vars());
 
             BareFunction(Box::new(BareFunctionDecl {
@@ -2166,10 +2159,10 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .iter()
                 .flat_map(|pred| pred.bound_vars())
                 .filter_map(|var| match var {
-                    ty::BoundVariableKind::Region(ty::BrNamed(_, name))
+                    ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
                         if name != kw::UnderscoreLifetime =>
                     {
-                        Some(GenericParamDef::lifetime(name))
+                        Some(GenericParamDef::lifetime(def_id, name))
                     }
                     _ => None,
                 })
@@ -3141,20 +3134,22 @@ fn clean_bound_vars<'tcx>(
     bound_vars
         .into_iter()
         .filter_map(|var| match var {
-            ty::BoundVariableKind::Region(ty::BrNamed(_, name))
+            ty::BoundVariableKind::Region(ty::BrNamed(def_id, name))
                 if name != kw::UnderscoreLifetime =>
             {
-                Some(GenericParamDef::lifetime(name))
+                Some(GenericParamDef::lifetime(def_id, name))
             }
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(did, name)) => Some(GenericParamDef {
-                name,
-                kind: GenericParamDefKind::Type {
-                    did,
-                    bounds: ThinVec::new(),
-                    default: None,
-                    synthetic: false,
-                },
-            }),
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name)) => {
+                Some(GenericParamDef {
+                    name,
+                    def_id,
+                    kind: GenericParamDefKind::Type {
+                        bounds: ThinVec::new(),
+                        default: None,
+                        synthetic: false,
+                    },
+                })
+            }
             // FIXME(non_lifetime_binders): Support higher-ranked const parameters.
             ty::BoundVariableKind::Const => None,
             _ => None,

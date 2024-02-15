@@ -202,41 +202,13 @@ where
 impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     type T = stable_mir::ty::FnSig;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        use rustc_target::spec::abi;
-        use stable_mir::ty::{Abi, FnSig};
+        use stable_mir::ty::FnSig;
 
         FnSig {
             inputs_and_output: self.inputs_and_output.iter().map(|ty| ty.stable(tables)).collect(),
             c_variadic: self.c_variadic,
             unsafety: self.unsafety.stable(tables),
-            abi: match self.abi {
-                abi::Abi::Rust => Abi::Rust,
-                abi::Abi::C { unwind } => Abi::C { unwind },
-                abi::Abi::Cdecl { unwind } => Abi::Cdecl { unwind },
-                abi::Abi::Stdcall { unwind } => Abi::Stdcall { unwind },
-                abi::Abi::Fastcall { unwind } => Abi::Fastcall { unwind },
-                abi::Abi::Vectorcall { unwind } => Abi::Vectorcall { unwind },
-                abi::Abi::Thiscall { unwind } => Abi::Thiscall { unwind },
-                abi::Abi::Aapcs { unwind } => Abi::Aapcs { unwind },
-                abi::Abi::Win64 { unwind } => Abi::Win64 { unwind },
-                abi::Abi::SysV64 { unwind } => Abi::SysV64 { unwind },
-                abi::Abi::PtxKernel => Abi::PtxKernel,
-                abi::Abi::Msp430Interrupt => Abi::Msp430Interrupt,
-                abi::Abi::X86Interrupt => Abi::X86Interrupt,
-                abi::Abi::EfiApi => Abi::EfiApi,
-                abi::Abi::AvrInterrupt => Abi::AvrInterrupt,
-                abi::Abi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
-                abi::Abi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
-                abi::Abi::Wasm => Abi::Wasm,
-                abi::Abi::System { unwind } => Abi::System { unwind },
-                abi::Abi::RustIntrinsic => Abi::RustIntrinsic,
-                abi::Abi::RustCall => Abi::RustCall,
-                abi::Abi::PlatformIntrinsic => Abi::PlatformIntrinsic,
-                abi::Abi::Unadjusted => Abi::Unadjusted,
-                abi::Abi::RustCold => Abi::RustCold,
-                abi::Abi::RiscvInterruptM => Abi::RiscvInterruptM,
-                abi::Abi::RiscvInterruptS => Abi::RiscvInterruptS,
-            },
+            abi: self.abi.stable(tables),
         }
     }
 }
@@ -829,6 +801,54 @@ impl<'tcx> Stable<'tcx> for ty::Movability {
         match self {
             ty::Movability::Static => stable_mir::ty::Movability::Static,
             ty::Movability::Movable => stable_mir::ty::Movability::Movable,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_target::spec::abi::Abi {
+    type T = stable_mir::ty::Abi;
+
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use rustc_target::spec::abi;
+        use stable_mir::ty::Abi;
+        match *self {
+            abi::Abi::Rust => Abi::Rust,
+            abi::Abi::C { unwind } => Abi::C { unwind },
+            abi::Abi::Cdecl { unwind } => Abi::Cdecl { unwind },
+            abi::Abi::Stdcall { unwind } => Abi::Stdcall { unwind },
+            abi::Abi::Fastcall { unwind } => Abi::Fastcall { unwind },
+            abi::Abi::Vectorcall { unwind } => Abi::Vectorcall { unwind },
+            abi::Abi::Thiscall { unwind } => Abi::Thiscall { unwind },
+            abi::Abi::Aapcs { unwind } => Abi::Aapcs { unwind },
+            abi::Abi::Win64 { unwind } => Abi::Win64 { unwind },
+            abi::Abi::SysV64 { unwind } => Abi::SysV64 { unwind },
+            abi::Abi::PtxKernel => Abi::PtxKernel,
+            abi::Abi::Msp430Interrupt => Abi::Msp430Interrupt,
+            abi::Abi::X86Interrupt => Abi::X86Interrupt,
+            abi::Abi::EfiApi => Abi::EfiApi,
+            abi::Abi::AvrInterrupt => Abi::AvrInterrupt,
+            abi::Abi::AvrNonBlockingInterrupt => Abi::AvrNonBlockingInterrupt,
+            abi::Abi::CCmseNonSecureCall => Abi::CCmseNonSecureCall,
+            abi::Abi::Wasm => Abi::Wasm,
+            abi::Abi::System { unwind } => Abi::System { unwind },
+            abi::Abi::RustIntrinsic => Abi::RustIntrinsic,
+            abi::Abi::RustCall => Abi::RustCall,
+            abi::Abi::PlatformIntrinsic => Abi::PlatformIntrinsic,
+            abi::Abi::Unadjusted => Abi::Unadjusted,
+            abi::Abi::RustCold => Abi::RustCold,
+            abi::Abi::RiscvInterruptM => Abi::RiscvInterruptM,
+            abi::Abi::RiscvInterruptS => Abi::RiscvInterruptS,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_session::cstore::ForeignModule {
+    type T = stable_mir::ty::ForeignModule;
+
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
+        stable_mir::ty::ForeignModule {
+            def_id: tables.foreign_module_def(self.def_id),
+            abi: self.abi.stable(tables),
         }
     }
 }
