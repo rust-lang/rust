@@ -390,7 +390,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn index(self, slice: &[T]) -> &[T] {
         if self.start > self.end {
             slice_index_order_fail(self.start, self.end);
@@ -440,7 +440,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
         unsafe { (0..self.end).get_unchecked_mut(slice) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn index(self, slice: &[T]) -> &[T] {
         (0..self.end).index(slice)
     }
