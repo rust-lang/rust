@@ -244,8 +244,8 @@ pub struct DirBuilder {
 /// use std::fs;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-///     let address: String = String::from_utf8_lossy(&fs::read("address.txt")?).to_string();
-///     println!("{}", address);
+///     let data: Vec<u8> = fs::read("image.jpg")?;
+///     assert_eq!(data[0..3], [0xFF, 0xD8, 0xFF]);
 ///     Ok(())
 /// }
 /// ```
