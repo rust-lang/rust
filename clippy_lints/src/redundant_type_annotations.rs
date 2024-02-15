@@ -200,7 +200,7 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                                 span_lint(cx, REDUNDANT_TYPE_ANNOTATIONS, local.span, "redundant type annotation");
                             }
                         },
-                        LitKind::Err => (),
+                        LitKind::Err(_) => (),
                         LitKind::ByteStr(..) => {
                             // We only lint if the type annotation is an array type (e.g. &[u8; 4]).
                             // If instead it is a slice (e.g. &[u8]) it may not be redundant, so we
