@@ -43,10 +43,7 @@ pub mod thread_local_key;
 pub mod time;
 
 cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
-    } else {
-        #[path = "../unsupported/locks/mod.rs"]
-        pub mod locks;
+    if #[cfg(not(target_feature = "atomics"))] {
         #[path = "../unsupported/once.rs"]
         pub mod once;
         #[path = "../unsupported/thread_parking.rs"]

@@ -31,5 +31,8 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "xous")] {
         mod xous;
         pub use xous::Mutex;
+    } else {
+        mod no_threads;
+        pub use no_threads::Mutex;
     }
 }

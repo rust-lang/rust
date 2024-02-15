@@ -48,8 +48,6 @@ cfg_if::cfg_if! {
         #[path = "atomics/thread.rs"]
         pub mod thread;
     } else {
-        #[path = "../unsupported/locks/mod.rs"]
-        pub mod locks;
         #[path = "../unsupported/once.rs"]
         pub mod once;
         #[path = "../unsupported/thread.rs"]
