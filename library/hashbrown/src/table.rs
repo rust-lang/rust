@@ -298,6 +298,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn find_entry(
         &mut self,
         hash: u64,
@@ -358,6 +359,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn entry(
         &mut self,
         hash: u64,
@@ -1514,6 +1516,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> (T, VacantEntry<'a, T, A>) {
         let (val, slot) = unsafe { self.table.raw.remove(self.bucket) };
         (
@@ -1553,6 +1556,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[inline]
     pub fn get(&self) -> &T {
         unsafe { self.bucket.as_ref() }
     }
@@ -1606,6 +1610,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[inline]
     pub fn get_mut(&mut self) -> &mut T {
         unsafe { self.bucket.as_mut() }
     }
@@ -1759,6 +1764,7 @@ where
     /// #     test()
     /// # }
     /// ```
+    #[inline]
     pub fn insert(self, value: T) -> OccupiedEntry<'a, T, A> {
         let bucket = unsafe {
             self.table
