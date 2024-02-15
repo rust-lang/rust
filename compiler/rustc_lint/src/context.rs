@@ -18,8 +18,9 @@ use self::TargetLint::*;
 
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir as hir;
@@ -69,10 +70,10 @@ pub struct LintStore {
     pub late_module_passes: Vec<Box<LateLintPassFactory>>,
 
     /// Lints indexed by name.
-    by_name: FxHashMap<String, TargetLint>,
+    by_name: UnordMap<String, TargetLint>,
 
     /// Map of registered lint groups to what lints they expand to.
-    lint_groups: FxHashMap<&'static str, LintGroup>,
+    lint_groups: FxIndexMap<&'static str, LintGroup>,
 }
 
 impl LintStoreMarker for LintStore {}
@@ -152,8 +153,6 @@ impl LintStore {
     pub fn get_lint_groups<'t>(
         &'t self,
     ) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> + 't {
-        // This function is not used in a way which observes the order of lints.
-        #[allow(rustc::potential_query_instability)]
         self.lint_groups
             .iter()
             .filter(|(_, LintGroup { depr, .. })| {
@@ -326,9 +325,11 @@ impl LintStore {
 
     /// True if this symbol represents a lint group name.
     pub fn is_lint_group(&self, lint_name: Symbol) -> bool {
-        #[allow(rustc::potential_query_instability)]
-        let lint_groups = self.lint_groups.keys().collect::<Vec<_>>();
-        debug!("is_lint_group(lint_name={:?}, lint_groups={:?})", lint_name, lint_groups);
+        debug!(
+            "is_lint_group(lint_name={:?}, lint_groups={:?})",
+            lint_name,
+            self.lint_groups.keys().collect::<Vec<_>>()
+        );
         let lint_name_str = lint_name.as_str();
         self.lint_groups.contains_key(lint_name_str) || {
             let warnings_name_str = crate::WARNINGS.name_lower();
@@ -372,12 +373,9 @@ impl LintStore {
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
-                        #[allow(rustc::potential_query_instability)]
-                        let lints = self.by_name.keys().collect::<Vec<_>>();
-                        debug!("lints={:?}", lints);
+                        debug!("lints={:?}", self.by_name);
                         let tool_prefix = format!("{tool_name}::");
 
-                        #[allow(rustc::potential_query_instability)]
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
                             self.no_lint_suggestion(&complete_name, tool_name.as_str())
                         } else {

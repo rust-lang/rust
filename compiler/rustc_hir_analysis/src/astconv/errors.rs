@@ -5,7 +5,7 @@ use crate::errors::{
 };
 use crate::fluent_generated as fluent;
 use crate::traits::error_reporting::report_object_safety_error;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
@@ -806,7 +806,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if suggestions.len() != 1 || already_has_generics_args_suggestion {
             // We don't need this label if there's an inline suggestion, show otherwise.
             for (span, assoc_items) in &associated_types {
-                let mut names: FxHashMap<_, usize> = FxHashMap::default();
+                let mut names: FxIndexMap<_, usize> = FxIndexMap::default();
                 for item in assoc_items {
                     types_count += 1;
                     *names.entry(item.name).or_insert(0) += 1;

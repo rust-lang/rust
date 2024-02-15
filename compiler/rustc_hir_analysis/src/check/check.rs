@@ -1367,7 +1367,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             // `Sized` bounds. If they came last for example, this would break `Trait + /*elab*/Sized`
             // since it would overwrite the span of the user-written bound. This could be fixed by
             // folding the spans with `Span::to` which requires a bit of effort I think.
-            .collect::<FxHashMap<_, _>>()
+            .collect::<FxIndexMap<_, _>>()
     });
 
     let mut params_used = BitSet::new_empty(generics.params.len());

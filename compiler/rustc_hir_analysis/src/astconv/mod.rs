@@ -16,7 +16,7 @@ use crate::errors::AmbiguousLifetimeBound;
 use crate::middle::resolve_bound_vars as rbv;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     FatalError, MultiSpan,
@@ -752,7 +752,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!(?poly_trait_ref, ?assoc_bindings);
         bounds.push_trait_bound(tcx, poly_trait_ref, span, polarity);
 
-        let mut dup_bindings = FxHashMap::default();
+        let mut dup_bindings = FxIndexMap::default();
         for binding in &assoc_bindings {
             // Don't register additional associated type bounds for negative bounds,
             // since we should have emitten an error for them earlier, and they will

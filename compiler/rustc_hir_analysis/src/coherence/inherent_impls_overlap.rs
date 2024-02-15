@@ -1,4 +1,5 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::IndexEntry;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -9,7 +10,6 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{ErrorGuaranteed, Symbol};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
-use std::collections::hash_map::Entry;
 
 pub fn crate_inherent_impls_overlap_check(tcx: TyCtxt<'_>, (): ()) -> Result<(), ErrorGuaranteed> {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
@@ -63,7 +63,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
     fn check_for_duplicate_items_in_impl(&self, impl_: DefId) -> Result<(), ErrorGuaranteed> {
         let impl_items = self.tcx.associated_items(impl_);
 
-        let mut seen_items = FxHashMap::default();
+        let mut seen_items = FxIndexMap::default();
         let mut res = Ok(());
         for impl_item in impl_items.in_definition_order() {
             let span = self.tcx.def_span(impl_item.def_id);
@@ -71,7 +71,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             let norm_ident = ident.normalize_to_macros_2_0();
             match seen_items.entry(norm_ident) {
-                Entry::Occupied(entry) => {
+                IndexEntry::Occupied(entry) => {
                     let former = entry.get();
                     res = Err(struct_span_code_err!(
                         self.tcx.dcx(),
@@ -84,7 +84,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                     .with_span_label(*former, format!("other definition for `{ident}`"))
                     .emit());
                 }
-                Entry::Vacant(entry) => {
+                IndexEntry::Vacant(entry) => {
                     entry.insert(span);
                 }
             }
@@ -216,7 +216,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             }
             let mut connected_regions: IndexVec<RegionId, _> = Default::default();
             // Reverse map from the Symbol to the connected region id.
-            let mut connected_region_ids = FxHashMap::default();
+            let mut connected_region_ids = FxIndexMap::default();
 
             for (i, &(&_impl_def_id, impl_items)) in impls_items.iter().enumerate() {
                 if impl_items.len() == 0 {
@@ -228,7 +228,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                     .in_definition_order()
                     .filter_map(|item| {
                         let entry = connected_region_ids.entry(item.name);
-                        if let Entry::Occupied(e) = &entry {
+                        if let IndexEntry::Occupied(e) = &entry {
                             Some(*e.get())
                         } else {
                             idents_to_add.push(item.name);
