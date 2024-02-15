@@ -13,7 +13,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `if` conditions that use blocks containing an
+    /// Checks for `if` and `match` conditions that use blocks containing an
     /// expression, statements or conditions that use closures with blocks.
     ///
     /// ### Why is this bad?
@@ -25,6 +25,8 @@ declare_clippy_lint! {
     /// if { true } { /* ... */ }
     ///
     /// if { let x = somefunc(); x } { /* ... */ }
+    ///
+    /// match { let e = somefunc(); e } { /* ... */ }
     /// ```
     ///
     /// Use instead:
@@ -34,6 +36,9 @@ declare_clippy_lint! {
     ///
     /// let res = { let x = somefunc(); x };
     /// if res { /* ... */ }
+    ///
+    /// let res = { let e = somefunc(); e };
+    /// match res { /* ... */ }
     /// ```
     #[clippy::version = "1.45.0"]
     pub BLOCKS_IN_CONDITIONS,
