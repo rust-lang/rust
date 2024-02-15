@@ -79,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             CoerceMany::with_coercion_sites(coerce_first, arms)
         };
 
-        let mut other_arms = vec![]; // Used only for diagnostics.
+        let mut prior_non_diverging_arms = vec![]; // Used only for diagnostics.
         let mut prior_arm = None;
         for arm in arms {
             if let Some(e) = &arm.guard {
@@ -118,9 +118,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         prior_arm_ty,
                         prior_arm_span,
                         scrut_span: scrut.span,
-                        scrut_hir_id: scrut.hir_id,
                         source: match_src,
-                        prior_arms: other_arms.clone(),
+                        prior_non_diverging_arms: prior_non_diverging_arms.clone(),
                         opt_suggest_box_span,
                     })),
                 ),
@@ -142,16 +141,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 false,
             );
 
-            other_arms.push(arm_span);
-            if other_arms.len() > 5 {
-                other_arms.remove(0);
-            }
-
             if !arm_ty.is_never() {
                 // When a match arm has type `!`, then it doesn't influence the expected type for
                 // the following arm. If all of the prior arms are `!`, then the influence comes
                 // from elsewhere and we shouldn't point to any previous arm.
                 prior_arm = Some((arm_block_id, arm_ty, arm_span));
+
+                prior_non_diverging_arms.push(arm_span);
+                if prior_non_diverging_arms.len() > 5 {
+                    prior_non_diverging_arms.remove(0);
+                }
             }
         }
 

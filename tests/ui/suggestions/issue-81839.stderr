@@ -4,22 +4,15 @@ error[E0308]: `match` arms have incompatible types
 LL | /     match num {
 LL | |         1 => {
 LL | |             cx.answer_str("hi");
-   | |             -------------------- this is found to be of type `()`
+   | |             --------------------
+   | |             |                  |
+   | |             |                  help: consider removing this semicolon
+   | |             this is found to be of type `()`
 LL | |         }
 LL | |         _ => cx.answer_str("hi"),
    | |              ^^^^^^^^^^^^^^^^^^^ expected `()`, found future
 LL | |     }
    | |_____- `match` arms have incompatible types
-   |
-help: consider removing this semicolon
-   |
-LL -             cx.answer_str("hi");
-LL +             cx.answer_str("hi")
-   |
-help: consider using a semicolon here, but this will discard any values in the match arms
-   |
-LL |     };
-   |      +
 
 error: aborting due to 1 previous error
 
