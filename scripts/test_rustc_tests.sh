@@ -43,7 +43,6 @@ rm tests/ui/proc-macro/allowed-signatures.rs
 rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
 
 # vendor intrinsics
-rm tests/ui/sse2.rs # CodegenBackend::target_features not yet implemented
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
 
 # exotic linkages
@@ -62,14 +61,12 @@ rm -r tests/run-pass-valgrind/unsized-locals
 # misc unimplemented things
 rm tests/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and nearbyintf64 intrinsics
 rm tests/ui/target-feature/missing-plusminus.rs # error not implemented
-rm tests/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r tests/run-make/emit-named-files # requires full --emit support
 rm -r tests/run-make/repr128-dwarf # debuginfo test
 rm -r tests/run-make/split-debuginfo # same
 rm -r tests/run-make/symbols-include-type-name # --emit=asm not supported
 rm -r tests/run-make/target-specs # i686 not supported by Cranelift
 rm -r tests/run-make/mismatching-target-triples # same
-rm tests/ui/asm/x86_64/issue-82869.rs # vector regs in inline asm not yet supported
 rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't work entirely correctly
 
 # requires LTO
@@ -119,14 +116,11 @@ rm -r tests/run-make/issue-88756-default-output
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
-rm -r tests/ui/consts/missing_span_in_backtrace.rs # expects sysroot source to be elsewhere
 
 # genuine bugs
 # ============
 rm tests/incremental/spike-neg1.rs # errors out for some reason
 rm tests/incremental/spike-neg2.rs # same
-
-rm tests/ui/simd/simd-bitmask.rs # simd_bitmask doesn't implement [u*; N] return type
 
 rm -r tests/run-make/issue-51671 # wrong filename given in case of --emit=obj
 rm -r tests/run-make/issue-30063 # same
