@@ -198,7 +198,7 @@ impl Read for Repeat {
 
         // SAFETY: the entire unfilled portion of buf has been initialized
         unsafe {
-            buf.advance(remaining);
+            buf.advance_unchecked(remaining);
         }
 
         Ok(())

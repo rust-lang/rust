@@ -655,7 +655,7 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
 
 // Issue #120603
 #[test]
-#[should_panic = "read should not return more bytes than there is capacity for in the read buffer"]
+#[should_panic]
 fn read_buf_broken_read() {
     struct MalformedRead;
 

@@ -273,7 +273,7 @@ impl AnonPipe {
             Err(e) => Err(e),
             Ok(n) => {
                 unsafe {
-                    buf.advance(n);
+                    buf.advance_unchecked(n);
                 }
                 Ok(())
             }
