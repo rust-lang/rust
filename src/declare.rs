@@ -125,7 +125,9 @@ fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*ll
             let params: Vec<_> = param_types.into_iter().enumerate()
                 .map(|(index, param)| cx.context.new_parameter(None, *param, &format!("param{}", index))) // TODO(antoyo): set name.
                 .collect();
-            let func = cx.context.new_function(None, cx.linkage.get(), return_type, &params, mangle_name(name), variadic);
+            #[cfg(not(feature="master"))]
+            let name = mangle_name(name);
+            let func = cx.context.new_function(None, cx.linkage.get(), return_type, &params, &name, variadic);
             cx.functions.borrow_mut().insert(name.to_string(), func);
 
             #[cfg(feature="master")]
@@ -180,7 +182,8 @@ fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*ll
 
 // FIXME(antoyo): this is a hack because libgccjit currently only supports alpha, num and _.
 // Unsupported characters: `$` and `.`.
-pub fn mangle_name(name: &str) -> String {
+#[cfg(not(feature="master"))]
+fn mangle_name(name: &str) -> String {
     name.replace(|char: char| {
         if !char.is_alphanumeric() && char != '_' {
             debug_assert!("$.*".contains(char), "Unsupported char in function name {}: {}", name, char);
