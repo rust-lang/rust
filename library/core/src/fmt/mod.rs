@@ -2401,6 +2401,11 @@ impl Debug for str {
         f.write_char('"')?;
         let mut from = 0;
         for (i, c) in self.char_indices() {
+            // a fast path for ASCII chars that do not need escapes:
+            if matches!(c, ' '..='~') && !matches!(c, '\\' | '\"') {
+                continue;
+            }
+
             let esc = c.escape_debug_ext(EscapeDebugExtArgs {
                 escape_grapheme_extended: true,
                 escape_single_quote: false,
