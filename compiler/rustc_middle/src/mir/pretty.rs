@@ -4,6 +4,8 @@ use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
+use crate::mir::interpret::ConstAllocation;
+
 use super::graphviz::write_mir_fn_graphviz;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_middle::mir::interpret::{

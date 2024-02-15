@@ -151,12 +151,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Use(ref operand) => {
                 // Avoid recomputing the layout
                 let op = self.eval_operand(operand, Some(dest.layout))?;
-                self.copy_op(&op, &dest, /*allow_transmute*/ false)?;
+                self.copy_op(&op, &dest)?;
             }
 
             CopyForDeref(place) => {
                 let op = self.eval_place_to_op(place, Some(dest.layout))?;
-                self.copy_op(&op, &dest, /* allow_transmute*/ false)?;
+                self.copy_op(&op, &dest)?;
             }
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
@@ -316,7 +316,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let field_index = active_field_index.unwrap_or(field_index);
             let field_dest = self.project_field(&variant_dest, field_index.as_usize())?;
             let op = self.eval_operand(operand, Some(field_dest.layout))?;
-            self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
+            self.copy_op(&op, &field_dest)?;
         }
         self.write_discriminant(variant_index, dest)
     }
@@ -339,7 +339,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         } else {
             // Write the src to the first element.
             let first = self.project_index(&dest, 0)?;
-            self.copy_op(&src, &first, /*allow_transmute*/ false)?;
+            self.copy_op(&src, &first)?;
 
             // This is performance-sensitive code for big static/const arrays! So we
             // avoid writing each operand individually and instead just make many copies

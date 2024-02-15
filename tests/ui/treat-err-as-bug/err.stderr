@@ -7,6 +7,6 @@ LL | pub static C: u32 = 0 - 1;
 error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
-#0 [eval_to_allocation_raw] const-evaluating + checking `C`
+#0 [eval_static_initializer] evaluating initializer of static `C`
 #1 [lint_mod] linting top-level module
 end of query stack

@@ -299,7 +299,6 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
         this.copy_op(
             &this.project_index(&left, i)?,
             &this.project_index(&dest, i)?,
-            /*allow_transmute*/ false,
         )?;
     }
 
@@ -424,7 +423,6 @@ fn unary_op_ss<'tcx>(
         this.copy_op(
             &this.project_index(&op, i)?,
             &this.project_index(&dest, i)?,
-            /*allow_transmute*/ false,
         )?;
     }
 
@@ -484,7 +482,6 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
         this.copy_op(
             &this.project_index(&left, i)?,
             &this.project_index(&dest, i)?,
-            /*allow_transmute*/ false,
         )?;
     }
 

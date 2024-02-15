@@ -39,4 +39,5 @@ use self::{
 };
 
 pub(crate) use self::intrinsics::eval_nullary_intrinsic;
+pub(crate) use self::util::{create_static_alloc, take_static_root_alloc};
 use eval_context::{from_known_layout, mir_assign_valid_types};

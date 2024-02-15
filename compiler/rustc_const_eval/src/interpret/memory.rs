@@ -624,19 +624,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             size,
             CheckInAllocMsg::MemoryAccessTest,
             |alloc_id, offset, prov| {
+                // We want to call the hook on *all* accesses that involve an AllocId,
+                // including zero-sized accesses. That means we have to do it here
+                // rather than below in the `Some` branch.
+                M::before_alloc_read(self, alloc_id)?;
                 let alloc = self.get_alloc_raw(alloc_id)?;
                 Ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc)))
             },
         )?;
+
         if let Some((alloc_id, offset, prov, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
             M::before_memory_read(self.tcx, &self.machine, &alloc.extra, (alloc_id, prov), range)?;
             Ok(Some(AllocRef { alloc, range, tcx: *self.tcx, alloc_id }))
         } else {
-            // Even in this branch we have to be sure that we actually access the allocation, in
-            // order to ensure that `static FOO: Type = FOO;` causes a cycle error instead of
-            // magically pulling *any* ZST value from the ether. However, the `get_raw` above is
-            // always called when `ptr` has an `AllocId`.
             Ok(None)
         }
     }
@@ -853,6 +854,21 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         allocs.sort();
         allocs.dedup();
         DumpAllocs { ecx: self, allocs }
+    }
+
+    /// Print the allocation's bytes, without any nested allocations.
+    pub fn print_alloc_bytes_for_diagnostics(&self, id: AllocId) -> String {
+        // Using the "raw" access to avoid the `before_alloc_read` hook, we specifically
+        // want to be able to read all memory for diagnostics, even if that is cyclic.
+        let alloc = self.get_alloc_raw(id).unwrap();
+        let mut bytes = String::new();
+        if alloc.size() != Size::ZERO {
+            bytes = "\n".into();
+            // FIXME(translation) there might be pieces that are translatable.
+            rustc_middle::mir::pretty::write_allocation_bytes(*self.tcx, alloc, &mut bytes, "    ")
+                .unwrap();
+        }
+        bytes
     }
 
     /// Find leaked allocations. Allocations reachable from `static_roots` or a `Global` allocation

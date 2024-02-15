@@ -85,6 +85,8 @@ pub enum InternKind {
 ///
 /// This *cannot raise an interpreter error*. Doing so is left to validation, which
 /// tracks where in the value we are and thus can show much better error messages.
+///
+/// For `InternKind::Static` the root allocation will not be interned, but must be handled by the caller.
 #[instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_recursive<
     'mir,
@@ -97,12 +99,12 @@ pub fn intern_const_alloc_recursive<
 ) -> Result<(), ErrorGuaranteed> {
     // We are interning recursively, and for mutability we are distinguishing the "root" allocation
     // that we are starting in, and all other allocations that we are encountering recursively.
-    let (base_mutability, inner_mutability) = match intern_kind {
+    let (base_mutability, inner_mutability, is_static) = match intern_kind {
         InternKind::Constant | InternKind::Promoted => {
             // Completely immutable. Interning anything mutably here can only lead to unsoundness,
             // since all consts are conceptually independent values but share the same underlying
             // memory.
-            (Mutability::Not, Mutability::Not)
+            (Mutability::Not, Mutability::Not, false)
         }
         InternKind::Static(Mutability::Not) => {
             (
@@ -115,22 +117,31 @@ pub fn intern_const_alloc_recursive<
                 // Inner allocations are never mutable. They can only arise via the "tail
                 // expression" / "outer scope" rule, and we treat them consistently with `const`.
                 Mutability::Not,
+                true,
             )
         }
         InternKind::Static(Mutability::Mut) => {
             // Just make everything mutable. We accept code like
             // `static mut X = &mut [42]`, so even inner allocations need to be mutable.
-            (Mutability::Mut, Mutability::Mut)
+            (Mutability::Mut, Mutability::Mut, true)
         }
     };
 
     // Intern the base allocation, and initialize todo list for recursive interning.
     let base_alloc_id = ret.ptr().provenance.unwrap().alloc_id();
+    trace!(?base_alloc_id, ?base_mutability);
     // First we intern the base allocation, as it requires a different mutability.
     // This gives us the initial set of nested allocations, which will then all be processed
     // recursively in the loop below.
-    let mut todo: Vec<_> =
-        intern_shallow(ecx, base_alloc_id, base_mutability).unwrap().map(|prov| prov).collect();
+    let mut todo: Vec<_> = if is_static {
+        // Do not steal the root allocation, we need it later for `take_static_root_alloc`
+        // But still change its mutability to match the requested one.
+        let alloc = ecx.memory.alloc_map.get_mut(&base_alloc_id).unwrap();
+        alloc.1.mutability = base_mutability;
+        alloc.1.provenance().ptrs().iter().map(|&(_, prov)| prov).collect()
+    } else {
+        intern_shallow(ecx, base_alloc_id, base_mutability).unwrap().map(|prov| prov).collect()
+    };
     // We need to distinguish "has just been interned" from "was already in `tcx`",
     // so we track this in a separate set.
     let mut just_interned: FxHashSet<_> = std::iter::once(base_alloc_id).collect();
@@ -148,7 +159,17 @@ pub fn intern_const_alloc_recursive<
     // before validation, and interning doesn't know the type of anything, this means we can't show
     // better errors. Maybe we should consider doing validation before interning in the future.
     while let Some(prov) = todo.pop() {
+        trace!(?prov);
         let alloc_id = prov.alloc_id();
+
+        if base_alloc_id == alloc_id && is_static {
+            // This is a pointer to the static itself. It's ok for a static to refer to itself,
+            // even mutably. Whether that mutable pointer is legal at all is checked in validation.
+            // See tests/ui/statics/recursive_interior_mut.rs for how such a situation can occur.
+            // We also already collected all the nested allocations, so there's no need to do that again.
+            continue;
+        }
+
         // Crucially, we check this *before* checking whether the `alloc_id`
         // has already been interned. The point of this check is to ensure that when
         // there are multiple pointers to the same allocation, they are *all* immutable.
@@ -176,6 +197,7 @@ pub fn intern_const_alloc_recursive<
             // `&None::<Cell<i32>>` lead to promotion that can produce mutable pointers. We rely
             // on the promotion analysis not screwing up to ensure that it is sound to intern
             // promoteds as immutable.
+            trace!("found bad mutable pointer");
             found_bad_mutable_pointer = true;
         }
         if ecx.tcx.try_get_global_alloc(alloc_id).is_some() {

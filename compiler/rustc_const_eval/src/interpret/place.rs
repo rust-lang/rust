@@ -759,14 +759,57 @@ where
     }
 
     /// Copies the data from an operand to a place.
-    /// `allow_transmute` indicates whether the layouts may disagree.
+    /// The layouts of the `src` and `dest` may disagree.
+    /// Does not perform validation of the destination.
+    /// The only known use case for this function is checking the return
+    /// value of a static during stack frame popping.
     #[inline(always)]
-    #[instrument(skip(self), level = "debug")]
+    pub(super) fn copy_op_no_dest_validation(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ true, /* validate_dest */ false,
+        )
+    }
+
+    /// Copies the data from an operand to a place.
+    /// The layouts of the `src` and `dest` may disagree.
+    #[inline(always)]
+    pub fn copy_op_allow_transmute(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ true, /* validate_dest */ true,
+        )
+    }
+
+    /// Copies the data from an operand to a place.
+    /// `src` and `dest` must have the same layout and the copied value will be validated.
+    #[inline(always)]
     pub fn copy_op(
         &mut self,
         src: &impl Readable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ false, /* validate_dest */ true,
+        )
+    }
+
+    /// Copies the data from an operand to a place.
+    /// `allow_transmute` indicates whether the layouts may disagree.
+    #[inline(always)]
+    #[instrument(skip(self), level = "debug")]
+    fn copy_op_inner(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
+        validate_dest: bool,
     ) -> InterpResult<'tcx> {
         // Generally for transmutation, data must be valid both at the old and new type.
         // But if the types are the same, the 2nd validation below suffices.
@@ -777,7 +820,7 @@ where
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
-        if M::enforce_validity(self, dest.layout()) {
+        if validate_dest && M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(&dest.to_op(self)?)?;
         }

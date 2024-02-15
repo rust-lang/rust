@@ -1,21 +1,35 @@
-error[E0391]: cycle detected when const-evaluating + checking `FOO`
+error[E0080]: could not evaluate static initializer
   --> $DIR/recursive-zst-static.rs:10:18
    |
 LL | static FOO: () = FOO;
-   |                  ^^^
+   |                  ^^^ encountered static that tried to initialize itself with itself
+
+error[E0391]: cycle detected when evaluating initializer of static `A`
+  --> $DIR/recursive-zst-static.rs:13:16
    |
-   = note: ...which immediately requires const-evaluating + checking `FOO` again
+LL | static A: () = B;
+   |                ^
+   |
+note: ...which requires evaluating initializer of static `B`...
+  --> $DIR/recursive-zst-static.rs:14:16
+   |
+LL | static B: () = A;
+   |                ^
+   = note: ...which again requires evaluating initializer of static `A`, completing the cycle
 note: cycle used when linting top-level module
   --> $DIR/recursive-zst-static.rs:10:1
    |
 LL | / static FOO: () = FOO;
 LL | |
-LL | | fn main() {
+LL | |
+LL | | static A: () = B;
+...  |
 LL | |     FOO
 LL | | }
    | |_^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0391`.
+Some errors have detailed explanations: E0080, E0391.
+For more information about an error, try `rustc --explain E0080`.

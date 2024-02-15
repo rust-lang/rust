@@ -20,7 +20,8 @@ use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::mir::interpret::{
-    EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+    EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
+    EvalToValTreeResult,
 };
 use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
@@ -1061,7 +1062,7 @@ rustc_queries! {
 
     /// Evaluates a constant and returns the computed allocation.
     ///
-    /// **Do not use this** directly, use the `tcx.eval_static_initializer` wrapper.
+    /// **Do not use this** directly, use the `eval_to_const_value` or `eval_to_valtree` instead.
     query eval_to_allocation_raw(key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
         -> EvalToAllocationRawResult<'tcx> {
         desc { |tcx|
@@ -1069,6 +1070,16 @@ rustc_queries! {
             key.value.display(tcx)
         }
         cache_on_disk_if { true }
+    }
+
+    /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
+    query eval_static_initializer(key: DefId) -> EvalStaticInitializerRawResult<'tcx> {
+        desc { |tcx|
+            "evaluating initializer of static `{}`",
+            tcx.def_path_str(key)
+        }
+        cache_on_disk_if { key.is_local() }
+        separate_provide_extern
     }
 
     /// Evaluates const items or anonymous constants
