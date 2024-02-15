@@ -2,6 +2,7 @@
 #   WARNING! Action needed when changing this file   #
 ######################################################
 
+
 # Due to GitHub Actions limitations, we can't use YAML Anchors directly in the
 # CI configuration stored on the repository. To work around that this file is
 # expanded by a tool in the repository, and the expansion is committed as well.
