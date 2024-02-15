@@ -2,7 +2,7 @@
 
 #![feature(thread_local)]
 #![feature(const_swap)]
-#![allow(static_mut_ref)]
+#![allow(static_mut_refs)]
 
 #[thread_local]
 static mut STATIC_VAR_2: [u32; 8] = [4; 8];
