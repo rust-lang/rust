@@ -1497,6 +1497,7 @@ impl<'a> IoSlice<'a> {
     /// # Example
     ///
     /// ```
+    /// #![feature(io_slice_as_bytes)]
     /// use std::io::IoSlice;
     ///
     /// let data = b"abcdef";
