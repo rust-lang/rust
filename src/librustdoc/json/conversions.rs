@@ -456,7 +456,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
             Lifetime { outlives } => GenericParamDefKind::Lifetime {
                 outlives: outlives.into_iter().map(convert_lifetime).collect(),
             },
-            Type { did: _, bounds, default, synthetic } => GenericParamDefKind::Type {
+            Type { bounds, default, synthetic } => GenericParamDefKind::Type {
                 bounds: bounds.into_tcx(tcx),
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
@@ -486,19 +486,16 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                                     outlives: outlives.iter().map(|lt| lt.0.to_string()).collect(),
                                 }
                             }
-                            clean::GenericParamDefKind::Type {
-                                did: _,
-                                bounds,
-                                default,
-                                synthetic,
-                            } => GenericParamDefKind::Type {
-                                bounds: bounds
-                                    .into_iter()
-                                    .map(|bound| bound.into_tcx(tcx))
-                                    .collect(),
-                                default: default.map(|ty| (*ty).into_tcx(tcx)),
-                                synthetic,
-                            },
+                            clean::GenericParamDefKind::Type { bounds, default, synthetic } => {
+                                GenericParamDefKind::Type {
+                                    bounds: bounds
+                                        .into_iter()
+                                        .map(|bound| bound.into_tcx(tcx))
+                                        .collect(),
+                                    default: default.map(|ty| (*ty).into_tcx(tcx)),
+                                    synthetic,
+                                }
+                            }
                             clean::GenericParamDefKind::Const {
                                 ty,
                                 default,
