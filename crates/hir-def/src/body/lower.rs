@@ -1113,7 +1113,7 @@ impl ExprCollector<'_> {
                     statements.push(Statement::Expr { expr, has_semi });
                 }
             }
-            ast::Stmt::Item(_item) => (),
+            ast::Stmt::Item(_item) => statements.push(Statement::Item),
         }
     }
 
