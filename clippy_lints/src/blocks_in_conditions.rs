@@ -26,7 +26,10 @@ declare_clippy_lint! {
     ///
     /// if { let x = somefunc(); x } { /* ... */ }
     ///
-    /// match { let e = somefunc(); e } { /* ... */ }
+    /// match { let e = somefunc(); e } {
+    ///     // ...
+    /// #   _ => {}
+    /// }
     /// ```
     ///
     /// Use instead:
@@ -38,7 +41,10 @@ declare_clippy_lint! {
     /// if res { /* ... */ }
     ///
     /// let res = { let e = somefunc(); e };
-    /// match res { /* ... */ }
+    /// match res {
+    ///     // ...
+    /// #   _ => {}
+    /// }
     /// ```
     #[clippy::version = "1.45.0"]
     pub BLOCKS_IN_CONDITIONS,
