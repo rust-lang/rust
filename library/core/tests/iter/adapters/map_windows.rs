@@ -168,12 +168,6 @@ fn test_case_from_pr_82413_comment() {
 }
 
 #[test]
-#[should_panic = "array in `Iterator::map_windows` must contain more than 0 elements"]
-fn check_zero_window() {
-    let _ = std::iter::repeat(0).map_windows(|_: &[_; 0]| ());
-}
-
-#[test]
 fn test_zero_sized_type() {
     #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     struct Data;

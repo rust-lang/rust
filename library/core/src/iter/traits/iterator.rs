@@ -1617,6 +1617,12 @@ pub trait Iterator {
     /// let iter = std::iter::repeat(0).map_windows(|&[]| ());
     /// ```
     ///
+    /// ```compile_fail
+    /// #![feature(iter_map_windows)]
+    ///
+    /// let iter = std::iter::repeat(0).map_windows(|_: &[_; 0]| ());
+    /// ```
+    ///
     /// # Examples
     ///
     /// Building the sums of neighboring numbers.
