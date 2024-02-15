@@ -25,8 +25,9 @@ impl ShortOffsetRunHeader {
 
 impl RawEmitter {
     pub fn emit_skiplist(&mut self, ranges: &[Range<u32>]) {
+        let first_code_point = ranges.first().unwrap().start;
         let mut offsets = Vec::<u32>::new();
-        let points = ranges.iter().flat_map(|r| vec![r.start, r.end]).collect::<Vec<u32>>();
+        let points = ranges.iter().flat_map(|r| [r.start, r.end]).collect::<Vec<u32>>();
         let mut offset = 0;
         for pt in points {
             let delta = pt - offset;
@@ -87,6 +88,9 @@ impl RawEmitter {
         self.bytes_used += coded_offsets.len();
 
         writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+        if first_code_point > 0x7f {
+            writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} &&").unwrap();
+        }
         writeln!(&mut self.file, "    super::skip_search(",).unwrap();
         writeln!(&mut self.file, "        c as u32,").unwrap();
         writeln!(&mut self.file, "        &SHORT_OFFSET_RUNS,").unwrap();

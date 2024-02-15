@@ -316,6 +316,7 @@ pub mod grapheme_extend {
         128, 240, 0,
     ];
     pub fn lookup(c: char) -> bool {
+        (c as u32) >= 0x300 &&
         super::skip_search(
             c as u32,
             &SHORT_OFFSET_RUNS,
