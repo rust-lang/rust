@@ -71,11 +71,7 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_scalar_int(bits)
         }
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),
-        (ast::LitKind::Err, _) => {
-            return Err(LitToConstError::Reported(
-                tcx.dcx().delayed_bug("encountered LitKind::Err during mir build"),
-            ));
-        }
+        (ast::LitKind::Err(guar), _) => return Err(LitToConstError::Reported(*guar)),
         _ => return Err(LitToConstError::TypeError),
     };
 

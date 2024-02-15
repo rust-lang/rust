@@ -40,7 +40,7 @@ pub fn expand_concat(
                     cx.dcx().emit_err(errors::ConcatBytestr { span: e.span });
                     has_errors = true;
                 }
-                Ok(ast::LitKind::Err) => {
+                Ok(ast::LitKind::Err(_)) => {
                     has_errors = true;
                 }
                 Err(err) => {

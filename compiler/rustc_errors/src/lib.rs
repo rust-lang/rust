@@ -320,7 +320,9 @@ impl CodeSuggestion {
                 // We need to keep track of the difference between the existing code and the added
                 // or deleted code in order to point at the correct column *after* substitution.
                 let mut acc = 0;
+                let mut only_capitalization = false;
                 for part in &substitution.parts {
+                    only_capitalization |= is_case_difference(sm, &part.snippet, part.span);
                     let cur_lo = sm.lookup_char_pos(part.span.lo());
                     if prev_hi.line == cur_lo.line {
                         let mut count =
@@ -393,7 +395,6 @@ impl CodeSuggestion {
                     }
                 }
                 highlights.push(std::mem::take(&mut line_highlight));
-                let only_capitalization = is_case_difference(sm, &buf, bounding_span);
                 // if the replacement already ends with a newline, don't print the next line
                 if !buf.ends_with('\n') {
                     push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, None);

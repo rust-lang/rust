@@ -266,6 +266,10 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
         ("riscv32" | "riscv64", "fast-unaligned-access") if get_version().0 <= 17 => {
             LLVMFeature::new("unaligned-scalar-mem")
         }
+        // For LLVM 18, enable the evex512 target feature if a avx512 target feature is enabled.
+        ("x86", s) if get_version().0 >= 18 && s.starts_with("avx512") => {
+            LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512"))
+        }
         (_, s) => LLVMFeature::new(s),
     }
 }

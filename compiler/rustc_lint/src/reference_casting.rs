@@ -207,6 +207,13 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
     }
 
     let from_layout = cx.layout_of(*inner_start_ty).ok()?;
+
+    // if the type isn't sized, we bail out, instead of potentially giving
+    // the user a meaningless warning.
+    if from_layout.is_unsized() {
+        return None;
+    }
+
     let alloc_layout = cx.layout_of(alloc_ty).ok()?;
     let to_layout = cx.layout_of(*inner_end_ty).ok()?;
 
