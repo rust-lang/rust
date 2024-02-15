@@ -1451,7 +1451,7 @@ impl Literal {
                 f(&["cr", hashes, "\"", symbol, "\"", hashes, suffix])
             }
 
-            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::Err => {
+            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
                 f(&[symbol, suffix])
             }
         })

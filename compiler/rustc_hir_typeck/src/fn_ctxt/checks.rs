@@ -1319,7 +1319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.type_of(tcx.require_lang_item(hir::LangItem::CStr, Some(lit.span)))
                     .skip_binder(),
             ),
-            ast::LitKind::Err => Ty::new_misc_error(tcx),
+            ast::LitKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
 

@@ -1459,7 +1459,7 @@ impl<'a> Parser<'a> {
         match self.parse_str_lit() {
             Ok(str_lit) => Some(str_lit),
             Err(Some(lit)) => match lit.kind {
-                ast::LitKind::Err => None,
+                ast::LitKind::Err(_) => None,
                 _ => {
                     self.dcx().emit_err(NonStringAbiLiteral { span: lit.span });
                     None

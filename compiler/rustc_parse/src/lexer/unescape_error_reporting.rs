@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::ops::Range;
 
-use rustc_errors::{Applicability, DiagCtxt};
+use rustc_errors::{Applicability, DiagCtxt, ErrorGuaranteed};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 
@@ -21,7 +21,7 @@ pub(crate) fn emit_unescape_error(
     // range of the error inside `lit`
     range: Range<usize>,
     error: EscapeError,
-) {
+) -> Option<ErrorGuaranteed> {
     debug!(
         "emit_unescape_error: {:?}, {:?}, {:?}, {:?}, {:?}",
         lit, full_lit_span, mode, range, error
@@ -31,12 +31,12 @@ pub(crate) fn emit_unescape_error(
         let span = err_span.with_lo(err_span.hi() - BytePos(c.len_utf8() as u32));
         (c, span)
     };
-    match error {
+    Some(match error {
         EscapeError::LoneSurrogateUnicodeEscape => {
-            dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: true });
+            dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: true })
         }
         EscapeError::OutOfRangeUnicodeEscape => {
-            dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: false });
+            dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: false })
         }
         EscapeError::MoreThanOneChar => {
             use unicode_normalization::{char::is_combining_mark, UnicodeNormalization};
@@ -106,7 +106,7 @@ pub(crate) fn emit_unescape_error(
                 span: full_lit_span,
                 note,
                 suggestion: sugg,
-            });
+            })
         }
         EscapeError::EscapeOnlyChar => {
             let (c, char_span) = last_char();
@@ -116,15 +116,15 @@ pub(crate) fn emit_unescape_error(
                 escaped_sugg: c.escape_default().to_string(),
                 escaped_msg: escaped_char(c),
                 byte: mode == Mode::Byte,
-            });
+            })
         }
         EscapeError::BareCarriageReturn => {
             let double_quotes = mode.in_double_quotes();
-            dcx.emit_err(UnescapeError::BareCr { span: err_span, double_quotes });
+            dcx.emit_err(UnescapeError::BareCr { span: err_span, double_quotes })
         }
         EscapeError::BareCarriageReturnInRawString => {
             assert!(mode.in_double_quotes());
-            dcx.emit_err(UnescapeError::BareCrRawString(err_span));
+            dcx.emit_err(UnescapeError::BareCrRawString(err_span))
         }
         EscapeError::InvalidEscape => {
             let (c, span) = last_char();
@@ -161,16 +161,14 @@ pub(crate) fn emit_unescape_error(
                      <https://doc.rust-lang.org/reference/tokens.html#literals>",
                 );
             }
-            diag.emit();
+            diag.emit()
         }
-        EscapeError::TooShortHexEscape => {
-            dcx.emit_err(UnescapeError::TooShortHexEscape(err_span));
-        }
+        EscapeError::TooShortHexEscape => dcx.emit_err(UnescapeError::TooShortHexEscape(err_span)),
         EscapeError::InvalidCharInHexEscape | EscapeError::InvalidCharInUnicodeEscape => {
             let (c, span) = last_char();
             let is_hex = error == EscapeError::InvalidCharInHexEscape;
             let ch = escaped_char(c);
-            dcx.emit_err(UnescapeError::InvalidCharInEscape { span, is_hex, ch });
+            dcx.emit_err(UnescapeError::InvalidCharInEscape { span, is_hex, ch })
         }
         EscapeError::NonAsciiCharInByte => {
             let (c, span) = last_char();
@@ -213,23 +211,23 @@ pub(crate) fn emit_unescape_error(
                     Applicability::MaybeIncorrect,
                 );
             }
-            err.emit();
+            err.emit()
         }
         EscapeError::OutOfRangeHexEscape => {
-            dcx.emit_err(UnescapeError::OutOfRangeHexEscape(err_span));
+            dcx.emit_err(UnescapeError::OutOfRangeHexEscape(err_span))
         }
         EscapeError::LeadingUnderscoreUnicodeEscape => {
             let (c, span) = last_char();
             dcx.emit_err(UnescapeError::LeadingUnderscoreUnicodeEscape {
                 span,
                 ch: escaped_char(c),
-            });
+            })
         }
         EscapeError::OverlongUnicodeEscape => {
-            dcx.emit_err(UnescapeError::OverlongUnicodeEscape(err_span));
+            dcx.emit_err(UnescapeError::OverlongUnicodeEscape(err_span))
         }
         EscapeError::UnclosedUnicodeEscape => {
-            dcx.emit_err(UnescapeError::UnclosedUnicodeEscape(err_span, err_span.shrink_to_hi()));
+            dcx.emit_err(UnescapeError::UnclosedUnicodeEscape(err_span, err_span.shrink_to_hi()))
         }
         EscapeError::NoBraceInUnicodeEscape => {
             let mut suggestion = "\\u{".to_owned();
@@ -248,23 +246,17 @@ pub(crate) fn emit_unescape_error(
             } else {
                 (Some(err_span), NoBraceUnicodeSub::Help)
             };
-            dcx.emit_err(UnescapeError::NoBraceInUnicodeEscape { span: err_span, label, sub });
+            dcx.emit_err(UnescapeError::NoBraceInUnicodeEscape { span: err_span, label, sub })
         }
         EscapeError::UnicodeEscapeInByte => {
-            dcx.emit_err(UnescapeError::UnicodeEscapeInByte(err_span));
+            dcx.emit_err(UnescapeError::UnicodeEscapeInByte(err_span))
         }
         EscapeError::EmptyUnicodeEscape => {
-            dcx.emit_err(UnescapeError::EmptyUnicodeEscape(err_span));
+            dcx.emit_err(UnescapeError::EmptyUnicodeEscape(err_span))
         }
-        EscapeError::ZeroChars => {
-            dcx.emit_err(UnescapeError::ZeroChars(err_span));
-        }
-        EscapeError::LoneSlash => {
-            dcx.emit_err(UnescapeError::LoneSlash(err_span));
-        }
-        EscapeError::NulInCStr => {
-            dcx.emit_err(UnescapeError::NulInCStr { span: err_span });
-        }
+        EscapeError::ZeroChars => dcx.emit_err(UnescapeError::ZeroChars(err_span)),
+        EscapeError::LoneSlash => dcx.emit_err(UnescapeError::LoneSlash(err_span)),
+        EscapeError::NulInCStr => dcx.emit_err(UnescapeError::NulInCStr { span: err_span }),
         EscapeError::UnskippedWhitespaceWarning => {
             let (c, char_span) = last_char();
             dcx.emit_warn(UnescapeError::UnskippedWhitespace {
@@ -272,11 +264,13 @@ pub(crate) fn emit_unescape_error(
                 ch: escaped_char(c),
                 char_span,
             });
+            return None;
         }
         EscapeError::MultipleSkippedLinesWarning => {
             dcx.emit_warn(UnescapeError::MultipleSkippedLinesWarning(err_span));
+            return None;
         }
-    }
+    })
 }
 
 /// Pushes a character to a message string for error reporting

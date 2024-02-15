@@ -13,7 +13,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym};
 #[allow(hidden_glob_reexports)]
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{edition::Edition, Span, DUMMY_SP};
+use rustc_span::{edition::Edition, ErrorGuaranteed, Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
 
@@ -75,7 +75,7 @@ pub enum LitKind {
     ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
     CStr,
     CStrRaw(u8),
-    Err,
+    Err(ErrorGuaranteed),
 }
 
 /// A literal token.
@@ -144,7 +144,7 @@ impl fmt::Display for Lit {
             CStrRaw(n) => {
                 write!(f, "cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))?
             }
-            Integer | Float | Bool | Err => write!(f, "{symbol}")?,
+            Integer | Float | Bool | Err(_) => write!(f, "{symbol}")?,
         }
 
         if let Some(suffix) = suffix {
@@ -159,7 +159,7 @@ impl LitKind {
     /// An English article for the literal token kind.
     pub fn article(self) -> &'static str {
         match self {
-            Integer | Err => "an",
+            Integer | Err(_) => "an",
             _ => "a",
         }
     }
@@ -174,12 +174,12 @@ impl LitKind {
             Str | StrRaw(..) => "string",
             ByteStr | ByteStrRaw(..) => "byte string",
             CStr | CStrRaw(..) => "C string",
-            Err => "error",
+            Err(_) => "error",
         }
     }
 
     pub(crate) fn may_have_suffix(self) -> bool {
-        matches!(self, Integer | Float | Err)
+        matches!(self, Integer | Float | Err(_))
     }
 }
 
