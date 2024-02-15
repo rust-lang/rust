@@ -571,7 +571,7 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub scrut_span: Span,
     pub scrut_hir_id: hir::HirId,
     pub source: hir::MatchSource,
-    pub prior_arms: Vec<Span>,
+    pub prior_non_diverging_arms: Vec<Span>,
     pub opt_suggest_box_span: Option<Span>,
 }
 

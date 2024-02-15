@@ -777,7 +777,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 prior_arm_span,
                 prior_arm_ty,
                 source,
-                ref prior_arms,
+                ref prior_non_diverging_arms,
                 opt_suggest_box_span,
                 scrut_span,
                 scrut_hir_id,
@@ -817,12 +817,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     });
                     let source_map = self.tcx.sess.source_map();
                     let mut any_multiline_arm = source_map.is_multiline(arm_span);
-                    if prior_arms.len() <= 4 {
-                        for sp in prior_arms {
+                    if prior_non_diverging_arms.len() <= 4 {
+                        for sp in prior_non_diverging_arms {
                             any_multiline_arm |= source_map.is_multiline(*sp);
                             err.span_label(*sp, format!("this is found to be of type `{t}`"));
                         }
-                    } else if let Some(sp) = prior_arms.last() {
+                    } else if let Some(sp) = prior_non_diverging_arms.last() {
                         any_multiline_arm |= source_map.is_multiline(*sp);
                         err.span_label(
                             *sp,
@@ -865,7 +865,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         self.suggest_boxing_for_return_impl_trait(
                             err,
                             ret_sp,
-                            prior_arms.iter().chain(std::iter::once(&arm_span)).copied(),
+                            prior_non_diverging_arms
+                                .iter()
+                                .chain(std::iter::once(&arm_span))
+                                .copied(),
                         );
                     }
                 }
