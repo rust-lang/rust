@@ -2136,10 +2136,12 @@ pub enum TyKind {
     ImplicitSelf,
     /// A macro in the type position.
     MacCall(P<MacCall>),
-    /// Placeholder for a kind that has failed to be defined.
-    Err,
     /// Placeholder for a `va_list`.
     CVarArgs,
+    /// Sometimes we need a dummy value when no error has occurred.
+    Dummy,
+    /// Placeholder for a kind that has failed to be defined.
+    Err(ErrorGuaranteed),
 }
 
 impl TyKind {
