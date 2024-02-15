@@ -5,5 +5,8 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "solid_asp3")] {
         mod solid;
         pub use solid::RwLock;
+    } else if #[cfg(target_os = "teeos")] {
+        mod teeos;
+        pub use teeos::RwLock;
     }
 }
