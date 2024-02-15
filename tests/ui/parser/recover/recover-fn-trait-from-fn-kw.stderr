@@ -4,7 +4,7 @@ error: expected identifier, found keyword `fn`
 LL | fn foo(_: impl fn() -> i32) {}
    |                ^^
    |
-help: use `Fn` to refer to the trait
+help: use `Fn` to refer to the trait (notice the capitalization difference)
    |
 LL | fn foo(_: impl Fn() -> i32) {}
    |                ~~
@@ -15,7 +15,7 @@ error: expected identifier, found keyword `fn`
 LL | fn foo2<T: fn(i32)>(_: T) {}
    |            ^^
    |
-help: use `Fn` to refer to the trait
+help: use `Fn` to refer to the trait (notice the capitalization difference)
    |
 LL | fn foo2<T: Fn(i32)>(_: T) {}
    |            ~~
