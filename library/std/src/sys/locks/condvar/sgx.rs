@@ -1,8 +1,7 @@
 use crate::sys::locks::Mutex;
+use crate::sys::pal::waitqueue::{SpinMutex, WaitQueue, WaitVariable};
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;
-
-use super::waitqueue::{SpinMutex, WaitQueue, WaitVariable};
 
 /// FIXME: `UnsafeList` is not movable.
 struct AllocatedCondvar(SpinMutex<WaitVariable<()>>);
