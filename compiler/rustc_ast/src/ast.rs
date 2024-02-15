@@ -1764,8 +1764,6 @@ pub enum StrStyle {
 pub struct MetaItemLit {
     /// The original literal as written in the source code.
     pub symbol: Symbol,
-    /// The original suffix as written in the source code.
-    pub suffix: Option<Symbol>,
     /// The "semantic" representation of the literal lowered from the original tokens.
     /// Strings are unescaped, hexadecimal forms are eliminated, etc.
     pub kind: LitKind,
@@ -1777,8 +1775,6 @@ pub struct MetaItemLit {
 pub struct StrLit {
     /// The original literal as written in source code.
     pub symbol: Symbol,
-    /// The original suffix as written in source code.
-    pub suffix: Option<Symbol>,
     /// The semantic (unescaped) representation of the literal.
     pub symbol_unescaped: Symbol,
     pub style: StrStyle,
@@ -1791,7 +1787,7 @@ impl StrLit {
             StrStyle::Cooked => token::Str,
             StrStyle::Raw(n) => token::StrRaw(n),
         };
-        token::Lit::new(token_kind, self.symbol, self.suffix)
+        token::Lit::new(token_kind, self.symbol, None)
     }
 }
 
@@ -1872,28 +1868,24 @@ impl LitKind {
         matches!(self, LitKind::Int(..) | LitKind::Float(..))
     }
 
-    /// Returns `true` if this literal has no suffix.
-    /// Note: this will return true for literals with prefixes such as raw strings and byte strings.
-    pub fn is_unsuffixed(&self) -> bool {
-        !self.is_suffixed()
-    }
-
-    /// Returns `true` if this literal has a suffix.
-    pub fn is_suffixed(&self) -> bool {
+    pub fn suffix(&self) -> Option<Symbol> {
         match *self {
-            // suffixed variants
-            LitKind::Int(_, LitIntType::Signed(..) | LitIntType::Unsigned(..))
-            | LitKind::Float(_, LitFloatType::Suffixed(..)) => true,
-            // unsuffixed variants
+            LitKind::Int(_, kind) => match kind {
+                LitIntType::Signed(ty) => Some(ty.name()),
+                LitIntType::Unsigned(ty) => Some(ty.name()),
+                LitIntType::Unsuffixed => None,
+            },
+            LitKind::Float(_, kind) => match kind {
+                LitFloatType::Suffixed(ty) => Some(ty.name()),
+                LitFloatType::Unsuffixed => None,
+            },
             LitKind::Str(..)
             | LitKind::ByteStr(..)
             | LitKind::CStr(..)
             | LitKind::Byte(..)
             | LitKind::Char(..)
-            | LitKind::Int(_, LitIntType::Unsuffixed)
-            | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err => false,
+            | LitKind::Err => None,
         }
     }
 }
@@ -3323,7 +3315,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 160);
+    static_assert_size!(Fn, 152);
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
