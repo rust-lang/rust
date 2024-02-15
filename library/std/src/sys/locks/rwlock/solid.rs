@@ -1,5 +1,5 @@
 //! A readers-writer lock implementation backed by the SOLID kernel extension.
-use super::{
+use crate::sys::pal::{
     abi,
     itron::{
         error::{expect_success, expect_success_aborting, fail, ItronError},

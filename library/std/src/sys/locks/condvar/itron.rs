@@ -1,5 +1,7 @@
 //! POSIX conditional variable implementation based on user-space wait queues.
-use super::{abi, error::expect_success_aborting, spin::SpinMutex, task, time::with_tmos_strong};
+use crate::sys::pal::itron::{
+    abi, error::expect_success_aborting, spin::SpinMutex, task, time::with_tmos_strong,
+};
 use crate::{mem::replace, ptr::NonNull, sys::locks::Mutex, time::Duration};
 
 // The implementation is inspired by the queue-based implementation shown in
