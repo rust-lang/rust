@@ -165,8 +165,7 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::{self, forget};
-use crate::num::NonZeroU64;
-use crate::num::NonZeroUsize;
+use crate::num::{NonZero, NonZeroU64, NonZeroUsize};
 use crate::panic;
 use crate::panicking;
 use crate::pin::Pin;
@@ -1166,7 +1165,7 @@ pub fn park_timeout(dur: Duration) {
 /// [`id`]: Thread::id
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
-pub struct ThreadId(NonZeroU64);
+pub struct ThreadId(NonZero<u64>);
 
 impl ThreadId {
     // Generate a new unique thread ID.
@@ -1189,7 +1188,7 @@ impl ThreadId {
                     };
 
                     match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
-                        Ok(_) => return ThreadId(NonZeroU64::new(id).unwrap()),
+                        Ok(_) => return ThreadId(NonZero::new(id).unwrap()),
                         Err(id) => last = id,
                     }
                 }
@@ -1208,7 +1207,7 @@ impl ThreadId {
 
                 *counter = id;
                 drop(counter);
-                ThreadId(NonZeroU64::new(id).unwrap())
+                ThreadId(NonZero::new(id).unwrap())
             }
         }
     }

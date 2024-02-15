@@ -40,6 +40,7 @@
 #![feature(float_minimum_maximum)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
+#![feature(generic_nonzero)]
 #![feature(array_try_from_fn)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]

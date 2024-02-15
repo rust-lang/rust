@@ -312,10 +312,10 @@ macro_rules! nonzero_integer {
             /// #![feature(non_zero_count_ones)]
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
-            #[doc = concat!("# use std::num::{self, ", stringify!($Ty), "};")]
-            ///
-            /// let one = num::NonZeroU32::new(1)?;
-            /// let three = num::NonZeroU32::new(3)?;
+            /// # use std::num::*;
+            /// #
+            /// let one = NonZeroU32::new(1)?;
+            /// let three = NonZeroU32::new(3)?;
             #[doc = concat!("let a = ", stringify!($Ty), "::new(0b100_0000)?;")]
             #[doc = concat!("let b = ", stringify!($Ty), "::new(0b100_0011)?;")]
             ///
@@ -336,7 +336,7 @@ macro_rules! nonzero_integer {
                 // SAFETY:
                 // `self` is non-zero, which means it has at least one bit set, which means
                 // that the result of `count_ones` is non-zero.
-                unsafe { NonZeroU32::new_unchecked(self.get().count_ones()) }
+                unsafe { NonZero::new_unchecked(self.get().count_ones()) }
             }
 
             nonzero_integer_signedness_dependent_methods! {

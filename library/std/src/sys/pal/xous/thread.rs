@@ -1,6 +1,6 @@
 use crate::ffi::CStr;
 use crate::io;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::os::xous::ffi::{
     blocking_scalar, create_thread, do_yield, join_thread, map_memory, update_memory_flags,
     MemoryFlags, Syscall, ThreadId,
@@ -132,9 +132,9 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // We're unicore right now.
-    Ok(unsafe { NonZeroUsize::new_unchecked(1) })
+    Ok(unsafe { NonZero::new_unchecked(1) })
 }
 
 pub mod guard {

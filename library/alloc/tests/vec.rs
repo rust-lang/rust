@@ -1,5 +1,5 @@
 use core::alloc::{Allocator, Layout};
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 use core::ptr::NonNull;
 use core::{assert_eq, assert_ne};
 use std::alloc::System;
@@ -1089,9 +1089,9 @@ fn test_into_iter_advance_by() {
     assert_eq!(i.advance_back_by(1), Ok(()));
     assert_eq!(i.as_slice(), [2, 3, 4]);
 
-    assert_eq!(i.advance_back_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX - 3).unwrap()));
+    assert_eq!(i.advance_back_by(usize::MAX), Err(NonZero::new(usize::MAX - 3).unwrap()));
 
-    assert_eq!(i.advance_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX).unwrap()));
+    assert_eq!(i.advance_by(usize::MAX), Err(NonZero::new(usize::MAX).unwrap()));
 
     assert_eq!(i.advance_by(0), Ok(()));
     assert_eq!(i.advance_back_by(0), Ok(()));
@@ -1192,7 +1192,7 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .map(|(a, b)| a + b)
         .map_while(Option::Some)
         .skip(1)
-        .map(|e| if e != usize::MAX { Ok(std::num::NonZeroUsize::new(e)) } else { Err(()) });
+        .map(|e| if e != usize::MAX { Ok(NonZero::new(e)) } else { Err(()) });
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Result<Vec<_>, _>>().unwrap();
     let sinkptr = sink.as_ptr();

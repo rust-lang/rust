@@ -21,7 +21,7 @@ use rustc_session::parse::feature_err_issue;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
@@ -102,7 +102,7 @@ pub fn report_unstable(
     sess: &Session,
     feature: Symbol,
     reason: Option<Symbol>,
-    issue: Option<NonZeroU32>,
+    issue: Option<NonZero<u32>>,
     suggestion: Option<(Span, String, String, Applicability)>,
     is_soft: bool,
     span: Span,
@@ -235,7 +235,7 @@ pub enum EvalResult {
     Deny {
         feature: Symbol,
         reason: Option<Symbol>,
-        issue: Option<NonZeroU32>,
+        issue: Option<NonZero<u32>>,
         suggestion: Option<(Span, String, String, Applicability)>,
         is_soft: bool,
     },
@@ -433,7 +433,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if feature == sym::rustc_private && issue == NonZeroU32::new(27812) {
+                if feature == sym::rustc_private && issue == NonZero::new(27812) {
                     if self.sess.opts.unstable_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }

@@ -5,7 +5,7 @@
 //! to be const-safe.
 
 use std::fmt::Write;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 
 use either::{Left, Right};
 
@@ -785,7 +785,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     fn visit_union(
         &mut self,
         op: &OpTy<'tcx, M::Provenance>,
-        _fields: NonZeroUsize,
+        _fields: NonZero<usize>,
     ) -> InterpResult<'tcx> {
         // Special check for CTFE validation, preventing `UnsafeCell` inside unions in immutable memory.
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {

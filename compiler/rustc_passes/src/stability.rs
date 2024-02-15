@@ -27,7 +27,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use std::mem::replace;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -645,7 +645,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             let stability = Stability {
                 level: attr::StabilityLevel::Unstable {
                     reason: UnstableReason::Default,
-                    issue: NonZeroU32::new(27812),
+                    issue: NonZero::new(27812),
                     is_soft: false,
                     implied_by: None,
                 },

@@ -5,7 +5,7 @@ use super::thread_local_dtor::run_dtors;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ptr;
 use crate::time::Duration;
 
@@ -97,8 +97,8 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
-    unsafe { Ok(NonZeroUsize::new_unchecked(abi::get_processor_count())) }
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
+    unsafe { Ok(NonZero::new_unchecked(abi::get_processor_count())) }
 }
 
 pub mod guard {

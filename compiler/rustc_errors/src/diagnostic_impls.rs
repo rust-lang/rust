@@ -79,7 +79,7 @@ into_diagnostic_arg_using_display!(
     ast::ParamKindOrd,
     std::io::Error,
     Box<dyn std::error::Error>,
-    std::num::NonZeroU32,
+    std::num::NonZero<u32>,
     hir::Target,
     Edition,
     Ident,

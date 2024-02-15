@@ -1,4 +1,4 @@
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
@@ -27,7 +27,7 @@ impl<'a> IntoDiagnostic<'a> for FeatureGateError {
 #[derive(Subdiagnostic)]
 #[note(session_feature_diagnostic_for_issue)]
 pub struct FeatureDiagnosticForIssue {
-    pub n: NonZeroU32,
+    pub n: NonZero<u32>,
 }
 
 #[derive(Subdiagnostic)]

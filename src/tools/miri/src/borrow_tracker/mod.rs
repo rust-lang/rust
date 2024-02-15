@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fmt;
-use std::num::NonZeroU64;
+use std::num::NonZero;
 
 use log::trace;
 use smallvec::SmallVec;
@@ -13,22 +13,22 @@ use crate::*;
 pub mod stacked_borrows;
 pub mod tree_borrows;
 
-pub type CallId = NonZeroU64;
+pub type CallId = NonZero<u64>;
 
 /// Tracking pointer provenance
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct BorTag(NonZeroU64);
+pub struct BorTag(NonZero<u64>);
 
 impl BorTag {
     pub fn new(i: u64) -> Option<Self> {
-        NonZeroU64::new(i).map(BorTag)
+        NonZero::new(i).map(BorTag)
     }
 
     pub fn get(&self) -> u64 {
         self.0.get()
     }
 
-    pub fn inner(&self) -> NonZeroU64 {
+    pub fn inner(&self) -> NonZero<u64> {
         self.0
     }
 
@@ -184,7 +184,7 @@ impl GlobalStateInner {
             borrow_tracker_method,
             next_ptr_tag: BorTag::one(),
             base_ptr_tags: FxHashMap::default(),
-            next_call_id: NonZeroU64::new(1).unwrap(),
+            next_call_id: NonZero::new(1).unwrap(),
             protected_tags: FxHashMap::default(),
             tracked_pointer_tags,
             tracked_call_ids,
@@ -206,7 +206,7 @@ impl GlobalStateInner {
         if self.tracked_call_ids.contains(&call_id) {
             machine.emit_diagnostic(NonHaltingDiagnostic::CreatedCallId(call_id));
         }
-        self.next_call_id = NonZeroU64::new(call_id.get() + 1).unwrap();
+        self.next_call_id = NonZero::new(call_id.get() + 1).unwrap();
         FrameState { call_id, protected_tags: SmallVec::new() }
     }
 
