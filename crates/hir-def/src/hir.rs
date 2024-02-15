@@ -352,6 +352,9 @@ pub enum Statement {
         expr: ExprId,
         has_semi: bool,
     },
+    // At the moment, we only use this to figure out if a return expression
+    // is really the last statement of a block. See #16566
+    Item,
 }
 
 impl Expr {
@@ -385,6 +388,7 @@ impl Expr {
                             }
                         }
                         Statement::Expr { expr: expression, .. } => f(*expression),
+                        Statement::Item => (),
                     }
                 }
                 if let &Some(expr) = tail {

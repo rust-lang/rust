@@ -1389,6 +1389,7 @@ impl InferenceContext<'_> {
                                 );
                             }
                         }
+                        Statement::Item => (),
                     }
                 }
 
