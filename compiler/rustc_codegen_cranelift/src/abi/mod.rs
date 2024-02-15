@@ -387,15 +387,17 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         match instance.def {
             InstanceDef::Intrinsic(_) => {
-                crate::intrinsics::codegen_intrinsic_call(
+                match crate::intrinsics::codegen_intrinsic_call(
                     fx,
                     instance,
                     args,
                     ret_place,
                     target,
                     source_info,
-                );
-                return;
+                ) {
+                    Ok(()) => return,
+                    Err(instance) => Some(instance),
+                }
             }
             InstanceDef::DropGlue(_, None) => {
                 // empty drop glue - a nop.

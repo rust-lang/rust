@@ -1749,8 +1749,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.attr_flags.get(self, index)
     }
 
-    fn get_is_intrinsic(self, index: DefIndex) -> bool {
-        self.root.tables.is_intrinsic.get(self, index)
+    fn get_intrinsic(self, index: DefIndex) -> Option<Symbol> {
+        self.root.tables.intrinsic.get(self, index).map(|d| d.decode(self))
     }
 
     fn get_doc_link_resolutions(self, index: DefIndex) -> DocLinkResMap {

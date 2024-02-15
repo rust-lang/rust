@@ -861,7 +861,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
                     // `extern` functions, and these have no way to get marked `const`. So instead we
                     // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
-                    if self.ccx.is_const_stable_const_fn() || tcx.is_intrinsic(callee) {
+                    if self.ccx.is_const_stable_const_fn() || tcx.intrinsic(callee).is_some() {
                         self.check_op(ops::FnCallUnstable(callee, None));
                         return;
                     }

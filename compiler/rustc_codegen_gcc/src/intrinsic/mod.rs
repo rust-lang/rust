@@ -90,7 +90,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, name: Symbol) ->
 }
 
 impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
-    fn codegen_intrinsic_call(&mut self, instance: Instance<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, args: &[OperandRef<'tcx, RValue<'gcc>>], llresult: RValue<'gcc>, span: Span) {
+    fn codegen_intrinsic_call(&mut self, instance: Instance<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, args: &[OperandRef<'tcx, RValue<'gcc>>], llresult: RValue<'gcc>, span: Span) -> Result<(), Instance<'tcx>> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
@@ -137,7 +137,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         args[2].immediate(),
                         llresult,
                     );
-                    return;
+                    return Ok(());
                 }
                 sym::breakpoint => {
                     unimplemented!();
@@ -166,12 +166,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 sym::volatile_store => {
                     let dst = args[0].deref(self.cx());
                     args[1].val.volatile_store(self, dst);
-                    return;
+                    return Ok(());
                 }
                 sym::unaligned_volatile_store => {
                     let dst = args[0].deref(self.cx());
                     args[1].val.unaligned_volatile_store(self, dst);
-                    return;
+                    return Ok(());
                 }
                 sym::prefetch_read_data
                     | sym::prefetch_write_data
@@ -269,7 +269,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             },
                             None => {
                                 tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType { span, name, ty });
-                                return;
+                                return Ok(());
                             }
                         }
                     }
@@ -339,7 +339,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     extended_asm.set_volatile_flag(true);
 
                     // We have copied the value to `result` already.
-                    return;
+                    return Ok(());
                 }
 
                 sym::ptr_mask => {
@@ -357,11 +357,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 _ if name_str.starts_with("simd_") => {
                     match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
                         Ok(llval) => llval,
-                        Err(()) => return,
+                        Err(()) => return Ok(()),
                     }
                 }
 
-                _ => bug!("unknown intrinsic '{}'", name),
+                // Fall back to default body
+                _ => return Err(Instance::new(instance.def_id(), instance.args)),
             };
 
         if !fn_abi.ret.is_ignore() {
@@ -376,6 +377,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     .store(self, result);
             }
         }
+        Ok(())
     }
 
     fn abort(&mut self) {

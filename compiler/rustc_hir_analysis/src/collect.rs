@@ -1651,7 +1651,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
-        intrinsic_operation_unsafety(tcx, def_id.to_def_id())
+        intrinsic_operation_unsafety(tcx, def_id)
     } else {
         hir::Unsafety::Unsafe
     };
