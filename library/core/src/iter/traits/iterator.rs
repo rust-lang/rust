@@ -1917,7 +1917,7 @@ pub trait Iterator {
     /// Transforms an iterator into a collection.
     ///
     /// `collect()` can take anything iterable, and turn it into a relevant
-    /// collection. This is one of the more powerful methods in the standard
+    /// collection. This is one of the most powerful methods in the standard
     /// library, used in a variety of contexts.
     ///
     /// The most basic pattern in which `collect()` is used is to turn one
