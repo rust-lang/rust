@@ -14,6 +14,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_family = "unix")] {
         mod queue;
         pub use queue::RwLock;
+    } else if #[cfg(target_os = "windows")] {
+        mod windows;
+        pub use windows::RwLock;
     } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
         mod sgx;
         pub use sgx::RwLock;

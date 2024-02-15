@@ -14,6 +14,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_family = "unix")] {
         mod pthread;
         pub use pthread::Condvar;
+    } else if #[cfg(target_os = "windows")] {
+        mod windows;
+        pub use windows::Condvar;
     } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
         mod sgx;
         pub use sgx::Condvar;

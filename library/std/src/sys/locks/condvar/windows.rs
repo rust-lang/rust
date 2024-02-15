@@ -27,7 +27,7 @@ impl Condvar {
         let r = c::SleepConditionVariableSRW(
             self.inner.get(),
             mutex::raw(mutex),
-            crate::sys::pal::windows::dur2timeout(dur),
+            crate::sys::pal::dur2timeout(dur),
             0,
         );
         if r == 0 {
