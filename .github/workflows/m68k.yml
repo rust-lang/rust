@@ -91,10 +91,8 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore --cross
-        # TODO: remove --features master when it is back to the default.
-        ./y.sh build --target-triple m68k-unknown-linux-gnu --features master
-        # TODO: remove --features master when it is back to the default.
-        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test --features master
+        ./y.sh build --target-triple m68k-unknown-linux-gnu
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
         ./y.sh clean all
 
     - name: Prepare dependencies
@@ -108,5 +106,4 @@ jobs:
 
     - name: Run tests
       run: |
-        # TODO: remove --features master when it is back to the default.
-        ./y.sh test --release --features master --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}

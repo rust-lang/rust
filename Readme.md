@@ -69,13 +69,13 @@ Then you can run commands like this:
 
 ```bash
 $ ./y.sh prepare # download and patch sysroot src and install hyperfine for benchmarking
-$ ./y.sh build --release --features master
+$ ./y.sh build --release
 ```
 
 To run the tests:
 
 ```bash
-$ ./y.sh test --release --features master
+$ ./y.sh test --release
 ```
 
 ## Usage
