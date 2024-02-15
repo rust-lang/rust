@@ -793,6 +793,13 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_div(10), 10);")]
         /// ```
+        ///
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div(0);")]
+        /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
@@ -847,6 +854,12 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_div_euclid(10), 10);")]
+        /// ```
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = (1", stringify!($SelfT), ").strict_div_euclid(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
@@ -903,6 +916,13 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_rem(10), 0);")]
         /// ```
+        ///
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem(0);")]
+        /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
         #[must_use = "this returns the result of the operation, \
@@ -958,6 +978,13 @@ macro_rules! uint_impl {
         /// ```
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".strict_rem_euclid(10), 0);")]
+        /// ```
+        ///
+        /// The following panics because of division by zero:
+        ///
+        /// ```should_panic
+        /// #![feature(strict_overflow_ops)]
+        #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem_euclid(0);")]
         /// ```
         #[unstable(feature = "strict_overflow_ops", issue = "118260")]
         #[rustc_const_unstable(feature = "const_strict_overflow_ops", issue = "118260")]
