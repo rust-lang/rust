@@ -336,10 +336,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
 
-            let sysroot = match &config.opts.maybe_sysroot {
-                Some(sysroot) => sysroot.clone(),
-                None => filesearch::get_or_default_sysroot().expect("Failed finding sysroot"),
-            };
+            let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
 
             let (codegen_backend, target_cfg) = match config.make_codegen_backend {
                 None => {
