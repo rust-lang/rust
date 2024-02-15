@@ -1276,7 +1276,6 @@ impl DiagCtxtInner {
     fn emit_stashed_diagnostics(&mut self) {
         let has_errors = !self.err_guars.is_empty();
         for (_, diag) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
-            // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
                 if diag.is_lint.is_none() {
                     self.stashed_err_count -= 1;
