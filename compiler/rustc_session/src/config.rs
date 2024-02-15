@@ -1438,9 +1438,10 @@ impl CheckCfg {
 
         ins!(sym::debug_assertions, no_values);
 
-        // These three are never set by rustc, but we set them anyway: they
-        // should not trigger a lint because `cargo doc`, `cargo test`, and
-        // `cargo miri run` (respectively) can set them.
+        // These four are never set by rustc, but we set them anyway: they
+        // should not trigger a lint because `cargo clippy`, `cargo doc`,
+        // `cargo test` and `cargo miri run` (respectively) can set them.
+        ins!(sym::clippy, no_values);
         ins!(sym::doc, no_values);
         ins!(sym::doctest, no_values);
         ins!(sym::miri, no_values);
