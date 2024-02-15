@@ -181,7 +181,8 @@ fn declare_raw_fn<'gcc>(cx: &CodegenCx<'gcc, '_>, name: &str, _callconv: () /*ll
 }
 
 // FIXME(antoyo): this is a hack because libgccjit currently only supports alpha, num and _.
-// Unsupported characters: `$` and `.`.
+// Unsupported characters: `$`, `.` and `*`.
+// FIXME(antoyo): `*` might not be expected: https://github.com/rust-lang/rust/issues/116979#issuecomment-1840926865
 #[cfg(not(feature="master"))]
 fn mangle_name(name: &str) -> String {
     name.replace(|char: char| {
