@@ -45,6 +45,7 @@ use std::str::{self, CharIndices};
 
 use crate::clean::RenderedLink;
 use crate::doctest;
+use crate::doctest::GlobalTestOptions;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
 use crate::html::highlight;
@@ -302,8 +303,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 .intersperse("\n".into())
                 .collect::<String>();
             let krate = krate.as_ref().map(|s| s.as_str());
-            let (test, _, _) =
-                doctest::make_test(&test, krate, false, &Default::default(), edition, None);
+
+            let mut opts: GlobalTestOptions = Default::default();
+            opts.insert_indent_space = true;
+            let (test, _, _) = doctest::make_test(&test, krate, false, &opts, edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
             let test_escaped = small_url_encode(test);
