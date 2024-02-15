@@ -1,5 +1,20 @@
 cfg_if::cfg_if! {
-    if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+    if #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_os = "dragonfly",
+        target_os = "fuchsia",
+        all(target_family = "wasm", target_feature = "atomics"),
+        target_os = "hermit",
+    ))] {
+        mod futex;
+        pub use futex::Condvar;
+    } else if #[cfg(target_family = "unix")] {
+        mod pthread;
+        pub use pthread::Condvar;
+    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
         mod sgx;
         pub use sgx::Condvar;
     } else if #[cfg(target_os = "solid_asp3")] {

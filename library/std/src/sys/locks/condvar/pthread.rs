@@ -1,7 +1,7 @@
 use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, Ordering::Relaxed};
-use crate::sys::locks::{pthread_mutex, Mutex};
+use crate::sys::locks::{mutex, Mutex};
 #[cfg(not(target_os = "nto"))]
 use crate::sys::time::TIMESPEC_MAX;
 #[cfg(target_os = "nto")]
@@ -112,7 +112,7 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        let mutex = pthread_mutex::raw(mutex);
+        let mutex = mutex::raw(mutex);
         self.verify(mutex);
         let r = libc::pthread_cond_wait(raw(self), mutex);
         debug_assert_eq!(r, 0);
@@ -134,7 +134,7 @@ impl Condvar {
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
         use crate::sys::time::Timespec;
 
-        let mutex = pthread_mutex::raw(mutex);
+        let mutex = mutex::raw(mutex);
         self.verify(mutex);
 
         #[cfg(not(target_os = "nto"))]
@@ -170,7 +170,7 @@ impl Condvar {
         use crate::sys::time::SystemTime;
         use crate::time::Instant;
 
-        let mutex = pthread_mutex::raw(mutex);
+        let mutex = mutex::raw(mutex);
         self.verify(mutex);
 
         // OSX implementation of `pthread_cond_timedwait` is buggy
