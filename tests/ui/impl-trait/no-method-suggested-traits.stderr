@@ -2,10 +2,10 @@ error[E0599]: no method named `method` found for type `u32` in the current scope
   --> $DIR/no-method-suggested-traits.rs:23:10
    |
 LL |     1u32.method();
-   |          ^^^^^^ method not found in `u32`
+   |          ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
+help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
 LL + use foo::Bar;
    |
@@ -15,15 +15,19 @@ LL + use no_method_suggested_traits::foo::PubPub;
    |
 LL + use no_method_suggested_traits::qux::PrivPub;
    |
+help: there is a method `method2` with a similar name
+   |
+LL |     1u32.method2();
+   |          ~~~~~~~
 
 error[E0599]: no method named `method` found for struct `Rc<&mut Box<&u32>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:26:44
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method();
-   |                                            ^^^^^^ method not found in `Rc<&mut Box<&u32>>`
+   |                                            ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following traits are implemented but not in scope; perhaps add a `use` for one of them:
+help: the following traits which provide `method` are implemented but not in scope; perhaps you want to import one of them
    |
 LL + use foo::Bar;
    |
@@ -33,6 +37,10 @@ LL + use no_method_suggested_traits::foo::PubPub;
    |
 LL + use no_method_suggested_traits::qux::PrivPub;
    |
+help: there is a method `method2` with a similar name
+   |
+LL |     std::rc::Rc::new(&mut Box::new(&1u32)).method2();
+   |                                            ~~~~~~~
 
 error[E0599]: no method named `method` found for type `char` in the current scope
   --> $DIR/no-method-suggested-traits.rs:30:9
@@ -41,31 +49,39 @@ LL |         fn method(&self) {}
    |            ------ the method is available for `char` here
 ...
 LL |     'a'.method();
-   |         ^^^^^^ method not found in `char`
+   |         ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use foo::Bar;
    |
+help: there is a method `method2` with a similar name
+   |
+LL |     'a'.method2();
+   |         ~~~~~~~
 
 error[E0599]: no method named `method` found for struct `Rc<&mut Box<&char>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:32:43
    |
 LL |     std::rc::Rc::new(&mut Box::new(&'a')).method();
-   |                                           ^^^^^^ method not found in `Rc<&mut Box<&char>>`
+   |                                           ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Bar` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use foo::Bar;
    |
+help: there is a method `method2` with a similar name
+   |
+LL |     std::rc::Rc::new(&mut Box::new(&'a')).method2();
+   |                                           ~~~~~~~
 
 error[E0599]: no method named `method` found for type `i32` in the current scope
   --> $DIR/no-method-suggested-traits.rs:35:10
    |
 LL |     1i32.method();
-   |          ^^^^^^ method not found in `i32`
+   |          ^^^^^^
    |
   ::: $DIR/auxiliary/no_method_suggested_traits.rs:8:12
    |
@@ -73,22 +89,30 @@ LL |         fn method(&self) {}
    |            ------ the method is available for `i32` here
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use no_method_suggested_traits::foo::PubPub;
    |
+help: there is a method `method3` with a similar name
+   |
+LL |     1i32.method3();
+   |          ~~~~~~~
 
 error[E0599]: no method named `method` found for struct `Rc<&mut Box<&i32>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:37:44
    |
 LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method();
-   |                                            ^^^^^^ method not found in `Rc<&mut Box<&i32>>`
+   |                                            ^^^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `PubPub` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use no_method_suggested_traits::foo::PubPub;
    |
+help: there is a method `method3` with a similar name
+   |
+LL |     std::rc::Rc::new(&mut Box::new(&1i32)).method3();
+   |                                            ~~~~~~~
 
 error[E0599]: no method named `method` found for struct `Foo` in the current scope
   --> $DIR/no-method-suggested-traits.rs:40:9

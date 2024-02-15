@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type `TryFrom`
-  --> $DIR/suggest-tryinto-edition-change.rs:11:19
+  --> $DIR/suggest-tryinto-edition-change.rs:10:19
    |
 LL |     let _i: i16 = TryFrom::try_from(0_i32).unwrap();
    |                   ^^^^^^^ use of undeclared type `TryFrom`
@@ -14,7 +14,7 @@ LL + use std::convert::TryFrom;
    |
 
 error[E0433]: failed to resolve: use of undeclared type `TryInto`
-  --> $DIR/suggest-tryinto-edition-change.rs:17:19
+  --> $DIR/suggest-tryinto-edition-change.rs:16:19
    |
 LL |     let _i: i16 = TryInto::try_into(0_i32).unwrap();
    |                   ^^^^^^^ use of undeclared type `TryInto`
@@ -29,7 +29,7 @@ LL + use std::convert::TryInto;
    |
 
 error[E0433]: failed to resolve: use of undeclared type `FromIterator`
-  --> $DIR/suggest-tryinto-edition-change.rs:23:22
+  --> $DIR/suggest-tryinto-edition-change.rs:22:22
    |
 LL |     let _v: Vec<_> = FromIterator::from_iter(&[1]);
    |                      ^^^^^^^^^^^^ use of undeclared type `FromIterator`
@@ -51,17 +51,21 @@ error[E0599]: no method named `try_into` found for type `i32` in the current sco
   --> $DIR/suggest-tryinto-edition-change.rs:6:25
    |
 LL |     let _i: i16 = 0_i32.try_into().unwrap();
-   |                         ^^^^^^^^ method not found in `i32`
+   |                         ^^^^^^^^
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
    = note: the method is available for `i32` here
    |
    = help: items from traits can only be used if the trait is in scope
    = note: 'std::convert::TryInto' is included in the prelude starting in Edition 2021
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `TryInto` which provides `try_into` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::convert::TryInto;
    |
+help: there is a method `into` with a similar name
+   |
+LL |     let _i: i16 = 0_i32.into().unwrap();
+   |                         ~~~~
 
 error: aborting due to 4 previous errors
 
