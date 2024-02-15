@@ -1659,15 +1659,43 @@ fn bar(_: usize) {}
         assert!(!docs.contains("use crate::bar"));
     }
 
+    #[track_caller]
     fn check_rendered_snippets(edit: TextEdit, snippets: SnippetEdit, expect: Expect) {
-        let text = r#"/* place to put all ranges in */"#;
+        check_rendered_snippets_in_source(
+            r"/* place to put all ranges in */",
+            edit,
+            snippets,
+            expect,
+        );
+    }
+
+    #[track_caller]
+    fn check_rendered_snippets_in_source(
+        ra_fixture: &str,
+        edit: TextEdit,
+        snippets: SnippetEdit,
+        expect: Expect,
+    ) {
+        let source = stdx::trim_indent(ra_fixture);
         let line_index = LineIndex {
-            index: Arc::new(ide::LineIndex::new(text)),
+            index: Arc::new(ide::LineIndex::new(&source)),
             endings: LineEndings::Unix,
             encoding: PositionEncoding::Utf8,
         };
 
         let res = merge_text_and_snippet_edits(&line_index, edit, snippets);
+
+        // Ensure that none of the ranges overlap
+        {
+            let mut sorted = res.clone();
+            sorted.sort_by_key(|edit| (edit.range.start, edit.range.end));
+            let disjoint_ranges = sorted
+                .iter()
+                .zip(sorted.iter().skip(1))
+                .all(|(l, r)| l.range.end <= r.range.start || l == r);
+            assert!(disjoint_ranges, "ranges overlap for {res:#?}");
+        }
+
         expect.assert_debug_eq(&res);
     }
 
@@ -1812,7 +1840,8 @@ fn bar(_: usize) {}
         let mut edit = TextEdit::builder();
         edit.insert(0.into(), "abc".to_owned());
         let edit = edit.finish();
-        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(7.into())]);
+        // Note: tabstops are positioned in the source where all text edits have been applied
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(10.into())]);
 
         check_rendered_snippets(
             edit,
@@ -1929,8 +1958,9 @@ fn bar(_: usize) {}
         edit.insert(0.into(), "abc".to_owned());
         edit.insert(7.into(), "abc".to_owned());
         let edit = edit.finish();
+        // Note: tabstops are positioned in the source where all text edits have been applied
         let snippets =
-            SnippetEdit::new(vec![Snippet::Tabstop(4.into()), Snippet::Tabstop(4.into())]);
+            SnippetEdit::new(vec![Snippet::Tabstop(7.into()), Snippet::Tabstop(7.into())]);
 
         check_rendered_snippets(
             edit,
@@ -2131,6 +2161,423 @@ fn bar(_: usize) {}
                 },
             ]
         "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstop_adjust_offset_deleted() {
+        // negative offset from inserting a smaller range
+        let mut edit = TextEdit::builder();
+        edit.replace(TextRange::new(47.into(), 56.into()), "let".to_owned());
+        edit.replace(
+            TextRange::new(57.into(), 89.into()),
+            "disabled = false;\n    ProcMacro {\n        disabled,\n    }".to_owned(),
+        );
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(51.into())]);
+
+        check_rendered_snippets_in_source(
+            r"
+fn expander_to_proc_macro() -> ProcMacro {
+    ProcMacro {
+        disabled: false,
+    }
+}
+
+struct ProcMacro {
+    disabled: bool,
+}",
+            edit,
+            snippets,
+            expect![[r#"
+    [
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 4,
+                },
+                end: Position {
+                    line: 1,
+                    character: 13,
+                },
+            },
+            new_text: "let",
+            insert_text_format: None,
+            annotation_id: None,
+        },
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 14,
+                },
+                end: Position {
+                    line: 3,
+                    character: 5,
+                },
+            },
+            new_text: "$0disabled = false;\n    ProcMacro {\n        disabled,\n    }",
+            insert_text_format: Some(
+                Snippet,
+            ),
+            annotation_id: None,
+        },
+    ]
+"#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstop_adjust_offset_added() {
+        // positive offset from inserting a larger range
+        let mut edit = TextEdit::builder();
+        edit.replace(TextRange::new(39.into(), 40.into()), "let".to_owned());
+        edit.replace(
+            TextRange::new(41.into(), 73.into()),
+            "disabled = false;\n    ProcMacro {\n        disabled,\n    }".to_owned(),
+        );
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(43.into())]);
+
+        check_rendered_snippets_in_source(
+            r"
+fn expander_to_proc_macro() -> P {
+    P {
+        disabled: false,
+    }
+}
+
+struct P {
+    disabled: bool,
+}",
+            edit,
+            snippets,
+            expect![[r#"
+    [
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 4,
+                },
+                end: Position {
+                    line: 1,
+                    character: 5,
+                },
+            },
+            new_text: "let",
+            insert_text_format: None,
+            annotation_id: None,
+        },
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 6,
+                },
+                end: Position {
+                    line: 3,
+                    character: 5,
+                },
+            },
+            new_text: "$0disabled = false;\n    ProcMacro {\n        disabled,\n    }",
+            insert_text_format: Some(
+                Snippet,
+            ),
+            annotation_id: None,
+        },
+    ]
+"#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_placeholder_adjust_offset_deleted() {
+        // negative offset from inserting a smaller range
+        let mut edit = TextEdit::builder();
+        edit.replace(TextRange::new(47.into(), 56.into()), "let".to_owned());
+        edit.replace(
+            TextRange::new(57.into(), 89.into()),
+            "disabled = false;\n    ProcMacro {\n        disabled,\n    }".to_owned(),
+        );
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Placeholder(TextRange::new(51.into(), 59.into()))]);
+
+        check_rendered_snippets_in_source(
+            r"
+fn expander_to_proc_macro() -> ProcMacro {
+    ProcMacro {
+        disabled: false,
+    }
+}
+
+struct ProcMacro {
+    disabled: bool,
+}",
+            edit,
+            snippets,
+            expect![[r#"
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 4,
+                            },
+                            end: Position {
+                                line: 1,
+                                character: 13,
+                            },
+                        },
+                        new_text: "let",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 14,
+                            },
+                            end: Position {
+                                line: 3,
+                                character: 5,
+                            },
+                        },
+                        new_text: "${0:disabled} = false;\n    ProcMacro {\n        disabled,\n    }",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_placeholder_adjust_offset_added() {
+        // positive offset from inserting a larger range
+        let mut edit = TextEdit::builder();
+        edit.replace(TextRange::new(39.into(), 40.into()), "let".to_owned());
+        edit.replace(
+            TextRange::new(41.into(), 73.into()),
+            "disabled = false;\n    ProcMacro {\n        disabled,\n    }".to_owned(),
+        );
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Placeholder(TextRange::new(43.into(), 51.into()))]);
+
+        check_rendered_snippets_in_source(
+            r"
+fn expander_to_proc_macro() -> P {
+    P {
+        disabled: false,
+    }
+}
+
+struct P {
+    disabled: bool,
+}",
+            edit,
+            snippets,
+            expect![[r#"
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 4,
+                            },
+                            end: Position {
+                                line: 1,
+                                character: 5,
+                            },
+                        },
+                        new_text: "let",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 6,
+                            },
+                            end: Position {
+                                line: 3,
+                                character: 5,
+                            },
+                        },
+                        new_text: "${0:disabled} = false;\n    ProcMacro {\n        disabled,\n    }",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstop_adjust_offset_between_text_edits() {
+        // inserting between edits, tabstop should be at (1, 14)
+        let mut edit = TextEdit::builder();
+        edit.replace(TextRange::new(47.into(), 56.into()), "let".to_owned());
+        edit.replace(
+            TextRange::new(58.into(), 90.into()),
+            "disabled = false;\n    ProcMacro {\n        disabled,\n    }".to_owned(),
+        );
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(51.into())]);
+
+        // add an extra space between `ProcMacro` and `{` to insert the tabstop at
+        check_rendered_snippets_in_source(
+            r"
+fn expander_to_proc_macro() -> ProcMacro {
+    ProcMacro  {
+        disabled: false,
+    }
+}
+
+struct ProcMacro {
+    disabled: bool,
+}",
+            edit,
+            snippets,
+            expect![[r#"
+    [
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 4,
+                },
+                end: Position {
+                    line: 1,
+                    character: 13,
+                },
+            },
+            new_text: "let",
+            insert_text_format: None,
+            annotation_id: None,
+        },
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 14,
+                },
+                end: Position {
+                    line: 1,
+                    character: 14,
+                },
+            },
+            new_text: "$0",
+            insert_text_format: Some(
+                Snippet,
+            ),
+            annotation_id: None,
+        },
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 15,
+                },
+                end: Position {
+                    line: 3,
+                    character: 5,
+                },
+            },
+            new_text: "disabled = false;\n    ProcMacro {\n        disabled,\n    }",
+            insert_text_format: None,
+            annotation_id: None,
+        },
+    ]
+"#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstop_adjust_offset_after_text_edits() {
+        // inserting after edits, tabstop should be before the closing curly of the fn
+        let mut edit = TextEdit::builder();
+        edit.replace(TextRange::new(47.into(), 56.into()), "let".to_owned());
+        edit.replace(
+            TextRange::new(57.into(), 89.into()),
+            "disabled = false;\n    ProcMacro {\n        disabled,\n    }".to_owned(),
+        );
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(109.into())]);
+
+        check_rendered_snippets_in_source(
+            r"
+fn expander_to_proc_macro() -> ProcMacro {
+    ProcMacro {
+        disabled: false,
+    }
+}
+
+struct ProcMacro {
+    disabled: bool,
+}",
+            edit,
+            snippets,
+            expect![[r#"
+    [
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 4,
+                },
+                end: Position {
+                    line: 1,
+                    character: 13,
+                },
+            },
+            new_text: "let",
+            insert_text_format: None,
+            annotation_id: None,
+        },
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 1,
+                    character: 14,
+                },
+                end: Position {
+                    line: 3,
+                    character: 5,
+                },
+            },
+            new_text: "disabled = false;\n    ProcMacro {\n        disabled,\n    }",
+            insert_text_format: None,
+            annotation_id: None,
+        },
+        SnippetTextEdit {
+            range: Range {
+                start: Position {
+                    line: 4,
+                    character: 0,
+                },
+                end: Position {
+                    line: 4,
+                    character: 0,
+                },
+            },
+            new_text: "$0",
+            insert_text_format: Some(
+                Snippet,
+            ),
+            annotation_id: None,
+        },
+    ]
+"#]],
         );
     }
 
