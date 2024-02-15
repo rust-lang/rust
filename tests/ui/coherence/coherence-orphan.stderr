@@ -10,17 +10,6 @@ LL | impl TheTrait<usize> for isize {}
    |
    = note: define and implement a trait or new type instead
 
-error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/coherence-orphan.rs:20:1
-   |
-LL | impl !Send for Vec<isize> {}
-   | ^^^^^^^^^^^^^^^----------
-   | |              |
-   | |              `Vec` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
-   |
-   = note: define and implement a trait or new type instead
-
 error[E0046]: not all trait items implemented, missing: `the_fn`
   --> $DIR/coherence-orphan.rs:10:1
    |
@@ -44,6 +33,17 @@ LL | impl TheTrait<isize> for TheType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `the_fn` in implementation
    |
    = help: implement the missing item: `fn the_fn(&self) { todo!() }`
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/coherence-orphan.rs:20:1
+   |
+LL | impl !Send for Vec<isize> {}
+   | ^^^^^^^^^^^^^^^----------
+   | |              |
+   | |              `Vec` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
 
 error: aborting due to 5 previous errors
 

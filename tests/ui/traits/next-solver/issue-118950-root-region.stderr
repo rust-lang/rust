@@ -13,6 +13,12 @@ LL | #![feature(lazy_type_alias)]
    = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
+error: the type `<*const T as ToUnit<'a>>::Unit` is not well-formed
+  --> $DIR/issue-118950-root-region.rs:14:21
+   |
+LL | type Assoc<'a, T> = <*const T as ToUnit<'a>>::Unit;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), 'a) }), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }
 WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), 'a) }), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }
 WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTy { args: [ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a), 'a) }), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }
@@ -25,12 +31,6 @@ LL | impl<T> Overlap<T> for T {}
 LL |
 LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `fn(_)`
-
-error: the type `<*const T as ToUnit<'a>>::Unit` is not well-formed
-  --> $DIR/issue-118950-root-region.rs:14:21
-   |
-LL | type Assoc<'a, T> = <*const T as ToUnit<'a>>::Unit;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors; 1 warning emitted
 

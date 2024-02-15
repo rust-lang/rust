@@ -153,7 +153,6 @@ pub fn provide(providers: &mut Providers) {
     check_unused::provide(providers);
     variance::provide(providers);
     outlives::provide(providers);
-    impl_wf_check::provide(providers);
     hir_wf_check::provide(providers);
 }
 
@@ -171,9 +170,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.time("coherence_checking", || {
-        // Check impls constrain their parameters
-        let res =
-            tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
+        tcx.hir().par_for_each_module(|module| {
+            let _ = tcx.ensure().check_mod_type_wf(module);
+        });
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
             let _ = tcx.ensure().coherent_trait(trait_def_id);
@@ -181,18 +180,11 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         // these queries are executed for side-effects (error reporting):
         let _ = tcx.ensure().crate_inherent_impls(());
         let _ = tcx.ensure().crate_inherent_impls_overlap_check(());
-        res
-    })?;
+    });
 
     if tcx.features().rustc_attrs {
         tcx.sess.time("variance_testing", || variance::test::test_variance(tcx))?;
     }
-
-    tcx.sess.time("wf_checking", || {
-        tcx.hir().par_for_each_module(|module| {
-            let _ = tcx.ensure().check_mod_type_wf(module);
-        })
-    });
 
     if tcx.features().rustc_attrs {
         collect::test_opaque_hidden_types(tcx)?;
