@@ -372,7 +372,13 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         }
 
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
-        data.define(bytes.into_boxed_slice());
+        if bytes.is_empty() {
+            // FIXME(bytecodealliance/wasmtime#7918) cranelift-jit has a bug where it causes UB on
+            // empty data objects
+            data.define(Box::new([0]));
+        } else {
+            data.define(bytes.into_boxed_slice());
+        }
 
         for &(offset, prov) in alloc.provenance().ptrs().iter() {
             let alloc_id = prov.alloc_id();
