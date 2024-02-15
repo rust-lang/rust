@@ -358,9 +358,12 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         }
 
         // These terminators have no coverage-relevant successors.
-        CoroutineDrop | Return | Unreachable | UnwindResume | UnwindTerminate(_) => {
-            CoverageSuccessors::NotChainable(&[])
-        }
+        CoroutineDrop
+        | Return
+        | TailCall { .. }
+        | Unreachable
+        | UnwindResume
+        | UnwindTerminate(_) => CoverageSuccessors::NotChainable(&[]),
     }
 }
 

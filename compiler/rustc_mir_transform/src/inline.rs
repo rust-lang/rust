@@ -364,6 +364,8 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Option<CallSite<'tcx>> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
+
+        // FIXME(explicit_tail_calls): figure out if we can inline tail calls
         if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
             let func_ty = func.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, args) = *func_ty.kind() {
@@ -527,6 +529,9 @@ impl<'tcx> Inliner<'tcx> {
                 // inline-asm is detected. LLVM will still possibly do an inline later on
                 // if the no-attribute function ends up with the same instruction set anyway.
                 return Err("Cannot move inline-asm across instruction sets");
+            } else if let TerminatorKind::TailCall { .. } = term.kind {
+                // FIXME(explicit_tail_calls): figure out how exactly functions containing tail calls can be inlined (and if they even should)
+                return Err("can't inline functions with tail calls");
             } else {
                 work_list.extend(term.successors())
             }
@@ -1013,6 +1018,10 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             TerminatorKind::Drop { ref mut target, ref mut unwind, .. } => {
                 *target = self.map_block(*target);
                 *unwind = self.map_unwind(*unwind);
+            }
+            TerminatorKind::TailCall { .. } => {
+                // check_mir_body forbids tail calls
+                unreachable!()
             }
             TerminatorKind::Call { ref mut target, ref mut unwind, .. } => {
                 if let Some(ref mut tgt) = *target {
