@@ -480,6 +480,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).strict_add(1), ", stringify!($SelfT), "::MAX - 1);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add(3);")]
@@ -561,6 +563,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_add_signed(2), 3);")]
         /// ```
         ///
+        /// The following panic because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_add_signed(-2);")]
@@ -619,6 +623,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_sub(1), 0);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -699,6 +705,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".strict_mul(1), 5);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ``` should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1172,6 +1180,8 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".strict_neg(), 0);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_neg();")]
@@ -1225,6 +1235,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".strict_shl(4), 0x10);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1306,6 +1318,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".strict_shr(4), 0x1);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1405,6 +1419,8 @@ macro_rules! uint_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".strict_pow(5), 32);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
