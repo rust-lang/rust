@@ -930,6 +930,16 @@ fn merge_text_and_snippet_edits(
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
     let text_edits = edit.into_iter();
+    // offset to go from the final source location to the original source location
+    let mut source_text_offset = 0i32;
+
+    let offset_range = |range: TextRange, offset: i32| -> TextRange {
+        // map the snippet range from the target location into the original source location
+        let start = u32::from(range.start()).checked_add_signed(offset).unwrap_or(0);
+        let end = u32::from(range.end()).checked_add_signed(offset).unwrap_or(0);
+
+        TextRange::new(start.into(), end.into())
+    };
 
     for current_indel in text_edits {
         let new_range = {
@@ -938,10 +948,17 @@ fn merge_text_and_snippet_edits(
             TextRange::at(current_indel.delete.start(), insert_len)
         };
 
+        // figure out how much this Indel will shift future ranges from the initial source
+        let offset_adjustment =
+            u32::from(current_indel.delete.len()) as i32 - u32::from(new_range.len()) as i32;
+
         // insert any snippets before the text edit
-        for (snippet_index, snippet_range) in
-            snippets.take_while_ref(|(_, range)| range.end() < new_range.start())
-        {
+        for (snippet_index, snippet_range) in snippets.peeking_take_while(|(_, range)| {
+            offset_range(*range, source_text_offset).end() < new_range.start()
+        }) {
+            // adjust the snippet range into the corresponding initial source location
+            let snippet_range = offset_range(snippet_range, source_text_offset);
+
             let snippet_range = if !stdx::always!(
                 snippet_range.is_empty(),
                 "placeholder range {:?} is before current text edit range {:?}",
@@ -965,11 +982,16 @@ fn merge_text_and_snippet_edits(
             })
         }
 
-        if snippets.peek().is_some_and(|(_, range)| new_range.intersect(*range).is_some()) {
+        if snippets.peek().is_some_and(|(_, range)| {
+            new_range.intersect(offset_range(*range, source_text_offset)).is_some()
+        }) {
             // at least one snippet edit intersects this text edit,
             // so gather all of the edits that intersect this text edit
             let mut all_snippets = snippets
-                .take_while_ref(|(_, range)| new_range.intersect(*range).is_some())
+                .peeking_take_while(|(_, range)| {
+                    new_range.intersect(offset_range(*range, source_text_offset)).is_some()
+                })
+                .map(|(tabstop, range)| (tabstop, offset_range(range, source_text_offset)))
                 .collect_vec();
 
             // ensure all of the ranges are wholly contained inside of the new range
@@ -1010,10 +1032,16 @@ fn merge_text_and_snippet_edits(
             // since it wasn't consumed, it's available for the next pass
             edits.push(snippet_text_edit(line_index, false, current_indel));
         }
+
+        // update the final source -> initial source mapping offset
+        source_text_offset += offset_adjustment;
     }
 
     // insert any remaining tabstops
     edits.extend(snippets.map(|(snippet_index, snippet_range)| {
+        // adjust the snippet range into the corresponding initial source location
+        let snippet_range = offset_range(snippet_range, source_text_offset);
+
         let snippet_range = if !stdx::always!(
             snippet_range.is_empty(),
             "found placeholder snippet {:?} without a text edit",
