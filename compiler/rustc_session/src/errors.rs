@@ -378,28 +378,24 @@ pub fn report_lit_error(
         valid.then(|| format!("0{}{}", base_char.to_ascii_lowercase(), &suffix[1..]))
     }
 
-    let token::Lit { kind, symbol, suffix } = lit;
     let dcx = &sess.dcx;
     match err {
-        LitError::InvalidSuffix => {
-            let suffix = suffix.unwrap();
-            dcx.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix })
+        LitError::InvalidSuffix(suffix) => {
+            dcx.emit_err(InvalidLiteralSuffix { span, kind: lit.kind.descr(), suffix })
         }
-        LitError::InvalidIntSuffix => {
-            let suf = suffix.expect("suffix error with no suffix");
-            let suf = suf.as_str();
+        LitError::InvalidIntSuffix(suffix) => {
+            let suf = suffix.as_str();
             if looks_like_width_suffix(&['i', 'u'], suf) {
                 // If it looks like a width, try to be helpful.
                 dcx.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() })
-            } else if let Some(fixed) = fix_base_capitalisation(symbol.as_str(), suf) {
+            } else if let Some(fixed) = fix_base_capitalisation(lit.symbol.as_str(), suf) {
                 dcx.emit_err(InvalidNumLiteralBasePrefix { span, fixed })
             } else {
                 dcx.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() })
             }
         }
-        LitError::InvalidFloatSuffix => {
-            let suf = suffix.expect("suffix error with no suffix");
-            let suf = suf.as_str();
+        LitError::InvalidFloatSuffix(suffix) => {
+            let suf = suffix.as_str();
             if looks_like_width_suffix(&['f'], suf) {
                 // If it looks like a width, try to be helpful.
                 dcx.emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() })

@@ -31,19 +31,21 @@ pub fn escape_byte_str_symbol(bytes: &[u8]) -> Symbol {
 
 #[derive(Debug)]
 pub enum LitError {
-    InvalidSuffix,
-    InvalidIntSuffix,
-    InvalidFloatSuffix,
-    NonDecimalFloat(u32),
-    IntTooLarge(u32),
+    InvalidSuffix(Symbol),
+    InvalidIntSuffix(Symbol),
+    InvalidFloatSuffix(Symbol),
+    NonDecimalFloat(u32), // u32 is the base
+    IntTooLarge(u32),     // u32 is the base
 }
 
 impl LitKind {
     /// Converts literal token into a semantic literal.
     pub fn from_token_lit(lit: token::Lit) -> Result<LitKind, LitError> {
         let token::Lit { kind, symbol, suffix } = lit;
-        if suffix.is_some() && !kind.may_have_suffix() {
-            return Err(LitError::InvalidSuffix);
+        if let Some(suffix) = suffix
+            && !kind.may_have_suffix()
+        {
+            return Err(LitError::InvalidSuffix(suffix));
         }
 
         // For byte/char/string literals, chars and escapes have already been
@@ -271,12 +273,12 @@ fn filtered_float_lit(
         return Err(LitError::NonDecimalFloat(base));
     }
     Ok(match suffix {
-        Some(suf) => LitKind::Float(
+        Some(suffix) => LitKind::Float(
             symbol,
-            ast::LitFloatType::Suffixed(match suf {
+            ast::LitFloatType::Suffixed(match suffix {
                 sym::f32 => ast::FloatTy::F32,
                 sym::f64 => ast::FloatTy::F64,
-                _ => return Err(LitError::InvalidFloatSuffix),
+                _ => return Err(LitError::InvalidFloatSuffix(suffix)),
             }),
         ),
         None => LitKind::Float(symbol, ast::LitFloatType::Unsuffixed),
@@ -317,7 +319,7 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
             // `1f64` and `2f32` etc. are valid float literals, and
             // `fxxx` looks more like an invalid float literal than invalid integer literal.
             _ if suf.as_str().starts_with('f') => return filtered_float_lit(symbol, suffix, base),
-            _ => return Err(LitError::InvalidIntSuffix),
+            _ => return Err(LitError::InvalidIntSuffix(suf)),
         },
         _ => ast::LitIntType::Unsuffixed,
     };
