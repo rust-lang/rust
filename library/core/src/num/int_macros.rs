@@ -472,6 +472,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).strict_add(1), ", stringify!($SelfT), "::MAX - 1);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add(3);")]
@@ -552,6 +554,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_add_unsigned(2), 3);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX - 2).strict_add_unsigned(3);")]
@@ -605,6 +609,8 @@ macro_rules! int_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).strict_sub(1), ", stringify!($SelfT), "::MIN + 1);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -686,6 +692,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".strict_sub_unsigned(2), -1);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = (", stringify!($SelfT), "::MIN + 2).strict_sub_unsigned(3);")]
@@ -739,6 +747,8 @@ macro_rules! int_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.strict_mul(1), ", stringify!($SelfT), "::MAX);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ``` should_panic
         /// #![feature(strict_overflow_ops)]
@@ -831,10 +841,14 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 1).strict_div(-1), ", stringify!($Max), ");")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_div(-1);")]
         /// ```
+        ///
+        /// The following panics because of division by zero:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -901,10 +915,14 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 1).strict_div_euclid(-1), ", stringify!($Max), ");")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_div_euclid(-1);")]
         /// ```
+        ///
+        /// The following panics because of division by zero:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -970,10 +988,14 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".strict_rem(2), 1);")]
         /// ```
         ///
+        /// The following panics because of division by zero:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem(0);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1039,10 +1061,14 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".strict_rem_euclid(2), 1);")]
         /// ```
         ///
+        /// The following panics because of division by zero:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = 5", stringify!($SelfT), ".strict_rem_euclid(0);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1121,6 +1147,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".strict_neg(), -5);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_neg();")]
@@ -1174,6 +1202,8 @@ macro_rules! int_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".strict_shl(4), 0x10);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1255,6 +1285,8 @@ macro_rules! int_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".strict_shr(4), 0x1);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
@@ -1340,6 +1372,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!((-5", stringify!($SelfT), ").strict_abs(), 5);")]
         /// ```
         ///
+        /// The following panics because of overflow:
+        ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_abs();")]
@@ -1413,6 +1447,8 @@ macro_rules! int_impl {
         /// #![feature(strict_overflow_ops)]
         #[doc = concat!("assert_eq!(8", stringify!($SelfT), ".strict_pow(2), 64);")]
         /// ```
+        ///
+        /// The following panics because of overflow:
         ///
         /// ```should_panic
         /// #![feature(strict_overflow_ops)]
