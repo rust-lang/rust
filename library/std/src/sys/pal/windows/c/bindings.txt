@@ -1,7 +1,6 @@
 --out windows_sys.rs
 --config flatten std
 --filter
-// tidy-alphabetical-start
 !Windows.Win32.Foundation.INVALID_HANDLE_VALUE
 Windows.Wdk.Storage.FileSystem.FILE_COMPLETE_IF_OPLOCKED
 Windows.Wdk.Storage.FileSystem.FILE_CONTAINS_EXTENDED_CREATE_INFORMATION
@@ -2592,5 +2591,3 @@ Windows.Win32.System.Threading.WakeAllConditionVariable
 Windows.Win32.System.Threading.WakeConditionVariable
 Windows.Win32.System.WindowsProgramming.PROGRESS_CONTINUE
 Windows.Win32.UI.Shell.GetUserProfileDirectoryW
-// tidy-alphabetical-end
-
