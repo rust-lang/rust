@@ -310,21 +310,19 @@ pub trait MutVisitor: Sized {
 
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
 /// when using a `flat_map_*` or `filter_map_*` method within a `visit_`
-/// method.
+/// method. Abort the program if the closure panics. (We used to overwrite `t`
+/// with a dummy value and then resume unwinding, but having to provide a dummy
+/// value for all the relevant AST nodes was a pain. If you need that back,
+/// revert the relevant change from #121827.)
 //
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_clobber<T: DummyAstNode>(t: &mut T, f: impl FnOnce(T) -> T) {
+pub fn visit_clobber<T>(t: &mut T, f: impl FnOnce(T) -> T) {
     unsafe {
         // Safe because `t` is used in a read-only fashion by `read()` before
         // being overwritten by `write()`.
         let old_t = ptr::read(t);
-        let new_t =
-            panic::catch_unwind(panic::AssertUnwindSafe(|| f(old_t))).unwrap_or_else(|err| {
-                // Set `t` to some valid but possible meaningless value,
-                // and pass the fatal error further.
-                ptr::write(t, T::dummy());
-                panic::resume_unwind(err);
-            });
+        let new_t = panic::catch_unwind(panic::AssertUnwindSafe(|| f(old_t)))
+            .unwrap_or_else(|_| std::process::abort());
         ptr::write(t, new_t);
     }
 }
@@ -1600,113 +1598,5 @@ pub fn noop_visit_capture_by<T: MutVisitor>(capture_by: &mut CaptureBy, vis: &mu
         CaptureBy::Value { move_kw } => {
             vis.visit_span(move_kw);
         }
-    }
-}
-
-/// Some value for the AST node that is valid but possibly meaningless. The
-/// value will never be used meaningfully, it exists just to support unwinding
-/// in `visit_clobber` in the case where its closure panics. 
-pub trait DummyAstNode {
-    fn dummy() -> Self;
-}
-
-impl<T> DummyAstNode for Option<T> {
-    fn dummy() -> Self {
-        Default::default()
-    }
-}
-
-impl<T: DummyAstNode + 'static> DummyAstNode for P<T> {
-    fn dummy() -> Self {
-        P(DummyAstNode::dummy())
-    }
-}
-
-impl DummyAstNode for Item {
-    fn dummy() -> Self {
-        Item {
-            attrs: Default::default(),
-            id: DUMMY_NODE_ID,
-            span: Default::default(),
-            vis: Visibility {
-                kind: VisibilityKind::Public,
-                span: Default::default(),
-                tokens: Default::default(),
-            },
-            ident: Ident::empty(),
-            kind: ItemKind::ExternCrate(None),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Expr {
-    fn dummy() -> Self {
-        Expr {
-            id: DUMMY_NODE_ID,
-            kind: ExprKind::Dummy,
-            span: Default::default(),
-            attrs: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Ty {
-    fn dummy() -> Self {
-        Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::Dummy,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Pat {
-    fn dummy() -> Self {
-        Pat {
-            id: DUMMY_NODE_ID,
-            kind: PatKind::Wild,
-            span: Default::default(),
-            tokens: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Stmt {
-    fn dummy() -> Self {
-        Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Empty, span: Default::default() }
-    }
-}
-
-impl DummyAstNode for Block {
-    fn dummy() -> Self {
-        Block {
-            stmts: Default::default(),
-            id: DUMMY_NODE_ID,
-            rules: BlockCheckMode::Default,
-            span: Default::default(),
-            tokens: Default::default(),
-            could_be_bare_literal: Default::default(),
-        }
-    }
-}
-
-impl DummyAstNode for Crate {
-    fn dummy() -> Self {
-        Crate {
-            attrs: Default::default(),
-            items: Default::default(),
-            spans: Default::default(),
-            id: DUMMY_NODE_ID,
-            is_placeholder: Default::default(),
-        }
-    }
-}
-
-impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNodeWrapper<N, T> {
-    fn dummy() -> Self {
-        crate::ast_traits::AstNodeWrapper::new(N::dummy(), T::dummy())
     }
 }

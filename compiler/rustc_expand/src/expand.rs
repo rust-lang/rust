@@ -1556,11 +1556,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
 /// This struct is a hack to workaround unstable of `stmt_expr_attributes`.
 /// It can be removed once that feature is stabilized.
 struct MethodReceiverTag;
-impl DummyAstNode for MethodReceiverTag {
-    fn dummy() -> MethodReceiverTag {
-        MethodReceiverTag
-    }
-}
+
 impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
     type OutputTy = Self;
     type AttrsTy = ast::AttrVec;
@@ -1822,10 +1818,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         }
     }
 
-    fn visit_node<Node: InvocationCollectorNode<OutputTy = Node> + DummyAstNode>(
-        &mut self,
-        node: &mut Node,
-    ) {
+    fn visit_node<Node: InvocationCollectorNode<OutputTy = Node>>(&mut self, node: &mut Node) {
         loop {
             return match self.take_first_attr(node) {
                 Some((attr, pos, derives)) => match attr.name_or_empty() {
