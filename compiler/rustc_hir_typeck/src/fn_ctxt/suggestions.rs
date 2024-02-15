@@ -22,7 +22,7 @@ use rustc_hir::{
     Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
-use rustc_infer::traits::{self, StatementAsExpression};
+use rustc_infer::traits::{self};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::print::with_no_trimmed_paths;
