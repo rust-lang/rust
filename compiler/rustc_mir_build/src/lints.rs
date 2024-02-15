@@ -196,6 +196,8 @@ impl<'mir, 'tcx, C: TerminatorClassifier<'tcx>> TriColorVisitor<BasicBlocks<'tcx
             | TerminatorKind::CoroutineDrop
             | TerminatorKind::UnwindResume
             | TerminatorKind::Return
+            // FIXME(explicit_tail_calls) Is this right??
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. } => ControlFlow::Break(NonRecursive),
 

@@ -628,6 +628,12 @@ impl WriteInfo {
                     self.add_operand(&arg.node);
                 }
             }
+            TerminatorKind::TailCall { func, args, .. } => {
+                self.add_operand(func);
+                for arg in args {
+                    self.add_operand(&arg.node);
+                }
+            }
             TerminatorKind::InlineAsm { operands, .. } => {
                 for asm_operand in operands {
                     match asm_operand {

@@ -38,7 +38,7 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
         self.super_terminator(terminator, location);
         let span = || self.body.source_info(location).span;
         match &terminator.kind {
-            mir::TerminatorKind::Call { func, .. } => {
+            mir::TerminatorKind::Call { func, .. } | mir::TerminatorKind::TailCall { func, .. } => {
                 let callee_ty = func.ty(self.body, self.tcx);
                 self.mentioned_items
                     .push(Spanned { node: MentionedItem::Fn(callee_ty), span: span() });

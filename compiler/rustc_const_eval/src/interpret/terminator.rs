@@ -172,6 +172,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
+            TailCall { func: _, args: _, fn_span: _ } => todo!(),
+
             Drop { place, target, unwind, replace: _ } => {
                 let place = self.eval_place(place)?;
                 let instance = Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);

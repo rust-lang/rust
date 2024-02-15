@@ -193,7 +193,8 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
         | TerminatorKind::Goto { .. } => None,
 
         // Call `func` operand can have a more specific span when part of a chain of calls
-        | TerminatorKind::Call { ref func, .. } => {
+        TerminatorKind::Call { ref func, .. }
+        | TerminatorKind::TailCall { ref func, .. } => {
             let mut span = terminator.source_info.span;
             if let mir::Operand::Constant(box constant) = func {
                 if constant.span.lo() > span.lo() {

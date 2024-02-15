@@ -1352,7 +1352,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call { func, args, destination, call_source, target, .. } => {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => {
+                let call_source = match term.kind {
+                    TerminatorKind::Call { call_source, .. } => call_source,
+                    TerminatorKind::TailCall { .. } => CallSource::Normal,
+                    _ => unreachable!(),
+                };
+
                 self.check_operand(func, term_location);
                 for arg in args {
                     self.check_operand(&arg.node, term_location);
@@ -1425,7 +1432,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                self.check_call_dest(body, term, &sig, *destination, *target, term_location);
+                if let TerminatorKind::Call { destination, target, .. } = term.kind {
+                    self.check_call_dest(body, term, &sig, destination, target, term_location);
+                }
 
                 // The ordinary liveness rules will ensure that all
                 // regions in the type of the callee are live here. We
@@ -1443,7 +1452,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         .add_location(region_vid, term_location);
                 }
 
-                self.check_call_inputs(body, term, func, &sig, args, term_location, *call_source);
+                self.check_call_inputs(body, term, func, &sig, args, term_location, call_source);
             }
             TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);
@@ -1673,6 +1682,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Return => {
                 if is_cleanup {
                     span_mirbug!(self, block_data, "return on cleanup block")
+                }
+            }
+            TerminatorKind::TailCall { .. } => {
+                if is_cleanup {
+                    span_mirbug!(self, block_data, "tailcall on cleanup block")
                 }
             }
             TerminatorKind::CoroutineDrop { .. } => {
