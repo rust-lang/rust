@@ -286,8 +286,8 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// use std::error::Error;
 ///
 /// fn main() -> Result<(), Box<dyn Error>> {
-///     let address: String = fs::read_to_string("address.txt")?;
-///     println!("{}", address);
+///     let message: String = fs::read_to_string("message.txt")?;
+///     println!("{}", message);
 ///     Ok(())
 /// }
 /// ```
