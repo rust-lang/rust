@@ -1,5 +1,5 @@
 // check-pass
-#![allow(non_camel_case_types, non_upper_case_globals, static_mut_ref)]
+#![allow(non_camel_case_types, non_upper_case_globals, static_mut_refs)]
 
 pub struct wl_interface {
     pub version: i32

@@ -1,6 +1,6 @@
 // stderr-per-bitwidth
 // compile-flags: -Zunleash-the-miri-inside-of-you
-#![allow(invalid_reference_casting, static_mut_ref)]
+#![allow(invalid_reference_casting, static_mut_refs)]
 
 use std::sync::atomic::*;
 use std::cell::UnsafeCell;
