@@ -16,8 +16,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgName, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, ErrCode,
-    FatalError, FluentBundle, Level, Style,
+    DiagCtxt, DiagnosticArgMap, DiagnosticBuilder, DiagnosticMessage, ErrCode, FatalError,
+    FluentBundle, Level, Style,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -1001,7 +1001,7 @@ pub struct CguMessage;
 
 struct Diagnostic {
     msgs: Vec<(DiagnosticMessage, Style)>,
-    args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>,
+    args: DiagnosticArgMap,
     code: Option<ErrCode>,
     lvl: Level,
 }
@@ -1813,8 +1813,8 @@ impl Translate for SharedEmitter {
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: rustc_errors::Diagnostic) {
-        let args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue> =
-            diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
+        let args: DiagnosticArgMap =
+            diag.args.iter().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msgs: diag.messages.clone(),
             args: args.clone(),
@@ -1857,7 +1857,7 @@ impl SharedEmitterMain {
                     let dcx = sess.dcx();
                     let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msgs);
                     d.code = diag.code; // may be `None`, that's ok
-                    d.replace_args(diag.args);
+                    d.args = diag.args;
                     dcx.emit_diagnostic(d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
