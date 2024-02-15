@@ -46,7 +46,7 @@ LL |     const C: &i32 = unsafe { &S_MUT };
 error: could not evaluate constant pattern
   --> $DIR/const_refs_to_static_fail_invalid.rs:46:9
    |
-LL |         C => {},
+LL |         C => {}
    |         ^
 
 error: aborting due to 6 previous errors
