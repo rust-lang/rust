@@ -53,10 +53,8 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        # TODO: remove --features master when it is back to the default.
-        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot --features master
-        # TODO: remove --features master when it is back to the default.
-        cargo test --features master
+        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot
+        cargo test
         ./y.sh clean all
 
     - name: Prepare dependencies
@@ -72,5 +70,4 @@ jobs:
 
     - name: Run tests
       run: |
-        # TODO: remove --features master when it is back to the default.
-        EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }} --features master
+        EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}
