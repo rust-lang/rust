@@ -86,7 +86,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Stability)] = &[
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-start
-    // FEAT_AES
+    // FEAT_AES & FEAT_PMULL
     ("aes", Stable),
     // FEAT_BF16
     ("bf16", Stable),
@@ -124,7 +124,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("lor", Stable),
     // FEAT_LSE
     ("lse", Stable),
-    // FEAT_MTE
+    // FEAT_MTE & FEAT_MTE2
     ("mte", Stable),
     // FEAT_AdvSimd & FEAT_FP
     ("neon", Stable),
@@ -138,7 +138,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("pmuv3", Stable),
     // FEAT_RAND
     ("rand", Stable),
-    // FEAT_RAS
+    // FEAT_RAS & FEAT_RASv1p1
     ("ras", Stable),
     // FEAT_RCPC
     ("rcpc", Stable),
@@ -156,7 +156,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("sm4", Stable),
     // FEAT_SPE
     ("spe", Stable),
-    // FEAT_SSBS
+    // FEAT_SSBS & FEAT_SSBS2
     ("ssbs", Stable),
     // FEAT_SVE
     ("sve", Stable),
