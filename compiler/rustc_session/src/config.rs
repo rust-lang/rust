@@ -1435,6 +1435,9 @@ impl CheckCfg {
         //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs`.
+        //
+        // Don't forget to update `src/doc/unstable-book/src/compiler-flags/check-cfg.md`
+        // in the unstable book as well!
 
         ins!(sym::debug_assertions, no_values);
 
