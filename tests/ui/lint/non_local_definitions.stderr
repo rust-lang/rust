@@ -1,6 +1,9 @@
 warning: non-local `impl` definition, they should be avoided as they go against expectation
   --> $DIR/non_local_definitions.rs:32:5
    |
+LL | const Z: () = {
+   |       - help: use a const-anon item to suppress this lint: `_`
+...
 LL |     impl Uto for &Test {}
    |     ^^^^^^^^^^^^^^^^^^^^^
    |

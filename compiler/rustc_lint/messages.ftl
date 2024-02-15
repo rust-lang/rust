@@ -421,6 +421,7 @@ lint_non_local_definitions_impl = non-local `impl` definition, they should be av
         }
     .non_local = an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
     .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type
+    .const_anon = use a const-anon item to suppress this lint
 
 lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, they should be avoided as they go against expectation
     .help =

@@ -1,4 +1,4 @@
-use rustc_hir::{def::DefKind, Body, Item, ItemKind, Path, QPath, TyKind};
+use rustc_hir::{def::DefKind, Body, Item, ItemKind, Node, Path, QPath, TyKind};
 use rustc_span::{def_id::DefId, sym, symbol::kw, MacroKind};
 
 use smallvec::{smallvec, SmallVec};
@@ -140,6 +140,19 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // If none of them have a local parent (LOGICAL NOR) this means that
                 // this impl definition is a non-local definition and so we lint on it.
                 if !(self_ty_has_local_parent || of_trait_has_local_parent) {
+                    let const_anon = if self.body_depth == 1
+                        && parent_def_kind == DefKind::Const
+                        && parent_opt_item_name != Some(kw::Underscore)
+                        && let Some(parent) = parent.as_local()
+                        && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
+                        && let ItemKind::Const(ty, _, _) = item.kind
+                        && let TyKind::Tup(&[]) = ty.kind
+                    {
+                        Some(item.ident.span)
+                    } else {
+                        None
+                    };
+
                     cx.emit_span_lint(
                         NON_LOCAL_DEFINITIONS,
                         item.span,
@@ -149,6 +162,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                             body_name: parent_opt_item_name
                                 .map(|s| s.to_ident_string())
                                 .unwrap_or_else(|| "<unnameable>".to_string()),
+                            const_anon,
                         },
                     )
                 }

@@ -1301,7 +1301,13 @@ pub enum NonLocalDefinitionsDiag {
     #[note(lint_non_local)]
     #[note(lint_exception)]
     #[note(lint_non_local_definitions_deprecation)]
-    Impl { depth: u32, body_kind_descr: &'static str, body_name: String },
+    Impl {
+        depth: u32,
+        body_kind_descr: &'static str,
+        body_name: String,
+        #[suggestion(lint_const_anon, code = "_", applicability = "machine-applicable")]
+        const_anon: Option<Span>,
+    },
     #[diag(lint_non_local_definitions_macro_rules)]
     #[help]
     #[note(lint_non_local)]
