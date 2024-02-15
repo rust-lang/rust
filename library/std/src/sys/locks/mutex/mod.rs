@@ -27,6 +27,9 @@ cfg_if::cfg_if! {
         pub use sgx::Mutex;
     } else if #[cfg(target_os = "solid_asp3")] {
         mod itron;
-        pub use itron::Condvar;
+        pub use itron::Mutex;
+    } else if #[cfg(target_os = "xous")] {
+        mod xous;
+        pub use xous::Mutex;
     }
 }

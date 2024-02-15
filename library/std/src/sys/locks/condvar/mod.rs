@@ -26,5 +26,8 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "teeos")] {
         mod teeos;
         pub use teeos::Condvar;
+    } else if #[cfg(target_os = "xous")] {
+        mod xous;
+        pub use xous::Condvar;
     }
 }
