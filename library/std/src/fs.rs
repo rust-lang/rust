@@ -977,12 +977,12 @@ impl OpenOptions {
     /// has a race between seeking and writing during which another writer can write, with
     /// our `write()` overwriting their data.
     ///
-    /// Keep in mind that atomicity of `write()` in append mode is less useful than it
-    /// appears at first. A successful `write()` is allowed to write only part of the
-    /// given data, so even if you're careful to provide the whole message in a single
-    /// call to `write()`, there is no guarantee that it will written out in full. Unless
-    /// the data to append consists of a single byte, you can't append atomically without
-    /// external locking.
+    /// Keep in mind that this does not necessarily guarantee that data appended by
+    /// different processes or threads does not interleave. The amount of data accepted a
+    /// single `write()` call depends on the operating system and file system. A
+    /// successful `write()` is allowed to write only part of the given data, so even if
+    /// you're careful to provide the whole message in a single call to `write()`, there
+    /// is no guarantee that it will written out in full.
     ///
     /// If a file is opened with both read and append access, beware that after
     /// opening, and after every write, the position for reading may be set at the
