@@ -2,7 +2,7 @@ use crate::error::{TranslateError, TranslateErrorKind};
 use crate::snippet::Style;
 use crate::{DiagnosticArg, DiagnosticMessage, FluentBundle};
 use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
+pub use rustc_error_messages::FluentArgs;
 use std::borrow::Cow;
 use std::env;
 use std::error::Report;
@@ -61,7 +61,7 @@ pub trait Translate {
     ) -> Result<Cow<'_, str>, TranslateError<'_>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
+            DiagnosticMessage::Str(msg) | DiagnosticMessage::Translated(msg) => {
                 return Ok(Cow::Borrowed(msg));
             }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),

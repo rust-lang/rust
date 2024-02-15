@@ -701,7 +701,7 @@ struct RawIdentDiagnosticArg {
 #[diag(no_crate_example)]
 struct SubdiagnosticBad {
     #[subdiagnostic(bad)]
-    //~^ ERROR `eager` is the only supported nested attribute for `subdiagnostic`
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -717,7 +717,7 @@ struct SubdiagnosticBadStr {
 #[diag(no_crate_example)]
 struct SubdiagnosticBadTwice {
     #[subdiagnostic(bad, bad)]
-    //~^ ERROR `eager` is the only supported nested attribute for `subdiagnostic`
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -725,7 +725,7 @@ struct SubdiagnosticBadTwice {
 #[diag(no_crate_example)]
 struct SubdiagnosticBadLitStr {
     #[subdiagnostic("bad")]
-    //~^ ERROR `eager` is the only supported nested attribute for `subdiagnostic`
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -739,8 +739,9 @@ struct SubdiagnosticEagerLint {
 
 #[derive(Diagnostic)]
 #[diag(no_crate_example)]
-struct SubdiagnosticEagerCorrect {
+struct SubdiagnosticEagerFormerlyCorrect {
     #[subdiagnostic(eager)]
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -761,6 +762,7 @@ pub(crate) struct SubdiagnosticWithSuggestion {
 #[diag(no_crate_example)]
 struct SubdiagnosticEagerSuggestion {
     #[subdiagnostic(eager)]
+    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     sub: SubdiagnosticWithSuggestion,
 }
 

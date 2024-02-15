@@ -270,7 +270,7 @@ impl<'a> DecorateLint<'a, ()> for MustNotSupend<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {
-            diag.subdiagnostic(reason);
+            diag.subdiagnostic(diag.dcx, reason);
         }
         diag.span_help(self.src_sp, fluent::_subdiag::help);
         diag.arg("pre", self.pre);

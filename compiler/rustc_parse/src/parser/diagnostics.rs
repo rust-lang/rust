@@ -2350,7 +2350,7 @@ impl<'a> Parser<'a> {
         let mut err = self.dcx().struct_span_err(span, msg);
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+            err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
 
