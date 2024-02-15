@@ -176,7 +176,6 @@
 #![feature(ip)]
 #![feature(ip_bits)]
 #![feature(is_ascii_octdigit)]
-#![feature(is_val_statically_known)]
 #![feature(isqrt)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(non_null_convenience)]
