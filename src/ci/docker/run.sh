@@ -7,6 +7,7 @@ export MSYS_NO_PATHCONV=1
 script=`cd $(dirname $0) && pwd`/`basename $0`
 
 image=""
+
 dev=0
 
 while [[ $# -gt 0 ]]
