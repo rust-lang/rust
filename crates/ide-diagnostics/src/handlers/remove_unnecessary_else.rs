@@ -2,7 +2,10 @@ use hir::{db::ExpandDatabase, diagnostics::RemoveUnnecessaryElse, HirFileIdExt};
 use ide_db::{assists::Assist, source_change::SourceChange};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::IndentLevel},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+    },
     AstNode, SyntaxToken, TextRange,
 };
 use text_edit::TextEdit;
@@ -41,12 +44,15 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
         indent = indent + 1;
     }
     let else_replacement = match if_expr.else_branch()? {
-        ast::ElseBranch::Block(ref block) => block
+        ast::ElseBranch::Block(block) => block
             .statements()
             .map(|stmt| format!("\n{indent}{stmt}"))
             .chain(block.tail_expr().map(|tail| format!("\n{indent}{tail}")))
             .join(""),
-        ast::ElseBranch::IfExpr(ref nested_if_expr) => {
+        ast::ElseBranch::IfExpr(mut nested_if_expr) => {
+            if has_parent_if_expr {
+                nested_if_expr = nested_if_expr.indent(IndentLevel(1))
+            }
             format!("\n{indent}{nested_if_expr}")
         }
     };
@@ -245,6 +251,41 @@ fn test() {
             return bar;
         }
         do_something_else();
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unnecessary_else_for_return_in_child_if_expr2() {
+        check_fix(
+            r#"
+fn test() {
+    if foo {
+        do_something();
+    } else if qux {
+        return bar;
+    } else$0 if quux {
+        do_something_else();
+    } else {
+        do_something_else2();
+    }
+}
+"#,
+            r#"
+fn test() {
+    if foo {
+        do_something();
+    } else {
+        if qux {
+            return bar;
+        }
+        if quux {
+            do_something_else();
+        } else {
+            do_something_else2();
+        }
     }
 }
 "#,
