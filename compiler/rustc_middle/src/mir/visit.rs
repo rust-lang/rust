@@ -331,33 +331,10 @@ macro_rules! make_mir_visitor {
                     self.visit_source_scope($(& $mutability)? *parent_scope);
                 }
                 if let Some((callee, callsite_span)) = inlined {
-                    let location = Location::START;
-
                     self.visit_span($(& $mutability)? *callsite_span);
-
-                    let ty::Instance { def: callee_def, args: callee_args } = callee;
-                    match callee_def {
-                        ty::InstanceDef::Item(_def_id) => {}
-
-                        ty::InstanceDef::Intrinsic(_def_id) |
-                        ty::InstanceDef::VTableShim(_def_id) |
-                        ty::InstanceDef::ReifyShim(_def_id) |
-                        ty::InstanceDef::Virtual(_def_id, _) |
-                        ty::InstanceDef::ThreadLocalShim(_def_id) |
-                        ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
-                        ty::InstanceDef::ConstructCoroutineInClosureShim { coroutine_closure_def_id: _def_id, target_kind: _ } |
-                        ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id, target_kind: _ } |
-                        ty::InstanceDef::DropGlue(_def_id, None) => {}
-
-                        ty::InstanceDef::FnPtrShim(_def_id, ty) |
-                        ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
-                        ty::InstanceDef::CloneShim(_def_id, ty) |
-                        ty::InstanceDef::FnPtrAddrShim(_def_id, ty) => {
-                            // FIXME(eddyb) use a better `TyContext` here.
-                            self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                        }
-                    }
-                    self.visit_args(callee_args, location);
+                    let ty::Instance { def, args } = callee;
+                    self.visit_instance_def($(& $mutability)? *def);
+                    self.visit_args(& $($mutability)? *args, Location::START);
                 }
                 if let Some(inlined_parent_scope) = inlined_parent_scope {
                     self.visit_source_scope($(& $mutability)? *inlined_parent_scope);
@@ -939,6 +916,31 @@ macro_rules! make_mir_visitor {
             }
 
             // Convenience methods
+
+            fn visit_instance_def(&mut self, def: $(& $mutability)? ty::InstanceDef<'tcx>) {
+                let location = Location::START;
+                match def {
+                    ty::InstanceDef::Item(_def_id) => {}
+
+                    ty::InstanceDef::Intrinsic(_def_id) |
+                    ty::InstanceDef::VTableShim(_def_id) |
+                    ty::InstanceDef::ReifyShim(_def_id) |
+                    ty::InstanceDef::Virtual(_def_id, _) |
+                    ty::InstanceDef::ThreadLocalShim(_def_id) |
+                    ty::InstanceDef::ClosureOnceShim { call_once: _def_id, track_caller: _ } |
+                    ty::InstanceDef::ConstructCoroutineInClosureShim { coroutine_closure_def_id: _def_id, target_kind: _ } |
+                    ty::InstanceDef::CoroutineKindShim { coroutine_def_id: _def_id, target_kind: _ } |
+                    ty::InstanceDef::DropGlue(_def_id, None) => {}
+
+                    ty::InstanceDef::FnPtrShim(_def_id, ty) |
+                    ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
+                    ty::InstanceDef::CloneShim(_def_id, ty) |
+                    ty::InstanceDef::FnPtrAddrShim(_def_id, ty) => {
+                        // FIXME(eddyb) use a better `TyContext` here.
+                        self.visit_ty($(& $mutability *)? ty, TyContext::Location(location));
+                    }
+                }
+            }
 
             fn visit_location(
                 &mut self,
