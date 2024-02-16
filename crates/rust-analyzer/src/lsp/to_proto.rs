@@ -971,15 +971,11 @@ fn merge_text_and_snippet_edits(
                 snippet_range
             };
 
-            let range = range(line_index, snippet_range);
-            let new_text = format!("${snippet_index}");
-
-            edits.push(SnippetTextEdit {
-                range,
-                new_text,
-                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
-                annotation_id: None,
-            })
+            edits.push(snippet_text_edit(
+                line_index,
+                true,
+                Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+            ))
         }
 
         if snippets.peek().is_some_and(|(_, range)| {
@@ -1002,11 +998,11 @@ fn merge_text_and_snippet_edits(
                     )
                 });
 
-            let mut text_edit = text_edit(line_index, current_indel);
+            let mut new_text = current_indel.insert;
 
             // escape out snippet text
-            stdx::replace(&mut text_edit.new_text, '\\', r"\\");
-            stdx::replace(&mut text_edit.new_text, '$', r"\$");
+            stdx::replace(&mut new_text, '\\', r"\\");
+            stdx::replace(&mut new_text, '$', r"\$");
 
             // ...and apply!
             for (index, range) in all_snippets.iter().rev() {
@@ -1014,19 +1010,18 @@ fn merge_text_and_snippet_edits(
                 let end = (range.end() - new_range.start()).into();
 
                 if range.is_empty() {
-                    text_edit.new_text.insert_str(start, &format!("${index}"));
+                    new_text.insert_str(start, &format!("${index}"));
                 } else {
-                    text_edit.new_text.insert(end, '}');
-                    text_edit.new_text.insert_str(start, &format!("${{{index}:"));
+                    new_text.insert(end, '}');
+                    new_text.insert_str(start, &format!("${{{index}:"));
                 }
             }
 
-            edits.push(SnippetTextEdit {
-                range: text_edit.range,
-                new_text: text_edit.new_text,
-                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
-                annotation_id: None,
-            })
+            edits.push(snippet_text_edit(
+                line_index,
+                true,
+                Indel { insert: new_text, delete: current_indel.delete },
+            ))
         } else {
             // snippet edit was beyond the current one
             // since it wasn't consumed, it's available for the next pass
@@ -1052,15 +1047,11 @@ fn merge_text_and_snippet_edits(
             snippet_range
         };
 
-        let range = range(line_index, snippet_range);
-        let new_text = format!("${snippet_index}");
-
-        SnippetTextEdit {
-            range,
-            new_text,
-            insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
-            annotation_id: None,
-        }
+        snippet_text_edit(
+            line_index,
+            true,
+            Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+        )
     }));
 
     edits
