@@ -288,14 +288,11 @@ pub enum DebugAsHex {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 #[unstable(feature = "formatting_options", issue = "118117")]
 pub struct FormattingOptions {
-    sign: Option<Sign>,
-    sign_aware_zero_pad: bool,
-    alternate: bool,
+    flags: u32,
     fill: char,
     align: Option<Alignment>,
     width: Option<usize>,
     precision: Option<usize>,
-    debug_as_hex: Option<DebugAsHex>,
 }
 
 impl FormattingOptions {
@@ -312,14 +309,11 @@ impl FormattingOptions {
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn new() -> Self {
         Self {
-            sign: None,
-            sign_aware_zero_pad: false,
-            alternate: false,
+            flags: 0,
             fill: ' ',
             align: None,
             width: None,
             precision: None,
-            debug_as_hex: None,
         }
     }
 
@@ -333,7 +327,12 @@ impl FormattingOptions {
     /// - `-`: Currently not used
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn sign(&mut self, sign: Option<Sign>) -> &mut Self {
-        self.sign = sign;
+        self.flags = self.flags & !(1 << rt::Flag::SignMinus as u32 | 1 << rt::Flag::SignPlus as u32);
+        match sign {
+            None => {},
+            Some(Sign::Plus) => self.flags |= 1 << rt::Flag::SignPlus as u32,
+            Some(Sign::Minus) => self.flags |= 1 << rt::Flag::SignMinus as u32,
+        }
         self
     }
     /// Sets or unsets the `0` flag.
@@ -341,7 +340,11 @@ impl FormattingOptions {
     /// This is used to indicate for integer formats that the padding to width should both be done with a 0 character as well as be sign-aware
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn sign_aware_zero_pad(&mut self, sign_aware_zero_pad: bool) -> &mut Self {
-        self.sign_aware_zero_pad = sign_aware_zero_pad;
+        if sign_aware_zero_pad {
+            self.flags |= 1 << rt::Flag::SignAwareZeroPad as u32
+        } else {
+            self.flags &= !(1 << rt::Flag::SignAwareZeroPad as u32)
+        }
         self
     }
     /// Sets or unsets the `#` flag.
@@ -354,7 +357,11 @@ impl FormattingOptions {
     /// - [`Binary`] - precedes the argument with a `0o`
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn alternate(&mut self, alternate: bool) -> &mut Self {
-        self.alternate = alternate;
+        if alternate {
+            self.flags |= 1 << rt::Flag::Alternate as u32
+        } else {
+            self.flags &= !(1 << rt::Flag::Alternate as u32)
+        }
         self
     }
     /// Sets the fill character.
@@ -406,24 +413,36 @@ impl FormattingOptions {
     /// hexadecimal or normal integers
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn debug_as_hex(&mut self, debug_as_hex: Option<DebugAsHex>) -> &mut Self {
-        self.debug_as_hex = debug_as_hex;
+        self.flags = self.flags & !(1 << rt::Flag::DebugUpperHex as u32 | 1 << rt::Flag::DebugLowerHex as u32);
+        match debug_as_hex {
+            None => {},
+            Some(DebugAsHex::Upper) => self.flags |= 1 << rt::Flag::DebugUpperHex as u32,
+            Some(DebugAsHex::Lower) => self.flags |= 1 << rt::Flag::DebugLowerHex as u32,
+        }
         self
     }
 
     /// Returns the current sign (the `+` or the `-` flag).
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn get_sign(&self) -> Option<Sign> {
-        self.sign
+        const SIGN_PLUS_BITFIELD: u32 = 1 << rt::Flag::SignPlus as u32;
+        const SIGN_MINUS_BITFIELD: u32 = 1 << rt::Flag::SignMinus as u32;
+        match self.flags & ((1 << rt::Flag::SignPlus as u32) | (1 << rt::Flag::SignMinus as u32)) {
+            SIGN_PLUS_BITFIELD => Some(Sign::Plus),
+            SIGN_MINUS_BITFIELD => Some(Sign::Minus),
+            0 => None,
+            _ => panic!("Invalid sign bits set in flags"),
+        }
     }
     /// Returns the current `0` flag.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn get_sign_aware_zero_pad(&self) -> bool {
-        self.sign_aware_zero_pad
+        self.flags & (1 << rt::Flag::SignAwareZeroPad as u32) != 0
     }
     /// Returns the current `#` flag.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn get_alternate(&self) -> bool {
-        self.alternate
+        self.flags & (1 << rt::Flag::Alternate as u32) != 0
     }
     /// Returns the current fill character.
     #[unstable(feature = "formatting_options", issue = "118117")]
@@ -448,7 +467,14 @@ impl FormattingOptions {
     /// Returns the current precision.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn get_debug_as_hex(&self) -> Option<DebugAsHex> {
-        self.debug_as_hex
+        const DEBUG_UPPER_BITFIELD: u32 = 1 << rt::Flag::DebugUpperHex as u32;
+        const DEBUG_LOWER_BITFIELD: u32 = 1 << rt::Flag::DebugLowerHex as u32;
+        match self.flags & ((1 << rt::Flag::DebugUpperHex as u32) | (1 << rt::Flag::DebugLowerHex as u32)) {
+            DEBUG_UPPER_BITFIELD => Some(DebugAsHex::Upper),
+            DEBUG_LOWER_BITFIELD => Some(DebugAsHex::Lower),
+            0 => None,
+            _ => panic!("Invalid hex debug bits set in flags"),
+        }
     }
 
     /// Creates a [`Formatter`] that writes its output to the given [`Write`] trait.
@@ -463,37 +489,13 @@ impl FormattingOptions {
     #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
     /// Flags for formatting
     pub fn flags(&mut self, flags: u32) {
-        self.sign = if flags & (1 << rt::Flag::SignPlus as u32) != 0 {
-            Some(Sign::Plus)
-        } else if flags & (1 << rt::Flag::SignMinus as u32) != 0 {
-            Some(Sign::Minus)
-        } else {
-            None
-        };
-        self.alternate = (flags & (1 << rt::Flag::Alternate as u32)) != 0;
-        self.sign_aware_zero_pad = (flags & (1 << rt::Flag::SignAwareZeroPad as u32)) != 0;
-        self.debug_as_hex = if flags & (1 << rt::Flag::DebugLowerHex as u32) != 0 {
-            Some(DebugAsHex::Lower)
-        } else if flags & (1 << rt::Flag::DebugUpperHex as u32) != 0 {
-            Some(DebugAsHex::Upper)
-        } else {
-            None
-        };
+        self.flags = flags
     }
     #[doc(hidden)]
     #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
     /// Flags for formatting
     pub fn get_flags(&self) -> u32 {
-        <bool as Into<u32>>::into(self.get_sign() == Some(Sign::Plus)) << rt::Flag::SignPlus as u32
-            | <bool as Into<u32>>::into(self.get_sign() == Some(Sign::Minus))
-                << rt::Flag::SignMinus as u32
-            | <bool as Into<u32>>::into(self.get_alternate()) << rt::Flag::Alternate as u32
-            | <bool as Into<u32>>::into(self.get_sign_aware_zero_pad())
-                << rt::Flag::SignAwareZeroPad as u32
-            | <bool as Into<u32>>::into(self.debug_as_hex == Some(DebugAsHex::Lower))
-                << rt::Flag::DebugLowerHex as u32
-            | <bool as Into<u32>>::into(self.debug_as_hex == Some(DebugAsHex::Upper))
-                << rt::Flag::DebugUpperHex as u32
+        self.flags
     }
 }
 
@@ -2161,11 +2163,11 @@ impl<'a> Formatter<'a> {
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
     fn debug_lower_hex(&self) -> bool {
-        self.options.debug_as_hex == Some(DebugAsHex::Lower)
+        self.options.flags & (1 << rt::Flag::DebugLowerHex as u32) != 0
     }
 
     fn debug_upper_hex(&self) -> bool {
-        self.options.debug_as_hex == Some(DebugAsHex::Upper)
+        self.options.flags & (1 << rt::Flag::DebugUpperHex as u32) != 0
     }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of

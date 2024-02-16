@@ -58,21 +58,17 @@ fn formatting_options_flags() {
         for alternate in [true, false] {
             for sign_aware_zero_pad in [true, false] {
                 for debug_as_hex in [None, Some(DebugAsHex::Lower), Some(DebugAsHex::Upper)] {
-                    let mut original_formatting_options = FormattingOptions::new();
-                    original_formatting_options
+                    let mut formatting_options = FormattingOptions::new();
+                    formatting_options
                         .sign(sign)
                         .sign_aware_zero_pad(sign_aware_zero_pad)
                         .alternate(alternate)
                         .debug_as_hex(debug_as_hex);
 
-                    let mut formatting_options_with_flags_set_to_self = original_formatting_options;
-                    formatting_options_with_flags_set_to_self
-                        .flags(formatting_options_with_flags_set_to_self.get_flags());
-
-                    assert_eq!(
-                        original_formatting_options, formatting_options_with_flags_set_to_self,
-                        "Reading and setting flags changes FormattingOptions; Sign({sign:?}), Alternate({alternate:?}). DebugAsHex({debug_as_hex:?})"
-                    )
+                    assert_eq!(formatting_options.get_sign(), sign);
+                    assert_eq!(formatting_options.get_alternate(), alternate);
+                    assert_eq!(formatting_options.get_sign_aware_zero_pad(), sign_aware_zero_pad);
+                    assert_eq!(formatting_options.get_debug_as_hex(), debug_as_hex);
                 }
             }
         }
