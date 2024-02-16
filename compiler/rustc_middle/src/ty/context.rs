@@ -1992,6 +1992,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
 
 impl<'tcx> TyCtxt<'tcx> {
     /// `tcx`-dependent operations performed for every created definition.
+    #[instrument(level = "trace", skip(self))]
     pub fn create_def(
         self,
         parent: LocalDefId,
@@ -2011,13 +2012,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // The following call has the side effect of modifying the tables inside `definitions`.
                     // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
                     // decode the on-disk cache.
-                    //
-                    // Any LocalDefId which is used within queries, either as key or result, either:
-                    // - has been created before the construction of the TyCtxt;
-                    // - has been created by this call to `create_def`.
-                    // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
-                    // comp. engine itself.
-                    self.untracked.definitions.write().create_def(parent, data, disambiguator.next(parent, data))
+                    self.untracked.definitions.write().create_def(parent, data, disambiguator.next(parent, data)).0
                 }
                 TaskDepsRef::Forbid => bug!(
                     "cannot create definition {parent:?} {data:?} without being able to register task dependencies"

@@ -26,7 +26,7 @@ use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex
 use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
-use crate::query::{QueryContext, QuerySideEffect};
+use crate::query::{DefIdInfo, QueryContext, QuerySideEffect};
 
 #[derive(Clone)]
 pub struct DepGraph<D: Deps> {
@@ -260,6 +260,7 @@ impl<D: Deps> DepGraph<D> {
     }
 
     #[inline(always)]
+    /// A helper for `codegen_cranelift`.
     pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
         &self,
         key: DepNode,
@@ -530,6 +531,18 @@ impl<D: Deps> DepGraph<D> {
             })
         }
     }
+
+    pub fn record_def<Qcx: QueryContext>(&self, qcx: Qcx, def: DefIdInfo) {
+        if let Some(ref data) = self.data {
+            D::read_deps(|task_deps| match task_deps {
+                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
+                TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
+                    self.read_index(data.encode_side_effect(qcx, QuerySideEffect::Definition(def)));
+                }
+            })
+        }
+    }
+
     /// This forces a diagnostic node green by running its side effect. `prev_index` would
     /// refer to a node created used [Self::record_diagnostic] in the previous session.
     #[inline]
@@ -667,7 +680,7 @@ impl<D: Deps> DepGraphData<D> {
         self.debug_loaded_from_disk.lock().insert(dep_node);
     }
 
-    /// This encodes a diagnostic by creating a node with an unique index and assoicating
+    /// This encodes a diagnostic by creating a node with an unique index and associating
     /// `diagnostic` with it, for use in the next session.
     #[inline]
     fn encode_side_effect<Qcx: QueryContext>(
@@ -704,6 +717,9 @@ impl<D: Deps> DepGraphData<D> {
             match &side_effect {
                 QuerySideEffect::Diagnostic(diagnostic) => {
                     qcx.dep_context().sess().dcx().emit_diagnostic(diagnostic.clone());
+                }
+                QuerySideEffect::Definition(def_id_info) => {
+                    qcx.dep_context().create_def(def_id_info)
                 }
             }
 

@@ -67,7 +67,8 @@ impl DefPathTable {
             // being used.
             //
             // See the documentation for DefPathHash for more information.
-            panic!(
+            assert_eq!(
+                def_path1, def_path2,
                 "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
             );
@@ -214,7 +215,7 @@ impl fmt::Display for DisambiguatedDefPathData {
     }
 }
 
-#[derive(Clone, Debug, Encodable, Decodable)]
+#[derive(Clone, Debug, Encodable, Decodable, PartialEq)]
 pub struct DefPath {
     /// The path leading from the crate root to the item.
     pub data: Vec<DisambiguatedDefPathData>,
@@ -391,7 +392,7 @@ impl Definitions {
         parent: LocalDefId,
         data: DefPathData,
         disambiguator: u32,
-    ) -> LocalDefId {
+    ) -> (LocalDefId, DefPathHash) {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
@@ -413,7 +414,7 @@ impl Definitions {
         debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
+        (LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }, def_path_hash)
     }
 
     #[inline(always)]
