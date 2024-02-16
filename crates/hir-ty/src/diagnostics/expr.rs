@@ -109,7 +109,7 @@ impl ExprValidator {
                     self.check_for_trailing_return(*body_expr, &body);
                 }
                 Expr::If { .. } => {
-                    self.check_for_unnecessary_else(id, expr, db);
+                    self.check_for_unnecessary_else(id, expr, &body, db);
                 }
                 Expr::Block { .. } => {
                     self.validate_block(db, expr);
@@ -337,34 +337,16 @@ impl ExprValidator {
         }
     }
 
-    fn check_for_unnecessary_else(&mut self, id: ExprId, expr: &Expr, db: &dyn HirDatabase) {
+    fn check_for_unnecessary_else(
+        &mut self,
+        id: ExprId,
+        expr: &Expr,
+        body: &Body,
+        db: &dyn HirDatabase,
+    ) {
         if let Expr::If { condition: _, then_branch, else_branch } = expr {
             if else_branch.is_none() {
                 return;
-            }
-            let (body, source_map) = db.body_with_source_map(self.owner);
-            let Ok(source_ptr) = source_map.expr_syntax(id) else {
-                return;
-            };
-            let root = source_ptr.file_syntax(db.upcast());
-            let ast::Expr::IfExpr(if_expr) = source_ptr.value.to_node(&root) else {
-                return;
-            };
-            let mut top_if_expr = if_expr;
-            loop {
-                let parent = top_if_expr.syntax().parent();
-                let has_parent_let_stmt =
-                    parent.as_ref().map_or(false, |node| ast::LetStmt::can_cast(node.kind()));
-                if has_parent_let_stmt {
-                    // Bail if parent or direct ancestor is a let stmt.
-                    return;
-                }
-                let Some(parent_if_expr) = parent.and_then(ast::IfExpr::cast) else {
-                    // Parent is neither an if expr nor a let stmt.
-                    break;
-                };
-                // Check parent if expr.
-                top_if_expr = parent_if_expr;
             }
             if let Expr::Block { statements, tail, .. } = &body.exprs[*then_branch] {
                 let last_then_expr = tail.or_else(|| match statements.last()? {
@@ -374,6 +356,36 @@ impl ExprValidator {
                 if let Some(last_then_expr) = last_then_expr {
                     let last_then_expr_ty = &self.infer[last_then_expr];
                     if last_then_expr_ty.is_never() {
+                        // Only look at sources if the then branch diverges and we have an else branch.
+                        let (_, source_map) = db.body_with_source_map(self.owner);
+                        let Ok(source_ptr) = source_map.expr_syntax(id) else {
+                            return;
+                        };
+                        let root = source_ptr.file_syntax(db.upcast());
+                        let ast::Expr::IfExpr(if_expr) = source_ptr.value.to_node(&root) else {
+                            return;
+                        };
+                        let mut top_if_expr = if_expr;
+                        loop {
+                            let parent = top_if_expr.syntax().parent();
+                            let has_parent_expr_stmt_or_stmt_list =
+                                parent.as_ref().map_or(false, |node| {
+                                    ast::ExprStmt::can_cast(node.kind())
+                                        | ast::StmtList::can_cast(node.kind())
+                                });
+                            if has_parent_expr_stmt_or_stmt_list {
+                                // Only emit diagnostic if parent or direct ancestor is either
+                                // an expr stmt or a stmt list.
+                                break;
+                            }
+                            let Some(parent_if_expr) = parent.and_then(ast::IfExpr::cast) else {
+                                // Bail if parent is neither an if expr, an expr stmt nor a stmt list.
+                                return;
+                            };
+                            // Check parent if expr.
+                            top_if_expr = parent_if_expr;
+                        }
+
                         self.diagnostics
                             .push(BodyValidationDiagnostic::RemoveUnnecessaryElse { if_expr: id })
                     }

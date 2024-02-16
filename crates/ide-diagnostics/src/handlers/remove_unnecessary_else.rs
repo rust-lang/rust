@@ -467,10 +467,10 @@ fn test() {
     }
 
     #[test]
-    fn no_diagnostic_if_tail_exists_in_else_branch() {
+    fn no_diagnostic_if_not_expr_stmt() {
         check_diagnostics_with_needless_return_disabled(
             r#"
-fn test1(a: bool) {
+fn test1() {
     let _x = if a {
         return;
     } else {
@@ -478,7 +478,7 @@ fn test1(a: bool) {
     };
 }
 
-fn test2(a: bool, b: bool, c: bool) {
+fn test2() {
     let _x = if a {
         return;
     } else if b {
@@ -490,6 +490,14 @@ fn test2(a: bool, b: bool, c: bool) {
     };
 }
 "#,
+        );
+        check_diagnostics_with_disabled(
+            r#"
+fn test3() {
+    foo(if a { return 1 } else { 0 })
+}
+"#,
+            std::iter::once("E0308".to_owned()),
         );
     }
 }
