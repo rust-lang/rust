@@ -80,7 +80,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 18
 
       - name: Update apt repositories
         if: matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'arm-unknown-linux-gnueabihf'
@@ -188,9 +188,9 @@ jobs:
     needs: ["dist", "dist-x86_64-unknown-linux-musl"]
     steps:
       - name: Install Nodejs
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 18
 
       - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
         if: github.ref == 'refs/heads/release'
