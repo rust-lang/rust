@@ -64,6 +64,7 @@ impl<'tcx, T: ?Sized + TraitEngine<'tcx>> T {
         }
     }
 
+    #[must_use]
     fn select_all_or_error(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         let errors = self.select_where_possible(infcx);
         if !errors.is_empty() {

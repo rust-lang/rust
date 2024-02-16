@@ -68,7 +68,14 @@ pub(crate) fn extension(
 
 /// Only keep `#[doc]` attrs.
 fn scrub_attrs(attrs: &[Attribute]) -> Vec<Attribute> {
-    attrs.into_iter().cloned().filter(|attr| attr.path().segments[0].ident == "doc").collect()
+    attrs
+        .into_iter()
+        .cloned()
+        .filter(|attr| {
+            let ident = &attr.path().segments[0].ident;
+            ident == "doc" || ident == "must_use"
+        })
+        .collect()
 }
 
 /// Scrub arguments so that they're valid for trait signatures.

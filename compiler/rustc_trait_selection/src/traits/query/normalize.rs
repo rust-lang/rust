@@ -37,6 +37,12 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".
+    ///
+    /// This normalization should *only* be used when the projection does not
+    /// have possible ambiguity or may not be well-formed.
+    ///
+    /// After codegen, when lifetimes do not matter, it is preferable to instead
+    /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
     fn query_normalize<T>(self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
