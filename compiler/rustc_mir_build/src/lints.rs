@@ -137,7 +137,9 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
 
         let func_ty = func.ty(body, tcx);
         if let ty::FnDef(callee, args) = *func_ty.kind() {
-            let normalized_args = tcx.normalize_erasing_regions(param_env, args);
+            let Ok(normalized_args) = tcx.try_normalize_erasing_regions(param_env, args) else {
+                return false;
+            };
             let (callee, call_args) = if let Ok(Some(instance)) =
                 Instance::resolve(tcx, param_env, callee, normalized_args)
             {
