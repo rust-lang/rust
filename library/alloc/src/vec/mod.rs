@@ -1999,6 +1999,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec.pop(), Some(3));
     /// assert_eq!(vec, [1, 2]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {
