@@ -1016,7 +1016,37 @@ impl f32 {
     /// ```
     #[unstable(feature = "num_midpoint", issue = "110840")]
     pub fn midpoint(self, other: f32) -> f32 {
-        ((f64::from(self) + f64::from(other)) / 2.0) as f32
+        cfg_if! {
+            if #[cfg(all(target_arch = "arm", target_pointer_width = "32",
+                         not(target_feature = "vfp2")))] {
+                // some 32-bit ARM architectures don't have native double-precision floats
+                // so fall back to a similar algorithm as in f64, but using f32
+                // This should only differ in the NaNs specific NaNs reported.
+
+                const LO: f32 = f32::MIN_POSITIVE * 2.;
+                const HI: f32 = f32::MAX / 2.;
+
+                let (a, b) = (self, other);
+                let abs_a = a.abs_private();
+                let abs_b = b.abs_private();
+
+                if abs_a <= HI && abs_b <= HI {
+                    // Overflow is impossible
+                    (a + b) / 2.
+                } else if abs_a < LO {
+                    // Not safe to halve a
+                    a + (b / 2.)
+                } else if abs_b < LO {
+                    // Not safe to halve b
+                    (a / 2.) + b
+                } else {
+                    // Not safe to halve a and b
+                    (a / 2.) + (b / 2.)
+                }
+            } else {
+                ((f64::from(self) + f64::from(other)) / 2.0) as f32
+            }
+        }
     }
 
     /// Rounds toward zero and converts to any primitive integer type,
