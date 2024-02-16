@@ -346,8 +346,10 @@ impl<'a> Parser<'a> {
                 AllowCVariadic::No => {
                     // FIXME(Centril): Should we just allow `...` syntactically
                     // anywhere in a type and use semantic restrictions instead?
-                    self.dcx().emit_err(NestedCVariadicType { span: lo.to(self.prev_token.span) });
-                    TyKind::Err
+                    let guar = self
+                        .dcx()
+                        .emit_err(NestedCVariadicType { span: lo.to(self.prev_token.span) });
+                    TyKind::Err(guar)
                 }
             }
         } else {
@@ -493,8 +495,8 @@ impl<'a> Parser<'a> {
             {
                 // Recover from `[LIT; EXPR]` and `[LIT]`
                 self.bump();
-                err.emit();
-                self.mk_ty(self.prev_token.span, TyKind::Err)
+                let guar = err.emit();
+                self.mk_ty(self.prev_token.span, TyKind::Err(guar))
             }
             Err(err) => return Err(err),
         };

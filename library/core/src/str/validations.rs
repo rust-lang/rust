@@ -161,7 +161,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             //        first  E0 A0 80     last EF BF BF
             //   excluding surrogates codepoints  \u{d800} to  \u{dfff}
             //               ED A0 80 to       ED BF BF
-            // 4-byte encoding is for codepoints \u{1000}0 to \u{10ff}ff
+            // 4-byte encoding is for codepoints \u{10000} to \u{10ffff}
             //        first  F0 90 80 80  last F4 8F BF BF
             //
             // Use the UTF-8 syntax from the RFC

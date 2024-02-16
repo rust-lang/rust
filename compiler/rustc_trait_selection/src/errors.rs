@@ -135,6 +135,8 @@ pub struct ClosureKindMismatch {
     #[label(trait_selection_closure_kind_requirement)]
     pub cause_span: Span,
 
+    pub trait_prefix: &'static str,
+
     #[subdiagnostic]
     pub fn_once_label: Option<ClosureFnOnceLabel>,
 
@@ -156,4 +158,12 @@ pub struct ClosureFnMutLabel {
     #[primary_span]
     pub span: Span,
     pub place: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(trait_selection_async_closure_not_fn)]
+pub(crate) struct AsyncClosureNotFn {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
 }

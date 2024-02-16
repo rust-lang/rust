@@ -2363,28 +2363,42 @@ impl<'tcx> Ty<'tcx> {
     }
 
     /// When we create a closure, we record its kind (i.e., what trait
-    /// it implements) into its `ClosureArgs` using a type
+    /// it implements, constrained by how it uses its borrows) into its
+    /// [`ty::ClosureArgs`] or [`ty::CoroutineClosureArgs`] using a type
     /// parameter. This is kind of a phantom type, except that the
     /// most convenient thing for us to are the integral types. This
     /// function converts such a special type into the closure
-    /// kind. To go the other way, use `closure_kind.to_ty(tcx)`.
+    /// kind. To go the other way, use [`Ty::from_closure_kind`].
     ///
     /// Note that during type checking, we use an inference variable
     /// to represent the closure kind, because it has not yet been
     /// inferred. Once upvar inference (in `rustc_hir_analysis/src/check/upvar.rs`)
-    /// is complete, that type variable will be unified.
-    ///
-    /// To be noted that you can use [`ClosureArgs::kind()`] or [`CoroutineClosureArgs::kind()`]
-    /// to get the same information, which you can get by calling [`GenericArgs::as_closure()`]
-    /// or [`GenericArgs::as_coroutine_closure()`], depending on the type of the closure.
-    ///
-    /// Otherwise, this method can be used as follows:
+    /// is complete, that type variable will be unified with one of
+    /// the integral types.
     ///
     /// ```rust,ignore (snippet of compiler code)
-    /// let TyKind::Closure(def_id, [closure_fn_kind_ty, ..]) = closure_ty.kind()
-    ///     && let Some(closure_kind) = closure_fn_kind_ty.expect_ty().to_opt_closure_kind()
+    /// if let TyKind::Closure(def_id, args) = closure_ty.kind()
+    ///     && let Some(closure_kind) = args.as_closure().kind_ty().to_opt_closure_kind()
     /// {
-    ///     // your code
+    ///     println!("{closure_kind:?}");
+    /// } else if let TyKind::CoroutineClosure(def_id, args) = closure_ty.kind()
+    ///     && let Some(closure_kind) = args.as_coroutine_closure().kind_ty().to_opt_closure_kind()
+    /// {
+    ///     println!("{closure_kind:?}");
+    /// }
+    /// ```
+    ///
+    /// After upvar analysis, you should instead use [`ClosureArgs::kind()`]
+    /// or [`CoroutineClosureArgs::kind()`] to assert that the `ClosureKind`
+    /// has been constrained instead of manually calling this method.
+    ///
+    /// ```rust,ignore (snippet of compiler code)
+    /// if let TyKind::Closure(def_id, args) = closure_ty.kind()
+    /// {
+    ///     println!("{:?}", args.as_closure().kind());
+    /// } else if let TyKind::CoroutineClosure(def_id, args) = closure_ty.kind()
+    /// {
+    ///     println!("{:?}", args.as_coroutine_closure().kind());
     /// }
     /// ```
     pub fn to_opt_closure_kind(self) -> Option<ty::ClosureKind> {
@@ -2406,7 +2420,8 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Inverse of [`Ty::to_opt_closure_kind`].
+    /// Inverse of [`Ty::to_opt_closure_kind`]. See docs on that method
+    /// for explanation of the relationship between `Ty` and [`ty::ClosureKind`].
     pub fn from_closure_kind(tcx: TyCtxt<'tcx>, kind: ty::ClosureKind) -> Ty<'tcx> {
         match kind {
             ty::ClosureKind::Fn => tcx.types.i8,
