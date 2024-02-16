@@ -1,7 +1,6 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
@@ -402,7 +401,7 @@ pub struct BuiltinIncompleteFeaturesHelp;
 #[derive(Subdiagnostic)]
 #[note(lint_note)]
 pub struct BuiltinFeatureIssueNote {
-    pub n: NonZeroU32,
+    pub n: NonZero<u32>,
 }
 
 pub struct BuiltinUnpermittedTypeInit<'a> {

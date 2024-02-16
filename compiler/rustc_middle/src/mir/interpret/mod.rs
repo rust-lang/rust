@@ -122,7 +122,7 @@ mod value;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
-use std::num::{NonZeroU32, NonZeroU64};
+use std::num::NonZero;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_ast::LitKind;
@@ -206,7 +206,7 @@ pub enum LitToConstError {
 }
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct AllocId(pub NonZeroU64);
+pub struct AllocId(pub NonZero<u64>);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
@@ -261,7 +261,7 @@ pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
 }
 
 // Used to avoid infinite recursion when decoding cyclic allocations.
-type DecodingSessionId = NonZeroU32;
+type DecodingSessionId = NonZero<u32>;
 
 #[derive(Clone)]
 enum State {
@@ -501,7 +501,7 @@ impl<'tcx> AllocMap<'tcx> {
         AllocMap {
             alloc_map: Default::default(),
             dedup: Default::default(),
-            next_id: AllocId(NonZeroU64::new(1).unwrap()),
+            next_id: AllocId(NonZero::new(1).unwrap()),
         }
     }
     fn reserve(&mut self) -> AllocId {

@@ -170,7 +170,7 @@ fn test_program_kind() {
 )))]
 #[test]
 fn unix_exit_statuses() {
-    use crate::num::NonZeroI32;
+    use crate::num::NonZero;
     use crate::os::unix::process::ExitStatusExt;
     use crate::process::*;
 
@@ -182,7 +182,7 @@ fn unix_exit_statuses() {
 
         assert_eq!(exit_status.code(), Some(exit_code));
 
-        if let Ok(nz) = NonZeroI32::try_from(exit_code) {
+        if let Ok(nz) = NonZero::try_from(exit_code) {
             assert!(!exit_status.success());
             let es_error = exit_status.exit_ok().unwrap_err();
             assert_eq!(es_error.code().unwrap(), i32::from(nz));

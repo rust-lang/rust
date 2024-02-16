@@ -7,6 +7,7 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
+#![feature(generic_nonzero)]
 #![feature(let_chains)]
 
 #[macro_use]

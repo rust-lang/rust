@@ -4,7 +4,7 @@ use crate::iter::{
     TrustedLen,
 };
 use crate::iter::{Once, OnceWith};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 use crate::result;
 use crate::{array, fmt, option};
@@ -90,7 +90,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.inner.advance_by(n)
     }
 
@@ -135,7 +135,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.inner.advance_back_by(n)
     }
 }
@@ -165,13 +165,13 @@ where
     I: InPlaceIterable,
     U: BoundedSize + IntoIterator,
 {
-    const EXPAND_BY: Option<NonZeroUsize> = const {
+    const EXPAND_BY: Option<NonZero<usize>> = const {
         match (I::EXPAND_BY, U::UPPER_BOUND) {
             (Some(m), Some(n)) => m.checked_mul(n),
             _ => None,
         }
     };
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -200,7 +200,7 @@ where
 #[rustc_specialization_trait]
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe trait BoundedSize {
-    const UPPER_BOUND: Option<NonZeroUsize> = NonZeroUsize::new(1);
+    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(1);
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -217,31 +217,31 @@ unsafe impl<T> BoundedSize for Once<T> {}
 unsafe impl<T> BoundedSize for OnceWith<T> {}
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<T, const N: usize> BoundedSize for [T; N] {
-    const UPPER_BOUND: Option<NonZeroUsize> = NonZeroUsize::new(N);
+    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(N);
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<T, const N: usize> BoundedSize for array::IntoIter<T, N> {
-    const UPPER_BOUND: Option<NonZeroUsize> = NonZeroUsize::new(N);
+    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(N);
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: BoundedSize, P> BoundedSize for Filter<I, P> {
-    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: BoundedSize, P> BoundedSize for FilterMap<I, P> {
-    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: BoundedSize, F> BoundedSize for Map<I, F> {
-    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: BoundedSize> BoundedSize for Copied<I> {
-    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
 }
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: BoundedSize> BoundedSize for Cloned<I> {
-    const UPPER_BOUND: Option<NonZeroUsize> = I::UPPER_BOUND;
+    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
 }
 
 /// An iterator that flattens one level of nesting in an iterator of things
@@ -322,7 +322,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.inner.advance_by(n)
     }
 
@@ -367,7 +367,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.inner.advance_back_by(n)
     }
 }
@@ -394,13 +394,13 @@ where
     I: InPlaceIterable + Iterator,
     <I as Iterator>::Item: IntoIterator + BoundedSize,
 {
-    const EXPAND_BY: Option<NonZeroUsize> = const {
+    const EXPAND_BY: Option<NonZero<usize>> = const {
         match (I::EXPAND_BY, I::Item::UPPER_BOUND) {
             (Some(m), Some(n)) => m.checked_mul(n),
             _ => None,
         }
     };
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -669,7 +669,7 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: Iterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
@@ -680,7 +680,7 @@ where
         }
 
         match self.iter_try_fold(n, advance) {
-            ControlFlow::Continue(remaining) => NonZeroUsize::new(remaining).map_or(Ok(()), Err),
+            ControlFlow::Continue(remaining) => NonZero::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }
@@ -759,7 +759,7 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
@@ -770,7 +770,7 @@ where
         }
 
         match self.iter_try_rfold(n, advance) {
-            ControlFlow::Continue(remaining) => NonZeroUsize::new(remaining).map_or(Ok(()), Err),
+            ControlFlow::Continue(remaining) => NonZero::new(remaining).map_or(Ok(()), Err),
             _ => Ok(()),
         }
     }

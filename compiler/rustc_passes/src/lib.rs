@@ -8,6 +8,7 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![feature(generic_nonzero)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(try_blocks)]

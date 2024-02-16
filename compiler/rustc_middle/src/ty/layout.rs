@@ -20,7 +20,7 @@ use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Targ
 
 use std::cmp;
 use std::fmt;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ops::Bound;
 
 pub trait IntegerExt {
@@ -761,7 +761,7 @@ where
                 };
                 tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
-                    fields: match NonZeroUsize::new(fields) {
+                    fields: match NonZero::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
                         None => FieldsShape::Arbitrary { offsets: IndexVec::new(), memory_index: IndexVec::new() },
                     },

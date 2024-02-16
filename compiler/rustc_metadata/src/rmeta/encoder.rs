@@ -421,7 +421,7 @@ macro_rules! record_defaulted_array {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn emit_lazy_distance(&mut self, position: NonZeroUsize) {
+    fn emit_lazy_distance(&mut self, position: NonZero<usize>) {
         let pos = position.get();
         let distance = match self.lazy_state {
             LazyState::NoNode => bug!("emit_lazy_distance: outside of a metadata node"),
@@ -439,7 +439,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 position.get() - last_pos.get()
             }
         };
-        self.lazy_state = LazyState::Previous(NonZeroUsize::new(pos).unwrap());
+        self.lazy_state = LazyState::Previous(NonZero::new(pos).unwrap());
         self.emit_usize(distance);
     }
 
@@ -447,7 +447,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     where
         T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
     {
-        let pos = NonZeroUsize::new(self.position()).unwrap();
+        let pos = NonZero::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);
         self.lazy_state = LazyState::NodeStart(pos);
@@ -466,7 +466,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     where
         T::Value<'tcx>: Encodable<EncodeContext<'a, 'tcx>>,
     {
-        let pos = NonZeroUsize::new(self.position()).unwrap();
+        let pos = NonZero::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);
         self.lazy_state = LazyState::NodeStart(pos);

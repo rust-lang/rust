@@ -1,5 +1,5 @@
 use crate::convert::{TryFrom, TryInto};
-use crate::num::NonZeroUsize;
+use crate::num::{NonZero, NonZeroUsize};
 use crate::{cmp, fmt, hash, mem, num};
 
 /// A type storing a `usize` which is a power of two, and thus
@@ -100,7 +100,7 @@ impl Alignment {
     #[inline]
     pub const fn as_nonzero(self) -> NonZeroUsize {
         // SAFETY: All the discriminants are non-zero.
-        unsafe { NonZeroUsize::new_unchecked(self.as_usize()) }
+        unsafe { NonZero::new_unchecked(self.as_usize()) }
     }
 
     /// Returns the base-2 logarithm of the alignment.

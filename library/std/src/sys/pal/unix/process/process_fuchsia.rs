@@ -1,7 +1,7 @@
 use crate::fmt;
 use crate::io;
 use crate::mem;
-use crate::num::{NonZeroI32, NonZeroI64};
+use crate::num::NonZero;
 use crate::ptr;
 
 use crate::sys::process::process_common::*;
@@ -240,7 +240,7 @@ pub struct ExitStatus(i64);
 
 impl ExitStatus {
     pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
-        match NonZeroI64::try_from(self.0) {
+        match NonZero::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
         }
@@ -314,7 +314,7 @@ impl fmt::Display for ExitStatus {
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct ExitStatusError(NonZeroI64);
+pub struct ExitStatusError(NonZero<i64>);
 
 impl Into<ExitStatus> for ExitStatusError {
     fn into(self) -> ExitStatus {
@@ -323,7 +323,7 @@ impl Into<ExitStatus> for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         // fixme: affected by the same bug as ExitStatus::code()
         ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
     }

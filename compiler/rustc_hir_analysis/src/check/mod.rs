@@ -74,7 +74,7 @@ pub mod wfcheck;
 
 pub use check::check_abi;
 
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::ErrorGuaranteed;
@@ -270,7 +270,7 @@ fn default_body_is_unstable(
     item_did: DefId,
     feature: Symbol,
     reason: Option<Symbol>,
-    issue: Option<NonZeroU32>,
+    issue: Option<NonZero<u32>>,
 ) {
     let missing_item_name = tcx.associated_item(item_did).name;
     let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
