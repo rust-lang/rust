@@ -451,6 +451,9 @@ where
                 }
             }
             ty::ConstKind::Infer(InferConst::EffectVar(_)) => Ok(c),
+            // FIXME: Unevaluated constants are also not rigid, so the current
+            // approach of always relating them structurally is incomplete.
+            //
             // FIXME: remove this branch once `structurally_relate_consts` is fully
             // structural.
             ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
