@@ -349,10 +349,9 @@ fn run_compiler(
         },
     };
 
-    callbacks.config(&mut config);
-
-    default_early_dcx.abort_if_errors();
     drop(default_early_dcx);
+
+    callbacks.config(&mut config);
 
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
