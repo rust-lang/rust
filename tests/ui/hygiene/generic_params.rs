@@ -1,6 +1,6 @@
 // Ensure that generic parameters always have modern hygiene.
 
-// check-pass
+//@ check-pass
 
 #![feature(decl_macro, rustc_attrs)]
 

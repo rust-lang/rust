@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 enum ConstGenericEnum<const N: usize> {
     Foo([i32; N]),
     Bar,

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn _f0(_a: &u32) {} //~ ERROR mismatched types
 fn _f1(_a: &mut u32) {} //~ ERROR mismatched types

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for issue #21010: Normalize associated types in
 // various special paths in the `type_is_immediate` function.
 

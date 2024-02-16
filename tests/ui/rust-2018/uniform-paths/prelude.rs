@@ -1,5 +1,5 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// edition:2018
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ edition:2018
 
 // Macro imported with `#[macro_use] extern crate`
 use vec as imported_vec;

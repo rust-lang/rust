@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // FIXME(async_closures): This needs a better error message!
 

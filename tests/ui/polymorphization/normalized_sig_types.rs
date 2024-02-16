@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags:-Zpolymorphize=on
+//@ build-pass
+//@ compile-flags:-Zpolymorphize=on
 
 pub trait ParallelIterator: Sized {
     fn drive<C: Consumer<()>>(_: C) {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 struct Sum(u32, u32);
 

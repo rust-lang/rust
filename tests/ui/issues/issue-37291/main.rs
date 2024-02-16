@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
-// aux-build:lib.rs
+//@ aux-build:lib.rs
 
 // Regression test for #37291. The problem was that the starting
 // environment for a specialization check was not including the

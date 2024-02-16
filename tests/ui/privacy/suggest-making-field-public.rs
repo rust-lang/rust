@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 mod a {
     pub struct A(pub(self)String);
 }

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 use std::cell::Cell;
 use std::ptr::NonNull;

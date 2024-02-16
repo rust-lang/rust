@@ -1,7 +1,7 @@
-// revisions: e2021 e2024
+//@ revisions: e2021 e2024
 
-// [e2021] edition:2021
-// [e2024] compile-flags: --edition 2024 -Z unstable-options
+//@ [e2021] edition:2021
+//@ [e2024] compile-flags: --edition 2024 -Z unstable-options
 
 fn main() {
     static mut X: i32 = 1;

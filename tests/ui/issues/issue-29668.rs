@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Functions can return unnameable types
 
 mod m1 {

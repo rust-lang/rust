@@ -2,7 +2,7 @@
 // predicates in the param env when checking that an associated type satisfies
 // its bounds does not cause us to not be able to use the bounds on the parameters.
 
-// check-pass
+//@ check-pass
 
 trait Family {
     type Member<'a, C: Eq>: for<'b> MyBound<'b, C>;

@@ -1,5 +1,5 @@
-// edition: 2021
-// known-bug: #108309
+//@ edition: 2021
+//@ known-bug: #108309
 
 #![feature(min_specialization)]
 #![feature(noop_waker)]

@@ -1,4 +1,4 @@
-// ignore-macos: cycle error does not appear on apple
+//@ ignore-macos: cycle error does not appear on apple
 
 use std::sync::Mutex;
 

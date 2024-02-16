@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:associated-const-cc-lib.rs
+//@ run-pass
+//@ aux-build:associated-const-cc-lib.rs
 
 
 extern crate associated_const_cc_lib as foolib;

@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
-// compile-flags:-C panic=abort
-// no-prefer-dynamic
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-macos
+//@ compile-flags:-C panic=abort
+//@ no-prefer-dynamic
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
+//@ ignore-macos
 
 use std::process::Command;
 use std::env;

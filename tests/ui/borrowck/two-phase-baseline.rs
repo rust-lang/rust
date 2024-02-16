@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // This is the "goto example" for why we want two phase borrows.
 

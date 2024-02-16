@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Check that safe fns are not a subtype of unsafe fns.
 
 

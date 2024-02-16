@@ -1,7 +1,7 @@
 // The method `assert_static` should be callable only for static values,
 // because the impl has an implied bound `where T: 'static`.
 
-// check-fail
+//@ check-fail
 
 trait AnyStatic<Witness>: Sized {
     fn assert_static(self) {}

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// compile-flags: -O
+//@ compile-flags: -O
 
 fn main() {
     let x = &(0u32 - 1);

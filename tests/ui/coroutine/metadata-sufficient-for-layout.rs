@@ -3,7 +3,7 @@
 //
 // Regression test for #80998.
 //
-// aux-build:metadata-sufficient-for-layout.rs
+//@ aux-build:metadata-sufficient-for-layout.rs
 
 #![feature(type_alias_impl_trait, rustc_attrs)]
 #![feature(coroutine_trait)]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 macro_rules! bar {
     ($($t:tt)*) => { impl<const N: usize> $($t)* };

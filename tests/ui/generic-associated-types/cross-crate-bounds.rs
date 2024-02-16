@@ -1,8 +1,8 @@
 // regression test for #73816
 // We handled bounds differently when `feature(generic_associated_types)` was enabled
 
-// edition:2018
-// aux-build:foo_defn.rs
+//@ edition:2018
+//@ aux-build:foo_defn.rs
 
 extern crate foo_defn;
 

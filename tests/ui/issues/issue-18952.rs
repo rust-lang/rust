@@ -1,5 +1,5 @@
 // This issue tests fn_traits overloading on arity.
-// run-pass
+//@ run-pass
 
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]

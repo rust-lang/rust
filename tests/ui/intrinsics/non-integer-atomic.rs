@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 #![feature(core_intrinsics)]
 #![allow(warnings)]

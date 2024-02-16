@@ -1,6 +1,6 @@
-// check-pass
-// aux-build:hygiene_example_codegen.rs
-// aux-build:hygiene_example.rs
+//@ check-pass
+//@ aux-build:hygiene_example_codegen.rs
+//@ aux-build:hygiene_example.rs
 
 extern crate hygiene_example;
 use hygiene_example::hello;

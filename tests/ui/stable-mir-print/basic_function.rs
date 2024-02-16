@@ -1,6 +1,6 @@
-// compile-flags: -Z unpretty=stable-mir -Z mir-opt-level=3
-// check-pass
-// only-x86_64
+//@ compile-flags: -Z unpretty=stable-mir -Z mir-opt-level=3
+//@ check-pass
+//@ only-x86_64
 
 fn foo(i:i32) -> i32 {
     i + 1

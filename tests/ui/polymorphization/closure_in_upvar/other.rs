@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags:-Zpolymorphize=on -Csymbol-mangling-version=v0
+//@ build-pass
+//@ compile-flags:-Zpolymorphize=on -Csymbol-mangling-version=v0
 
 fn y_uses_f(f: impl Fn()) {
     let x = |_: ()| ();

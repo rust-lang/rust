@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 include!("issue-69838-dir/included.rs");
 

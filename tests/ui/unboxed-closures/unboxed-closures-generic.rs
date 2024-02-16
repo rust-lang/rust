@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn call_it<F:FnMut(i32,i32)->i32>(y: i32, mut f: F) -> i32 {
     f(2, y)
 }

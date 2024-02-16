@@ -3,7 +3,7 @@
 
 // Test a negative impl that "specializes" another negative impl.
 //
-// check-pass
+//@ check-pass
 
 trait MyTrait {}
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![allow(unused_variables)]
 #![feature(generic_arg_infer)]

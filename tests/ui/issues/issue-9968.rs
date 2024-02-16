@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:issue-9968.rs
+//@ run-pass
+//@ aux-build:issue-9968.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate issue_9968 as lib;
 

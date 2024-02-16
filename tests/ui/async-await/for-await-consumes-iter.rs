@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 #![feature(async_iterator, async_iter_from_iter, const_waker, async_for_loop, noop_waker)]
 
 use std::future::Future;

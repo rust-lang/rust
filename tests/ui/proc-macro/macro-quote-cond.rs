@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cond_plugin.rs
+//@ run-pass
+//@ aux-build:cond_plugin.rs
 
 #![allow(unused_parens)]
 

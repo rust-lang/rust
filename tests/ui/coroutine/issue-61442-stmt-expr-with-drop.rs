@@ -1,8 +1,8 @@
 // Test that we don't consider temporaries for statement expressions as live
 // across yields
 
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 #![feature(coroutines, coroutine_trait)]
 

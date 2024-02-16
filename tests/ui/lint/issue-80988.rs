@@ -1,6 +1,6 @@
 // Regression test for #80988
 //
-// check-pass
+//@ check-pass
 
 #![forbid(warnings)]
 

@@ -1,5 +1,5 @@
 // Regression test for #81650
-// run-rustfix
+//@ run-rustfix
 
 #![allow(warnings)]
 

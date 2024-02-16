@@ -1,7 +1,7 @@
 // Check that we don't issue the lint `type_alias_bounds` for
 // lazy type aliases since the bounds are indeed enforced.
 
-// check-pass
+//@ check-pass
 
 #![feature(lazy_type_alias)]
 #![allow(incomplete_features)]

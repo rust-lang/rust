@@ -1,5 +1,5 @@
 #![allow(clashing_extern_declarations)]
-// check-pass
+//@ check-pass
 
 // In this test we check that the parser accepts an ABI string when it
 // comes from a macro `literal` or `expr` fragment as opposed to a hardcoded string.

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Znext-solver
+//@ check-pass
+//@ compile-flags: -Znext-solver
 
 // check that a goal such as `alias-eq(<T as TraitB>::Assoc<bool>, <T as TraitB>::Assoc<?0>)`
 // succeeds with a constraint that `?0 = bool`

@@ -1,4 +1,4 @@
-// aux-build:issue-30535.rs
+//@ aux-build:issue-30535.rs
 
 extern crate issue_30535 as foo;
 

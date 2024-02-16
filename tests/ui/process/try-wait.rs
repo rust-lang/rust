@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 #![allow(stable_features)]
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
 
 #![feature(process_try_wait)]
 

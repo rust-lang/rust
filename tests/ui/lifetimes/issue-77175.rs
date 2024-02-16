@@ -1,6 +1,6 @@
 #[deny(single_use_lifetimes)]
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 // Prior to the fix, the compiler complained that the 'a lifetime was only used
 // once. This was obviously wrong since the lifetime is used twice: For the s3

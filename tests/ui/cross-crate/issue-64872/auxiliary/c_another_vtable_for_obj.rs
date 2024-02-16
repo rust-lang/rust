@@ -1,5 +1,5 @@
-// no-prefer-dynamic
-// compile-flags: -C debuginfo=2
+//@ no-prefer-dynamic
+//@ compile-flags: -C debuginfo=2
 #![crate_type="rlib"]
 
 extern crate b_reexport_obj;

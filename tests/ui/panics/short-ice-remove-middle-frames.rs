@@ -1,15 +1,15 @@
-// compile-flags:-Cstrip=none
-// run-fail
-// check-run-results
-// exec-env:RUST_BACKTRACE=1
-// needs-unwind
-// ignore-android FIXME #17520
-// ignore-wasm no panic support
-// ignore-openbsd no support for libbacktrace without filename
-// ignore-emscripten no panic
-// ignore-sgx Backtraces not symbolized
-// ignore-fuchsia Backtraces not symbolized
-// ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
+//@ compile-flags:-Cstrip=none
+//@ run-fail
+//@ check-run-results
+//@ exec-env:RUST_BACKTRACE=1
+//@ needs-unwind
+//@ ignore-android FIXME #17520
+//@ ignore-wasm no panic support
+//@ ignore-openbsd no support for libbacktrace without filename
+//@ ignore-emscripten no panic
+//@ ignore-sgx Backtraces not symbolized
+//@ ignore-fuchsia Backtraces not symbolized
+//@ ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
 
 
 #[inline(never)]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct A<F: FnOnce()->T,T>(F::Output);
 struct B<F: FnOnce()->T,T>(A<F,T>);
 

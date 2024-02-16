@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[derive(Copy, Clone)]
 enum Foo {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test that a macro can correctly expand `self` in
 // an `extern crate self as ALIAS` item.

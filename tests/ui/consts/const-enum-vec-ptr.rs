@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 enum E { V1(isize), V0 }
 static C: &'static [E] = &[E::V0, E::V1(0xDEADBEE), E::V0];

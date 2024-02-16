@@ -1,4 +1,4 @@
-// aux-build:bad_main_functions.rs
+//@ aux-build:bad_main_functions.rs
 
 #![feature(imported_main)]
 

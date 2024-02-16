@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Here we check that a `:vis` macro matcher subsititued for the empty visibility
 // (`VisibilityKind::Inherited`) is accepted when used before an enum variant.

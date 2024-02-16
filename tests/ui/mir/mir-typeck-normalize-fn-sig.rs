@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 // This code was creating an ICE in the MIR type checker. The reason
 // is that we are reifying a reference to a function (`foo::<'x>`),

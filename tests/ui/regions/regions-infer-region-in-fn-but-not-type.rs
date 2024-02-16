@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
@@ -6,7 +6,7 @@
 
 // check that the &isize here does not cause us to think that `foo`
 // contains region pointers
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 struct foo(Box<dyn FnMut(&isize)+'static>);
 

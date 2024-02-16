@@ -4,7 +4,7 @@
 // input types. Previously this was an ICE in the error path because we didn't register enough
 // diagnostic information to render the higher-ranked subtyping error.
 
-// check-fail
+//@ check-fail
 
 trait Trait {
     type Ty;

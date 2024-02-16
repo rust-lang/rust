@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // check raw fat pointer ops in mir
 // FIXME: please improve this when we get monomorphization support
 

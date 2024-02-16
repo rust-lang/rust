@@ -1,4 +1,4 @@
-// aux-build:empty-struct.rs
+//@ aux-build:empty-struct.rs
 
 extern crate empty_struct;
 

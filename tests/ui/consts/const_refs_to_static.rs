@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(const_refs_to_static)]
 
 static S: i32 = 0;

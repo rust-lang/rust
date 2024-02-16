@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test that we can immutably borrow field of an instance of a structure from within a closure,
 // while having a mutable borrow to another field of the same instance outside the closure.

@@ -1,5 +1,5 @@
-// only-x86_64
-// build-pass
+//@ only-x86_64
+//@ build-pass
 
 use std::arch::x86_64::*;
 use std::fmt::Debug;

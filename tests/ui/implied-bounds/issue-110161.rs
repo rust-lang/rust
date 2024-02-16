@@ -1,7 +1,7 @@
 // ICE regression relating to unconstrained lifetimes in implied
 // bounds. See #110161.
 
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
 trait LtTrait {
     type Ty;

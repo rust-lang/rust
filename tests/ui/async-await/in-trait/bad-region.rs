@@ -1,5 +1,5 @@
-// aux-build:bad-region.rs
-// edition:2021
+//@ aux-build:bad-region.rs
+//@ edition:2021
 
 #![allow(async_fn_in_trait)]
 

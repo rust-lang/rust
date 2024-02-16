@@ -1,7 +1,7 @@
 // Annnotations may contain projection types with inference variables as input.
 // Make sure we don't get ambiguities when normalizing them.
 
-// check-fail
+//@ check-fail
 
 // Single impl.
 fn test1<A, B, C, D>(a: A, b: B, c: C) {

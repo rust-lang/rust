@@ -6,8 +6,8 @@
 // another -- effectively, the single lifetime `'a` is just inferred
 // to be the intersection of the two distinct lifetimes.
 //
-// check-pass
-// compile-flags:-Zno-leak-check
+//@ check-pass
+//@ compile-flags:-Zno-leak-check
 
 use std::cell::Cell;
 

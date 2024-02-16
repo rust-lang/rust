@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![feature(staged_api)]
 #![feature(deprecated_suggestion)]

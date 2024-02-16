@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:sepcomp_lib.rs
+//@ run-pass
+//@ aux-build:sepcomp_lib.rs
 
 // Test linking against a library built with -C codegen-units > 1
 

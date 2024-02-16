@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 
 // There are five cfg's below. I explored the set of all non-empty combinations
@@ -16,39 +16,39 @@
 // {bar_for_foo, valbar_for_et_foo}: these are higher precedent than the `&mut self` method on `Foo`, and so no case matching bx1x1x is included.
 // {mutbar_for_foo, valbar_for_etmut_foo} (which are lower precedent than the inherent `&mut self` method on `Foo`; e.g. b10101 *is* included.
 
-// revisions: b00001 b00010 b00011 b00100 b00101 b00110 b00111 b01000 b01001 b01100 b01101 b10000 b10001 b10010 b10011 b10101 b10111 b11000 b11001 b11101
+//@ revisions: b00001 b00010 b00011 b00100 b00101 b00110 b00111 b01000 b01001 b01100 b01101 b10000 b10001 b10010 b10011 b10101 b10111 b11000 b11001 b11101
 
-//[b00001]compile-flags:  --cfg inherent_mut
-//[b00010]compile-flags:                     --cfg bar_for_foo
-//[b00011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo
-//[b00100]compile-flags:                                       --cfg mutbar_for_foo
-//[b00101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo
-//[b00110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo
-//[b00111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo
-//[b01000]compile-flags:                                                            --cfg valbar_for_et_foo
-//[b01001]compile-flags:  --cfg inherent_mut                                        --cfg valbar_for_et_foo
-//[b01010]compile-flags:                     --cfg bar_for_foo                      --cfg valbar_for_et_foo
-//[b01011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo                      --cfg valbar_for_et_foo
-//[b01100]compile-flags:                                       --cfg mutbar_for_foo --cfg valbar_for_et_foo
-//[b01101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo --cfg valbar_for_et_foo
-//[b01110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo
-//[b01111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo
-//[b10000]compile-flags:                                                                                    --cfg valbar_for_etmut_foo
-//[b10001]compile-flags:  --cfg inherent_mut                                                                --cfg valbar_for_etmut_foo
-//[b10010]compile-flags:                     --cfg bar_for_foo                                              --cfg valbar_for_etmut_foo
-//[b10011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo                                              --cfg valbar_for_etmut_foo
-//[b10100]compile-flags:                                       --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
-//[b10101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
-//[b10110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
-//[b10111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
-//[b11000]compile-flags:                                                            --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
-//[b11001]compile-flags:  --cfg inherent_mut                                        --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
-//[b11010]compile-flags:                     --cfg bar_for_foo                      --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
-//[b11011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo                      --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
-//[b11100]compile-flags:                                       --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
-//[b11101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
-//[b11110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
-//[b11111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b00001]compile-flags:  --cfg inherent_mut
+//@[b00010]compile-flags:                     --cfg bar_for_foo
+//@[b00011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo
+//@[b00100]compile-flags:                                       --cfg mutbar_for_foo
+//@[b00101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo
+//@[b00110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo
+//@[b00111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo
+//@[b01000]compile-flags:                                                            --cfg valbar_for_et_foo
+//@[b01001]compile-flags:  --cfg inherent_mut                                        --cfg valbar_for_et_foo
+//@[b01010]compile-flags:                     --cfg bar_for_foo                      --cfg valbar_for_et_foo
+//@[b01011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo                      --cfg valbar_for_et_foo
+//@[b01100]compile-flags:                                       --cfg mutbar_for_foo --cfg valbar_for_et_foo
+//@[b01101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo --cfg valbar_for_et_foo
+//@[b01110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo
+//@[b01111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo
+//@[b10000]compile-flags:                                                                                    --cfg valbar_for_etmut_foo
+//@[b10001]compile-flags:  --cfg inherent_mut                                                                --cfg valbar_for_etmut_foo
+//@[b10010]compile-flags:                     --cfg bar_for_foo                                              --cfg valbar_for_etmut_foo
+//@[b10011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo                                              --cfg valbar_for_etmut_foo
+//@[b10100]compile-flags:                                       --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
+//@[b10101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
+//@[b10110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
+//@[b10111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo                         --cfg valbar_for_etmut_foo
+//@[b11000]compile-flags:                                                            --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b11001]compile-flags:  --cfg inherent_mut                                        --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b11010]compile-flags:                     --cfg bar_for_foo                      --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b11011]compile-flags:  --cfg inherent_mut --cfg bar_for_foo                      --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b11100]compile-flags:                                       --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b11101]compile-flags:  --cfg inherent_mut                   --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b11110]compile-flags:                     --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
+//@[b11111]compile-flags:  --cfg inherent_mut --cfg bar_for_foo --cfg mutbar_for_foo --cfg valbar_for_et_foo --cfg valbar_for_etmut_foo
 
 struct Foo {}
 

@@ -1,4 +1,4 @@
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![feature(start, no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)

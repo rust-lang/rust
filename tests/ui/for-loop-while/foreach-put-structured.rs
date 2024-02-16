@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 
 fn pairs<F>(mut it: F) where F: FnMut((isize, isize)) {

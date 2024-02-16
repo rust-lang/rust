@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Check we do not select a private method or field when computing autoderefs
 
 #![allow(unused)]

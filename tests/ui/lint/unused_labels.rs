@@ -2,7 +2,7 @@
 // should also deal with the edge cases where a label is shadowed,
 // within nested loops
 
-// check-pass
+//@ check-pass
 
 #![warn(unused_labels)]
 

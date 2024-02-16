@@ -1,3 +1,3 @@
-// compile-flags: --check-cfg "cfg()"
+//@ compile-flags: --check-cfg "cfg()"
 
 fn main() {}

@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -Cdebuginfo=2
+//@ build-pass
+//@ compile-flags: -Cdebuginfo=2
 // fixes issue #94149
 
 #![allow(dead_code)]

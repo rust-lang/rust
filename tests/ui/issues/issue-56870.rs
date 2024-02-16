@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // Regression test for #56870: Internal compiler error (traits & associated consts)
 
 use std::fmt::Debug;

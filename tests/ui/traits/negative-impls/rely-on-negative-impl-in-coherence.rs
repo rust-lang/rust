@@ -1,9 +1,9 @@
-// check-pass
+//@ check-pass
 
 #![feature(negative_impls)]
 #![feature(with_negative_coherence)]
 
-// aux-build: foreign_trait.rs
+//@ aux-build: foreign_trait.rs
 
 // Test that we cannot implement `LocalTrait` for `String`,
 // even though there is a `String: !ForeignTrait` impl.

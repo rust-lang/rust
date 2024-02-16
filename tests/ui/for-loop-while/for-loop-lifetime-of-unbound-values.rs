@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test when destructors run in a for loop. The intention is
 // that the value for each iteration is dropped *after* the loop
 // body has executed. This is true even when the value is assigned

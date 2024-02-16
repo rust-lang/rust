@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_imports)]
 // This should resolve fine. Prior to fix, the last import

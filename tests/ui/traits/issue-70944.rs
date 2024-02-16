@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test of #70944, should compile fine.
 
 use std::ops::Index;

@@ -1,6 +1,6 @@
-// compile-flags: --error-format json
-// error-pattern:unnecessary parentheses
-// run-rustfix
+//@ compile-flags: --error-format json
+//@ error-pattern:unnecessary parentheses
+//@ run-rustfix
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested

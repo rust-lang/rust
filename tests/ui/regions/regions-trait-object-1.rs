@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This is a regression test for something that only came up while
 // attempting to bootstrap librustc_ast; it is adapted from
 // `rustc_ast::ext::tt::generic_extension`.

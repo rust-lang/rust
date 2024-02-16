@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(exclusive_range_pattern)]
 #![feature(inline_const_pat)]
 

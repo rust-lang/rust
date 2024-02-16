@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ops::Add;
 
 struct S<T, U = u16> {

@@ -1,9 +1,9 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(coroutines)]
 
-// normalize-stderr-test "std::pin::Unpin" -> "std::marker::Unpin"
+//@ normalize-stderr-test "std::pin::Unpin" -> "std::marker::Unpin"
 
 use std::marker::Unpin;
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(overlapping_range_endpoints)]
 
 fn main() {

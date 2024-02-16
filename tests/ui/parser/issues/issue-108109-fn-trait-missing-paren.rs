@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 pub fn func<F>() where F: FnOnce -> () {}
 //~^ ERROR expected one of

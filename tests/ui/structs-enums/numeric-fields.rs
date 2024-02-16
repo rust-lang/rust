@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct S(u8, u16);
 
 fn main() {

@@ -1,6 +1,6 @@
-// revisions: base polonius
-// ignore-compare-mode-polonius
-// [polonius] compile-flags: -Z polonius
+//@ revisions: base polonius
+//@ ignore-compare-mode-polonius
+//@ [polonius] compile-flags: -Z polonius
 
 trait TT {}
 

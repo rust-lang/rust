@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -g -O -Zmir-opt-level=0 -Zinline-mir=y -Zmir-enable-passes=+ReferencePropagation
+//@ run-pass
+//@ compile-flags: -g -O -Zmir-opt-level=0 -Zinline-mir=y -Zmir-enable-passes=+ReferencePropagation
 
 #![allow(dead_code)]
 

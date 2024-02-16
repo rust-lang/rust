@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // On Windows the GetExitCodeProcess API is used to get the exit code of a
 // process, but it's easy to mistake a process exiting with the code 259 as
 // "still running" because this is the value of the STILL_ACTIVE constant. Make

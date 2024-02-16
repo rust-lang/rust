@@ -1,5 +1,5 @@
-// edition:2021
-// check-pass
+//@ edition:2021
+//@ check-pass
 
 #![feature(rustc_attrs)]
 #![allow(dropping_references)]

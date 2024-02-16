@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![allow(unused)]
 #![deny(explicit_outlives_requirements)]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(inline_const_pat)]
 #![allow(dead_code)]
 fn foo<const V: usize>() {

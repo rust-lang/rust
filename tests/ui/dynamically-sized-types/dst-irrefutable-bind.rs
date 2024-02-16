@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(unsized_tuple_coercion)]
 
 struct Test<T: ?Sized>(T);

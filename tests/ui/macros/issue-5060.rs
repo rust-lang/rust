@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! print_hd_tl {
     ($field_hd:ident, $($field_tl:ident),+) => ({
         print!("{}", stringify!($field_hd));

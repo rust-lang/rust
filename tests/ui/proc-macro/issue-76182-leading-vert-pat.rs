@@ -1,6 +1,6 @@
-// check-pass
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug
+//@ check-pass
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug
 //
 // Regression test for issue #76182
 // Tests that we properly handle patterns with a leading vert

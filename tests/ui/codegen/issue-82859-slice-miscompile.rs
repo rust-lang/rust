@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -Copt-level=0 -Cdebuginfo=2
+//@ run-pass
+//@ compile-flags: -Copt-level=0 -Cdebuginfo=2
 
 // Make sure LLVM does not miscompile this.
 

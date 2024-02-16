@@ -1,7 +1,7 @@
 // The error here is strictly due to orphan rules; the impl here
 // generalizes the one upstream
 
-// aux-build:trait_impl_conflict.rs
+//@ aux-build:trait_impl_conflict.rs
 
 extern crate trait_impl_conflict;
 use trait_impl_conflict::Foo;

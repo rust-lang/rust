@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 use std::sync::Mutex;
 use std::cell::RefCell;
 use std::rc::Rc;

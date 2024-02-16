@@ -1,5 +1,5 @@
 // #41425 -- error message "mismatched types" has wrong types
-// run-rustfix
+//@ run-rustfix
 
 fn plus_one(x: i32) -> i32 { //~ ERROR mismatched types
     x + 1

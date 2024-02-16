@@ -1,4 +1,4 @@
-// aux-build:attribute-spans-preserved.rs
+//@ aux-build:attribute-spans-preserved.rs
 
 extern crate attribute_spans_preserved as foo;
 

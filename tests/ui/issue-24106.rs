@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:issue-24106.rs
+//@ run-pass
+//@ aux-build:issue-24106.rs
 
 extern crate issue_24106;
 

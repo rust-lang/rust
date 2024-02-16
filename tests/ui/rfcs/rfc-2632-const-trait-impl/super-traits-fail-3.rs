@@ -1,7 +1,7 @@
 #![feature(const_trait_impl, effects)]
 
-// revisions: yy yn ny nn
-//[yy] check-pass
+//@ revisions: yy yn ny nn
+//@[yy] check-pass
 
 #[cfg_attr(any(yy, yn), const_trait)]
 trait Foo {

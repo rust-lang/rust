@@ -1,4 +1,4 @@
-// compile-flags:-Z verbose-internals
+//@ compile-flags:-Z verbose-internals
 
 fn main() {
     let x = [1,2];

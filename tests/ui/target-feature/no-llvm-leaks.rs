@@ -1,9 +1,9 @@
-// revisions: aarch64 x86-64
-// [aarch64] compile-flags: -Ctarget-feature=+neon,+fp16,+fhm --target=aarch64-unknown-linux-gnu
-// [aarch64] needs-llvm-components: aarch64
-// [x86-64] compile-flags: -Ctarget-feature=+sse4.2,+rdrand --target=x86_64-unknown-linux-gnu
-// [x86-64] needs-llvm-components: x86
-// build-pass
+//@ revisions: aarch64 x86-64
+//@ [aarch64] compile-flags: -Ctarget-feature=+neon,+fp16,+fhm --target=aarch64-unknown-linux-gnu
+//@ [aarch64] needs-llvm-components: aarch64
+//@ [x86-64] compile-flags: -Ctarget-feature=+sse4.2,+rdrand --target=x86_64-unknown-linux-gnu
+//@ [x86-64] needs-llvm-components: x86
+//@ build-pass
 #![no_core]
 #![crate_type = "rlib"]
 #![feature(intrinsics, rustc_attrs, no_core, lang_items, staged_api)]

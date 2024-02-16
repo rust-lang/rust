@@ -1,11 +1,11 @@
-// revisions: stable unstable
+//@ revisions: stable unstable
 
 #![cfg_attr(unstable, feature(unstable))] // The feature from the ./auxiliary/staged-api.rs file.
 #![feature(const_trait_impl, effects)]
 #![feature(staged_api)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-// aux-build: staged-api.rs
+//@ aux-build: staged-api.rs
 extern crate staged_api;
 
 use staged_api::*;

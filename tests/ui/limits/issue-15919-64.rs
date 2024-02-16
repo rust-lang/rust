@@ -1,5 +1,5 @@
-// build-fail
-// ignore-32bit
+//@ build-fail
+//@ ignore-32bit
 
 fn main() {
     let x = [0usize; 0xffff_ffff_ffff_ffff]; //~ ERROR too big

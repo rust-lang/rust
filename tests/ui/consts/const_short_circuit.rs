@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const _: bool = false && false;
 const _: bool = true && false;

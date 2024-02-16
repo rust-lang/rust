@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn foo(s: &String) -> bool {
     match &**s {

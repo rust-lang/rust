@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -Zmir-opt-level=3
+//@ build-pass
+//@ compile-flags: -Zmir-opt-level=3
 // Overflow can't be detected by const prop
 // could only be detected after optimizations
 

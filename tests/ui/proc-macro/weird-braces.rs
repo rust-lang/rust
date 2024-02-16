@@ -1,6 +1,6 @@
-// aux-build:test-macros.rs
-// check-pass
-// compile-flags: -Z span-debug
+//@ aux-build:test-macros.rs
+//@ check-pass
+//@ compile-flags: -Z span-debug
 
 #![feature(custom_inner_attributes)]
 

@@ -1,4 +1,4 @@
-// aux-build:internal_unstable.rs
+//@ aux-build:internal_unstable.rs
 
 #![feature(allow_internal_unstable)]
 #[allow(dead_code)]

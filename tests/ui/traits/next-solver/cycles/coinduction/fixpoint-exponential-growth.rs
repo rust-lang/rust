@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 
 // Proving `W<?0>: Trait` instantiates `?0` with `(W<?1>, W<?2>)` and then
 // proves `W<?1>: Trait` and `W<?2>: Trait`, resulting in a coinductive cycle.

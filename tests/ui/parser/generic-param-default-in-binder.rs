@@ -1,7 +1,7 @@
 // Check that defaults for generic parameters in `for<...>` binders are
 // syntactically valid. See also PR #119042.
 
-// check-pass
+//@ check-pass
 
 macro_rules! a { ($ty:ty) => {} }
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(core_intrinsics)]
 
 use std::intrinsics::{fadd_fast, fsub_fast, fmul_fast, fdiv_fast, frem_fast};

@@ -1,4 +1,4 @@
-// aux-build:cci_class.rs
+//@ aux-build:cci_class.rs
 extern crate cci_class;
 use cci_class::kitties::cat;
 

@@ -13,7 +13,7 @@ If you don't know the basics of Rust, you can look at the
 [Rust Book][rust-book] to get started.
 
 [rust-book]: https://doc.rust-lang.org/book/
-"},"level":"error","spans":[{"file_name":"$DIR/json-short.rs","byte_start":62,"byte_end":62,"line_start":1,"line_end":1,"column_start":63,"column_end":63,"is_primary":true,"text":[{"text":"// compile-flags: --json=diagnostic-short --error-format=json","highlight_start":63,"highlight_end":63}],"label":"consider adding a `main` function to `$DIR/json-short.rs`","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":"$DIR/json-short.rs:1:63: error[E0601]: `main` function not found in crate `json_short`
+"},"level":"error","spans":[{"file_name":"$DIR/json-short.rs","byte_start":63,"byte_end":63,"line_start":1,"line_end":1,"column_start":64,"column_end":64,"is_primary":true,"text":[{"text":"//@ compile-flags: --json=diagnostic-short --error-format=json","highlight_start":64,"highlight_end":64}],"label":"consider adding a `main` function to `$DIR/json-short.rs`","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[],"rendered":"$DIR/json-short.rs:1:64: error[E0601]: `main` function not found in crate `json_short`
 "}
 {"$message_type":"diagnostic","message":"aborting due to 1 previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to 1 previous error
 "}

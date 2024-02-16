@@ -5,9 +5,9 @@
 // if we do it just once. In this variant, the region `'a` is used in
 // an contravariant position, which affects the results.
 
-// revisions: ok oneuse transmute krisskross
-//[ok] check-pass
-//[oneuse] check-pass
+//@ revisions: ok oneuse transmute krisskross
+//@[ok] check-pass
+//@[oneuse] check-pass
 
 #![allow(dead_code, unused_variables)]
 

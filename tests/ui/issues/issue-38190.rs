@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:issue-38190.rs
+//@ run-pass
+//@ aux-build:issue-38190.rs
 
 #[macro_use]
 extern crate issue_38190;

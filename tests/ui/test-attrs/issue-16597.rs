@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
-// compile-flags:--test
+//@ compile-flags:--test
 
 mod tests {
     use super::*;

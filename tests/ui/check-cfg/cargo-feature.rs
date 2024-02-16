@@ -2,14 +2,14 @@
 // suggest adding some in the Cargo.toml instead of vomitting a
 // list of all the expected names
 //
-// check-pass
-// revisions: some none
-// rustc-env:CARGO=/usr/bin/cargo
-// compile-flags: -Z unstable-options
-// [none]compile-flags: --check-cfg=cfg(feature,values())
-// [some]compile-flags: --check-cfg=cfg(feature,values("bitcode"))
-// [some]compile-flags: --check-cfg=cfg(CONFIG_NVME,values("y"))
-// [none]error-pattern:Cargo.toml
+//@ check-pass
+//@ revisions: some none
+//@ rustc-env:CARGO=/usr/bin/cargo
+//@ compile-flags: -Z unstable-options
+//@ [none]compile-flags: --check-cfg=cfg(feature,values())
+//@ [some]compile-flags: --check-cfg=cfg(feature,values("bitcode"))
+//@ [some]compile-flags: --check-cfg=cfg(CONFIG_NVME,values("y"))
+//@ [none]error-pattern:Cargo.toml
 
 #[cfg(feature = "serde")]
 //~^ WARNING unexpected `cfg` condition value

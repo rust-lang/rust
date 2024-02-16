@@ -1,4 +1,4 @@
-// ignore-wasm32-bare no libc to test ffi with
+//@ ignore-wasm32-bare no libc to test ffi with
 
 #![feature(rustc_private)]
 

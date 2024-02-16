@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code, unused_variables, path_statements)]
 fn a() {
     let x = 5;

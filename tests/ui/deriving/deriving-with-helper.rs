@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: --crate-type=lib
+//@ check-pass
+//@ compile-flags: --crate-type=lib
 
 #![feature(decl_macro)]
 #![feature(lang_items)]

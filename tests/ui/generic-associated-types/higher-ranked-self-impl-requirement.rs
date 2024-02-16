@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Database: for<'r> HasValueRef<'r, Database = Self> {}
 

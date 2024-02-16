@@ -1,5 +1,5 @@
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 struct S;
 

@@ -1,8 +1,8 @@
 // This used to cause an ICE for an internal index out of range due to simd_shuffle_indices being
 // passed the wrong Instance, causing issues with inlining. See #67557.
 //
-// run-pass
-// compile-flags: -Zmir-opt-level=4
+//@ run-pass
+//@ compile-flags: -Zmir-opt-level=4
 #![feature(platform_intrinsics, repr_simd)]
 
 extern "platform-intrinsic" {

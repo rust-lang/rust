@@ -1,5 +1,5 @@
-// aux-build:foreign-crate.rs
-// check-pass
+//@ aux-build:foreign-crate.rs
+//@ check-pass
 
 extern crate foreign_crate;
 

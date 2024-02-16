@@ -1,6 +1,6 @@
-// ignore-pass
-// build-pass
-// edition:2021
+//@ ignore-pass
+//@ build-pass
+//@ edition:2021
 use std::future::Future;
 use std::pin::Pin;
 

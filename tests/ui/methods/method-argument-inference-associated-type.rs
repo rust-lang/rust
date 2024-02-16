@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub struct ClientMap;
 pub struct ClientMap2;
 

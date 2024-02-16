@@ -1,4 +1,4 @@
-// aux-build:dropck_eyepatch_extern_crate.rs
+//@ aux-build:dropck_eyepatch_extern_crate.rs
 
 // The point of this test is to illustrate that the `#[may_dangle]`
 // attribute specifically allows, in the context of a type

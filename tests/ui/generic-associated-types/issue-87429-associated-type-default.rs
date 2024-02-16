@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #![feature(associated_type_defaults)]
 

@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(unused_unsafe)]
 #![allow(unused_variables)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub struct Fd(u32);
 

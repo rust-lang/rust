@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #84366
+//@ check-pass
+//@ known-bug: #84366
 
 // Should fail. Associated types of 'static types should be `'static`, but
 // argument-free closures can be `'static` and return non-`'static` types.

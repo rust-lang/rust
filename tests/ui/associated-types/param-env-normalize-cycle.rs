@@ -9,7 +9,7 @@
 // - But first we tried normalizing the whole obligation, including the
 //   ParamEnv, which leads to a cycle error.
 
-// check-pass
+//@ check-pass
 
 trait PrivateSquareRoot {}
 

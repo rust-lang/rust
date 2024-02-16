@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Tests that if a closure uses individual fields of the same object
 // then that case is handled properly.

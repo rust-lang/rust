@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(named_arguments_used_positionally)]
 
 fn main() {

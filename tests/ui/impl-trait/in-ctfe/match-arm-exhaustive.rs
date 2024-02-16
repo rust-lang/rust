@@ -1,5 +1,5 @@
 //! Check that pattern matching can observe the hidden type of opaque types.
-// check-pass
+//@ check-pass
 trait MyTrait: Copy {
     const ASSOC: u8;
 }

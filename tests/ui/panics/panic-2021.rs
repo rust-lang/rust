@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 fn main() {
     panic!(123); //~ ERROR: format argument must be a string literal

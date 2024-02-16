@@ -1,7 +1,7 @@
-// check-pass
+//@ check-pass
 // issue: 114035
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(trait_upcasting)]
 

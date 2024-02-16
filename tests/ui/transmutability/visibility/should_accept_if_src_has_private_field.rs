@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! The presence of a private field in the source type does not affect
 //! transmutability.
 

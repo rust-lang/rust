@@ -1,5 +1,5 @@
-// needs-llvm-components: x86
-// compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
+//@ needs-llvm-components: x86
+//@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang="sized"]

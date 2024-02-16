@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub fn foo(x: i8) -> i32 {
   match x {
     1 => 0,

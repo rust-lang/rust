@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-// check-pass
+//@ check-pass
 
 pub trait Foo {}
 

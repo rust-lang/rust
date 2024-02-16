@@ -1,4 +1,4 @@
-// aux-build:const-stability-attribute-implies.rs
+//@ aux-build:const-stability-attribute-implies.rs
 #![crate_type = "lib"]
 
 // Tests that despite the `const_foobar` feature being implied by now-stable feature `const_foo`,

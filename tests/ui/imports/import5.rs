@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use foo::bar;
 mod foo {
     pub use foo::zed::bar;

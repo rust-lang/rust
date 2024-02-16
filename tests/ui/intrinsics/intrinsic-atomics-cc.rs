@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_intrinsic.rs
+//@ run-pass
+//@ aux-build:cci_intrinsic.rs
 
 
 extern crate cci_intrinsic;

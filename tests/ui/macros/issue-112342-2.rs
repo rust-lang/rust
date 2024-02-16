@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // same as #95267, ignore doc comment although it's a bug.
 

@@ -1,5 +1,5 @@
 // Resgression test for #107516.
-// check-pass
+//@ check-pass
 
 fn iter1<'a: 'a>() -> impl Iterator<Item = &'static str> {
     None.into_iter()

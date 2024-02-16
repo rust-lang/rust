@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:auto_xc_2.rs
+//@ run-pass
+//@ aux-build:auto_xc_2.rs
 
 
 extern crate auto_xc_2 as aux;

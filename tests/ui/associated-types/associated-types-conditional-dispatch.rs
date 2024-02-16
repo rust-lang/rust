@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 // Test that we evaluate projection predicates to winnow out
 // candidates during trait selection and method resolution (#20296).
 // If we don't properly winnow out candidates based on the output type
 // `Target=[A]`, then the impl marked with `(*)` is seen to conflict
 // with all the others.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::marker::PhantomData;
 use std::ops::Deref;

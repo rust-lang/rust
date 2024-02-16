@@ -1,7 +1,7 @@
 // Test that `Box<T>` is treated specially by borrow checking. This is the case
 // because NLL reverted the deicision in rust-lang/rfcs#130.
 
-// run-pass
+//@ run-pass
 
 struct A {
     x: Box<isize>,

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 static A: usize = 42;
 static B: usize = A;

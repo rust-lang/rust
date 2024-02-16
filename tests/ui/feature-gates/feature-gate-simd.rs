@@ -1,4 +1,4 @@
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #[repr(simd)] //~ ERROR SIMD types are experimental
 struct RGBA {

@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-// compile-flags: --edition 2018
+//@ compile-flags: --edition 2018
 
 #![feature(try_blocks)]
 

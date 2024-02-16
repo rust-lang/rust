@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 pub trait Foo {
     type FooAssoc;

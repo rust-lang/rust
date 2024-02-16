@@ -1,6 +1,6 @@
-// run-fail
-// check-run-results
-// exec-env:RUST_BACKTRACE=0
+//@ run-fail
+//@ check-run-results
+//@ exec-env:RUST_BACKTRACE=0
 
 // Test that we format the panic message only once.
 // Regression test for https://github.com/rust-lang/rust/issues/110717

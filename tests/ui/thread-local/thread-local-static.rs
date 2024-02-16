@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 #![feature(thread_local)]
 #![feature(const_swap)]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Fast path, main can see the concrete type returned.
 fn before() -> impl FnMut(i32) {

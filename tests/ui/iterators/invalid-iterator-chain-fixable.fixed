@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 use std::collections::hash_set::Iter;
 use std::collections::HashSet;
 

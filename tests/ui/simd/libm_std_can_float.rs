@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // This is the converse of the other libm test.
 #![feature(portable_simd)]

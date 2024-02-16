@@ -3,7 +3,7 @@
 // `Self::Repr: From<_>`, which is ambiguous until we later infer `_` to
 // `{integer}`.
 
-// check-pass
+//@ check-pass
 
 trait PrimeField: Sized {
     type Repr: From<u64> + From<Self>;

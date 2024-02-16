@@ -1,6 +1,6 @@
-// run-pass
-// edition: 2024
-// compile-flags: -Zunstable-options
+//@ run-pass
+//@ edition: 2024
+//@ compile-flags: -Zunstable-options
 #![feature(async_iterator, async_iter_from_iter, const_waker, async_for_loop, noop_waker,
            gen_blocks)]
 

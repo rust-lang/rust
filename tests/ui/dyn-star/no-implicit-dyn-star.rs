@@ -1,4 +1,4 @@
-// aux-build:dyn-star-foreign.rs
+//@ aux-build:dyn-star-foreign.rs
 
 extern crate dyn_star_foreign;
 

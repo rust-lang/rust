@@ -1,4 +1,4 @@
-// normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 #![feature(never_type, rustc_attrs, type_alias_impl_trait, repr_simd)]
 #![crate_type = "lib"]
 

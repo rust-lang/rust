@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait Foo { //~ WARN trait `Foo` is never used
     fn new() -> bool { false }

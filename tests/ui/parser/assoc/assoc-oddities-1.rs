@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only
+//@ compile-flags: -Z parse-only
 
 fn main() {
     // following lines below parse and must not fail

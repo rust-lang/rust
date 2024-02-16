@@ -1,5 +1,5 @@
-// check-pass
-// edition:2015
+//@ check-pass
+//@ edition:2015
 
 use {};
 use {{}};

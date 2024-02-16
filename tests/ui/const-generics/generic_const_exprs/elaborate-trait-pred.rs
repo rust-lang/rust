@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we use the elaborated predicates from traits
 // to satisfy const evaluatable predicates.
 #![feature(generic_const_exprs)]

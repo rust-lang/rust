@@ -1,10 +1,10 @@
-// build-fail
-// revisions: legacy v0
-// compile-flags: --crate-name=c
-//[legacy]compile-flags: -C symbol-mangling-version=legacy -Z unstable-options
-//    [v0]compile-flags: -C symbol-mangling-version=v0
-//[legacy]normalize-stderr-test: "h[[:xdigit:]]{16}" -> "h[HASH]"
-//    [v0]normalize-stderr-test: "c\[.*?\]" -> "c[HASH]"
+//@ build-fail
+//@ revisions: legacy v0
+//@ compile-flags: --crate-name=c
+//@[legacy]compile-flags: -C symbol-mangling-version=legacy -Z unstable-options
+//@    [v0]compile-flags: -C symbol-mangling-version=v0
+//@[legacy]normalize-stderr-test: "h[[:xdigit:]]{16}" -> "h[HASH]"
+//@    [v0]normalize-stderr-test: "c\[.*?\]" -> "c[HASH]"
 #![feature(rustc_attrs)]
 
 pub struct Unsigned<const F: u8>;

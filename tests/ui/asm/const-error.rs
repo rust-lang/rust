@@ -1,5 +1,5 @@
-// only-x86_64
-// needs-asm-support
+//@ only-x86_64
+//@ needs-asm-support
 
 #![feature(asm_const)]
 

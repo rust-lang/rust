@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:transparent-basic.rs
+//@ check-pass
+//@ aux-build:transparent-basic.rs
 
 #![feature(decl_macro, rustc_attrs)]
 

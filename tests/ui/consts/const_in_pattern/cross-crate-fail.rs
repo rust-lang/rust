@@ -1,4 +1,4 @@
-// aux-build:consts.rs
+//@ aux-build:consts.rs
 
 #![warn(indirect_structural_match)]
 

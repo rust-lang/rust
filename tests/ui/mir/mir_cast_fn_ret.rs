@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn tuple2() -> (u16, u8) {
     (1, 2)

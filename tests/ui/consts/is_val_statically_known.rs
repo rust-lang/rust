@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(core_intrinsics, is_val_statically_known)]
 

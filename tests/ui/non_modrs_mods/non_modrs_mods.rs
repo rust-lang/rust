@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 //
 pub mod modrs_mod;
 pub mod foors_mod;

@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that if we deref an immutable borrow to access a Place,
 // then we can't mutate the final place.

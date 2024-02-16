@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test using overloaded indexing when the "map" is stored in a
 // field. This caused problems at some point.
 

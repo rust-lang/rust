@@ -1,5 +1,5 @@
-// only-x86_64
-// check-fail
+//@ only-x86_64
+//@ check-fail
 
 #![feature(lang_items, no_core, target_feature_11)]
 #![no_core]

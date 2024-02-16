@@ -1,5 +1,5 @@
 #![feature(const_trait_impl, effects)]
-// edition: 2021
+//@ edition: 2021
 
 #[const_trait]
 trait Trait {}

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for #23698: The reassignment checker only cared
 // about the last assignment in a match arm body
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(improper_ctypes_definitions)]
 #![feature(unsized_tuple_coercion)]
 #![feature(unsized_fn_params)]

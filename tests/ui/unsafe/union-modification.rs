@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 union Foo {
     bar: i8,
     _blah: isize,

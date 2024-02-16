@@ -1,5 +1,5 @@
-// incremental
-// edition: 2021
+//@ incremental
+//@ edition: 2021
 
 use std::future::*;
 use std::marker::PhantomData;

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:fn-aux.rs
+//@ run-pass
+//@ aux-build:fn-aux.rs
 
 #![feature(associated_type_bounds)]
 

@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as

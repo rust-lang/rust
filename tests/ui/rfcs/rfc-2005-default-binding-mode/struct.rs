@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(Debug, PartialEq)]
 struct Foo {
     x: u8,

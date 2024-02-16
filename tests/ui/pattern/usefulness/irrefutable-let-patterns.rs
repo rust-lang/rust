@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(irrefutable_let_patterns)]
 

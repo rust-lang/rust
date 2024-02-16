@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@ check-pass
+//@ run-rustfix
 
 fn main() {
     println!("Hello {:.1}!", f = 0.02f32);

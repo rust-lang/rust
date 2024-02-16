@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zmir-opt-level=3
+//@ check-pass
+//@ compile-flags: -Zmir-opt-level=3
 
 #![feature(type_alias_impl_trait)]
 

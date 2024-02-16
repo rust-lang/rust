@@ -1,5 +1,5 @@
-// check-pass
-// edition: 2021
+//@ check-pass
+//@ edition: 2021
 
 // regression test for #117059
 struct SendNotSync(*const ());

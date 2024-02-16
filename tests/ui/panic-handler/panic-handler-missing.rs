@@ -1,5 +1,5 @@
-// dont-check-compiler-stderr
-// error-pattern: `#[panic_handler]` function required, but not found
+//@ dont-check-compiler-stderr
+//@ error-pattern: `#[panic_handler]` function required, but not found
 
 #![feature(lang_items)]
 #![no_main]

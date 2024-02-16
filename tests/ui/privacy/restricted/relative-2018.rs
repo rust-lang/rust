@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 mod m {
     pub(in crate) struct S1; // OK

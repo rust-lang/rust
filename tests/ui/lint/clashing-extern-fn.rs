@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:external_extern_fn.rs
+//@ check-pass
+//@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
 #![warn(clashing_extern_declarations)]
 

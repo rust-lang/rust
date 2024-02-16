@@ -1,4 +1,4 @@
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 // Tests closures that propagate an outlives relationship to their
 // creator where the subject is a projection with no regions (`<T as

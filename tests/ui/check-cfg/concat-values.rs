@@ -1,7 +1,7 @@
-// check-pass
-// compile-flags: -Z unstable-options
-// compile-flags: --check-cfg=cfg(my_cfg,values("foo")) --check-cfg=cfg(my_cfg,values("bar"))
-// compile-flags: --check-cfg=cfg(my_cfg,values())
+//@ check-pass
+//@ compile-flags: -Z unstable-options
+//@ compile-flags: --check-cfg=cfg(my_cfg,values("foo")) --check-cfg=cfg(my_cfg,values("bar"))
+//@ compile-flags: --check-cfg=cfg(my_cfg,values())
 
 #[cfg(my_cfg)]
 //~^ WARNING unexpected `cfg` condition value

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 struct N;
 
 struct Foo<const N: usize = 1, T = N>(T);

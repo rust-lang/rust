@@ -1,5 +1,5 @@
-// edition:2018
-// compile-flags: --crate-type lib
+//@ edition:2018
+//@ compile-flags: --crate-type lib
 
 async fn no_move_across_await_struct() -> Vec<usize> {
     let s = Small { x: vec![31], y: vec![19, 1441] };

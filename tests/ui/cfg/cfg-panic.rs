@@ -1,6 +1,6 @@
-// build-pass
-// compile-flags: -C panic=unwind
-// needs-unwind
+//@ build-pass
+//@ compile-flags: -C panic=unwind
+//@ needs-unwind
 
 
 #[cfg(panic = "abort")]

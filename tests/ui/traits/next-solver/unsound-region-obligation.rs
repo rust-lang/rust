@@ -1,5 +1,5 @@
 //~ ERROR the type `<() as StaticTy>::Item<'a>` does not fulfill the required lifetime
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 // Regression test for rust-lang/trait-system-refactor-initiative#59
 
 trait StaticTy {

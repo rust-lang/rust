@@ -3,7 +3,7 @@
 // This test makes sure that multiple marker (method-less) traits can reuse the
 // same pointer for upcasting.
 //
-// build-fail
+//@ build-fail
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 

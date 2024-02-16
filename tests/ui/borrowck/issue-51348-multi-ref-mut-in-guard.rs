@@ -6,7 +6,7 @@
 // trying to double check that we are matching against the right part
 // of the input data based on which candidate pattern actually fired.
 
-// run-pass
+//@ run-pass
 
 fn foo(x: &mut Result<(u32, u32), (u32, u32)>) -> u32 {
     match *x {

@@ -1,7 +1,7 @@
 // Test that assignments to an `&mut` pointer which is found in a
 // borrowed (but otherwise non-aliasable) location is illegal.
 
-// compile-flags: -C overflow-checks=off
+//@ compile-flags: -C overflow-checks=off
 
 struct S<'a> {
     pointer: &'a mut isize

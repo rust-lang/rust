@@ -1,7 +1,7 @@
 // Test explores how `#[structral_match]` behaves in tandem with
 // `*const` and `*mut` pointers.
 
-// run-pass
+//@ run-pass
 
 #![warn(pointer_structural_match)]
 

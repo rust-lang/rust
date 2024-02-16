@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options
+//@ compile-flags: -Z unstable-options
 // NOTE: This test doesn't actually require `fulldeps`
 // so we could instead use it as a `ui` test.
 //

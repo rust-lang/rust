@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(if_let_guard, let_chains)]
 

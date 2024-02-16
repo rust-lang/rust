@@ -3,7 +3,7 @@
 #![allow(unused_variables)]
 #![allow(dropping_references)]
 
-// run-pass
+//@ run-pass
 
 fn arr_by_ref(x: [String; 3]) {
     let r = &x;

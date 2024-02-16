@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 // Regression test for #24085. Errors were occurring in region
 // inference due to the requirement that `'a:b'`, which was getting

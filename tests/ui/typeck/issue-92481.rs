@@ -1,4 +1,4 @@
-//check-fail
+//@check-fail
 
 #![crate_type="lib"]
 

@@ -12,7 +12,7 @@
 //
 // The test is much cleaner if we deduplicate, though.
 
-// compile-flags: -Z deduplicate-diagnostics=yes
+//@ compile-flags: -Z deduplicate-diagnostics=yes
 
 #![forbid(unused, non_snake_case)]
 #![forbid(forbidden_lint_groups)]

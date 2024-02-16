@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 #[macro_export]
 macro_rules! produces_async {

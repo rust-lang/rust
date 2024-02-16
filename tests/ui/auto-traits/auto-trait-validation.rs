@@ -1,7 +1,7 @@
 #![feature(auto_traits)]
 #![allow(dead_code)]
 
-// run-rustfix
+//@ run-rustfix
 
 auto trait Generic<T> {}
 //~^ auto traits cannot have generic parameters [E0567]

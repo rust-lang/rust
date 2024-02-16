@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 fn main() {
     let mut log_service = LogService { inner: Inner };

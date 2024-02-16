@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Check that method matching does not make "guesses" depending on
 // Deref impls that don't eventually end up being picked.
 

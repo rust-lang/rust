@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn make<T>() -> T {
     panic!()

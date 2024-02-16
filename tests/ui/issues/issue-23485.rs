@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
 // Test for an ICE that occurred when a default method implementation
 // was applied to a type that did not meet the prerequisites. The

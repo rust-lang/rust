@@ -1,5 +1,5 @@
 // FIXME: add support for `// only-atomic` to compiletest/header.rs
-// only-x86_64
+//@ only-x86_64
 use std::sync::atomic::{AtomicI16, AtomicI32, AtomicI64, AtomicI8, AtomicIsize, Ordering};
 
 fn main() {

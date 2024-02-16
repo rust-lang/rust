@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unreachable_code)]
-// compile-flags: --edition 2018
+//@ compile-flags: --edition 2018
 
 #![feature(try_blocks)]
 

@@ -1,8 +1,8 @@
 // Ensure the output of `std::any::type_name` does not change based on `-Zverbose-internals`
-// run-pass
-// edition: 2018
-// revisions: normal verbose
-// [verbose]compile-flags:-Zverbose-internals --verbose
+//@ run-pass
+//@ edition: 2018
+//@ revisions: normal verbose
+//@ [verbose]compile-flags:-Zverbose-internals --verbose
 
 use std::any::type_name;
 

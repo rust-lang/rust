@@ -1,5 +1,5 @@
-// needs-llvm-components: msp430
-// compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ needs-llvm-components: msp430
+//@ compile-flags: --target=msp430-none-elf --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
 #[lang="sized"]

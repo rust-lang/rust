@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(PartialEq, Hash, Debug)]
 struct Foo<T> {
     x: isize,

@@ -1,6 +1,6 @@
-// check-pass
+//@ check-pass
 
-// edition:2021
+//@ edition:2021
 // for the `impl` + keyword test
 
 macro_rules! impl_primitive {

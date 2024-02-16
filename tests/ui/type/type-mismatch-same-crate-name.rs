@@ -1,5 +1,5 @@
-// aux-build:crate_a1.rs
-// aux-build:crate_a2.rs
+//@ aux-build:crate_a1.rs
+//@ aux-build:crate_a2.rs
 
 // This tests the extra note reported when a type error deals with
 // seemingly identical types.

@@ -1,4 +1,4 @@
-// aux-build: rustc_confusables_across_crate.rs
+//@ aux-build: rustc_confusables_across_crate.rs
 
 #![feature(rustc_attrs)]
 

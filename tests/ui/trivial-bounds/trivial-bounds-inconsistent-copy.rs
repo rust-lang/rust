@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Check tautalogically false `Copy` bounds
 
 #![feature(trivial_bounds)]

@@ -1,4 +1,4 @@
-// aux-build:hidden-child.rs
+//@ aux-build:hidden-child.rs
 
 // FIXME(compiler-errors): This currently suggests the wrong thing.
 // UI test exists to track the problem.

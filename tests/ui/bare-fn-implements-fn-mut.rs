@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn call_f<F:FnMut()>(mut f: F) {
     f();

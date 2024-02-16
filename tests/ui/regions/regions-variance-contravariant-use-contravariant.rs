@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test that a type which is contravariant with respect to its region
@@ -7,7 +7,7 @@
 // Note: see ui/variance/variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 struct Contravariant<'a> {
     f: &'a isize

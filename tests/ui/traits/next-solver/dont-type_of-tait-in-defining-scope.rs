@@ -1,5 +1,5 @@
-// revisions: is_send not_send
-// compile-flags: -Znext-solver
+//@ revisions: is_send not_send
+//@ compile-flags: -Znext-solver
 
 #![feature(type_alias_impl_trait)]
 

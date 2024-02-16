@@ -1,6 +1,6 @@
 // This test ensures that or patterns do not allow missing bindings in any of the arms.
 
-// edition:2018
+//@ edition:2018
 
 #![allow(non_camel_case_types)]
 

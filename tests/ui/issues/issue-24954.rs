@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! foo {
     ($y:expr) => ({
         $y = 2;

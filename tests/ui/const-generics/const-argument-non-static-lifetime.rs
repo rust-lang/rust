@@ -1,5 +1,5 @@
-// [full] check-pass
-// revisions: full min
+//@ [full] check-pass
+//@ revisions: full min
 
 // regression test for #78180
 

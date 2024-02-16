@@ -1,4 +1,4 @@
-// edition: 2018
+//@ edition: 2018
 
 #![feature(lang_items, no_core)]
 #![no_core]

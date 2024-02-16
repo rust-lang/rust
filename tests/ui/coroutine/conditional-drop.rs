@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 
-// revisions: default nomiropt
-//[nomiropt]compile-flags: -Z mir-opt-level=0
+//@ revisions: default nomiropt
+//@[nomiropt]compile-flags: -Z mir-opt-level=0
 
 #![feature(coroutines, coroutine_trait)]
 

@@ -3,7 +3,7 @@
 // This test detected that we didn't correctly resolve
 // inference variables when computing implied bounds.
 //
-// check-pass
+//@ check-pass
 pub trait BuilderFn<'a> {
     type Output;
 }

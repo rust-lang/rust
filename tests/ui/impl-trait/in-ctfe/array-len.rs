@@ -1,5 +1,5 @@
 //! Check that array lengths can observe associated types of opaque types
-// check-pass
+//@ check-pass
 trait MyTrait: Copy {
     const ASSOC: usize;
 }

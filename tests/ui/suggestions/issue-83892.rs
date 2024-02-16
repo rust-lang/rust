@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn func() -> u8 {
     0

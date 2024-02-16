@@ -1,7 +1,7 @@
-// run-pass
-// revisions: opt noopt
-//[noopt] compile-flags: -Copt-level=0
-//[opt] compile-flags: -O
+//@ run-pass
+//@ revisions: opt noopt
+//@[noopt] compile-flags: -Copt-level=0
+//@[opt] compile-flags: -O
 #![feature(repr_simd, platform_intrinsics)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]

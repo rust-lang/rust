@@ -1,3 +1,3 @@
-// run-pass
+//@ run-pass
 
 pub fn foo() {}

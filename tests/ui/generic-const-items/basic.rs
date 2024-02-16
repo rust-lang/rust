@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Basic usage patterns of free & associated generic const items.
 

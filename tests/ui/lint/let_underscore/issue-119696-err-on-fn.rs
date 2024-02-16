@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 #![deny(let_underscore_drop)]
 fn main() {

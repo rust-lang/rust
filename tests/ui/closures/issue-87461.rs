@@ -1,6 +1,6 @@
 // Regression test for #87461.
 
-// edition:2021
+//@ edition:2021
 
 async fn func() -> Result<u16, u64> {
     let _ = async {

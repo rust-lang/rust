@@ -1,6 +1,6 @@
 // Test that we do NOT warn for inherent methods invoked via `T::` form.
 //
-// check-pass
+//@ check-pass
 
 #![deny(rust_2021_prelude_collisions)]
 

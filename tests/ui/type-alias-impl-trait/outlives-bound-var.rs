@@ -2,7 +2,7 @@
 // opaque types with bound vars in substs.
 // This was an ICE.
 //
-// check-pass
+//@ check-pass
 #![feature(type_alias_impl_trait)]
 
 type Ty<'a> = impl Sized + 'a;

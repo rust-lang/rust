@@ -3,8 +3,8 @@
 // See issue-64391-2.rs for more details, as that was fixed by the
 // same PR.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 #[derive(Debug)]
 struct A<'a> {

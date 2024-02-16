@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 
 // Test that we don't incorrectly leak unconstrained inference variables
 // if the projection contained an error. This caused an ICE in writeback.

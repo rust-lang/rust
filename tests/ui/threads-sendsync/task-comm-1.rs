@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
-// ignore-emscripten no threads support
+//@ ignore-emscripten no threads support
 
 use std::thread;
 

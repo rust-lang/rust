@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(fn_traits,
            step_trait,

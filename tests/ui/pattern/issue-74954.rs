@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn main() {
     if let Some([b'@', filename @ ..]) = Some(b"@abc123") {

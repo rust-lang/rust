@@ -1,7 +1,7 @@
-// run-pass
-// edition:2021
-// revisions: afn cls nofeat
-// needs-unwind
+//@ run-pass
+//@ edition:2021
+//@ revisions: afn cls nofeat
+//@ needs-unwind
 // gate-test-async_fn_track_caller
 #![feature(async_closure, stmt_expr_attributes)]
 #![cfg_attr(afn, feature(async_fn_track_caller))]

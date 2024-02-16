@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test DST raw pointers
 
 

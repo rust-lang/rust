@@ -1,5 +1,5 @@
-// ignore-64bit
-// build-fail
+//@ ignore-64bit
+//@ build-fail
 
 fn main() {
     let x = [0usize; 0xffff_ffff]; //~ ERROR too big

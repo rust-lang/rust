@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Trait<T> {
     const ASSOC_CONST: usize = 0;

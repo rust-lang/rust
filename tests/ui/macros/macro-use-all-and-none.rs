@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:two_macros-rpass.rs
+//@ run-pass
+//@ aux-build:two_macros-rpass.rs
 
 #![warn(unused_attributes)]
 

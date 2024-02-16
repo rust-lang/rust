@@ -1,5 +1,5 @@
-// revisions: no yes
-//[yes] check-pass
+//@ revisions: no yes
+//@[yes] check-pass
 
 // Issue 110557
 

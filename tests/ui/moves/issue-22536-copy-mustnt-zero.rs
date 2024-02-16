@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for Issue #22536: If a type implements Copy, then
 // moving it must not zero the original memory.
 

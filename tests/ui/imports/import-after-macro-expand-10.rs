@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 mod b {
     pub mod http {

@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // Regression test for issue #10682
 // Nested `proc` usage can't use outer owned data
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn work(_: Box<isize>) {}
 fn foo<F:FnOnce()>(_: F) {}

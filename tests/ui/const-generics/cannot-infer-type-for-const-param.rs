@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This test confirms that the types can be inferred correctly for this example with const
 // generics. Previously this would ICE, and more recently error.

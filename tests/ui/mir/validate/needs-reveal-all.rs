@@ -5,8 +5,8 @@
 // We're using these flags to run the `RevealAll` pass while making it less likely to
 // accidentally removing the assignment from `Foo<fn_ptr>` to `Foo<fn_def>`.
 
-// compile-flags: -Zinline_mir=yes -Zmir-opt-level=0 -Zvalidate-mir
-// run-pass
+//@ compile-flags: -Zinline_mir=yes -Zmir-opt-level=0 -Zvalidate-mir
+//@ run-pass
 
 use std::hint::black_box;
 

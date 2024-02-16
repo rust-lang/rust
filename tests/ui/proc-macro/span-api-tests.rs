@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:span-api-tests.rs
-// aux-build:span-test-macros.rs
-// compile-flags: -Ztranslate-remapped-path-to-local-path=yes
+//@ run-pass
+//@ aux-build:span-api-tests.rs
+//@ aux-build:span-test-macros.rs
+//@ compile-flags: -Ztranslate-remapped-path-to-local-path=yes
 
 #[macro_use]
 extern crate span_test_macros;

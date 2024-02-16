@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Checks that the Fn trait hierarchy rules permit
 // FnMut or FnOnce to be used where FnMut is implemented.
 

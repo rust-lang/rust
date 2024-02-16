@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 enum Abc {
     A(#[allow(dead_code)] u8),
     B(#[allow(dead_code)] i8),

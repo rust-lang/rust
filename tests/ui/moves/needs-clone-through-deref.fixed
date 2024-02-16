@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code, noop_method_call)]
 use std::ops::Deref;
 struct S(Vec<usize>);

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn foo() -> impl MyTrait {
     panic!();

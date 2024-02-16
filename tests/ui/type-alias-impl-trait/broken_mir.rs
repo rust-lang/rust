@@ -4,8 +4,8 @@
 //! This test used to ICE because oli-obk assumed mir validation
 //! was only ever run after opaque types were revealed in MIR.
 
-// compile-flags: -Zvalidate-mir
-// check-pass
+//@ compile-flags: -Zvalidate-mir
+//@ check-pass
 
 fn main() {
     let _ = Some(()).into_iter().flat_map(|_| Some(()).into_iter().flat_map(func));

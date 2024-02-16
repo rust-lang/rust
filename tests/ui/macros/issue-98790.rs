@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 macro_rules! stringify_item {
     ($item:item) => {

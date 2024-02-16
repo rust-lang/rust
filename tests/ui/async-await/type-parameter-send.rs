@@ -1,6 +1,6 @@
-// check-pass
-// compile-flags: --crate-type lib
-// edition:2018
+//@ check-pass
+//@ compile-flags: --crate-type lib
+//@ edition:2018
 
 fn assert_send<F: Send>(_: F) {}
 

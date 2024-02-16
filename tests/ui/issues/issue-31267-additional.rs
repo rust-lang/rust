@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[derive(Clone, Copy, Debug)]
 struct Bar;

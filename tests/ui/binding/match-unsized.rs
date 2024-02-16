@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn main() {
     let data: &'static str = "Hello, World!";
     match data {

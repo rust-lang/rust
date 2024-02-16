@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::iter::{Fuse, Cloned};
 use std::slice::Iter;
 

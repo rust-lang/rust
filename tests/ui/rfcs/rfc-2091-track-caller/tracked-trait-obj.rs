@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait Tracked {
     #[track_caller]

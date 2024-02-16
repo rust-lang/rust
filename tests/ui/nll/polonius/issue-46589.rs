@@ -2,8 +2,8 @@
 // As we can't have a test here which conditionally passes depending on a test
 // revision/compile-flags. We ensure here that it passes in Polonius mode.
 
-// check-pass
-// compile-flags: -Z polonius
+//@ check-pass
+//@ compile-flags: -Z polonius
 
 struct Foo;
 

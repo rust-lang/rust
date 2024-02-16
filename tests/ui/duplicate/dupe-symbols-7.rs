@@ -1,7 +1,7 @@
-// build-fail
+//@ build-fail
 
 //
-// error-pattern: entry symbol `main` declared multiple times
+//@ error-pattern: entry symbol `main` declared multiple times
 
 #![allow(warnings)]
 

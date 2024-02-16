@@ -1,6 +1,6 @@
 // extra unused mut lint tests for #51918
 
-// check-pass
+//@ check-pass
 
 #![feature(coroutines)]
 #![deny(unused_mut)]

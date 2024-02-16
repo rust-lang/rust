@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 #![allow(unreachable_code)]
 #![feature(const_async_blocks)]

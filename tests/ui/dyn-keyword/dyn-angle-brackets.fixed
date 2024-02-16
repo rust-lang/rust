@@ -1,6 +1,6 @@
 // See https://github.com/rust-lang/rust/issues/88508
-// run-rustfix
-// edition:2018
+//@ run-rustfix
+//@ edition:2018
 #![deny(bare_trait_objects)]
 #![allow(dead_code)]
 #![allow(unused_imports)]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unreachable_code)]
 
 #[derive(PartialEq, Debug)]

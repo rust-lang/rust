@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
 //~^ ERROR expected identifier, found keyword `fn`

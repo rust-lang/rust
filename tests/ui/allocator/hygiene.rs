@@ -1,7 +1,7 @@
-// run-pass
-// no-prefer-dynamic
-// aux-build:custom.rs
-// aux-build:helper.rs
+//@ run-pass
+//@ no-prefer-dynamic
+//@ aux-build:custom.rs
+//@ aux-build:helper.rs
 
 #![allow(nonstandard_style)]
 

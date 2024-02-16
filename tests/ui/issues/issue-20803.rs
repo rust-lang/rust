@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ops::Add;
 
 fn foo<T>(x: T) -> <i32 as Add<T>>::Output where i32: Add<T> {

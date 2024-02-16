@@ -1,4 +1,4 @@
-// error-pattern: return
+//@ error-pattern: return
 
 fn f() -> isize { }
 

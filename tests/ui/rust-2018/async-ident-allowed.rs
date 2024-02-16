@@ -1,4 +1,4 @@
-// edition:2015
+//@ edition:2015
 
 #![deny(rust_2018_compatibility)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test a ZST enum whose dicriminant is ~0i128. This caused an ICE when casting to an i32.
 use std::hint::black_box;
 

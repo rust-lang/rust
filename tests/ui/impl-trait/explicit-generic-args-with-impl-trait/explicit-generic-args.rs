@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn foo<T: ?Sized>(_f: impl AsRef<T>) {}
 
