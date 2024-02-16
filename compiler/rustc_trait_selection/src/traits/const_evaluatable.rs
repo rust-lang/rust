@@ -62,14 +62,12 @@ pub fn is_const_evaluatable<'tcx>(
 
         match unexpanded_ct.kind() {
             ty::ConstKind::Expr(_) => {
+                // njn: ?
                 // FIXME(generic_const_exprs): we have a `ConstKind::Expr` which is fully concrete,
                 // but currently it is not possible to evaluate `ConstKind::Expr` so we are unable
                 // to tell if it is evaluatable or not. For now we just ICE until this is
                 // implemented.
-                Err(NotConstEvaluatable::Error(tcx.dcx().span_delayed_bug(
-                    span,
-                    "evaluating `ConstKind::Expr` is not currently supported",
-                )))
+                tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
             ty::ConstKind::Unevaluated(uv) => {
                 let concrete = infcx.const_eval_resolve(param_env, uv, Some(span));

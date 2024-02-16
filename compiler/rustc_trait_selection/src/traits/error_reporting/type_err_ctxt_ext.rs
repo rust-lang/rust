@@ -3313,7 +3313,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         expected_trait_ref.self_ty().error_reported()?;
 
         let Some(found_trait_ty) = found_trait_ref.self_ty().no_bound_vars() else {
-            return Err(self.dcx().delayed_bug("bound vars outside binder"));
+            self.dcx().bug("bound vars outside binder");
         };
 
         let found_did = match *found_trait_ty.kind() {

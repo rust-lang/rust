@@ -1088,10 +1088,8 @@ fn check_type_defn<'tcx>(
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
-                        tcx.dcx()
-                            .span_delayed_bug(item.span, format!("inference variables in {ty:?}"));
-                        // Just treat unresolved type expression as if it needs drop.
-                        true
+                        // Unresolved type expression.
+                        tcx.dcx().span_bug(item.span, format!("inference variables in {ty:?}"));
                     } else {
                         ty.needs_drop(tcx, tcx.param_env(item.owner_id))
                     }

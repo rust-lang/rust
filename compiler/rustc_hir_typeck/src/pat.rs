@@ -1085,10 +1085,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let variant = match res {
             Res::Err => {
-                let e = tcx.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
-                self.set_tainted_by_errors(e);
-                on_error(e);
-                return Ty::new_error(tcx, e);
+                tcx.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
             }
             Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
                 let e = report_unexpected_res(res);

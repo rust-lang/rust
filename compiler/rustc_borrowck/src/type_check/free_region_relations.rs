@@ -316,8 +316,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx, span)
                 else {
-                    tcx.dcx().span_delayed_bug(span, format!("failed to normalize {ty:?}"));
-                    continue;
+                    tcx.dcx().span_bug(span, format!("failed to normalize {ty:?}"));
                 };
                 constraints.extend(c);
 

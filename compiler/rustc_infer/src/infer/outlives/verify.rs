@@ -175,11 +175,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // Ignore this, we presume it will yield an error later, since
                 // if a type variable is not resolved by this point it never
                 // will be.
-                self.tcx
-                    .dcx()
-                    .delayed_bug(format!("unresolved inference variable in outlives: {v:?}"));
-                // Add a bound that never holds.
-                VerifyBound::AnyBound(vec![])
+                self.tcx.dcx().bug(format!("unresolved inference variable in outlives: {v:?}"));
             }
         }
     }

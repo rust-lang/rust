@@ -393,11 +393,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def) {
                     Ok(ecx.tcx.mir_for_ctfe(def))
                 } else if ecx.tcx.def_kind(def) == DefKind::AssocConst {
-                    let guar = ecx
-                        .tcx
-                        .dcx()
-                        .delayed_bug("This is likely a const item that is missing from its impl");
-                    throw_inval!(AlreadyReported(guar.into()));
+                    ecx.tcx.dcx().bug("This is likely a const item that is missing from its impl");
                 } else {
                     // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
                     // so this should be unreachable.
@@ -626,7 +622,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 );
                 // If this was a hard error, don't bother continuing evaluation.
                 if is_error {
-                    let guard = ecx
+                    let guard: rustc_errors::ErrorGuaranteed = ecx
                         .tcx
                         .dcx()
                         .span_delayed_bug(span, "The deny lint should have already errored");
