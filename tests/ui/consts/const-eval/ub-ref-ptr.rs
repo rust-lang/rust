@@ -22,9 +22,11 @@ const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
+//~| null reference
 
 const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
+//~| null box
 
 
 // It is very important that we reject this: We do promote `&(4 * REF_AS_USIZE)`,
@@ -41,9 +43,11 @@ const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize],
 
 const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
 //~^ ERROR it is undefined behavior to use this value
+//~| dangling reference
 
 const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
 //~^ ERROR it is undefined behavior to use this value
+//~| dangling box
 
 const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
@@ -51,13 +55,16 @@ const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
 
 const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
+//~| encountered null pointer, but expected a function pointer
 const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
 //~| uninitialized
 const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
 //~^ ERROR it is undefined behavior to use this value
+//~| expected a function pointer
 const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
 //~^ ERROR it is undefined behavior to use this value
+//~| expected a function pointer
 
 
 const UNALIGNED_READ: () = unsafe {
