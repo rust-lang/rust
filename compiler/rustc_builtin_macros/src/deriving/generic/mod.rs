@@ -1583,17 +1583,17 @@ impl<'a> TraitDef<'a> {
                 let mut skipped_derives = SkippedDerives::None;
                 let skip_enabled = cx.ecfg.features.derive_skip
                     || struct_field.span.allows_unstable(sym::derive_skip);
-                for skip_attr in attr::filter_by_name(&struct_field.attrs, sym::skip) {
+                for attr in attr::filter_by_name(&struct_field.attrs, sym::skip) {
                     if !skip_enabled {
                         rustc_session::parse::feature_err(
                             &cx.sess,
                             sym::derive_skip,
-                            skip_attr.span,
+                            attr.span,
                             "the `#[skip]` attribute is experimental",
                         )
                         .emit();
                     }
-                    let Some(skip_attr) = ast::Attribute::meta_kind(skip_attr) else {
+                    let Some(skip_attr) = ast::Attribute::meta_kind(attr) else {
                         unreachable!()
                     };
 
@@ -1605,20 +1605,42 @@ impl<'a> TraitDef<'a> {
                         }
                         ast::MetaItemKind::List(items) => {
                             for item in items {
+                                let span = item.span();
                                 let ast::NestedMetaItem::MetaItem(ast::MetaItem {
                                     path,
                                     kind: ast::MetaItemKind::Word,
                                     ..
                                 }) = item
                                 else {
-                                    cx.dcx().span_err(item.span(), "incorrect skip argument");
+                                    cx.dcx().emit_err(errors::DeriveSkipBadArgument {
+                                        span,
+                                    });
                                     continue;
                                 };
-                                skipped_derives.add(path.segments[0].ident.name);
+                                let name = path.segments[0].ident;
+                                const SUPPORTED_TRAITS: [Symbol; 5] = [
+                                    sym::PartialEq,
+                                    sym::PartialOrd,
+                                    sym::Ord,
+                                    sym::Hash,
+                                    sym::Debug,
+                                ];
+                                if SUPPORTED_TRAITS.contains(&name.name) {
+                                    skipped_derives.add(path.segments[0].ident.name)
+                                } else {
+                                    let traits = SUPPORTED_TRAITS.iter().map(|s| format!("`{s}`")).collect::<Vec<_>>().join(", ");
+                                    cx.parse_sess().buffer_lint_with_diagnostic(
+                                        rustc_session::lint::builtin::UNSUPPORTED_DERIVE_SKIP,
+                                        span,
+                                        cx.current_expansion.lint_node_id,
+                                        crate::fluent_generated::builtin_macros_derive_skip_unsupported,
+                                        rustc_session::lint::BuiltinLintDiagnostics::DeriveSkipUnsupported { traits },
+                                    )
+                                }
                             }
                         }
                         ast::MetaItemKind::NameValue(lit) => {
-                            cx.dcx().span_err(lit.span, "invalid skip attribute");
+                            cx.dcx().emit_err(errors::DeriveSkipBadArgument { span: lit.span });
                         }
                     }
                 }

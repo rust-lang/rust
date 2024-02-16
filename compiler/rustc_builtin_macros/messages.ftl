@@ -110,6 +110,12 @@ builtin_macros_derive_path_args_list = traits in `#[derive(...)]` don't accept a
 builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept values
     .suggestion = remove the value
 
+builtin_macros_derive_skip_bad_argument = incorrect usage of the `#[skip]` attribute
+    .note = the `#[skip]` attribute accepts an optional list of traits
+    .help = try using `#[skip]` or `#[skip(Trait)]`
+
+builtin_macros_derive_skip_unsupported = the `#[skip]` attribute does not support this trait
+
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
     .custom = use `std::env::var({$var_expr})` to read the variable at run time

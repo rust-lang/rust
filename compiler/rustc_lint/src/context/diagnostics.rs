@@ -347,5 +347,8 @@ pub(super) fn builtin(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Di
                 "reduce the glob import's visibility or increase visibility of imported items",
             );
         }
+        BuiltinLintDiagnostics::DeriveSkipUnsupported { traits } => {
+            db.help(format!("the supported traits are {traits}"));
+        }
     }
 }
