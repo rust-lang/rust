@@ -307,14 +307,18 @@ impl<'tcx> InferCtxt<'tcx> {
         };
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
-        let Generalization { value_may_be_infer: value, needs_wf: _ } = generalize::generalize(
-            self,
-            &mut CombineDelegate { infcx: self, span },
-            ct,
-            target_vid,
-            ty::Variance::Invariant,
-        )?;
+        let Generalization { value_may_be_infer: value, has_unconstrained_ty_var } =
+            generalize::generalize(
+                self,
+                &mut CombineDelegate { infcx: self, span },
+                ct,
+                target_vid,
+                ty::Variance::Invariant,
+            )?;
 
+        if has_unconstrained_ty_var {
+            span_bug!(span, "unconstrained ty var when generalizing `{ct:?}`");
+        }
         self.inner
             .borrow_mut()
             .const_unification_table()
@@ -414,13 +418,14 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // `'?2` and `?3` are fresh region/type inference
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
-        let Generalization { value_may_be_infer: b_ty, needs_wf } = generalize::generalize(
-            self.infcx,
-            &mut CombineDelegate { infcx: self.infcx, span: self.trace.span() },
-            a_ty,
-            b_vid,
-            ambient_variance,
-        )?;
+        let Generalization { value_may_be_infer: b_ty, has_unconstrained_ty_var } =
+            generalize::generalize(
+                self.infcx,
+                &mut CombineDelegate { infcx: self.infcx, span: self.trace.span() },
+                a_ty,
+                b_vid,
+                ambient_variance,
+            )?;
 
         // Constrain `b_vid` to the generalized type `b_ty`.
         if let &ty::Infer(TyVar(b_ty_vid)) = b_ty.kind() {
@@ -429,7 +434,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
         }
 
-        if needs_wf {
+        if has_unconstrained_ty_var {
             self.obligations.push(Obligation::new(
                 self.tcx(),
                 self.trace.cause.clone(),

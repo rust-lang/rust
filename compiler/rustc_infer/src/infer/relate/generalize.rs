@@ -43,14 +43,14 @@ pub fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Rela
         for_universe,
         root_term: term.into(),
         in_alias: false,
-        needs_wf: false,
+        has_unconstrained_ty_var: false,
         cache: Default::default(),
     };
 
     assert!(!term.has_escaping_bound_vars());
     let value_may_be_infer = generalizer.relate(term, term)?;
-    let needs_wf = generalizer.needs_wf;
-    Ok(Generalization { value_may_be_infer, needs_wf })
+    let has_unconstrained_ty_var = generalizer.has_unconstrained_ty_var;
+    Ok(Generalization { value_may_be_infer, has_unconstrained_ty_var })
 }
 
 /// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
@@ -150,8 +150,8 @@ struct Generalizer<'me, 'tcx, D> {
     /// hold by either normalizing the outer or the inner associated type.
     in_alias: bool,
 
-    /// See the field `needs_wf` in `Generalization`.
-    needs_wf: bool,
+    /// See the field `has_unconstrained_ty_var` in `Generalization`.
+    has_unconstrained_ty_var: bool,
 }
 
 impl<'tcx, D> Generalizer<'_, 'tcx, D> {
@@ -272,11 +272,10 @@ where
                                     }
                                 }
 
-                                // Bivariant: make a fresh var, but we
-                                // may need a WF predicate. See
-                                // comment on `needs_wf` field for
-                                // more info.
-                                ty::Bivariant => self.needs_wf = true,
+                                // Bivariant: make a fresh var, but remember that
+                                // it is unconstrained. See the comment in
+                                // `Generalization`.
+                                ty::Bivariant => self.has_unconstrained_ty_var = true,
 
                                 // Co/contravariant: this will be
                                 // sufficiently constrained later on.
@@ -511,30 +510,27 @@ pub struct Generalization<T> {
     /// recursion.
     pub value_may_be_infer: T,
 
-    /// If true, then the generalized type may not be well-formed,
-    /// even if the source type is well-formed, so we should add an
-    /// additional check to enforce that it is. This arises in
-    /// particular around 'bivariant' type parameters that are only
-    /// constrained by a where-clause. As an example, imagine a type:
+    /// In general, we do not check whether all types which occur during
+    /// type checking are well-formed. We only check wf of user-provided types
+    /// and when actually using a type, e.g. for method calls.
+    ///
+    /// This means that when subtyping, we may end up with unconstrained
+    /// inference variables if a generalized type has bivariant parameters.
+    /// A parameter may only be bivariant if it is constrained by a projection
+    /// bound in a where-clause. As an example, imagine a type:
     ///
     ///     struct Foo<A, B> where A: Iterator<Item = B> {
     ///         data: A
     ///     }
     ///
-    /// here, `A` will be covariant, but `B` is
-    /// unconstrained. However, whatever it is, for `Foo` to be WF, it
-    /// must be equal to `A::Item`. If we have an input `Foo<?A, ?B>`,
-    /// then after generalization we will wind up with a type like
-    /// `Foo<?C, ?D>`. When we enforce that `Foo<?A, ?B> <: Foo<?C,
-    /// ?D>` (or `>:`), we will wind up with the requirement that `?A
-    /// <: ?C`, but no particular relationship between `?B` and `?D`
-    /// (after all, we do not know the variance of the normalized form
-    /// of `A::Item` with respect to `A`). If we do nothing else, this
-    /// may mean that `?D` goes unconstrained (as in #41677). So, in
-    /// this scenario where we create a new type variable in a
-    /// bivariant context, we set the `needs_wf` flag to true. This
-    /// will force the calling code to check that `WF(Foo<?C, ?D>)`
-    /// holds, which in turn implies that `?C::Item == ?D`. So once
-    /// `?C` is constrained, that should suffice to restrict `?D`.
-    pub needs_wf: bool,
+    /// here, `A` will be covariant, but `B` is unconstrained.
+    ///
+    /// However, whatever it is, for `Foo` to be WF, it must be equal to `A::Item`.
+    /// If we have an input `Foo<?A, ?B>`, then after generalization we will wind
+    /// up with a type like `Foo<?C, ?D>`. When we enforce `Foo<?A, ?B> <: Foo<?C, ?D>`,
+    /// we will wind up with the requirement that `?A <: ?C`, but no particular
+    /// relationship between `?B` and `?D` (after all, these types may be completely
+    /// different). If we do nothing else, this may mean that `?D` goes unconstrained
+    /// (as in #41677). To avoid this we emit a `WellFormed` obligation in these cases.
+    pub has_unconstrained_ty_var: bool,
 }
