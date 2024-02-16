@@ -1,5 +1,3 @@
-// stderr-per-bitwidth
-
 use std::mem::{transmute, ManuallyDrop};
 
 const S: &'static mut str = &mut " hello ";
