@@ -847,11 +847,31 @@ pub mod guard {
             let stackptr = get_stack_start_aligned()?;
             let guardaddr = stackptr.addr();
             // Technically the number of guard pages is tunable and controlled
-            // by the security.bsd.stack_guard_page sysctl, but there are
-            // few reasons to change it from the default. The default value has
-            // been 1 ever since FreeBSD 11.1 and 10.4.
-            const GUARD_PAGES: usize = 1;
-            let guard = guardaddr..guardaddr + GUARD_PAGES * page_size;
+            // by the security.bsd.stack_guard_page sysctl.
+            // By default it is 1, checking once is enough since it is
+            // a boot time config value.
+            static LOCK: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
+            let guard = guardaddr
+                ..guardaddr
+                    + *LOCK.get_or_init(|| {
+                        use crate::sys::weak::dlsym;
+                        dlsym!(fn sysctlbyname(*const libc::c_char, *mut libc::c_void, *mut libc::size_t, *const libc::c_void, libc::size_t) -> libc::c_int);
+                        let mut guard: usize = 0;
+                        let mut size = crate::mem::size_of_val(&guard);
+                        let oid = crate::ffi::CStr::from_bytes_with_nul(
+                            b"security.bsd.stack_guard_page\0",
+                        )
+                        .unwrap();
+                        match sysctlbyname.get() {
+                            Some(fcn) => {
+                                if fcn(oid.as_ptr(), &mut guard as *mut _ as *mut _, &mut size as *mut _ as *mut _, crate::ptr::null_mut(), 0) == 0 {
+                                    return guard;
+                                }
+                                return 1;
+                            },
+                            _ => { return 1; }
+                        }
+                    }) * page_size;
             Some(guard)
         } else if cfg!(target_os = "openbsd") {
             // OpenBSD stack already includes a guard page, and stack is

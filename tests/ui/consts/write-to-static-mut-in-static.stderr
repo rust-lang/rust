@@ -4,27 +4,12 @@ error[E0080]: could not evaluate static initializer
 LL | pub static mut B: () = unsafe { A = 1; };
    |                                 ^^^^^ modifying a static's initial value from another static's initializer
 
-error[E0391]: cycle detected when const-evaluating + checking `C`
-  --> $DIR/write-to-static-mut-in-static.rs:5:34
+error[E0080]: could not evaluate static initializer
+  --> $DIR/write-to-static-mut-in-static.rs:7:21
    |
-LL | pub static mut C: u32 = unsafe { C = 1; 0 };
-   |                                  ^^^^^
-   |
-   = note: ...which immediately requires const-evaluating + checking `C` again
-note: cycle used when linting top-level module
-  --> $DIR/write-to-static-mut-in-static.rs:1:1
-   |
-LL | / pub static mut A: u32 = 0;
-LL | | pub static mut B: () = unsafe { A = 1; };
-LL | |
-LL | |
-...  |
-LL | |
-LL | | fn main() {}
-   | |____________^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+LL | pub static D: u32 = D;
+   |                     ^ encountered static that tried to initialize itself with itself
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0080, E0391.
-For more information about an error, try `rustc --explain E0080`.
+For more information about this error, try `rustc --explain E0080`.

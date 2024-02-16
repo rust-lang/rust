@@ -1001,7 +1001,7 @@ pub struct CguMessage;
 
 struct Diagnostic {
     msgs: Vec<(DiagnosticMessage, Style)>,
-    args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>,
+    args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>,
     code: Option<ErrCode>,
     lvl: Level,
 }
@@ -1813,7 +1813,7 @@ impl Translate for SharedEmitter {
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: rustc_errors::Diagnostic) {
-        let args: FxHashMap<DiagnosticArgName, DiagnosticArgValue> =
+        let args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue> =
             diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msgs: diag.messages.clone(),

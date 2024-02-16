@@ -68,6 +68,12 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
         let def_id = body.source.def_id();
         debug!(?def_id);
 
+        // Optimizing coroutines creates query cycles.
+        if tcx.is_coroutine(def_id) {
+            trace!("Skipped for coroutine {:?}", def_id);
+            return;
+        }
+
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
         let map = Map::new(tcx, body, Some(MAX_PLACES));
         let loop_headers = loop_headers(body);

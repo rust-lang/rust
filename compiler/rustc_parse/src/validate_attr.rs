@@ -70,11 +70,11 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                             }
                         }
                         Err(err) => {
-                            report_lit_error(sess, err, token_lit, expr.span);
+                            let guar = report_lit_error(sess, err, token_lit, expr.span);
                             let lit = ast::MetaItemLit {
                                 symbol: token_lit.symbol,
                                 suffix: token_lit.suffix,
-                                kind: ast::LitKind::Err,
+                                kind: ast::LitKind::Err(guar),
                                 span: expr.span,
                             };
                             MetaItemKind::NameValue(lit)

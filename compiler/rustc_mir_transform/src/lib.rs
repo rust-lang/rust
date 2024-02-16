@@ -265,7 +265,8 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     let body = &tcx.mir_const(def).borrow();
 
     if body.return_ty().references_error() {
-        assert!(tcx.dcx().has_errors().is_some(), "mir_const_qualif: MIR had errors");
+        // It's possible to reach here without an error being emitted (#121103).
+        tcx.dcx().span_delayed_bug(body.span, "mir_const_qualif: MIR had errors");
         return Default::default();
     }
 
@@ -652,7 +653,6 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
-    debug!("body: {:#?}", body);
 
     if body.tainted_by_errors.is_some() {
         return body;

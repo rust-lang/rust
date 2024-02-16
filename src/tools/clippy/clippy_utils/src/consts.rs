@@ -286,7 +286,7 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
             _ => bug!(),
         },
         LitKind::Bool(b) => Constant::Bool(b),
-        LitKind::Err => Constant::Err,
+        LitKind::Err(_) => Constant::Err,
     }
 }
 

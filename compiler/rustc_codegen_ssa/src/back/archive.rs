@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
@@ -41,7 +41,7 @@ pub trait ArchiveBuilderBuilder {
         &'a self,
         rlib: &'a Path,
         outdir: &Path,
-        bundled_lib_file_names: &FxHashSet<Symbol>,
+        bundled_lib_file_names: &FxIndexSet<Symbol>,
     ) -> Result<(), ExtractBundledLibsError<'_>> {
         let archive_map = unsafe {
             Mmap::map(

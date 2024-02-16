@@ -164,11 +164,7 @@ fn lit_to_mir_constant<'tcx>(
             })?,
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
-        (ast::LitKind::Err, _) => {
-            return Err(LitToConstError::Reported(
-                tcx.dcx().delayed_bug("encountered LitKind::Err during mir build"),
-            ));
-        }
+        (ast::LitKind::Err(guar), _) => return Err(LitToConstError::Reported(*guar)),
         _ => return Err(LitToConstError::TypeError),
     };
 

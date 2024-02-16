@@ -388,6 +388,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Takes read-only access to the allocation so we can keep all the memory read
     /// operations take `&self`. Use a `RefCell` in `AllocExtra` if you
     /// need to mutate.
+    ///
+    /// This is not invoked for ZST accesses, as no read actually happens.
     #[inline(always)]
     fn before_memory_read(
         _tcx: TyCtxtAt<'tcx>,
@@ -399,7 +401,20 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         Ok(())
     }
 
+    /// Hook for performing extra checks on any memory read access,
+    /// that involves an allocation, even ZST reads.
+    ///
+    /// Used to prevent statics from self-initializing by reading from their own memory
+    /// as it is being initialized.
+    fn before_alloc_read(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _alloc_id: AllocId,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Hook for performing extra checks on a memory write access.
+    /// This is not invoked for ZST accesses, as no write actually happens.
     #[inline(always)]
     fn before_memory_write(
         _tcx: TyCtxtAt<'tcx>,

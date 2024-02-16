@@ -16,7 +16,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_span::{edition::Edition, BytePos, Pos, Span};
 
 mod diagnostics;
@@ -478,26 +478,27 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 }
             }
             rustc_lexer::LiteralKind::Int { base, empty_int } => {
+                let mut kind = token::Integer;
                 if empty_int {
                     let span = self.mk_sp(start, end);
-                    self.dcx().emit_err(errors::NoDigitsLiteral { span });
-                    (token::Integer, sym::integer(0))
-                } else {
-                    if matches!(base, Base::Binary | Base::Octal) {
-                        let base = base as u32;
-                        let s = self.str_from_to(start + BytePos(2), end);
-                        for (idx, c) in s.char_indices() {
-                            let span = self.mk_sp(
-                                start + BytePos::from_usize(2 + idx),
-                                start + BytePos::from_usize(2 + idx + c.len_utf8()),
-                            );
-                            if c != '_' && c.to_digit(base).is_none() {
+                    let guar = self.dcx().emit_err(errors::NoDigitsLiteral { span });
+                    kind = token::Err(guar);
+                } else if matches!(base, Base::Binary | Base::Octal) {
+                    let base = base as u32;
+                    let s = self.str_from_to(start + BytePos(2), end);
+                    for (idx, c) in s.char_indices() {
+                        let span = self.mk_sp(
+                            start + BytePos::from_usize(2 + idx),
+                            start + BytePos::from_usize(2 + idx + c.len_utf8()),
+                        );
+                        if c != '_' && c.to_digit(base).is_none() {
+                            let guar =
                                 self.dcx().emit_err(errors::InvalidDigitLiteral { span, base });
-                            }
+                            kind = token::Err(guar);
                         }
                     }
-                    (token::Integer, self.symbol_from_to(start, end))
                 }
+                (kind, self.symbol_from_to(start, end))
             }
             rustc_lexer::LiteralKind::Float { base, empty_exponent } => {
                 if empty_exponent {
@@ -691,7 +692,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
 
     fn cook_common(
         &self,
-        kind: token::LitKind,
+        mut kind: token::LitKind,
         mode: Mode,
         start: BytePos,
         end: BytePos,
@@ -699,7 +700,6 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
         postfix_len: u32,
         unescape: fn(&str, Mode, &mut dyn FnMut(Range<usize>, Result<(), EscapeError>)),
     ) -> (token::LitKind, Symbol) {
-        let mut has_fatal_err = false;
         let content_start = start + BytePos(prefix_len);
         let content_end = end - BytePos(postfix_len);
         let lit_content = self.str_from_to(content_start, content_end);
@@ -711,10 +711,8 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 let lo = content_start + BytePos(start);
                 let hi = lo + BytePos(end - start);
                 let span = self.mk_sp(lo, hi);
-                if err.is_fatal() {
-                    has_fatal_err = true;
-                }
-                emit_unescape_error(
+                let is_fatal = err.is_fatal();
+                if let Some(guar) = emit_unescape_error(
                     self.dcx(),
                     lit_content,
                     span_with_quotes,
@@ -722,17 +720,21 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                     mode,
                     range,
                     err,
-                );
+                ) {
+                    assert!(is_fatal);
+                    kind = token::Err(guar);
+                }
             }
         });
 
         // We normally exclude the quotes for the symbol, but for errors we
         // include it because it results in clearer error messages.
-        if !has_fatal_err {
-            (kind, Symbol::intern(lit_content))
+        let sym = if !matches!(kind, token::Err(_)) {
+            Symbol::intern(lit_content)
         } else {
-            (token::Err, self.symbol_from_to(start, end))
-        }
+            self.symbol_from_to(start, end)
+        };
+        (kind, sym)
     }
 
     fn cook_unicode(
