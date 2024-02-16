@@ -32,7 +32,7 @@ See [Error annotations](#error-annotations) for more.
 how the test is compiled and what the expected behavior is. Note that ui
 tests require the use of `//@ header-name` instead of `// header-name` like
 the other test suites do. The other test suites will be migrated to use the `//@`
-syntax, too, but that is in progress.
+syntax too, but that is in progress.
 
 Tests are expected to fail to compile, since most tests are testing compiler
 errors.
