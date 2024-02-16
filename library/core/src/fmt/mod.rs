@@ -308,13 +308,7 @@ impl FormattingOptions {
     /// - no [`DebugAsHex`] output mode.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn new() -> Self {
-        Self {
-            flags: 0,
-            fill: ' ',
-            align: None,
-            width: None,
-            precision: None,
-        }
+        Self { flags: 0, fill: ' ', align: None, width: None, precision: None }
     }
 
     /// Sets or removes the sign (the `+` or the `-` flag).
@@ -327,9 +321,10 @@ impl FormattingOptions {
     /// - `-`: Currently not used
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn sign(&mut self, sign: Option<Sign>) -> &mut Self {
-        self.flags = self.flags & !(1 << rt::Flag::SignMinus as u32 | 1 << rt::Flag::SignPlus as u32);
+        self.flags =
+            self.flags & !(1 << rt::Flag::SignMinus as u32 | 1 << rt::Flag::SignPlus as u32);
         match sign {
-            None => {},
+            None => {}
             Some(Sign::Plus) => self.flags |= 1 << rt::Flag::SignPlus as u32,
             Some(Sign::Minus) => self.flags |= 1 << rt::Flag::SignMinus as u32,
         }
@@ -413,9 +408,10 @@ impl FormattingOptions {
     /// hexadecimal or normal integers
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn debug_as_hex(&mut self, debug_as_hex: Option<DebugAsHex>) -> &mut Self {
-        self.flags = self.flags & !(1 << rt::Flag::DebugUpperHex as u32 | 1 << rt::Flag::DebugLowerHex as u32);
+        self.flags = self.flags
+            & !(1 << rt::Flag::DebugUpperHex as u32 | 1 << rt::Flag::DebugLowerHex as u32);
         match debug_as_hex {
-            None => {},
+            None => {}
             Some(DebugAsHex::Upper) => self.flags |= 1 << rt::Flag::DebugUpperHex as u32,
             Some(DebugAsHex::Lower) => self.flags |= 1 << rt::Flag::DebugLowerHex as u32,
         }
@@ -469,7 +465,9 @@ impl FormattingOptions {
     pub const fn get_debug_as_hex(&self) -> Option<DebugAsHex> {
         const DEBUG_UPPER_BITFIELD: u32 = 1 << rt::Flag::DebugUpperHex as u32;
         const DEBUG_LOWER_BITFIELD: u32 = 1 << rt::Flag::DebugLowerHex as u32;
-        match self.flags & ((1 << rt::Flag::DebugUpperHex as u32) | (1 << rt::Flag::DebugLowerHex as u32)) {
+        match self.flags
+            & ((1 << rt::Flag::DebugUpperHex as u32) | (1 << rt::Flag::DebugLowerHex as u32))
+        {
             DEBUG_UPPER_BITFIELD => Some(DebugAsHex::Upper),
             DEBUG_LOWER_BITFIELD => Some(DebugAsHex::Lower),
             0 => None,
