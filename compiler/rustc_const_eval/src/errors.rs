@@ -603,18 +603,18 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PtrToUninhabited { ptr_kind: PointerKind::Box, .. } => {
                 const_eval_validation_box_to_uninhabited
             }
-            PtrToUninhabited { ptr_kind: PointerKind::Ref, .. } => {
+            PtrToUninhabited { ptr_kind: PointerKind::Ref(_), .. } => {
                 const_eval_validation_ref_to_uninhabited
             }
 
             PtrToStatic { ptr_kind: PointerKind::Box } => const_eval_validation_box_to_static,
-            PtrToStatic { ptr_kind: PointerKind::Ref } => const_eval_validation_ref_to_static,
+            PtrToStatic { ptr_kind: PointerKind::Ref(_) } => const_eval_validation_ref_to_static,
 
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
             ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
             ConstRefToExtern => const_eval_validation_const_ref_to_extern,
-            MutableRefInConst => const_eval_validation_mutable_ref_in_const,
+            MutableRefInConstOrStatic => const_eval_validation_mutable_ref_in_const_or_static,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
@@ -630,37 +630,39 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Box } => {
                 const_eval_validation_invalid_box_slice_meta
             }
-            InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref } => {
+            InvalidMetaSliceTooLarge { ptr_kind: PointerKind::Ref(_) } => {
                 const_eval_validation_invalid_ref_slice_meta
             }
 
             InvalidMetaTooLarge { ptr_kind: PointerKind::Box } => {
                 const_eval_validation_invalid_box_meta
             }
-            InvalidMetaTooLarge { ptr_kind: PointerKind::Ref } => {
+            InvalidMetaTooLarge { ptr_kind: PointerKind::Ref(_) } => {
                 const_eval_validation_invalid_ref_meta
             }
-            UnalignedPtr { ptr_kind: PointerKind::Ref, .. } => const_eval_validation_unaligned_ref,
+            UnalignedPtr { ptr_kind: PointerKind::Ref(_), .. } => {
+                const_eval_validation_unaligned_ref
+            }
             UnalignedPtr { ptr_kind: PointerKind::Box, .. } => const_eval_validation_unaligned_box,
 
             NullPtr { ptr_kind: PointerKind::Box } => const_eval_validation_null_box,
-            NullPtr { ptr_kind: PointerKind::Ref } => const_eval_validation_null_ref,
+            NullPtr { ptr_kind: PointerKind::Ref(_) } => const_eval_validation_null_ref,
             DanglingPtrNoProvenance { ptr_kind: PointerKind::Box, .. } => {
                 const_eval_validation_dangling_box_no_provenance
             }
-            DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref, .. } => {
+            DanglingPtrNoProvenance { ptr_kind: PointerKind::Ref(_), .. } => {
                 const_eval_validation_dangling_ref_no_provenance
             }
             DanglingPtrOutOfBounds { ptr_kind: PointerKind::Box } => {
                 const_eval_validation_dangling_box_out_of_bounds
             }
-            DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref } => {
+            DanglingPtrOutOfBounds { ptr_kind: PointerKind::Ref(_) } => {
                 const_eval_validation_dangling_ref_out_of_bounds
             }
             DanglingPtrUseAfterFree { ptr_kind: PointerKind::Box } => {
                 const_eval_validation_dangling_box_use_after_free
             }
-            DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref } => {
+            DanglingPtrUseAfterFree { ptr_kind: PointerKind::Ref(_) } => {
                 const_eval_validation_dangling_ref_use_after_free
             }
             InvalidBool { .. } => const_eval_validation_invalid_bool,
@@ -766,7 +768,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             }
             NullPtr { .. }
             | PtrToStatic { .. }
-            | MutableRefInConst
+            | MutableRefInConstOrStatic
             | ConstRefToMutable
             | ConstRefToExtern
             | MutableRefToImmutable
