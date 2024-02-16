@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
+use rustc_data_structures::sync::{AtomicU32, AtomicU64, AtomicUsize, Lock, Lrc};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
@@ -224,6 +224,15 @@ impl<D: Deps> DepGraph<D> {
         D::with_deps(TaskDepsRef::Ignore, op)
     }
 
+    pub(crate) fn with_replay<R>(
+        &self,
+        prev_side_effects: &QuerySideEffects,
+        created_def_ids: &AtomicUsize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        D::with_deps(TaskDepsRef::Replay { prev_side_effects, created_def_ids }, op)
+    }
+
     /// Used to wrap the deserialization of a query result from disk,
     /// This method enforces that no new `DepNodes` are created during
     /// query result deserialization.
@@ -278,6 +287,7 @@ impl<D: Deps> DepGraph<D> {
     }
 
     #[inline(always)]
+    /// A helper for `codegen_cranelift`.
     pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
         &self,
         key: DepNode,
@@ -477,6 +487,12 @@ impl<D: Deps> DepGraph<D> {
                         return;
                     }
                     TaskDepsRef::Ignore => return,
+                    // We don't need to record dependencies when rerunning a query
+                    // because we have no disk cache entry to load. The dependencies
+                    // are preserved.
+                    // FIXME: assert that the dependencies don't change instead of
+                    // recording them.
+                    TaskDepsRef::Replay { .. } => return,
                     TaskDepsRef::Forbid => {
                         // Reading is forbidden in this context. ICE with a useful error message.
                         panic_on_forbidden_read(data, dep_node_index)
@@ -583,6 +599,7 @@ impl<D: Deps> DepGraph<D> {
                     edges.push(DepNodeIndex::FOREVER_RED_NODE);
                 }
                 TaskDepsRef::Ignore => {}
+                TaskDepsRef::Replay { .. } => {}
                 TaskDepsRef::Forbid => {
                     panic!("Cannot summarize when dependencies are not recorded.")
                 }
@@ -1284,6 +1301,18 @@ pub enum TaskDepsRef<'a> {
     /// to ensure that the decoding process doesn't itself
     /// require the execution of any queries.
     Forbid,
+    /// Side effects from the previous run made available to
+    /// queries when they are reexecuted because their result was not
+    /// available in the cache. Whenever the query creates a new `DefId`,
+    /// it is checked against the entries in `QuerySideEffects::definitions`
+    /// to ensure that the new `DefId`s are the same as the ones that were
+    /// created the last time the query was executed.
+    Replay {
+        prev_side_effects: &'a QuerySideEffects,
+        /// Every new `DefId` is pushed here so we can check
+        /// that they match the cached ones.
+        created_def_ids: &'a AtomicUsize,
+    },
 }
 
 #[derive(Debug)]

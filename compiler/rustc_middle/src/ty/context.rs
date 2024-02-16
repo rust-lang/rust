@@ -39,8 +39,9 @@ use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
-use rustc_query_system::dep_graph::DepNodeIndex;
+use rustc_query_system::dep_graph::{DepNodeIndex, TaskDepsRef};
 use rustc_query_system::ich::StableHashingContext;
+use rustc_query_system::query::DefIdInfo;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -1807,10 +1808,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // decode the on-disk cache.
         //
         // Any LocalDefId which is used within queries, either as key or result, either:
-        // - has been created before the construction of the TyCtxt;
+        // - has been created before the construction of the TyCtxt,
+        // - has been created when marking a query as green (recreating definitions it created in the actual run),
         // - has been created by this call to `create_def`.
-        // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
-        // comp. engine itself.
         //
         // This call also writes to the value of `source_span` and `expn_that_defined` queries.
         // This is fine because:
@@ -1820,9 +1820,30 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        tls::with_context(|icx| {
+            match icx.task_deps {
+                // Always gets rerun anyway, so nothing to replay
+                TaskDepsRef::EvalAlways => {}
+                // Top-level queries like the resolver get rerun every time anyway
+                TaskDepsRef::Ignore => {}
+                TaskDepsRef::Forbid => bug!(
+                    "cannot create definition {parent:?}, {name:?}, {def_kind:?} without being able to register task dependencies"
+                ),
+                TaskDepsRef::Allow(_) => {
+                    icx.side_effects
+                        .as_ref()
+                        .unwrap()
+                        .lock()
+                        .definitions
+                        .push(DefIdInfo { parent, data });
+                }
+                TaskDepsRef::Replay { prev_side_effects, created_def_ids } => {
+                    let index = created_def_ids.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let prev_info = &prev_side_effects.definitions[index];
+                    assert_eq!(*prev_info, DefIdInfo { parent, data });
+                }
+            }
+        });
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);
