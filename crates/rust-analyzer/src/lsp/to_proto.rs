@@ -1000,22 +1000,34 @@ fn merge_text_and_snippet_edits(
 
             let mut new_text = current_indel.insert;
 
-            // escape out snippet text
-            stdx::replace(&mut new_text, '\\', r"\\");
-            stdx::replace(&mut new_text, '$', r"\$");
+            // find which snippet bits need to be escaped
+            let escape_places =
+                new_text.rmatch_indices(['\\', '$']).map(|(insert, _)| insert).collect_vec();
+            let mut escape_places = escape_places.into_iter().peekable();
+            let mut escape_prior_bits = |new_text: &mut String, up_to: usize| {
+                for before in escape_places.peeking_take_while(|insert| *insert >= up_to) {
+                    new_text.insert(before, '\\');
+                }
+            };
 
-            // ...and apply!
+            // insert snippets, and escaping any needed bits along the way
             for (index, range) in all_snippets.iter().rev() {
-                let start = (range.start() - new_range.start()).into();
-                let end = (range.end() - new_range.start()).into();
+                let text_range = range - new_range.start();
+                let (start, end) = (text_range.start().into(), text_range.end().into());
 
                 if range.is_empty() {
+                    escape_prior_bits(&mut new_text, start);
                     new_text.insert_str(start, &format!("${index}"));
                 } else {
+                    escape_prior_bits(&mut new_text, end);
                     new_text.insert(end, '}');
+                    escape_prior_bits(&mut new_text, start);
                     new_text.insert_str(start, &format!("${{{index}:"));
                 }
             }
+
+            // escape any remaining bits
+            escape_prior_bits(&mut new_text, 0);
 
             edits.push(snippet_text_edit(
                 line_index,
