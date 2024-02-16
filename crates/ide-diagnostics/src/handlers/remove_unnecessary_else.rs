@@ -41,9 +41,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
         indent = indent + 1;
     }
     let else_replacement = match if_expr.else_branch()? {
-        ast::ElseBranch::Block(ref block) => {
-            block.statements().map(|stmt| format!("\n{indent}{stmt}")).join("")
-        }
+        ast::ElseBranch::Block(ref block) => block
+            .statements()
+            .map(|stmt| format!("\n{indent}{stmt}"))
+            .chain(block.tail_expr().map(|tail| format!("\n{indent}{tail}")))
+            .join(""),
         ast::ElseBranch::IfExpr(ref nested_if_expr) => {
             format!("\n{indent}{nested_if_expr}")
         }
@@ -166,6 +168,41 @@ fn test() {
     } else {
         do_something_else2();
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unnecessary_else_for_return3() {
+        check_diagnostics_with_needless_return_disabled(
+            r#"
+fn test(a: bool) -> i32 {
+    if a {
+        return 1;
+    } else {
+    //^^^^ 💡 weak: remove unnecessary else block
+        0
+    }
+}
+"#,
+        );
+        check_fix(
+            r#"
+fn test(a: bool) -> i32 {
+    if a {
+        return 1;
+    } else$0 {
+        0
+    }
+}
+"#,
+            r#"
+fn test(a: bool) -> i32 {
+    if a {
+        return 1;
+    }
+    0
 }
 "#,
         );
