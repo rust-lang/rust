@@ -1,20 +1,54 @@
-error: invalid skip attribute
+error: incorrect usage of the `#[skip]` attribute
+  --> $DIR/derive-skip-invalid.rs:5:24
+   |
+LL | struct KeyVal(#[skip = "Debug"] usize);
+   |                        ^^^^^^^
+   |
+note: the `#[skip]` attribute accepts an optional list of traits
+  --> $DIR/derive-skip-invalid.rs:5:24
+   |
+LL | struct KeyVal(#[skip = "Debug"] usize);
+   |                        ^^^^^^^
+help: try using `#[skip]` or `#[skip(Trait)]`
   --> $DIR/derive-skip-invalid.rs:5:24
    |
 LL | struct KeyVal(#[skip = "Debug"] usize);
    |                        ^^^^^^^
 
-error: incorrect skip argument
-  --> $DIR/derive-skip-invalid.rs:8:22
+error: incorrect usage of the `#[skip]` attribute
+  --> $DIR/derive-skip-invalid.rs:10:22
+   |
+LL | struct BadArg(#[skip("Debug")] usize);
+   |                      ^^^^^^^
+   |
+note: the `#[skip]` attribute accepts an optional list of traits
+  --> $DIR/derive-skip-invalid.rs:10:22
+   |
+LL | struct BadArg(#[skip("Debug")] usize);
+   |                      ^^^^^^^
+help: try using `#[skip]` or `#[skip(Trait)]`
+  --> $DIR/derive-skip-invalid.rs:10:22
    |
 LL | struct BadArg(#[skip("Debug")] usize);
    |                      ^^^^^^^
 
-error: cannot find attribute `skip` in this scope
-  --> $DIR/derive-skip-invalid.rs:12:20
+warning: the `#[skip]` attribute does not support this trait
+  --> $DIR/derive-skip-invalid.rs:21:26
    |
-LL | struct SkipClone(#[skip] usize);
-   |                    ^^^^
+LL | struct SkipClone2(#[skip(Clone)] usize);
+   |                          ^^^^^
+   |
+   = help: the supported traits are `PartialEq`, `PartialOrd`, `Ord`, `Hash`, `Debug`
+   = note: `#[warn(unsupported_derive_skip)]` on by default
 
-error: aborting due to 3 previous errors
+warning: the `#[skip]` attribute does not support this trait
+  --> $DIR/derive-skip-invalid.rs:21:26
+   |
+LL | struct SkipClone2(#[skip(Clone)] usize);
+   |                          ^^^^^
+   |
+   = help: the supported traits are `PartialEq`, `PartialOrd`, `Ord`, `Hash`, `Debug`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors; 2 warnings emitted
 

@@ -583,5 +583,8 @@ pub(super) fn builtin(
             db.span_note(span, format!("the most public imported item is `{max_vis}`"));
             db.help("reduce the glob import's visibility or increase visibility of imported items");
         }
+        BuiltinLintDiagnostics::DeriveSkipUnsupported { traits } => {
+            db.help(format!("the supported traits are {traits}"));
+        }
     }
 }
