@@ -29,10 +29,12 @@ the source file.
 See [Error annotations](#error-annotations) for more.
 
 [Headers](headers.md) in the form of comments at the top of the file control
-how the test is compiled and what the expected behavior is. Note that ui
-tests require the use of `//@ header-name` instead of `// header-name` like
-the other test suites do. The other test suites will be migrated to use the `//@`
-syntax too, but that is in progress.
+how the test is compiled and what the expected behavior is. Note that tests in
+the "ui" test suite require the use of `//@ header-name` instead of
+`// header-name` like the other test suites do. The other test suites will be
+migrated to use the `//@` syntax too, but that is in progress. Additionally,
+`// ignore-tidy` and `// ignore-tidy-*` are ignored by compiletest when
+handling "ui" test suite tests (note that they are not `//@` directives).
 
 Tests are expected to fail to compile, since most tests are testing compiler
 errors.
