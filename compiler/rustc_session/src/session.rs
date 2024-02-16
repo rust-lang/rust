@@ -1410,10 +1410,6 @@ impl EarlyDiagCtxt {
         Self { dcx: DiagCtxt::with_emitter(emitter) }
     }
 
-    pub fn abort_if_errors(&self) {
-        self.dcx.abort_if_errors()
-    }
-
     /// Swap out the underlying dcx once we acquire the user's preference on error emission
     /// format. Any errors prior to that will cause an abort and all stashed diagnostics of the
     /// previous dcx will be emitted.
