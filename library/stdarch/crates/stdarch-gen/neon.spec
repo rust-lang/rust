@@ -732,7 +732,7 @@ a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0
 fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 validate FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE
 
-aarch64 = cmgt
+aarch64 = cmge
 generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
 
 /// Floating-point compare greater than or equal to zero
@@ -808,7 +808,7 @@ a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0
 fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 validate TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
 
-aarch64 = cmgt
+aarch64 = cmle
 generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
 
 /// Floating-point compare less than or equal to zero
@@ -4032,9 +4032,9 @@ validate 14., 11., 18., 21.
 aarch64 = fmla
 generate float32x2_t, float32x2_t:float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x4_t:float32x2_t:float32x4_t, float32x4_t
 aarch64 = fmadd
-generate float64x1_t
+generate float64x1_t, float64x1_t:float64x1_t:float64x2_t:float64x1_t
 aarch64 = fmla
-generate float64x1_t:float64x1_t:float64x2_t:float64x1_t, float64x2_t:float64x2_t:float64x1_t:float64x2_t, float64x2_t
+generate float64x2_t:float64x2_t:float64x1_t:float64x2_t, float64x2_t
 
 /// Floating-point fused multiply-add to accumulator
 name = vfma
@@ -4049,14 +4049,11 @@ c = 3., 0., 0., 0.
 n = 0
 validate 20.
 
-aarch64 = fmla
+aarch64 = fmadd
 link-aarch64 = llvm.fma._EXT_:f32:f32:f32:f32
 generate f32:f32:float32x2_t:f32, f32:f32:float32x4_t:f32
 link-aarch64 = llvm.fma._EXT_:f64:f64:f64:f64
-aarch64 = fmadd
-generate f64:f64:float64x1_t:f64
-aarch64 = fmla
-generate f64:f64:float64x2_t:f64
+generate f64:f64:float64x1_t:f64, f64:f64:float64x2_t:f64
 
 /// Floating-point fused multiply-subtract from accumulator
 name = vfms
@@ -4109,9 +4106,9 @@ validate 2., 3., 4., 5.
 aarch64 = fmls
 generate float32x2_t, float32x2_t:float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x4_t:float32x2_t:float32x4_t, float32x4_t
 aarch64 = fmsub
-generate float64x1_t
+generate float64x1_t, float64x1_t:float64x1_t:float64x2_t:float64x1_t
 aarch64 = fmls
-generate float64x1_t:float64x1_t:float64x2_t:float64x1_t, float64x2_t:float64x2_t:float64x1_t:float64x2_t, float64x2_t
+generate float64x2_t:float64x2_t:float64x1_t:float64x2_t, float64x2_t
 
 /// Floating-point fused multiply-subtract to accumulator
 name = vfms
@@ -4124,12 +4121,8 @@ c = 2., 0., 0., 0.
 n = 0
 validate 2.
 
-aarch64 = fmls
-generate f32:f32:float32x2_t:f32, f32:f32:float32x4_t:f32
 aarch64 = fmsub
-generate f64:f64:float64x1_t:f64
-aarch64 = fmls
-generate f64:f64:float64x2_t:f64
+generate f32:f32:float32x2_t:f32, f32:f32:float32x4_t:f32, f64:f64:float64x1_t:f64, f64:f64:float64x2_t:f64
 
 /// Divide
 name = vdiv

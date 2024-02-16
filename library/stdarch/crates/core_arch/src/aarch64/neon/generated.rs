@@ -1357,7 +1357,7 @@ pub unsafe fn vcgeq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgez_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgez_s8(a: int8x8_t) -> uint8x8_t {
     let b: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1369,7 +1369,7 @@ pub unsafe fn vcgez_s8(a: int8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgezq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgezq_s8(a: int8x16_t) -> uint8x16_t {
     let b: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -1381,7 +1381,7 @@ pub unsafe fn vcgezq_s8(a: int8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgez_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgez_s16(a: int16x4_t) -> uint16x4_t {
     let b: i16x4 = i16x4::new(0, 0, 0, 0);
@@ -1393,7 +1393,7 @@ pub unsafe fn vcgez_s16(a: int16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgezq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgezq_s16(a: int16x8_t) -> uint16x8_t {
     let b: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1405,7 +1405,7 @@ pub unsafe fn vcgezq_s16(a: int16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgez_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgez_s32(a: int32x2_t) -> uint32x2_t {
     let b: i32x2 = i32x2::new(0, 0);
@@ -1417,7 +1417,7 @@ pub unsafe fn vcgez_s32(a: int32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgezq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgezq_s32(a: int32x4_t) -> uint32x4_t {
     let b: i32x4 = i32x4::new(0, 0, 0, 0);
@@ -1429,7 +1429,7 @@ pub unsafe fn vcgezq_s32(a: int32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgez_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgez_s64(a: int64x1_t) -> uint64x1_t {
     let b: i64x1 = i64x1::new(0);
@@ -1441,7 +1441,7 @@ pub unsafe fn vcgez_s64(a: int64x1_t) -> uint64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcgezq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmge))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgezq_s64(a: int64x2_t) -> uint64x2_t {
     let b: i64x2 = i64x2::new(0, 0);
@@ -1711,7 +1711,7 @@ pub unsafe fn vcgtzd_f64(a: f64) -> u64 {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclez_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclez_s8(a: int8x8_t) -> uint8x8_t {
     let b: i8x8 = i8x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1723,7 +1723,7 @@ pub unsafe fn vclez_s8(a: int8x8_t) -> uint8x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclezq_s8)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclezq_s8(a: int8x16_t) -> uint8x16_t {
     let b: i8x16 = i8x16::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -1735,7 +1735,7 @@ pub unsafe fn vclezq_s8(a: int8x16_t) -> uint8x16_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclez_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclez_s16(a: int16x4_t) -> uint16x4_t {
     let b: i16x4 = i16x4::new(0, 0, 0, 0);
@@ -1747,7 +1747,7 @@ pub unsafe fn vclez_s16(a: int16x4_t) -> uint16x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclezq_s16)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclezq_s16(a: int16x8_t) -> uint16x8_t {
     let b: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1759,7 +1759,7 @@ pub unsafe fn vclezq_s16(a: int16x8_t) -> uint16x8_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclez_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclez_s32(a: int32x2_t) -> uint32x2_t {
     let b: i32x2 = i32x2::new(0, 0);
@@ -1771,7 +1771,7 @@ pub unsafe fn vclez_s32(a: int32x2_t) -> uint32x2_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclezq_s32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclezq_s32(a: int32x4_t) -> uint32x4_t {
     let b: i32x4 = i32x4::new(0, 0, 0, 0);
@@ -1783,7 +1783,7 @@ pub unsafe fn vclezq_s32(a: int32x4_t) -> uint32x4_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclez_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclez_s64(a: int64x1_t) -> uint64x1_t {
     let b: i64x1 = i64x1::new(0);
@@ -1795,7 +1795,7 @@ pub unsafe fn vclez_s64(a: int64x1_t) -> uint64x1_t {
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vclezq_s64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(cmgt))]
+#[cfg_attr(test, assert_instr(cmle))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclezq_s64(a: int64x2_t) -> uint64x2_t {
     let b: i64x2 = i64x2::new(0, 0);
@@ -9215,7 +9215,7 @@ pub unsafe fn vfma_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: 
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfma_laneq_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfma_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x2_t) -> float64x1_t {
@@ -9254,7 +9254,7 @@ pub unsafe fn vfmaq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmas_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
@@ -9273,7 +9273,7 @@ pub unsafe fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) ->
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmas_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
@@ -9311,7 +9311,7 @@ pub unsafe fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) ->
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmad_laneq_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
@@ -9441,7 +9441,7 @@ pub unsafe fn vfms_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: 
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfms_laneq_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfms_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x2_t) -> float64x1_t {
@@ -9480,7 +9480,7 @@ pub unsafe fn vfmsq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmss_lane_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmss_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
@@ -9492,7 +9492,7 @@ pub unsafe fn vfmss_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) ->
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmss_laneq_f32)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmss_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
@@ -9516,7 +9516,7 @@ pub unsafe fn vfmsd_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) ->
 /// [Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vfmsd_laneq_f64)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmsd_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
