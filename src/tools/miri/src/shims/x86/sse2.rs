@@ -440,10 +440,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
 
                 for i in 1..dest_len {
-                    this.copy_op(
-                        &this.project_index(&op, i)?,
-                        &this.project_index(&dest, i)?,
-                    )?;
+                    this.copy_op(&this.project_index(&op, i)?, &this.project_index(&dest, i)?)?;
                 }
             }
             // Used to implement _mm_sqrt_pd functions.
@@ -580,10 +577,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 // Copy remianing from `left`
                 for i in 1..dest_len {
-                    this.copy_op(
-                        &this.project_index(&left, i)?,
-                        &this.project_index(&dest, i)?,
-                    )?;
+                    this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }
             }
             // Used to implement the `_mm_pause` function.

@@ -296,10 +296,7 @@ fn bin_op_simd_float_first<'tcx, F: rustc_apfloat::Float>(
     this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
 
     for i in 1..dest_len {
-        this.copy_op(
-            &this.project_index(&left, i)?,
-            &this.project_index(&dest, i)?,
-        )?;
+        this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
     }
 
     Ok(())
@@ -420,10 +417,7 @@ fn unary_op_ss<'tcx>(
     this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
 
     for i in 1..dest_len {
-        this.copy_op(
-            &this.project_index(&op, i)?,
-            &this.project_index(&dest, i)?,
-        )?;
+        this.copy_op(&this.project_index(&op, i)?, &this.project_index(&dest, i)?)?;
     }
 
     Ok(())
@@ -479,10 +473,7 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
     )?;
 
     for i in 1..dest_len {
-        this.copy_op(
-            &this.project_index(&left, i)?,
-            &this.project_index(&dest, i)?,
-        )?;
+        this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
     }
 
     Ok(())

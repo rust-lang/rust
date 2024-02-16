@@ -208,10 +208,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 this.write_immediate(*res0, &dest0)?;
 
                 for i in 1..dest_len {
-                    this.copy_op(
-                        &this.project_index(&left, i)?,
-                        &this.project_index(&dest, i)?,
-                    )?;
+                    this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
                 }
             }
             _ => return Ok(EmulateForeignItemResult::NotSupported),
