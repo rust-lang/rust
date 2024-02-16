@@ -1226,10 +1226,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if let Some(last_otherwise_block) = otherwise_block {
                 last_otherwise_block
             } else {
-                // Any remaining candidates are unreachable.
-                if unmatched_candidates.is_empty() {
-                    return;
-                }
                 self.cfg.start_new_block()
             }
         } else {

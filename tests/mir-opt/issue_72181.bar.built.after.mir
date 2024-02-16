@@ -19,4 +19,8 @@ fn bar(_1: [(Never, u32); 1]) -> u32 {
         FakeRead(ForMatchedPlace(None), _1);
         unreachable;
     }
+
+    bb2: {
+        goto -> bb1;
+    }
 }
