@@ -1207,7 +1207,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         span: Span,
         scrutinee_span: Span,
-        start_block: BasicBlock,
+        mut start_block: BasicBlock,
         otherwise_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
@@ -1219,14 +1219,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("match_candidates: {:?} candidates fully matched", fully_matched);
         let (matched_candidates, unmatched_candidates) = candidates.split_at_mut(fully_matched);
 
-        let block = self.select_matched_candidates(matched_candidates, start_block, fake_borrows);
+        for candidate in matched_candidates.iter_mut() {
+            start_block = self.select_matched_candidate(candidate, start_block, fake_borrows);
+        }
 
         // If there are no candidates that still need testing, we're
         // done. Since all matches are exhaustive, execution should
         // never reach this point.
         if unmatched_candidates.is_empty() {
             let source_info = self.source_info(span);
-            self.cfg.goto(block, source_info, otherwise_block);
+            self.cfg.goto(start_block, source_info, otherwise_block);
             return;
         }
 
@@ -1235,7 +1237,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             span,
             scrutinee_span,
             unmatched_candidates,
-            block,
+            start_block,
             otherwise_block,
             fake_borrows,
         );
@@ -1260,67 +1262,64 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// * the [otherwise block] of the third pattern to a block with an
     ///   [`Unreachable` terminator](TerminatorKind::Unreachable).
     ///
-    /// In addition, we add fake edges from the otherwise blocks to the
+    /// In addition, we later add fake edges from the otherwise blocks to the
     /// pre-binding block of the next candidate in the original set of
     /// candidates.
     ///
     /// [pre-binding block]: Candidate::pre_binding_block
     /// [otherwise block]: Candidate::otherwise_block
-    fn select_matched_candidates(
+    fn select_matched_candidate(
         &mut self,
-        matched_candidates: &mut [&mut Candidate<'_, 'tcx>],
+        candidate: &mut Candidate<'_, 'tcx>,
         start_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) -> BasicBlock {
-        let mut next_prebinding = start_block;
-        for candidate in matched_candidates.iter_mut() {
-            assert!(candidate.otherwise_block.is_none());
-            assert!(candidate.pre_binding_block.is_none());
-            debug_assert!(
-                candidate.subcandidates.is_empty(),
-                "subcandidates should be empty in select_matched_candidates",
-            );
+        assert!(candidate.otherwise_block.is_none());
+        assert!(candidate.pre_binding_block.is_none());
+        debug_assert!(
+            candidate.subcandidates.is_empty(),
+            "subcandidates should be empty in select_matched_candidates",
+        );
 
-            if let Some(fake_borrows) = fake_borrows {
-                // Insert a borrows of prefixes of places that are bound and are
-                // behind a dereference projection.
-                //
-                // These borrows are taken to avoid situations like the following:
-                //
-                // match x[10] {
-                //     _ if { x = &[0]; false } => (),
-                //     y => (), // Out of bounds array access!
-                // }
-                //
-                // match *x {
-                //     // y is bound by reference in the guard and then by copy in the
-                //     // arm, so y is 2 in the arm!
-                //     y if { y == 1 && (x = &2) == () } => y,
-                //     _ => 3,
-                // }
-                for Binding { source, .. } in &candidate.bindings {
-                    if let Some(i) =
-                        source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref)
-                    {
-                        let proj_base = &source.projection[..i];
+        if let Some(fake_borrows) = fake_borrows {
+            // Insert a borrows of prefixes of places that are bound and are
+            // behind a dereference projection.
+            //
+            // These borrows are taken to avoid situations like the following:
+            //
+            // match x[10] {
+            //     _ if { x = &[0]; false } => (),
+            //     y => (), // Out of bounds array access!
+            // }
+            //
+            // match *x {
+            //     // y is bound by reference in the guard and then by copy in the
+            //     // arm, so y is 2 in the arm!
+            //     y if { y == 1 && (x = &2) == () } => y,
+            //     _ => 3,
+            // }
+            for Binding { source, .. } in &candidate.bindings {
+                if let Some(i) =
+                    source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref)
+                {
+                    let proj_base = &source.projection[..i];
 
-                        fake_borrows.insert(Place {
-                            local: source.local,
-                            projection: self.tcx.mk_place_elems(proj_base),
-                        });
-                    }
+                    fake_borrows.insert(Place {
+                        local: source.local,
+                        projection: self.tcx.mk_place_elems(proj_base),
+                    });
                 }
             }
-
-            candidate.pre_binding_block = Some(next_prebinding);
-            next_prebinding = self.cfg.start_new_block();
-            if candidate.has_guard {
-                // Create the otherwise block for this candidate, which is the
-                // pre-binding block for the next candidate.
-                candidate.otherwise_block = Some(next_prebinding);
-            }
         }
-        next_prebinding
+
+        candidate.pre_binding_block = Some(start_block);
+        let otherwise_block = self.cfg.start_new_block();
+        if candidate.has_guard {
+            // Create the otherwise block for this candidate, which is the
+            // pre-binding block for the next candidate.
+            candidate.otherwise_block = Some(otherwise_block);
+        }
+        otherwise_block
     }
 
     /// Tests a candidate where there are only or-patterns left to test, or
