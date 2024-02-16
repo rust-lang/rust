@@ -1,5 +1,6 @@
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
+//@normalize-stderr-test: "thread '<unnamed>' \(id [0-9]+\)" -> "thread '<unnamed>'"
 
 //! Cause a panic in one thread while another thread is unwinding. This checks
 //! that separate threads have their own panicking state.

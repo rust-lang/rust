@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-strict-provenance
+//@normalize-stderr-test: "thread '<unnamed>' \(id [0-9]+\)" -> "thread '<unnamed>'"
 
 use std::thread;
 

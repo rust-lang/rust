@@ -1,6 +1,7 @@
 //@ignore-target-windows: No libc on Windows
 
 //@compile-flags: -Zmiri-disable-abi-check
+//@normalize-stderr-test: "thread '<unnamed>' \(id [0-9]+\)" -> "thread '<unnamed>'"
 
 //! Unwinding past the top frame of a stack is Undefined Behavior.
 

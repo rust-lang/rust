@@ -252,15 +252,23 @@ fn default_hook(info: &PanicInfo<'_>) {
     let msg = match info.payload().downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match info.payload().downcast_ref::<String>() {
-            Some(s) => &s[..],
+            Some(s) => s.as_str(),
             None => "Box<dyn Any>",
         },
     };
     let thread = thread_info::current_thread();
-    let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg}");
+        let _ = match thread.as_ref().map(|t| t.name().ok_or(t)) {
+            Some(Ok(name)) => {
+                writeln!(err, "thread '{name}' panicked at {location}:\n{msg}")
+            }
+            Some(Err(t)) => {
+                let id = t.id().as_u64();
+                writeln!(err, "thread '<unnamed>' (id {id}) panicked at {location}:\n{msg}",)
+            }
+            None => writeln!(err, "thread '<unnamed>' panicked at {location}:\n{msg}"),
+        };
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
