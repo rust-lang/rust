@@ -23,8 +23,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    force_query, QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects,
-    QueryStackFrame,
+    force_query, DefIdInfo, QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap,
+    QuerySideEffects, QueryStackFrame,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow};
 use rustc_serialize::Decodable;
@@ -176,10 +176,14 @@ impl QueryContext for QueryCtxt<'_> {
     #[tracing::instrument(level = "trace", skip(self))]
     fn apply_side_effects(self, side_effects: QuerySideEffects) {
         let dcx = self.dep_context().sess().dcx();
-        let QuerySideEffects { diagnostics } = side_effects;
+        let QuerySideEffects { diagnostics, definitions } = side_effects;
 
         for diagnostic in diagnostics {
             dcx.emit_diagnostic(diagnostic);
+        }
+
+        for DefIdInfo { parent, data } in definitions {
+            self.tcx.untracked().definitions.write().create_def(parent, data);
         }
     }
 }

@@ -55,8 +55,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
-use rustc_query_system::dep_graph::DepNodeIndex;
+use rustc_query_system::dep_graph::{DepNodeIndex, TaskDepsRef};
 use rustc_query_system::ich::StableHashingContext;
+use rustc_query_system::query::DefIdInfo;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
@@ -1150,9 +1151,31 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        tls::with_context(|icx| {
+            match icx.task_deps {
+                // Always gets rerun anyway, so nothing to replay
+                TaskDepsRef::EvalAlways => {}
+                // Top-level queries like the resolver get rerun every time anyway
+                TaskDepsRef::Ignore => {}
+                TaskDepsRef::Forbid => bug!(
+                    "cannot create definition {parent:?}, {name:?}, {def_kind:?} without being able to register task dependencies"
+                ),
+                TaskDepsRef::Allow(_) => {
+                    icx.side_effects
+                        .as_ref()
+                        .unwrap()
+                        .lock()
+                        .definitions
+                        .push(DefIdInfo { parent, data });
+                }
+                TaskDepsRef::Replay { prev_side_effects, created_def_ids } => {
+                    let prev_info = &prev_side_effects.definitions
+                        [created_def_ids.load(std::sync::atomic::Ordering::Relaxed)];
+                    created_def_ids.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    assert_eq!(*prev_info, DefIdInfo { parent, data });
+                }
+            }
+        });
 
         let feed = TyCtxtFeed { tcx: self, key: def_id };
         feed.def_kind(def_kind);

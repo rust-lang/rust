@@ -1,9 +1,15 @@
+use super::query::DepGraphQuery;
+use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
+use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
+use crate::dep_graph::edges::EdgesVec;
+use crate::ich::StableHashingContext;
+use crate::query::{QueryContext, QuerySideEffects};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
+use rustc_data_structures::sync::{AtomicU32, AtomicU64, AtomicUsize, Lock, Lrc};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
@@ -13,13 +19,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::atomic::Ordering;
-
-use super::query::DepGraphQuery;
-use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
-use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
-use crate::dep_graph::edges::EdgesVec;
-use crate::ich::StableHashingContext;
-use crate::query::{QueryContext, QuerySideEffects};
 
 #[cfg(debug_assertions)]
 use {super::debug::EdgeFilter, std::env};
@@ -215,6 +214,15 @@ impl<D: Deps> DepGraph<D> {
         D::with_deps(TaskDepsRef::Ignore, op)
     }
 
+    pub(crate) fn with_replay<R>(
+        &self,
+        prev_side_effects: &QuerySideEffects,
+        created_def_ids: &AtomicUsize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        D::with_deps(TaskDepsRef::Replay { prev_side_effects, created_def_ids }, op)
+    }
+
     /// Used to wrap the deserialization of a query result from disk,
     /// This method enforces that no new `DepNodes` are created during
     /// query result deserialization.
@@ -269,6 +277,7 @@ impl<D: Deps> DepGraph<D> {
     }
 
     #[inline(always)]
+    /// A helper for `codegen_cranelift`.
     pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
         &self,
         key: DepNode,
@@ -455,6 +464,12 @@ impl<D: Deps> DepGraph<D> {
                         return;
                     }
                     TaskDepsRef::Ignore => return,
+                    // We don't need to record dependencies when rerunning a query
+                    // because we have no disk cache entry to load. The dependencies
+                    // are preserved.
+                    // FIXME: assert that the dependencies don't change instead of
+                    // recording them.
+                    TaskDepsRef::Replay { .. } => return,
                     TaskDepsRef::Forbid => {
                         panic!("Illegal read of: {dep_node_index:?}")
                     }
@@ -560,6 +575,7 @@ impl<D: Deps> DepGraph<D> {
                     edges.push(DepNodeIndex::FOREVER_RED_NODE);
                 }
                 TaskDepsRef::Ignore => {}
+                TaskDepsRef::Replay { .. } => {}
                 TaskDepsRef::Forbid => {
                     panic!("Cannot summarize when dependencies are not recorded.")
                 }
@@ -1279,6 +1295,16 @@ pub enum TaskDepsRef<'a> {
     /// to ensure that the decoding process doesn't itself
     /// require the execution of any queries.
     Forbid,
+    /// Side effects from the previous run made available to
+    /// queries when they are reexecuted because their result was not
+    /// available in the cache. The query removes entries from the
+    /// side effect table. The table must be empty
+    Replay {
+        prev_side_effects: &'a QuerySideEffects,
+        /// Every new `DefId` is pushed here so we can check
+        /// that they match the cached ones.
+        created_def_ids: &'a AtomicUsize,
+    },
 }
 
 #[derive(Debug)]

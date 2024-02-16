@@ -16,7 +16,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::sync::{AtomicUsize, Lock};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
@@ -500,7 +500,7 @@ where
         let dep_node =
             dep_node_opt.get_or_insert_with(|| query.construct_dep_node(*qcx.dep_context(), &key));
 
-        // The diagnostics for this query will be promoted to the current session during
+        // The side_effects for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = qcx.start_query(job_id, false, None, || {
             try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, dep_node)
@@ -618,8 +618,17 @@ where
     // recompute.
     let prof_timer = qcx.dep_context().profiler().query_provider();
 
+    let prev_side_effects = qcx.load_side_effects(prev_dep_node_index);
+    let created_def_ids = AtomicUsize::new(0);
     // The dep-graph for this computation is already in-place.
-    let result = qcx.dep_context().dep_graph().with_ignore(|| query.compute(qcx, *key));
+    let result =
+        qcx.dep_context()
+            .dep_graph()
+            .with_replay(&prev_side_effects, &created_def_ids, || query.compute(qcx, *key));
+
+    assert_eq!(created_def_ids.into_inner(), prev_side_effects.definitions.len());
+    // We already checked at `DefId` creation time, that the created `DefId`s have the same parent and `DefPathData`
+    // as the cached ones.
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
