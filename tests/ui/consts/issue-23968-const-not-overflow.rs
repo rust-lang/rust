@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 const U8_MAX_HALF: u8 = !0u8 / 2;
 const U16_MAX_HALF: u16 = !0u16 / 2;
 const U32_MAX_HALF: u32 = !0u32 / 2;

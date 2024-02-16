@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zextra-const-ub-checks
+//@ check-pass
+//@ compile-flags: -Zextra-const-ub-checks
 
 #[derive(PartialEq, Eq, Copy, Clone)]
 #[repr(packed)]

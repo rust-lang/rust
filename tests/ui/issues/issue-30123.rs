@@ -1,4 +1,4 @@
-// aux-build:issue-30123-aux.rs
+//@ aux-build:issue-30123-aux.rs
 
 extern crate issue_30123_aux;
 use issue_30123_aux::*;

@@ -1,13 +1,13 @@
 // Test for normalization of projections that appear in the item bounds
 // (versus those that appear directly in the input types).
 //
-// revisions: param_ty lifetime param_ty_no_compat lifetime_no_compat
+//@ revisions: param_ty lifetime param_ty_no_compat lifetime_no_compat
 
-//[param_ty] check-pass
-//[param_ty_no_compat] check-pass
-//[lifetime_no_compat] check-pass
-//[param_ty_no_compat] compile-flags: -Zno-implied-bounds-compat
-//[lifetime_no_compat] compile-flags: -Zno-implied-bounds-compat
+//@[param_ty] check-pass
+//@[param_ty_no_compat] check-pass
+//@[lifetime_no_compat] check-pass
+//@[param_ty_no_compat] compile-flags: -Zno-implied-bounds-compat
+//@[lifetime_no_compat] compile-flags: -Zno-implied-bounds-compat
 
 pub trait Iter {
     type Item;

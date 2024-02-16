@@ -1,6 +1,6 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
-//[current] check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@[current] check-pass
 
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]

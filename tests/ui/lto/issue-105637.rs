@@ -9,9 +9,9 @@
 // In this test, we reproduce this setup by installing a panic hook in both the main and an LTOed
 // dylib: the last hook set should be the one being executed, the dylib's.
 
-// aux-build: thinlto-dylib.rs
-// run-fail
-// check-run-results
+//@ aux-build: thinlto-dylib.rs
+//@ run-fail
+//@ check-run-results
 
 extern crate thinlto_dylib;
 

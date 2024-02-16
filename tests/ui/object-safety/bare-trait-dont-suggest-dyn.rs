@@ -1,7 +1,7 @@
-// revisions: old new
-//[old] edition:2015
-//[new] edition:2021
-//[new] run-rustfix
+//@ revisions: old new
+//@[old] edition:2015
+//@[new] edition:2021
+//@[new] run-rustfix
 // FIXME: the test suite tries to create a crate called `bare_trait_dont_suggest_dyn.new`
 #![crate_name="bare_trait_dont_suggest_dyn"]
 #![deny(bare_trait_objects)]

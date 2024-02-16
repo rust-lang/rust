@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Captures<'a> {}
 impl<T> Captures<'_> for T {}

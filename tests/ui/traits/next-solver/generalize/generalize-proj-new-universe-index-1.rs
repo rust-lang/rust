@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // A minimization of an ambiguity when using typenum. See
 // https://github.com/rust-lang/trait-system-refactor-initiative/issues/55

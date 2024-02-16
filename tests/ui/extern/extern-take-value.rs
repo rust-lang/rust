@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:extern-take-value.rs
+//@ run-pass
+//@ aux-build:extern-take-value.rs
 
 extern crate extern_take_value;
 

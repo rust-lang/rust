@@ -2,8 +2,8 @@
 // function returning always its first argument can be upcast to one
 // that returns either first or second argument.
 //
-// check-pass
-// compile-flags:-Zno-leak-check
+//@ check-pass
+//@ compile-flags:-Zno-leak-check
 
 #![allow(dropping_copy_types)]
 

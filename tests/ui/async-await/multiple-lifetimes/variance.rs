@@ -1,5 +1,5 @@
-// edition:2018
-// run-pass
+//@ edition:2018
+//@ run-pass
 
 // Test for async fn where the parameters have distinct lifetime
 // parameters that appear in all possible variances.

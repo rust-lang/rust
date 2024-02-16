@@ -1,6 +1,6 @@
 // Test that enabling an unstable feature disables warnings
 
-// aux-build:stability-cfg2.rs
+//@ aux-build:stability-cfg2.rs
 
 #![feature(unstable_test_feature)]
 #![deny(non_snake_case)] // To trigger a hard error

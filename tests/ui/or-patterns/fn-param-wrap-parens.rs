@@ -1,6 +1,6 @@
 // Test the suggestion to wrap an or-pattern as a function parameter in parens.
 
-// run-rustfix
+//@ run-rustfix
 
 #![allow(warnings)]
 

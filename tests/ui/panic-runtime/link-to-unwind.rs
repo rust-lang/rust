@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 
 #![feature(panic_unwind)]
 

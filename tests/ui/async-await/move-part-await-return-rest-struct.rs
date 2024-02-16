@@ -1,6 +1,6 @@
-// build-pass
-// edition:2018
-// compile-flags: --crate-type lib
+//@ build-pass
+//@ edition:2018
+//@ compile-flags: --crate-type lib
 
 struct Small {
     x: Vec<usize>,

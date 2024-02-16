@@ -1,6 +1,6 @@
 // Test that :pat doesn't accept top-level or-patterns in edition 2018.
 
-// edition:2018
+//@ edition:2018
 
 fn main() {}
 

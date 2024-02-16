@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:call-deprecated.rs
+//@ check-pass
+//@ aux-build:call-deprecated.rs
 
 extern crate call_deprecated;
 

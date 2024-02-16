@@ -12,7 +12,7 @@
 // effort for bug like this, which 1. end users are unlikely to run into in the
 // first place, and 2. they won't see the redundant output anyway.
 
-// compile-flags: -Z deduplicate-diagnostics=yes
+//@ compile-flags: -Z deduplicate-diagnostics=yes
 
 #![forbid(forbidden_lint_groups)]
 

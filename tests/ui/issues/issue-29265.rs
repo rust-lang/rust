@@ -1,5 +1,5 @@
-// aux-build:issue-29265.rs
-// check-pass
+//@ aux-build:issue-29265.rs
+//@ check-pass
 
 extern crate issue_29265 as lib;
 

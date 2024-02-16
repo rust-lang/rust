@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 // This test checks that the `where_clauses_object_safety` lint does not cause
 // other object safety *hard errors* to be suppressed, because we currently
 // only emit one object safety error per trait...

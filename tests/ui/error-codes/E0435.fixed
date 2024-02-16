@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main () {
     #[allow(non_upper_case_globals)]
     const foo: usize = 42;

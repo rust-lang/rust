@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct S<T: 'static>(#[allow(dead_code)] Option<&'static T>);
 
 trait Tr { type Out; }

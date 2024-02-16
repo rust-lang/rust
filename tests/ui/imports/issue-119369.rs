@@ -1,5 +1,5 @@
-// check-pass
-// aux-build: issue-119369-extern.rs
+//@ check-pass
+//@ aux-build: issue-119369-extern.rs
 
 // https://github.com/rust-lang/rust/pull/119369#issuecomment-1874905662
 

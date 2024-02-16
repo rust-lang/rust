@@ -1,6 +1,6 @@
-// check-pass
-// edition:2018
-// compile-flags: --crate-type=lib
+//@ check-pass
+//@ edition:2018
+//@ compile-flags: --crate-type=lib
 
 pub async fn test() {
     const C: usize = 4;

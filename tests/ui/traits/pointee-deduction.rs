@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(ptr_metadata)]
 

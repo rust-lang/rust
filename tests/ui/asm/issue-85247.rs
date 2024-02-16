@@ -1,10 +1,10 @@
-// revisions: ropi rwpi
+//@ revisions: ropi rwpi
 
-// [ropi] compile-flags: --target armv7-unknown-linux-gnueabihf -C relocation-model=ropi
-// [rwpi] compile-flags: --target armv7-unknown-linux-gnueabihf -C relocation-model=rwpi
-// [ropi] needs-llvm-components: arm
-// [rwpi] needs-llvm-components: arm
-// [ropi] build-pass
+//@ [ropi] compile-flags: --target armv7-unknown-linux-gnueabihf -C relocation-model=ropi
+//@ [rwpi] compile-flags: --target armv7-unknown-linux-gnueabihf -C relocation-model=rwpi
+//@ [ropi] needs-llvm-components: arm
+//@ [rwpi] needs-llvm-components: arm
+//@ [ropi] build-pass
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]

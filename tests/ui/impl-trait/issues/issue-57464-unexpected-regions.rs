@@ -5,7 +5,7 @@
 // opaque type. As all regions are now required to outlive the bound in an
 // opaque type we avoid the issue here.
 
-// check-pass
+//@ check-pass
 
 struct A<F>(F);
 

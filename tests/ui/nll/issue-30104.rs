@@ -1,6 +1,6 @@
 // Regression test for #30104
 
-// check-pass
+//@ check-pass
 
 use std::ops::{Deref, DerefMut};
 

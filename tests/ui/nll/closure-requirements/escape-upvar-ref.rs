@@ -9,7 +9,7 @@
 // `'b`.  This relationship is propagated to the closure creator,
 // which reports an error.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

@@ -1,8 +1,8 @@
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug
-// revisions: local remapped
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug
+//@ revisions: local remapped
 // [local] no-remap-src-base: The hack should work regardless of remapping.
-// [remapped] remap-src-base
+//@ [remapped] remap-src-base
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

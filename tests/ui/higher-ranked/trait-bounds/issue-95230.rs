@@ -1,7 +1,7 @@
-// revisions: old next
-//[next] compile-flags: -Znext-solver
-//[old] check-pass
-//[next] known-bug: #109764
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
+//@[old] check-pass
+//@[next] known-bug: #109764
 
 
 pub struct Bar

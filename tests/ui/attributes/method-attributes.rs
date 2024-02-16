@@ -1,6 +1,6 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// pp-exact - Make sure we print all the attributes
-// pretty-expanded FIXME #23616
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ pp-exact - Make sure we print all the attributes
+//@ pretty-expanded FIXME #23616
 
 #![feature(rustc_attrs)]
 

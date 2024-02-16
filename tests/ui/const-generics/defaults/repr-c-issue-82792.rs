@@ -1,6 +1,6 @@
 // Regression test for #82792.
 
-// run-pass
+//@ run-pass
 
 #[repr(C)]
 pub struct Loaf<T: Sized, const N: usize = 1> {

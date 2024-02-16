@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused_variables, dead_code, non_upper_case_globals)]
 
 fn main() {

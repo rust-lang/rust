@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 /*
 
 #5008 cast to &Trait causes code to segfault on method call

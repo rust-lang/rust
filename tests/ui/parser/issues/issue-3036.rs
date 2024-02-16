@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 // Testing that semicolon tokens are printed correctly in errors
 

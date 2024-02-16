@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 use std::cell::Cell;
 use std::ops::{Deref, DerefMut};

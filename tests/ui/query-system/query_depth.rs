@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 #![recursion_limit = "64"]
 type Byte = Option<Option<Option<Option< Option<Option<Option<Option<

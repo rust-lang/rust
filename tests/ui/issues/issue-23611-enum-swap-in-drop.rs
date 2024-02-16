@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_upper_case_globals)]
 
 // Issue 23611: this test is ensuring that, for an instance `X` of the

@@ -1,7 +1,7 @@
 // This issue reproduces an ICE on compile (E.g. fails on 2018-12-19 nightly).
 // "cannot relate bound region: ReBound(DebruijnIndex(1), BrAnon(1)) <= '?1"
-// run-pass
-// edition:2018
+//@ run-pass
+//@ edition:2018
 #![feature(coroutines,coroutine_trait)]
 use std::ops::Coroutine;
 

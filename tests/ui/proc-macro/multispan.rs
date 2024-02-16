@@ -1,4 +1,4 @@
-// aux-build:multispan.rs
+//@ aux-build:multispan.rs
 
 extern crate multispan;
 

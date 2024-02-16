@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test that we can mutate a place through a mut-borrow
 // that is captured by the closure

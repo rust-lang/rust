@@ -1,5 +1,5 @@
 //! Check that typeck can observe the size of an opaque type.
-// check-pass
+//@ check-pass
 use std::mem::transmute;
 fn foo() -> impl Sized {
     0u8

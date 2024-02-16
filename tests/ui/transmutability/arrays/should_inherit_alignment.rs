@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! An array must inherit the alignment of its inner type.
 
 #![crate_type = "lib"]

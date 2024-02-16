@@ -2,7 +2,7 @@
 
 // Check that we normalize super predicates for object candidates.
 
-// check-pass
+//@ check-pass
 
 use std::ops::Index;
 

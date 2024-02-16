@@ -1,5 +1,5 @@
 // Unused `pub` fields in non-`pub` structs should also trigger dead code warnings.
-// check-pass
+//@ check-pass
 
 #![warn(dead_code)]
 

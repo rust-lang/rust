@@ -1,4 +1,4 @@
-// ignore-windows different list of satisfying impls
+//@ ignore-windows different list of satisfying impls
 use std::collections::HashMap;
 
 fn what() {

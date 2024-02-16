@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(associated_const_equality)]
 

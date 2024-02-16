@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Allocator {
     type Allocated<T>;

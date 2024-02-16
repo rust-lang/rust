@@ -1,6 +1,6 @@
 // FIXME run-pass
-// known-bug: #110395
-// revisions: stock precise
+//@ known-bug: #110395
+//@ revisions: stock precise
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(never_type)]

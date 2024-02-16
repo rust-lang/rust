@@ -1,6 +1,6 @@
 // This checks that the const-eval ICE in issue #100878 does not recur.
 //
-// build-pass
+//@ build-pass
 
 #[allow(arithmetic_overflow)]
 pub fn bitshift_data(data: [u8; 1]) -> u8 {

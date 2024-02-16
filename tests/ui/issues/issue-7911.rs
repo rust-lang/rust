@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // (Closes #7911) Test that we can use the same self expression
 // with different mutability in macro in two methods
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f(x: Box<isize>) {
     let y: &isize = &*x;

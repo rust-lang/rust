@@ -1,5 +1,5 @@
 #![feature(generic_arg_infer)]
-// run-pass
+//@ run-pass
 
 fn foo<const N: usize, const K: usize>(_data: [u32; N]) -> [u32; K] {
     [0; K]

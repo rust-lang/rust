@@ -3,7 +3,7 @@
 // over time, but this test used to exhibit some pretty bogus messages
 // that were not remotely helpful.
 
-// error-pattern:argument requires that `'a` must outlive `'static`
+//@ error-pattern:argument requires that `'a` must outlive `'static`
 
 struct Invariant<'a>(Option<&'a mut &'a mut ()>);
 

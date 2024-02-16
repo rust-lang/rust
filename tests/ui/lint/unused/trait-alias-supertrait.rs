@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Make sure that we only consider *Self* supertrait predicates
 // in the `unused_must_use` lint.

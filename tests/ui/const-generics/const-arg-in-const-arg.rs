@@ -1,4 +1,4 @@
-// revisions: min
+//@ revisions: min
 // we use a single revision because this should have a `full` revision
 // but right now that ICEs and I(@BoxyUwU) could not get stderr normalization to work
 

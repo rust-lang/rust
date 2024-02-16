@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct S {
     z: f64
 }

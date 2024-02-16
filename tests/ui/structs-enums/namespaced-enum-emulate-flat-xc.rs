@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
-// aux-build:namespaced_enum_emulate_flat.rs
+//@ aux-build:namespaced_enum_emulate_flat.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate namespaced_enum_emulate_flat;
 

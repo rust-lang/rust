@@ -1,8 +1,8 @@
 #![feature(type_alias_impl_trait)]
 
 // this test used to stack overflow due to infinite recursion.
-// check-pass
-// compile-flags: --edition=2018
+//@ check-pass
+//@ compile-flags: --edition=2018
 
 use std::future::Future;
 

@@ -1,6 +1,6 @@
-// revisions: old next
-//[next] compile-flags: -Znext-solver=coherence
-// check-pass
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver=coherence
+//@ check-pass
 
 // Regression test for issue #90662
 // Tests that projection caching does not cause a spurious error.

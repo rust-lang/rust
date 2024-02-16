@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 struct Node<C: Trait<Self>>(C::Assoc);
 
 trait Trait<T> {

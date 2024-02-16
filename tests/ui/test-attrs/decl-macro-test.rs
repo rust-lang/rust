@@ -1,7 +1,7 @@
 // Check that declarative macros can declare tests
 
-// check-pass
-// compile-flags: --test
+//@ check-pass
+//@ compile-flags: --test
 
 #![feature(decl_macro)]
 

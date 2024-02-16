@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![feature(lazy_type_alias)]
 #![allow(incomplete_features)]

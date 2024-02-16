@@ -1,7 +1,7 @@
 // Make sure that we normalize bounds on associated types before checking them
 // as candidates.
 
-// check-pass
+//@ check-pass
 
 trait Mul<T> {
     type Output;

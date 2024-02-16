@@ -1,5 +1,5 @@
-// check-fail
-// known-bug: unknown
+//@ check-fail
+//@ known-bug: unknown
 
 // This gives us problems because `for<'a> I::Item<'a>: Debug` should mean "for
 // all 'a where I::Item<'a> is WF", but really means "for all 'a possible"

@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -Zvalidate-mir
+//@ run-pass
+//@ compile-flags: -Zvalidate-mir
 
 use std::fmt::Display;
 use std::rc::Rc;

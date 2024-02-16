@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::mem::size_of;
 
 #[derive(PartialEq, Debug)]

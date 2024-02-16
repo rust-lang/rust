@@ -1,6 +1,6 @@
 // Make sure we suggest the bound `T: 'a` in the correct scope:
 // trait, impl or associated fn.
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 
 struct Inv<'a>(#[allow(dead_code)] Option<*mut &'a u8>);

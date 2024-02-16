@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 // Test that we can resolve nested projection types. Issue #20666.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::slice;
 

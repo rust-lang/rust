@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // Regression test from crater run for
 // <https://github.com/rust-lang/rust/pull/98109>.

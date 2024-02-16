@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that generating drop glue for Box<str> doesn't ICE
 
 

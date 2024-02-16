@@ -1,6 +1,6 @@
-// only-wasm32
-// compile-flags:-C target-feature=-simd128
-// build-pass
+//@ only-wasm32
+//@ compile-flags:-C target-feature=-simd128
+//@ build-pass
 
 #![crate_type = "lib"]
 

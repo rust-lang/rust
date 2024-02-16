@@ -1,4 +1,4 @@
-// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 use std::cell::Cell;
 
 #[rustfmt::skip]

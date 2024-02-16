@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![deny(where_clauses_object_safety)]
 

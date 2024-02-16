@@ -1,5 +1,5 @@
-// compile-flags: -Z threads=16
-// run-pass
+//@ compile-flags: -Z threads=16
+//@ run-pass
 
 #[repr(transparent)]
 struct Sched {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
 enum list<T> { #[allow(dead_code)] cons(Box<T>, Box<list<T>>), nil, }

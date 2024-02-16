@@ -1,6 +1,6 @@
 // Duplicate non-builtin attributes can be used on unnamed fields.
 
-// check-pass
+//@ check-pass
 
 struct S (
     #[rustfmt::skip]

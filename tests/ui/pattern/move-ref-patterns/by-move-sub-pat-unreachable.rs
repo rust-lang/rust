@@ -2,7 +2,7 @@
 // happen and that code is unreachable according to borrowck, we accept this code.
 // In particular, we want to ensure here that an ICE does not happen, which it did originally.
 
-// check-pass
+//@ check-pass
 
 fn main() {
     return;

@@ -1,10 +1,10 @@
-// run-pass
-// needs-unwind
+//@ run-pass
+//@ needs-unwind
 
 #![allow(stable_features)]
 #![allow(unused_must_use)]
 
-// ignore-emscripten no threads support
+//@ ignore-emscripten no threads support
 
 #![feature(std_panic)]
 

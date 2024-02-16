@@ -1,9 +1,9 @@
 // Test that dead code warnings are issued for superfluous assignments of
 // fields or variables to themselves (issue #75356).
 
-// ignore-test FIXME(81658, 83171)
+//@ ignore-test FIXME(81658, 83171)
 
-// check-pass
+//@ check-pass
 #![allow(unused_assignments)]
 #![warn(dead_code)]
 

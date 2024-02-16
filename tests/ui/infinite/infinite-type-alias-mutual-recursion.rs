@@ -1,4 +1,4 @@
-// revisions: feature gated
+//@ revisions: feature gated
 
 #![cfg_attr(feature, feature(lazy_type_alias))]
 #![allow(incomplete_features)]

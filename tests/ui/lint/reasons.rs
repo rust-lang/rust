@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(lint_reasons)]
 #![warn(elided_lifetimes_in_paths,

@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 // #14399
 // We'd previously ICE if we had a method call whose return
 // value was coerced to a trait object. (v.clone() returns Box<B1>
 // which is coerced to Box<A>).
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #[derive(Clone)]
 struct B1;

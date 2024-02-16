@@ -1,4 +1,4 @@
-// revisions: stock mut_refs
+//@ revisions: stock mut_refs
 #![allow(static_mut_ref)]
 #![cfg_attr(mut_refs, feature(const_mut_refs))]
 

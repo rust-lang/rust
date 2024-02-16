@@ -1,7 +1,7 @@
 // Regression test for #82126. Checks that mismatched lifetimes and types are
 // properly handled.
 
-// edition:2018
+//@ edition:2018
 
 use std::sync::Mutex;
 

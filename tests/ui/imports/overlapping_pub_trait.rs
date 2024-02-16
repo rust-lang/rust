@@ -1,4 +1,4 @@
-// aux-build:overlapping_pub_trait_source.rs
+//@ aux-build:overlapping_pub_trait_source.rs
 
 /*
  * This crate declares two public paths, `m::Tr` and `prelude::_`. Make sure we prefer the former.

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(warnings)]
 
 // Some type that is not copyable.

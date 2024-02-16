@@ -1,5 +1,5 @@
-// compile-flags: -Z print-type-sizes --crate-type=lib
-// build-pass
+//@ compile-flags: -Z print-type-sizes --crate-type=lib
+//@ build-pass
 
 // This test makes sure that the tag is not grown for `repr(C)` or `repr(u8)`
 // variants (see https://github.com/rust-lang/rust/issues/50098 for the original bug).

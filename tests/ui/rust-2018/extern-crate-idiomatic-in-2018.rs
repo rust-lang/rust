@@ -1,7 +1,7 @@
-// aux-build:edition-lint-paths.rs
-// run-rustfix
-// compile-flags:--extern edition_lint_paths
-// edition:2018
+//@ aux-build:edition-lint-paths.rs
+//@ run-rustfix
+//@ compile-flags:--extern edition_lint_paths
+//@ edition:2018
 
 // The "normal case". Ideally we would remove the `extern crate` here,
 // but we don't.

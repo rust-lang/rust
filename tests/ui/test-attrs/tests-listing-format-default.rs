@@ -1,8 +1,8 @@
-// no-prefer-dynamic
-// compile-flags: --test
-// run-flags: --list
-// run-pass
-// check-run-results
+//@ no-prefer-dynamic
+//@ compile-flags: --test
+//@ run-flags: --list
+//@ run-pass
+//@ check-run-results
 
 // Checks the listing of tests with no --format arguments.
 

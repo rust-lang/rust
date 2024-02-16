@@ -1,10 +1,10 @@
-// revisions: old next
-//[old] check-pass
+//@ revisions: old next
+//@[old] check-pass
 
 // Currently always fails to generalize the outer alias, even if it
 // is treated as rigid by `alias-relate`.
-//[next] compile-flags: -Znext-solver
-//[next] known-bug: trait-system-refactor-initiative#8
+//@[next] compile-flags: -Znext-solver
+//@[next] known-bug: trait-system-refactor-initiative#8
 #![crate_type = "lib"]
 #![allow(unused)]
 trait Unnormalizable {

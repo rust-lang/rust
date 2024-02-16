@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait Foo {
     const X: i32;

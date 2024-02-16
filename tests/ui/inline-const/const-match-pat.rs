@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(inline_const_pat)]
 const MMIO_BIT1: u8 = 4;

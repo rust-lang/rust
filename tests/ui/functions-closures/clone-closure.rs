@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Check that closures implement `Clone`.
 
 #[derive(Clone)]

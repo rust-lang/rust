@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 //
 // At one time, the `==` operator (and other binary operators) did not
 // support subtyping during type checking, and would therefore require

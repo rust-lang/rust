@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 // Issue #2263.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![allow(unused_variables)]
 

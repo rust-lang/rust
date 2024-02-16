@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Check that we don't try to downcast `_` when type-checking the annotation.
 fn main() {

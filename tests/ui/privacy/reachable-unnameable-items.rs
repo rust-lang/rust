@@ -1,6 +1,6 @@
-// run-pass
-// needs-unwind
-// aux-build:reachable-unnameable-items.rs
+//@ run-pass
+//@ needs-unwind
+//@ aux-build:reachable-unnameable-items.rs
 
 extern crate reachable_unnameable_items;
 use reachable_unnameable_items::*;

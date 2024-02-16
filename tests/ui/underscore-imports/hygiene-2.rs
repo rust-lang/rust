@@ -1,7 +1,7 @@
 // Make sure that underscore imports with different contexts can exist in the
 // same scope.
 
-// check-pass
+//@ check-pass
 
 #![feature(decl_macro)]
 

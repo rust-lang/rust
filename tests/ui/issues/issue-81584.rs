@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main() {
         let _ = vec![vec![0, 1], vec![2]]
             .into_iter()

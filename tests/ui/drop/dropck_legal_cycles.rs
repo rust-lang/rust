@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This test exercises cases where cyclic structure is legal,
 // including when the cycles go through data-structures such
 // as `Vec` or `TypedArena`.

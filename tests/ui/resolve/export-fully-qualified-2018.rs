@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // In this test baz isn't resolved when called as foo.baz even though
 // it's called from inside foo. This is somewhat surprising and may

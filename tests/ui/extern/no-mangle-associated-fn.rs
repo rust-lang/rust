@@ -1,5 +1,5 @@
-// aux-build: no-mangle-associated-fn.rs
-// run-pass
+//@ aux-build: no-mangle-associated-fn.rs
+//@ run-pass
 
 extern crate no_mangle_associated_fn;
 

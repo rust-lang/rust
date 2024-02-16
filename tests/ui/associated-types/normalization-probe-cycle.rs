@@ -1,6 +1,6 @@
 // Regression test for #77656
 
-// check-pass
+//@ check-pass
 
 trait Value: PartialOrd {}
 

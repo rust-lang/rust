@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const HASH_LEN: usize = 20;
 struct Hash(#[allow(dead_code)] [u8; HASH_LEN]);

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // related to #113916, check that using RPITs in functions with lifetime params
 // which are constrained to be equal compiles.

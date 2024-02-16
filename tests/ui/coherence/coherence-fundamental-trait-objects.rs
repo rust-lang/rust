@@ -2,7 +2,7 @@
 // treated as #[fundamental] types - the 2 meanings of #[fundamental]
 // are distinct.
 
-// aux-build:coherence_fundamental_trait_lib.rs
+//@ aux-build:coherence_fundamental_trait_lib.rs
 
 extern crate coherence_fundamental_trait_lib;
 

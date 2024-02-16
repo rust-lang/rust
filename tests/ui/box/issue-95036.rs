@@ -1,5 +1,5 @@
-// compile-flags: -O
-// build-pass
+//@ compile-flags: -O
+//@ build-pass
 
 #![feature(allocator_api)]
 

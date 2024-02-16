@@ -4,7 +4,7 @@
 // that we do not kill too many borrows. Assignments to the `.1`
 // field projections should leave the borrows on `.0` intact.
 
-// compile-flags: -Z polonius
+//@ compile-flags: -Z polonius
 
 struct List<T> {
     value: T,

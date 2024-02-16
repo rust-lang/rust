@@ -1,6 +1,6 @@
 // gate-test-intrinsics
 // gate-test-platform_intrinsics
-// compile-flags: --crate-type=rlib
+//@ compile-flags: --crate-type=rlib
 
 #![feature(no_core, lang_items)]
 #![no_core]

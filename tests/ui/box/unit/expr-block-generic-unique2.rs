@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_braces)]
 
 fn test_generic<T, F>(expected: T, eq: F) where T: Clone, F: FnOnce(T, T) -> bool {

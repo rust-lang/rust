@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: --crate-type lib -C opt-level=0
+//@ build-pass
+//@ compile-flags: --crate-type lib -C opt-level=0
 
 // Regression test for LLVM crash affecting Emscripten targets
 

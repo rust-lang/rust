@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that for loops can bind elements as mutable references
 
 fn main() {

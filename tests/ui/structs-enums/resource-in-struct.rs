@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
 // Ensures that class dtors run if the object is inside an enum

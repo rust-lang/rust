@@ -1,5 +1,5 @@
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 async fn foo<const N: usize>(arg: [u8; N]) -> usize { arg.len() }
 

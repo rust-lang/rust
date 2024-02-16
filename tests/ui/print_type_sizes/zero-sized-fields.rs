@@ -1,6 +1,6 @@
-// compile-flags: -Z print-type-sizes --crate-type=lib
-// build-pass
-// ignore-pass
+//@ compile-flags: -Z print-type-sizes --crate-type=lib
+//@ build-pass
+//@ ignore-pass
 
 // At one point, zero-sized fields such as those in this file were causing
 // incorrect output from `-Z print-type-sizes`.

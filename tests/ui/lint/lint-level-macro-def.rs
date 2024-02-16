@@ -2,7 +2,7 @@
 //
 // This is a regression test for issue #59306.
 //
-// check-pass
+//@ check-pass
 
 
 #[deny(missing_docs)]

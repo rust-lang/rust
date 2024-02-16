@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-// run-rustfix
+//@ run-rustfix
 // Check projection of an associated type out of a higher-ranked trait-bound
 // in the context of a method definition in a trait.
 

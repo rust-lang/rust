@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// compile-flags: -C codegen-units=3
+//@ compile-flags: -C codegen-units=3
 
 // Test references to items that haven't been codegened yet.
 

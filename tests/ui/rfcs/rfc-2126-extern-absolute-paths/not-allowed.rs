@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Tests that arbitrary crates (other than `core`, `std` and `meta`)
 // aren't allowed without `--extern`, even if they're in the sysroot.

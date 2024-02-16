@@ -1,7 +1,7 @@
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 
 // Tests for a previous bug that occurred due to an interaction

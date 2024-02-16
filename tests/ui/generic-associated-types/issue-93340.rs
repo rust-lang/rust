@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub trait Scalar: 'static {
     type RefType<'a>: ScalarRef<'a>;

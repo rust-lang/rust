@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 use std::rc::Rc;
 use std::sync::Arc;

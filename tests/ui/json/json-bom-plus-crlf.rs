@@ -1,6 +1,6 @@
 ﻿// (This line has BOM so it's ignored by compiletest for directives)
 //
-// compile-flags: --json=diagnostic-short --error-format=json
+//@ compile-flags: --json=diagnostic-short --error-format=json
 // ignore-tidy-cr
 
 // For easier verifying, the byte offsets in this file should match those

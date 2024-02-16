@@ -1,7 +1,7 @@
 //! Check that non-defining assoc items can use the opaque type
 //! opaquely.
 
-// check-pass
+//@ check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 

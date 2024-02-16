@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 use std::cell::UnsafeCell;
 use std::collections::HashMap;

@@ -5,8 +5,8 @@
 // led us to believe that the future might be dropped after `config`
 // had been dropped. This cannot, in fact, happen.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 async fn connect() {
     let config = 666;

@@ -1,4 +1,4 @@
-// revisions: normal min_exh_pats exhaustive_patterns
+//@ revisions: normal min_exh_pats exhaustive_patterns
 // gate-test-min_exhaustive_patterns
 //
 // This tests correct handling of empty types in exhaustiveness checking.

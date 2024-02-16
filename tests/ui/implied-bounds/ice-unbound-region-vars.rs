@@ -1,7 +1,7 @@
 // Because of #109628, we can have unbounded region vars in implied bounds.
 // Make sure we don't ICE in this case!
 //
-// check-pass
+//@ check-pass
 
 pub trait MapAccess {
     type Error;

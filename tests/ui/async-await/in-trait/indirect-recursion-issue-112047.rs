@@ -1,7 +1,7 @@
-// edition: 2021
+//@ edition: 2021
 
 // Test doesn't fail until monomorphization time, unfortunately.
-// build-fail
+//@ build-fail
 
 fn main() {
     let _ = async {

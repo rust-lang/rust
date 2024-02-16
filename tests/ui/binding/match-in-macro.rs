@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 enum Foo {
     B { b1: isize, bb1: isize},

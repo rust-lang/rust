@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 //! If visibility is assumed, a transmutation should be accepted even if the
 //! destination type contains an unreachable field (e.g., a public field with a

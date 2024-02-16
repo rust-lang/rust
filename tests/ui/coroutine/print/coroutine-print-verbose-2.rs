@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose-internals
+//@ compile-flags: -Zverbose-internals
 
 // Same as test/ui/coroutine/not-send-sync.rs
 #![feature(coroutines)]

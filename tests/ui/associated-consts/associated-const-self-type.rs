@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait MyInt {
     const ONE: Self;

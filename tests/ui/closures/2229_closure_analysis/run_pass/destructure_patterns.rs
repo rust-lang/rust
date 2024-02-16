@@ -1,5 +1,5 @@
-// edition:2021
-// check-pass
+//@ edition:2021
+//@ check-pass
 #![warn(unused)]
 
 struct Point {

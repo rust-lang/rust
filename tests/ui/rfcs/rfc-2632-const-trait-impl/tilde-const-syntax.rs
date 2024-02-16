@@ -1,5 +1,5 @@
-// compile-flags: -Z parse-only
-// check-pass
+//@ compile-flags: -Z parse-only
+//@ check-pass
 
 #![feature(const_trait_impl)]
 

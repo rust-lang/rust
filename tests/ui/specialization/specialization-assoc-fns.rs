@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test that non-method associated functions can be specialized
 

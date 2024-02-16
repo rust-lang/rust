@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 #[deny(bare_trait_objects)]
 
 fn function(x: &SomeTrait, y: Box<SomeTrait>) {

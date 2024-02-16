@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 struct MyStruct<'a> {
     field: &'a mut (),

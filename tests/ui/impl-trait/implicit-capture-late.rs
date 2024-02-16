@@ -1,4 +1,4 @@
-// known-bug: #117647
+//@ known-bug: #117647
 
 #![feature(lifetime_capture_rules_2024)]
 #![feature(rustc_attrs)]

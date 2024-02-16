@@ -1,5 +1,5 @@
-// no-prefer-dynamic
-// compile-flags: --emit=metadata
+//@ no-prefer-dynamic
+//@ compile-flags: --emit=metadata
 
 #![crate_type="rlib"]
 

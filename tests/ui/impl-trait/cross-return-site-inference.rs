@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 fn foo(b: bool) -> impl std::fmt::Debug {
     if b {

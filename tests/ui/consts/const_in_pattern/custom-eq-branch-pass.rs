@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![warn(indirect_structural_match)]
 

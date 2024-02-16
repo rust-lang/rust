@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 struct Foo<T>(T); // `T` is covariant.
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Checks that integers with an uppercase base prefix (0B, 0X, 0O) have a nice error
 #![allow(unused_variables)]
 

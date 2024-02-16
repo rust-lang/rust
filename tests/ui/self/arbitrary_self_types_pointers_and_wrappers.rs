@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
 #![feature(rustc_attrs)]
 

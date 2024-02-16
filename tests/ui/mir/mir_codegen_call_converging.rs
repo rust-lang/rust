@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn converging_fn() -> u64 {
     43
 }

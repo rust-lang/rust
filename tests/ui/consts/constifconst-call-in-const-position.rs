@@ -1,4 +1,4 @@
-// known-bug: #102498
+//@ known-bug: #102498
 
 #![feature(const_trait_impl, generic_const_exprs)]
 

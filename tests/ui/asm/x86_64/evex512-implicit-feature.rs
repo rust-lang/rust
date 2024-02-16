@@ -1,6 +1,6 @@
-// build-pass
-// only-x86_64
-// compile-flags: --crate-type=lib -C target-cpu=skylake
+//@ build-pass
+//@ only-x86_64
+//@ compile-flags: --crate-type=lib -C target-cpu=skylake
 
 #![feature(avx512_target_feature)]
 #![feature(stdarch_x86_avx512)]

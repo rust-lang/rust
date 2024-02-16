@@ -1,6 +1,6 @@
-// run-fail
-// compile-flags:--test
-// check-stdout
+//@ run-fail
+//@ compile-flags:--test
+//@ check-stdout
 
 mod m {
     pub fn exported() {}

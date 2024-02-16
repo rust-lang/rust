@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 trait X<const N: i32> {}
 

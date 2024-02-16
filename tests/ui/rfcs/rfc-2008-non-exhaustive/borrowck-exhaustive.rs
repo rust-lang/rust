@@ -1,11 +1,11 @@
 // Test that the borrow checker doesn't consider checking an exhaustive pattern
 // as an access.
 
-// check-pass
+//@ check-pass
 
 #![allow(dropping_references)]
 
-// aux-build:monovariants.rs
+//@ aux-build:monovariants.rs
 extern crate monovariants;
 
 use monovariants::ExhaustiveMonovariant;

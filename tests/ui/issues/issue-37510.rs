@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn foo(_: &mut i32) -> bool { true }
 

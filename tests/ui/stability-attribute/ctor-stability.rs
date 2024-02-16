@@ -1,5 +1,5 @@
-// aux-build:ctor-stability.rs
-// check-pass
+//@ aux-build:ctor-stability.rs
+//@ check-pass
 
 extern crate ctor_stability;
 

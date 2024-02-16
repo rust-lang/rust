@@ -4,9 +4,9 @@
 // #54388: an unused reference to an undefined static may or may not
 // compile. To sidestep this by using one that *is* defined.
 
-// run-rustfix
-// ignore-wasm32-bare no external library to link to.
-// compile-flags: -g
+//@ run-rustfix
+//@ ignore-wasm32-bare no external library to link to.
+//@ compile-flags: -g
 #![feature(rustc_private)]
 extern crate libc;
 

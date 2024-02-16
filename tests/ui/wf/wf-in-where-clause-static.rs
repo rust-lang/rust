@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #98117
+//@ check-pass
+//@ known-bug: #98117
 
 // Should fail. Functions are responsible for checking the well-formedness of
 // their own where clauses, so this should fail and require an explicit bound

@@ -1,4 +1,4 @@
-// error-pattern: attempted to define built-in macro more than once
+//@ error-pattern: attempted to define built-in macro more than once
 
 #![feature(rustc_attrs)]
 

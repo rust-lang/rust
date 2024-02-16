@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #[derive(Copy, Clone)]
 pub struct Foo { a: bool }
 

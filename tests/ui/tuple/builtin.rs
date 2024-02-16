@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(tuple_trait)]
 

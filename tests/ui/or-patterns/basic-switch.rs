@@ -1,7 +1,7 @@
 // Test basic or-patterns when the target pattern type will be lowered to a
 // `Switch` (an `enum`).
 
-// run-pass
+//@ run-pass
 
 #[derive(Debug)]
 enum Test {

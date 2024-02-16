@@ -1,7 +1,7 @@
-// build-fail
-// normalize-stderr-test: "<\{closure@.+`" -> "$$CLOSURE`"
-// normalize-stderr-test: ".nll/" -> "/"
-// ignore-compare-mode-next-solver (hangs)
+//@ build-fail
+//@ normalize-stderr-test: "<\{closure@.+`" -> "$$CLOSURE`"
+//@ normalize-stderr-test: ".nll/" -> "/"
+//@ ignore-compare-mode-next-solver (hangs)
 
 #![allow(unused)]
 

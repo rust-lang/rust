@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(path_statements)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 macro_rules! inner {
     ($e:pat ) => ($e)

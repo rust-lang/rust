@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! foo {
     () => {
         struct Bar;

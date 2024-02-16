@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 #![feature(rustc_attrs)]
 
 //   O --> G --> C --> A

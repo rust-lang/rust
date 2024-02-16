@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 enum Enum {
     Variant(i32),
 }

@@ -1,6 +1,6 @@
-// compile-flags: -C debuginfo=2
+//@ compile-flags: -C debuginfo=2
 
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 #![crate_type = "rlib"]
 
 pub trait Object { fn method(&self) { } }

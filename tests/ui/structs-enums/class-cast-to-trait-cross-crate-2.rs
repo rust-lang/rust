@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_class_cast.rs
+//@ run-pass
+//@ aux-build:cci_class_cast.rs
 
 extern crate cci_class_cast;
 

@@ -1,6 +1,6 @@
-// check-pass
+//@ check-pass
 #![allow(unused_assignments)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![allow(unused_variables)]
 

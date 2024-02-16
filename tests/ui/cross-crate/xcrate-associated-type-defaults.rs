@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:xcrate_associated_type_defaults.rs
+//@ run-pass
+//@ aux-build:xcrate_associated_type_defaults.rs
 
 extern crate xcrate_associated_type_defaults;
 use xcrate_associated_type_defaults::Foo;

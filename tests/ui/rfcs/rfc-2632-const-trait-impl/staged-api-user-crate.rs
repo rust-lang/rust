@@ -1,4 +1,4 @@
-// aux-build: staged-api.rs
+//@ aux-build: staged-api.rs
 extern crate staged_api;
 
 use staged_api::*;

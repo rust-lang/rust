@@ -1,9 +1,9 @@
 // Regression test for issue 114275 `typeid::typeid_itanium_cxx_abi::transform_ty`
 // was expecting array type lengths to be evaluated, this was causing an ICE.
 //
-// build-pass
-// compile-flags: -Ccodegen-units=1 -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static
-// needs-sanitizer-cfi
+//@ build-pass
+//@ compile-flags: -Ccodegen-units=1 -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static
+//@ needs-sanitizer-cfi
 
 #![crate_type = "lib"]
 

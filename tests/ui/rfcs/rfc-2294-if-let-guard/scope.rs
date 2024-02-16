@@ -1,6 +1,6 @@
 // Tests for #88015 when using if let chains in match guards
 
-//run-pass
+//@run-pass
 
 #![feature(if_let_guard)]
 #![feature(let_chains)]

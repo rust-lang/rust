@@ -1,5 +1,5 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
-// only-x86_64
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
+//@ only-x86_64
 
 use std::arch::asm;
 

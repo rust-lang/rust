@@ -1,5 +1,5 @@
-// edition: 2021
-// build-fail
+//@ edition: 2021
+//@ build-fail
 //~^^ ERROR overflow evaluating the requirement `<() as B>::Assoc == _`
 
 #![feature(rustc_attrs)]

@@ -1,4 +1,4 @@
-// aux-build:suggest-constructor-cycle-error.rs
+//@ aux-build:suggest-constructor-cycle-error.rs
 
 // Regression test for https://github.com/rust-lang/rust/issues/119625
 

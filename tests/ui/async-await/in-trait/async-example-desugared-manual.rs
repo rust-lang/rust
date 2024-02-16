@@ -1,5 +1,5 @@
-// edition: 2021
-// check-pass
+//@ edition: 2021
+//@ check-pass
 
 use std::future::Future;
 use std::task::Poll;

@@ -3,8 +3,8 @@
 // is correctly accepted by NLL but was incorrectly rejected by
 // Polonius because of these missing `killed` facts.
 
-// check-pass
-// compile-flags: -Z polonius
+//@ check-pass
+//@ compile-flags: -Z polonius
 
 use std::{io, mem};
 use std::io::Read;

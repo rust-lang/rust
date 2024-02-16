@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 
 // https://github.com/rust-lang/rust/issues/112007

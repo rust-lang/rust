@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Now that there are several variations on the code generated in
 // `codegen_get_discr`, let's make sure the various cases yield the correct

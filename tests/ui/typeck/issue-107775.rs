@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 use std::collections::HashMap;
 use std::future::Future;

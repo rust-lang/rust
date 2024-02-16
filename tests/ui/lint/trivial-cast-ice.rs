@@ -1,5 +1,5 @@
-// aux-build:trivial-cast-ice.rs
-// check-pass
+//@ aux-build:trivial-cast-ice.rs
+//@ check-pass
 
 // Demonstrates the ICE in #102561
 

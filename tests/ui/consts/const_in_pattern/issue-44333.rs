@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![warn(pointer_structural_match)]
 

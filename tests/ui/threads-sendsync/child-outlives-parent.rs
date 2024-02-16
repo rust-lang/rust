@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // Reported as issue #126, child leaks the string.
 
-// pretty-expanded FIXME #23616
-// ignore-emscripten no threads support
+//@ pretty-expanded FIXME #23616
+//@ ignore-emscripten no threads support
 
 use std::thread;
 

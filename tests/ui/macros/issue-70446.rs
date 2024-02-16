@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 macro_rules! foo {
     ($(: $p:path)? $(: $l:lifetime)? ) => { bar! {$(: $p)? $(: $l)? } };

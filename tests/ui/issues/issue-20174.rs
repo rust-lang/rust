@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct GradFn<F: Fn() -> usize>(F);
 
 fn main() {

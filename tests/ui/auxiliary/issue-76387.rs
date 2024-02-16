@@ -1,4 +1,4 @@
-// compile-flags: -C opt-level=3
+//@ compile-flags: -C opt-level=3
 
 pub struct FatPtr {
     ptr: *mut u8,

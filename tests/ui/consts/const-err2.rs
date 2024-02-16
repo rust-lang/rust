@@ -2,12 +2,12 @@
 // optimized compilation and unoptimized compilation and thus would
 // lead to different lints being emitted
 
-// revisions: noopt opt opt_with_overflow_checks
-//[noopt]compile-flags: -C opt-level=0
-//[opt]compile-flags: -O
-//[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
+//@ revisions: noopt opt opt_with_overflow_checks
+//@[noopt]compile-flags: -C opt-level=0
+//@[opt]compile-flags: -O
+//@[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
-// build-fail
+//@ build-fail
 
 #![feature(rustc_attrs)]
 

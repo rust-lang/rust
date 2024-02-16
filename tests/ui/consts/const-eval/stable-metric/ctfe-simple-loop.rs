@@ -1,9 +1,9 @@
-// check-pass
-// revisions: warn allow
+//@ check-pass
+//@ revisions: warn allow
 #![cfg_attr(warn, warn(long_running_const_eval))]
 #![cfg_attr(allow, allow(long_running_const_eval))]
 
-// compile-flags: -Z tiny-const-eval-limit
+//@ compile-flags: -Z tiny-const-eval-limit
 const fn simple_loop(n: u32) -> u32 {
     let mut index = 0;
     while index < n {

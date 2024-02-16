@@ -1,6 +1,6 @@
 // can't use build-fail, because this also fails check-fail, but
 // the ICE from #120787 only reproduces on build-fail.
-// compile-flags: --emit=mir
+//@ compile-flags: --emit=mir
 
 struct PrintOnDrop<'a>(&'a str);
 

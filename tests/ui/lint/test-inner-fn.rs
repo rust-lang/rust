@@ -1,4 +1,4 @@
-// compile-flags: --test -D unnameable_test_items
+//@ compile-flags: --test -D unnameable_test_items
 
 #[test]
 fn foo() {

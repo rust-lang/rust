@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Demonstrate the use of the unguarded escape hatch with a trait bound
 // to assert that destructor will not access any dead data.

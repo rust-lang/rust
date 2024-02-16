@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn borrow<F>(x: &isize, f: F) where F: FnOnce(&isize) {
     f(x)

@@ -2,7 +2,7 @@
 
 // gate-test-min_specialization
 
-// aux-build:specialization-trait.rs
+//@ aux-build:specialization-trait.rs
 
 extern crate specialization_trait;
 

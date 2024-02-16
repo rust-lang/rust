@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![warn(overflowing_literals)]
 
 fn main() {

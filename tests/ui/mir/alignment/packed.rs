@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C debug-assertions
+//@ run-pass
+//@ compile-flags: -C debug-assertions
 
 #![feature(strict_provenance, pointer_is_aligned)]
 

@@ -1,4 +1,4 @@
-// aux-build:variant-namespacing.rs
+//@ aux-build:variant-namespacing.rs
 
 pub enum E {
     Struct { a: u8 },

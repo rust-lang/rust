@@ -1,4 +1,4 @@
-// aux-build:stability.rs
+//@ aux-build:stability.rs
 
 extern crate stability;
 

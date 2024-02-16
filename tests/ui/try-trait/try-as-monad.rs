@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(try_trait_v2)]
 

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:static-function-pointer-aux.rs
+//@ run-pass
+//@ aux-build:static-function-pointer-aux.rs
 
 extern crate static_function_pointer_aux as aux;
 

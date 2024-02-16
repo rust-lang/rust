@@ -1,7 +1,7 @@
 // Ensures that all `fn` forms can have all the function qualifiers syntactically.
 
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 fn main() {}
 

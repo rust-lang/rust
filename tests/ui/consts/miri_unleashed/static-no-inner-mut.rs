@@ -1,5 +1,5 @@
-// stderr-per-bitwidth
-// compile-flags: -Zunleash-the-miri-inside-of-you
+//@ stderr-per-bitwidth
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(const_refs_to_cell, const_mut_refs)]
 // All "inner" allocations that come with a `static` are interned immutably. This means it is
 // crucial that we do not accept any form of (interior) mutability there.

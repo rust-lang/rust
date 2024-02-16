@@ -1,5 +1,5 @@
-// revisions: normal exh_pats
-//[normal] check-pass
+//@ revisions: normal exh_pats
+//@[normal] check-pass
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 #![cfg_attr(exh_pats, feature(min_exhaustive_patterns))]

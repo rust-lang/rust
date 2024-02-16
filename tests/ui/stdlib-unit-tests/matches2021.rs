@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@ run-pass
+//@ edition:2021
 
 // regression test for https://github.com/rust-lang/rust/pull/85678
 

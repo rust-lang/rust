@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Ensure that we can copy out of a fixed-size array.
 //

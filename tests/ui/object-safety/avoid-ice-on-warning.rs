@@ -1,6 +1,6 @@
-// revisions: old new
-//[old] edition:2015
-//[new] edition:2021
+//@ revisions: old new
+//@[old] edition:2015
+//@[new] edition:2021
 fn call_this<F>(f: F) : Fn(&str) + call_that {}
 //~^ ERROR return types are denoted using `->`
 //~| ERROR cannot find trait `call_that` in this scope

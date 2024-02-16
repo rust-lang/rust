@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 //
 // This is a gnarly test but I don't know how to minimize it, frankly.
 

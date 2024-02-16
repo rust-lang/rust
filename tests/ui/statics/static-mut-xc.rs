@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 #![allow(non_upper_case_globals)]
 
 // Constants (static variables) can be used to match in patterns, but mutable
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
-// aux-build:static_mut_xc.rs
+//@ aux-build:static_mut_xc.rs
 
 extern crate static_mut_xc;
 

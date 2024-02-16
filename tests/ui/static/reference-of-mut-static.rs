@@ -1,7 +1,7 @@
-// revisions: e2021 e2024
+//@ revisions: e2021 e2024
 
-// [e2021] edition:2021
-// [e2024] compile-flags: --edition 2024 -Z unstable-options
+//@ [e2021] edition:2021
+//@ [e2024] compile-flags: --edition 2024 -Z unstable-options
 
 #![deny(static_mut_ref)]
 

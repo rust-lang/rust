@@ -1,5 +1,5 @@
-// revisions: not_static yes_static
-//[yes_static] check-pass
+//@ revisions: not_static yes_static
+//@[yes_static] check-pass
 
 #[derive(Clone)]
 struct Foo<'lt>(&'lt ());

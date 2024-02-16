@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::mem;
 use std::ops::{
     AddAssign, BitAndAssign, BitOrAssign, BitXorAssign, DivAssign, MulAssign, RemAssign,

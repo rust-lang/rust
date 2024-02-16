@@ -1,6 +1,6 @@
-// check-pass
-// edition:2018
-// revisions: default sa
+//@ check-pass
+//@ edition:2018
+//@ revisions: default sa
 
 #![feature(type_alias_impl_trait)]
 

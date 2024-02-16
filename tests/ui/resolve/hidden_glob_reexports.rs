@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub mod upstream_a {
     mod inner {

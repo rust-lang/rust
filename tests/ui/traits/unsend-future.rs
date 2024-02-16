@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // issue 108897
 trait Handler {}

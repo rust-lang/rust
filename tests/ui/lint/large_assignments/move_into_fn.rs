@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 #![feature(large_assignments)]
 #![move_size_limit = "1000"]

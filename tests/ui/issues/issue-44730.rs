@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! dox
 
 #![deny(missing_docs)]

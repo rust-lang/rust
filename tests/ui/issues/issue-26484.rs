@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:-g
+//@ run-pass
+//@ compile-flags:-g
 
 fn helper<F: FnOnce(usize) -> bool>(_f: F) {
     print!("");

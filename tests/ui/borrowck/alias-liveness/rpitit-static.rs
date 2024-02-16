@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Foo {
     fn rpitit(&mut self) -> impl Sized + 'static;

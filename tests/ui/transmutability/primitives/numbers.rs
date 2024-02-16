@@ -1,5 +1,5 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 #![crate_type = "lib"]
 #![feature(transmutability)]

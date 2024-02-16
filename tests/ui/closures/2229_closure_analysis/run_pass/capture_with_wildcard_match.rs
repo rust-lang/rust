@@ -1,5 +1,5 @@
-// edition:2021
-//check-pass
+//@ edition:2021
+//@check-pass
 
 fn test1() {
     let foo : [Vec<u8>; 3] = ["String".into(), "String".into(), "String".into()];

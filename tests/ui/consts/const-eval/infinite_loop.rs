@@ -2,7 +2,7 @@
 //! 1. we error if a const evaluation hits the deny-by-default lint limit
 //! 2. we do not ICE on invalid follow-up code
 
-// compile-flags: -Z tiny-const-eval-limit
+//@ compile-flags: -Z tiny-const-eval-limit
 
 fn main() {
     // Tests the Collatz conjecture with an incorrect base case (0 instead of 1).

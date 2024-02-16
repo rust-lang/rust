@@ -2,9 +2,9 @@
 #![allow(unused_variables)]
 #![allow(non_fmt_panics)]
 
-// run-fail
-// error-pattern:wooooo
-// ignore-emscripten no processes
+//@ run-fail
+//@ error-pattern:wooooo
+//@ ignore-emscripten no processes
 
 fn main() {
     let mut a = 1;

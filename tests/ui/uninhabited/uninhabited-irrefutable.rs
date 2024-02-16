@@ -1,4 +1,4 @@
-// revisions: min_exhaustive_patterns exhaustive_patterns
+//@ revisions: min_exhaustive_patterns exhaustive_patterns
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![cfg_attr(min_exhaustive_patterns, feature(min_exhaustive_patterns))]
 #![cfg_attr(min_exhaustive_patterns, allow(incomplete_features))]

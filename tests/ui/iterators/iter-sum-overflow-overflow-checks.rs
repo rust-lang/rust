@@ -1,6 +1,6 @@
-// run-pass
-// needs-unwind
-// compile-flags: -C overflow-checks
+//@ run-pass
+//@ needs-unwind
+//@ compile-flags: -C overflow-checks
 
 use std::panic;
 

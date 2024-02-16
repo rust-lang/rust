@@ -2,7 +2,7 @@
 // being incorrectly considered part of the "elided lifetimes" from
 // the impl.
 //
-// check-pass
+//@ check-pass
 
 trait A {
 

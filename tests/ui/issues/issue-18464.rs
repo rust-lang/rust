@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![deny(dead_code)]
 
 const LOW_RANGE: char = '0';

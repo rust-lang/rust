@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 struct Test<T, const N: usize>([T; N]);
 

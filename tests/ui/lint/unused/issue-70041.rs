@@ -1,5 +1,5 @@
-// compile-flags: --edition=2018
-// run-pass
+//@ compile-flags: --edition=2018
+//@ run-pass
 
 macro_rules! regex {
     //~^ WARN unused macro definition

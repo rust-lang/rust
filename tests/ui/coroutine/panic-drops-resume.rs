@@ -1,7 +1,7 @@
 //! Tests that panics inside a coroutine will correctly drop the initial resume argument.
 
-// run-pass
-// needs-unwind
+//@ run-pass
+//@ needs-unwind
 
 #![feature(coroutines, coroutine_trait)]
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(unused_variables)]
 // Test that we correctly handle projection bounds appearing in the
 // supertrait list (and in conjunction with overloaded operators). In

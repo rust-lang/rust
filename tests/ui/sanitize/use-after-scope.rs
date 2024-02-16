@@ -1,10 +1,10 @@
-// needs-sanitizer-support
-// needs-sanitizer-address
-// ignore-cross-compile
+//@ needs-sanitizer-support
+//@ needs-sanitizer-address
+//@ ignore-cross-compile
 //
-// compile-flags: -Zsanitizer=address
-// run-fail
-// error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
+//@ compile-flags: -Zsanitizer=address
+//@ run-fail
+//@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
 
 static mut P: *mut usize = std::ptr::null_mut();
 

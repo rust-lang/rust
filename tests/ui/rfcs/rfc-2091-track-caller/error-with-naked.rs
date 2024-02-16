@@ -1,4 +1,4 @@
-// needs-asm-support
+//@ needs-asm-support
 #![feature(naked_functions)]
 
 use std::arch::asm;

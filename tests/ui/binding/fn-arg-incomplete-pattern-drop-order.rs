@@ -1,5 +1,5 @@
-// run-pass
-// needs-unwind
+//@ run-pass
+//@ needs-unwind
 // Check that partially moved from function parameters are dropped after the
 // named bindings that move from them.
 

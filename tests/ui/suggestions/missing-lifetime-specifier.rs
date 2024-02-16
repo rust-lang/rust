@@ -1,7 +1,7 @@
 // different number of duplicated diagnostics on different targets
-// only-x86_64
-// only-linux
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ only-x86_64
+//@ only-linux
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![allow(bare_trait_objects)]
 use std::cell::RefCell;

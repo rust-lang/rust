@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ops::{Deref, DerefMut};
 
 struct CheckedDeref<T, F> {

@@ -2,7 +2,7 @@
 // For normal guards all temporaries are dropped before the body of the arm.
 // For let guards temporaries live until the end of the arm.
 
-// run-pass
+//@ run-pass
 
 #![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]

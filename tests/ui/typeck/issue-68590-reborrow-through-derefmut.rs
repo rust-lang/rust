@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // rust-lang/rust#68590: confusing diagnostics when reborrowing through DerefMut.
 

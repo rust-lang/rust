@@ -1,5 +1,5 @@
-// run-rustfix
-// check-pass
+//@ run-rustfix
+//@ check-pass
 
 #![warn(rust_2018_compatibility)]
 

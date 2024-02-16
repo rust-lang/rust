@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Ensure non-capturing Closure passing CoerceMany work correctly.
 fn foo(_: usize) -> usize {
     0

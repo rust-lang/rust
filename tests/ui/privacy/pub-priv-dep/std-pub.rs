@@ -1,7 +1,7 @@
 // The 'std' crates should always be implicitly public,
 // without having to pass any compiler arguments
 
-// run-pass
+//@ run-pass
 
 #![deny(exported_private_dependencies)]
 

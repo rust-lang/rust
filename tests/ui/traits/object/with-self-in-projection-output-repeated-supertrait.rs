@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 // FIXME(eddyb) shorten the name so windows doesn't choke on it.
 #![crate_name = "trait_test"]

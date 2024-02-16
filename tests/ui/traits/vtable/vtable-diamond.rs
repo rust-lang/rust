@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 #![feature(rustc_attrs)]
 
 #[rustc_dump_vtable]

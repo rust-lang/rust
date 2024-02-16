@@ -2,9 +2,9 @@
 // This test checks that when a single cfg has a value for user's specified name
 // suggest to use `#[cfg(target_os = "linux")]` instead of `#[cfg(linux)]`
 //
-// check-pass
-// compile-flags: -Z unstable-options
-// compile-flags: --check-cfg=cfg()
+//@ check-pass
+//@ compile-flags: -Z unstable-options
+//@ compile-flags: --check-cfg=cfg()
 
 #[cfg(linux)]
 //~^ WARNING unexpected `cfg` condition name: `linux`

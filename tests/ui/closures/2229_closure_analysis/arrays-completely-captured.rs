@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 #![feature(rustc_attrs)]
 
 // Ensure that capture analysis results in arrays being completely captured.

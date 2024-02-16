@@ -1,5 +1,5 @@
-// run-pass
-// revisions: stock precise
+//@ run-pass
+//@ revisions: stock precise
 
 #![allow(unused)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]

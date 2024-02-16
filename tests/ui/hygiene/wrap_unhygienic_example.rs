@@ -1,7 +1,7 @@
-// check-pass
+//@ check-pass
 
-// aux-build:my_crate.rs
-// aux-build:unhygienic_example.rs
+//@ aux-build:my_crate.rs
+//@ aux-build:unhygienic_example.rs
 
 #![feature(decl_macro)]
 

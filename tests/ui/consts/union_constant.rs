@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 union Uninit {
     _never_use: *const u8,

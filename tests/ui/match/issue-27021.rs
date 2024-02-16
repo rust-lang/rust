@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 // This test is bogus (i.e., should be check-fail) during the period
 // where #54986 is implemented and #54987 is *not* implemented. For
 // now: just ignore it
 //
-// ignore-test (#54987)
+//@ ignore-test (#54987)
 
 // These are variants of issue-26996.rs. In all cases we are writing
 // into a record field that has been moved out of, and ensuring that

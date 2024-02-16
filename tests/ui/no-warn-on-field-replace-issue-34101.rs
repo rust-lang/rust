@@ -18,7 +18,7 @@
 
 
 
-// check-pass
+//@ check-pass
 
 struct Foo(String);
 

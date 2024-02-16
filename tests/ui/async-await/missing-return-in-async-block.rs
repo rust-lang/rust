@@ -1,5 +1,5 @@
-// run-rustfix
-// edition:2021
+//@ run-rustfix
+//@ edition:2021
 use std::future::Future;
 use std::pin::Pin;
 pub struct S;

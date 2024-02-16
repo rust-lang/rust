@@ -1,4 +1,4 @@
-// aux-build:unstable.rs
+//@ aux-build:unstable.rs
 
 extern crate unstable;
 

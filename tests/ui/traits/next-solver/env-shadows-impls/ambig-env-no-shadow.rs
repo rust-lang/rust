@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // If a trait goal is proven using the environment, we discard
 // impl candidates when normalizing. However, in this example

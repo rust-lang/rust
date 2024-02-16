@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Don't fail if we encounter a NonNull<T> where T is an unsized type
 
 use std::ptr::NonNull;

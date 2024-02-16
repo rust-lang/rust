@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 fn map<T: Default, U, F: FnOnce(T) -> U>(f: F) {
     f(T::default());

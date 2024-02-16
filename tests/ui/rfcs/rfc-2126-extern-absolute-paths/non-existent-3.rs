@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 use ycrate; //~ ERROR unresolved import `ycrate`
 

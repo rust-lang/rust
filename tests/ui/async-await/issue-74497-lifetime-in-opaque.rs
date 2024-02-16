@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // test that names give to anonymous lifetimes in opaque types like `impl Future` are correctly
 // introduced in error messages

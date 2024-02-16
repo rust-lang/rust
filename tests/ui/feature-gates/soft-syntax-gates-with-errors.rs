@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 // This file is used to test the behavior of the early-pass syntax warnings.
 // If macro syntax is stabilized, replace with a different unstable syntax.
 

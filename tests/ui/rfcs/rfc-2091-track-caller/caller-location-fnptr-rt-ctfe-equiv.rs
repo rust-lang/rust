@@ -3,8 +3,8 @@
 // in turn called, results in the same output irrespective of whether
 // we're in a const or runtime context.
 
-// run-pass
-// compile-flags: -Z unleash-the-miri-inside-of-you
+//@ run-pass
+//@ compile-flags: -Z unleash-the-miri-inside-of-you
 
 #![feature(core_intrinsics, const_caller_location)]
 

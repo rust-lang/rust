@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Issue #62007: assigning over a field projection (`list.0 = n;` in
 // this case) should be able to kill all borrows of `list.0`, so that

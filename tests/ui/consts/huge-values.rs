@@ -1,5 +1,5 @@
-// build-pass
-// ignore-32bit
+//@ build-pass
+//@ ignore-32bit
 
 // This test is a canary test that will essentially not compile in a reasonable time frame
 // (so it'll take hours) if any of the optimizations regress. With the optimizations, these compile

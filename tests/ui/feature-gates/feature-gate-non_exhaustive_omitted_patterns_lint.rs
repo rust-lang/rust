@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #![deny(non_exhaustive_omitted_patterns)]
 //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`

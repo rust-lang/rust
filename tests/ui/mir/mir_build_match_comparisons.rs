@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 fn test1(x: i8) -> i32 {
   match x {

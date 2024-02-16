@@ -1,6 +1,6 @@
-// edition: 2024
-// compile-flags: -Zunstable-options
-// check-pass
+//@ edition: 2024
+//@ compile-flags: -Zunstable-options
+//@ check-pass
 #![crate_type = "lib"]
 #![deny(unused_unsafe)]
 

@@ -1,5 +1,5 @@
-// aux-build:issue-81839.rs
-// edition:2018
+//@ aux-build:issue-81839.rs
+//@ edition:2018
 
 extern crate issue_81839;
 

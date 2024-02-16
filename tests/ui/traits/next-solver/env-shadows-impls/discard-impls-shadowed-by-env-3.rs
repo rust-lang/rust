@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // If we normalize using the impl here the constraints from normalization and
 // trait goals can differ. This is especially bad if normalization results

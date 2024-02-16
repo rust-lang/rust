@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![feature(repr_simd, platform_intrinsics, generic_const_exprs)]
 #![allow(non_camel_case_types, incomplete_features)]

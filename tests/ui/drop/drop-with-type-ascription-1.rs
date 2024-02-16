@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main() {
     let foo = "hello".to_string();

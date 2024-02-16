@@ -1,5 +1,5 @@
-// revisions: any_lt static_lt
-//[static_lt] check-pass
+//@ revisions: any_lt static_lt
+//@[static_lt] check-pass
 
 #![feature(negative_impls)]
 #![feature(with_negative_coherence)]

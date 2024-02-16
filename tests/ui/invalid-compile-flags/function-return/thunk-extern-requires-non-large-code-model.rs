@@ -1,20 +1,20 @@
-// revisions: small kernel medium large
+//@ revisions: small kernel medium large
 
-// needs-llvm-components: x86
-// compile-flags: --target x86_64-unknown-linux-gnu -Zfunction-return=thunk-extern
+//@ needs-llvm-components: x86
+//@ compile-flags: --target x86_64-unknown-linux-gnu -Zfunction-return=thunk-extern
 
-//[small] check-pass
-//[small] compile-flags: -Ccode-model=small
+//@[small] check-pass
+//@[small] compile-flags: -Ccode-model=small
 
-//[kernel] check-pass
-//[kernel] compile-flags: -Ccode-model=kernel
+//@[kernel] check-pass
+//@[kernel] compile-flags: -Ccode-model=kernel
 
-//[medium] check-pass
-//[medium] compile-flags: -Ccode-model=medium
+//@[medium] check-pass
+//@[medium] compile-flags: -Ccode-model=medium
 
-//[large] check-fail
-//[large] compile-flags: -Ccode-model=large
-//[large] error-pattern: `-Zfunction-return=thunk-extern` is only supported on non-large code models
+//@[large] check-fail
+//@[large] compile-flags: -Ccode-model=large
+//@[large] error-pattern: `-Zfunction-return=thunk-extern` is only supported on non-large code models
 
 #![feature(no_core)]
 #![no_core]

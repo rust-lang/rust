@@ -1,7 +1,7 @@
-// run-pass
-// ignore-wasm32-bare no libc to test ffi with
+//@ run-pass
+//@ ignore-wasm32-bare no libc to test ffi with
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::mem::transmute;
 

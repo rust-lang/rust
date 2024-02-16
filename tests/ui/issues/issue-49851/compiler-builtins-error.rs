@@ -1,8 +1,8 @@
 //~ ERROR can't find crate for `core`
 //~^ ERROR can't find crate for `compiler_builtins`
 
-// compile-flags: --target thumbv7em-none-eabihf
-// needs-llvm-components: arm
+//@ compile-flags: --target thumbv7em-none-eabihf
+//@ needs-llvm-components: arm
 #![deny(unsafe_code)]
 #![deny(warnings)]
 #![no_std]

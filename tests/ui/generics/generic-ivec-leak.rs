@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 enum wrapper<T> { wrapped(#[allow(dead_code)] T), }
 

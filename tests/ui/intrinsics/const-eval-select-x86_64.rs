@@ -1,5 +1,5 @@
-// run-pass
-// only-x86_64
+//@ run-pass
+//@ only-x86_64
 
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]

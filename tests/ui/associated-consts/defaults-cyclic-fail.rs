@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 // Cyclic assoc. const defaults don't error unless *used*
 trait Tr {

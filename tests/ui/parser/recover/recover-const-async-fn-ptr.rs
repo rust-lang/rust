@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 type T0 = const fn(); //~ ERROR an `fn` pointer type cannot be `const`
 type T1 = const extern "C" fn(); //~ ERROR an `fn` pointer type cannot be `const`

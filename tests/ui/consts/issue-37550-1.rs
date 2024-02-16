@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const fn x() {
     let t = true;

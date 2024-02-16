@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test that using the `vec!` macro nested within itself works
 

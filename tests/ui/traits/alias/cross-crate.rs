@@ -1,4 +1,4 @@
-// aux-build:send_sync.rs
+//@ aux-build:send_sync.rs
 
 #![feature(trait_alias)]
 

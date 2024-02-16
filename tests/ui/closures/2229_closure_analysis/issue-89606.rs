@@ -1,9 +1,9 @@
 // Regression test for #89606. Used to ICE.
 //
-// check-pass
-// revisions: twenty_eighteen twenty_twentyone
-// [twenty_eighteen]compile-flags: --edition 2018
-// [twenty_twentyone]compile-flags: --edition 2021
+//@ check-pass
+//@ revisions: twenty_eighteen twenty_twentyone
+//@ [twenty_eighteen]compile-flags: --edition 2018
+//@ [twenty_twentyone]compile-flags: --edition 2021
 
 struct S<'a>(Option<&'a mut i32>);
 

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// aux-build:issue-17718-aux.rs
+//@ aux-build:issue-17718-aux.rs
 
 extern crate issue_17718_aux as other;
 

@@ -1,6 +1,6 @@
-// check-pass
+//@ check-pass
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::sync::atomic::*;
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Issue #53
 #![allow(non_camel_case_types)]

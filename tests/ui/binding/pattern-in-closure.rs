@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_shorthand_field_patterns)]
 
 struct Foo {

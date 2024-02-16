@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(Debug)]
 struct Matrix4<S>(#[allow(dead_code)] S);
 trait POrd<S> {}

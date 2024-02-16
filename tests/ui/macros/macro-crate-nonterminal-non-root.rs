@@ -1,4 +1,4 @@
-// aux-build:macro_crate_nonterminal.rs
+//@ aux-build:macro_crate_nonterminal.rs
 
 mod foo {
     #[macro_use]

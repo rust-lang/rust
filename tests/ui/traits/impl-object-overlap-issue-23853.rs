@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we are able to compile the case where both a blanket impl
 // and the object type itself supply the required trait obligation.
 // In this case, the blanket impl for `Foo` applies to any type,

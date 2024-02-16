@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Test that even when `const` is already present, the proposed fix is to remove the second `const`
 

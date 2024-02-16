@@ -1,4 +1,4 @@
-// revisions: full min
+//@ revisions: full min
 struct R;
 
 impl R {

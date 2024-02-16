@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 #![deny(unreachable_code)]
 
 async fn foo() {

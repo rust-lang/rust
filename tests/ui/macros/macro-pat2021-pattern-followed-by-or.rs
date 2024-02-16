@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 #![allow(unused_macros)]
 macro_rules! foo { ($x:pat | $y:pat) => {} } //~ ERROR `$x:pat` is followed by `|`, which is not allowed for `pat` fragments

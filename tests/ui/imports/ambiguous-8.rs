@@ -1,4 +1,4 @@
-// aux-build: ambiguous-8-extern.rs
+//@ aux-build: ambiguous-8-extern.rs
 
 extern crate ambiguous_8_extern;
 

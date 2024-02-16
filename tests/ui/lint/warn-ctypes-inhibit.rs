@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code)]
-// compile-flags:-D improper-ctypes
+//@ compile-flags:-D improper-ctypes
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 #![allow(improper_ctypes)]
 
 mod libc {
