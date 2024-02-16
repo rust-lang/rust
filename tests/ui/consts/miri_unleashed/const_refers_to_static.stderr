@@ -1,61 +1,61 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_refers_to_static.rs:9:5
+  --> $DIR/const_refers_to_static.rs:10:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling non-const function `AtomicUsize::fetch_add`
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_refers_to_static.rs:14:14
+  --> $DIR/const_refers_to_static.rs:15:14
    |
 LL |     unsafe { *(&FOO as *const _ as *const usize) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses mutable global memory
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_refers_to_static.rs:18:32
+  --> $DIR/const_refers_to_static.rs:19:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^ constant accesses mutable global memory
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/const_refers_to_static.rs:21:1
+  --> $DIR/const_refers_to_static.rs:22:1
    |
 LL | const REF_INTERIOR_MUT: &usize = {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 8) {
-               ╾ALLOC0<imm>╼                         │ ╾──────╼
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
            }
 
 warning: skipping const checks
    |
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:9:5
+  --> $DIR/const_refers_to_static.rs:10:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/const_refers_to_static.rs:9:5
+  --> $DIR/const_refers_to_static.rs:10:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:14:17
+  --> $DIR/const_refers_to_static.rs:15:17
    |
 LL |     unsafe { *(&FOO as *const _ as *const usize) }
    |                 ^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:18:32
+  --> $DIR/const_refers_to_static.rs:19:32
    |
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:24:18
+  --> $DIR/const_refers_to_static.rs:25:18
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |                  ^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:29:25
+  --> $DIR/const_refers_to_static.rs:30:25
    |
 LL | const REF_IMMUT: &u8 = &MY_STATIC;
    |                         ^^^^^^^^^
