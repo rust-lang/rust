@@ -1314,24 +1314,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let mut next_prebinding = start_block;
-        let mut reachable = true;
-
         for candidate in matched_candidates.iter_mut() {
             assert!(candidate.otherwise_block.is_none());
             assert!(candidate.pre_binding_block.is_none());
             candidate.pre_binding_block = Some(next_prebinding);
             next_prebinding = self.cfg.start_new_block();
-            if reachable {
-                if candidate.has_guard {
-                    // Create the otherwise block for this candidate, which is the
-                    // pre-binding block for the next candidate.
-                    candidate.otherwise_block = Some(next_prebinding);
-                } else {
-                    reachable = false;
-                }
+            if candidate.has_guard {
+                // Create the otherwise block for this candidate, which is the
+                // pre-binding block for the next candidate.
+                candidate.otherwise_block = Some(next_prebinding);
             }
         }
-
         next_prebinding
     }
 
