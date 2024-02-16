@@ -1039,7 +1039,7 @@ impl Step for Rustc {
 pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection, stage: u32) {
     cargo
         .arg("--features")
-        .arg(builder.rustc_features(builder.kind))
+        .arg(builder.rustc_features(builder.kind, target))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
@@ -1096,7 +1096,7 @@ pub fn rustc_cargo_env(
         cargo.env("CFG_OMIT_GIT_HASH", "1");
     }
 
-    if let Some(backend) = builder.config.default_codegen_backend() {
+    if let Some(backend) = builder.config.default_codegen_backend(target) {
         cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
     }
 
@@ -1137,7 +1137,7 @@ pub fn rustc_cargo_env(
     // build. If we are in a check build we still go ahead here presuming we've
     // detected that LLVM is already built and good to go which helps prevent
     // busting caches (e.g. like #71152).
-    if builder.config.llvm_enabled() {
+    if builder.config.llvm_enabled(target) {
         let building_is_expensive =
             crate::core::build_steps::llvm::prebuilt_llvm_config(builder, target).is_err();
         // `top_stage == stage` might be false for `check --stage 1`, if we are building the stage 1 compiler
@@ -1281,7 +1281,7 @@ pub(crate) const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
 fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
     if path.path.to_str().unwrap().contains(&CODEGEN_BACKEND_PREFIX) {
         let mut needs_codegen_backend_config = true;
-        for &backend in &run.builder.config.rust_codegen_backends {
+        for &backend in run.builder.config.codegen_backends(run.target) {
             if path
                 .path
                 .to_str()
@@ -1318,7 +1318,7 @@ impl Step for CodegenBackend {
             return;
         }
 
-        for &backend in &run.builder.config.rust_codegen_backends {
+        for &backend in run.builder.config.codegen_backends(run.target) {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
             }
@@ -1425,7 +1425,7 @@ fn copy_codegen_backends_to_sysroot(
         return;
     }
 
-    for backend in builder.config.rust_codegen_backends.iter() {
+    for backend in builder.config.codegen_backends(target) {
         if backend == "llvm" {
             continue; // Already built as part of rustc
         }
@@ -1732,7 +1732,7 @@ impl Step for Assemble {
         // to not fail while linking the artifacts.
         build_compiler.stage = actual_stage;
 
-        for &backend in builder.config.rust_codegen_backends.iter() {
+        for &backend in builder.config.codegen_backends(target_compiler.host) {
             if backend == "llvm" {
                 continue; // Already built as part of rustc
             }
@@ -1817,7 +1817,7 @@ impl Step for Assemble {
             }
         }
 
-        if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
+        if builder.config.llvm_enabled(target_compiler.host) {
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: target_compiler.host });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {

@@ -577,6 +577,7 @@ pub struct Target {
     pub wasi_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
     pub no_std: bool,
+    pub codegen_backends: Option<Vec<Interned<String>>>,
 }
 
 impl Target {
@@ -1135,6 +1136,7 @@ define_config! {
         wasi_root: Option<String> = "wasi-root",
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
+        codegen_backends: Option<Vec<String>> = "codegen-backends",
     }
 }
 
@@ -1840,6 +1842,24 @@ impl Config {
                 target.profiler = cfg.profiler;
                 target.rpath = cfg.rpath;
 
+                if let Some(ref backends) = cfg.codegen_backends {
+                    let available_backends = vec!["llvm", "cranelift", "gcc"];
+
+                    target.codegen_backends = Some(backends.iter().map(|s| {
+                        if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
+                            if available_backends.contains(&backend) {
+                                panic!("Invalid value '{s}' for 'target.{triple}.codegen-backends'. Instead, please use '{backend}'.");
+                            } else {
+                                println!("HELP: '{s}' for 'target.{triple}.codegen-backends' might fail. \
+                                    Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
+                                    In this case, it would be referred to as '{backend}'.");
+                            }
+                        }
+
+                        INTERNER.intern_str(s)
+                    }).collect());
+                }
+
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
         }
@@ -2222,8 +2242,8 @@ impl Config {
         self.target_config.get(&target).map(|t| t.rpath).flatten().unwrap_or(self.rust_rpath)
     }
 
-    pub fn llvm_enabled(&self) -> bool {
-        self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+    pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
+        self.codegen_backends(target).contains(&INTERNER.intern_str("llvm"))
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
@@ -2242,8 +2262,15 @@ impl Config {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 
-    pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
-        self.rust_codegen_backends.get(0).cloned()
+    pub fn codegen_backends(&self, target: TargetSelection) -> &[Interned<String>] {
+        self.target_config
+            .get(&target)
+            .and_then(|cfg| cfg.codegen_backends.as_deref())
+            .unwrap_or(&self.rust_codegen_backends)
+    }
+
+    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<Interned<String>> {
+        self.codegen_backends(target).get(0).cloned()
     }
 
     pub fn git_config(&self) -> GitConfig<'_> {
