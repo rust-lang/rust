@@ -109,6 +109,93 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.autoderef(span, ty).any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
     }
 
+    fn impl_into_iterator_should_be_iterator(
+        &self,
+        ty: Ty<'tcx>,
+        span: Span,
+        unsatisfied_predicates: &Vec<(
+            ty::Predicate<'_>,
+            Option<ty::Predicate<'_>>,
+            Option<ObligationCause<'_>>,
+        )>,
+    ) -> bool {
+        fn predicate_bounds_generic_param<'tcx>(
+            predicate: ty::Predicate<'_>,
+            generics: &'tcx ty::Generics,
+            generic_param: &ty::GenericParamDef,
+            tcx: TyCtxt<'tcx>,
+        ) -> bool {
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
+                predicate.kind().as_ref().skip_binder()
+            {
+                let ty::TraitPredicate { trait_ref: ty::TraitRef { args, .. }, .. } = trait_pred;
+                if args.is_empty() {
+                    return false;
+                }
+                let Some(arg_ty) = args[0].as_type() else {
+                    return false;
+                };
+                let ty::Param(param) = arg_ty.kind() else {
+                    return false;
+                };
+                // Is `generic_param` the same as the arg for this trait predicate?
+                generic_param.index == generics.type_param(&param, tcx).index
+            } else {
+                false
+            }
+        }
+
+        fn is_iterator_predicate(predicate: ty::Predicate<'_>, tcx: TyCtxt<'_>) -> bool {
+            if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
+                predicate.kind().as_ref().skip_binder()
+            {
+                tcx.is_diagnostic_item(sym::Iterator, trait_pred.trait_ref.def_id)
+            } else {
+                false
+            }
+        }
+
+        // Does the `ty` implement `IntoIterator`?
+        let Some(into_iterator_trait) = self.tcx.get_diagnostic_item(sym::IntoIterator) else {
+            return false;
+        };
+        let trait_ref = ty::TraitRef::new(self.tcx, into_iterator_trait, [ty]);
+        let cause = ObligationCause::new(span, self.body_id, ObligationCauseCode::MiscObligation);
+        let obligation = Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        if !self.predicate_must_hold_modulo_regions(&obligation) {
+            return false;
+        }
+
+        match ty.kind() {
+            ty::Param(param) => {
+                let generics = self.tcx.generics_of(self.body_id);
+                let generic_param = generics.type_param(&param, self.tcx);
+                for unsatisfied in unsatisfied_predicates.iter() {
+                    // The parameter implements `IntoIterator`
+                    // but it has called a method that requires it to implement `Iterator`
+                    if predicate_bounds_generic_param(
+                        unsatisfied.0,
+                        generics,
+                        generic_param,
+                        self.tcx,
+                    ) && is_iterator_predicate(unsatisfied.0, self.tcx)
+                    {
+                        return true;
+                    }
+                }
+            }
+            ty::Alias(ty::AliasKind::Opaque, _) => {
+                for unsatisfied in unsatisfied_predicates.iter() {
+                    if is_iterator_predicate(unsatisfied.0, self.tcx) {
+                        return true;
+                    }
+                }
+            }
+            _ => return false,
+        }
+        false
+    }
+
     #[instrument(level = "debug", skip(self))]
     pub fn report_method_error(
         &self,
@@ -555,6 +642,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
                 ));
             }
+        } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
+        {
+            err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
+            err.multipart_suggestion_verbose(
+                "call `.into_iter()` first",
+                vec![(span.shrink_to_lo(), format!("into_iter()."))],
+                Applicability::MaybeIncorrect,
+            );
+            return Some(err);
         } else if !unsatisfied_predicates.is_empty() && matches!(rcvr_ty.kind(), ty::Param(_)) {
             // We special case the situation where we are looking for `_` in
             // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
