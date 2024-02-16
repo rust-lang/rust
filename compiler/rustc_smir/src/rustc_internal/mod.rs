@@ -347,8 +347,14 @@ macro_rules! run_driver {
                         Err(CompilerError::Interrupted(value))
                     }
                     (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
-                    (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
-                    (Err(_), _) => Err(CompilerError::ICE),
+                    // Two cases here:
+                    // - `run` finished normally and returned `Err`
+                    // - `run` panicked with `FatalErr`
+                    // You might think that normal compile errors cause the former, and
+                    // ICEs cause the latter. But some normal compiler errors also cause
+                    // the latter. So we can't meaningfully distinguish them, and group
+                    // them together.
+                    (Ok(Err(_)), _) | (Err(_), _) => Err(CompilerError::Failed),
                 }
             }
         }
