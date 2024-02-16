@@ -30,8 +30,6 @@ if isWindows; then
 
     # Delete these pre-installed tools so we can't accidentally use them, because we are using the
     # MSYS2 setup action versions instead.
-    # Delete Windows-Git
-    rm -r "/c/Program Files/Git/"
     # Delete pre-installed version of MSYS2
     rm -r "/c/msys64/"
     # Delete Strawberry Perl, which contains a version of mingw
@@ -41,9 +39,18 @@ if isWindows; then
     rm -r "/c/mingw32/"
 
     if isKnownToBeMingwBuild; then
+        # Use the mingw version of CMake for mingw builds.
+        # However, the MSVC build needs native CMake, as it fails with the mingw one.
         # Delete native CMake
         rm -r "/c/Program Files/CMake/"
         # Install mingw-w64-$arch-cmake
         pacboy -S --noconfirm cmake:p
-    fi # Otherwise, the MSVC build needs native CMake, it fails with the mingw one.
+
+        # We use Git-for-Windows for MSVC builds, and MSYS2 Git for mingw builds,
+        # so that both are tested.
+        # Delete Windows-Git
+        rm -r "/c/Program Files/Git/"
+        # Install MSYS2 git
+        pacman -S --noconfirm git
+    fi
 fi

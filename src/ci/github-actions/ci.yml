@@ -134,7 +134,6 @@ x--expand-yaml-anchors--remove:
           path-type: inherit
           install: >
             make
-            git
             dos2unix
             diffutils
 
