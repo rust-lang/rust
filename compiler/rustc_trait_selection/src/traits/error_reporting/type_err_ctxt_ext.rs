@@ -2993,6 +2993,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 &mut Default::default(),
             );
             self.suggest_unsized_bound_if_applicable(err, obligation);
+            if let Some(span) = err.span.primary_span()
+                && let Some(mut diag) =
+                    self.tcx.dcx().steal_diagnostic(span, StashKey::AssociatedTypeSuggestion)
+                && let Ok(ref mut s1) = err.suggestions
+                && let Ok(ref mut s2) = diag.suggestions
+            {
+                s1.append(s2);
+                diag.cancel()
+            }
         }
     }
 

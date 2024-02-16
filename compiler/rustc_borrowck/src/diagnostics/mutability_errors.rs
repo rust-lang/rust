@@ -698,7 +698,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     ),
                                 ..
                             }) => {
-                                let hir::Ty { span, .. } = inputs[local.index() - 1];
+                                let hir::Ty { span, .. } = *inputs.get(local.index() - 1)?;
                                 Some(span)
                             }
                             _ => None,
