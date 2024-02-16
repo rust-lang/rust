@@ -59,7 +59,7 @@ impl base::BangProcMacro for BangProcMacro {
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx);
-        let server = proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx, Default::default());
         self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
             ecx.dcx().emit_err(errors::ProcMacroPanicked {
                 span,
@@ -90,7 +90,7 @@ impl base::AttrProcMacro for AttrProcMacro {
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = exec_strategy(ecx);
-        let server = proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx, Default::default());
         self.client.run(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
             |e| {
                 let mut err = ecx.dcx().struct_span_err(span, "custom attribute panicked");
@@ -114,7 +114,7 @@ impl MultiItemModifier for DeriveProcMacro {
         span: Span,
         _meta_item: &ast::MetaItem,
         item: Annotatable,
-        _is_derive_const: bool,
+        is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         // We need special handling for statement items
         // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
@@ -142,7 +142,10 @@ impl MultiItemModifier for DeriveProcMacro {
                 });
             let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
             let strategy = exec_strategy(ecx);
-            let server = proc_macro_server::Rustc::new(ecx);
+            let server = proc_macro_server::Rustc::new(
+                ecx,
+                proc_macro_server::ExpansionOptions { is_derive_const },
+            );
             match self.client.run(&strategy, server, input, proc_macro_backtrace) {
                 Ok(stream) => stream,
                 Err(e) => {

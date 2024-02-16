@@ -1,0 +1,16 @@
+error: derive proc macro has incorrect signature
+  --> $DIR/signature-proc-macro-derive.rs:16:1
+   |
+LL | pub fn bad_input() -> proc_macro::TokenStream {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | incorrect number of function parameters
+   | incorrect number of function parameters
+   |
+   = note: expected signature `fn(proc_macro::TokenStream) -> proc_macro::TokenStream`
+              found signature `fn() -> proc_macro::TokenStream`
+   = note: expected signature `fn(proc_macro::TokenStream, DeriveExpansionOptions) -> proc_macro::TokenStream`
+              found signature `fn() -> proc_macro::TokenStream`
+
+error: aborting due to 1 previous error
+
