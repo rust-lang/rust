@@ -1219,18 +1219,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("match_candidates: {:?} candidates fully matched", fully_matched);
         let (matched_candidates, unmatched_candidates) = candidates.split_at_mut(fully_matched);
 
-        let block = if !matched_candidates.is_empty() {
-            let otherwise_block =
-                self.select_matched_candidates(matched_candidates, start_block, fake_borrows);
-
-            if let Some(last_otherwise_block) = otherwise_block {
-                last_otherwise_block
-            } else {
-                self.cfg.start_new_block()
-            }
-        } else {
-            start_block
-        };
+        let block = self.select_matched_candidates(matched_candidates, start_block, fake_borrows);
 
         // If there are no candidates that still need testing, we're
         // done. Since all matches are exhaustive, execution should
@@ -1282,11 +1271,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         matched_candidates: &mut [&mut Candidate<'_, 'tcx>],
         start_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
-    ) -> Option<BasicBlock> {
-        debug_assert!(
-            !matched_candidates.is_empty(),
-            "select_matched_candidates called with no candidates",
-        );
+    ) -> BasicBlock {
+        if matched_candidates.is_empty() {
+            return start_block;
+        }
         debug_assert!(
             matched_candidates.iter().all(|c| c.subcandidates.is_empty()),
             "subcandidates should be empty in select_matched_candidates",
@@ -1356,7 +1344,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             candidate.pre_binding_block = Some(self.cfg.start_new_block());
         }
 
-        reachable_candidates.last_mut().unwrap().otherwise_block
+        reachable_candidates
+            .last_mut()
+            .unwrap()
+            .otherwise_block
+            .unwrap_or_else(|| self.cfg.start_new_block())
     }
 
     /// Tests a candidate where there are only or-patterns left to test, or
