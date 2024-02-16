@@ -971,15 +971,11 @@ fn merge_text_and_snippet_edits(
                 snippet_range
             };
 
-            let range = range(line_index, snippet_range);
-            let new_text = format!("${snippet_index}");
-
-            edits.push(SnippetTextEdit {
-                range,
-                new_text,
-                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
-                annotation_id: None,
-            })
+            edits.push(snippet_text_edit(
+                line_index,
+                true,
+                Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+            ))
         }
 
         if snippets.peek().is_some_and(|(_, range)| {
@@ -1002,31 +998,44 @@ fn merge_text_and_snippet_edits(
                     )
                 });
 
-            let mut text_edit = text_edit(line_index, current_indel);
+            let mut new_text = current_indel.insert;
 
-            // escape out snippet text
-            stdx::replace(&mut text_edit.new_text, '\\', r"\\");
-            stdx::replace(&mut text_edit.new_text, '$', r"\$");
+            // find which snippet bits need to be escaped
+            let escape_places = new_text
+                .rmatch_indices(['\\', '$', '{', '}'])
+                .map(|(insert, _)| insert)
+                .collect_vec();
+            let mut escape_places = escape_places.into_iter().peekable();
+            let mut escape_prior_bits = |new_text: &mut String, up_to: usize| {
+                for before in escape_places.peeking_take_while(|insert| *insert >= up_to) {
+                    new_text.insert(before, '\\');
+                }
+            };
 
-            // ...and apply!
+            // insert snippets, and escaping any needed bits along the way
             for (index, range) in all_snippets.iter().rev() {
-                let start = (range.start() - new_range.start()).into();
-                let end = (range.end() - new_range.start()).into();
+                let text_range = range - new_range.start();
+                let (start, end) = (text_range.start().into(), text_range.end().into());
 
                 if range.is_empty() {
-                    text_edit.new_text.insert_str(start, &format!("${index}"));
+                    escape_prior_bits(&mut new_text, start);
+                    new_text.insert_str(start, &format!("${index}"));
                 } else {
-                    text_edit.new_text.insert(end, '}');
-                    text_edit.new_text.insert_str(start, &format!("${{{index}:"));
+                    escape_prior_bits(&mut new_text, end);
+                    new_text.insert(end, '}');
+                    escape_prior_bits(&mut new_text, start);
+                    new_text.insert_str(start, &format!("${{{index}:"));
                 }
             }
 
-            edits.push(SnippetTextEdit {
-                range: text_edit.range,
-                new_text: text_edit.new_text,
-                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
-                annotation_id: None,
-            })
+            // escape any remaining bits
+            escape_prior_bits(&mut new_text, 0);
+
+            edits.push(snippet_text_edit(
+                line_index,
+                true,
+                Indel { insert: new_text, delete: current_indel.delete },
+            ))
         } else {
             // snippet edit was beyond the current one
             // since it wasn't consumed, it's available for the next pass
@@ -1052,15 +1061,11 @@ fn merge_text_and_snippet_edits(
             snippet_range
         };
 
-        let range = range(line_index, snippet_range);
-        let new_text = format!("${snippet_index}");
-
-        SnippetTextEdit {
-            range,
-            new_text,
-            insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
-            annotation_id: None,
-        }
+        snippet_text_edit(
+            line_index,
+            true,
+            Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+        )
     }));
 
     edits
@@ -1705,9 +1710,10 @@ fn bar(_: usize) {}
         expect: Expect,
     ) {
         let source = stdx::trim_indent(ra_fixture);
+        let endings = if source.contains('\r') { LineEndings::Dos } else { LineEndings::Unix };
         let line_index = LineIndex {
             index: Arc::new(ide::LineIndex::new(&source)),
-            endings: LineEndings::Unix,
+            endings,
             encoding: PositionEncoding::Utf8,
         };
 
@@ -2144,51 +2150,71 @@ fn bar(_: usize) {}
     fn snippet_rendering_escape_snippet_bits() {
         // only needed for snippet formats
         let mut edit = TextEdit::builder();
-        edit.insert(0.into(), r"abc\def$".to_owned());
-        edit.insert(8.into(), r"ghi\jkl$".to_owned());
+        edit.insert(0.into(), r"$ab{}$c\def".to_owned());
+        edit.insert(8.into(), r"ghi\jk<-check_insert_here$".to_owned());
+        edit.insert(10.into(), r"a\\b\\c{}$".to_owned());
         let edit = edit.finish();
-        let snippets =
-            SnippetEdit::new(vec![Snippet::Placeholder(TextRange::new(0.into(), 3.into()))]);
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Placeholder(TextRange::new(1.into(), 9.into())),
+            Snippet::Tabstop(25.into()),
+        ]);
 
         check_rendered_snippets(
             edit,
             snippets,
             expect![[r#"
-            [
-                SnippetTextEdit {
-                    range: Range {
-                        start: Position {
-                            line: 0,
-                            character: 0,
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 0,
+                            },
                         },
-                        end: Position {
-                            line: 0,
-                            character: 0,
-                        },
+                        new_text: "\\$${1:ab\\{\\}\\$c\\\\d}ef",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
                     },
-                    new_text: "${0:abc}\\\\def\\$",
-                    insert_text_format: Some(
-                        Snippet,
-                    ),
-                    annotation_id: None,
-                },
-                SnippetTextEdit {
-                    range: Range {
-                        start: Position {
-                            line: 0,
-                            character: 8,
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 8,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 8,
+                            },
                         },
-                        end: Position {
-                            line: 0,
-                            character: 8,
-                        },
+                        new_text: "ghi\\\\jk$0<-check_insert_here\\$",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
                     },
-                    new_text: "ghi\\jkl$",
-                    insert_text_format: None,
-                    annotation_id: None,
-                },
-            ]
-        "#]],
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 10,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 10,
+                            },
+                        },
+                        new_text: "a\\\\b\\\\c{}$",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
         );
     }
 
@@ -2218,41 +2244,41 @@ struct ProcMacro {
             edit,
             snippets,
             expect![[r#"
-    [
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 4,
-                },
-                end: Position {
-                    line: 1,
-                    character: 13,
-                },
-            },
-            new_text: "let",
-            insert_text_format: None,
-            annotation_id: None,
-        },
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 14,
-                },
-                end: Position {
-                    line: 3,
-                    character: 5,
-                },
-            },
-            new_text: "$0disabled = false;\n    ProcMacro {\n        disabled,\n    }",
-            insert_text_format: Some(
-                Snippet,
-            ),
-            annotation_id: None,
-        },
-    ]
-"#]],
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 4,
+                            },
+                            end: Position {
+                                line: 1,
+                                character: 13,
+                            },
+                        },
+                        new_text: "let",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 14,
+                            },
+                            end: Position {
+                                line: 3,
+                                character: 5,
+                            },
+                        },
+                        new_text: "$0disabled = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
         );
     }
 
@@ -2282,41 +2308,41 @@ struct P {
             edit,
             snippets,
             expect![[r#"
-    [
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 4,
-                },
-                end: Position {
-                    line: 1,
-                    character: 5,
-                },
-            },
-            new_text: "let",
-            insert_text_format: None,
-            annotation_id: None,
-        },
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 6,
-                },
-                end: Position {
-                    line: 3,
-                    character: 5,
-                },
-            },
-            new_text: "$0disabled = false;\n    ProcMacro {\n        disabled,\n    }",
-            insert_text_format: Some(
-                Snippet,
-            ),
-            annotation_id: None,
-        },
-    ]
-"#]],
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 4,
+                            },
+                            end: Position {
+                                line: 1,
+                                character: 5,
+                            },
+                        },
+                        new_text: "let",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 6,
+                            },
+                            end: Position {
+                                line: 3,
+                                character: 5,
+                            },
+                        },
+                        new_text: "$0disabled = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
         );
     }
 
@@ -2374,7 +2400,7 @@ struct ProcMacro {
                                 character: 5,
                             },
                         },
-                        new_text: "${0:disabled} = false;\n    ProcMacro {\n        disabled,\n    }",
+                        new_text: "${0:disabled} = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
                         insert_text_format: Some(
                             Snippet,
                         ),
@@ -2439,7 +2465,7 @@ struct P {
                                 character: 5,
                             },
                         },
-                        new_text: "${0:disabled} = false;\n    ProcMacro {\n        disabled,\n    }",
+                        new_text: "${0:disabled} = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
                         insert_text_format: Some(
                             Snippet,
                         ),
@@ -2607,6 +2633,43 @@ struct ProcMacro {
     ]
 "#]],
         );
+    }
+
+    #[test]
+    fn snippet_rendering_handle_dos_line_endings() {
+        // unix -> dos conversion should be handled after placing snippets
+        let mut edit = TextEdit::builder();
+        edit.insert(6.into(), "\n\n->".to_owned());
+
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(10.into())]);
+
+        check_rendered_snippets_in_source(
+            "yeah\r\n<-tabstop here",
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 1,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 1,
+                            character: 0,
+                        },
+                    },
+                    new_text: "\r\n\r\n->$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        )
     }
 
     // `Url` is not able to parse windows paths on unix machines.
