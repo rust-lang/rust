@@ -425,6 +425,8 @@ pub enum ValidationErrorKind<'tcx> {
     ConstRefToExtern,
     MutableRefToImmutable,
     UnsafeCellInImmutable,
+    RefToFunction,
+    RefToVtable,
     NullFnPtr,
     NeverVal,
     NullablePtrOutOfRange { range: WrappingRange, max_value: u128 },

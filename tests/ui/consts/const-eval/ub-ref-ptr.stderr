@@ -163,6 +163,28 @@ note: inside `UNALIGNED_READ`
 LL |     ptr.read();
    |     ^^^^^^^^^^
 
-error: aborting due to 15 previous errors
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:69:1
+   |
+LL | const POINTS_TO_FUNCTION: &() = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a reference pointing to a function
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-ref-ptr.rs:74:1
+   |
+LL | const POINTS_TO_VTABLE: (&(), &()) = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .1: encountered a reference pointing to a vtable
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 17 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

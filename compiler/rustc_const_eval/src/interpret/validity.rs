@@ -502,9 +502,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         if is_mut { Mutability::Mut } else { Mutability::Not }
                     }
                     GlobalAlloc::Memory(alloc) => alloc.inner().mutability,
-                    GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {
-                        // These are immutable, we better don't allow mutable pointers here.
-                        Mutability::Not
+                    GlobalAlloc::Function(..) => {
+                        throw_validation_failure!(self.path, RefToFunction);
+                    }
+                    GlobalAlloc::VTable(..) => {
+                        throw_validation_failure!(self.path, RefToVtable);
                     }
                 };
                 // Mutability check.

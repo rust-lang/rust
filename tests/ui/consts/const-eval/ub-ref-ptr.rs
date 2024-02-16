@@ -66,5 +66,16 @@ const UNALIGNED_READ: () = unsafe {
     ptr.read(); //~ inside `UNALIGNED_READ`
 };
 
+const POINTS_TO_FUNCTION: &() = unsafe {
+//~^ ERROR it is undefined behavior to use this value
+//~| function
+    mem::transmute(main as fn())
+};
+const POINTS_TO_VTABLE: (&(), &()) = unsafe {
+//~^ ERROR it is undefined behavior to use this value
+//~| vtable
+    mem::transmute(&() as &dyn Send)
+};
+
 
 fn main() {}
