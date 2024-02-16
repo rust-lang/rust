@@ -1313,39 +1313,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let fully_matched_with_guard = matched_candidates
-            .iter()
-            .position(|c| !c.has_guard)
-            .unwrap_or(matched_candidates.len() - 1);
-
-        let (reachable_candidates, unreachable_candidates) =
-            matched_candidates.split_at_mut(fully_matched_with_guard + 1);
-
         let mut next_prebinding = start_block;
+        let mut reachable = true;
+        let mut last_reachable_candidate = None;
 
-        for candidate in reachable_candidates.iter_mut() {
+        for candidate in matched_candidates.iter_mut() {
             assert!(candidate.otherwise_block.is_none());
             assert!(candidate.pre_binding_block.is_none());
-            candidate.pre_binding_block = Some(next_prebinding);
-            if candidate.has_guard {
-                // Create the otherwise block for this candidate, which is the
-                // pre-binding block for the next candidate.
-                next_prebinding = self.cfg.start_new_block();
-                candidate.otherwise_block = Some(next_prebinding);
+            if reachable {
+                candidate.pre_binding_block = Some(next_prebinding);
+                if candidate.has_guard {
+                    // Create the otherwise block for this candidate, which is the
+                    // pre-binding block for the next candidate.
+                    next_prebinding = self.cfg.start_new_block();
+                    candidate.otherwise_block = Some(next_prebinding);
+                } else {
+                    reachable = false;
+                }
+                last_reachable_candidate = Some(candidate);
+            } else {
+                candidate.pre_binding_block = Some(self.cfg.start_new_block());
             }
         }
 
-        debug!(
-            "match_candidates: add pre_binding_blocks for unreachable {:?}",
-            unreachable_candidates,
-        );
-        for candidate in unreachable_candidates {
-            assert!(candidate.pre_binding_block.is_none());
-            candidate.pre_binding_block = Some(self.cfg.start_new_block());
-        }
-
-        reachable_candidates
-            .last_mut()
+        last_reachable_candidate
             .unwrap()
             .otherwise_block
             .unwrap_or_else(|| self.cfg.start_new_block())
