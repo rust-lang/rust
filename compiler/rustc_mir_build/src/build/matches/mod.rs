@@ -1272,9 +1272,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) -> BasicBlock {
-        if matched_candidates.is_empty() {
-            return start_block;
-        }
         debug_assert!(
             matched_candidates.iter().all(|c| c.subcandidates.is_empty()),
             "subcandidates should be empty in select_matched_candidates",
