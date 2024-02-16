@@ -86,7 +86,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
-    ) {
+    ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
@@ -141,7 +141,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     args[2].immediate(),
                     llresult,
                 );
-                return;
+                return Ok(());
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[]),
             sym::va_copy => {
@@ -194,17 +194,17 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 if !result.layout.is_zst() {
                     self.store(load, result.llval, result.align);
                 }
-                return;
+                return Ok(());
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.volatile_store(self, dst);
-                return;
+                return Ok(());
             }
             sym::unaligned_volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.unaligned_volatile_store(self, dst);
-                return;
+                return Ok(());
             }
             sym::prefetch_read_data
             | sym::prefetch_write_data
@@ -305,7 +305,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                             name,
                             ty,
                         });
-                        return;
+                        return Ok(());
                     }
                 }
             }
@@ -387,7 +387,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));
 
                 // We have copied the value to `result` already.
-                return;
+                return Ok(());
             }
 
             _ if name.as_str().starts_with("simd_") => {
@@ -395,11 +395,15 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self, name, callee_ty, fn_args, args, ret_ty, llret_ty, span,
                 ) {
                     Ok(llval) => llval,
-                    Err(()) => return,
+                    Err(()) => return Ok(()),
                 }
             }
 
-            _ => bug!("unknown intrinsic '{}' -- should it have been lowered earlier?", name),
+            _ => {
+                debug!("unknown intrinsic '{}' -- falling back to default body", name);
+                // Call the fallback body instead of generating the intrinsic code
+                return Err(ty::Instance::new(instance.def_id(), instance.args));
+            }
         };
 
         if !fn_abi.ret.is_ignore() {
@@ -411,6 +415,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     .store(self, result);
             }
         }
+        Ok(())
     }
 
     fn abort(&mut self) {

@@ -316,7 +316,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
                     || !sig.is_suggestable(self.tcx, true)
-                    || self.tcx.is_intrinsic(*did)
+                    || self.tcx.intrinsic(*did).is_some()
                 {
                     return;
                 }
@@ -348,8 +348,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
                     || !found_sig.is_suggestable(self.tcx, true)
                     || !expected_sig.is_suggestable(self.tcx, true)
-                    || self.tcx.is_intrinsic(*did1)
-                    || self.tcx.is_intrinsic(*did2)
+                    || self.tcx.intrinsic(*did1).is_some()
+                    || self.tcx.intrinsic(*did2).is_some()
                 {
                     return;
                 }
