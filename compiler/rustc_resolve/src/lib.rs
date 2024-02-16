@@ -729,6 +729,8 @@ struct PrivacyError<'a> {
     dedup_span: Span,
     outermost_res: Option<(Res, Ident)>,
     parent_scope: ParentScope<'a>,
+    /// Is the format `use a::{b,c}`?
+    single_nested: bool,
 }
 
 #[derive(Debug)]
