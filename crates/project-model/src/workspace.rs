@@ -1411,7 +1411,7 @@ fn sysroot_to_crate_graph(
 
             // Remove all crates except the ones we are interested in to keep the sysroot graph small.
             let removed_mapping = cg.remove_crates_except(&marker_set);
-            let mapping = crate_graph.extend(cg, &mut pm, |_, _| true);
+            let mapping = crate_graph.extend(cg, &mut pm, |(_, a), (_, b)| a == b);
 
             // Map the id through the removal mapping first, then through the crate graph extension mapping.
             pub_deps.iter_mut().for_each(|(_, cid, _)| {

@@ -295,7 +295,7 @@ pub struct CrateData {
 
 impl CrateData {
     /// Check if [`other`] is almost equal to [`self`] ignoring `CrateOrigin` value.
-    fn eq_ignoring_origin_and_deps(&self, other: &CrateData, ignore_dev_deps: bool) -> bool {
+    pub fn eq_ignoring_origin_and_deps(&self, other: &CrateData, ignore_dev_deps: bool) -> bool {
         // This method has some obscure bits. These are mostly there to be compliant with
         // some patches. References to the patches are given.
         if self.root_file_id != other.root_file_id {
@@ -622,8 +622,9 @@ impl CrateGraph {
         &mut self,
         mut other: CrateGraph,
         proc_macros: &mut ProcMacroPaths,
-        may_merge: impl Fn((CrateId, &CrateData), (CrateId, &CrateData)) -> bool,
+        merge: impl Fn((CrateId, &mut CrateData), (CrateId, &CrateData)) -> bool,
     ) -> FxHashMap<CrateId, CrateId> {
+        let m = self.len();
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
@@ -631,48 +632,14 @@ impl CrateGraph {
 
             crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
-            let res = self.arena.iter().find_map(|(id, data)| {
-                if !may_merge((id, &data), (topo, &crate_data)) {
-                    return None;
-                }
+            let res = self
+                .arena
+                .iter_mut()
+                .take(m)
+                .find_map(|(id, data)| merge((id, data), (topo, &crate_data)).then_some(id));
 
-                match (&data.origin, &crate_data.origin) {
-                    (a, b) if a == b => {
-                        if data.eq_ignoring_origin_and_deps(crate_data, false) {
-                            return Some((id, false));
-                        }
-                    }
-                    (a @ CrateOrigin::Local { .. }, CrateOrigin::Library { .. })
-                    | (a @ CrateOrigin::Library { .. }, CrateOrigin::Local { .. }) => {
-                        // If the origins differ, check if the two crates are equal without
-                        // considering the dev dependencies, if they are, they most likely are in
-                        // different loaded workspaces which may cause issues. We keep the local
-                        // version and discard the library one as the local version may have
-                        // dev-dependencies that we want to keep resolving. See #15656 for more
-                        // information.
-                        if data.eq_ignoring_origin_and_deps(crate_data, true) {
-                            return Some((id, !a.is_local()));
-                        }
-                    }
-                    (_, _) => return None,
-                }
-
-                None
-            });
-
-            let new_id = if let Some((res, should_update_lib_to_local)) = res {
-                if should_update_lib_to_local {
-                    assert!(self.arena[res].origin.is_lib());
-                    assert!(crate_data.origin.is_local());
-                    self.arena[res].origin = crate_data.origin.clone();
-
-                    // Move local's dev dependencies into the newly-local-formerly-lib crate.
-                    self.arena[res].dependencies = crate_data.dependencies.clone();
-                }
-                res
-            } else {
-                self.arena.alloc(crate_data.clone())
-            };
+            let new_id =
+                if let Some(res) = res { res } else { self.arena.alloc(crate_data.clone()) };
             id_map.insert(topo, new_id);
         }
 
