@@ -1,6 +1,5 @@
 //! Implementation of `std::os` functionality for Windows.
 
-#![cfg_attr(bootstrap, allow(unexpected_cfgs))]
 #![allow(nonstandard_style)]
 
 #[cfg(test)]
