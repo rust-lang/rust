@@ -1001,8 +1001,10 @@ fn merge_text_and_snippet_edits(
             let mut new_text = current_indel.insert;
 
             // find which snippet bits need to be escaped
-            let escape_places =
-                new_text.rmatch_indices(['\\', '$']).map(|(insert, _)| insert).collect_vec();
+            let escape_places = new_text
+                .rmatch_indices(['\\', '$', '{', '}'])
+                .map(|(insert, _)| insert)
+                .collect_vec();
             let mut escape_places = escape_places.into_iter().peekable();
             let mut escape_prior_bits = |new_text: &mut String, up_to: usize| {
                 for before in escape_places.peeking_take_while(|insert| *insert >= up_to) {
@@ -2173,7 +2175,7 @@ fn bar(_: usize) {}
                                 character: 0,
                             },
                         },
-                        new_text: "\\$${1:ab{}\\$c\\\\d}ef",
+                        new_text: "\\$${1:ab\\{\\}\\$c\\\\d}ef",
                         insert_text_format: Some(
                             Snippet,
                         ),
@@ -2242,41 +2244,41 @@ struct ProcMacro {
             edit,
             snippets,
             expect![[r#"
-    [
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 4,
-                },
-                end: Position {
-                    line: 1,
-                    character: 13,
-                },
-            },
-            new_text: "let",
-            insert_text_format: None,
-            annotation_id: None,
-        },
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 14,
-                },
-                end: Position {
-                    line: 3,
-                    character: 5,
-                },
-            },
-            new_text: "$0disabled = false;\n    ProcMacro {\n        disabled,\n    }",
-            insert_text_format: Some(
-                Snippet,
-            ),
-            annotation_id: None,
-        },
-    ]
-"#]],
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 4,
+                            },
+                            end: Position {
+                                line: 1,
+                                character: 13,
+                            },
+                        },
+                        new_text: "let",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 14,
+                            },
+                            end: Position {
+                                line: 3,
+                                character: 5,
+                            },
+                        },
+                        new_text: "$0disabled = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
         );
     }
 
@@ -2306,41 +2308,41 @@ struct P {
             edit,
             snippets,
             expect![[r#"
-    [
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 4,
-                },
-                end: Position {
-                    line: 1,
-                    character: 5,
-                },
-            },
-            new_text: "let",
-            insert_text_format: None,
-            annotation_id: None,
-        },
-        SnippetTextEdit {
-            range: Range {
-                start: Position {
-                    line: 1,
-                    character: 6,
-                },
-                end: Position {
-                    line: 3,
-                    character: 5,
-                },
-            },
-            new_text: "$0disabled = false;\n    ProcMacro {\n        disabled,\n    }",
-            insert_text_format: Some(
-                Snippet,
-            ),
-            annotation_id: None,
-        },
-    ]
-"#]],
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 4,
+                            },
+                            end: Position {
+                                line: 1,
+                                character: 5,
+                            },
+                        },
+                        new_text: "let",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 1,
+                                character: 6,
+                            },
+                            end: Position {
+                                line: 3,
+                                character: 5,
+                            },
+                        },
+                        new_text: "$0disabled = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
         );
     }
 
@@ -2398,7 +2400,7 @@ struct ProcMacro {
                                 character: 5,
                             },
                         },
-                        new_text: "${0:disabled} = false;\n    ProcMacro {\n        disabled,\n    }",
+                        new_text: "${0:disabled} = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
                         insert_text_format: Some(
                             Snippet,
                         ),
@@ -2463,7 +2465,7 @@ struct P {
                                 character: 5,
                             },
                         },
-                        new_text: "${0:disabled} = false;\n    ProcMacro {\n        disabled,\n    }",
+                        new_text: "${0:disabled} = false;\n    ProcMacro \\{\n        disabled,\n    \\}",
                         insert_text_format: Some(
                             Snippet,
                         ),
