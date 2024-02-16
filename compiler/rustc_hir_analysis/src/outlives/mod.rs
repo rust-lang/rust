@@ -1,3 +1,4 @@
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
@@ -45,6 +46,24 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
             } else {
                 &[]
             }
+        }
+        DefKind::Impl { of_trait: false }
+            if let hir::ItemKind::Impl(item) = tcx.hir().expect_item(item_def_id).kind
+                && let hir::Impl { self_ty, .. } = &item
+                && let hir::TyKind::TraitObject(
+                    _,
+                    hir::Lifetime { res: hir::LifetimeName::ImplicitObjectLifetimeDefault, .. },
+                    _,
+                ) = self_ty.kind =>
+        {
+            // `impl dyn Trait {}` has an implicit `dyn Trait: 'static` bound. We add it here for
+            // more context in errors. With this we point at `impl dyn Trait` and not to it's
+            // associated functions, deduplicating errors to a single one per `impl dyn Trait` instead
+            // of one for it plus one for each associated function.
+            let ty = tcx.type_of(item_def_id).instantiate_identity();
+            let clause_kind =
+                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, tcx.lifetimes.re_static));
+            &*tcx.arena.alloc_from_iter([(clause_kind.to_predicate(tcx), self_ty.span)])
         }
         _ => &[],
     }
