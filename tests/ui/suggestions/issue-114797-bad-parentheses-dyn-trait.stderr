@@ -1,13 +1,13 @@
 error: incorrect parentheses around trait bounds
-  --> $DIR/issue-114797-bad-parentheses-dyn-trait.rs:6:49
+  --> $DIR/issue-114797-bad-parentheses-dyn-trait.rs:6:30
    |
-LL | fn assert_send(ptr: *mut dyn Trait) -> *mut dyn (Trait + Send) {
-   |                                                 ^            ^
+LL | fn assert_send() -> *mut dyn (Trait + Send) {
+   |                              ^            ^
    |
 help: fix the parentheses
    |
-LL - fn assert_send(ptr: *mut dyn Trait) -> *mut dyn (Trait + Send) {
-LL + fn assert_send(ptr: *mut dyn Trait) -> *mut (dyn Trait + Send) {
+LL - fn assert_send() -> *mut dyn (Trait + Send) {
+LL + fn assert_send() -> *mut (dyn Trait + Send) {
    |
 
 error: incorrect parentheses around trait bounds
