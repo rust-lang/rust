@@ -55,6 +55,23 @@ LL +     }
 LL + }
    |
 
+error: you should consider adding a `Default` implementation for `Const`
+  --> $DIR/new_without_default.rs:120:5
+   |
+LL | /     pub const fn new() -> Const {
+LL | |         Const
+LL | |     } // While Default is not const, it can still call const functions, so we should lint this
+   | |_____^
+   |
+help: try adding this
+   |
+LL + impl Default for Const {
+LL +     fn default() -> Self {
+LL +         Self::new()
+LL +     }
+LL + }
+   |
+
 error: you should consider adding a `Default` implementation for `NewNotEqualToDerive`
   --> $DIR/new_without_default.rs:180:5
    |
@@ -149,5 +166,5 @@ LL +     }
 LL + }
    |
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
