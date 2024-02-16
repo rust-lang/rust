@@ -253,11 +253,11 @@ impl Analysis {
             Env::default(),
             false,
             CrateOrigin::Local { repo: None, name: None },
-            Err("Analysis::from_single_file has no target layout".into()),
-            None,
         );
         change.change_file(file_id, Some(Arc::from(text)));
         change.set_crate_graph(crate_graph);
+        change.set_target_data_layouts(vec![Err("fixture has no layout".into())]);
+        change.set_toolchains(vec![None]);
         host.apply_change(change);
         (host.analysis(), file_id)
     }

@@ -524,8 +524,8 @@ impl GlobalState {
     }
 
     fn recreate_crate_graph(&mut self, cause: String) {
-        // Create crate graph from all the workspaces
-        let (crate_graph, proc_macro_paths, crate_graph_file_dependencies) = {
+        {
+            // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
             // crate graph construction relies on these paths, record them so when one of them gets
@@ -548,31 +548,71 @@ impl GlobalState {
             };
 
             let mut crate_graph = CrateGraph::default();
-            let mut proc_macros = Vec::default();
+            let mut proc_macro_paths = Vec::default();
+            let mut layouts = Vec::default();
+            let mut toolchains = Vec::default();
+            let e = Err(Arc::from("missing layout"));
             for ws in &**self.workspaces {
                 let (other, mut crate_proc_macros) =
                     ws.to_crate_graph(&mut load, self.config.extra_env());
-                crate_graph.extend(other, &mut crate_proc_macros, |_| {});
-                proc_macros.push(crate_proc_macros);
+                let num_layouts = layouts.len();
+                let num_toolchains = toolchains.len();
+                let (toolchain, layout) = match ws {
+                    ProjectWorkspace::Cargo { toolchain, target_layout, .. }
+                    | ProjectWorkspace::Json { toolchain, target_layout, .. } => {
+                        (toolchain.clone(), target_layout.clone())
+                    }
+                    ProjectWorkspace::DetachedFiles { .. } => {
+                        (None, Err("detached files have no layout".into()))
+                    }
+                };
+
+                let mapping = crate_graph.extend(
+                    other,
+                    &mut crate_proc_macros,
+                    |(cg_id, _cg_data), (_o_id, _o_data)| {
+                        // if the newly created crate graph's layout is equal to the crate of the merged graph, then
+                        // we can merge the crates.
+                        layouts[cg_id.into_raw().into_u32() as usize] == layout
+                            && toolchains[cg_id.into_raw().into_u32() as usize] == toolchain
+                    },
+                );
+                // Populate the side tables for the newly merged crates
+                mapping.values().for_each(|val| {
+                    let idx = val.into_raw().into_u32() as usize;
+                    // we only need to consider crates that were not merged and remapped, as the
+                    // ones that were remapped already have the correct layout and toolchain
+                    if idx >= num_layouts {
+                        if layouts.len() <= idx {
+                            layouts.resize(idx + 1, e.clone());
+                        }
+                        layouts[idx] = layout.clone();
+                    }
+                    if idx >= num_toolchains {
+                        if toolchains.len() <= idx {
+                            toolchains.resize(idx + 1, None);
+                        }
+                        toolchains[idx] = toolchain.clone();
+                    }
+                });
+                proc_macro_paths.push(crate_proc_macros);
             }
-            (crate_graph, proc_macros, crate_graph_file_dependencies)
-        };
 
-        let mut change = Change::new();
-        if self.config.expand_proc_macros() {
-            change.set_proc_macros(
-                crate_graph
-                    .iter()
-                    .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
-                    .collect(),
-            );
-            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
+            let mut change = Change::new();
+            if self.config.expand_proc_macros() {
+                change.set_proc_macros(
+                    crate_graph
+                        .iter()
+                        .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
+                        .collect(),
+                );
+                self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
+            }
+            change.set_crate_graph(crate_graph);
+            self.analysis_host.apply_change(change);
+            self.crate_graph_file_dependencies = crate_graph_file_dependencies;
         }
-        change.set_crate_graph(crate_graph);
-        self.analysis_host.apply_change(change);
-        self.crate_graph_file_dependencies = crate_graph_file_dependencies;
         self.process_changes();
-
         self.reload_flycheck();
     }
 

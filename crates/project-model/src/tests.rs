@@ -9,6 +9,7 @@ use expect_test::{expect_file, ExpectFile};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
+use triomphe::Arc;
 
 use crate::{
     CargoWorkspace, CfgOverrides, ProjectJson, ProjectJsonData, ProjectWorkspace, Sysroot,
@@ -76,7 +77,7 @@ fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
         sysroot,
         rustc_cfg: Vec::new(),
         toolchain: None,
-        target_layout: Err("test has no data layout".to_owned()),
+        target_layout: Err(Arc::from("test has no data layout")),
     };
     to_crate_graph(project_workspace)
 }
@@ -237,7 +238,7 @@ fn crate_graph_dedup_identical() {
 
     let (d_crate_graph, mut d_proc_macros) = (crate_graph.clone(), proc_macros.clone());
 
-    crate_graph.extend(d_crate_graph.clone(), &mut d_proc_macros, |_| ());
+    crate_graph.extend(d_crate_graph.clone(), &mut d_proc_macros, |_, _| true);
     assert!(crate_graph.iter().eq(d_crate_graph.iter()));
     assert_eq!(proc_macros, d_proc_macros);
 }
@@ -253,7 +254,7 @@ fn crate_graph_dedup() {
         load_cargo_with_fake_sysroot(path_map, "regex-metadata.json");
     assert_eq!(regex_crate_graph.iter().count(), 60);
 
-    crate_graph.extend(regex_crate_graph, &mut regex_proc_macros, |_| ());
+    crate_graph.extend(regex_crate_graph, &mut regex_proc_macros, |_, _| true);
     assert_eq!(crate_graph.iter().count(), 118);
 }
 
@@ -266,7 +267,7 @@ fn test_deduplicate_origin_dev() {
     let (crate_graph_1, mut _proc_macros_2) =
         load_cargo_with_fake_sysroot(path_map, "deduplication_crate_graph_B.json");
 
-    crate_graph.extend(crate_graph_1, &mut _proc_macros_2, |_| ());
+    crate_graph.extend(crate_graph_1, &mut _proc_macros_2, |_, _| true);
 
     let mut crates_named_p2 = vec![];
     for id in crate_graph.iter() {
@@ -292,7 +293,7 @@ fn test_deduplicate_origin_dev_rev() {
     let (crate_graph_1, mut _proc_macros_2) =
         load_cargo_with_fake_sysroot(path_map, "deduplication_crate_graph_A.json");
 
-    crate_graph.extend(crate_graph_1, &mut _proc_macros_2, |_| ());
+    crate_graph.extend(crate_graph_1, &mut _proc_macros_2, |_, _| true);
 
     let mut crates_named_p2 = vec![];
     for id in crate_graph.iter() {

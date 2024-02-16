@@ -58,10 +58,6 @@
             ),
         },
         is_proc_macro: false,
-        target_layout: Err(
-            "target_data_layout not loaded",
-        ),
-        toolchain: None,
     },
     1: CrateData {
         root_file_id: FileId(
@@ -130,10 +126,6 @@
             ),
         },
         is_proc_macro: false,
-        target_layout: Err(
-            "target_data_layout not loaded",
-        ),
-        toolchain: None,
     },
     2: CrateData {
         root_file_id: FileId(
@@ -202,10 +194,6 @@
             ),
         },
         is_proc_macro: false,
-        target_layout: Err(
-            "target_data_layout not loaded",
-        ),
-        toolchain: None,
     },
     3: CrateData {
         root_file_id: FileId(
@@ -274,10 +262,6 @@
             ),
         },
         is_proc_macro: false,
-        target_layout: Err(
-            "target_data_layout not loaded",
-        ),
-        toolchain: None,
     },
     4: CrateData {
         root_file_id: FileId(
@@ -343,9 +327,5 @@
             name: "libc",
         },
         is_proc_macro: false,
-        target_layout: Err(
-            "target_data_layout not loaded",
-        ),
-        toolchain: None,
     },
 }
