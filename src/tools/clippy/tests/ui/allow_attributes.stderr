@@ -1,5 +1,5 @@
 error: #[allow] attribute found
-  --> $DIR/allow_attributes.rs:13:3
+  --> $DIR/allow_attributes.rs:12:3
    |
 LL | #[allow(dead_code)]
    |   ^^^^^ help: replace it with: `expect`
@@ -8,10 +8,16 @@ LL | #[allow(dead_code)]
    = help: to override `-D warnings` add `#[allow(clippy::allow_attributes)]`
 
 error: #[allow] attribute found
-  --> $DIR/allow_attributes.rs:22:30
+  --> $DIR/allow_attributes.rs:21:30
    |
 LL | #[cfg_attr(panic = "unwind", allow(dead_code))]
    |                              ^^^^^ help: replace it with: `expect`
 
-error: aborting due to 2 previous errors
+error: #[allow] attribute found
+  --> $DIR/allow_attributes.rs:53:7
+   |
+LL |     #[allow(unused)]
+   |       ^^^^^ help: replace it with: `expect`
+
+error: aborting due to 3 previous errors
 

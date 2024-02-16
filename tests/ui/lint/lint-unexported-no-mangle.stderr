@@ -45,5 +45,15 @@ LL | pub const PUB_FOO: u64 = 1;
    | |
    | help: try a static value: `pub static`
 
-error: aborting due to 2 previous errors; 6 warnings emitted
+warning: lint `private_no_mangle_fns` has been removed: no longer a warning, `#[no_mangle]` functions always exported
+   |
+   = note: requested on the command line with `-F private_no_mangle_fns`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: lint `private_no_mangle_statics` has been removed: no longer a warning, `#[no_mangle]` statics always exported
+   |
+   = note: requested on the command line with `-F private_no_mangle_statics`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors; 8 warnings emitted
 

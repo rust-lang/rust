@@ -1,5 +1,4 @@
 //@no-rustfix: overlapping suggestions
-#![feature(lint_reasons)]
 #![allow(
     unused,
     clippy::diverging_sub_expression,

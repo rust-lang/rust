@@ -7,7 +7,6 @@
 // it also checks that the `dead_code` lint is also *NOT* emited
 // for `bar` as it's suppresed by the `#[expect]` on `bar`
 
-#![feature(lint_reasons)]
 #![warn(dead_code)] // to override compiletest
 
 fn bar() {}

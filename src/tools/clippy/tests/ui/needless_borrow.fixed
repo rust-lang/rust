@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 #![allow(
     unused,
     clippy::uninlined_format_args,

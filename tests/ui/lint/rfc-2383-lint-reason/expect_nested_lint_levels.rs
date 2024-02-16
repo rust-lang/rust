@@ -1,6 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(lint_reasons)]
 #![warn(unused_mut)]
 
 #[expect(

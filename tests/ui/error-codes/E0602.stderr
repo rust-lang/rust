@@ -13,6 +13,11 @@ warning[E0602]: unknown lint: `bogus`
    = note: requested on the command line with `-D bogus`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-warning: 3 warnings emitted
+warning[E0602]: unknown lint: `bogus`
+   |
+   = note: requested on the command line with `-D bogus`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0602`.

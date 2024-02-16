@@ -1,7 +1,5 @@
 // issue: 113903
 
-#![feature(lint_reasons)]
-
 use std::ops::Deref;
 
 pub trait Tr {

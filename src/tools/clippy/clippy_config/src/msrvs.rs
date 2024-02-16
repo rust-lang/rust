@@ -17,6 +17,9 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    // FIXME: The 2.0.0 alias is a hack. Clippy apparently doesn't have a real way
+    // to deal with it.
+    2,0,0  { LINT_REASONS_STABILIZATION }
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }

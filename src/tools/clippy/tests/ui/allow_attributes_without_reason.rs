@@ -1,5 +1,4 @@
 //@aux-build:proc_macros.rs
-#![feature(lint_reasons)]
 #![deny(clippy::allow_attributes_without_reason)]
 #![allow(unfulfilled_lint_expectations)]
 
@@ -41,4 +40,17 @@ pub fn trigger_fp_result() -> Result<(), &'static str> {
     Ok(())?;
     Err("asdf")?;
     Ok(())
+}
+
+// FIXME: Also adjust these MSRVs
+#[clippy::msrv = "2.0"]
+fn msrv_2() {
+    #[allow(unused)]
+    let _ = 1;
+}
+
+#[clippy::msrv = "1.0"]
+fn msrv_1_99() {
+    #[allow(unused)]
+    let _ = 1;
 }

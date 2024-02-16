@@ -5,7 +5,6 @@
     clippy::ptr_arg
 )]
 #![warn(clippy::needless_pass_by_ref_mut)]
-#![feature(lint_reasons)]
 //@no-rustfix
 use std::ptr::NonNull;
 

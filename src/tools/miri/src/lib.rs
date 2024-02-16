@@ -10,7 +10,7 @@
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
 #![feature(let_chains)]
-#![feature(lint_reasons)]
+#![cfg_attr(bootstrap, feature(lint_reasons))]
 #![feature(trait_upcasting)]
 // Configure clippy and other lints
 #![allow(

@@ -1,4 +1,3 @@
-#![feature(lint_reasons)]
 
 mod a;
 

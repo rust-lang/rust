@@ -17,7 +17,7 @@ use rustc_hir::{
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, impl_lint_pass};
+use rustc_session::{impl_lint_pass};
 use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span, DUMMY_SP};
 use semver::Version;
@@ -317,29 +317,58 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for attributes that allow lints without a reason.
     ///
-    /// (This requires the `lint_reasons` feature)
-    ///
     /// ### Why is this bad?
     /// Allowing a lint should always have a reason. This reason should be documented to
     /// ensure that others understand the reasoning
     ///
     /// ### Example
     /// ```no_run
-    /// #![feature(lint_reasons)]
-    ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
     /// Use instead:
     /// ```no_run
-    /// #![feature(lint_reasons)]
-    ///
     /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
     /// ```
     #[clippy::version = "1.61.0"]
     pub ALLOW_ATTRIBUTES_WITHOUT_REASON,
     restriction,
     "ensures that all `allow` and `expect` attributes have a reason"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of the `#[allow]` attribute and suggests replacing it with
+    /// the `#[expect]` (See [RFC 2383](https://rust-lang.github.io/rfcs/2383-lint-reasons.html))
+    ///
+    /// This lint only warns outer attributes (`#[allow]`), as inner attributes
+    /// (`#![allow]`) are usually used to enable or disable lints on a global scale.
+    ///
+    /// ### Why is this bad?
+    /// `#[expect]` attributes suppress the lint emission, but emit a warning, if
+    /// the expectation is unfulfilled. This can be useful to be notified when the
+    /// lint is no longer triggered.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// #[allow(unused_mut)]
+    /// fn foo() -> usize {
+    ///    let mut a = Vec::new();
+    ///    a.len()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust,ignore
+    /// #[expect(unused_mut)]
+    /// fn foo() -> usize {
+    ///     let mut a = Vec::new();
+    ///     a.len()
+    /// }
+    /// ```
+    #[clippy::version = "1.70.0"]
+    pub ALLOW_ATTRIBUTES,
+    restriction,
+    "`#[allow]` will not trigger if a warning isn't found. `#[expect]` triggers if there are no warnings."
 }
 
 declare_clippy_lint! {
@@ -433,7 +462,12 @@ declare_clippy_lint! {
     "prevent from misusing the wrong attr name"
 }
 
-declare_lint_pass!(Attributes => [
+#[derive(Clone)]
+pub struct Attributes {
+    msrv: Msrv,
+}
+
+impl_lint_pass!(Attributes => [
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
     DEPRECATED_SEMVER,
@@ -441,6 +475,13 @@ declare_lint_pass!(Attributes => [
     BLANKET_CLIPPY_RESTRICTION_LINTS,
     SHOULD_PANIC_WITHOUT_EXPECT,
 ]);
+
+impl Attributes {
+    #[must_use]
+    pub fn new(msrv: Msrv) -> Self {
+        Self { msrv }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
@@ -469,8 +510,15 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                 if is_lint_level(ident.name) {
                     check_clippy_lint_names(cx, ident.name, items);
                 }
+                if matches!(ident.name, sym::allow) {
+                    if self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                        check_allow_attributes(cx, attr);
+                    }
+                }
                 if matches!(ident.name, sym::allow | sym::expect) {
-                    check_lint_reason(cx, ident.name, items, attr);
+                    if self.msrv.meets(msrvs::LINT_REASONS_STABILIZATION) {
+                        check_lint_reason(cx, ident.name, items, attr);
+                    }
                 }
                 if items.is_empty() || !attr.has_name(sym::deprecated) {
                     return;
@@ -579,6 +627,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
             check_attrs(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 /// Returns the lint name if it is clippy lint.
@@ -658,11 +708,6 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
 }
 
 fn check_lint_reason<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMetaItem], attr: &'cx Attribute) {
-    // Check for the feature
-    if !cx.tcx.features().lint_reasons {
-        return;
-    }
-
     // Check if the reason is present
     if let Some(item) = items.last().and_then(NestedMetaItem::meta_item)
         && let MetaItemKind::NameValue(_) = &item.kind
@@ -684,6 +729,25 @@ fn check_lint_reason<'cx>(cx: &LateContext<'cx>, name: Symbol, items: &[NestedMe
         None,
         "try adding a reason at the end with `, reason = \"..\"`",
     );
+}
+
+// Separate each crate's features.
+fn check_allow_attributes<'cx>(cx: &LateContext<'cx>, attr: &'cx Attribute) {
+    if !in_external_macro(cx.sess(), attr.span)
+        && let AttrStyle::Outer = attr.style
+        && let Some(ident) = attr.ident()
+        && !is_from_proc_macro(cx, &attr)
+    {
+        span_lint_and_sugg(
+            cx,
+            ALLOW_ATTRIBUTES,
+            ident.span,
+            "#[allow] attribute found",
+            "replace it with",
+            "expect".into(),
+            Applicability::MachineApplicable,
+        );
+    }
 }
 
 fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
