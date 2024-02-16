@@ -1912,6 +1912,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.push(3);
     /// assert_eq!(vec, [1, 2, 3]);
     /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Takes amortized *O*(1) time. If the vector's length would exceed its capacity after
+    /// the push,*O*(*capacity*) space is allocated, doubling the capacity and
+    /// taking *O*(*capacity*) time. This expensive operation is offset by the
+    /// *capacity* *O*(1) insertions it allows.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
