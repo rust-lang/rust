@@ -1705,9 +1705,10 @@ fn bar(_: usize) {}
         expect: Expect,
     ) {
         let source = stdx::trim_indent(ra_fixture);
+        let endings = if source.contains('\r') { LineEndings::Dos } else { LineEndings::Unix };
         let line_index = LineIndex {
             index: Arc::new(ide::LineIndex::new(&source)),
-            endings: LineEndings::Unix,
+            endings,
             encoding: PositionEncoding::Utf8,
         };
 
@@ -2607,6 +2608,43 @@ struct ProcMacro {
     ]
 "#]],
         );
+    }
+
+    #[test]
+    fn snippet_rendering_handle_dos_line_endings() {
+        // unix -> dos conversion should be handled after placing snippets
+        let mut edit = TextEdit::builder();
+        edit.insert(6.into(), "\n\n->".to_owned());
+
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(10.into())]);
+
+        check_rendered_snippets_in_source(
+            "yeah\r\n<-tabstop here",
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 1,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 1,
+                            character: 0,
+                        },
+                    },
+                    new_text: "\r\n\r\n->$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        )
     }
 
     // `Url` is not able to parse windows paths on unix machines.
