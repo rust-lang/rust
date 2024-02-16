@@ -614,7 +614,7 @@ TypeBoundList =
 
 TypeBound =
   Lifetime
-| ('?' | '~' 'const')? Type
+| ('~' 'const' | 'const')? 'async'? '?'? Type
 
 //************************//
 //        Patterns        //
