@@ -6,6 +6,7 @@
 //
 //@ check-pass
 //@ compile-flags: --check-cfg=cfg() -Z unstable-options
+//@ compile-flags: -Zcheck-cfg-all-expected
 
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_relocation_model)]
