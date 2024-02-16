@@ -870,6 +870,17 @@ macro_rules! test_float {
                 assert!(($nan as $fty).midpoint(1.0).is_nan());
                 assert!((1.0 as $fty).midpoint($nan).is_nan());
                 assert!(($nan as $fty).midpoint($nan).is_nan());
+
+                // test if large differences in magnitude are still correctly computed.
+                // NOTE: that because of how small x and y are, x + y can never overflow
+                // so (x + y) / 2.0 is always correct
+                for i in 64..128 {
+                    for j in 0..64u8 {
+                        let x = (2.0f32.powi(i) + f32::from(j)) / 2.0;
+                        let y = 2.0f32.powi(i).midpoint(f32::from(j));
+                        assert_eq!(x, y);
+                    }
+                }
             }
             #[test]
             fn rem_euclid() {
