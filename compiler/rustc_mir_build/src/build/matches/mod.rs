@@ -1315,7 +1315,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut next_prebinding = start_block;
         let mut reachable = true;
-        let mut last_reachable_candidate = None;
+        let mut return_block = None;
 
         for candidate in matched_candidates.iter_mut() {
             assert!(candidate.otherwise_block.is_none());
@@ -1327,19 +1327,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // pre-binding block for the next candidate.
                     next_prebinding = self.cfg.start_new_block();
                     candidate.otherwise_block = Some(next_prebinding);
+                    return_block = Some(next_prebinding);
                 } else {
                     reachable = false;
+                    return_block = Some(self.cfg.start_new_block());
                 }
-                last_reachable_candidate = Some(candidate);
             } else {
                 candidate.pre_binding_block = Some(self.cfg.start_new_block());
             }
         }
 
-        last_reachable_candidate
-            .unwrap()
-            .otherwise_block
-            .unwrap_or_else(|| self.cfg.start_new_block())
+        return_block.unwrap()
     }
 
     /// Tests a candidate where there are only or-patterns left to test, or
