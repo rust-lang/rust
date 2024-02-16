@@ -1319,6 +1319,7 @@ symbols! {
         poll,
         poll_next,
         post_dash_lto: "post-lto",
+        postfix_match,
         powerpc_target_feature,
         powf128,
         powf16,

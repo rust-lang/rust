@@ -1375,6 +1375,12 @@ impl<'a> Parser<'a> {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
 
+        if self.eat_keyword(kw::Match) {
+            let match_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::postfix_match, match_span);
+            return self.parse_match_block(lo, match_span, self_arg);
+        }
+
         let fn_span_lo = self.token.span;
         let mut seg = self.parse_path_segment(PathStyle::Expr, None)?;
         self.check_trailing_angle_brackets(&seg, &[&token::OpenDelim(Delimiter::Parenthesis)]);
@@ -2889,8 +2895,19 @@ impl<'a> Parser<'a> {
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
     fn parse_expr_match(&mut self) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_token.span;
-        let lo = self.prev_token.span;
         let scrutinee = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+
+        self.parse_match_block(match_span, match_span, scrutinee)
+    }
+
+    /// Parses a `match expr { ... }` or a `expr.match { ... }` expression.
+    /// This is after the match token and scrutinee are eaten
+    fn parse_match_block(
+        &mut self,
+        lo: Span,
+        match_span: Span,
+        scrutinee: P<Expr>,
+    ) -> PResult<'a, P<Expr>> {
         if let Err(mut e) = self.expect(&token::OpenDelim(Delimiter::Brace)) {
             if self.token == token::Semi {
                 e.span_suggestion_short(
