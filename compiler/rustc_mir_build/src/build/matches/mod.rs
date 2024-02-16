@@ -1212,35 +1212,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidates: &mut [&mut Candidate<'_, 'tcx>],
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
-        // The candidates are sorted by priority. Check to see whether the
-        // higher priority candidates (and hence at the front of the slice)
-        // have satisfied all their match pairs.
-        let fully_matched = candidates.iter().take_while(|c| c.match_pairs.is_empty()).count();
-        debug!("match_candidates: {:?} candidates fully matched", fully_matched);
-        let (matched_candidates, unmatched_candidates) = candidates.split_at_mut(fully_matched);
-
-        for candidate in matched_candidates.iter_mut() {
-            start_block = self.select_matched_candidate(candidate, start_block, fake_borrows);
+        match candidates {
+            [] => {
+                // If there are no candidates that still need testing, we're done. Since all matches are
+                // exhaustive, execution should never reach this point.
+                let source_info = self.source_info(span);
+                self.cfg.goto(start_block, source_info, otherwise_block);
+            }
+            [first, remaining @ ..] if first.match_pairs.is_empty() => {
+                // The first candidate has satisfied all its match pairs; we link it up and continue
+                // with the remaining candidates.
+                start_block = self.select_matched_candidate(first, start_block, fake_borrows);
+                self.match_simplified_candidates(
+                    span,
+                    scrutinee_span,
+                    start_block,
+                    otherwise_block,
+                    remaining,
+                    fake_borrows,
+                )
+            }
+            candidates => {
+                // The first candidate has some unsatisfied match pairs; we proceed to do more tests.
+                self.test_candidates_with_or(
+                    span,
+                    scrutinee_span,
+                    candidates,
+                    start_block,
+                    otherwise_block,
+                    fake_borrows,
+                );
+            }
         }
-
-        // If there are no candidates that still need testing, we're
-        // done. Since all matches are exhaustive, execution should
-        // never reach this point.
-        if unmatched_candidates.is_empty() {
-            let source_info = self.source_info(span);
-            self.cfg.goto(start_block, source_info, otherwise_block);
-            return;
-        }
-
-        // Test for the remaining candidates.
-        self.test_candidates_with_or(
-            span,
-            scrutinee_span,
-            unmatched_candidates,
-            start_block,
-            otherwise_block,
-            fake_borrows,
-        );
     }
 
     /// Link up matched candidates.
