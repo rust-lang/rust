@@ -230,8 +230,10 @@ impl<'tcx> ProofTreeInferCtxtExt<'tcx> for InferCtxt<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
-        let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
-        let proof_tree = proof_tree.unwrap();
-        visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
+        self.probe(|_| {
+            let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
+            let proof_tree = proof_tree.unwrap();
+            visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
+        })
     }
 }
