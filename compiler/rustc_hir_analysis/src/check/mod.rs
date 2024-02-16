@@ -76,7 +76,7 @@ pub use check::check_abi;
 
 use std::num::NonZeroU32;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{pluralize, struct_span_code_err, Diagnostic, DiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -307,7 +307,7 @@ fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
 ) -> (String, String) {
-    let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
+    let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
     let mut projections = vec![];
     for (predicate, _) in predicates {
         debug!("predicate {:?}", predicate);

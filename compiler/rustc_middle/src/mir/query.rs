@@ -86,7 +86,8 @@ rustc_index::newtype_index! {
     pub struct CoroutineSavedLocal {}
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoroutineSavedTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Source info corresponding to the local in the original MIR body.
@@ -96,7 +97,8 @@ pub struct CoroutineSavedTy<'tcx> {
 }
 
 /// The layout of coroutine state.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, PartialEq, Eq)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoroutineLayout<'tcx> {
     /// The type of every local stored inside the coroutine.
     pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,

@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
@@ -834,12 +834,12 @@ impl From<NestedSpan> for FieldDeclSpan {
 
 struct FieldUniquenessCheckContext<'tcx> {
     tcx: TyCtxt<'tcx>,
-    seen_fields: FxHashMap<Ident, FieldDeclSpan>,
+    seen_fields: FxIndexMap<Ident, FieldDeclSpan>,
 }
 
 impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Self {
-        Self { tcx, seen_fields: FxHashMap::default() }
+        Self { tcx, seen_fields: FxIndexMap::default() }
     }
 
     /// Check if a given field `ident` declared at `field_decl` has been declared elsewhere before.

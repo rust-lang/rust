@@ -1846,7 +1846,7 @@ pub enum LitKind {
     /// A boolean literal (`true`, `false`).
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
-    Err,
+    Err(ErrorGuaranteed),
 }
 
 impl LitKind {
@@ -1893,7 +1893,7 @@ impl LitKind {
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err => false,
+            | LitKind::Err(_) => false,
         }
     }
 }
@@ -2136,10 +2136,12 @@ pub enum TyKind {
     ImplicitSelf,
     /// A macro in the type position.
     MacCall(P<MacCall>),
-    /// Placeholder for a kind that has failed to be defined.
-    Err,
     /// Placeholder for a `va_list`.
     CVarArgs,
+    /// Sometimes we need a dummy value when no error has occurred.
+    Dummy,
+    /// Placeholder for a kind that has failed to be defined.
+    Err(ErrorGuaranteed),
 }
 
 impl TyKind {

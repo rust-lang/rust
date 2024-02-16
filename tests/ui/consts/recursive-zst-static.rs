@@ -7,7 +7,11 @@
 // can depend on this fact and will thus do unsound things when it is violated.
 // See https://github.com/rust-lang/rust/issues/71078 for more details.
 
-static FOO: () = FOO; //~ cycle detected when const-evaluating + checking `FOO`
+static FOO: () = FOO;
+//~^ ERROR could not evaluate static initializer
+
+static A: () = B; //~ cycle detected when evaluating initializer of static `A`
+static B: () = A;
 
 fn main() {
     FOO

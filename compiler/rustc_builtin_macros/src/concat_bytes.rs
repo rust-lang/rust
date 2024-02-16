@@ -44,7 +44,7 @@ fn invalid_type_err(
         Ok(ast::LitKind::Bool(_)) => {
             dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "boolean", sugg: None });
         }
-        Ok(ast::LitKind::Err) => {}
+        Ok(ast::LitKind::Err(_)) => {}
         Ok(ast::LitKind::Int(_, _)) if !is_nested => {
             let sugg =
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::IntLit { span: span, snippet });

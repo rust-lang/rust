@@ -94,7 +94,8 @@ pub macro thread_local_inner {
                         if let $crate::option::Option::Some(init) = init {
                             if let $crate::option::Option::Some(value) = init.take() {
                                 return value;
-                            } else if $crate::cfg!(debug_assertions) {
+                            }
+                            if $crate::cfg!(debug_assertions) {
                                 $crate::unreachable!("missing default value");
                             }
                         }

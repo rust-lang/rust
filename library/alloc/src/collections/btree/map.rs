@@ -3247,9 +3247,15 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn remove_next(&mut self) -> Option<(K, V)> {
         let current = self.current.take()?;
+        if current.reborrow().next_kv().is_err() {
+            self.current = Some(current);
+            return None;
+        }
         let mut emptied_internal_root = false;
         let (kv, pos) = current
             .next_kv()
+            // This should be unwrap(), but that doesn't work because NodeRef
+            // doesn't implement Debug. The condition is checked above.
             .ok()?
             .remove_kv_tracking(|| emptied_internal_root = true, self.alloc.clone());
         self.current = Some(pos);
@@ -3270,9 +3276,15 @@ impl<'a, K: Ord, V, A: Allocator + Clone> CursorMutKey<'a, K, V, A> {
     #[unstable(feature = "btree_cursors", issue = "107540")]
     pub fn remove_prev(&mut self) -> Option<(K, V)> {
         let current = self.current.take()?;
+        if current.reborrow().next_back_kv().is_err() {
+            self.current = Some(current);
+            return None;
+        }
         let mut emptied_internal_root = false;
         let (kv, pos) = current
             .next_back_kv()
+            // This should be unwrap(), but that doesn't work because NodeRef
+            // doesn't implement Debug. The condition is checked above.
             .ok()?
             .remove_kv_tracking(|| emptied_internal_root = true, self.alloc.clone());
         self.current = Some(pos);

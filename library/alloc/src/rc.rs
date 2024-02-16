@@ -1184,12 +1184,19 @@ impl<T: ?Sized> Rc<T> {
     /// Constructs an `Rc<T>` from a raw pointer.
     ///
     /// The raw pointer must have been previously returned by a call to
-    /// [`Rc<U>::into_raw`][into_raw] where `U` must have the same size
-    /// and alignment as `T`. This is trivially true if `U` is `T`.
-    /// Note that if `U` is not `T` but has the same size and alignment, this is
-    /// basically like transmuting references of different types. See
-    /// [`mem::transmute`][transmute] for more information on what
-    /// restrictions apply in this case.
+    /// [`Rc<U>::into_raw`][into_raw] with the following requirements:
+    ///
+    /// * If `U` is sized, it must have the same size and alignment as `T`. This
+    ///   is trivially true if `U` is `T`.
+    /// * If `U` is unsized, its data pointer must have the same size and
+    ///   alignment as `T`. This is trivially true if `Rc<U>` was constructed
+    ///   through `Rc<T>` and then converted to `Rc<U>` through an [unsized
+    ///   coercion].
+    ///
+    /// Note that if `U` or `U`'s data pointer is not `T` but has the same size
+    /// and alignment, this is basically like transmuting references of
+    /// different types. See [`mem::transmute`][transmute] for more information
+    /// on what restrictions apply in this case.
     ///
     /// The raw pointer must point to a block of memory allocated by the global allocator
     ///
@@ -1201,6 +1208,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// [into_raw]: Rc::into_raw
     /// [transmute]: core::mem::transmute
+    /// [unsized coercion]: https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
     ///
     /// # Examples
     ///
@@ -1219,6 +1227,20 @@ impl<T: ?Sized> Rc<T> {
     /// }
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
+    /// ```
+    ///
+    /// Convert a slice back into its original array:
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let x: Rc<[u32]> = Rc::new([1, 2, 3]);
+    /// let x_ptr: *const [u32] = Rc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     let x: Rc<[u32; 3]> = Rc::from_raw(x_ptr.cast::<[u32; 3]>());
+    ///     assert_eq!(&*x, &[1, 2, 3]);
+    /// }
     /// ```
     #[inline]
     #[stable(feature = "rc_raw", since = "1.17.0")]
@@ -1344,13 +1366,20 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
 
     /// Constructs an `Rc<T, A>` from a raw pointer in the provided allocator.
     ///
-    /// The raw pointer must have been previously returned by a call to
-    /// [`Rc<U, A>::into_raw`][into_raw] where `U` must have the same size
-    /// and alignment as `T`. This is trivially true if `U` is `T`.
-    /// Note that if `U` is not `T` but has the same size and alignment, this is
-    /// basically like transmuting references of different types. See
-    /// [`mem::transmute`] for more information on what
-    /// restrictions apply in this case.
+    /// The raw pointer must have been previously returned by a call to [`Rc<U,
+    /// A>::into_raw`][into_raw] with the following requirements:
+    ///
+    /// * If `U` is sized, it must have the same size and alignment as `T`. This
+    ///   is trivially true if `U` is `T`.
+    /// * If `U` is unsized, its data pointer must have the same size and
+    ///   alignment as `T`. This is trivially true if `Rc<U>` was constructed
+    ///   through `Rc<T>` and then converted to `Rc<U>` through an [unsized
+    ///   coercion].
+    ///
+    /// Note that if `U` or `U`'s data pointer is not `T` but has the same size
+    /// and alignment, this is basically like transmuting references of
+    /// different types. See [`mem::transmute`][transmute] for more information
+    /// on what restrictions apply in this case.
     ///
     /// The raw pointer must point to a block of memory allocated by `alloc`
     ///
@@ -1361,6 +1390,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// even if the returned `Rc<T>` is never accessed.
     ///
     /// [into_raw]: Rc::into_raw
+    /// [transmute]: core::mem::transmute
+    /// [unsized coercion]: https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
     ///
     /// # Examples
     ///
@@ -1382,6 +1413,23 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// }
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
+    /// ```
+    ///
+    /// Convert a slice back into its original array:
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::rc::Rc;
+    /// use std::alloc::System;
+    ///
+    /// let x: Rc<[u32], _> = Rc::new_in([1, 2, 3], System);
+    /// let x_ptr: *const [u32] = Rc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     let x: Rc<[u32; 3], _> = Rc::from_raw_in(x_ptr.cast::<[u32; 3]>(), System);
+    ///     assert_eq!(&*x, &[1, 2, 3]);
+    /// }
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {

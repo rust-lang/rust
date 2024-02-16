@@ -179,7 +179,6 @@ impl EarlyLintPass for NonAsciiIdents {
         #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_by_key(|k| k.1);
-
         for (symbol, &sp) in symbols.iter() {
             let symbol_str = symbol.as_str();
             if symbol_str.is_ascii() {

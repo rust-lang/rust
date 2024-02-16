@@ -678,8 +678,9 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                self.dcx().emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
-                self.mk_ty(span, ast::TyKind::Err).into()
+                let guar =
+                    self.dcx().emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
+                self.mk_ty(span, ast::TyKind::Err(guar)).into()
             }
             None => {
                 let after_eq = eq.shrink_to_hi();
@@ -779,7 +780,7 @@ impl<'a> Parser<'a> {
                     // type to determine if error recovery has occurred and if the input is not a
                     // syntactically valid type after all.
                     if let ast::TyKind::Slice(inner_ty) | ast::TyKind::Array(inner_ty, _) = &ty.kind
-                        && let ast::TyKind::Err = inner_ty.kind
+                        && let ast::TyKind::Err(_) = inner_ty.kind
                         && let Some(snapshot) = snapshot
                         && let Some(expr) =
                             self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)

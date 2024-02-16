@@ -313,6 +313,8 @@ const_eval_realloc_or_alloc_with_offset =
         *[other] {""}
     } {$ptr} which does not point to the beginning of an object
 
+const_eval_recursive_static = encountered static that tried to initialize itself with itself
+
 const_eval_remainder_by_zero =
     calculating the remainder with a divisor of zero
 const_eval_remainder_overflow =

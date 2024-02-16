@@ -31,20 +31,21 @@ pub fn escape_byte_str_symbol(bytes: &[u8]) -> Symbol {
 
 #[derive(Debug)]
 pub enum LitError {
-    LexerError,
-    InvalidSuffix,
-    InvalidIntSuffix,
-    InvalidFloatSuffix,
-    NonDecimalFloat(u32),
-    IntTooLarge(u32),
+    InvalidSuffix(Symbol),
+    InvalidIntSuffix(Symbol),
+    InvalidFloatSuffix(Symbol),
+    NonDecimalFloat(u32), // u32 is the base
+    IntTooLarge(u32),     // u32 is the base
 }
 
 impl LitKind {
     /// Converts literal token into a semantic literal.
     pub fn from_token_lit(lit: token::Lit) -> Result<LitKind, LitError> {
         let token::Lit { kind, symbol, suffix } = lit;
-        if suffix.is_some() && !kind.may_have_suffix() {
-            return Err(LitError::InvalidSuffix);
+        if let Some(suffix) = suffix
+            && !kind.may_have_suffix()
+        {
+            return Err(LitError::InvalidSuffix(suffix));
         }
 
         // For byte/char/string literals, chars and escapes have already been
@@ -145,7 +146,7 @@ impl LitKind {
                 buf.push(0);
                 LitKind::CStr(buf.into(), StrStyle::Raw(n))
             }
-            token::Err => LitKind::Err,
+            token::Err(guar) => LitKind::Err(guar),
         })
     }
 }
@@ -202,7 +203,7 @@ impl fmt::Display for LitKind {
                 }
             }
             LitKind::Bool(b) => write!(f, "{}", if b { "true" } else { "false" })?,
-            LitKind::Err => {
+            LitKind::Err(_) => {
                 // This only shows up in places like `-Zunpretty=hir` output, so we
                 // don't bother to produce something useful.
                 write!(f, "<bad-literal>")?;
@@ -238,7 +239,7 @@ impl MetaItemLit {
             LitKind::Char(_) => token::Char,
             LitKind::Int(..) => token::Integer,
             LitKind::Float(..) => token::Float,
-            LitKind::Err => token::Err,
+            LitKind::Err(guar) => token::Err(guar),
         };
 
         token::Lit::new(kind, self.symbol, self.suffix)
@@ -272,12 +273,12 @@ fn filtered_float_lit(
         return Err(LitError::NonDecimalFloat(base));
     }
     Ok(match suffix {
-        Some(suf) => LitKind::Float(
+        Some(suffix) => LitKind::Float(
             symbol,
-            ast::LitFloatType::Suffixed(match suf {
+            ast::LitFloatType::Suffixed(match suffix {
                 sym::f32 => ast::FloatTy::F32,
                 sym::f64 => ast::FloatTy::F64,
-                _ => return Err(LitError::InvalidFloatSuffix),
+                _ => return Err(LitError::InvalidFloatSuffix(suffix)),
             }),
         ),
         None => LitKind::Float(symbol, ast::LitFloatType::Unsuffixed),
@@ -318,17 +319,13 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
             // `1f64` and `2f32` etc. are valid float literals, and
             // `fxxx` looks more like an invalid float literal than invalid integer literal.
             _ if suf.as_str().starts_with('f') => return filtered_float_lit(symbol, suffix, base),
-            _ => return Err(LitError::InvalidIntSuffix),
+            _ => return Err(LitError::InvalidIntSuffix(suf)),
         },
         _ => ast::LitIntType::Unsuffixed,
     };
 
     let s = &s[if base != 10 { 2 } else { 0 }..];
-    u128::from_str_radix(s, base).map(|i| LitKind::Int(i.into(), ty)).map_err(|_| {
-        // Small bases are lexed as if they were base 10, e.g, the string
-        // might be `0b10201`. This will cause the conversion above to fail,
-        // but these kinds of errors are already reported by the lexer.
-        let from_lexer = base < 10 && s.chars().any(|c| c.to_digit(10).is_some_and(|d| d >= base));
-        if from_lexer { LitError::LexerError } else { LitError::IntTooLarge(base) }
-    })
+    u128::from_str_radix(s, base)
+        .map(|i| LitKind::Int(i.into(), ty))
+        .map_err(|_| LitError::IntTooLarge(base))
 }

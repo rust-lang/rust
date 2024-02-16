@@ -203,10 +203,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                    prior_arms,
+                    prior_non_diverging_arms,
                     ..
                 }) => {
-                    if let [.., arm_span] = &prior_arms[..] {
+                    if let [.., arm_span] = &prior_non_diverging_arms[..] {
                         Some(ConsiderAddingAwait::BothFuturesSugg {
                             first: arm_span.shrink_to_hi(),
                             second: exp_span.shrink_to_hi(),
@@ -234,11 +234,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                    ref prior_arms,
+                    ref prior_non_diverging_arms,
                     ..
                 }) => Some({
                     ConsiderAddingAwait::FutureSuggMultiple {
-                        spans: prior_arms.iter().map(|arm| arm.shrink_to_hi()).collect(),
+                        spans: prior_non_diverging_arms
+                            .iter()
+                            .map(|arm| arm.shrink_to_hi())
+                            .collect(),
                     }
                 }),
                 _ => None,

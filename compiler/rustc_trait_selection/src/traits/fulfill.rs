@@ -423,6 +423,21 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 ty::PredicateKind::AliasRelate(..) => {
                     bug!("AliasRelate is only used by the new solver")
                 }
+                // Compute `ConstArgHasType` above the overflow check below.
+                // This is because this is not ever a useful obligation to report
+                // as the cause of an overflow.
+                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                    match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
+                        DefineOpaqueTypes::No,
+                        ct.ty(),
+                        ty,
+                    ) {
+                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
+                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::SelectionError(
+                            SelectionError::Unimplemented,
+                        )),
+                    }
+                }
 
                 // General case overflow check. Allow `process_trait_obligation`
                 // and `process_projection_obligation` to handle checking for
@@ -648,18 +663,6 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 ))
                             }
                         }
-                    }
-                }
-                ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                    match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        DefineOpaqueTypes::No,
-                        ct.ty(),
-                        ty,
-                    ) {
-                        Ok(inf_ok) => ProcessResult::Changed(mk_pending(inf_ok.into_obligations())),
-                        Err(_) => ProcessResult::Error(FulfillmentErrorCode::SelectionError(
-                            SelectionError::Unimplemented,
-                        )),
                     }
                 }
             },

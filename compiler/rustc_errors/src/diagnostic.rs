@@ -3,7 +3,7 @@ use crate::{
     CodeSuggestion, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, ErrCode, Level,
     MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
@@ -105,7 +105,7 @@ pub struct Diagnostic {
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-    args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>,
+    args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>,
 
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
@@ -898,9 +898,6 @@ impl Diagnostic {
         self
     }
 
-    // Exact iteration order of diagnostic arguments shouldn't make a difference to output because
-    // they're only used in interpolation.
-    #[allow(rustc::potential_query_instability)]
     pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_>> {
         self.args.iter()
     }
@@ -914,7 +911,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn replace_args(&mut self, args: FxHashMap<DiagnosticArgName, DiagnosticArgValue>) {
+    pub fn replace_args(&mut self, args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>) {
         self.args = args;
     }
 

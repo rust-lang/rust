@@ -16,9 +16,10 @@ use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCode
 
 use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind, ALLOCATOR_METHODS};
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::par_map;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -851,6 +852,8 @@ impl CrateInfo {
         // `compiler_builtins` are always placed last to ensure that they're linked correctly.
         used_crates.extend(compiler_builtins);
 
+        let crates = tcx.crates(());
+        let n_crates = crates.len();
         let mut info = CrateInfo {
             target_cpu,
             crate_types,
@@ -862,19 +865,15 @@ impl CrateInfo {
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
-            crate_name: Default::default(),
+            crate_name: UnordMap::with_capacity(n_crates),
             used_crates,
-            used_crate_source: Default::default(),
+            used_crate_source: UnordMap::with_capacity(n_crates),
             dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
             natvis_debugger_visualizers: Default::default(),
         };
-        let crates = tcx.crates(());
 
-        let n_crates = crates.len();
         info.native_libraries.reserve(n_crates);
-        info.crate_name.reserve(n_crates);
-        info.used_crate_source.reserve(n_crates);
 
         for &cnum in crates.iter() {
             info.native_libraries
@@ -901,7 +900,7 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let missing_weak_lang_items: FxHashSet<Symbol> = info
+            let missing_weak_lang_items: FxIndexSet<Symbol> = info
                 .used_crates
                 .iter()
                 .flat_map(|&cnum| tcx.missing_lang_items(cnum))

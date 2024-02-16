@@ -306,11 +306,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
     sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
-        // We will soon sort, so the initial order does not matter.
-        #[allow(rustc::potential_query_instability)]
-        let mut identifiers: Vec<_> = identifiers.drain().collect();
-        identifiers.sort_by_key(|&(key, _)| key);
-        for (ident, mut spans) in identifiers.into_iter() {
+        for (ident, mut spans) in identifiers.drain(..) {
             spans.sort();
             if ident == sym::ferris {
                 let first_span = spans[0];

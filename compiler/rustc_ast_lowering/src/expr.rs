@@ -124,8 +124,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let lit_kind = match LitKind::from_token_lit(*token_lit) {
                         Ok(lit_kind) => lit_kind,
                         Err(err) => {
-                            report_lit_error(&self.tcx.sess.parse_sess, err, *token_lit, e.span);
-                            LitKind::Err
+                            let guar = report_lit_error(
+                                &self.tcx.sess.parse_sess,
+                                err,
+                                *token_lit,
+                                e.span,
+                            );
+                            LitKind::Err(guar)
                         }
                     };
                     let lit = self.arena.alloc(respan(self.lower_span(e.span), lit_kind));
@@ -323,7 +328,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 }
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
-                ExprKind::Err => hir::ExprKind::Err(self.dcx().has_errors().unwrap()),
+                ExprKind::Err => {
+                    hir::ExprKind::Err(self.dcx().span_delayed_bug(e.span, "lowered ExprKind::Err"))
+                }
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
                 ExprKind::Paren(_) | ExprKind::ForLoop { .. } => {

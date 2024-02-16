@@ -31,6 +31,20 @@ LL | impl &MyType {
    = help: consider using an extension trait instead
    = note: you could also try moving the reference to uses of `MyType` (such as `self`) within the implementation
 
-error: aborting due to 4 previous errors
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/kinds-of-primitive-impl.rs:9:12
+   |
+LL |     fn bar(self) {}
+   |            ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     fn bar(&self) {}
+   |            +
 
-For more information about this error, try `rustc --explain E0390`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0390.
+For more information about an error, try `rustc --explain E0277`.

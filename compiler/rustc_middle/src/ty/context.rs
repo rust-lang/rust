@@ -1053,6 +1053,22 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Symbol,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let feed = self.tcx.create_def(parent, name, def_kind);
+
+        feed.def_span(self.span);
+        feed
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// `tcx`-dependent operations performed for every created definition.
+    pub fn create_def(
+        self,
+        parent: LocalDefId,
+        name: Symbol,
+        def_kind: DefKind,
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let data = def_kind.def_path_data(name);
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
@@ -1067,18 +1083,6 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let def_id = self.tcx.create_def(parent, name, def_kind);
-
-        let feed = self.tcx.feed_local_def_id(def_id);
-        feed.def_span(self.span);
-        feed
-    }
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    /// `tcx`-dependent operations performed for every created definition.
-    pub fn create_def(self, parent: LocalDefId, name: Symbol, def_kind: DefKind) -> LocalDefId {
-        let data = def_kind.def_path_data(name);
         let def_id = self.untracked.definitions.write().create_def(parent, data);
 
         // This function modifies `self.definitions` using a side-effect.
@@ -1098,7 +1102,7 @@ impl<'tcx> TyCtxt<'tcx> {
             feed.visibility(ty::Visibility::Restricted(parent_mod));
         }
 
-        def_id
+        feed
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {

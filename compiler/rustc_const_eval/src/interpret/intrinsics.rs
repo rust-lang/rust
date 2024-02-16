@@ -120,7 +120,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.tcx.span_as_caller_location(span);
                 let val =
                     self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
-                self.copy_op(&val, dest, /* allow_transmute */ false)?;
+                self.copy_op(&val, dest)?;
             }
 
             sym::min_align_of_val | sym::size_of_val => {
@@ -157,7 +157,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     tcx.const_eval_global_id(self.param_env, gid, Some(tcx.span))
                 })?;
                 let val = self.const_val_to_op(val, ty, Some(dest.layout))?;
-                self.copy_op(&val, dest, /*allow_transmute*/ false)?;
+                self.copy_op(&val, dest)?;
             }
 
             sym::ctpop
@@ -391,7 +391,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     } else {
                         self.project_index(&input, i)?.into()
                     };
-                    self.copy_op(&value, &place, /*allow_transmute*/ false)?;
+                    self.copy_op(&value, &place)?;
                 }
             }
             sym::simd_extract => {
@@ -401,15 +401,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     index < input_len,
                     "index `{index}` must be in bounds of vector with length {input_len}"
                 );
-                self.copy_op(
-                    &self.project_index(&input, index)?,
-                    dest,
-                    /*allow_transmute*/ false,
-                )?;
+                self.copy_op(&self.project_index(&input, index)?, dest)?;
             }
             sym::likely | sym::unlikely | sym::black_box => {
                 // These just return their argument
-                self.copy_op(&args[0], dest, /*allow_transmute*/ false)?;
+                self.copy_op(&args[0], dest)?;
             }
             sym::raw_eq => {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;

@@ -337,6 +337,7 @@ tcx_lifetime! {
     rustc_middle::mir::ConstValue,
     rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
+    rustc_middle::mir::interpret::EvalStaticInitializerRawResult,
     rustc_middle::traits::query::MethodAutoderefStepsResult,
     rustc_middle::traits::query::type_op::AscribeUserType,
     rustc_middle::traits::query::type_op::Eq,

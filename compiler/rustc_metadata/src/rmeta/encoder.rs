@@ -1045,11 +1045,9 @@ fn should_encode_mir(
             (true, mir_opt_base)
         }
         // Constants
-        DefKind::AnonConst
-        | DefKind::InlineConst
-        | DefKind::AssocConst
-        | DefKind::Static(..)
-        | DefKind::Const => (true, false),
+        DefKind::AnonConst | DefKind::InlineConst | DefKind::AssocConst | DefKind::Const => {
+            (true, false)
+        }
         // Coroutines require optimized MIR to compute layout.
         DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
         // Full-fledged functions + closures
@@ -1453,6 +1451,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables
                     .coroutine_for_closure
                     .set_some(def_id.index, self.tcx.coroutine_for_closure(def_id).into());
+            }
+            if let DefKind::Static(_) = def_kind {
+                if !self.tcx.is_foreign_item(def_id) {
+                    let data = self.tcx.eval_static_initializer(def_id).unwrap();
+                    record!(self.tables.eval_static_initializer[def_id] <- data);
+                }
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);

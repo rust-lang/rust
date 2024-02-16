@@ -616,8 +616,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Infer,
                 ImplicitSelf,
                 MacCall,
-                Err,
-                CVarArgs
+                CVarArgs,
+                Dummy,
+                Err
             ]
         );
 

@@ -441,7 +441,9 @@ impl Waker {
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn will_wake(&self, other: &Waker) -> bool {
-        self.waker == other.waker
+        let RawWaker { data: a_data, vtable: a_vtable } = self.waker;
+        let RawWaker { data: b_data, vtable: b_vtable } = other.waker;
+        a_data == b_data && ptr::eq(a_vtable, b_vtable)
     }
 
     /// Creates a new `Waker` from [`RawWaker`].

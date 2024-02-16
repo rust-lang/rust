@@ -211,7 +211,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.copy_op(
                         &this.project_index(&left, i)?,
                         &this.project_index(&dest, i)?,
-                        /*allow_transmute*/ false,
                     )?;
                 }
             }

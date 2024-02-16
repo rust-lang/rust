@@ -368,7 +368,7 @@ fn merge_codegen_units<'tcx>(
         // Move the items from `cgu_src` to `cgu_dst`. Some of them may be
         // duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
-        cgu_dst.items_mut().extend(cgu_src.items_mut().drain());
+        cgu_dst.items_mut().extend(cgu_src.items_mut().drain(..));
         cgu_dst.compute_size_estimate();
 
         // Record that `cgu_dst` now contains all the stuff that was in
@@ -407,7 +407,7 @@ fn merge_codegen_units<'tcx>(
         // Move the items from `smallest` to `second_smallest`. Some of them
         // may be duplicate inlined items, in which case the destination CGU is
         // unaffected. Recalculate size estimates afterwards.
-        second_smallest.items_mut().extend(smallest.items_mut().drain());
+        second_smallest.items_mut().extend(smallest.items_mut().drain(..));
         second_smallest.compute_size_estimate();
 
         // Don't update `cgu_contents`, that's only for incremental builds.

@@ -897,12 +897,14 @@ impl<'tcx> Cx<'tcx> {
                 let hir_id = self.tcx.local_def_id_to_hir_id(def_id.expect_local());
                 let generics = self.tcx.generics_of(hir_id.owner);
                 let Some(&index) = generics.param_def_id_to_index.get(&def_id) else {
-                    self.tcx.dcx().has_errors().unwrap();
+                    let guar = self.tcx.dcx().has_errors().unwrap();
                     // We already errored about a late bound const
-                    return ExprKind::Literal {
-                        lit: &Spanned { span: DUMMY_SP, node: LitKind::Err },
-                        neg: false,
-                    };
+
+                    let lit = self
+                        .tcx
+                        .hir_arena
+                        .alloc(Spanned { span: DUMMY_SP, node: LitKind::Err(guar) });
+                    return ExprKind::Literal { lit, neg: false };
                 };
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);
