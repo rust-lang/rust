@@ -289,29 +289,9 @@ impl SourceChangeBuilder {
     pub fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
         self.edit.insert(offset, text.into())
     }
-    /// Append specified `snippet` at the given `offset`
-    pub fn insert_snippet(
-        &mut self,
-        _cap: SnippetCap,
-        offset: TextSize,
-        snippet: impl Into<String>,
-    ) {
-        self.source_change.is_snippet = true;
-        self.insert(offset, snippet);
-    }
     /// Replaces specified `range` of text with a given string.
     pub fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
-    }
-    /// Replaces specified `range` of text with a given `snippet`.
-    pub fn replace_snippet(
-        &mut self,
-        _cap: SnippetCap,
-        range: TextRange,
-        snippet: impl Into<String>,
-    ) {
-        self.source_change.is_snippet = true;
-        self.replace(range, snippet);
     }
     pub fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
