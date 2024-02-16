@@ -391,6 +391,9 @@ extern "C" {
     fn vrlh(a: vector_signed_short, b: vector_unsigned_short) -> vector_signed_short;
     #[link_name = "llvm.ppc.altivec.vrlw"]
     fn vrlw(a: vector_signed_int, c: vector_unsigned_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vrfin"]
+    fn vrfin(a: vector_float) -> vector_float;
 }
 
 macro_rules! s_t_l {
@@ -3185,6 +3188,22 @@ mod sealed {
     impl_vec_rl! { vec_vrlb(vector_unsigned_char) }
     impl_vec_rl! { vec_vrlh(vector_unsigned_short) }
     impl_vec_rl! { vec_vrlw(vector_unsigned_int) }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorRound {
+        unsafe fn vec_round(self) -> Self;
+    }
+
+    test_impl! { vec_vrfin(a: vector_float) -> vector_float [vrfin, vrfin] }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    impl VectorRound for vector_float {
+        #[inline]
+        #[target_feature(enable = "altivec")]
+        unsafe fn vec_round(self) -> Self {
+            vec_vrfin(self)
+        }
+    }
 }
 
 /// Vector Merge Low
@@ -3790,6 +3809,27 @@ where
     T: sealed::VectorRl,
 {
     a.vec_rl(b)
+}
+
+/// Vector Round
+///
+/// ## Purpose
+/// Returns a vector containing the rounded values of the corresponding elements of the
+/// source vector.
+///
+/// ## Result value
+/// Each element of r contains the value of the corresponding element of a, rounded
+/// to the nearest representable floating-point integer, using IEEE round-to-nearest
+/// rounding.
+/// The current floating-point rounding mode is ignored.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_round<T>(a: T) -> T
+where
+    T: sealed::VectorRound,
+{
+    a.vec_round()
 }
 
 /// Vector Splat
