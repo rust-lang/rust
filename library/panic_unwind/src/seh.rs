@@ -253,10 +253,11 @@ macro_rules! define_cleanup {
         }
     }
 }
-cfg_if::cfg_if! {
-   if #[cfg(target_arch = "x86")] {
+cfg_match! {
+   cfg(target_arch = "x86") => {
        define_cleanup!("thiscall" "thiscall-unwind");
-   } else {
+   }
+   _ => {
        define_cleanup!("C" "C-unwind");
    }
 }

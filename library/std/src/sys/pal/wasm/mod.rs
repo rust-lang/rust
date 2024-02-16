@@ -41,8 +41,8 @@ pub mod thread_local_key;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
+cfg_match! {
+    cfg(target_feature = "atomics") => {
         #[path = "../unix/locks"]
         pub mod locks {
             #![allow(unsafe_op_in_unsafe_fn)]
@@ -57,7 +57,8 @@ cfg_if::cfg_if! {
         pub mod futex;
         #[path = "atomics/thread.rs"]
         pub mod thread;
-    } else {
+    }
+    _ => {
         #[path = "../unsupported/locks/mod.rs"]
         pub mod locks;
         #[path = "../unsupported/once.rs"]

@@ -14,6 +14,7 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
+#![feature(cfg_match)]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(panic_unwind)]
@@ -31,32 +32,37 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::panic::PanicPayload;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "emscripten")] {
+cfg_match! {
+    cfg(target_os = "emscripten") => {
         #[path = "emcc.rs"]
         mod real_imp;
-    } else if #[cfg(target_os = "hermit")] {
+    }
+    cfg(target_os = "hermit") => {
         #[path = "hermit.rs"]
         mod real_imp;
-    } else if #[cfg(target_os = "l4re")] {
+    }
+    cfg(target_os = "l4re") => {
         // L4Re is unix family but does not yet support unwinding.
         #[path = "dummy.rs"]
         mod real_imp;
-    } else if #[cfg(all(target_env = "msvc", not(target_arch = "arm")))] {
+    }
+    cfg(all(target_env = "msvc", not(target_arch = "arm"))) => {
         // LLVM does not support unwinding on 32 bit ARM msvc (thumbv7a-pc-windows-msvc)
         #[path = "seh.rs"]
         mod real_imp;
-    } else if #[cfg(any(
+    }
+    cfg(any(
         all(target_family = "windows", target_env = "gnu"),
         target_os = "psp",
         target_os = "xous",
         target_os = "solid_asp3",
         all(target_family = "unix", not(target_os = "espidf")),
         all(target_vendor = "fortanix", target_env = "sgx"),
-    ))] {
+    )) => {
         #[path = "gcc.rs"]
         mod real_imp;
-    } else {
+    }
+    _ => {
         // Targets that don't support unwinding.
         // - family=wasm
         // - os=none ("bare metal" targets)
@@ -69,14 +75,15 @@ cfg_if::cfg_if! {
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(miri)] {
+cfg_match! {
+    cfg(miri) => {
         // Use the Miri runtime.
         // We still need to also load the normal runtime above, as rustc expects certain lang
         // items from there to be defined.
         #[path = "miri.rs"]
         mod imp;
-    } else {
+    }
+    _ => {
         // Use the real runtime.
         use real_imp as imp;
     }

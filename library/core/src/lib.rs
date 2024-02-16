@@ -111,6 +111,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![feature(cfg_match)]
 #![feature(char_indices_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_align_of_val_raw)]

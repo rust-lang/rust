@@ -42,8 +42,8 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
+cfg_match! {
+    cfg(target_feature = "atomics") => {
         #[path = "../unix/locks"]
         pub mod locks {
             #![allow(unsafe_op_in_unsafe_fn)]
@@ -54,7 +54,8 @@ cfg_if::cfg_if! {
             pub(crate) use futex_mutex::Mutex;
             pub(crate) use futex_rwlock::RwLock;
         }
-    } else {
+    }
+    _ => {
         #[path = "../unsupported/locks/mod.rs"]
         pub mod locks;
         #[path = "../unsupported/once.rs"]

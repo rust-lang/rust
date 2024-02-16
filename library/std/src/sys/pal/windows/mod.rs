@@ -32,10 +32,11 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod thread_parking;
 pub mod time;
-cfg_if::cfg_if! {
-    if #[cfg(not(target_vendor = "uwp"))] {
+cfg_match! {
+    cfg(not(target_vendor = "uwp")) => {
         pub mod stack_overflow;
-    } else {
+    }
+    _ => {
         pub mod stack_overflow_uwp;
         pub use self::stack_overflow_uwp as stack_overflow;
     }

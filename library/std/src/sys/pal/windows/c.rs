@@ -196,11 +196,8 @@ pub struct in6_addr {
 }
 
 // Desktop specific functions & types
-cfg_if::cfg_if! {
-if #[cfg(not(target_vendor = "uwp"))] {
-    pub const EXCEPTION_CONTINUE_SEARCH: i32 = 0;
-}
-}
+#[cfg(not(target_vendor = "uwp"))]
+pub const EXCEPTION_CONTINUE_SEARCH: i32 = 0;
 
 pub unsafe extern "system" fn WriteFileEx(
     hFile: BorrowedHandle<'_>,
@@ -270,8 +267,8 @@ pub unsafe fn getaddrinfo(
     windows_sys::getaddrinfo(node.cast::<u8>(), service.cast::<u8>(), hints, res)
 }
 
-cfg_if::cfg_if! {
-if #[cfg(not(target_vendor = "uwp"))] {
+cfg_match! {
+cfg(not(target_vendor = "uwp")) => {
 pub unsafe fn NtReadFile(
     filehandle: BorrowedHandle<'_>,
     event: HANDLE,
@@ -442,26 +439,27 @@ compat_fn_with_fallback! {
 // are not included in the win32 metadata. We work around that by defining them here.
 //
 // Where possible, these definitions should be kept in sync with https://docs.rs/windows-sys
-cfg_if::cfg_if! {
-if #[cfg(not(target_vendor = "uwp"))] {
-    #[link(name = "kernel32")]
-    extern "system" {
-        pub fn AddVectoredExceptionHandler(
-            first: u32,
-            handler: PVECTORED_EXCEPTION_HANDLER,
-        ) -> *mut c_void;
+cfg_match! {
+    cfg(not(target_vendor = "uwp")) => {
+        #[link(name = "kernel32")]
+        extern "system" {
+            pub fn AddVectoredExceptionHandler(
+                first: u32,
+                handler: PVECTORED_EXCEPTION_HANDLER,
+            ) -> *mut c_void;
+        }
+        pub type PVECTORED_EXCEPTION_HANDLER = Option<
+            unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32,
+        >;
+        #[repr(C)]
+        pub struct EXCEPTION_POINTERS {
+            pub ExceptionRecord: *mut EXCEPTION_RECORD,
+            pub ContextRecord: *mut CONTEXT,
+        }
+        #[cfg(target_arch = "arm")]
+        pub enum CONTEXT {}
     }
-    pub type PVECTORED_EXCEPTION_HANDLER = Option<
-        unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32,
-    >;
-    #[repr(C)]
-    pub struct EXCEPTION_POINTERS {
-        pub ExceptionRecord: *mut EXCEPTION_RECORD,
-        pub ContextRecord: *mut CONTEXT,
-    }
-    #[cfg(target_arch = "arm")]
-    pub enum CONTEXT {}
-}}
+}
 
 #[link(name = "ws2_32")]
 extern "system" {

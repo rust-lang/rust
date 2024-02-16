@@ -5,8 +5,8 @@ use crate::num::NonZeroUsize;
 use crate::sys::unsupported;
 use crate::time::Duration;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
+cfg_match! {
+    cfg(target_feature = "atomics") => {
         use crate::cmp;
         use crate::ptr;
         use crate::sys::os;
@@ -61,7 +61,8 @@ cfg_if::cfg_if! {
                 debug_assert_eq!(ret, 0);
             }
         }
-    } else {
+    }
+    _ => {
         pub struct Thread(!);
     }
 }
@@ -70,8 +71,8 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    cfg_if::cfg_if! {
-        if #[cfg(target_feature = "atomics")] {
+    cfg_match! {
+        cfg(target_feature = "atomics") => {
             pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
                 let p = Box::into_raw(Box::new(p));
                 let mut native: libc::pthread_t = mem::zeroed();
@@ -118,7 +119,8 @@ impl Thread {
                     ptr::null_mut()
                 }
             }
-        } else {
+        }
+        _ => {
             pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
                 unsupported()
             }

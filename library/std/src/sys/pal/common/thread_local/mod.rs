@@ -5,18 +5,20 @@
 // "fast" key type is accessed via code generated via LLVM, where TLS keys are set up by the linker.
 // "static" is for single-threaded platforms where a global static is sufficient.
 
-cfg_if::cfg_if! {
-    if #[cfg(any(all(target_family = "wasm", not(target_feature = "atomics")), target_os = "uefi"))] {
+cfg_match! {
+    cfg(any(all(target_family = "wasm", not(target_feature = "atomics")), target_os = "uefi")) => {
         #[doc(hidden)]
         mod static_local;
         #[doc(hidden)]
         pub use static_local::{Key, thread_local_inner};
-    } else if #[cfg(target_thread_local)] {
+    }
+    cfg(target_thread_local) => {
         #[doc(hidden)]
         mod fast_local;
         #[doc(hidden)]
         pub use fast_local::{Key, thread_local_inner};
-    } else {
+    }
+    _ => {
         #[doc(hidden)]
         mod os_local;
         #[doc(hidden)]

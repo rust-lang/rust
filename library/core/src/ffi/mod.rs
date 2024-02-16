@@ -71,9 +71,9 @@ pub type c_ptrdiff_t = isize;
 pub type c_ssize_t = isize;
 
 mod c_char_definition {
-    cfg_if! {
+    crate::cfg_match! {
         // These are the targets on which c_char is unsigned.
-        if #[cfg(any(
+        cfg(any(
             all(
                 target_os = "linux",
                 any(
@@ -124,9 +124,10 @@ mod c_char_definition {
             ),
             all(target_os = "nto", target_arch = "aarch64"),
             target_os = "horizon"
-        ))] {
+        )) => {
             pub type c_char = u8;
-        } else {
+        }
+        _ => {
             // On every other target, c_char is signed.
             pub type c_char = i8;
         }
@@ -134,11 +135,12 @@ mod c_char_definition {
 }
 
 mod c_int_definition {
-    cfg_if! {
-        if #[cfg(any(target_arch = "avr", target_arch = "msp430"))] {
+    crate::cfg_match! {
+        cfg(any(target_arch = "avr", target_arch = "msp430")) => {
             pub type c_int = i16;
             pub type c_uint = u16;
-        } else {
+        }
+        _ => {
             pub type c_int = i32;
             pub type c_uint = u32;
         }
@@ -146,11 +148,12 @@ mod c_int_definition {
 }
 
 mod c_long_definition {
-    cfg_if! {
-        if #[cfg(all(target_pointer_width = "64", not(windows)))] {
+    crate::cfg_match! {
+        cfg(all(target_pointer_width = "64", not(windows))) => {
             pub type c_long = i64;
             pub type c_ulong = u64;
-        } else {
+        }
+        _ =>{
             // The minimal size of `long` in the C standard is 32 bits
             pub type c_long = i32;
             pub type c_ulong = u32;
