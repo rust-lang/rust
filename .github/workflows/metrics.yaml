@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Restore cargo cache
         uses: actions/cache@v3
@@ -73,7 +73,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Restore cargo cache
         uses: actions/cache@v3
@@ -106,7 +106,7 @@ jobs:
     needs: [build_metrics, other_metrics]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download build metrics
         uses: actions/download-artifact@v3

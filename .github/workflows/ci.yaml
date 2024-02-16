@@ -27,7 +27,7 @@ jobs:
       typescript: ${{ steps.filter.outputs.typescript }}
       proc_macros: ${{ steps.filter.outputs.proc_macros }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dorny/paths-filter@1441771bbfdd59dcd748680ee64ebd8faab1a242
         id: filter
         with:
@@ -56,7 +56,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -129,7 +129,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         run: |
@@ -161,7 +161,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         if: needs.changes.outputs.typescript == 'true'
 
       - name: Install Nodejs
