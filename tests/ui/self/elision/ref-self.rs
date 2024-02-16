@@ -53,6 +53,11 @@ impl Struct {
         f
         //~^ ERROR lifetime may not live long enough
     }
+
+    fn ref_box_Self(self: &Box<Self>, f: &u32) -> &u32 {
+        f
+        //~^ ERROR lifetime may not live long enough
+    }
 }
 
 fn main() { }
