@@ -213,6 +213,9 @@ extern "C" {
     #[link_name = "llvm.ppc.altivec.vsubuws"]
     fn vsubuws(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 
+    #[link_name = "llvm.ppc.altivec.vsubcuw"]
+    fn vsubcuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
     #[link_name = "llvm.ppc.altivec.vaddcuw"]
     fn vaddcuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 
@@ -1685,6 +1688,17 @@ mod sealed {
 
     impl_vec_trait! { [VectorSub vec_sub] ~(simd_sub, simd_sub, simd_sub, simd_sub, simd_sub, simd_sub) }
     impl_vec_trait! { [VectorSub vec_sub] simd_sub(vector_float, vector_float) -> vector_float }
+
+    test_impl! { vec_vsubcuw (a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vsubcuw, vsubcuw] }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSubc<Other> {
+        type Result;
+        unsafe fn vec_subc(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! {[VectorSubc vec_subc]+ vec_vsubcuw(vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+    impl_vec_trait! {[VectorSubc vec_subc]+ vec_vsubcuw(vector_signed_int, vector_signed_int) -> vector_signed_int }
 
     test_impl! { vec_vminsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vminsb, vminsb] }
     test_impl! { vec_vminsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vminsh, vminsh] }
@@ -3870,6 +3884,26 @@ where
     T: sealed::VectorSub<U>,
 {
     a.vec_sub(b)
+}
+
+/// Vector Subtract Carryout
+///
+/// ## Purpose
+/// Returns a vector wherein each element contains the carry produced by subtracting the
+/// corresponding elements of the two source vectors.
+///
+/// ## Result value
+/// The value of each element of r is the complement of the carry produced by subtract- ing the
+/// value of the corresponding element of b from the value of the corresponding element of a. The
+/// value is 0 if a borrow occurred, or 1 if no borrow occurred.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_subc<T, U>(a: T, b: U) -> <T as sealed::VectorSubc<U>>::Result
+where
+    T: sealed::VectorSubc<U>,
+{
+    a.vec_subc(b)
 }
 
 /// Vector subs.
