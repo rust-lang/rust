@@ -400,15 +400,7 @@ fn test1(a: bool) {
     };
 }
 
-fn test2(a: bool) -> i32 {
-    if a {
-        return 1;
-    } else {
-        0
-    }
-}
-
-fn test3(a: bool, b: bool, c: bool) {
+fn test2(a: bool, b: bool, c: bool) {
     let _x = if a {
         return;
     } else if b {
