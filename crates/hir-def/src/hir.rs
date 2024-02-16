@@ -182,6 +182,7 @@ pub enum Expr {
         tail: Option<ExprId>,
     },
     Const(ConstBlockId),
+    // FIXME: Fold this into Block with an unsafe flag?
     Unsafe {
         id: Option<BlockId>,
         statements: Box<[Statement]>,
