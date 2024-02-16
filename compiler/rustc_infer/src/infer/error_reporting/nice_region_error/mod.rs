@@ -21,8 +21,11 @@ pub use static_impl_trait::{suggest_new_region_bound, HirTraitObjectVisitor, Tra
 pub use util::find_param_with_region;
 
 impl<'cx, 'tcx> TypeErrCtxt<'cx, 'tcx> {
-    pub fn try_report_nice_region_error(&'cx self, error: &RegionResolutionError<'tcx>) -> bool {
-        NiceRegionError::new(self, error.clone()).try_report().is_some()
+    pub fn try_report_nice_region_error(
+        &'cx self,
+        error: &RegionResolutionError<'tcx>,
+    ) -> Option<ErrorGuaranteed> {
+        NiceRegionError::new(self, error.clone()).try_report()
     }
 }
 

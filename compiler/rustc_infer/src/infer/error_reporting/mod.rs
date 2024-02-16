@@ -428,6 +428,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         generic_param_scope: LocalDefId,
         errors: &[RegionResolutionError<'tcx>],
     ) -> ErrorGuaranteed {
+        assert!(!errors.is_empty());
+
         if let Some(guaranteed) = self.infcx.tainted_by_errors() {
             return guaranteed;
         }
@@ -440,10 +442,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         debug!("report_region_errors: {} errors after preprocessing", errors.len());
 
+        let mut guar = None;
         for error in errors {
             debug!("report_region_errors: error = {:?}", error);
 
-            if !self.try_report_nice_region_error(&error) {
+            guar = Some(if let Some(guar) = self.try_report_nice_region_error(&error) {
+                guar
+            } else {
                 match error.clone() {
                     // These errors could indicate all manner of different
                     // problems with many different solutions. Rather
@@ -454,21 +459,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
                         if sub.is_placeholder() || sup.is_placeholder() {
-                            self.report_placeholder_failure(origin, sub, sup).emit();
+                            self.report_placeholder_failure(origin, sub, sup).emit()
                         } else {
-                            self.report_concrete_failure(origin, sub, sup).emit();
+                            self.report_concrete_failure(origin, sub, sup).emit()
                         }
                     }
 
-                    RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => {
-                        self.report_generic_bound_failure(
+                    RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => self
+                        .report_generic_bound_failure(
                             generic_param_scope,
                             origin.span(),
                             Some(origin),
                             param_ty,
                             sub,
-                        );
-                    }
+                        ),
 
                     RegionResolutionError::SubSupConflict(
                         _,
@@ -480,13 +484,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         _,
                     ) => {
                         if sub_r.is_placeholder() {
-                            self.report_placeholder_failure(sub_origin, sub_r, sup_r).emit();
+                            self.report_placeholder_failure(sub_origin, sub_r, sup_r).emit()
                         } else if sup_r.is_placeholder() {
-                            self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
+                            self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit()
                         } else {
                             self.report_sub_sup_conflict(
                                 var_origin, sub_origin, sub_r, sup_origin, sup_r,
-                            );
+                            )
                         }
                     }
 
@@ -506,7 +510,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // value.
                         let sub_r = self.tcx.lifetimes.re_erased;
 
-                        self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit();
+                        self.report_placeholder_failure(sup_origin, sub_r, sup_r).emit()
                     }
 
                     RegionResolutionError::CannotNormalize(clause, origin) => {
@@ -515,15 +519,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         self.tcx
                             .dcx()
                             .struct_span_err(origin.span(), format!("cannot normalize `{clause}`"))
-                            .emit();
+                            .emit()
                     }
                 }
-            }
+            })
         }
 
-        self.tcx
-            .dcx()
-            .span_delayed_bug(self.tcx.def_span(generic_param_scope), "expected region errors")
+        guar.unwrap()
     }
 
     // This method goes through all the errors and try to group certain types
@@ -2314,9 +2316,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-    ) {
+    ) -> ErrorGuaranteed {
         self.construct_generic_bound_failure(generic_param_scope, span, origin, bound_kind, sub)
-            .emit();
+            .emit()
     }
 
     pub fn construct_generic_bound_failure(
@@ -2575,7 +2577,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         sub_region: Region<'tcx>,
         sup_origin: SubregionOrigin<'tcx>,
         sup_region: Region<'tcx>,
-    ) {
+    ) -> ErrorGuaranteed {
         let mut err = self.report_inference_failure(var_origin);
 
         note_and_explain_region(
@@ -2614,12 +2616,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             );
 
             err.note_expected_found(&"", sup_expected, &"", sup_found);
-            if sub_region.is_error() | sup_region.is_error() {
-                err.delay_as_bug();
+            return if sub_region.is_error() | sup_region.is_error() {
+                err.delay_as_bug()
             } else {
-                err.emit();
-            }
-            return;
+                err.emit()
+            };
         }
 
         self.note_region_origin(&mut err, &sup_origin);
@@ -2634,11 +2635,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         );
 
         self.note_region_origin(&mut err, &sub_origin);
-        if sub_region.is_error() | sup_region.is_error() {
-            err.delay_as_bug();
-        } else {
-            err.emit();
-        }
+        if sub_region.is_error() | sup_region.is_error() { err.delay_as_bug() } else { err.emit() }
     }
 
     /// Determine whether an error associated with the given span and definition
