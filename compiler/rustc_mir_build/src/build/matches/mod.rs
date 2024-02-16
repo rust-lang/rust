@@ -1272,48 +1272,46 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) -> BasicBlock {
-        debug_assert!(
-            matched_candidates.iter().all(|c| c.subcandidates.is_empty()),
-            "subcandidates should be empty in select_matched_candidates",
-        );
-
-        // Insert a borrows of prefixes of places that are bound and are
-        // behind a dereference projection.
-        //
-        // These borrows are taken to avoid situations like the following:
-        //
-        // match x[10] {
-        //     _ if { x = &[0]; false } => (),
-        //     y => (), // Out of bounds array access!
-        // }
-        //
-        // match *x {
-        //     // y is bound by reference in the guard and then by copy in the
-        //     // arm, so y is 2 in the arm!
-        //     y if { y == 1 && (x = &2) == () } => y,
-        //     _ => 3,
-        // }
-        if let Some(fake_borrows) = fake_borrows {
-            for Binding { source, .. } in
-                matched_candidates.iter().flat_map(|candidate| &candidate.bindings)
-            {
-                if let Some(i) =
-                    source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref)
-                {
-                    let proj_base = &source.projection[..i];
-
-                    fake_borrows.insert(Place {
-                        local: source.local,
-                        projection: self.tcx.mk_place_elems(proj_base),
-                    });
-                }
-            }
-        }
-
         let mut next_prebinding = start_block;
         for candidate in matched_candidates.iter_mut() {
             assert!(candidate.otherwise_block.is_none());
             assert!(candidate.pre_binding_block.is_none());
+            debug_assert!(
+                candidate.subcandidates.is_empty(),
+                "subcandidates should be empty in select_matched_candidates",
+            );
+
+            if let Some(fake_borrows) = fake_borrows {
+                // Insert a borrows of prefixes of places that are bound and are
+                // behind a dereference projection.
+                //
+                // These borrows are taken to avoid situations like the following:
+                //
+                // match x[10] {
+                //     _ if { x = &[0]; false } => (),
+                //     y => (), // Out of bounds array access!
+                // }
+                //
+                // match *x {
+                //     // y is bound by reference in the guard and then by copy in the
+                //     // arm, so y is 2 in the arm!
+                //     y if { y == 1 && (x = &2) == () } => y,
+                //     _ => 3,
+                // }
+                for Binding { source, .. } in &candidate.bindings {
+                    if let Some(i) =
+                        source.projection.iter().rposition(|elem| elem == ProjectionElem::Deref)
+                    {
+                        let proj_base = &source.projection[..i];
+
+                        fake_borrows.insert(Place {
+                            local: source.local,
+                            projection: self.tcx.mk_place_elems(proj_base),
+                        });
+                    }
+                }
+            }
+
             candidate.pre_binding_block = Some(next_prebinding);
             next_prebinding = self.cfg.start_new_block();
             if candidate.has_guard {
