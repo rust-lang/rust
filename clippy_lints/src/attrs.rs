@@ -1,7 +1,9 @@
 //! checks for attributes
 
 use clippy_config::msrvs::{self, Msrv};
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{
+    span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
+};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::macros::{is_panic, macro_backtrace};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
@@ -459,6 +461,30 @@ declare_clippy_lint! {
     "usage of `cfg(feature = \"cargo-clippy\")` instead of `cfg(clippy)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `#[cfg_attr(clippy, allow(clippy::lint))]`
+    /// and suggests to replace it with `#[allow(clippy::lint)]`.
+    ///
+    /// ### Why is this bad?
+    /// There is no reason to put clippy attributes behind a clippy `cfg` as they are not
+    /// run by anything else than clippy.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #![cfg_attr(clippy, allow(clippy::deprecated_cfg_attr))]
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// #![allow(clippy::deprecated_cfg_attr)]
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub UNNECESSARY_CLIPPY_CFG,
+    suspicious,
+    "usage of `cfg_attr(clippy, allow(clippy::lint))` instead of `allow(clippy::lint)`"
+}
+
 declare_lint_pass!(Attributes => [
     ALLOW_ATTRIBUTES_WITHOUT_REASON,
     INLINE_ALWAYS,
@@ -821,6 +847,7 @@ impl_lint_pass!(EarlyAttributes => [
     NON_MINIMAL_CFG,
     MAYBE_MISUSED_CFG,
     DEPRECATED_CLIPPY_CFG_ATTR,
+    UNNECESSARY_CLIPPY_CFG,
 ]);
 
 impl EarlyLintPass for EarlyAttributes {
@@ -958,6 +985,74 @@ fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msr
             );
         } else {
             check_deprecated_cfg_recursively(cx, feature_item);
+            if let Some(behind_cfg_attr) = items[1].meta_item() {
+                check_clippy_cfg_attr(cx, feature_item, behind_cfg_attr, attr);
+            }
+        }
+    }
+}
+
+fn check_clippy_cfg_attr(
+    cx: &EarlyContext<'_>,
+    cfg_attr: &rustc_ast::MetaItem,
+    behind_cfg_attr: &rustc_ast::MetaItem,
+    attr: &Attribute,
+) {
+    if cfg_attr.has_name(sym::clippy)
+        && let Some(ident) = behind_cfg_attr.ident()
+        // FIXME: replace with `from_symbol` once https://github.com/rust-lang/rust/pull/121230
+        // is merged.
+        && Level::from_str(ident.name.as_str()).is_some()
+        && let Some(items) = behind_cfg_attr.meta_item_list()
+    {
+        let nb_items = items.len();
+        let mut clippy_lints = Vec::with_capacity(items.len());
+        for item in items {
+            if let Some(meta_item) = item.meta_item()
+                && let [part1, _] = meta_item.path.segments.as_slice()
+                && part1.ident.name == sym::clippy
+            {
+                clippy_lints.push(item.span());
+            }
+        }
+        if clippy_lints.is_empty() {
+            return;
+        }
+        if nb_items == clippy_lints.len() {
+            if let Some(snippet) = snippet_opt(cx, behind_cfg_attr.span) {
+                span_lint_and_sugg(
+                    cx,
+                    UNNECESSARY_CLIPPY_CFG,
+                    attr.span,
+                    "no need to put clippy lints behind a `clippy` cfg",
+                    "replace with",
+                    format!(
+                        "#{}[{}]",
+                        if attr.style == AttrStyle::Inner { "!" } else { "" },
+                        snippet
+                    ),
+                    Applicability::MachineApplicable,
+                );
+            }
+        } else {
+            let snippet = clippy_lints
+                .iter()
+                .filter_map(|sp| snippet_opt(cx, *sp))
+                .collect::<Vec<_>>()
+                .join(",");
+            span_lint_and_note(
+                cx,
+                UNNECESSARY_CLIPPY_CFG,
+                clippy_lints,
+                "no need to put clippy lints behind a `clippy` cfg",
+                None,
+                &format!(
+                    "write instead: `#{}[{}({})]`",
+                    if attr.style == AttrStyle::Inner { "!" } else { "" },
+                    ident.name,
+                    snippet
+                ),
+            );
         }
     }
 }
