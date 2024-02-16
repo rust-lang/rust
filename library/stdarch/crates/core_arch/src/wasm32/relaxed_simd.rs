@@ -73,6 +73,9 @@ pub fn i8x16_relaxed_swizzle(a: v128, s: v128) -> v128 {
     unsafe { llvm_relaxed_swizzle(a.as_i8x16(), s.as_i8x16()).v128() }
 }
 
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i8x16_relaxed_swizzle as u8x16_relaxed_swizzle;
+
 /// A relaxed version of `i32x4_trunc_sat_f32x4(a)` converts the `f32` lanes
 /// of `a` to signed 32-bit integers.
 ///
@@ -185,6 +188,9 @@ pub fn i8x16_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i8x16_laneselect(a.as_i8x16(), b.as_i8x16(), m.as_i8x16()).v128() }
 }
 
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i8x16_relaxed_laneselect as u8x16_relaxed_laneselect;
+
 /// A relaxed version of `v128_bitselect` where this either behaves the same as
 /// `v128_bitselect` or the high bit of each lane `m` is inspected and the
 /// corresponding lane of `a` is chosen if the bit is 1 or the lane of `b` is
@@ -200,6 +206,9 @@ pub fn i8x16_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
 pub fn i16x8_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i16x8_laneselect(a.as_i16x8(), b.as_i16x8(), m.as_i16x8()).v128() }
 }
+
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i16x8_relaxed_laneselect as u16x8_relaxed_laneselect;
 
 /// A relaxed version of `v128_bitselect` where this either behaves the same as
 /// `v128_bitselect` or the high bit of each lane `m` is inspected and the
@@ -217,6 +226,9 @@ pub fn i32x4_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i32x4_laneselect(a.as_i32x4(), b.as_i32x4(), m.as_i32x4()).v128() }
 }
 
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i32x4_relaxed_laneselect as u32x4_relaxed_laneselect;
+
 /// A relaxed version of `v128_bitselect` where this either behaves the same as
 /// `v128_bitselect` or the high bit of each lane `m` is inspected and the
 /// corresponding lane of `a` is chosen if the bit is 1 or the lane of `b` is
@@ -232,6 +244,9 @@ pub fn i32x4_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
 pub fn i64x2_relaxed_laneselect(a: v128, b: v128, m: v128) -> v128 {
     unsafe { llvm_i64x2_laneselect(a.as_i64x2(), b.as_i64x2(), m.as_i64x2()).v128() }
 }
+
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i64x2_relaxed_laneselect as u64x2_relaxed_laneselect;
 
 /// A relaxed version of `f32x4_min` which is either `f32x4_min` or
 /// `f32x4_pmin`.
@@ -288,6 +303,9 @@ pub fn i16x8_relaxed_q15mulr(a: v128, b: v128) -> v128 {
     unsafe { llvm_relaxed_q15mulr_signed(a.as_i16x8(), b.as_i16x8()).v128() }
 }
 
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i16x8_relaxed_q15mulr as u16x8_relaxed_q15mulr;
+
 /// A relaxed dot-product instruction.
 ///
 /// This instruction will perform pairwise products of the 8-bit values in `a`
@@ -308,6 +326,9 @@ pub fn i16x8_relaxed_dot_i8x16_i7x16(a: v128, b: v128) -> v128 {
     unsafe { llvm_i16x8_relaxed_dot_i8x16_i7x16_s(a.as_i8x16(), b.as_i8x16()).v128() }
 }
 
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i16x8_relaxed_dot_i8x16_i7x16 as u16x8_relaxed_dot_i8x16_i7x16;
+
 /// Similar to [`i16x8_relaxed_dot_i8x16_i7x16`] except that the intermediate
 /// `i16x8` result is fed into `i32x4_extadd_pairwise_i16x8` followed by
 /// `i32x4_add` to add the value `c` to the result.
@@ -321,6 +342,9 @@ pub fn i32x4_relaxed_dot_i8x16_i7x16_add(a: v128, b: v128, c: v128) -> v128 {
         llvm_i32x4_relaxed_dot_i8x16_i7x16_add_s(a.as_i8x16(), b.as_i8x16(), c.as_i32x4()).v128()
     }
 }
+
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
+pub use i32x4_relaxed_dot_i8x16_i7x16_add as u32x4_relaxed_dot_i8x16_i7x16_add;
 
 #[cfg(test)]
 mod tests {
@@ -365,6 +389,22 @@ mod tests {
             &[
                 i8x16(0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                 i8x16(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            ],
+        );
+        compare_bytes(
+            u8x16_relaxed_swizzle(
+                u8x16(
+                    128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
+                ),
+                u8x16(0x80, 0xff, 16, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+            ),
+            &[
+                u8x16(
+                    128, 128, 128, 129, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+                ),
+                u8x16(
+                    0, 0, 0, 0, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128,
+                ),
             ],
         );
     }
