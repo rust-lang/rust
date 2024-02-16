@@ -129,17 +129,20 @@ fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
     for field in variant.fields.iter().filter(|f| f.is_unnamed()) {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
         if let Some(adt) = field_ty.ty_adt_def()
-            && !adt.is_anonymous()
-            && !adt.repr().c()
+            && !adt.is_enum()
         {
-            let field_ty_span = tcx.def_span(adt.did());
-            tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
-                span: tcx.def_span(field.did),
-                field_ty_span,
-                field_ty,
-                field_adt_kind: adt.descr(),
-                sugg_span: field_ty_span.shrink_to_lo(),
-            });
+            if !adt.is_anonymous() && !adt.repr().c() {
+                let field_ty_span = tcx.def_span(adt.did());
+                tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
+                    span: tcx.def_span(field.did),
+                    field_ty_span,
+                    field_ty,
+                    field_adt_kind: adt.descr(),
+                    sugg_span: field_ty_span.shrink_to_lo(),
+                });
+            }
+        } else {
+            tcx.dcx().emit_err(errors::InvalidUnnamedFieldTy { span: tcx.def_span(field.did) });
         }
     }
 }
