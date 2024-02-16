@@ -504,3 +504,34 @@ an empty option. The file can use Unix or Windows style line endings, and must b
 encoded as UTF-8.
 
 [the JSON chapter]: json.md
+
+<a id="option-env-set"></a>
+## `env-set`: inject an environment variable
+
+This option flag allows specification of environment variables at compile time for the
+`env!` and `option_env!` macros and `tracked_env::var` function from the `proc_macro`
+crate.
+
+This information will be stored in the dep-info files. For more information about
+dep-info files, take a look [here](https://doc.rust-lang.org/cargo/guide/build-cache.html#dep-info-file\
+s).
+
+When retrieving an environment variable, the value specified by `--env-set` will take
+precedence. For example, if you want have `PATH=env` in your environment and pass:
+
+```bash
+rustc --env-set PATH=env
+```
+
+Then you will have:
+
+```rust,no_run
+assert_eq!(env!("PATH"), "env");
+```
+
+Crates will be fully re-compiled if `--env-set` arguments are changed.
+
+Please note that on Windows, environment variables are case insensitive but case
+preserving whereas `rustc`'s environment variables are case sensitive. For example,
+having `Path` in your environment (case insensitive) is different than using
+`rustc --env-set Path=...` (case sensitive).
