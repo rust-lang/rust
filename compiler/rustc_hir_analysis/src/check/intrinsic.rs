@@ -407,7 +407,7 @@ pub fn check_intrinsic_type(
             }
             sym::float_to_int_unchecked => (2, 0, vec![param(0)], param(1)),
 
-            sym::assume => (0, 0, vec![tcx.types.bool], Ty::new_unit(tcx)),
+            sym::assume => (0, 1, vec![tcx.types.bool], Ty::new_unit(tcx)),
             sym::likely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
             sym::unlikely => (0, 0, vec![tcx.types.bool], tcx.types.bool),
 
