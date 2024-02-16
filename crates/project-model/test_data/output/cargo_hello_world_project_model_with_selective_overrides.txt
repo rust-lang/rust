@@ -48,7 +48,6 @@
                 name: CrateName(
                     "libc",
                 ),
-                kind: Normal,
                 prelude: true,
             },
         ],
@@ -109,7 +108,6 @@
                 name: CrateName(
                     "hello_world",
                 ),
-                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -117,7 +115,6 @@
                 name: CrateName(
                     "libc",
                 ),
-                kind: Normal,
                 prelude: true,
             },
         ],
@@ -178,7 +175,6 @@
                 name: CrateName(
                     "hello_world",
                 ),
-                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -186,7 +182,6 @@
                 name: CrateName(
                     "libc",
                 ),
-                kind: Normal,
                 prelude: true,
             },
         ],
@@ -247,7 +242,6 @@
                 name: CrateName(
                     "hello_world",
                 ),
-                kind: Normal,
                 prelude: true,
             },
             Dependency {
@@ -255,7 +249,6 @@
                 name: CrateName(
                     "libc",
                 ),
-                kind: Normal,
                 prelude: true,
             },
         ],

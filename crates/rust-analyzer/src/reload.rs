@@ -19,7 +19,7 @@ use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::{db::DefDatabase, Change, ProcMacros};
 use ide::CrateId;
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, CrateOrigin, ProcMacroPaths, Version},
+    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, Version},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -707,39 +707,11 @@ pub fn ws_to_crate_graph(
         let mapping = crate_graph.extend(
             other,
             &mut crate_proc_macros,
-            |(cg_id, _cg_data), (_o_id, _o_data)| {
+            |(cg_id, cg_data), (_o_id, o_data)| {
                 // if the newly created crate graph's layout is equal to the crate of the merged graph, then
                 // we can merge the crates.
                 let id = cg_id.into_raw().into_u32() as usize;
-                if layouts[id] == layout && toolchains[id] == toolchain {
-                    let (res, update) = match (&_cg_data.origin, &_o_data.origin) {
-                        (a, b)
-                            if a == b && _cg_data.eq_ignoring_origin_and_deps(_o_data, false) =>
-                        {
-                            (true, false)
-                        }
-                        (a @ CrateOrigin::Local { .. }, CrateOrigin::Library { .. })
-                        | (a @ CrateOrigin::Library { .. }, CrateOrigin::Local { .. })
-                            if _cg_data.eq_ignoring_origin_and_deps(_o_data, true) =>
-                        {
-                            // If the origins differ, check if the two crates are equal without
-                            // considering the dev dependencies, if they are, they most likely are in
-                            // different loaded workspaces which may cause issues. We keep the local
-                            // version and discard the library one as the local version may have
-                            // dev-dependencies that we want to keep resolving. See #15656 for more
-                            // information.
-                            (true, !a.is_local())
-                        }
-                        (_, _) => (false, false),
-                    };
-                    if res && update {
-                        _cg_data.origin = _o_data.origin.clone();
-                        _cg_data.dependencies = _o_data.dependencies.clone();
-                    }
-                    res
-                } else {
-                    false
-                }
+                layouts[id] == layout && toolchains[id] == toolchain && cg_data == o_data
             },
         );
         // Populate the side tables for the newly merged crates

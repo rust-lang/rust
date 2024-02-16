@@ -293,62 +293,6 @@ pub struct CrateData {
     pub is_proc_macro: bool,
 }
 
-impl CrateData {
-    /// Check if [`other`] is almost equal to [`self`] ignoring `CrateOrigin` value.
-    pub fn eq_ignoring_origin_and_deps(&self, other: &CrateData, ignore_dev_deps: bool) -> bool {
-        // This method has some obscure bits. These are mostly there to be compliant with
-        // some patches. References to the patches are given.
-        if self.root_file_id != other.root_file_id {
-            return false;
-        }
-
-        if self.display_name != other.display_name {
-            return false;
-        }
-
-        if self.is_proc_macro != other.is_proc_macro {
-            return false;
-        }
-
-        if self.edition != other.edition {
-            return false;
-        }
-
-        if self.version != other.version {
-            return false;
-        }
-
-        let mut opts = self.cfg_options.difference(&other.cfg_options);
-        if let Some(it) = opts.next() {
-            // Don't care if rust_analyzer CfgAtom is the only cfg in the difference set of self's and other's cfgs.
-            // https://github.com/rust-lang/rust-analyzer/blob/0840038f02daec6ba3238f05d8caa037d28701a0/crates/project-model/src/workspace.rs#L894
-            if it.to_string() != "rust_analyzer" {
-                return false;
-            }
-
-            if opts.next().is_some() {
-                return false;
-            }
-        }
-
-        if self.env != other.env {
-            return false;
-        }
-
-        let slf_deps = self.dependencies.iter();
-        let other_deps = other.dependencies.iter();
-
-        if ignore_dev_deps {
-            return slf_deps
-                .clone()
-                .filter(|it| it.kind != DependencyKind::Dev)
-                .eq(other_deps.clone().filter(|it| it.kind != DependencyKind::Dev));
-        }
-
-        slf_deps.eq(other_deps)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Edition {
     Edition2015,
@@ -389,31 +333,21 @@ pub enum DependencyKind {
 pub struct Dependency {
     pub crate_id: CrateId,
     pub name: CrateName,
-    kind: DependencyKind,
     prelude: bool,
 }
 
 impl Dependency {
-    pub fn new(name: CrateName, crate_id: CrateId, kind: DependencyKind) -> Self {
-        Self { name, crate_id, prelude: true, kind }
+    pub fn new(name: CrateName, crate_id: CrateId) -> Self {
+        Self { name, crate_id, prelude: true }
     }
 
-    pub fn with_prelude(
-        name: CrateName,
-        crate_id: CrateId,
-        prelude: bool,
-        kind: DependencyKind,
-    ) -> Self {
-        Self { name, crate_id, prelude, kind }
+    pub fn with_prelude(name: CrateName, crate_id: CrateId, prelude: bool) -> Self {
+        Self { name, crate_id, prelude }
     }
 
     /// Whether this dependency is to be added to the depending crate's extern prelude.
     pub fn is_prelude(&self) -> bool {
         self.prelude
-    }
-
-    pub fn kind(&self) -> DependencyKind {
-        self.kind
     }
 }
 
@@ -684,11 +618,9 @@ impl CrateGraph {
         match (cfg_if, std) {
             (Some(cfg_if), Some(std)) => {
                 self.arena[cfg_if].dependencies.clear();
-                self.arena[std].dependencies.push(Dependency::new(
-                    CrateName::new("cfg_if").unwrap(),
-                    cfg_if,
-                    DependencyKind::Normal,
-                ));
+                self.arena[std]
+                    .dependencies
+                    .push(Dependency::new(CrateName::new("cfg_if").unwrap(), cfg_if));
                 true
             }
             _ => false,
@@ -836,7 +768,7 @@ impl fmt::Display for CyclicDependenciesError {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CrateOrigin, DependencyKind};
+    use crate::CrateOrigin;
 
     use super::{CrateGraph, CrateName, Dependency, Edition::Edition2018, Env, FileId};
 
@@ -877,22 +809,13 @@ mod tests {
             CrateOrigin::Local { repo: None, name: None },
         );
         assert!(graph
-            .add_dep(
-                crate1,
-                Dependency::new(CrateName::new("crate2").unwrap(), crate2, DependencyKind::Normal)
-            )
+            .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
             .is_ok());
         assert!(graph
-            .add_dep(
-                crate2,
-                Dependency::new(CrateName::new("crate3").unwrap(), crate3, DependencyKind::Normal)
-            )
+            .add_dep(crate2, Dependency::new(CrateName::new("crate3").unwrap(), crate3,))
             .is_ok());
         assert!(graph
-            .add_dep(
-                crate3,
-                Dependency::new(CrateName::new("crate1").unwrap(), crate1, DependencyKind::Normal)
-            )
+            .add_dep(crate3, Dependency::new(CrateName::new("crate1").unwrap(), crate1,))
             .is_err());
     }
 
@@ -922,16 +845,10 @@ mod tests {
             CrateOrigin::Local { repo: None, name: None },
         );
         assert!(graph
-            .add_dep(
-                crate1,
-                Dependency::new(CrateName::new("crate2").unwrap(), crate2, DependencyKind::Normal)
-            )
+            .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
             .is_ok());
         assert!(graph
-            .add_dep(
-                crate2,
-                Dependency::new(CrateName::new("crate2").unwrap(), crate2, DependencyKind::Normal)
-            )
+            .add_dep(crate2, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
             .is_err());
     }
 
@@ -972,16 +889,10 @@ mod tests {
             CrateOrigin::Local { repo: None, name: None },
         );
         assert!(graph
-            .add_dep(
-                crate1,
-                Dependency::new(CrateName::new("crate2").unwrap(), crate2, DependencyKind::Normal)
-            )
+            .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
             .is_ok());
         assert!(graph
-            .add_dep(
-                crate2,
-                Dependency::new(CrateName::new("crate3").unwrap(), crate3, DependencyKind::Normal)
-            )
+            .add_dep(crate2, Dependency::new(CrateName::new("crate3").unwrap(), crate3,))
             .is_ok());
     }
 
@@ -1013,20 +924,12 @@ mod tests {
         assert!(graph
             .add_dep(
                 crate1,
-                Dependency::new(
-                    CrateName::normalize_dashes("crate-name-with-dashes"),
-                    crate2,
-                    DependencyKind::Normal
-                )
+                Dependency::new(CrateName::normalize_dashes("crate-name-with-dashes"), crate2,)
             )
             .is_ok());
         assert_eq!(
             graph[crate1].dependencies,
-            vec![Dependency::new(
-                CrateName::new("crate_name_with_dashes").unwrap(),
-                crate2,
-                DependencyKind::Normal
-            )]
+            vec![Dependency::new(CrateName::new("crate_name_with_dashes").unwrap(), crate2,)]
         );
     }
 }
