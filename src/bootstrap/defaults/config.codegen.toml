@@ -23,3 +23,6 @@ incremental = true
 backtrace-on-ice = true
 # Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
 lto = "off"
+# Forces frame pointers to be used with `-Cforce-frame-pointers`.
+# This can be helpful for profiling at a small performance cost.
+frame-pointers = true

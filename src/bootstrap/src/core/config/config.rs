@@ -256,6 +256,7 @@ pub struct Config {
     pub rust_split_debuginfo: SplitDebuginfo,
     pub rust_rpath: bool,
     pub rust_strip: bool,
+    pub rust_frame_pointers: bool,
     pub rust_stack_protector: Option<String>,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
@@ -1083,6 +1084,7 @@ define_config! {
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
         strip: Option<bool> = "strip",
+        frame_pointers: Option<bool> = "frame-pointers",
         stack_protector: Option<String> = "stack-protector",
         verbose_tests: Option<bool> = "verbose-tests",
         optimize_tests: Option<bool> = "optimize-tests",
@@ -1561,6 +1563,7 @@ impl Config {
                 download_rustc,
                 lto,
                 validate_mir_opts,
+                frame_pointers,
                 stack_protector,
                 strip,
                 lld_mode,
@@ -1609,6 +1612,7 @@ impl Config {
             set(&mut config.codegen_tests, codegen_tests);
             set(&mut config.rust_rpath, rpath);
             set(&mut config.rust_strip, strip);
+            set(&mut config.rust_frame_pointers, frame_pointers);
             config.rust_stack_protector = stack_protector;
             set(&mut config.jemalloc, jemalloc);
             set(&mut config.test_compare_mode, test_compare_mode);
