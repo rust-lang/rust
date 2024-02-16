@@ -2145,51 +2145,71 @@ fn bar(_: usize) {}
     fn snippet_rendering_escape_snippet_bits() {
         // only needed for snippet formats
         let mut edit = TextEdit::builder();
-        edit.insert(0.into(), r"abc\def$".to_owned());
-        edit.insert(8.into(), r"ghi\jkl$".to_owned());
+        edit.insert(0.into(), r"$ab{}$c\def".to_owned());
+        edit.insert(8.into(), r"ghi\jk<-check_insert_here$".to_owned());
+        edit.insert(10.into(), r"a\\b\\c{}$".to_owned());
         let edit = edit.finish();
-        let snippets =
-            SnippetEdit::new(vec![Snippet::Placeholder(TextRange::new(0.into(), 3.into()))]);
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Placeholder(TextRange::new(1.into(), 9.into())),
+            Snippet::Tabstop(25.into()),
+        ]);
 
         check_rendered_snippets(
             edit,
             snippets,
             expect![[r#"
-            [
-                SnippetTextEdit {
-                    range: Range {
-                        start: Position {
-                            line: 0,
-                            character: 0,
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 0,
+                            },
                         },
-                        end: Position {
-                            line: 0,
-                            character: 0,
-                        },
+                        new_text: "\\$${1:ab{}\\$c\\\\d}ef",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
                     },
-                    new_text: "${0:abc}\\\\def\\$",
-                    insert_text_format: Some(
-                        Snippet,
-                    ),
-                    annotation_id: None,
-                },
-                SnippetTextEdit {
-                    range: Range {
-                        start: Position {
-                            line: 0,
-                            character: 8,
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 8,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 8,
+                            },
                         },
-                        end: Position {
-                            line: 0,
-                            character: 8,
-                        },
+                        new_text: "ghi\\\\jk$0<-check_insert_here\\$",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
                     },
-                    new_text: "ghi\\jkl$",
-                    insert_text_format: None,
-                    annotation_id: None,
-                },
-            ]
-        "#]],
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 10,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 10,
+                            },
+                        },
+                        new_text: "a\\\\b\\\\c{}$",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
         );
     }
 
