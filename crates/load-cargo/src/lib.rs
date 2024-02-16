@@ -2,7 +2,7 @@
 //! for incorporating changes.
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
-use std::{collections::hash_map::Entry, mem, path::Path, sync};
+use std::{collections::hash_map::Entry, iter, mem, path::Path, sync};
 
 use crossbeam_channel::{unbounded, Receiver};
 use hir_expand::proc_macro::{
@@ -106,7 +106,7 @@ pub fn load_workspace(
             .collect()
     };
 
-    let project_folders = ProjectFolders::new(&[ws], &[]);
+    let project_folders = ProjectFolders::new(std::slice::from_ref(&ws), &[]);
     loader.set_config(vfs::loader::Config {
         load: project_folders.load,
         watch: vec![],
@@ -114,6 +114,7 @@ pub fn load_workspace(
     });
 
     let host = load_crate_graph(
+        &ws,
         crate_graph,
         proc_macros,
         project_folders.source_root_config,
@@ -301,6 +302,7 @@ pub fn load_proc_macro(
 }
 
 fn load_crate_graph(
+    ws: &ProjectWorkspace,
     crate_graph: CrateGraph,
     proc_macros: ProcMacros,
     source_root_config: SourceRootConfig,
@@ -339,8 +341,17 @@ fn load_crate_graph(
     let source_roots = source_root_config.partition(vfs);
     analysis_change.set_roots(source_roots);
 
+    let num_crates = crate_graph.len();
     analysis_change.set_crate_graph(crate_graph);
     analysis_change.set_proc_macros(proc_macros);
+    if let ProjectWorkspace::Cargo { toolchain, target_layout, .. }
+    | ProjectWorkspace::Json { toolchain, target_layout, .. } = ws
+    {
+        analysis_change.set_target_data_layouts(
+            iter::repeat(target_layout.clone()).take(num_crates).collect(),
+        );
+        analysis_change.set_toolchains(iter::repeat(toolchain.clone()).take(num_crates).collect());
+    }
 
     host.apply_change(analysis_change);
     host

@@ -47,7 +47,9 @@ mod integrated_benchmarks;
 
 use serde::de::DeserializeOwned;
 
-pub use crate::{caps::server_capabilities, main_loop::main_loop, version::version};
+pub use crate::{
+    caps::server_capabilities, main_loop::main_loop, reload::ws_to_crate_graph, version::version,
+};
 
 pub fn from_json<T: DeserializeOwned>(
     what: &'static str,
