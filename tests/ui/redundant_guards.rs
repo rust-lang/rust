@@ -117,6 +117,14 @@ fn h(v: Option<u32>) {
     };
 }
 
+fn negative_literal(i: i32) {
+    match i {
+        i if i == -1 => {},
+        i if i == 1 => {},
+        _ => {},
+    }
+}
+
 // Do not lint
 
 fn f(s: Option<std::ffi::OsString>) {
