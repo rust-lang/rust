@@ -1,4 +1,3 @@
-use crate::errors;
 use crate::mir::operand::OperandRef;
 use crate::traits::*;
 use rustc_middle::mir;
@@ -28,7 +27,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             .expect("erroneous constant not captured by required_consts")
     }
 
-    /// This is a convenience helper for `simd_shuffle_indices`. It has the precondition
+    /// This is a convenience helper for `early_evaluate_const_vector`. It has the precondition
     /// that the given `constant` is an `Const::Unevaluated` and must be convertible to
     /// a `ValTree`. If you want a more general version of this, talk to `wg-const-eval` on zulip.
     ///
@@ -63,19 +62,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         )
     }
 
-    /// process constant containing SIMD shuffle indices
-    pub fn simd_shuffle_indices(
+    /// process constant SIMD vector or constant containing SIMD shuffle indices
+    pub fn early_evaluate_const_vector(
         &mut self,
         bx: &Bx,
         constant: &mir::ConstOperand<'tcx>,
-    ) -> (Bx::Value, Ty<'tcx>) {
+    ) -> (Option<Bx::Value>, Ty<'tcx>) {
         let ty = self.monomorphize(constant.ty());
-        let val = self
-            .eval_unevaluated_mir_constant_to_valtree(constant)
-            .ok()
-            .flatten()
-            .map(|val| {
-                let field_ty = ty.builtin_index().unwrap();
+        let field_ty = if ty.is_simd() {
+            ty.simd_size_and_type(bx.tcx()).1
+        } else {
+            ty.builtin_index().unwrap()
+        };
+        let val =
+            self.eval_unevaluated_mir_constant_to_valtree(constant).ok().flatten().map(|val| {
                 let values: Vec<_> = val
                     .unwrap_branch()
                     .iter()
@@ -87,17 +87,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             };
                             bx.scalar_to_backend(prim, scalar, bx.immediate_backend_type(layout))
                         } else {
-                            bug!("simd shuffle field {:?}", field)
+                            bug!("field is not a scalar {:?}", field)
                         }
                     })
                     .collect();
-                bx.const_struct(&values, false)
-            })
-            .unwrap_or_else(|| {
-                bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
-                // We've errored, so we don't have to produce working code.
-                let llty = bx.backend_type(bx.layout_of(ty));
-                bx.const_undef(llty)
+                if ty.is_simd() {
+                    bx.const_vector(&values)
+                } else {
+                    bx.const_struct(&values, false)
+                }
             });
         (val, ty)
     }

@@ -601,6 +601,13 @@ pub struct ShuffleIndicesEvaluation {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_const_vector_evaluation)]
+pub struct ConstVectorEvaluation {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_missing_memory_ordering)]
 pub struct MissingMemoryOrdering;
 

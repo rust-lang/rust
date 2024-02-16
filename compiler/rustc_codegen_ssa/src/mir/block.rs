@@ -5,12 +5,13 @@ use super::{CachedLlbb, FunctionCx, LocalRef};
 
 use crate::base;
 use crate::common::{self, IntPredicate};
+use crate::errors;
 use crate::meth;
 use crate::traits::*;
 use crate::MemFlags;
 
 use rustc_ast as ast;
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece, LitKind, MetaItemLit, NestedMetaItem};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{self, AssertKind, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
@@ -864,7 +865,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic == sym::simd_shuffle {
                             if let mir::Operand::Constant(constant) = &arg.node {
-                                let (llval, ty) = self.simd_shuffle_indices(bx, constant);
+                                let (llval, ty) = self.early_evaluate_const_vector(bx, constant);
+                                let llval = llval.unwrap_or_else(|| {
+                                    bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation {
+                                        span: constant.span,
+                                    });
+                                    // We've errored, so we don't have to produce working code.
+                                    let llty = bx.backend_type(bx.layout_of(ty));
+                                    bx.const_undef(llty)
+                                });
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),
@@ -908,9 +917,49 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (args, None)
         };
 
+        let const_vec_arg_indexes = (|| {
+            if let Some(def) = def
+                && let Some(attr) =
+                    bx.tcx().get_attr(def.def_id(), sym::rustc_intrinsic_const_vector_arg)
+            {
+                attr.meta_item_list()
+                    .iter()
+                    .flatten()
+                    .map(|item: &NestedMetaItem| match item {
+                        NestedMetaItem::Lit(MetaItemLit {
+                            kind: LitKind::Int(index, _), ..
+                        }) => index.get() as usize,
+                        _ => span_bug!(item.span(), "attribute argument must be an integer"),
+                    })
+                    .collect()
+            } else {
+                Vec::<usize>::new()
+            }
+        })();
+
         let mut copied_constant_arguments = vec![];
         'make_args: for (i, arg) in first_args.iter().enumerate() {
-            let mut op = self.codegen_operand(bx, &arg.node);
+            let mut op = if const_vec_arg_indexes.contains(&i) {
+                // Force the specified argument to be constant by using const-qualification to promote any complex rvalues to constant.
+                if let mir::Operand::Constant(constant) = &arg.node
+                    && constant.ty().is_simd()
+                {
+                    let (llval, ty) = self.early_evaluate_const_vector(bx, &constant);
+                    let llval = llval.unwrap_or_else(|| {
+                        bx.tcx()
+                            .dcx()
+                            .emit_err(errors::ConstVectorEvaluation { span: constant.span });
+                        // We've errored, so we don't have to produce working code.
+                        let llty = bx.backend_type(bx.layout_of(ty));
+                        bx.const_undef(llty)
+                    });
+                    OperandRef { val: Immediate(llval), layout: bx.layout_of(ty) }
+                } else {
+                    span_bug!(span, "argument at {i} must be a constant vector");
+                }
+            } else {
+                self.codegen_operand(bx, &arg.node)
+            };
 
             if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                 match op.val {
