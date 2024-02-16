@@ -459,10 +459,8 @@ impl FormattingOptions {
         Formatter { options: self, buf: write }
     }
 
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
     /// Flags for formatting
-    pub fn flags(&mut self, flags: u32) {
+    fn flags(&mut self, flags: u32) {
         self.sign = if flags & (1 << rt::Flag::SignPlus as u32) != 0 {
             Some(Sign::Plus)
         } else if flags & (1 << rt::Flag::SignMinus as u32) != 0 {
@@ -480,10 +478,8 @@ impl FormattingOptions {
             None
         };
     }
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
     /// Flags for formatting
-    pub fn get_flags(&self) -> u32 {
+    fn get_flags(&self) -> u32 {
         <bool as Into<u32>>::into(self.get_sign() == Some(Sign::Plus)) << rt::Flag::SignPlus as u32
             | <bool as Into<u32>>::into(self.get_sign() == Some(Sign::Minus))
                 << rt::Flag::SignMinus as u32
