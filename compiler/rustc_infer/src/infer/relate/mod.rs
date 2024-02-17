@@ -3,7 +3,7 @@
 
 pub(super) mod combine;
 mod equate;
-pub(super) mod generalize;
+mod generalize;
 mod glb;
 mod higher_ranked;
 mod lattice;
