@@ -74,6 +74,13 @@ pub trait Qualif {
         adt: AdtDef<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> bool;
+
+    /// Returns `true` if this `Qualif` behaves sructurally for pointers and references:
+    /// the pointer/reference qualifies if and only if the pointee qualifies.
+    ///
+    /// (This is currently `false` for all our instances, but that may change in the future. Also,
+    /// by keeping it abstract, the handling of `Deref` in `in_place` becomes more clear.)
+    fn deref_structural<'tcx>(cx: &ConstCx<'_, 'tcx>) -> bool;
 }
 
 /// Constant containing interior mutability (`UnsafeCell<T>`).
@@ -103,6 +110,10 @@ impl Qualif for HasMutInterior {
         // It arises structurally for all other types.
         adt.is_unsafe_cell()
     }
+
+    fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
+        false
+    }
 }
 
 /// Constant containing an ADT that implements `Drop`.
@@ -130,6 +141,10 @@ impl Qualif for NeedsDrop {
         _: GenericArgsRef<'tcx>,
     ) -> bool {
         adt.has_dtor(cx.tcx)
+    }
+
+    fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
+        false
     }
 }
 
@@ -209,6 +224,10 @@ impl Qualif for NeedsNonConstDrop {
         _: GenericArgsRef<'tcx>,
     ) -> bool {
         adt.has_non_const_dtor(cx.tcx)
+    }
+
+    fn deref_structural<'tcx>(_cx: &ConstCx<'_, 'tcx>) -> bool {
+        false
     }
 }
 
@@ -301,6 +320,11 @@ where
         let proj_ty = base_ty.projection_ty(cx.tcx, elem).ty;
         if !Q::in_any_value_of_ty(cx, proj_ty) {
             return false;
+        }
+
+        if matches!(elem, ProjectionElem::Deref) && !Q::deref_structural(cx) {
+            // We have to assume that this qualifies.
+            return true;
         }
 
         place = place_base;
