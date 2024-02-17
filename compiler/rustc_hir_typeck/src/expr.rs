@@ -396,7 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(sp) =
                             tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
                         {
-                            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                            err.subdiagnostic(self.dcx(), ExprParenthesesNeeded::surrounding(*sp));
                         }
                         oprnd_t = Ty::new_error(tcx, err.emit());
                     }
@@ -2048,7 +2048,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .shrink_to_hi()
                 .to(range_end.span);
 
-            err.subdiagnostic(TypeMismatchFruTypo { expr_span: range_start.span, fru_span, expr });
+            err.subdiagnostic(
+                self.dcx(),
+                TypeMismatchFruTypo { expr_span: range_start.span, fru_span, expr },
+            );
         }
     }
 

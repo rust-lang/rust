@@ -342,7 +342,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 trait_predicates: trait_predicates.join(", "),
             }
         };
-        err.subdiagnostic(suggestion);
+        err.subdiagnostic(self.dcx(), suggestion);
     }
 
     pub(super) fn report_placeholder_failure(

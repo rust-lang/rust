@@ -404,9 +404,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
     ));
     forward!((subdiagnostic, with_subdiagnostic)(
-        subdiagnostic: impl crate::AddToDiagnostic,
-    ));
-    forward!((eager_subdiagnostic, with_eager_subdiagnostic)(
         dcx: &DiagCtxt,
         subdiagnostic: impl crate::AddToDiagnostic,
     ));

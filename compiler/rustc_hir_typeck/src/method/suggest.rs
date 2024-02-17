@@ -3269,19 +3269,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if impls_trait(trait_info.def_id) {
                         self.suggest_valid_traits(err, vec![trait_info.def_id], false);
                     } else {
-                        err.subdiagnostic(CandidateTraitNote {
-                            span: self.tcx.def_span(trait_info.def_id),
-                            trait_name: self.tcx.def_path_str(trait_info.def_id),
-                            item_name,
-                            action_or_ty: if trait_missing_method {
-                                "NONE".to_string()
-                            } else {
-                                param_type.map_or_else(
-                                    || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
-                                    ToString::to_string,
-                                )
+                        err.subdiagnostic(
+                            self.dcx(),
+                            CandidateTraitNote {
+                                span: self.tcx.def_span(trait_info.def_id),
+                                trait_name: self.tcx.def_path_str(trait_info.def_id),
+                                item_name,
+                                action_or_ty: if trait_missing_method {
+                                    "NONE".to_string()
+                                } else {
+                                    param_type.map_or_else(
+                                        || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                                        ToString::to_string,
+                                    )
+                                },
                             },
-                        });
+                        );
                     }
                 }
                 trait_infos => {

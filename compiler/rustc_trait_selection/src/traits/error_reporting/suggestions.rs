@@ -4558,11 +4558,14 @@ fn hint_missing_borrow<'tcx>(
     }
 
     if !to_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::Borrow { to_borrow });
+        err.subdiagnostic(infcx.dcx(), errors::AdjustSignatureBorrow::Borrow { to_borrow });
     }
 
     if !remove_borrow.is_empty() {
-        err.subdiagnostic(errors::AdjustSignatureBorrow::RemoveBorrow { remove_borrow });
+        err.subdiagnostic(
+            infcx.dcx(),
+            errors::AdjustSignatureBorrow::RemoveBorrow { remove_borrow },
+        );
     }
 }
 
