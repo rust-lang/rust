@@ -3689,6 +3689,24 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if let Node::Expr(expr) = tcx.hir_node(arg_hir_id)
             && let Some(typeck_results) = &self.typeck_results
         {
+            if let hir::Expr { kind: hir::ExprKind::MethodCall(_, rcvr, _, _), .. } = expr
+                && let Some(ty) = typeck_results.node_type_opt(rcvr.hir_id)
+                && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
+                && let pred = failed_pred.map_bound(|pred| pred.with_self_ty(tcx, ty))
+                && self.predicate_must_hold_modulo_regions(&Obligation::misc(
+                    tcx, expr.span, body_id, param_env, pred,
+                ))
+            {
+                err.span_suggestion_verbose(
+                    expr.span.with_lo(rcvr.span.hi()),
+                    format!(
+                        "consider removing this method call, as the receiver has type `{ty}` and \
+                         `{pred}` trivially holds",
+                    ),
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+            }
             if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
                 let inner_expr = expr.peel_blocks();
                 let ty = typeck_results
@@ -3824,7 +3842,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        if let Node::Expr(expr) = tcx.hir_node(call_hir_id) {
+        if let Node::Expr(expr) = call_node {
             if let hir::ExprKind::Call(hir::Expr { span, .. }, _)
             | hir::ExprKind::MethodCall(
                 hir::PathSegment { ident: Ident { span, .. }, .. },
