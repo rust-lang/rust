@@ -399,6 +399,7 @@ impl Config {
             self.fix_bin_or_dylib(&cargo_clippy.with_file_name(exe("clippy-driver", host)));
         }
 
+        self.create(&clippy_stamp, date);
         cargo_clippy
     }
 
