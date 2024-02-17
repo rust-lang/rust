@@ -18,25 +18,17 @@ pub(crate) fn orphan_check_impl(
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
     trait_ref.error_reported()?;
 
-    do_orphan_check_impl(tcx, trait_ref, impl_def_id)
-}
-
-fn do_orphan_check_impl<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_ref: ty::TraitRef<'tcx>,
-    def_id: LocalDefId,
-) -> Result<(), ErrorGuaranteed> {
     let trait_def_id = trait_ref.def_id;
 
-    match traits::orphan_check(tcx, def_id.to_def_id()) {
+    match traits::orphan_check(tcx, impl_def_id.to_def_id()) {
         Ok(()) => {}
         Err(err) => {
-            let item = tcx.hir().expect_item(def_id);
+            let item = tcx.hir().expect_item(impl_def_id);
             let hir::ItemKind::Impl(impl_) = item.kind else {
-                bug!("{:?} is not an impl: {:?}", def_id, item);
+                bug!("{:?} is not an impl: {:?}", impl_def_id, item);
             };
             let tr = impl_.of_trait.as_ref().unwrap();
-            let sp = tcx.def_span(def_id);
+            let sp = tcx.def_span(impl_def_id);
 
             emit_orphan_check_error(
                 tcx,
@@ -180,7 +172,7 @@ fn do_orphan_check_impl<'tcx>(
             // impl<T> AutoTrait for T {}
             // impl<T: ?Sized> AutoTrait for T {}
             ty::Param(..) => (
-                if self_ty.is_sized(tcx, tcx.param_env(def_id)) {
+                if self_ty.is_sized(tcx, tcx.param_env(impl_def_id)) {
                     LocalImpl::Allow
                 } else {
                     LocalImpl::Disallow { problematic_kind: "generic type" }
@@ -237,7 +229,7 @@ fn do_orphan_check_impl<'tcx>(
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(..) => {
-                let sp = tcx.def_span(def_id);
+                let sp = tcx.def_span(impl_def_id);
                 span_bug!(sp, "weird self type for autotrait impl")
             }
 
@@ -249,7 +241,7 @@ fn do_orphan_check_impl<'tcx>(
                 LocalImpl::Allow => {}
                 LocalImpl::Disallow { problematic_kind } => {
                     return Err(tcx.dcx().emit_err(errors::TraitsWithDefaultImpl {
-                        span: tcx.def_span(def_id),
+                        span: tcx.def_span(impl_def_id),
                         traits: tcx.def_path_str(trait_def_id),
                         problematic_kind,
                         self_ty,
@@ -261,13 +253,13 @@ fn do_orphan_check_impl<'tcx>(
                 NonlocalImpl::Allow => {}
                 NonlocalImpl::DisallowBecauseNonlocal => {
                     return Err(tcx.dcx().emit_err(errors::CrossCrateTraitsDefined {
-                        span: tcx.def_span(def_id),
+                        span: tcx.def_span(impl_def_id),
                         traits: tcx.def_path_str(trait_def_id),
                     }));
                 }
                 NonlocalImpl::DisallowOther => {
                     return Err(tcx.dcx().emit_err(errors::CrossCrateTraits {
-                        span: tcx.def_span(def_id),
+                        span: tcx.def_span(impl_def_id),
                         traits: tcx.def_path_str(trait_def_id),
                         self_ty,
                     }));
