@@ -590,11 +590,14 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
-    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
-    // pointer).
-    unsafe { mem::transmute(addr) }
+    // FIXME(maybe): simply transmute the address once codegen lowers that correctly.
+    // We offset the null pointer instead of using a cast so that this lowers to
+    // getelementptr instead of inttoptr.
+    // We use transmute instead of casting so that in miri the pointer truly
+    // has no provenance.
+    // SAFETY: on all current platforms, usize and pointers have the same layout,
+    // and the validity invariant of pointers is the same as that of integers
+    unsafe { mem::transmute::<_, *const T>(0usize).wrapping_byte_add(addr) }
 }
 
 /// Creates a new pointer that is dangling, but well-aligned.
@@ -632,11 +635,14 @@ pub const fn dangling<T>() -> *const T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
-    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
-    // pointer).
-    unsafe { mem::transmute(addr) }
+    // FIXME(maybe): simply transmute the address once codegen lowers that correctly.
+    // We offset the null pointer instead of using a cast so that this lowers to
+    // getelementptr instead of inttoptr.
+    // We use transmute instead of casting so that in miri the pointer truly
+    // has no provenance.
+    // SAFETY: on all current platforms, usize and pointers have the same layout,
+    // and the validity invariant of pointers is the same as that of integers
+    unsafe { mem::transmute::<_, *mut T>(0usize).wrapping_byte_add(addr) }
 }
 
 /// Creates a new pointer that is dangling, but well-aligned.
