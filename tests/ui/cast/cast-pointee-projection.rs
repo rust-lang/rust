@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Tag<'a> {
     type Type: ?Sized;

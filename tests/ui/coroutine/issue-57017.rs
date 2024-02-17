@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![feature(coroutines, negative_impls)]
 #![allow(dropping_references, dropping_copy_types)]
 

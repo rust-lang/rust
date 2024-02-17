@@ -1,5 +1,5 @@
-// ignore-64bit
-// build-fail
+//@ ignore-64bit
+//@ build-fail
 
 #![allow(arithmetic_overflow)]
 

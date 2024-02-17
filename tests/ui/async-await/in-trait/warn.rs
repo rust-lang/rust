@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 #![deny(async_fn_in_trait)]
 

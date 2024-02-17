@@ -7,7 +7,7 @@
 // as it knows of no relationships between `'x` and any
 // non-higher-ranked regions.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

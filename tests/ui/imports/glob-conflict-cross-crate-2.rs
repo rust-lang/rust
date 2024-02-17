@@ -1,4 +1,4 @@
-// aux-build:glob-conflict-cross-crate-2-extern.rs
+//@ aux-build:glob-conflict-cross-crate-2-extern.rs
 
 extern crate glob_conflict_cross_crate_2_extern;
 

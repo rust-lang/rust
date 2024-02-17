@@ -1,7 +1,7 @@
-// ignore-compare-mode-polonius
+//@ ignore-compare-mode-polonius
 
-// revisions: a
-// should-fail
+//@ revisions: a
+//@ should-fail
 
 // This is a "meta-test" of the compilertest framework itself.  In
 // particular, it includes the right error message, but the message

@@ -1,5 +1,5 @@
 // Regression test for issue #119700.
-// check-pass
+//@ check-pass
 
 #![feature(const_trait_impl, effects)]
 

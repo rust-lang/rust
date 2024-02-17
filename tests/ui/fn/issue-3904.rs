@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn example_err(prog: &str, arg: &str) {
     println!("{}: {}", prog, arg)
 }

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 pub struct DataStruct();
 
 pub struct HelperStruct<'n> {

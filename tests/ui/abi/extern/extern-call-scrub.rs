@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
 // This time we're testing repeatedly going up and down both stacks to
 // make sure the stack pointers are maintained properly in both
 // directions
 
-// ignore-emscripten no threads support
+//@ ignore-emscripten no threads support
 #![feature(rustc_private)]
 
 extern crate libc;

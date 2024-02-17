@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 // Regression test for #41936. The coerce-unsized trait check in
 // coherence was using subtyping, which triggered variance

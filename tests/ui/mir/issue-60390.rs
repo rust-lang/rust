@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: --emit=mir,link
+//@ check-pass
+//@ compile-flags: --emit=mir,link
 // Regression test for #60390, this ICE requires `--emit=mir` flag.
 
 fn main() {

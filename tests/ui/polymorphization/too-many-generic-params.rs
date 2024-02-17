@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![feature(rustc_attrs)]
 
 // This test checks that the analysis doesn't panic when there are >64 generic parameters, but

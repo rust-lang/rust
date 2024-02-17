@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Make sure nested functions are separate, even if they have
 // equal name.
 //

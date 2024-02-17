@@ -1,4 +1,4 @@
-// error-pattern: unreachable statement
+//@ error-pattern: unreachable statement
 
 #![deny(unreachable_code)]
 

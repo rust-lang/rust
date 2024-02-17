@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 //
 // Tests that overflows do not occur in certain situations
 // related to generic diesel code

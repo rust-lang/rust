@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Test a case where a supertrait references a type that references
 // the original trait. This poses no problem at the moment.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait Chromosome: Get<Struct<i32>> {
 }

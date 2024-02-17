@@ -1,4 +1,4 @@
-// error-pattern: expected item
+//@ error-pattern: expected item
 
 #![attr = "val"]
 #[attr = "val"] // Unterminated

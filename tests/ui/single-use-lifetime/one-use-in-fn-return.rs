@@ -5,7 +5,7 @@
 // (Normally, using `'static` would be preferred, but there are
 // times when that is not what you want.)
 
-// check-pass
+//@ check-pass
 
 #![deny(single_use_lifetimes)]
 

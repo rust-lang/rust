@@ -1,5 +1,5 @@
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 // Tests that type alias impls traits do not leak auto-traits for
 // the purposes of coherence checking

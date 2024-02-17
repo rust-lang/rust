@@ -1,5 +1,5 @@
-// edition:2015
-// run-rustfix
+//@ edition:2015
+//@ run-rustfix
 
 #![allow(unused_variables)]
 #![deny(keyword_idents)]

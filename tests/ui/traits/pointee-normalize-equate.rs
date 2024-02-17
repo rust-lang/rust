@@ -1,6 +1,6 @@
-// check-pass
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ check-pass
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(ptr_metadata)]
 

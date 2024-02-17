@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #85099
+//@ check-pass
+//@ known-bug: #85099
 
 // Should fail. Can coerce `Pin<T>` into `Pin<U>` where
 // `T: Deref<Target: Unpin>` and `U: Deref<Target: !Unpin>`, using the

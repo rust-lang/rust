@@ -1,5 +1,5 @@
-// aux-build:issue-61963.rs
-// aux-build:issue-61963-1.rs
+//@ aux-build:issue-61963.rs
+//@ aux-build:issue-61963-1.rs
 #![deny(bare_trait_objects)]
 
 #[macro_use]

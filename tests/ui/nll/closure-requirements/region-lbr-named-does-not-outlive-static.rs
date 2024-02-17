@@ -3,7 +3,7 @@
 // a variety of errors from the older, AST-based machinery (notably
 // borrowck), and then we get the NLL error at the end.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 fn foo<'a>(x: &'a u32) -> &'static u32 {
     &*x

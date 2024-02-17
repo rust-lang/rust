@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! Unless visibility is assumed, a transmutation should be rejected if the
 //! destination type contains an unreachable field (e.g., a public field with a
 //! private type). (This rule is distinct from type privacy, which still may

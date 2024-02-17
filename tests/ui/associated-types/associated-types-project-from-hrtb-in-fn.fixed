@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_variables)]
-// run-rustfix
+//@ run-rustfix
 // Check projection of an associated type out of a higher-ranked trait-bound
 // in the context of a function signature.
 

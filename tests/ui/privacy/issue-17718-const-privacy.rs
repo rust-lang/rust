@@ -1,4 +1,4 @@
-// aux-build:issue-17718-const-privacy.rs
+//@ aux-build:issue-17718-const-privacy.rs
 
 extern crate issue_17718_const_privacy as other;
 

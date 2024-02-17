@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 // ignore-tidy-linelength
 
 #![feature(proc_macro_quote)]

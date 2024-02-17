@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait MyTrait {
     const MY_CONST: &'static str;

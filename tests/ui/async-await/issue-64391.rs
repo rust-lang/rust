@@ -4,8 +4,8 @@
 // example. The drop order itself is directly tested in
 // `drop-order/drop-order-for-temporary-in-tail-return-expr.rs`.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 async fn add(x: u32, y: u32) -> u32 {
     async { x + y }.await

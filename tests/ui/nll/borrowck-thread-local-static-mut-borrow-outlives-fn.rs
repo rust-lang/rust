@@ -1,5 +1,5 @@
 //
-// run-pass
+//@ run-pass
 //
 // FIXME(#54366) - We probably shouldn't allow #[thread_local] static mut to get a 'static lifetime.
 

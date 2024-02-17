@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 // https://github.com/rust-lang/rust/issues/117547
 
 trait T {}

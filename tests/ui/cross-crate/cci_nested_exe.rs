@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_nested_lib.rs
+//@ run-pass
+//@ aux-build:cci_nested_lib.rs
 
 
 extern crate cci_nested_lib;

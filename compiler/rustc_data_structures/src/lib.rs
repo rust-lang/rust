@@ -20,6 +20,7 @@
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
+#![feature(generic_nonzero)]
 #![feature(hash_raw_entry)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(lazy_cell)]

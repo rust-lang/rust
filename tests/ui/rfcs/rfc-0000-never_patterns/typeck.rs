@@ -1,6 +1,6 @@
-// revisions: pass fail
-//[pass] check-pass
-//[fail] check-fail
+//@ revisions: pass fail
+//@[pass] check-pass
+//@[fail] check-fail
 #![feature(never_patterns)]
 #![feature(min_exhaustive_patterns)]
 #![allow(incomplete_features)]

@@ -1,11 +1,11 @@
-// check-pass
+//@ check-pass
 // test for #119950
-// compile-flags: --crate-type lib
+//@ compile-flags: --crate-type lib
 
 #![allow(internal_features)]
 #![feature(allow_internal_unstable)]
 
-// aux-build:specialization-trait.rs
+//@ aux-build:specialization-trait.rs
 extern crate specialization_trait;
 
 #[allow_internal_unstable(min_specialization)]

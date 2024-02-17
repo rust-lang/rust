@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(dropck_eyepatch)]
 
 // The point of this test is to illustrate that the `#[may_dangle]`

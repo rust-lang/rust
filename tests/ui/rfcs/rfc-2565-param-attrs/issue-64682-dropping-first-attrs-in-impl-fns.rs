@@ -1,6 +1,6 @@
-// aux-build:param-attrs.rs
+//@ aux-build:param-attrs.rs
 
-// check-pass
+//@ check-pass
 
 extern crate param_attrs;
 

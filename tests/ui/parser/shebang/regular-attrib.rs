@@ -1,5 +1,5 @@
 #![allow(unused_variables)]
-// check-pass
+//@ check-pass
 fn main() {
     let x = 5;
 }

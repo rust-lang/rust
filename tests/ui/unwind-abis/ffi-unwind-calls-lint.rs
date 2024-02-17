@@ -1,5 +1,5 @@
-// build-pass
-// needs-unwind
+//@ build-pass
+//@ needs-unwind
 
 #![warn(ffi_unwind_calls)]
 

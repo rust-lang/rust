@@ -2,7 +2,7 @@
 // `correct_region` for an explanation of how this test is setup; it's
 // somewhat intricate.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

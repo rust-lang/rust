@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:kinds_in_metadata.rs
+//@ run-pass
+//@ aux-build:kinds_in_metadata.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */

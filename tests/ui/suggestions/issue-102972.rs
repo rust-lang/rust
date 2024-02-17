@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn test1() {
     let mut chars = "Hello".chars();

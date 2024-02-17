@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // check raw fat pointer ops
 
 use std::mem;

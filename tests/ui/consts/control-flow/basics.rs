@@ -1,6 +1,6 @@
 // Test basic functionality of control flow in a const context.
 
-// run-pass
+//@ run-pass
 
 const X: u32 = 4;
 const Y: u32 = 5;

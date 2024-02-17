@@ -1,6 +1,6 @@
 // References to by-mutable-ref bindings in an if-let guard *can* be used after the guard.
 
-// check-pass
+//@ check-pass
 
 #![feature(if_let_guard)]
 

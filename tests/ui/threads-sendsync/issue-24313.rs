@@ -1,6 +1,6 @@
-// run-pass
-// ignore-emscripten no threads
-// ignore-sgx no processes
+//@ run-pass
+//@ ignore-emscripten no threads
+//@ ignore-sgx no processes
 
 use std::thread;
 use std::env;

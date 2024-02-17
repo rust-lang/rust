@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:issue-41394.rs
+//@ run-pass
+//@ aux-build:issue-41394.rs
 
 extern crate issue_41394 as lib;
 

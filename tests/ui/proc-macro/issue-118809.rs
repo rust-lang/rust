@@ -1,4 +1,4 @@
-// aux-build: issue-118809.rs
+//@ aux-build: issue-118809.rs
 
 #[macro_use]
 extern crate issue_118809;

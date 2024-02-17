@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we can do shifts by any integral type.
 
 

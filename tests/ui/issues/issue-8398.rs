@@ -1,6 +1,6 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub trait Writer {
     fn write(&mut self, b: &[u8]) -> Result<(), ()>;

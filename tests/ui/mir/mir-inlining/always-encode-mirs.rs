@@ -2,9 +2,9 @@
 // Previously we inlined function not eligible for inlining which lead to linking error:
 // undefined reference to `internal::S'
 //
-// aux-build:internal.rs
-// build-pass
-// compile-flags: -O
+//@ aux-build:internal.rs
+//@ build-pass
+//@ compile-flags: -O
 extern crate internal;
 
 fn main() {

@@ -1,5 +1,5 @@
-// no-prefer-dynamic
-// compile-flags: --crate-type=rlib
+//@ no-prefer-dynamic
+//@ compile-flags: --crate-type=rlib
 
 pub use impl_mod::TraitImplementer as Implementer;
 

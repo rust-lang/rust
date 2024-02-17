@@ -7,7 +7,7 @@
 // as it only knows of regions that `'x` is outlived by, and none that
 // `'x` outlives.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

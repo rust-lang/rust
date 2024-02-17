@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 pub struct Chan;
 pub struct ChanSelect<'c, T> {
     chans: Vec<(&'c Chan, T)>,

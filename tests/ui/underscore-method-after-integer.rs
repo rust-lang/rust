@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait Tr : Sized {
     fn _method_on_numbers(self) {}

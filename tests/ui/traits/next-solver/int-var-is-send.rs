@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 fn needs_send(_: impl Send) {}
 

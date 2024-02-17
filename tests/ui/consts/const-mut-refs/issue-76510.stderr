@@ -1,11 +1,11 @@
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/issue-76510.rs:5:29
+  --> $DIR/issue-76510.rs:3:29
    |
 LL | const S: &'static mut str = &mut " hello ";
    |                             ^^^^^^^^^^^^^^
 
 error[E0658]: mutation through a reference is not allowed in constants
-  --> $DIR/issue-76510.rs:5:29
+  --> $DIR/issue-76510.rs:3:29
    |
 LL | const S: &'static mut str = &mut " hello ";
    |                             ^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | const S: &'static mut str = &mut " hello ";
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/issue-76510.rs:5:29
+  --> $DIR/issue-76510.rs:3:29
    |
 LL | const S: &'static mut str = &mut " hello ";
    |                             ^^^^^^^^^^^^^^ cannot borrow as mutable

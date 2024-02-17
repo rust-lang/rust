@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test references to `Self::Item` in the trait. Issue #20220.
 
 

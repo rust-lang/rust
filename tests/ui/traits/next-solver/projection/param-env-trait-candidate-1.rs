@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Znext-solver
+//@ check-pass
+//@ compile-flags: -Znext-solver
 
 // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/1
 // a minimization of a pattern in core.

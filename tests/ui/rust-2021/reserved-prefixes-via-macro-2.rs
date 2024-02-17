@@ -1,6 +1,6 @@
-// edition:2018
-// aux-build:reserved-prefixes-macro-2018.rs
-// aux-build:reserved-prefixes-macro-2021.rs
+//@ edition:2018
+//@ aux-build:reserved-prefixes-macro-2018.rs
+//@ aux-build:reserved-prefixes-macro-2021.rs
 
 extern crate reserved_prefixes_macro_2018 as m2018;
 extern crate reserved_prefixes_macro_2021 as m2021;

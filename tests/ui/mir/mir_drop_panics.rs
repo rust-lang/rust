@@ -1,7 +1,7 @@
-// run-fail
-// needs-unwind
-// error-pattern:panic 1
-// error-pattern:drop 2
+//@ run-fail
+//@ needs-unwind
+//@ error-pattern:panic 1
+//@ error-pattern:drop 2
 
 struct Droppable(u32);
 impl Drop for Droppable {

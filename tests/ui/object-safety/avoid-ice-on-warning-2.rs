@@ -1,6 +1,6 @@
-// revisions: old new
-//[old] edition:2015
-//[new] edition:2021
+//@ revisions: old new
+//@[old] edition:2015
+//@[new] edition:2021
 fn id<F>(f: Copy) -> usize {
 //~^ ERROR the trait `Copy` cannot be made into an object
 //~| ERROR: the size for values of type `(dyn Copy + 'static)`

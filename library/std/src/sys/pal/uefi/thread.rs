@@ -1,7 +1,7 @@
 use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ptr::NonNull;
 use crate::time::Duration;
 
@@ -44,9 +44,9 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // UEFI is single threaded
-    Ok(NonZeroUsize::new(1).unwrap())
+    Ok(NonZero::new(1).unwrap())
 }
 
 pub mod guard {

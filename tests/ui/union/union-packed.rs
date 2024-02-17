@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code)]
 #![allow(non_snake_case)]

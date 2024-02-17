@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn main () {
     let x = 4;
     match x {

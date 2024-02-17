@@ -1,5 +1,5 @@
-// check-fail
-// compile-flags: -Z tiny-const-eval-limit
+//@ check-fail
+//@ compile-flags: -Z tiny-const-eval-limit
 
 #[rustfmt::skip]
 const fn recurse(n: u32) -> u32 {

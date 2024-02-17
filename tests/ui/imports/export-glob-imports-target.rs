@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(non_upper_case_globals)]
 #![allow(dead_code)]
@@ -7,7 +7,7 @@
 
 // Modified to not use export since it's going away. --pcw
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 mod foo {
     use foo::bar::*;

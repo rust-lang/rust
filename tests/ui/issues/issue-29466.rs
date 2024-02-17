@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 //
-// run-pass
+//@ run-pass
 
 #![allow(unused_variables)]
 

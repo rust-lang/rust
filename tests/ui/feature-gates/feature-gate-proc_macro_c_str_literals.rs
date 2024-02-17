@@ -1,5 +1,5 @@
-// edition: 2021
-// force-host
+//@ edition: 2021
+//@ force-host
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;

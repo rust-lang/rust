@@ -1,7 +1,7 @@
 // Regression test for #121094.
-// build-pass
-// compile-flags: -O --crate-type=lib
-// edition: 2021
+//@ build-pass
+//@ compile-flags: -O --crate-type=lib
+//@ edition: 2021
 use std::{future::Future, pin::Pin};
 
 pub async fn foo(count: u32) {

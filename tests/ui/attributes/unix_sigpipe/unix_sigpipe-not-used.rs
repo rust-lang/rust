@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:sigpipe-utils.rs
+//@ run-pass
+//@ aux-build:sigpipe-utils.rs
 
 fn main() {
     extern crate sigpipe_utils;

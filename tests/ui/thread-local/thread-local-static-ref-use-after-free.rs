@@ -1,6 +1,6 @@
-// check-pass
-// known-bug: #49682
-// edition:2021
+//@ check-pass
+//@ known-bug: #49682
+//@ edition:2021
 
 // Should fail. Keeping references to thread local statics can result in a
 // use-after-free.

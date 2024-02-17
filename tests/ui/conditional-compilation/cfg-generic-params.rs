@@ -1,4 +1,4 @@
-// compile-flags:--cfg yes
+//@ compile-flags:--cfg yes
 
 fn f_lt<#[cfg(yes)] 'a: 'a, #[cfg(no)] T>() {}
 fn f_ty<#[cfg(no)] 'a: 'a, #[cfg(yes)] T>() {}

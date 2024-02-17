@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 async fn f() {
     m::f1().await; //~ ERROR `()` is not a future

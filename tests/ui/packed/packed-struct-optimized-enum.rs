@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[repr(packed)]
 struct Packed<T: Copy>(#[allow(dead_code)] T);
 

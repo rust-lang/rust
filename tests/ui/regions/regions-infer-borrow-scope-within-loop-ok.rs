@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn borrow<T>(x: &T) -> &T {x}
 

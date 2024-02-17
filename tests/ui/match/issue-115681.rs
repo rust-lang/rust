@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C opt-level=1
+//@ run-pass
+//@ compile-flags: -C opt-level=1
 
 // Make sure LLVM does not miscompile this match.
 fn main() {

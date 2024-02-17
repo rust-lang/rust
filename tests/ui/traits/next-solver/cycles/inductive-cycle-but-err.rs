@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 #![feature(trivial_bounds, marker_trait_attr)]
 #![allow(trivial_bounds)]
 // This previously triggered a bug in the provisional cache.

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![warn(let_underscore_drop)]
 
 struct NontrivialDrop;

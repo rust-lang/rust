@@ -1,11 +1,11 @@
-// compile-flags: --test
-// run-fail
-// run-flags: --test-threads=1
-// check-run-results
-// exec-env:RUST_BACKTRACE=0
-// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
-// ignore-emscripten no threads support
-// needs-unwind
+//@ compile-flags: --test
+//@ run-fail
+//@ run-flags: --test-threads=1
+//@ check-run-results
+//@ exec-env:RUST_BACKTRACE=0
+//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ ignore-emscripten no threads support
+//@ needs-unwind
 
 #[test]
 fn thready_pass() {

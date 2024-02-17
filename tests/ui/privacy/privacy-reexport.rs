@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:privacy_reexport.rs
+//@ run-pass
+//@ aux-build:privacy_reexport.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate privacy_reexport;
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 struct Foo {
     bar: Bar,

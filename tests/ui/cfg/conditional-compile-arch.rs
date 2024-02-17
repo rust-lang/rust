@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 #[cfg(target_arch = "x86")]
 pub fn main() { }

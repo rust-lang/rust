@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 fn foo1(_: &dyn Drop + AsRef<str>) {} //~ ERROR ambiguous `+` in a type
 //~^ ERROR only auto traits can be used as additional traits in a trait object

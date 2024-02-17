@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
-// edition:2018
+//@ edition:2018
 
 fn main() {
     use std;

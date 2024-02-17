@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[path = "mod_dir_simple"]
 mod pancakes {

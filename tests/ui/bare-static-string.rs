@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
     let x: &'static str = "foo";

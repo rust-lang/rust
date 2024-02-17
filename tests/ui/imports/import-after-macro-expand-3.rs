@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // similar with `import-after-macro-expand-2.rs`
 
 use thing::*;

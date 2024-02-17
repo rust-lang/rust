@@ -6,7 +6,7 @@
 // to its default, so that we will not issue a diangostic even if
 // rust-lang/rust#62614 remains an open issue.
 
-// run-pass
+//@ run-pass
 
 struct Sum(u32, u32);
 

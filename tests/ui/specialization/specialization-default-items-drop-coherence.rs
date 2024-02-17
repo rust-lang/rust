@@ -1,8 +1,8 @@
-// revisions: classic coherence next
-//[next] compile-flags: -Znext-solver
-//[coherence] compile-flags: -Znext-solver=coherence
-//[classic] check-pass
-//[classic] known-bug: #105782
+//@ revisions: classic coherence next
+//@[next] compile-flags: -Znext-solver
+//@[coherence] compile-flags: -Znext-solver=coherence
+//@[classic] check-pass
+//@[classic] known-bug: #105782
 
 // Should fail. Default items completely drop candidates instead of ambiguity,
 // which is unsound during coherence, since coherence requires completeness.

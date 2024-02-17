@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:underscore-imports.rs
+//@ check-pass
+//@ aux-build:underscore-imports.rs
 
 extern crate underscore_imports;
 

@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 const fn foo() {
     let mut x = [1, 2, 3];

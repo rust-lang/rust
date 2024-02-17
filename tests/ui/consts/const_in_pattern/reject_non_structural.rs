@@ -1,4 +1,4 @@
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 // This test of structural match checking enumerates the different kinds of
 // const definitions, collecting cases where the const pattern is rejected.

@@ -1,7 +1,7 @@
 // Test that `try!` macros are rewritten.
 
-// run-rustfix
-// check-pass
+//@ run-rustfix
+//@ check-pass
 
 #![warn(rust_2018_compatibility)]
 #![allow(dead_code)]

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:lib.rs
+//@ run-pass
+//@ aux-build:lib.rs
 
 // Regression test for #50865.
 // When using generics or specifying the type directly, this example

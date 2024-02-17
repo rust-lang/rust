@@ -12,6 +12,7 @@
 //! symbol to the `accepted` or `removed` modules respectively.
 
 #![allow(internal_features)]
+#![feature(generic_nonzero)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(lazy_cell)]
@@ -25,13 +26,13 @@ mod unstable;
 mod tests;
 
 use rustc_span::symbol::Symbol;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 #[derive(Debug, Clone)]
 pub struct Feature {
     pub name: Symbol,
     pub since: &'static str,
-    issue: Option<NonZeroU32>,
+    issue: Option<NonZero<u32>>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -85,7 +86,7 @@ impl UnstableFeatures {
     }
 }
 
-fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
+fn find_lang_feature_issue(feature: Symbol) -> Option<NonZero<u32>> {
     // Search in all the feature lists.
     if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| f.feature.name == feature) {
         return f.feature.issue;
@@ -99,21 +100,21 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
     panic!("feature `{feature}` is not declared anywhere");
 }
 
-const fn to_nonzero(n: Option<u32>) -> Option<NonZeroU32> {
-    // Can be replaced with `n.and_then(NonZeroU32::new)` if that is ever usable
+const fn to_nonzero(n: Option<u32>) -> Option<NonZero<u32>> {
+    // Can be replaced with `n.and_then(NonZero::new)` if that is ever usable
     // in const context. Requires https://github.com/rust-lang/rfcs/pull/2632.
     match n {
         None => None,
-        Some(n) => NonZeroU32::new(n),
+        Some(n) => NonZero::new(n),
     }
 }
 
 pub enum GateIssue {
     Language,
-    Library(Option<NonZeroU32>),
+    Library(Option<NonZero<u32>>),
 }
 
-pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZeroU32> {
+pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZero<u32>> {
     match issue {
         GateIssue::Language => find_lang_feature_issue(feature),
         GateIssue::Library(lib) => lib,

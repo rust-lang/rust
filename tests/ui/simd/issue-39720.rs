@@ -1,5 +1,5 @@
-// run-pass
-// ignore-emscripten FIXME(#45351)
+//@ run-pass
+//@ ignore-emscripten FIXME(#45351)
 
 #![feature(repr_simd, platform_intrinsics)]
 

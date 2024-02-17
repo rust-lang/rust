@@ -1,4 +1,4 @@
-// aux-build:proc_macro_sequence.rs
+//@ aux-build:proc_macro_sequence.rs
 
 // Regression test for issue #62831: Check that multiple sequences with the same span in the
 // left-hand side of a macro definition behave as if they had unique spans, and in particular that

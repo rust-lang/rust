@@ -1,5 +1,5 @@
-// edition:2018
-// aux-build:edition-kw-macro-2018.rs
+//@ edition:2018
+//@ aux-build:edition-kw-macro-2018.rs
 
 #![feature(async_closure)]
 

@@ -1,4 +1,4 @@
-// revisions: a
+//@ revisions: a
 
 // Counterpart to `expected-error-wrong-rev.rs`
 

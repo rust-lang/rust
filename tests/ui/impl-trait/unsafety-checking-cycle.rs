@@ -1,7 +1,7 @@
 // Ensure that we don't get a cycle error from trying to determine whether an
 // opaque type implements `Freeze` in safety checking, when it doesn't matter.
 
-// check-pass
+//@ check-pass
 
 #![feature(rustc_attrs)]
 

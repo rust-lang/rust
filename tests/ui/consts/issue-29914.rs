@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(stable_features)]
 
 #![feature(const_indexing)]

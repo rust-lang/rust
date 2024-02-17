@@ -1,6 +1,6 @@
 // Proc macros using `mixed_site` spans exhibit usual properties of `macro_rules` hygiene.
 
-// aux-build:mixed-site-span.rs
+//@ aux-build:mixed-site-span.rs
 
 #[macro_use]
 extern crate mixed_site_span;

@@ -1,5 +1,5 @@
-// needs-asm-support
-// only-x86_64
+//@ needs-asm-support
+//@ only-x86_64
 
 pub unsafe fn test() {
     let pointer = 1u32 as *const _;

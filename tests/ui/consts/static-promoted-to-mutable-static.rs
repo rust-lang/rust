@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(non_camel_case_types, non_upper_case_globals, static_mut_ref)]
 
 pub struct wl_interface {

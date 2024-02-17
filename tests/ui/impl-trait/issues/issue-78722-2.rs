@@ -1,6 +1,6 @@
 //! test that we cannot register hidden types for opaque types
 //! declared outside an anonymous constant.
-// edition:2018
+//@ edition:2018
 
 #![feature(type_alias_impl_trait)]
 

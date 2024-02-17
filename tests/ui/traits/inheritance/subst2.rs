@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait Panda<T> {
     fn chomp(&self, bamboo: &T) -> T;

@@ -1,8 +1,8 @@
-// check-pass
+//@ check-pass
 
 #![allow(unused_imports)]
 
-// aux-build:trait_superkinds_in_metadata.rs
+//@ aux-build:trait_superkinds_in_metadata.rs
 
 // Tests (correct) usage of trait super-builtin-kinds cross-crate.
 

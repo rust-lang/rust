@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 #![feature(rustc_attrs)]
 
 // A test showcasing that the solver may need to

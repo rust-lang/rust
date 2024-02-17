@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 union U {
     a: usize,

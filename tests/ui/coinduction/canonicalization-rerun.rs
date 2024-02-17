@@ -1,6 +1,6 @@
-// check-pass
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ check-pass
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 // If we use canonical goals during trait solving we have to reevaluate
 // the root goal of a cycle until we hit a fixpoint.

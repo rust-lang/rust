@@ -1,6 +1,6 @@
 #![feature(lint_reasons)]
 
-// check-pass
+//@ check-pass
 
 // Empty (and reason-only) lint attributes are legal—although we may want to
 // lint them in the future (Issue #55112).

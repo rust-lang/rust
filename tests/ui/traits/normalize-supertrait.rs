@@ -3,7 +3,7 @@
 // requires us to normalize the `Base<<() as Proj>::S>` to `Base<()>` when
 // comparing the supertrait `Derived<()>` to the expected trait.
 
-// build-pass
+//@ build-pass
 
 trait Proj {
     type S;

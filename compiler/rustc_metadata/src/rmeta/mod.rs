@@ -37,7 +37,7 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 
 use std::marker::PhantomData;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 
 use decoder::DecodeContext;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
@@ -83,7 +83,7 @@ pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_V
 /// order than they were encoded in.
 #[must_use]
 struct LazyValue<T> {
-    position: NonZeroUsize,
+    position: NonZero<usize>,
     _marker: PhantomData<fn() -> T>,
 }
 
@@ -92,7 +92,7 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyValue<T> {
 }
 
 impl<T> LazyValue<T> {
-    fn from_position(position: NonZeroUsize) -> LazyValue<T> {
+    fn from_position(position: NonZero<usize>) -> LazyValue<T> {
         LazyValue { position, _marker: PhantomData }
     }
 }
@@ -108,7 +108,7 @@ impl<T> LazyValue<T> {
 /// the minimal distance the length of the sequence, i.e.
 /// it's assumed there's no 0-byte element in the sequence.
 struct LazyArray<T> {
-    position: NonZeroUsize,
+    position: NonZero<usize>,
     num_elems: usize,
     _marker: PhantomData<fn() -> T>,
 }
@@ -119,12 +119,12 @@ impl<T: ParameterizedOverTcx> ParameterizedOverTcx for LazyArray<T> {
 
 impl<T> Default for LazyArray<T> {
     fn default() -> LazyArray<T> {
-        LazyArray::from_position_and_num_elems(NonZeroUsize::new(1).unwrap(), 0)
+        LazyArray::from_position_and_num_elems(NonZero::new(1).unwrap(), 0)
     }
 }
 
 impl<T> LazyArray<T> {
-    fn from_position_and_num_elems(position: NonZeroUsize, num_elems: usize) -> LazyArray<T> {
+    fn from_position_and_num_elems(position: NonZero<usize>, num_elems: usize) -> LazyArray<T> {
         LazyArray { position, num_elems, _marker: PhantomData }
     }
 }
@@ -135,7 +135,7 @@ impl<T> LazyArray<T> {
 /// `LazyArray<T>`, but without requiring encoding or decoding all the values
 /// eagerly and in-order.
 struct LazyTable<I, T> {
-    position: NonZeroUsize,
+    position: NonZero<usize>,
     /// The encoded size of the elements of a table is selected at runtime to drop
     /// trailing zeroes. This is the number of bytes used for each table element.
     width: usize,
@@ -150,7 +150,7 @@ impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for LazyTable<I, 
 
 impl<I, T> LazyTable<I, T> {
     fn from_position_and_encoded_size(
-        position: NonZeroUsize,
+        position: NonZero<usize>,
         width: usize,
         len: usize,
     ) -> LazyTable<I, T> {
@@ -187,11 +187,11 @@ enum LazyState {
 
     /// Inside a metadata node, and before any `Lazy`s.
     /// The position is that of the node itself.
-    NodeStart(NonZeroUsize),
+    NodeStart(NonZero<usize>),
 
     /// Inside a metadata node, with a previous `Lazy`s.
     /// The position is where that previous `Lazy` would start.
-    Previous(NonZeroUsize),
+    Previous(NonZero<usize>),
 }
 
 type SyntaxContextTable = LazyTable<u32, Option<LazyValue<SyntaxContextData>>>;
@@ -375,7 +375,7 @@ macro_rules! define_tables {
 
 define_tables! {
 - defaulted:
-    is_intrinsic: Table<DefIndex, bool>,
+    intrinsic: Table<DefIndex, Option<LazyValue<Symbol>>>,
     is_macro_rules: Table<DefIndex, bool>,
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     type_alias_is_lazy: Table<DefIndex, bool>,

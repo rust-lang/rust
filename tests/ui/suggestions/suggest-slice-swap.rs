@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 
 fn swap(arr: &mut [u32; 2]) {

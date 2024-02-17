@@ -1,4 +1,4 @@
-// known-bug: #108491
+//@ known-bug: #108491
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

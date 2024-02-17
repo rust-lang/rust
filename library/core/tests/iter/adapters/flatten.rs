@@ -1,7 +1,7 @@
 use super::*;
 use core::assert_eq;
 use core::iter::*;
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 
 #[test]
 fn test_iterator_flatten() {
@@ -72,8 +72,8 @@ fn test_flatten_advance_by() {
     assert_eq!(it.advance_back_by(9), Ok(()));
     assert_eq!(it.next_back(), Some(25));
 
-    assert_eq!(it.advance_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX - 9).unwrap()));
-    assert_eq!(it.advance_back_by(usize::MAX), Err(NonZeroUsize::new(usize::MAX).unwrap()));
+    assert_eq!(it.advance_by(usize::MAX), Err(NonZero::new(usize::MAX - 9).unwrap()));
+    assert_eq!(it.advance_back_by(usize::MAX), Err(NonZero::new(usize::MAX).unwrap()));
     assert_eq!(it.advance_by(0), Ok(()));
     assert_eq!(it.advance_back_by(0), Ok(()));
     assert_eq!(it.size_hint(), (0, Some(0)));

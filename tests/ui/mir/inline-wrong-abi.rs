@@ -1,4 +1,4 @@
-// compile-flags: -Zpolymorphize=on -Zinline-mir=yes -Zmir-opt-level=0
+//@ compile-flags: -Zpolymorphize=on -Zinline-mir=yes -Zmir-opt-level=0
 
 #![feature(fn_traits, unboxed_closures)]
 struct Foo<T>(T);

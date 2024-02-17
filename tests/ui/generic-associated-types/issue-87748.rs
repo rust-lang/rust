@@ -1,7 +1,7 @@
 // Checks that we properly add implied bounds from unnormalized projections in
 // inputs when typechecking functions.
 
-// check-pass
+//@ check-pass
 
 trait MyTrait {
     type Assoc<'a, 'b> where 'b: 'a;

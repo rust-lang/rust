@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 type AsyncFnPtr = Box<dyn Fn() -> std::pin::Pin<Box<dyn std::future::Future<Output = ()>>>>;
 

@@ -1,9 +1,9 @@
 #![warn(anonymous_parameters)]
 // Test for the anonymous_parameters deprecation lint (RFC 1685)
 
-// check-pass
-// edition:2015
-// run-rustfix
+//@ check-pass
+//@ edition:2015
+//@ run-rustfix
 
 #[allow(dead_code)]
 trait T {

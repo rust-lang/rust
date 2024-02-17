@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 struct BaseCommand {
     field01: bool,
     field02: bool,

@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::io;
-use crate::num::{NonZero, NonZeroI32};
+use crate::num::NonZero;
 use crate::sys::pal::unix::unsupported::*;
 use crate::sys::process::process_common::*;
 
@@ -67,7 +67,7 @@ impl Into<ExitStatus> for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         ExitStatus::from(c_int::from(self.0)).code().map(|st| st.try_into().unwrap())
     }
 }

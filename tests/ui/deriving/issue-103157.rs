@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #[derive(PartialEq, Eq)]
 pub enum Value {

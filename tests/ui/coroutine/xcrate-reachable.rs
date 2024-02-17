@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// aux-build:xcrate-reachable.rs
+//@ aux-build:xcrate-reachable.rs
 
 #![feature(coroutine_trait)]
 

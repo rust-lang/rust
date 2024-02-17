@@ -1,5 +1,5 @@
-// compile-flags: -Z mir-opt-level=4
-// run-pass
+//@ compile-flags: -Z mir-opt-level=4
+//@ run-pass
 
 struct X {
     x: isize

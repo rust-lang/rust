@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 struct State;
 type Error = ();

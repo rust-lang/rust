@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const LEFT: u32 = 0x10000b3u32.rotate_left(8);
 const RIGHT: u32 = 0xb301u32.rotate_right(8);

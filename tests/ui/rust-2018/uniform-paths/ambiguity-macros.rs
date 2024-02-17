@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // This test is similar to `ambiguity.rs`, but with macros defining local items.
 

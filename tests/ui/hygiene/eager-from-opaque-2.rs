@@ -1,6 +1,6 @@
 // Regression test for the issue #63460.
 
-// check-pass
+//@ check-pass
 
 #[macro_export]
 macro_rules! separator {

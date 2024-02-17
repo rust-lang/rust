@@ -1,5 +1,5 @@
-// compile-flags:--extern extern_prelude
-// aux-build:extern-prelude.rs
+//@ compile-flags:--extern extern_prelude
+//@ aux-build:extern-prelude.rs
 
 // Extern prelude names are not available by absolute paths
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 use std::ops::Deref;
 use std::ops::DerefMut;
 struct Bar(u8);

@@ -1,10 +1,10 @@
-//revisions: old next
-//[next] compile-flags: -Znext-solver
+//@revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 // A regression test for #105787
 
-//[old] known-bug: #105787
-//[old] check-pass
+//@[old] known-bug: #105787
+//@[old] check-pass
 #![feature(type_alias_impl_trait)]
 mod defining_scope {
     use super::*;

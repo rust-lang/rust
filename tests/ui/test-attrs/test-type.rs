@@ -1,9 +1,9 @@
-// compile-flags: --test -Zpanic-abort-tests
-// run-flags: --test-threads=1
-// check-run-results
-// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
-// ignore-emscripten no threads support
-// run-pass
+//@ compile-flags: --test -Zpanic-abort-tests
+//@ run-flags: --test-threads=1
+//@ check-run-results
+//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ ignore-emscripten no threads support
+//@ run-pass
 
 #[test]
 fn test_ok() {

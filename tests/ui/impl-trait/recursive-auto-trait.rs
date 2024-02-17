@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 fn is_send<T: Send>(_: T) {}
 fn foo() -> impl Send {
     if false {

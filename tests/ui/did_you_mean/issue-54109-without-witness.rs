@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 // This test is to check if suggestions can be applied automatically.
 

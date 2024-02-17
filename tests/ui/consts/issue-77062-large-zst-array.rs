@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 fn main() {
     let _ = &[(); usize::MAX];

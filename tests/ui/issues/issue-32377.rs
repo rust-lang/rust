@@ -1,4 +1,4 @@
-// normalize-stderr-test "\d+ bits" -> "N bits"
+//@ normalize-stderr-test "\d+ bits" -> "N bits"
 
 use std::mem;
 use std::marker::PhantomData;

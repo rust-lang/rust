@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn test_generic<T, F>(expected: T, not_expected: T, eq: F) where
     T: Clone,

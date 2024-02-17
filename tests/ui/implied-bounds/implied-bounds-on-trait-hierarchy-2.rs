@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #84591
+//@ check-pass
+//@ known-bug: #84591
 
 trait Subtrait<'a, 'b, R>: Supertrait<'a, 'b> {}
 trait Supertrait<'a, 'b> {

@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 #![feature(rustc_attrs)]
 

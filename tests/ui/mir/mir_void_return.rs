@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn mir() -> (){
     let x = 1;
     let mut y = 0;

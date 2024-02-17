@@ -1,7 +1,7 @@
-// check-fail
-// failure-status: 101
-// dont-check-compiler-stderr
-// known-bug: #103899
+//@ check-fail
+//@ failure-status: 101
+//@ dont-check-compiler-stderr
+//@ known-bug: #103899
 
 trait BaseWithAssoc {
     type Assoc;

@@ -4,7 +4,7 @@
 //! picking either is fine, but then we'll fail an identity check of the hidden
 //! type and the expected hidden type.
 
-// check-pass
+//@ check-pass
 
 fn test<'a: 'b, 'b: 'a>() -> impl IntoIterator<Item = (&'a u8, impl Into<(&'b u8, &'a u8)>)> {
     None::<(_, (_, _))>

@@ -1,6 +1,6 @@
 // Regression test for #62988
 
-// check-pass
+//@ check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 

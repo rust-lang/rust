@@ -1,5 +1,5 @@
-// aux-build:lints-in-foreign-macros.rs
-// check-pass
+//@ aux-build:lints-in-foreign-macros.rs
+//@ check-pass
 
 #![warn(unused_imports)] //~ missing documentation for the crate [missing_docs]
 #![warn(missing_docs)]

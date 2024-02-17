@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
 enum blah { a(isize, isize, #[allow(dead_code)] usize), b(isize, isize), c, }

@@ -1,4 +1,4 @@
-// compile-flags: --cap-lints deny
+//@ compile-flags: --cap-lints deny
 
 #![warn(unused)]
 #![deny(warnings)]

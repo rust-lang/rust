@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(overflowing_literals)]
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub enum E64 {
     H64 = 0x7FFF_FFFF_FFFF_FFFF,

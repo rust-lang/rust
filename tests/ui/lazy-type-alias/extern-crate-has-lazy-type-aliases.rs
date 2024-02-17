@@ -1,6 +1,6 @@
-// revisions: locally_eager locally_lazy
-// aux-crate:lazy=lazy.rs
-// edition: 2021
+//@ revisions: locally_eager locally_lazy
+//@ aux-crate:lazy=lazy.rs
+//@ edition: 2021
 
 // Test that we treat lazy type aliases from external crates as lazy independently of whether the
 // local crate enables `lazy_type_alias` or not.

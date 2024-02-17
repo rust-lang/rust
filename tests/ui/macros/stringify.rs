@@ -1,6 +1,6 @@
-// run-pass
-// edition:2021
-// compile-flags: --test
+//@ run-pass
+//@ edition:2021
+//@ compile-flags: --test
 
 #![allow(incomplete_features)]
 #![feature(async_closure)]

@@ -1,5 +1,5 @@
-// compile-flags: -Zdeduplicate-diagnostics=yes
-// run-rustfix
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
+//@ run-rustfix
 
 fn main() {
     #[cfg(key=foo)]

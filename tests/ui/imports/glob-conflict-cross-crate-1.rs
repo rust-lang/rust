@@ -1,4 +1,4 @@
-// aux-build:glob-conflict.rs
+//@ aux-build:glob-conflict.rs
 
 extern crate glob_conflict;
 

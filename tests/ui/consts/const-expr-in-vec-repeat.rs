@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Check that constant expressions can be used in vec repeat syntax.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub fn main() {
 

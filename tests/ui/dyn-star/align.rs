@@ -1,4 +1,4 @@
-// revisions: normal over_aligned
+//@ revisions: normal over_aligned
 
 #![feature(dyn_star)]
 //~^ WARN the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes

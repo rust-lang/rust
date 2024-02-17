@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Tests that the `unreachable_pub` lint doesn't fire for `pub self::imp::f`.
 

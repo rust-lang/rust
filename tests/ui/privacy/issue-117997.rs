@@ -1,5 +1,5 @@
-// aux-build:issue-117997.rs
-// build-pass
+//@ aux-build:issue-117997.rs
+//@ build-pass
 
 extern crate issue_117997;
 

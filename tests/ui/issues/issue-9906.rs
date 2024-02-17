@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:issue-9906.rs
+//@ run-pass
+//@ aux-build:issue-9906.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate issue_9906 as testmod;
 

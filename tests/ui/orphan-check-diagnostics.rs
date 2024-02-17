@@ -1,4 +1,4 @@
-// aux-build:orphan-check-diagnostics.rs
+//@ aux-build:orphan-check-diagnostics.rs
 
 // See issue #22388.
 

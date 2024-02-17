@@ -1,4 +1,4 @@
-// stderr-per-bitwidth
+//@ stderr-per-bitwidth
 // compile-test
 #![feature(core_intrinsics)]
 #![feature(const_heap)]

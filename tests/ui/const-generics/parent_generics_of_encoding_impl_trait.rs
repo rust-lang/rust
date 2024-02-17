@@ -1,4 +1,4 @@
-// aux-build:generics_of_parent_impl_trait.rs
+//@ aux-build:generics_of_parent_impl_trait.rs
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 

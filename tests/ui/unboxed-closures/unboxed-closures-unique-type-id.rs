@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // This code used to produce the following ICE:
 //
@@ -9,7 +9,7 @@
 //
 // This is a regression test for issue #17021.
 //
-// compile-flags: -g
+//@ compile-flags: -g
 
 use std::ptr;
 

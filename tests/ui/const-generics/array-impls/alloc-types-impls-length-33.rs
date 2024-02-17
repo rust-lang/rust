@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 use std::{convert::TryFrom, rc::Rc, sync::Arc};
 

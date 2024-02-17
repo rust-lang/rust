@@ -1,5 +1,5 @@
-// edition:2015
-// check-pass
+//@ edition:2015
+//@ check-pass
 // issue: 114664
 
 fn ice() -> impl AsRef<Fn(&())> {

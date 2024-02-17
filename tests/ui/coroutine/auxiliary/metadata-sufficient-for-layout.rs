@@ -1,4 +1,4 @@
-// compile-flags: --emit metadata
+//@ compile-flags: --emit metadata
 #![feature(coroutines, coroutine_trait)]
 
 use std::marker::Unpin;

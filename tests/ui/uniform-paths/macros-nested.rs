@@ -1,7 +1,7 @@
 // This test is similar to `macros.rs`, but nested in modules.
 
-// run-pass
-// edition:2018
+//@ run-pass
+//@ edition:2018
 
 #![allow(non_camel_case_types)]
 

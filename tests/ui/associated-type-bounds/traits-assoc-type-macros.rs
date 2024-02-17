@@ -1,5 +1,5 @@
-// check-pass
-// incremental
+//@ check-pass
+//@ incremental
 
 // This test case makes sure that we can compile with incremental compilation
 // enabled when there are macros, traits, inheritance and associated types involved.

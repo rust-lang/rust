@@ -1,6 +1,6 @@
-// check-pass
+//@ check-pass
 // ignore-tidy-tab
-// edition: 2021
+//@ edition: 2021
 
 fn main() {
     let s = "\

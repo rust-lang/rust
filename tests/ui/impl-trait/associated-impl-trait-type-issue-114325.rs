@@ -1,8 +1,8 @@
 // This is a non-regression test for issue #114325: an "unexpected unsized tail" ICE happened during
 // codegen, and was fixed by MIR drop tracking #107421.
 
-// edition: 2021
-// build-pass: ICEd during codegen.
+//@ edition: 2021
+//@ build-pass: ICEd during codegen.
 
 #![feature(impl_trait_in_assoc_type)]
 

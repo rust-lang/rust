@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // Test that param substitutions from the correct environment are
 // used when codegenning unboxed closure calls.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub fn inside<F: Fn()>(c: F) {
     c();

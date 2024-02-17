@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[derive(Copy, Clone)]
 struct Rect {x: isize, y: isize, w: isize, h: isize}

@@ -5,7 +5,7 @@
 // These region parameters are not really useful in this check.
 // So here we ignore them and replace them with fresh region variables.
 
-// check-pass
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]

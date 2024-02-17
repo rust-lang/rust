@@ -1,4 +1,4 @@
-// revisions: matchck eval1 eval2
+//@ revisions: matchck eval1 eval2
 
 #[cfg(matchck)]
 const X: i32 = { let 0 = 0; 0 };

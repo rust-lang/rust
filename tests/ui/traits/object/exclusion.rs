@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Future: 'static {
     // The requirement for Self: Sized must prevent instantiation of
     // Future::forget in vtables, otherwise there's an infinite type

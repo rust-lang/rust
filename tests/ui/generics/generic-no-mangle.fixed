@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 #![deny(no_mangle_generic_items)]
 

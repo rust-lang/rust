@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let demo = 1; //~ ERROR cannot find value `demo` in this scope

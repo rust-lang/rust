@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Allowing the code lint should work without warning and
 // the text flow char in the comment should be ignored.
 

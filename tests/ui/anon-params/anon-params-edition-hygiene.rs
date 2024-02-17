@@ -1,5 +1,5 @@
-// edition:2018
-// aux-build:anon-params-edition-hygiene.rs
+//@ edition:2018
+//@ aux-build:anon-params-edition-hygiene.rs
 
 // This warning is still surfaced
 #![allow(anonymous_parameters)]

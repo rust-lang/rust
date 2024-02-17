@@ -1,5 +1,5 @@
-// compile-flags: -Z threads=16
-// build-fail
+//@ compile-flags: -Z threads=16
+//@ build-fail
 
 #![crate_type="rlib"]
 #![allow(warnings)]

@@ -1,7 +1,7 @@
-// compile-flags: --force-warn while_true
-// compile-flags: --force-warn unused_variables
-// compile-flags: --force-warn unused_mut
-// check-pass
+//@ compile-flags: --force-warn while_true
+//@ compile-flags: --force-warn unused_variables
+//@ compile-flags: --force-warn unused_mut
+//@ check-pass
 
 #![feature(lint_reasons)]
 

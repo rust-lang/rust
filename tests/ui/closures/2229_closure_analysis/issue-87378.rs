@@ -1,6 +1,6 @@
 #![feature(rustc_attrs)]
 
-// edition:2021
+//@ edition:2021
 
 // Test that any precise capture on a union is truncated because it's unsafe to do so.
 

@@ -4,8 +4,8 @@
 // by NLL but was incorrectly rejected by Polonius because of these
 // missing `killed` facts.
 
-// check-pass
-// compile-flags: -Z polonius
+//@ check-pass
+//@ compile-flags: -Z polonius
 
 struct Thing;
 

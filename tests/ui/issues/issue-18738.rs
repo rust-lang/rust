@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
 enum Test<'a> {

@@ -1,7 +1,7 @@
-// compile-flags: -Znext-solver
-// edition: 2021
-// revisions: pass fail
-//[pass] check-pass
+//@ compile-flags: -Znext-solver
+//@ edition: 2021
+//@ revisions: pass fail
+//@[pass] check-pass
 
 #![feature(coroutine_trait, coroutines)]
 

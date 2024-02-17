@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![warn(overflowing_literals)]
 
-// compile-flags: -D unused-comparisons
+//@ compile-flags: -D unused-comparisons
 fn main() { }
 
 

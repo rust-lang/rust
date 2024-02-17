@@ -1,4 +1,4 @@
-// aux-build:no_debug.rs
+//@ aux-build:no_debug.rs
 
 extern crate no_debug;
 

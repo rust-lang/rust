@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main() {
     let xs = [13, 1, 5, 2, 3, 1, 21, 8];

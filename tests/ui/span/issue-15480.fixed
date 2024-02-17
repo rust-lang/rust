@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn id<T>(x: T) -> T { x }
 
 fn main() {

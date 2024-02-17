@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 // Regression test for #17746
 

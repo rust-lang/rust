@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we can use method notation to call methods based on a
 // projection bound from a trait. Issue #20469.
 

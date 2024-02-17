@@ -1,8 +1,8 @@
-// build-pass
-// compile-flags: -O
-// needs-asm-support
-// only-x86_64
-// only-linux
+//@ build-pass
+//@ compile-flags: -O
+//@ needs-asm-support
+//@ only-x86_64
+//@ only-linux
 
 // regression test for #96797
 

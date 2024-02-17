@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-// aux-build:xc.rs
+//@ aux-build:xc.rs
 
 
 extern crate xc as aux;

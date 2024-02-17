@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C debug-assertions
+//@ run-pass
+//@ compile-flags: -C debug-assertions
 
 #[repr(align(8))]
 struct Misalignment {

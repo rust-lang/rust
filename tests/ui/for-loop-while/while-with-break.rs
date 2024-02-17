@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
     let mut i: isize = 90;

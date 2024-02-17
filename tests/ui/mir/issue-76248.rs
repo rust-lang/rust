@@ -2,8 +2,8 @@
 // The root cause was a missing fold of length constant in Rvalue::Repeat.
 // Regression test for #76248.
 //
-// build-pass
-// compile-flags: -Zmir-opt-level=3
+//@ build-pass
+//@ compile-flags: -Zmir-opt-level=3
 
 const N: usize = 1;
 

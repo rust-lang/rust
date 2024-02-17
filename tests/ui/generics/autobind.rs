@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f<T>(x: Vec<T>) -> T { return x.into_iter().next().unwrap(); }
 

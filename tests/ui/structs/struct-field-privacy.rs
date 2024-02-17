@@ -1,4 +1,4 @@
-// aux-build:struct_field_privacy.rs
+//@ aux-build:struct_field_privacy.rs
 
 extern crate struct_field_privacy as xc;
 

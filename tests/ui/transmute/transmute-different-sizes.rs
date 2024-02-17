@@ -1,4 +1,4 @@
-// normalize-stderr-test "\d+ bits" -> "N bits"
+//@ normalize-stderr-test "\d+ bits" -> "N bits"
 
 // Tests that `transmute` cannot be called on types of different size.
 

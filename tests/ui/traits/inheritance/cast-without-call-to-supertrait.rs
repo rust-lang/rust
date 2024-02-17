@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Testing that we can cast to a subtrait and call subtrait
 // methods. Not testing supertrait methods

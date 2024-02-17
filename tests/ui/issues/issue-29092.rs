@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Regression test for Issue #29092.
 //
 // (Possibly redundant with regression test run-pass/issue-30530.rs)

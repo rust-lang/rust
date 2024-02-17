@@ -1,8 +1,8 @@
-// build-fail
-// revisions: legacy verbose-legacy
-// compile-flags: --crate-name=a -C symbol-mangling-version=legacy -Z unstable-options
-//[verbose-legacy]compile-flags: -Zverbose-internals
-// normalize-stderr-test: "h[[:xdigit:]]{16}" -> "h[HASH]"
+//@ build-fail
+//@ revisions: legacy verbose-legacy
+//@ compile-flags: --crate-name=a -C symbol-mangling-version=legacy -Z unstable-options
+//@[verbose-legacy]compile-flags: -Zverbose-internals
+//@ normalize-stderr-test: "h[[:xdigit:]]{16}" -> "h[HASH]"
 
 #![feature(never_type)]
 #![feature(rustc_attrs)]

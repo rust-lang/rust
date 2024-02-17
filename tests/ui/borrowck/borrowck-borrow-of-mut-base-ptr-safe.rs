@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_mut)]
 #![allow(unused_variables)]
@@ -7,7 +7,7 @@
 //
 // Example from compiler/rustc_borrowck/borrowck/README.md
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn foo<'a>(mut t0: &'a mut isize,
            mut t1: &'a mut isize) {

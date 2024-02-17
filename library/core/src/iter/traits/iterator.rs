@@ -1,6 +1,6 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
@@ -320,8 +320,8 @@ pub trait Iterator {
     ///
     /// ```
     /// #![feature(iter_advance_by)]
-    ///
     /// use std::num::NonZeroUsize;
+    ///
     /// let a = [1, 2, 3, 4];
     /// let mut iter = a.iter();
     ///
@@ -333,11 +333,11 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     #[rustc_do_not_const_check]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         for i in 0..n {
             if self.next().is_none() {
                 // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZeroUsize::new_unchecked(n - i) });
+                return Err(unsafe { NonZero::new_unchecked(n - i) });
             }
         }
         Ok(())
@@ -4138,7 +4138,7 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         (**self).advance_by(n)
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {

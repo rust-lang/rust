@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ops::AddAssign;
 
 struct Int(#[allow(dead_code)] i32);

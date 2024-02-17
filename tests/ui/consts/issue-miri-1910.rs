@@ -1,5 +1,5 @@
-// error-pattern unable to turn pointer into raw bytes
-// normalize-stderr-test: "alloc[0-9]+\+0x[a-z0-9]+" -> "ALLOC"
+//@ error-pattern unable to turn pointer into raw bytes
+//@ normalize-stderr-test: "alloc[0-9]+\+0x[a-z0-9]+" -> "ALLOC"
 
 const C: () = unsafe {
     let foo = Some(&42 as *const i32);

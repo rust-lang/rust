@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 // This test is bogus (i.e., should be check-fail) during the period
 // where #54986 is implemented and #54987 is *not* implemented. For
 // now: just ignore it
 //
-// ignore-test (#54987)
+//@ ignore-test (#54987)
 
 // This test is checking that the write to `c.0` (which has been moved out of)
 // won't overwrite the state in `c2`.

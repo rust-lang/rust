@@ -1,6 +1,6 @@
 // Test that `impl MyTrait for Foo<'_>` works.
 
-// run-pass
+//@ run-pass
 
 #![allow(warnings)]
 

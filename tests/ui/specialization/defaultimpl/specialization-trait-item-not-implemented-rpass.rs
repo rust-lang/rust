@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Tests that we can combine a default impl that supplies one method with a
 // full impl that supplies the other, and they can invoke one another.

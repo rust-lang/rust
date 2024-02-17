@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -g
+//@ run-pass
+//@ compile-flags: -g
 
 use std::ops::Deref;
 

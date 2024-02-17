@@ -339,7 +339,7 @@ impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
 
     #[inline]
     fn from_bytes(b: &[u8; 8]) -> Self {
-        let position = NonZeroUsize::new(u64::from_bytes(b) as usize)?;
+        let position = NonZero::new(u64::from_bytes(b) as usize)?;
         Some(LazyValue::from_position(position))
     }
 
@@ -366,7 +366,7 @@ impl<T> LazyArray<T> {
     }
 
     fn from_bytes_impl(position: &[u8; 8], meta: &[u8; 8]) -> Option<LazyArray<T>> {
-        let position = NonZeroUsize::new(u64::from_bytes(position) as usize)?;
+        let position = NonZero::new(u64::from_bytes(position) as usize)?;
         let len = u64::from_bytes(meta) as usize;
         Some(LazyArray::from_position_and_num_elems(position, len))
     }
@@ -497,7 +497,7 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
         }
 
         LazyTable::from_position_and_encoded_size(
-            NonZeroUsize::new(pos).unwrap(),
+            NonZero::new(pos).unwrap(),
             width,
             self.blocks.len(),
         )

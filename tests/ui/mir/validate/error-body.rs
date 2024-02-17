@@ -1,4 +1,4 @@
-// compile-flags: -Zvalidate-mir
+//@ compile-flags: -Zvalidate-mir
 
 fn _test() {
     let x = || 45;

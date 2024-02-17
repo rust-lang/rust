@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that all coercions can actually be done using casts (modulo the lints).
 
 #![allow(trivial_casts, trivial_numeric_casts)]

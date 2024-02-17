@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 // This test is the same code as in ui/symbol-names/issue-60925.rs but this checks that the
 // reproduction compiles successfully and doesn't segfault, whereas that test just checks that the

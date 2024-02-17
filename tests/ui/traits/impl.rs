@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Test calling methods on an impl for a bare trait.
 
-// aux-build:traitimpl.rs
+//@ aux-build:traitimpl.rs
 
 extern crate traitimpl;
 use traitimpl::Bar;

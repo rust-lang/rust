@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(string_deref_patterns)]
 
 fn foo(s: &String) -> i32 {

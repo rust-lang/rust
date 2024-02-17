@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
 use color::{red, green, blue, black, white, imaginary, purple, orange};

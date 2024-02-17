@@ -1,6 +1,6 @@
-// revisions: stock with_negative_coherence
+//@ revisions: stock with_negative_coherence
 
-//[with_negative_coherence] known-bug: unknown
+//@[with_negative_coherence] known-bug: unknown
 // Ideally this would work, but we don't use `&'a T` to imply that `T: 'a`
 // which is required for `&'a T: !MyPredicate` to hold. This is similar to the
 // test `negative-coherence-placeholder-region-constraints-on-unification.explicit.stderr`

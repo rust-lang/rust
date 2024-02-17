@@ -1,5 +1,5 @@
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 #![allow(unused)]
 #![deny(rust_2021_prelude_collisions)]
 

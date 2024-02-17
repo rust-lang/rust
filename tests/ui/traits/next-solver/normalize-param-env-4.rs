@@ -1,7 +1,7 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
-//[next] known-bug: #92505
-//[current] check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@[next] known-bug: #92505
+//@[current] check-pass
 
 trait Trait {
     type Assoc;

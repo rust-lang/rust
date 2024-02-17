@@ -1,12 +1,12 @@
-// aux-build:block-on.rs
-// edition:2021
-// build-pass
-// revisions: v0 legacy
-//[v0] compile-flags: -Csymbol-mangling-version=v0
-//[legacy] compile-flags: -Csymbol-mangling-version=legacy -Zunstable-options
+//@ aux-build:block-on.rs
+//@ edition:2021
+//@ build-pass
+//@ revisions: v0 legacy
+//@[v0] compile-flags: -Csymbol-mangling-version=v0
+//@[legacy] compile-flags: -Csymbol-mangling-version=legacy -Zunstable-options
 
 // FIXME(async_closures): When `fn_sig_for_fn_abi` is fixed, remove this.
-// ignore-pass (test emits codegen-time warnings)
+//@ ignore-pass (test emits codegen-time warnings)
 
 #![feature(async_closure, noop_waker)]
 

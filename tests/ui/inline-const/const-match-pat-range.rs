@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 #![feature(inline_const_pat, exclusive_range_pattern)]
 

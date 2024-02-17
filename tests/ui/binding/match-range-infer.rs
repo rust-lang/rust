@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that type inference for range patterns works correctly (is bi-directional).
 
 pub fn main() {

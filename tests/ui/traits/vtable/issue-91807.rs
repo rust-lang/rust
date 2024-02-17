@@ -1,5 +1,5 @@
-// check-pass
-// incremental
+//@ check-pass
+//@ incremental
 
 struct Struct<T>(T);
 

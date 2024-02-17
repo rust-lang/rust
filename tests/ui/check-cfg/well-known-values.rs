@@ -4,8 +4,8 @@
 // This test also serve as an "anti-regression" for the well known
 // values since the suggestion shows them.
 //
-// check-pass
-// compile-flags: --check-cfg=cfg() -Z unstable-options
+//@ check-pass
+//@ compile-flags: --check-cfg=cfg() -Z unstable-options
 
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_relocation_model)]

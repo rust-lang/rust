@@ -3,7 +3,7 @@
 //  1) The Wild pattern should cause the pattern to always succeed.
 //  2) or-patterns should work with simplifyable patterns.
 
-// run-pass
+//@ run-pass
 
 pub fn test(x: Option<usize>) -> bool {
     match x {

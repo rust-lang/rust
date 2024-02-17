@@ -1,5 +1,5 @@
-// compile-flags: -Zpolymorphize=on
-// build-pass
+//@ compile-flags: -Zpolymorphize=on
+//@ build-pass
 
 #![feature(coroutines, coroutine_trait)]
 

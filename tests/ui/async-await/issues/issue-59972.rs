@@ -2,9 +2,9 @@
 // types as entirely uninhabited, when they were in fact constructible. This
 // caused us to hit "unreachable" code (illegal instruction on x86).
 
-// run-pass
+//@ run-pass
 
-// compile-flags: --edition=2018 -Aunused
+//@ compile-flags: --edition=2018 -Aunused
 
 pub enum Uninhabited { }
 

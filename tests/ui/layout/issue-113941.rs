@@ -1,6 +1,6 @@
-// build-pass
-// revisions: normal randomize-layout
-// [randomize-layout]compile-flags: -Zrandomize-layout
+//@ build-pass
+//@ revisions: normal randomize-layout
+//@ [randomize-layout]compile-flags: -Zrandomize-layout
 
 enum Void {}
 

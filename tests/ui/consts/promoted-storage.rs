@@ -1,5 +1,5 @@
 // Check that storage statements reset local qualification.
-// check-pass
+//@ check-pass
 use std::cell::Cell;
 
 const C: Option<Cell<u32>> = {

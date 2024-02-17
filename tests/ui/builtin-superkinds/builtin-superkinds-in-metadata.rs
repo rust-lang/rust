@@ -1,4 +1,4 @@
-// aux-build:trait_superkinds_in_metadata.rs
+//@ aux-build:trait_superkinds_in_metadata.rs
 
 // Test for traits inheriting from the builtin kinds cross-crate.
 // Mostly tests correctness of metadata.

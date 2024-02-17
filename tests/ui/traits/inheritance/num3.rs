@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub trait NumCast: Sized {
     fn from(i: i32) -> Option<Self>;
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // tests that promoting expressions containing const parameters is allowed.
 fn promotion_test<const N: usize>() -> &'static usize {
     &(3 + N)

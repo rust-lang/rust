@@ -1,4 +1,4 @@
-// aux-build:cfged_out.rs
+//@ aux-build:cfged_out.rs
 
 extern crate cfged_out;
 

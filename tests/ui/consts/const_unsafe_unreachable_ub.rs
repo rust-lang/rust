@@ -1,4 +1,4 @@
-// error-pattern: evaluation of constant value failed
+//@ error-pattern: evaluation of constant value failed
 
 const unsafe fn foo(x: bool) -> bool {
     match x {

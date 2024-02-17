@@ -1,6 +1,6 @@
-// run-pass
-// run-rustfix
-// rustfix-only-machine-applicable
+//@ run-pass
+//@ run-rustfix
+//@ rustfix-only-machine-applicable
 
 #[allow(unused_must_use, unused_allocation)]
 fn main() {

@@ -1,7 +1,7 @@
 // Check what happens when we forbid a group but
 // then allow a member of that group.
 //
-// check-pass
+//@ check-pass
 
 #![forbid(unused)]
 

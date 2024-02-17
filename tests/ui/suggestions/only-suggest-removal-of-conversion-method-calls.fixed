@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 use std::io::stdin;
 
 fn get_name() -> String {

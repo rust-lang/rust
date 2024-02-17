@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 type TranslateFn = Box<dyn Fn(String, String) -> String>;
 

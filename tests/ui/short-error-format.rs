@@ -1,4 +1,4 @@
-// compile-flags: --error-format=short
+//@ compile-flags: --error-format=short
 
 fn foo(_: u32) {}
 

@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]

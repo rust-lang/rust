@@ -1,4 +1,4 @@
-// aux-build:private-trait-xc.rs
+//@ aux-build:private-trait-xc.rs
 
 extern crate private_trait_xc;
 

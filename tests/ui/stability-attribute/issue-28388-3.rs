@@ -1,6 +1,6 @@
 // Prefix in imports with empty braces should be resolved and checked privacy, stability, etc.
 
-// aux-build:lint-stability.rs
+//@ aux-build:lint-stability.rs
 
 extern crate lint_stability;
 

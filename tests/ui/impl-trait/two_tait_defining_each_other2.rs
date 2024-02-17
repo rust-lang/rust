@@ -1,5 +1,5 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 #![feature(type_alias_impl_trait)]
 
 type A = impl Foo; //[current]~ ERROR unconstrained opaque type

@@ -1,7 +1,7 @@
 // Test that the same coverage rules apply even if the local type appears in the
 // list of type parameters, not the self type.
 
-// aux-build:coherence_lib.rs
+//@ aux-build:coherence_lib.rs
 
 
 extern crate coherence_lib as lib;

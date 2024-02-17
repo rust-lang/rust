@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test for #48551. Covers a case where duplicate candidates
 // arose during associated type projection.
 

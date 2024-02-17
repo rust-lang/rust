@@ -1,6 +1,6 @@
 // Test that niche finding works with captured coroutine upvars.
 
-// run-pass
+//@ run-pass
 
 #![feature(coroutines)]
 

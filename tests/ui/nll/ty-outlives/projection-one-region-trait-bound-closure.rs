@@ -4,7 +4,7 @@
 // case, the best way to satisfy the trait bound is to show that `'b:
 // 'a`, which can be done in various ways.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

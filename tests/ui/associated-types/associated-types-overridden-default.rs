@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Before RFC 2532, overriding one assoc. type default required overriding all
 // provided defaults.

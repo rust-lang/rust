@@ -1,5 +1,5 @@
-// compile-flags: -Zunpretty=hir -Zflatten-format-args=yes
-// check-pass
+//@ compile-flags: -Zunpretty=hir -Zflatten-format-args=yes
+//@ check-pass
 
 fn main() {
     let x = 1;

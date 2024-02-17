@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ffi::OsString;
 
 fn main() {

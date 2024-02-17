@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[cfg(target_vendor = "unknown")]
 pub fn main() {
 }

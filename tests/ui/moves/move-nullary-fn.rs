@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 // Issue #922
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn f2<F>(_thing: F) where F: FnOnce() { }
 

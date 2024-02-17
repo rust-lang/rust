@@ -1,5 +1,5 @@
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 #![allow(dead_code)]
 async fn fail<'a, 'b, 'c>(_: &'static str) where 'a: 'c, 'b: 'c, {}

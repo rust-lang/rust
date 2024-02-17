@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 #![feature(stmt_expr_attributes)]
 #![feature(coroutines)]
 

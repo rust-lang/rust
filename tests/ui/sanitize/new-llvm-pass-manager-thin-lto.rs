@@ -2,17 +2,17 @@
 // being run when compiling with new LLVM pass manager and ThinLTO.
 // Note: The issue occurred only on non-zero opt-level.
 //
-// needs-sanitizer-support
-// needs-sanitizer-address
-// ignore-cross-compile
+//@ needs-sanitizer-support
+//@ needs-sanitizer-address
+//@ ignore-cross-compile
 //
-// no-prefer-dynamic
-// revisions: opt0 opt1
-// compile-flags: -Zsanitizer=address -Clto=thin
-//[opt0]compile-flags: -Copt-level=0
-//[opt1]compile-flags: -Copt-level=1
-// run-fail
-// error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
+//@ no-prefer-dynamic
+//@ revisions: opt0 opt1
+//@ compile-flags: -Zsanitizer=address -Clto=thin
+//@[opt0]compile-flags: -Copt-level=0
+//@[opt1]compile-flags: -Copt-level=1
+//@ run-fail
+//@ error-pattern: ERROR: AddressSanitizer: stack-use-after-scope
 
 static mut P: *mut usize = std::ptr::null_mut();
 

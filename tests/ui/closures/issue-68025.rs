@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn foo<F, G>(_: G, _: Box<F>)
 where

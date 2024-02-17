@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main() {
     let pi = f32::consts::PI; //~ ERROR ambiguous associated type
     let bytes = "hello world".as_bytes();

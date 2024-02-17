@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused_variables, dead_code)]
 struct Struct;
 struct Struct2;

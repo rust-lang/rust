@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // needs to be build-pass, because it is a regression test for a mir validation failure
 // that only happens during codegen.
 

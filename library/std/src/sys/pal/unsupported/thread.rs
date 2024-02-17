@@ -1,7 +1,7 @@
 use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::time::Duration;
 
 pub struct Thread(!);
@@ -31,7 +31,7 @@ impl Thread {
     }
 }
 
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     unsupported()
 }
 

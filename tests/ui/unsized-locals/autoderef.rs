@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(incomplete_features)]
 #![feature(unsized_locals, unsized_fn_params)]

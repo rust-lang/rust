@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // The main purpose of this test is to ensure that different impls of the same
 // trait can refer to each other without setting off the static recursion check

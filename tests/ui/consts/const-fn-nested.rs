@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test a call whose argument is the result of another call.
 
 const fn sub(x: u32, y: u32) -> u32 {

@@ -1,5 +1,5 @@
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]

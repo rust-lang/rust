@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_mut)]
 fn foo<T>(y: Option<T>) {
     let mut x: isize;

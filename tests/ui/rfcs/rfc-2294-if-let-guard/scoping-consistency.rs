@@ -1,6 +1,6 @@
 // Check that temporaries in if-let guards are correctly scoped.
 
-// build-pass
+//@ build-pass
 // -Zvalidate-mir
 
 #![feature(if_let_guard)]

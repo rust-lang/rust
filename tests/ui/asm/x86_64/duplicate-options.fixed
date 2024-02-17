@@ -1,5 +1,5 @@
-// only-x86_64
-// run-rustfix
+//@ only-x86_64
+//@ run-rustfix
 
 use std::arch::{asm, global_asm};
 

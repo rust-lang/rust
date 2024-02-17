@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: --test
+//@ check-pass
+//@ compile-flags: --test
 
 #[test]
 #[should_panic = "foo"]

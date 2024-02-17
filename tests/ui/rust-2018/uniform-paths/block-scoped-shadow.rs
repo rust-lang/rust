@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 #![allow(non_camel_case_types)]
 

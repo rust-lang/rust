@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Check that we do not report ambiguities when equivalent predicates
 // (modulo bound lifetime names) appears in the environment
 // twice. Issue #21965.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn foo<T>(t: T) -> i32
     where T : for<'a> Fn(&'a u8) -> i32,

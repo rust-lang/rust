@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 // Check that lifetime resolver enforces the lifetime name scoping
 // rules correctly in various scenarios.
 

@@ -1,4 +1,4 @@
-// aux-build:static_priv_by_default.rs
+//@ aux-build:static_priv_by_default.rs
 
 extern crate static_priv_by_default;
 

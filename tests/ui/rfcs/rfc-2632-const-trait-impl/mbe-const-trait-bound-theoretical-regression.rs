@@ -2,7 +2,7 @@
 // introduction of const trait bounds.
 
 // Setting the edition to 2018 since we don't regress `demo! { dyn const }` in Rust <2018.
-// edition:2018
+//@ edition:2018
 
 macro_rules! demo {
     ($ty:ty) => { compile_error!("ty"); };

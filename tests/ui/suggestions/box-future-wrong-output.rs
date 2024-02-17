@@ -1,5 +1,5 @@
 // Issue #72117
-// edition:2018
+//@ edition:2018
 
 use core::future::Future;
 use core::pin::Pin;

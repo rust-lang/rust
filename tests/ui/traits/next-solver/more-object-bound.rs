@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 // From #80800
 
 trait SuperTrait {

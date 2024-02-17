@@ -1,5 +1,5 @@
-// compile-flags: -Z print-type-sizes --crate-type=lib
-// build-pass
+//@ compile-flags: -Z print-type-sizes --crate-type=lib
+//@ build-pass
 
 // This file illustrates two things:
 //

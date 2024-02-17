@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// compile-flags: --cfg foo
+//@ compile-flags: --cfg foo
 
 macro_rules! compiles_fine {
     ($at:meta) => {

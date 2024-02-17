@@ -1,4 +1,4 @@
-// known-bug: #110395
+//@ known-bug: #110395
 // FIXME check-pass
 // This is a non-regression test for const-qualification of unstable items in libcore
 // as explained in issue #67053.

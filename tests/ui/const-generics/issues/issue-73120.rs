@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:const_generic_issues_lib.rs
+//@ check-pass
+//@ aux-build:const_generic_issues_lib.rs
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 extern crate const_generic_issues_lib as lib2;

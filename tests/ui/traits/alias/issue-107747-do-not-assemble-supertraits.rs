@@ -1,6 +1,6 @@
 // Regression test for #107747: methods from trait alias supertraits were brought into scope
 //
-// check-pass
+//@ check-pass
 
 #![feature(trait_alias)]
 

@@ -1,4 +1,4 @@
-// compile-flags: -Z unpretty=mir
+//@ compile-flags: -Z unpretty=mir
 
 use std::path::MAIN_SEPARATOR;
 

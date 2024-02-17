@@ -1,6 +1,6 @@
 // Regression test for #87414.
 
-// check-pass
+//@ check-pass
 
 fn bad<T>() -> Box<dyn Iterator<Item = [(); { |x: u32| { x }; 4 }]>> { todo!() }
 

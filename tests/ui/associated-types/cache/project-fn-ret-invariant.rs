@@ -4,8 +4,8 @@
 // if we do it just once. In this variant, the region `'a` is used in
 // an invariant position, which affects the results.
 
-// revisions: ok oneuse transmute krisskross
-//[ok] check-pass
+//@ revisions: ok oneuse transmute krisskross
+//@[ok] check-pass
 
 #![allow(dead_code, unused_variables)]
 

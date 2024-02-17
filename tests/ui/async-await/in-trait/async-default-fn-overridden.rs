@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@ run-pass
+//@ edition:2021
 
 #![feature(noop_waker)]
 

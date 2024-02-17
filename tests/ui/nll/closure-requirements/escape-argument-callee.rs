@@ -12,7 +12,7 @@
 // that appear free in its type (hence, we see it before the closure's
 // "external requirements" report).
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

@@ -1,8 +1,8 @@
 // Derive helpers are resolved successfully inside `cfg_attr`.
 
-// check-pass
+//@ check-pass
 // compile-flats:--cfg TRUE
-// aux-build:test-macros.rs
+//@ aux-build:test-macros.rs
 
 #[macro_use]
 extern crate test_macros;

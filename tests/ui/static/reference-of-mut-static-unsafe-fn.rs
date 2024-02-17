@@ -1,4 +1,4 @@
-// compile-flags: --edition 2024 -Z unstable-options
+//@ compile-flags: --edition 2024 -Z unstable-options
 
 fn main() {}
 

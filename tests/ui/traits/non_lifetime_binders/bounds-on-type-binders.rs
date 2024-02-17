@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #![allow(incomplete_features)]
 #![feature(non_lifetime_binders)]

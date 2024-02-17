@@ -1,5 +1,5 @@
-// aux-build:upstream_alias.rs
-// check-pass
+//@ aux-build:upstream_alias.rs
+//@ check-pass
 
 extern crate upstream_alias;
 

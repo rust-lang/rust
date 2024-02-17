@@ -1,5 +1,5 @@
-// edition:2018
-// aux-build:external_macro.rs
+//@ edition:2018
+//@ aux-build:external_macro.rs
 
 // Ensure that CONST_ERR lint errors
 // are not silenced in external macros.

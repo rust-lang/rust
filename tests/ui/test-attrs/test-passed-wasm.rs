@@ -1,9 +1,9 @@
-// no-prefer-dynamic
-// compile-flags: --test
-// run-flags: --test-threads=1
-// run-pass
-// check-run-results
-// only-wasm32
+//@ no-prefer-dynamic
+//@ compile-flags: --test
+//@ run-flags: --test-threads=1
+//@ run-pass
+//@ check-run-results
+//@ only-wasm32
 
 // Tests the output of the test harness with only passed tests.
 

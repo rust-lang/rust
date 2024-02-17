@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This test checks that trait objects involving trait aliases are well-formed.
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! foo {
     ($l:lifetime) => {
         fn f<$l>(arg: &$l str) -> &$l str {

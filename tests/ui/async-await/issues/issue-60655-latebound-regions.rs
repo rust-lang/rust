@@ -1,7 +1,7 @@
 // Test that opaque `impl Trait` types are allowed to contain late-bound regions.
 
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 #![feature(type_alias_impl_trait)]
 

@@ -1,4 +1,4 @@
-// aux-build:first-second.rs
+//@ aux-build:first-second.rs
 
 extern crate first_second;
 use first_second::*;

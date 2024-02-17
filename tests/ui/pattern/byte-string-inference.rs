@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn load<L>() -> Option<L> {
     todo!()

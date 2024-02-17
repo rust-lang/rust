@@ -2,7 +2,7 @@
 // and that if a feature gate is supplied, it permits the type to be
 // used in a match.
 
-// revisions: with_gate no_gate
+//@ revisions: with_gate no_gate
 
 // gate-test-structural_match
 

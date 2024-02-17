@@ -1,6 +1,6 @@
-// only-aarch64
-// run-pass
-// needs-asm-support
+//@ only-aarch64
+//@ run-pass
+//@ needs-asm-support
 
 // Test that we properly work around this LLVM issue:
 // https://github.com/llvm/llvm-project/issues/58384

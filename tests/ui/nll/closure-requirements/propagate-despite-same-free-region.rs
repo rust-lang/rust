@@ -3,8 +3,8 @@
 // need to propagate; but in fact we do because identity of free
 // regions is erased.
 
-// compile-flags:-Zverbose-internals
-// check-pass
+//@ compile-flags:-Zverbose-internals
+//@ check-pass
 
 #![feature(rustc_attrs)]
 

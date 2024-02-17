@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub struct VecNumber<'s> {
     pub vec_number: Vec<Number<'s>>,

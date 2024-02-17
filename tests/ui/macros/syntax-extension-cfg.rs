@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: --cfg foo --cfg qux="foo"
+//@ run-pass
+//@ compile-flags: --cfg foo --cfg qux="foo"
 
 
 pub fn main() {

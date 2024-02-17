@@ -1,5 +1,5 @@
-// aux-crate:aux=assoc-inherent-unstable.rs
-// edition: 2021
+//@ aux-crate:aux=assoc-inherent-unstable.rs
+//@ edition: 2021
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

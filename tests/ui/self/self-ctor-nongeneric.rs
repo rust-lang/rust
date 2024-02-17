@@ -1,5 +1,5 @@
 // `Self` as a constructor is currently allowed when the outer item is not generic.
-// check-pass
+//@ check-pass
 
 struct S0(usize);
 

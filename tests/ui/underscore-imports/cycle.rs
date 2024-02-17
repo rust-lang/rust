@@ -1,6 +1,6 @@
 // Check that cyclic glob imports are allowed with underscore imports
 
-// check-pass
+//@ check-pass
 
 #![allow(noop_method_call)]
 

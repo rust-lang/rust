@@ -1,5 +1,5 @@
 //! This is a regression test for an ICE.
-// edition: 2021
+//@ edition: 2021
 
 trait Foo {
     async fn foo(self: &dyn Foo) {

@@ -1,7 +1,7 @@
 // Exercise the unused_unsafe attribute in some positive and negative cases
 
 
-// edition:2018
+//@ edition:2018
 
 #![allow(dead_code)]
 #![deny(unused_unsafe)]

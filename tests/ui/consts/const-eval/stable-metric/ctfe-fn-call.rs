@@ -1,5 +1,5 @@
-// check-fail
-// compile-flags: -Z tiny-const-eval-limit
+//@ check-fail
+//@ compile-flags: -Z tiny-const-eval-limit
 
 const fn foo() {}
 

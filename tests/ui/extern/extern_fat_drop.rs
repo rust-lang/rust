@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:fat_drop.rs
+//@ run-pass
+//@ aux-build:fat_drop.rs
 
 extern crate fat_drop;
 

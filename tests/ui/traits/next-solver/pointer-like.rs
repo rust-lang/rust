@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 
 #![feature(pointer_like_trait)]
 

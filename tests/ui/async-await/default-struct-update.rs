@@ -1,5 +1,5 @@
-// build-pass
-// edition:2018
+//@ build-pass
+//@ edition:2018
 
 fn main() {
     let _ = foo();

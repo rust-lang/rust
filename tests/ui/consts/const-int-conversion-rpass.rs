@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const REVERSE: u32 = 0x12345678_u32.reverse_bits();
 const FROM_BE_BYTES: i32 = i32::from_be_bytes([0x12, 0x34, 0x56, 0x78]);

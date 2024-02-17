@@ -1,5 +1,5 @@
-// compile-flags: -Z threads=16
-// build-pass
+//@ compile-flags: -Z threads=16
+//@ build-pass
 
 pub static GLOBAL: isize = 3;
 
