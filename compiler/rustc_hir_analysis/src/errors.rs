@@ -662,6 +662,13 @@ pub(crate) struct InvalidUnionField {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_unnamed_field_ty)]
+pub struct InvalidUnnamedFieldTy {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_return_type_notation_on_non_rpitit)]
 pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
     #[primary_span]
