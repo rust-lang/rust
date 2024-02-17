@@ -1,4 +1,4 @@
-// aux-build:legacy-const-generics.rs
+//@ aux-build:legacy-const-generics.rs
 
 extern crate legacy_const_generics;
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(generic_const_exprs)]
 #![feature(transmute_generic_consts)]
 #![allow(incomplete_features)]

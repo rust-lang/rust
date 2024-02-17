@@ -5,7 +5,7 @@
 // the trait bound, and hence we propagate it to the caller as a type
 // test.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

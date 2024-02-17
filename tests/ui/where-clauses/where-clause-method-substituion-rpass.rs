@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait Foo<T> { fn dummy(&self, arg: T) { } } //~ WARN method `dummy` is never used
 

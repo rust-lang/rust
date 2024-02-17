@@ -1,5 +1,5 @@
-// aux-build:issue-75982.rs
-// check-pass
+//@ aux-build:issue-75982.rs
+//@ check-pass
 
 // Regression test for issue #75982
 // Tests that don't ICE when invoking a foreign macro

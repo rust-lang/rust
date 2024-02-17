@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 #![allow(non_shorthand_field_patterns)]
 
 struct T { a: Box<isize> }

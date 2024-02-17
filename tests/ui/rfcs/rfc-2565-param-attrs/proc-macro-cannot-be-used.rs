@@ -1,4 +1,4 @@
-// aux-build:ident-mac.rs
+//@ aux-build:ident-mac.rs
 
 #![feature(c_variadic)]
 #![allow(anonymous_parameters)]

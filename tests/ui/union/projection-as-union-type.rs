@@ -1,5 +1,5 @@
 // Ensures that we can use projections as union field's type.
-// check-pass
+//@ check-pass
 
 #![crate_type = "lib"]
 

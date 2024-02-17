@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 #![crate_type = "lib"]
 
 const MSG: &str = "hello";

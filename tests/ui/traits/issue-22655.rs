@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Regression test for issue #22655: This test should not lead to
 // infinite recursion.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 

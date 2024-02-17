@@ -1,4 +1,4 @@
-// check-pass: this used to be a stack overflow because of recursion in `usefulness.rs`
+//@ check-pass: this used to be a stack overflow because of recursion in `usefulness.rs`
 
 macro_rules! long_tuple_arg {
     ([$($t:tt)*]#$($h:tt)*) => {

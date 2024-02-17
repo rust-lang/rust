@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 use std::borrow::Cow;
 use std::iter::FromIterator;

@@ -1,7 +1,7 @@
-// compile-flags: -Z print-type-sizes --crate-type lib
-// edition:2021
-// build-pass
-// ignore-pass
+//@ compile-flags: -Z print-type-sizes --crate-type lib
+//@ edition:2021
+//@ build-pass
+//@ ignore-pass
 
 #![allow(dropping_copy_types)]
 

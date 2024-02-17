@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 // gate-test-async_closure
 
 fn f() {

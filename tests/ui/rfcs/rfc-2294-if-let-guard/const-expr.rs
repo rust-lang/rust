@@ -1,5 +1,5 @@
 // Ensure if let guards can be used in constant expressions.
-// build-pass
+//@ build-pass
 
 #![feature(if_let_guard)]
 

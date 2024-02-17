@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test that ByValue captures compile successfully especially when the captures are
 // dereferenced within the closure.

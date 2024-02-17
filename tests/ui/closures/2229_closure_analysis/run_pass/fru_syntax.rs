@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test that functional record update/struct update syntax works inside
 // a closure when the feature `capture_disjoint_fields` is enabled.

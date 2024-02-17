@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Znext-solver
+//@ check-pass
+//@ compile-flags: -Znext-solver
 // regression test for trait-system-refactor-initiative#68
 trait Identity {
     type Assoc: ?Sized;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test file taken from issue 45129 (https://github.com/rust-lang/rust/issues/45129)
 

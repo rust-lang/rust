@@ -11,6 +11,7 @@ use crate::{
     ffi::CStr,
     hint, io,
     mem::ManuallyDrop,
+    num::NonZero,
     ptr::NonNull,
     sync::atomic::{AtomicUsize, Ordering},
     sys::thread_local_dtor::run_dtors,
@@ -363,6 +364,6 @@ unsafe fn terminate_and_delete_current_task() -> ! {
     unsafe { crate::hint::unreachable_unchecked() };
 }
 
-pub fn available_parallelism() -> io::Result<crate::num::NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     super::unsupported()
 }

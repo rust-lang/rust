@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:empty.rs
+//@ check-pass
+//@ aux-build:empty.rs
 //
 // This tests plays with matching and uninhabited types. This also serves as a test for the
 // `Ty::is_inhabited_from` function.

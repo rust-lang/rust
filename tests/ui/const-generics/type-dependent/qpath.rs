@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct A;
 impl A {
     fn foo<const N: usize>() -> usize { N + 1 }

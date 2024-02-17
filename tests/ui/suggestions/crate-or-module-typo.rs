@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 use st::cell::Cell; //~ ERROR failed to resolve: use of undeclared crate or module `st`
 

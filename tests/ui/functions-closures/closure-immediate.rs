@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // After the work to reoptimize structs, it became possible for immediate logic to fail.
 // This test verifies that it actually works.

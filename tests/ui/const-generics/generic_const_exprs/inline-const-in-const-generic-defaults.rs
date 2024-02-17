@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(generic_const_exprs)]
 #![feature(inline_const)]

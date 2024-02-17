@@ -1,7 +1,7 @@
 // Regression test for #74429, where we didn't think that a type parameter
 // outlived `ReEmpty`.
 
-// check-pass
+//@ check-pass
 
 use std::marker::PhantomData;
 use std::ptr::NonNull;

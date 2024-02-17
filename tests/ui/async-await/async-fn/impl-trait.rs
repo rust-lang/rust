@@ -1,5 +1,5 @@
-// edition:2018
-// check-pass
+//@ edition:2018
+//@ check-pass
 
 #![feature(async_closure, type_alias_impl_trait)]
 

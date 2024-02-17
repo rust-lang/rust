@@ -1,7 +1,7 @@
 // Test where we fail to approximate due to demanding a postdom
 // relationship between our upper bounds.
 
-// compile-flags:-Zverbose-internals
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

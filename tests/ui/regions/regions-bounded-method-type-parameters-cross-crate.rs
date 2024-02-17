@@ -1,4 +1,4 @@
-// aux-build:rbmtp_cross_crate_lib.rs
+//@ aux-build:rbmtp_cross_crate_lib.rs
 
 // Check explicit region bounds on methods in the cross crate case.
 

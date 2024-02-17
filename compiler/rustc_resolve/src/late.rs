@@ -18,6 +18,7 @@ use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{
     codes::*, struct_span_code_err, Applicability, DiagnosticArgValue, ErrCode, IntoDiagnosticArg,
+    StashKey,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
@@ -3890,6 +3891,23 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             finalize,
         ) {
             Ok(Some(partial_res)) if let Some(res) = partial_res.full_res() => {
+                // if we also have an associated type that matches the ident, stash a suggestion
+                if let Some(items) = self.diagnostic_metadata.current_trait_assoc_items
+                    && let [Segment { ident, .. }] = path
+                    && items.iter().any(|item| {
+                        item.ident == *ident && matches!(item.kind, AssocItemKind::Type(_))
+                    })
+                {
+                    let mut diag = self.r.tcx.dcx().struct_allow("");
+                    diag.span_suggestion_verbose(
+                        path_span.shrink_to_lo(),
+                        "there is an associated type with the same name",
+                        "Self::",
+                        Applicability::MaybeIncorrect,
+                    );
+                    diag.stash(path_span, StashKey::AssociatedTypeSuggestion);
+                }
+
                 if source.is_expected(res) || res == Res::Err {
                     partial_res
                 } else {

@@ -1,8 +1,8 @@
-// build-fail
-// compile-flags: -Copt-level=0
-// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//@ build-fail
+//@ compile-flags: -Copt-level=0
+//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 //~^^^ ERROR overflow evaluating the requirement
-// ignore-compare-mode-next-solver (hangs)
+//@ ignore-compare-mode-next-solver (hangs)
 
 fn main() {
     let mut iter = 0u8..1;

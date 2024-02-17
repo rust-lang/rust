@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f(mut y: Box<isize>) {
     *y = 5;

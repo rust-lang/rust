@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 // #70935: Check if we do not emit snippet
 // with newlines which lead complex diagnostics.
 

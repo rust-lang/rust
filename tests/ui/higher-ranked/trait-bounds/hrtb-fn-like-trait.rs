@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // A basic test of using a higher-ranked trait bound.
 
 

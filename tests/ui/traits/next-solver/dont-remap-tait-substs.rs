@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // Makes sure we don't prepopulate the MIR typeck of `define`
 // with `Foo<T, U> = T`, but instead, `Foo<B, A> = B`, so that

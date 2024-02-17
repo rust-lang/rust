@@ -1,5 +1,5 @@
-// check-pass
-// aux-build: issue-114682-3-extern.rs
+//@ check-pass
+//@ aux-build: issue-114682-3-extern.rs
 // https://github.com/rust-lang/rust/pull/114682#issuecomment-1880625909
 
 extern crate issue_114682_3_extern;

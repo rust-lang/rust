@@ -8,7 +8,7 @@ use crate::iter::{TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::ops::Try;
 use crate::option;
 use crate::slice::{self, Split as SliceSplit};
-use core::num::NonZeroUsize;
+use core::num::{NonZero, NonZeroUsize};
 
 use super::from_utf8_unchecked;
 use super::pattern::Pattern;
@@ -96,7 +96,7 @@ impl<'a> Iterator for Chars<'a> {
             unsafe { self.iter.advance_by(slurp).unwrap_unchecked() };
         }
 
-        NonZeroUsize::new(remainder).map_or(Ok(()), Err)
+        NonZero::new(remainder).map_or(Ok(()), Err)
     }
 
     #[inline]

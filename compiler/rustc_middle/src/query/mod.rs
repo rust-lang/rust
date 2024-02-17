@@ -1760,8 +1760,8 @@ rustc_queries! {
         separate_provide_extern
     }
     /// Whether the function is an intrinsic
-    query is_intrinsic(def_id: DefId) -> bool {
-        desc { |tcx| "checking whether `{}` is an intrinsic", tcx.def_path_str(def_id) }
+    query intrinsic(def_id: DefId) -> Option<Symbol> {
+        desc { |tcx| "fetch intrinsic name if `{}` is an intrinsic", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
     /// Returns the lang items defined in another crate by loading it from metadata.

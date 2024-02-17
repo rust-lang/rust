@@ -1,5 +1,5 @@
 // Test that closures and coroutines are "must use" types.
-// edition:2018
+//@ edition:2018
 
 #![feature(async_closure)]
 #![feature(coroutines)]

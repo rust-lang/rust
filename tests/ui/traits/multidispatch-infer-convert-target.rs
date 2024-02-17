@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we can infer the Target based on the Self or vice versa.
 
 

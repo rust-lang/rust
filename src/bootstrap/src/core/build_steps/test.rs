@@ -1798,7 +1798,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
-        if builder.config.llvm_enabled() {
+        if builder.config.llvm_enabled(compiler.host) {
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
@@ -3121,7 +3121,8 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        if !builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("cranelift")) {
+        if !builder.config.codegen_backends(run.target).contains(&INTERNER.intern_str("cranelift"))
+        {
             builder.info("cranelift not in rust.codegen-backends. skipping");
             return;
         }
@@ -3245,7 +3246,7 @@ impl Step for CodegenGCC {
             return;
         }
 
-        if !builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("gcc")) {
+        if !builder.config.codegen_backends(run.target).contains(&INTERNER.intern_str("gcc")) {
             builder.info("gcc not in rust.codegen-backends. skipping");
             return;
         }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(
     slice_from_ptr_range,
     const_slice_from_ptr_range,

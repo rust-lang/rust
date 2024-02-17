@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_upper_case_globals)]
 
 static x : [isize; 4] = [1,2,3,4];

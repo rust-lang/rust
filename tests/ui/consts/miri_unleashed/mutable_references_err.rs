@@ -1,5 +1,5 @@
-// stderr-per-bitwidth
-// compile-flags: -Zunleash-the-miri-inside-of-you
+//@ stderr-per-bitwidth
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
 #![allow(invalid_reference_casting, static_mut_ref)]
 
 use std::sync::atomic::*;

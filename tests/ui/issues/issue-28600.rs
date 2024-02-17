@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 // #28600 ICE: pub extern fn with parameter type &str inside struct impl
 
 struct Test;

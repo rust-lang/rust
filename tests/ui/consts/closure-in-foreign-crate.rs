@@ -1,5 +1,5 @@
-// aux-build:closure-in-foreign-crate.rs
-// build-pass
+//@ aux-build:closure-in-foreign-crate.rs
+//@ build-pass
 
 extern crate closure_in_foreign_crate;
 

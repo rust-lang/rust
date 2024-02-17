@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Check that constant ADTs are codegened OK, part k of N.
 

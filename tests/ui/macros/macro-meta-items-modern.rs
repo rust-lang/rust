@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 macro_rules! check { ($meta:meta) => () }
 

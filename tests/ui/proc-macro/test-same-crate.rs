@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@ compile-flags: --test
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;

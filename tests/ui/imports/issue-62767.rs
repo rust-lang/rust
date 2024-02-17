@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Minimized case from #62767.
 mod m {

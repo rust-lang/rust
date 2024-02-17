@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn test(it: &mut dyn Iterator<Item=i32>) {
     for x in it {

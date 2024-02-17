@@ -2,7 +2,7 @@
 // If a const item contains generic params from an outer items, only suggest
 // turning the const item generic if the feature `generic_const_items` is enabled.
 
-// revisions: default generic_const_items
+//@ revisions: default generic_const_items
 
 #![cfg_attr(generic_const_items, feature(generic_const_items))]
 #![feature(generic_const_exprs)] // only used for the test case "outer struct"

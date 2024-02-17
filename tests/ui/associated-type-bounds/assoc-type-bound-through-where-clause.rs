@@ -1,6 +1,6 @@
 // Check that `where Self::Output: Copy` is turned into a bound on `Op::Output`.
 
-//check-pass
+//@check-pass
 
 trait Op
 where

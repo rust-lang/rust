@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test that we do not get a cycle due to
 // resolving `Self::Bar` in the where clauses

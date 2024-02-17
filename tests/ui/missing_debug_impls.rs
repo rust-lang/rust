@@ -1,4 +1,4 @@
-// compile-flags: --crate-type lib
+//@ compile-flags: --crate-type lib
 #![deny(missing_debug_implementations)]
 #![allow(unused)]
 

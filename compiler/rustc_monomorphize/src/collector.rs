@@ -956,18 +956,23 @@ fn visit_instance_use<'tcx>(
     if !should_codegen_locally(tcx, &instance) {
         return;
     }
-
-    // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
-    // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
-    // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
-    // codegen a call to that function without generating code for the function itself.
     if let ty::InstanceDef::Intrinsic(def_id) = instance.def {
         let name = tcx.item_name(def_id);
         if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
+            // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
+            // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
+            // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
+            // codegen a call to that function without generating code for the function itself.
             let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
             let panic_instance = Instance::mono(tcx, def_id);
             if should_codegen_locally(tcx, &panic_instance) {
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
+            }
+        } else if tcx.has_attr(def_id, sym::rustc_intrinsic) {
+            // Codegen the fallback body of intrinsics with fallback bodies
+            let instance = ty::Instance::new(def_id, instance.args);
+            if should_codegen_locally(tcx, &instance) {
+                output.push(create_fn_mono_item(tcx, instance, source));
             }
         }
     }

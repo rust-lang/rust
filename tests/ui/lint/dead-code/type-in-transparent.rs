@@ -1,5 +1,5 @@
 // Verify that we do not warn on fields that are part of transparent types.
-// check-pass
+//@ check-pass
 #![deny(dead_code)]
 
 #[repr(transparent)]

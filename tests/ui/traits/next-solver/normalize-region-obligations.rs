@@ -1,6 +1,6 @@
-// revisions: normalize_param_env normalize_obligation hrtb
-// check-pass
-// compile-flags: -Znext-solver
+//@ revisions: normalize_param_env normalize_obligation hrtb
+//@ check-pass
+//@ compile-flags: -Znext-solver
 
 trait Foo {
     #[cfg(normalize_param_env)]

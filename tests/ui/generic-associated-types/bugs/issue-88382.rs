@@ -1,5 +1,5 @@
-// check-fail
-// known-bug: #88382
+//@ check-fail
+//@ known-bug: #88382
 
 // This should pass, but has a missed normalization due to HRTB.
 

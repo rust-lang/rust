@@ -1,7 +1,7 @@
-// aux-build:block-on.rs
-// edition:2018
-// run-pass
-// check-run-results
+//@ aux-build:block-on.rs
+//@ edition:2018
+//@ run-pass
+//@ check-run-results
 
 #![feature(async_closure)]
 #![allow(unused)]

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn foo() {}
 fn main() {
     let mut y = 42;

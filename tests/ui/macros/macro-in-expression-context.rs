@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 macro_rules! foo {
     () => {

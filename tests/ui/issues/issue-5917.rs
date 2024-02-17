@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_upper_case_globals)]
 
 struct T (&'static [isize]);

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 //
-// compile-flags: -Ccodegen-units=1 -O
+//@ compile-flags: -Ccodegen-units=1 -O
 
 fn linidx(row: usize, col: usize) -> usize {
     row * 1 + col * 3

@@ -1,5 +1,5 @@
-// run-pass
-// ignore-wasm32 issue 42629
+//@ run-pass
+//@ ignore-wasm32 issue 42629
 
 #[inline(never)]
 fn foo(a: f32, b: f32) -> f32 {

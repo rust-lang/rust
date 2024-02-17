@@ -6,6 +6,7 @@ use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
 use std::mem;
+use std::num::NonZero;
 
 #[cfg(test)]
 mod tests;
@@ -338,14 +339,14 @@ impl<CTX, T> HashStable<CTX> for PhantomData<T> {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {}
 }
 
-impl<CTX> HashStable<CTX> for ::std::num::NonZeroU32 {
+impl<CTX> HashStable<CTX> for NonZero<u32> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.get().hash_stable(ctx, hasher)
     }
 }
 
-impl<CTX> HashStable<CTX> for ::std::num::NonZeroUsize {
+impl<CTX> HashStable<CTX> for NonZero<usize> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.get().hash_stable(ctx, hasher)

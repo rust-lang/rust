@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 // Verify that the compiler doesn't ICE during const prop while evaluating the index operation.
 

@@ -1,6 +1,6 @@
-// run-pass
-// needs-unwind
-// ignore-emscripten no threads support
+//@ run-pass
+//@ needs-unwind
+//@ ignore-emscripten no threads support
 
 // rust-lang/rust#64655: with panic=unwind, a panic from a subroutine
 // should still run destructors as it unwinds the stack. However,
@@ -13,14 +13,14 @@
 // test.
 
 // LTO settings cannot be combined with -C prefer-dynamic
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 
 // The revisions just enumerate lto settings (the opt-level appeared irrelevant in practice)
 
-// revisions: no thin fat
-//[no]compile-flags: -C lto=no
-//[thin]compile-flags: -C lto=thin
-//[fat]compile-flags: -C lto=fat
+//@ revisions: no thin fat
+//@[no]compile-flags: -C lto=no
+//@[thin]compile-flags: -C lto=thin
+//@[fat]compile-flags: -C lto=fat
 
 #![feature(panic_internals)]
 

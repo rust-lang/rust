@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code)]
 // Tests that even when a type parameter doesn't implement a required
 // super-builtin-kind of a trait, if the type parameter is never used,
 // the type can implement the trait anyway.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::marker;
 

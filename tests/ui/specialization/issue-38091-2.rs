@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 //~^ ERROR overflow evaluating the requirement `i32: Check`
 
 #![feature(specialization)]

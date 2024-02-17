@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![warn(order_dependent_trait_objects)]
 #![allow(dyn_drop)]

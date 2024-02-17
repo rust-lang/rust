@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that tautalogically false bounds are accepted, and are used
 // in type inference.

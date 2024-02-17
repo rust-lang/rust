@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// known-bug: #92505
+//@ compile-flags: -Znext-solver
+//@ known-bug: #92505
 
 // When checking that the impl method where-bounds are implied by the trait,
 // we prove  `<() as A<T>>::Assoc: A<T>` in the environment `<() as A<T>>::Assoc: A<T>`.

@@ -1,5 +1,5 @@
 // Checks what happens when `public` is used instead of the correct, `pub`
-// run-rustfix
+//@ run-rustfix
 
 public enum Test {
     //~^ ERROR expected one of `!` or `::`, found keyword `enum`

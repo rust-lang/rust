@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 trait Str { fn foo(&self) {} } //~ WARN method `foo` is never used
 impl Str for str {}

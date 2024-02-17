@@ -4,7 +4,7 @@
 // longer get an error, because we recognize these two types as
 // equivalent!
 //
-// check-pass
+//@ check-pass
 
 fn foo(x: fn(&u8, &u8), y: for<'a> fn(&'a u8, &'a u8)) {
     // The two types above are actually equivalent. With the older

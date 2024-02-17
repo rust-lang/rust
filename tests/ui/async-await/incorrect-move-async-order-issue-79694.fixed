@@ -1,5 +1,5 @@
-// run-rustfix
-// edition:2018
+//@ run-rustfix
+//@ edition:2018
 
 // Regression test for issue 79694
 

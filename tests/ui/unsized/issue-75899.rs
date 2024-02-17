@@ -1,6 +1,6 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
-// check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ check-pass
 
 trait Trait {}
 impl<T> Trait for T {}

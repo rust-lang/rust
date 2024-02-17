@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This used to cause a stack overflow during exhaustiveness checking in the compiler.
 

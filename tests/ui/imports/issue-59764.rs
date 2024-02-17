@@ -1,6 +1,6 @@
-// aux-build:issue-59764.rs
-// compile-flags:--extern issue_59764
-// edition:2018
+//@ aux-build:issue-59764.rs
+//@ compile-flags:--extern issue_59764
+//@ edition:2018
 
 #![allow(warnings)]
 

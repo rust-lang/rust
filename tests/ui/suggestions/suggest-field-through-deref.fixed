@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 use std::sync::Arc;
 struct S {

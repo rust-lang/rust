@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Dummy import that previously introduced uniform path canaries.
 use std;

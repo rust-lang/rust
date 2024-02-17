@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 #![feature(async_closure)]
 use std::future::Future;
 

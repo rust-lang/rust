@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct NoDerive(#[allow(dead_code)] i32);
 
 #[derive(PartialEq)]

@@ -1,6 +1,6 @@
-// check-pass
-// edition:2018
-// compile-flags: --crate-type lib
+//@ check-pass
+//@ edition:2018
+//@ compile-flags: --crate-type lib
 
 async fn conditional_and_guaranteed_initialization(x: usize) -> usize {
     let y;

@@ -1,4 +1,4 @@
-// aux-build: similar-unstable-method.rs
+//@ aux-build: similar-unstable-method.rs
 
 extern crate similar_unstable_method;
 

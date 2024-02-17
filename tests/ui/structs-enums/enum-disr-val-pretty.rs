@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
-// pp-exact
+//@ pp-exact
 
 
 enum color { red = 1, green, blue, imaginary = -1, }

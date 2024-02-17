@@ -1,4 +1,4 @@
-// incremental
+//@ incremental
 
 struct Wrapper<T>(T);
 

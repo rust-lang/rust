@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 // See issue #91068. We check that the unnormalized associated types in
 // function signatures are implied
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test `@` patterns combined with `box` patterns.
 

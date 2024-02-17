@@ -1,7 +1,7 @@
-// run-pass
-// ignore-windows
-// ignore-macos
-// ignore-emscripten common linkage not implemented right now
+//@ run-pass
+//@ ignore-windows
+//@ ignore-macos
+//@ ignore-emscripten common linkage not implemented right now
 
 #![feature(linkage)]
 

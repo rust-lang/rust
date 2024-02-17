@@ -3,5 +3,5 @@
 // providing it. If the compile-flags are not last, the test will fail as rustc will interpret the
 // next flag as the argument of this flag.
 //
-// compile-flags: --cap-lints
-// error-pattern: Argument to option 'cap-lints' missing
+//@ compile-flags: --cap-lints
+//@ error-pattern: Argument to option 'cap-lints' missing

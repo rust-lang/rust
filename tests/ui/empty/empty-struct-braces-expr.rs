@@ -1,6 +1,6 @@
 // Can't use empty braced struct as constant or constructor function
 
-// aux-build:empty-struct.rs
+//@ aux-build:empty-struct.rs
 
 extern crate empty_struct;
 use empty_struct::*;

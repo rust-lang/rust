@@ -1,7 +1,7 @@
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
-use crate::num::{NonZero, NonZeroI32};
+use crate::num::NonZero;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
@@ -1106,7 +1106,7 @@ impl fmt::Debug for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
     }
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(box_patterns)]
 
 const VALUE: usize = 21;

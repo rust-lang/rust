@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(box_patterns)]
 
 #[derive(Debug, PartialEq)]

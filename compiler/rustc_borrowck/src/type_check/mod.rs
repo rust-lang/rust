@@ -1666,16 +1666,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let func_ty = func.ty(body, self.infcx.tcx);
         if let ty::FnDef(def_id, _) = *func_ty.kind() {
-            if self.tcx().is_intrinsic(def_id) {
-                match self.tcx().item_name(def_id) {
-                    sym::simd_shuffle => {
-                        if !matches!(args[2], Spanned { node: Operand::Constant(_), .. }) {
-                            self.tcx()
-                                .dcx()
-                                .emit_err(SimdShuffleLastConst { span: term.source_info.span });
-                        }
-                    }
-                    _ => {}
+            if let Some(sym::simd_shuffle) = self.tcx().intrinsic(def_id) {
+                if !matches!(args[2], Spanned { node: Operand::Constant(_), .. }) {
+                    self.tcx().dcx().emit_err(SimdShuffleLastConst { span: term.source_info.span });
                 }
             }
         }

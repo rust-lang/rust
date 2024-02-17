@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Previously, this would have failed to resolve due to the circular
 // block between `use say` and `pub use hello::*`.
 //

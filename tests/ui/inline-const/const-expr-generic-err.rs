@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 #![feature(inline_const)]
 
 fn foo<T>() {

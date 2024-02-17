@@ -1,6 +1,6 @@
-// compile-flags: -Znext-solver
-// revisions: fallback constrain
-//[constrain] check-pass
+//@ compile-flags: -Znext-solver
+//@ revisions: fallback constrain
+//@[constrain] check-pass
 
 // Tests that we stall the `{integer}: Foo` obligation until after we
 // constrain the int type (or fallback occurs).

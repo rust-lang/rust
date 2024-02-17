@@ -1,10 +1,10 @@
-// needs-sanitizer-support
-// needs-sanitizer-leak
+//@ needs-sanitizer-support
+//@ needs-sanitizer-leak
 //
-// compile-flags: -Z sanitizer=leak -O
+//@ compile-flags: -Z sanitizer=leak -O
 //
-// run-fail
-// error-pattern: LeakSanitizer: detected memory leaks
+//@ run-fail
+//@ error-pattern: LeakSanitizer: detected memory leaks
 
 use std::hint::black_box;
 use std::mem;

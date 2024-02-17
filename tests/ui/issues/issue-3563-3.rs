@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
 #![allow(non_snake_case)]
 

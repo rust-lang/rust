@@ -3,7 +3,7 @@
 // In particular, we test this pattern in trait solving, where it is not connected
 // to any part of the source code.
 //
-// check-pass
+//@ check-pass
 
 trait Trait<T> {}
 

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:mir_external_refs.rs
+//@ run-pass
+//@ aux-build:mir_external_refs.rs
 
 extern crate mir_external_refs as ext;
 

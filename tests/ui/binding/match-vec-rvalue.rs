@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that matching rvalues with drops does not crash.
 
 

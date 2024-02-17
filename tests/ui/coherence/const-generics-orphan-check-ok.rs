@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:trait-with-const-param.rs
+//@ check-pass
+//@ aux-build:trait-with-const-param.rs
 extern crate trait_with_const_param;
 use trait_with_const_param::*;
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that resolving, in the value namespace, to an `enum` variant
 // through a type alias is well behaved in the presence of generics.

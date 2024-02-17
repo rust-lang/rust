@@ -1,7 +1,7 @@
 // Test that `impl Alpha<dyn Object>` resets the object-lifetime
 // default to `'static`.
 //
-// check-pass
+//@ check-pass
 
 trait Alpha<Item: ?Sized> {
     fn item(&self) -> Box<Item> {

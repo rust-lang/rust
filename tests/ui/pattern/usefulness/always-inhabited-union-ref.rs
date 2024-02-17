@@ -1,4 +1,4 @@
-// revisions: min_exhaustive_patterns exhaustive_patterns
+//@ revisions: min_exhaustive_patterns exhaustive_patterns
 
 // The precise semantics of inhabitedness with respect to unions and references is currently
 // undecided. This test file currently checks a conservative choice.

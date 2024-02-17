@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Makes sure we use `==` (not bitwise) semantics for float comparison.
 
 fn main() {

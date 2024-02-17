@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test a very simple custom DST coercion.
 
 #![feature(unsize, coerce_unsized)]

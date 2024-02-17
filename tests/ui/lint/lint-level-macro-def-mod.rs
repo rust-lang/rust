@@ -1,7 +1,7 @@
 // This checks that exported macros lint as part of their module of origin, not
 // the root module.
 //
-// check-pass
+//@ check-pass
 
 //! Top level documentation
 #![deny(missing_docs)]

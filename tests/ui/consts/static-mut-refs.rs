@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 
 // Checks that mutable static items can have mutable slices and other references

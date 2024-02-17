@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 trait Unsigned {
     const MAX: u8;

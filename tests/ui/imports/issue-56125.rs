@@ -1,6 +1,6 @@
-// edition:2018
-// compile-flags:--extern issue_56125
-// aux-build:issue-56125.rs
+//@ edition:2018
+//@ compile-flags:--extern issue_56125
+//@ aux-build:issue-56125.rs
 
 mod m1 {
     use issue_56125::last_segment::*;

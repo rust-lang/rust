@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Test that a feature gate is needed to use `impl Trait` as the
 // return type of an async.

@@ -1,7 +1,7 @@
-// edition:2015
-// compile-flags:--extern absolute
-// aux-build:edition-imports-2018.rs
-// aux-build:absolute.rs
+//@ edition:2015
+//@ compile-flags:--extern absolute
+//@ aux-build:edition-imports-2018.rs
+//@ aux-build:absolute.rs
 
 #[macro_use]
 extern crate edition_imports_2018;

@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 // This test is similar to `ambiguity.rs`, but nested in a module.
 

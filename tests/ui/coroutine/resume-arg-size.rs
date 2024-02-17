@@ -1,7 +1,7 @@
 #![feature(coroutines)]
 #![allow(dropping_copy_types)]
 
-// run-pass
+//@ run-pass
 
 use std::mem::size_of_val;
 

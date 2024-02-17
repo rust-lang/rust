@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused_variables, dead_code)]
 fn f(x:isize) {
     let child: isize = x + 1;

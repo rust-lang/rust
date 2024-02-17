@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(exclusive_range_pattern)]
 
 pub fn main() {

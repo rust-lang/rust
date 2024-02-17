@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_mut)]
 // Test that when instantiating trait default methods, typeck handles
 // lifetime parameters defined on the method bound correctly.

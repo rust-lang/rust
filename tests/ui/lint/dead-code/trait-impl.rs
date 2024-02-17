@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![deny(dead_code)]
 
 enum Foo {

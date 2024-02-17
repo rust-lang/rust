@@ -3,7 +3,7 @@ mod sync_bitset;
 use self::sync_bitset::*;
 use crate::cell::Cell;
 use crate::mem;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 
@@ -30,7 +30,7 @@ extern "C" {
 
 #[derive(Copy, Clone)]
 #[repr(C)]
-pub struct Key(NonZeroUsize);
+pub struct Key(NonZero<usize>);
 
 impl Key {
     fn to_index(self) -> usize {
@@ -38,7 +38,7 @@ impl Key {
     }
 
     fn from_index(index: usize) -> Self {
-        Key(NonZeroUsize::new(index + 1).unwrap())
+        Key(NonZero::new(index + 1).unwrap())
     }
 
     pub fn as_usize(self) -> usize {
@@ -46,7 +46,7 @@ impl Key {
     }
 
     pub fn from_usize(index: usize) -> Self {
-        Key(NonZeroUsize::new(index).unwrap())
+        Key(NonZero::new(index).unwrap())
     }
 }
 

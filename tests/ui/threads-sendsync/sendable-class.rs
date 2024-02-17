@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -6,7 +6,7 @@
 
 // Test that a class with only sendable fields can be sent
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::sync::mpsc::channel;
 

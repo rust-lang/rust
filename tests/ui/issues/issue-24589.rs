@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub struct _X([u8]);
 
 impl std::ops::Deref for _X {

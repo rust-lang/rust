@@ -1,6 +1,6 @@
 //! Test that when a crate is linked under another name that name is used in global paths
 
-// aux-build:issue-1920.rs
+//@ aux-build:issue-1920.rs
 
 extern crate issue_1920 as bar;
 

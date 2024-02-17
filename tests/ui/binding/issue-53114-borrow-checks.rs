@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Issue #53114: NLL's borrow check had some deviations from the old borrow
 // checker, and both had some deviations from our ideal state. This test
 // captures the behavior of how `_` bindings are handled with respect to how we

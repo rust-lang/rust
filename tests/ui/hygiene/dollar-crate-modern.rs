@@ -1,7 +1,7 @@
 // Make sure `$crate` and `crate` work in for basic cases of nested macros.
 
-// check-pass
-// aux-build:intercrate.rs
+//@ check-pass
+//@ aux-build:intercrate.rs
 
 #![feature(decl_macro)]
 

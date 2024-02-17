@@ -11,7 +11,7 @@ use rustc_span::Span;
 
 use std::hash::Hash;
 use std::io::Write;
-use std::num::NonZeroU64;
+use std::num::NonZero;
 
 #[cfg(parallel_compiler)]
 use {
@@ -36,7 +36,7 @@ pub type QueryMap = FxHashMap<QueryJobId, QueryJobInfo>;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct QueryJobId(pub NonZeroU64);
+pub struct QueryJobId(pub NonZero<u64>);
 
 impl QueryJobId {
     fn query(self, map: &QueryMap) -> QueryStackFrame {

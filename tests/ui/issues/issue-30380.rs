@@ -1,9 +1,9 @@
 // check that panics in destructors during assignment do not leave
 // destroyed values lying around for other destructors to observe.
 
-// run-fail
-// error-pattern:panicking destructors ftw!
-// ignore-emscripten no processes
+//@ run-fail
+//@ error-pattern:panicking destructors ftw!
+//@ ignore-emscripten no processes
 
 struct Observer<'a>(&'a mut FilledOnDrop);
 

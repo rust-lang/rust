@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! pat_in {
     ($p:pat in $e:expr) => {{
         let mut iter = $e.into_iter();

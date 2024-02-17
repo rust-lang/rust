@@ -1,7 +1,7 @@
-// run-rustfix
-// rustfix-only-machine-applicable
-// build-pass (FIXME(62277): should be check-pass)
-// aux-build:fancy-panic.rs
+//@ run-rustfix
+//@ rustfix-only-machine-applicable
+//@ build-pass (FIXME(62277): should be check-pass)
+//@ aux-build:fancy-panic.rs
 
 extern crate fancy_panic;
 

@@ -1,9 +1,9 @@
 // Regression test for #112691
 //
-// revisions: current next
-// [next] compile-flags: -Znext-solver
-// [next] check-pass
-// [current]: known-bug: #112691
+//@ revisions: current next
+//@ [next] compile-flags: -Znext-solver
+//@ [next] check-pass
+//@ [current]: known-bug: #112691
 
 #![feature(type_alias_impl_trait)]
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // issue #69184
 
 trait A {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(repr_simd, platform_intrinsics)]
 
 extern "platform-intrinsic" {

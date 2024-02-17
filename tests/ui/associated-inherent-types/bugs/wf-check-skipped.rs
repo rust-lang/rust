@@ -1,5 +1,5 @@
-// known-bug: #100041
-// check-pass
+//@ known-bug: #100041
+//@ check-pass
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

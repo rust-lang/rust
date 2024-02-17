@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
-// aux-build:associated-types-cc-lib.rs
+//@ aux-build:associated-types-cc-lib.rs
 
 // Test that we are able to reference cross-crate traits that employ
 // associated types.

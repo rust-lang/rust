@@ -1,7 +1,7 @@
-// build-pass
-// force-host
-// no-prefer-dynamic
-// aux-build:exports_no_mangle.rs
+//@ build-pass
+//@ force-host
+//@ no-prefer-dynamic
+//@ aux-build:exports_no_mangle.rs
 #![crate_type = "proc-macro"]
 
 // Issue #111888: this proc-macro crate imports another crate that itself

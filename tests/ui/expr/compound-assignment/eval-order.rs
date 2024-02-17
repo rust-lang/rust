@@ -1,6 +1,6 @@
 // Test evaluation order of operands of the compound assignment operators
 
-// run-pass
+//@ run-pass
 
 use std::ops::AddAssign;
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(associated_type_bounds)]
 #![feature(impl_trait_in_assoc_type)]

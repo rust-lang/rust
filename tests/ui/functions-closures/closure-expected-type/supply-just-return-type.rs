@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn with_closure<F, R>(f: F) -> Result<char, R>
     where F: FnOnce(&char) -> Result<char, R>,
 {

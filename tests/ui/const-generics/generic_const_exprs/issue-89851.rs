@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // (this requires debug assertions)
 
 #![feature(adt_const_params)]

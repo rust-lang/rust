@@ -1,4 +1,4 @@
-// aux-build:unnamed_pub_trait_source.rs
+//@ aux-build:unnamed_pub_trait_source.rs
 
 /*
  * This crate declares an unnameable public path for our item. Make sure we don't suggest

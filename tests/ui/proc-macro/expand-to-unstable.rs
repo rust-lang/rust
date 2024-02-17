@@ -1,4 +1,4 @@
-// aux-build:derive-unstable.rs
+//@ aux-build:derive-unstable.rs
 
 #![allow(warnings)]
 

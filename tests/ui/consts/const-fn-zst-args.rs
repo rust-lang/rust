@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 // Check that the evaluation of const-functions with
 // zero-sized types as arguments compiles successfully

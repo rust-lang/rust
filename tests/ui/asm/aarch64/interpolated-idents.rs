@@ -1,5 +1,5 @@
-// only-aarch64
-// needs-asm-support
+//@ only-aarch64
+//@ needs-asm-support
 use std::arch::asm;
 
 macro_rules! m {

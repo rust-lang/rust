@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 type Field1 = (i32, u32);
 type Field2 = f32;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 static mut DROP_RAN: bool = false;
 
 trait Bar {

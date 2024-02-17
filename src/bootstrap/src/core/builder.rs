@@ -1229,7 +1229,7 @@ impl<'a> Builder<'a> {
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
     fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
-        if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run() {
+        if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
             let llvm::LlvmResult { llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if llvm_config.is_file() {
                 return Some(llvm_config);
@@ -1991,7 +1991,8 @@ impl<'a> Builder<'a> {
             };
 
             if let Some(limit) = limit {
-                if stage == 0 || self.config.default_codegen_backend().unwrap_or_default() == "llvm"
+                if stage == 0
+                    || self.config.default_codegen_backend(target).unwrap_or_default() == "llvm"
                 {
                     rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
                 }

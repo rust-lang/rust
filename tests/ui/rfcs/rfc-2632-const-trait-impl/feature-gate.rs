@@ -1,4 +1,4 @@
-// revisions: stock gated
+//@ revisions: stock gated
 // gate-test-const_trait_impl
 
 #![cfg_attr(gated, feature(const_trait_impl))]

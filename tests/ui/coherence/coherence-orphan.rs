@@ -1,4 +1,4 @@
-// aux-build:coherence_orphan_lib.rs
+//@ aux-build:coherence_orphan_lib.rs
 #![feature(negative_impls)]
 
 extern crate coherence_orphan_lib as lib;

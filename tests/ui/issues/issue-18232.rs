@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 struct Cursor<'a>(::std::marker::PhantomData<&'a ()>);
 

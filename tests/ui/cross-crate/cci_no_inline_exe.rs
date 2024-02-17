@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_no_inline_lib.rs
+//@ run-pass
+//@ aux-build:cci_no_inline_lib.rs
 
 extern crate cci_no_inline_lib;
 use cci_no_inline_lib::iter;

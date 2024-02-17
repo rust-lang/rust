@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 pub trait Handler {
     fn handle(&self, _: &mut String);
 }

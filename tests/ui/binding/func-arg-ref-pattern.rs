@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test argument patterns where we create refs to the inside of
 // boxes. Make sure that we don't free the box as we match the

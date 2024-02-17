@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(trait_alias)]
 
 trait Svc<Req> { type Res; }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // rustc --test match_borrowed_str.rs.rs && ./match_borrowed_str.rs
 
 

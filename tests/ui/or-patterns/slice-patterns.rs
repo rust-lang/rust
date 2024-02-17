@@ -1,6 +1,6 @@
 // Test or-patterns with slice-patterns
 
-// run-pass
+//@ run-pass
 
 #[derive(Debug, PartialEq)]
 enum MatchArm {

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 macro_rules! m {
     ($i:meta) => {
         #[derive($i)]

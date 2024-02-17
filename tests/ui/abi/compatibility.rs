@@ -1,57 +1,57 @@
-// check-pass
-// revisions: host
-// revisions: i686
-//[i686] compile-flags: --target i686-unknown-linux-gnu
-//[i686] needs-llvm-components: x86
-// revisions: x86-64
-//[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
-//[x86-64] needs-llvm-components: x86
-// revisions: x86-64-win
-//[x86-64-win] compile-flags: --target x86_64-pc-windows-msvc
-//[x86-64-win] needs-llvm-components: x86
-// revisions: arm
-//[arm] compile-flags: --target arm-unknown-linux-gnueabi
-//[arm] needs-llvm-components: arm
-// revisions: aarch64
-//[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
-//[aarch64] needs-llvm-components: aarch64
-// revisions: s390x
-//[s390x] compile-flags: --target s390x-unknown-linux-gnu
-//[s390x] needs-llvm-components: systemz
-// revisions: mips
-//[mips] compile-flags: --target mips-unknown-linux-gnu
-//[mips] needs-llvm-components: mips
-// revisions: mips64
-//[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
-//[mips64] needs-llvm-components: mips
-// revisions: sparc
-//[sparc] compile-flags: --target sparc-unknown-linux-gnu
-//[sparc] needs-llvm-components: sparc
-// revisions: sparc64
-//[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
-//[sparc64] needs-llvm-components: sparc
-// revisions: powerpc64
-//[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
-//[powerpc64] needs-llvm-components: powerpc
-// revisions: riscv
-//[riscv] compile-flags: --target riscv64gc-unknown-linux-gnu
-//[riscv] needs-llvm-components: riscv
-// revisions: loongarch64
-//[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
-//[loongarch64] needs-llvm-components: loongarch
-//[loongarch64] min-llvm-version: 17
-// revisions: wasm
-//[wasm] compile-flags: --target wasm32-unknown-unknown
-//[wasm] needs-llvm-components: webassembly
-// revisions: wasi
-//[wasi] compile-flags: --target wasm32-wasi
-//[wasi] needs-llvm-components: webassembly
-// revisions: bpf
-//[bpf] compile-flags: --target bpfeb-unknown-none
-//[bpf] needs-llvm-components: bpf
-// revisions: m68k
-//[m68k] compile-flags: --target m68k-unknown-linux-gnu
-//[m68k] needs-llvm-components: m68k
+//@ check-pass
+//@ revisions: host
+//@ revisions: i686
+//@[i686] compile-flags: --target i686-unknown-linux-gnu
+//@[i686] needs-llvm-components: x86
+//@ revisions: x86-64
+//@[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86-64] needs-llvm-components: x86
+//@ revisions: x86-64-win
+//@[x86-64-win] compile-flags: --target x86_64-pc-windows-msvc
+//@[x86-64-win] needs-llvm-components: x86
+//@ revisions: arm
+//@[arm] compile-flags: --target arm-unknown-linux-gnueabi
+//@[arm] needs-llvm-components: arm
+//@ revisions: aarch64
+//@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@[aarch64] needs-llvm-components: aarch64
+//@ revisions: s390x
+//@[s390x] compile-flags: --target s390x-unknown-linux-gnu
+//@[s390x] needs-llvm-components: systemz
+//@ revisions: mips
+//@[mips] compile-flags: --target mips-unknown-linux-gnu
+//@[mips] needs-llvm-components: mips
+//@ revisions: mips64
+//@[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
+//@[mips64] needs-llvm-components: mips
+//@ revisions: sparc
+//@[sparc] compile-flags: --target sparc-unknown-linux-gnu
+//@[sparc] needs-llvm-components: sparc
+//@ revisions: sparc64
+//@[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
+//@[sparc64] needs-llvm-components: sparc
+//@ revisions: powerpc64
+//@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
+//@[powerpc64] needs-llvm-components: powerpc
+//@ revisions: riscv
+//@[riscv] compile-flags: --target riscv64gc-unknown-linux-gnu
+//@[riscv] needs-llvm-components: riscv
+//@ revisions: loongarch64
+//@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
+//@[loongarch64] needs-llvm-components: loongarch
+//@[loongarch64] min-llvm-version: 17
+//@ revisions: wasm
+//@[wasm] compile-flags: --target wasm32-unknown-unknown
+//@[wasm] needs-llvm-components: webassembly
+//@ revisions: wasi
+//@[wasi] compile-flags: --target wasm32-wasi
+//@[wasi] needs-llvm-components: webassembly
+//@ revisions: bpf
+//@[bpf] compile-flags: --target bpfeb-unknown-none
+//@[bpf] needs-llvm-components: bpf
+//@ revisions: m68k
+//@[m68k] compile-flags: --target m68k-unknown-linux-gnu
+//@[m68k] needs-llvm-components: m68k
 // FIXME: disabled on nvptx64 since the target ABI fails the sanity check
 // see https://github.com/rust-lang/rust/issues/117480
 /* revisions: nvptx64

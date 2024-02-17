@@ -1,5 +1,5 @@
-// check-pass
-// aux-build: rpitit.rs
+//@ check-pass
+//@ aux-build: rpitit.rs
 
 #![feature(lint_reasons)]
 

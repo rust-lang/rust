@@ -1,5 +1,5 @@
-// aux-build:empty.rs
-// revisions: normal exhaustive_patterns
+//@ aux-build:empty.rs
+//@ revisions: normal exhaustive_patterns
 //
 // This tests a match with no arms on various types, and checks NOTEs.
 #![feature(never_type)]

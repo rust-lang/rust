@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn main() {
     remove_axis(&3, 0);
 }

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This is issue #85435. But the real story is reflected in issue #85561, where
 // a bug in the implementation of feature(capture_disjoint_fields) () was

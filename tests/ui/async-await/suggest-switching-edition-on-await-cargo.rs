@@ -1,4 +1,4 @@
-// rustc-env:CARGO=/usr/bin/cargo
+//@ rustc-env:CARGO=/usr/bin/cargo
 
 use std::pin::Pin;
 use std::future::Future;

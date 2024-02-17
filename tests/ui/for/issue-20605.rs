@@ -1,5 +1,5 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 fn changer<'a>(mut things: Box<dyn Iterator<Item=&'a mut u8>>) {
     for item in *things { *item = 0 }

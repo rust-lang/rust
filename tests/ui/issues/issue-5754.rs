@@ -1,8 +1,8 @@
-// build-pass
+//@ build-pass
 #![allow(dead_code)]
 #![allow(improper_ctypes)]
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 struct TwoDoubles {
     r: f64,

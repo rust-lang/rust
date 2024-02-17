@@ -1,12 +1,12 @@
 // issue 65419 - Attempting to run an async fn after completion mentions coroutines when it should
 // be talking about `async fn`s instead. Should also test what happens when it panics.
 
-// run-fail
-// needs-unwind
-// error-pattern: thread 'main' panicked
-// error-pattern: `async fn` resumed after panicking
-// edition:2018
-// ignore-wasm no panic or subprocess support
+//@ run-fail
+//@ needs-unwind
+//@ error-pattern: thread 'main' panicked
+//@ error-pattern: `async fn` resumed after panicking
+//@ edition:2018
+//@ ignore-wasm no panic or subprocess support
 
 #![feature(coroutines, coroutine_trait)]
 

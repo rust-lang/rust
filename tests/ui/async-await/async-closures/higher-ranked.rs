@@ -1,6 +1,6 @@
-// aux-build:block-on.rs
-// edition:2021
-// build-pass
+//@ aux-build:block-on.rs
+//@ edition:2021
+//@ build-pass
 
 #![feature(async_closure)]
 

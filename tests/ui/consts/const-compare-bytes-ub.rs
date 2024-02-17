@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #![feature(core_intrinsics)]
 #![feature(const_intrinsic_compare_bytes)]

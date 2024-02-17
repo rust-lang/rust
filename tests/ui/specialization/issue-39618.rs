@@ -2,7 +2,7 @@
 // FIXME(JohnTitor): Centril pointed out this looks suspicions, we should revisit here.
 // More context: https://github.com/rust-lang/rust/pull/69192#discussion_r379846796
 
-// check-pass
+//@ check-pass
 
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 

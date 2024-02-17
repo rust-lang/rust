@@ -1,7 +1,7 @@
-// aux-build:block-on.rs
-// edition:2021
+//@ aux-build:block-on.rs
+//@ edition:2021
 
-// known-bug: unknown
+//@ known-bug: unknown
 // Borrow checking doesn't like that higher-ranked output...
 
 #![feature(async_closure)]

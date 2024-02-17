@@ -3,7 +3,7 @@ use super::{AllocId, InterpResult};
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use std::{fmt, num::NonZeroU64};
+use std::{fmt, num::NonZero};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic
@@ -129,7 +129,7 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
 /// The type of provenance in the compile-time interpreter.
 /// This is a packed representation of an `AllocId` and an `immutable: bool`.
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct CtfeProvenance(NonZeroU64);
+pub struct CtfeProvenance(NonZero<u64>);
 
 impl From<AllocId> for CtfeProvenance {
     fn from(value: AllocId) -> Self {
@@ -155,7 +155,7 @@ impl CtfeProvenance {
     /// Returns the `AllocId` of this provenance.
     #[inline(always)]
     pub fn alloc_id(self) -> AllocId {
-        AllocId(NonZeroU64::new(self.0.get() & !IMMUTABLE_MASK).unwrap())
+        AllocId(NonZero::new(self.0.get() & !IMMUTABLE_MASK).unwrap())
     }
 
     /// Returns whether this provenance is immutable.

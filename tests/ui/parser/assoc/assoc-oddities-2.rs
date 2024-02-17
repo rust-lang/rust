@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only
+//@ compile-flags: -Z parse-only
 
 fn main() {
     // see assoc-oddities-1 for explanation

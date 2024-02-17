@@ -1,5 +1,5 @@
-// edition:2021
-// check-pass
+//@ edition:2021
+//@ check-pass
 
 pub struct Example<'a, T> {
   a: T,

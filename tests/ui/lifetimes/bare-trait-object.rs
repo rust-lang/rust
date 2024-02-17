@@ -1,5 +1,5 @@
 // Verify that lifetime resolution correctly accounts for `Fn` bare trait objects.
-// check-pass
+//@ check-pass
 #![allow(bare_trait_objects)]
 
 // This should work as: fn next_u32(fill_buf: &mut dyn FnMut(&mut [u8]))

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 enum Generic<const N: usize> {
     Variant,
 }

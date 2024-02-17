@@ -1,5 +1,5 @@
 // Issue: 103366 , Suggest fix for misplaced generic params
-// run-rustfix
+//@ run-rustfix
 
 #[allow(unused)]
 enum<T> Foo { Variant(T) }

@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// aux-build:issue-4208-cc.rs
+//@ aux-build:issue-4208-cc.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate numeric;
 use numeric::{sin, Angle};

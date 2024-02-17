@@ -1,4 +1,4 @@
-// aux-build:hidden-parent.rs
+//@ aux-build:hidden-parent.rs
 
 extern crate hidden_parent;
 

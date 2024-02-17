@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![crate_type="lib"]
 #![allow(unused)]
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn check(list: &[u8]) {
     match list {

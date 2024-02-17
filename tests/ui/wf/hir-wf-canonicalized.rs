@@ -1,4 +1,4 @@
-// incremental
+//@ incremental
 
 trait Foo {
     type V;

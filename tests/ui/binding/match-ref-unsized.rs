@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Binding unsized expressions to ref patterns
 
 pub fn main() {

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(coroutine_trait, negative_impls)]
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Tr<'a> {
     type Assoc;

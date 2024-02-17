@@ -1,11 +1,11 @@
 #![deny(large_assignments)]
 #![feature(large_assignments)]
 #![move_size_limit = "1000"]
-// build-fail
-// only-64bit
+//@ build-fail
+//@ only-64bit
 
-// edition:2018
-// compile-flags: -Zmir-opt-level=0
+//@ edition:2018
+//@ compile-flags: -Zmir-opt-level=0
 
 use std::{sync::Arc, rc::Rc};
 

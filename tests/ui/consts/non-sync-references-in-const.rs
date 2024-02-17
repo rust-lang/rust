@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #49206
+//@ check-pass
+//@ known-bug: #49206
 
 // Should fail. Compiles and prints 2 identical addresses, which shows 2 threads
 // with the same `'static` reference to non-`Sync` struct. The problem is that

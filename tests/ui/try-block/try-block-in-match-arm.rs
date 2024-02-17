@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: --edition 2018
+//@ check-pass
+//@ compile-flags: --edition 2018
 
 #![feature(try_blocks)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait T {
     fn test<const A: i32>(&self) -> i32 { A }

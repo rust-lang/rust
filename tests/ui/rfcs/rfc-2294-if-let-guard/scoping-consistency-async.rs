@@ -1,8 +1,8 @@
 // Check that temporaries in if-let guards are correctly scoped.
 // Regression test for #116079.
 
-// build-pass
-// edition:2018
+//@ build-pass
+//@ edition:2018
 // -Zvalidate-mir
 
 #![feature(if_let_guard)]

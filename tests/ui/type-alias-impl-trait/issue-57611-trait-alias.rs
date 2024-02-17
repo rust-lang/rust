@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test for issue #57611
 // Ensures that we don't ICE
 

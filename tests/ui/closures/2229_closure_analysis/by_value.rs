@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that we handle derferences properly when only some of the captures are being moved with
 // `capture_disjoint_fields` enabled.

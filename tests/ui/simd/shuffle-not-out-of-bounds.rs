@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 #![allow(non_camel_case_types)]
 #![feature(repr_simd, platform_intrinsics)]
 

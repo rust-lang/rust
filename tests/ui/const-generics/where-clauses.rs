@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 trait Bar<const N: usize> { fn bar() {} }
 trait Foo<const N: usize>: Bar<N> {}
 

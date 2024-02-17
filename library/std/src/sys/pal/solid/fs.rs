@@ -388,7 +388,7 @@ impl File {
 
             // Safety: `num_bytes_read` bytes were written to the unfilled
             // portion of the buffer
-            cursor.advance(num_bytes_read);
+            cursor.advance_unchecked(num_bytes_read);
 
             Ok(())
         }

@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 // gate-test-anonymous_lifetime_in_impl_trait
 // Verify the behaviour of `feature(anonymous_lifetime_in_impl_trait)`.
 

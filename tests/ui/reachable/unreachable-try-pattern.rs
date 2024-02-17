@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(never_type, exhaustive_patterns)]
 #![warn(unreachable_code)]
 #![warn(unreachable_patterns)]

@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:pub_use_mods_xcrate.rs
+//@ run-pass
+//@ aux-build:pub_use_mods_xcrate.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![allow(unused_imports)]
 

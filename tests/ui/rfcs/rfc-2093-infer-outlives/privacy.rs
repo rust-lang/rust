@@ -3,7 +3,7 @@
 // Private>::Out: 'a`, but the private trait is -- well -- private,
 // and hence it was not something that a pub trait could refer to.
 //
-// run-pass
+//@ run-pass
 
 #![allow(dead_code)]
 

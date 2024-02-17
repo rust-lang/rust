@@ -1,6 +1,6 @@
 // Regression test for issue #69490
 
-// check-pass
+//@ check-pass
 
 pub trait Trait<T> {
     const S: &'static str;

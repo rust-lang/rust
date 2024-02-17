@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 // Regression test for #66975
 #![warn(unconditional_panic)]

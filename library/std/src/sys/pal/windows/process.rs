@@ -12,7 +12,7 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::mem::MaybeUninit;
-use crate::num::NonZeroI32;
+use crate::num::NonZero;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
@@ -747,7 +747,7 @@ impl Into<ExitStatus> for ExitStatusError {
 }
 
 impl ExitStatusError {
-    pub fn code(self) -> Option<NonZeroI32> {
+    pub fn code(self) -> Option<NonZero<i32>> {
         Some((u32::from(self.0) as i32).try_into().unwrap())
     }
 }

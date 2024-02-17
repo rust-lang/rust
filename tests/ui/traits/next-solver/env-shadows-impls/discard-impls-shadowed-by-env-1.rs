@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // Normalizing `<T as Trait>::TraitAssoc` in the elaborated environment
 // `[T: Trait, T: Super, <T as Super>::SuperAssoc = <T as Trait>::TraitAssoc]`

@@ -1,7 +1,7 @@
 // Tests that we consider `i16: Remote` to be ambiguous, even
 // though the upstream crate doesn't implement it for now.
 
-// aux-build:coherence_lib.rs
+//@ aux-build:coherence_lib.rs
 
 
 extern crate coherence_lib;

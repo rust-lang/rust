@@ -1,10 +1,10 @@
-// revisions: x86_64 aarch64
+//@ revisions: x86_64 aarch64
 
-// [x86_64] compile-flags: --target x86_64-unknown-linux-gnu
-// [aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@ [x86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@ [aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 
-// [x86_64] needs-llvm-components: x86
-// [aarch64] needs-llvm-components: aarch64
+//@ [x86_64] needs-llvm-components: x86
+//@ [aarch64] needs-llvm-components: aarch64
 
 #![feature(no_core, lang_items, rustc_attrs, asm_const)]
 #![no_core]

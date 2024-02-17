@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // This does not reflect a stable guarantee (we guarantee very little for equality of pointers
 // around `const`), but it would be good to understand what is happening if these assertions ever

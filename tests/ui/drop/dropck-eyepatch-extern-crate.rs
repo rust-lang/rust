@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:dropck_eyepatch_extern_crate.rs
+//@ run-pass
+//@ aux-build:dropck_eyepatch_extern_crate.rs
 
 extern crate dropck_eyepatch_extern_crate as other;
 

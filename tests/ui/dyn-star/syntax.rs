@@ -1,6 +1,6 @@
 // Make sure we can parse the `dyn* Trait` syntax
 //
-// check-pass
+//@ check-pass
 
 #![feature(dyn_star)]
 #![allow(incomplete_features)]

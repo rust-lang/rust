@@ -1,6 +1,6 @@
 // Unstable entities should be caught in import lists
 
-// aux-build:lint-stability.rs
+//@ aux-build:lint-stability.rs
 
 #![allow(warnings)]
 

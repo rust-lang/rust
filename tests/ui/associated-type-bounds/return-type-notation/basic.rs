@@ -1,6 +1,6 @@
-// revisions: with without
-// edition: 2021
-// [with] check-pass
+//@ revisions: with without
+//@ edition: 2021
+//@ [with] check-pass
 
 #![feature(return_type_notation)]
 //~^ WARN the feature `return_type_notation` is incomplete

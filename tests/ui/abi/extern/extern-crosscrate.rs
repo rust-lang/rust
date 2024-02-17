@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:extern-crosscrate-source.rs
-// ignore-wasm32-bare no libc to test ffi with
+//@ run-pass
+//@ aux-build:extern-crosscrate-source.rs
+//@ ignore-wasm32-bare no libc to test ffi with
 
 #![feature(rustc_private)]
 

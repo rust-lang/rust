@@ -1,3 +1,4 @@
+#![feature(generic_nonzero)]
 #![feature(rustc_private, stmt_expr_attributes)]
 #![allow(
     clippy::manual_range_contains,
@@ -19,7 +20,7 @@ extern crate rustc_session;
 extern crate tracing;
 
 use std::env::{self, VarError};
-use std::num::NonZeroU64;
+use std::num::NonZero;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -524,7 +525,7 @@ fn main() {
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
-            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(param) {
+            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZero<u64>>(param) {
                 Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
                 Err(err) =>
                     show_error!(

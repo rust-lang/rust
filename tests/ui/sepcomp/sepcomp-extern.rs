@@ -1,6 +1,6 @@
-// run-pass
-// compile-flags: -C codegen-units=3
-// aux-build:sepcomp-extern-lib.rs
+//@ run-pass
+//@ compile-flags: -C codegen-units=3
+//@ aux-build:sepcomp-extern-lib.rs
 
 // Test accessing external items from multiple compilation units.
 

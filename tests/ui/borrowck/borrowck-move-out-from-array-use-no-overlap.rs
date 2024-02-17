@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn array() -> [(String, String); 3] {
     Default::default()

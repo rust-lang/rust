@@ -1,6 +1,6 @@
 #![feature(auto_traits)]
 #![feature(negative_impls)]
-// edition:2018
+//@ edition:2018
 
 // This tests the unspecialized async-await-specific error when futures don't implement an
 // auto trait (which is not Send or Sync) due to some type that was captured.

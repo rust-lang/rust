@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn add_ten<N>(n: N) -> N {
     n + 10

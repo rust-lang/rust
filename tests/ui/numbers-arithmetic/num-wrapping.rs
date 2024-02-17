@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(unused_macros)]
 
-// compile-flags: -C debug-assertions
+//@ compile-flags: -C debug-assertions
 //
 // Test std::num::Wrapping<T> for {uN, iN, usize, isize}
 

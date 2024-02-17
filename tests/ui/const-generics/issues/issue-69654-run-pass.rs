@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Bar<T> {} //~ WARN trait `Bar` is never used
 impl<T> Bar<T> for [u8; 7] {}
 

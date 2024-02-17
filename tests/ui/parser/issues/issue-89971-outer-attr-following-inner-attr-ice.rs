@@ -1,4 +1,4 @@
-// aux-build:issue-89971-outer-attr-following-inner-attr-ice.rs
+//@ aux-build:issue-89971-outer-attr-following-inner-attr-ice.rs
 
 #[macro_use]
 extern crate issue_89971_outer_attr_following_inner_attr_ice;

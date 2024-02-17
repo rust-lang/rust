@@ -1,5 +1,5 @@
 // Regression test for #66768.
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 //-^ "dead code" is needed to reproduce the issue.
 

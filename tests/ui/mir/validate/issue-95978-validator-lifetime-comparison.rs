@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zvalidate-mir
+//@ check-pass
+//@ compile-flags: -Zvalidate-mir
 
 fn foo(_a: &str) {}
 

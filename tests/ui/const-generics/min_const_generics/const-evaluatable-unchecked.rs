@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ check-pass
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 #![allow(dead_code)]
 
 fn foo<T>() {

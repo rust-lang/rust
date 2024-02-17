@@ -1,5 +1,5 @@
-// compile-flags: -Zmir-opt-level=0
-// run-pass
+//@ compile-flags: -Zmir-opt-level=0
+//@ run-pass
 
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]

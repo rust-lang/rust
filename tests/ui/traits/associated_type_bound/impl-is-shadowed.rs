@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 trait Bar<'a> {
     type Assoc: 'static;
 }

@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // This is a regression test for #83564.
 // For some reason, Rust 2018 or higher is required to reproduce the bug.

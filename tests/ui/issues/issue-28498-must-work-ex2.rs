@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Example taken from RFC 1238 text
 
 // https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md

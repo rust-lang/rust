@@ -1,6 +1,6 @@
-// aux-build:macro-use-warned-against.rs
-// aux-build:macro-use-warned-against2.rs
-// check-pass
+//@ aux-build:macro-use-warned-against.rs
+//@ aux-build:macro-use-warned-against2.rs
+//@ check-pass
 
 #![warn(macro_use_extern_crate, unused)]
 

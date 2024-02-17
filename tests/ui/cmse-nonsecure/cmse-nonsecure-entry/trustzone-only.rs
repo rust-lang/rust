@@ -1,4 +1,4 @@
-// ignore-thumbv8m.main-none-eabi
+//@ ignore-thumbv8m.main-none-eabi
 #![feature(cmse_nonsecure_entry)]
 
 #[no_mangle]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Check that we allow a cast to `_` so long as the target type can be
 // inferred elsewhere.
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(decl_macro)]
 
 macro_rules! r#struct {

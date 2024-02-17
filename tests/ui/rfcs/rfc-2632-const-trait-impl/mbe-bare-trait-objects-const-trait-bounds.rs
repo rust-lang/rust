@@ -6,7 +6,7 @@
 // `?$Trait:path` would never be reached.
 // See `parser/macro/mbe-bare-trait-object-maybe-trait-bound.rs`.
 
-// check-pass
+//@ check-pass
 
 macro_rules! check {
     ($Type:ty) => { compile_error!("ty"); };

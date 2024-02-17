@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:bang-macro.rs
+//@ run-pass
+//@ aux-build:bang-macro.rs
 
 extern crate bang_macro;
 use bang_macro::rewrite;

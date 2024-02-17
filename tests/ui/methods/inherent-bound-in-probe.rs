@@ -1,4 +1,4 @@
-// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
 // Fixes #110131
 //

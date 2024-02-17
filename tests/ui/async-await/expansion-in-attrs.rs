@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 macro_rules! with_doc {
     ($doc: expr) => {

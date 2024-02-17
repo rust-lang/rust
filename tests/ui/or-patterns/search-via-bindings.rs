@@ -1,6 +1,6 @@
 // Check that we expand multiple or-patterns from left to right.
 
-// run-pass
+//@ run-pass
 
 fn search(target: (bool, bool, bool)) -> u32 {
     let x = ((false, true), (false, true), (false, true));

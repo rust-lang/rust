@@ -1,6 +1,6 @@
 //! Test that absolute path names are correct when a crate is not linked into the root namespace
 
-// aux-build:issue-1920.rs
+//@ aux-build:issue-1920.rs
 
 mod foo {
     pub extern crate issue_1920;

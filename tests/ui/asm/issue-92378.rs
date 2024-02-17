@@ -1,7 +1,7 @@
-// compile-flags: --target armv5te-unknown-linux-gnueabi
-// needs-llvm-components: arm
-// needs-asm-support
-// build-pass
+//@ compile-flags: --target armv5te-unknown-linux-gnueabi
+//@ needs-llvm-components: arm
+//@ needs-asm-support
+//@ build-pass
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]

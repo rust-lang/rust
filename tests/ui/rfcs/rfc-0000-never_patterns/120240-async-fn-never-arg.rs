@@ -1,5 +1,5 @@
-// edition: 2018
-// known-bug: #120240
+//@ edition: 2018
+//@ known-bug: #120240
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 

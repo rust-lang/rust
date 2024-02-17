@@ -1,4 +1,4 @@
-// compile-flags: -C debuginfo=2 -C prefer-dynamic
+//@ compile-flags: -C debuginfo=2 -C prefer-dynamic
 
 #![crate_type="dylib"]
 

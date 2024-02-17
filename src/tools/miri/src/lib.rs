@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 #![feature(cell_update)]
 #![feature(float_gamma)]
+#![feature(generic_nonzero)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]

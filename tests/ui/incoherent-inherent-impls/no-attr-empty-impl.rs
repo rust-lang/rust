@@ -1,4 +1,4 @@
-// aux-build:extern-crate.rs
+//@ aux-build:extern-crate.rs
 extern crate extern_crate;
 
 impl extern_crate::StructWithAttr {}

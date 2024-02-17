@@ -1,5 +1,5 @@
-// edition:2021
-// run-pass
+//@ edition:2021
+//@ run-pass
 
 // Test that we can mutate an element of a tuple from within a closure
 // while immutably borrowing another element of the same tuple outside the closure.

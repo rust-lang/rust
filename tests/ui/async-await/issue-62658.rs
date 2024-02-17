@@ -1,8 +1,8 @@
 // This test created a coroutine whose size was not rounded to a multiple of its
 // alignment. This caused an assertion error in codegen.
 
-// build-pass
-// edition:2018
+//@ build-pass
+//@ edition:2018
 
 async fn noop() {}
 

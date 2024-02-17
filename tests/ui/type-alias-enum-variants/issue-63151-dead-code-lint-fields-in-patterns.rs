@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Regression test for the issue #63151:
 // Spurious unused field warning when matching variants under a `Self` scope

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // regression test for #78892
 

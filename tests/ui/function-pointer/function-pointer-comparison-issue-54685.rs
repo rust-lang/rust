@@ -1,5 +1,5 @@
-// compile-flags: -C opt-level=3
-// run-pass
+//@ compile-flags: -C opt-level=3
+//@ run-pass
 
 fn foo(_i: i32) -> i32 {
     1

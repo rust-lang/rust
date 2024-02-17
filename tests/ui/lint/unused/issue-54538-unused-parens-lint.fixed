@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![feature(box_patterns, stmt_expr_attributes, yeet_expr)]
 

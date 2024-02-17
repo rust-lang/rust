@@ -1,5 +1,5 @@
-// run-rustfix
-// ignore-test (rustfix needs multiple suggestions)
+//@ run-rustfix
+//@ ignore-test (rustfix needs multiple suggestions)
 //
 // FIXME: Re-enable this test once we support choosing
 // between multiple mutually exclusive suggestions for the same span

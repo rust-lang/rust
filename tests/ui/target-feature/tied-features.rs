@@ -1,6 +1,6 @@
-// build-fail
-// compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
-// needs-llvm-components: aarch64
+//@ build-fail
+//@ compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
+//@ needs-llvm-components: aarch64
 #![feature(no_core, lang_items)]
 #![no_core]
 

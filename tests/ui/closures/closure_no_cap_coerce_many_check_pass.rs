@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Ensure non-capturing Closure passes CoerceMany.
 fn foo(x: usize) -> usize {
     0

@@ -1,6 +1,6 @@
-// compile-flags: -Z mir-opt-level=3
-// edition:2018
-// build-pass
+//@ compile-flags: -Z mir-opt-level=3
+//@ edition:2018
+//@ build-pass
 
 #![feature(async_closure)]
 

@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // Check that we successfully handle methods where the `self` type has
 // an early-bound lifetime. Issue #18208.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 

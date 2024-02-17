@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@ compile-flags: --test
 
 use std::num::ParseFloatError;
 

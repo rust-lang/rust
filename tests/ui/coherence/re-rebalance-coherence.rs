@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:re_rebalance_coherence_lib.rs
+//@ run-pass
+//@ aux-build:re_rebalance_coherence_lib.rs
 
 extern crate re_rebalance_coherence_lib as lib;
 use lib::*;

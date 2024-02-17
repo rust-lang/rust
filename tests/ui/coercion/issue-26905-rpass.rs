@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(unsize, coerce_unsized)]
 
 // Verfies that PhantomData is ignored for DST coercions

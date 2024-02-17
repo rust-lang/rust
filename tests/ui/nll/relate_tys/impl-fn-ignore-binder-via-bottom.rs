@@ -11,7 +11,7 @@
 //
 // c.f. Issue #57642.
 //
-// compile-flags:-Zno-leak-check
+//@ compile-flags:-Zno-leak-check
 
 trait Y {
     type F;

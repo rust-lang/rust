@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 fn main() {
     debug_assert!(false, 123);

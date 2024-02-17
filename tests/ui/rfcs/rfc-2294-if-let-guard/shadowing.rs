@@ -1,5 +1,5 @@
 // Check shadowing in if let guards works as expected.
-// check-pass
+//@ check-pass
 
 #![feature(if_let_guard)]
 #![feature(let_chains)]

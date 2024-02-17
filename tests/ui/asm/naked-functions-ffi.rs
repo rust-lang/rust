@@ -1,5 +1,5 @@
-// check-pass
-// needs-asm-support
+//@ check-pass
+//@ needs-asm-support
 #![feature(naked_functions)]
 #![crate_type = "lib"]
 

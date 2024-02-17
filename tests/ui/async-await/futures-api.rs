@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// aux-build:arc_wake.rs
+//@ aux-build:arc_wake.rs
 
 extern crate arc_wake;
 

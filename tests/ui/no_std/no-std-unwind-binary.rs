@@ -1,6 +1,6 @@
-// error-pattern:unwinding panics are not supported without std
-// needs-unwind
-// compile-flags: -Cpanic=unwind
+//@ error-pattern:unwinding panics are not supported without std
+//@ needs-unwind
+//@ compile-flags: -Cpanic=unwind
 
 // Make sure that we don't emit an error message mentioning internal lang items.
 

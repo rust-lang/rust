@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 // Point at the captured immutable outer variable
 

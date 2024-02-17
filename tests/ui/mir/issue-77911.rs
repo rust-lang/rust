@@ -1,5 +1,5 @@
-// compile-flags: -Z mir-opt-level=3
-// build-pass
+//@ compile-flags: -Z mir-opt-level=3
+//@ build-pass
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};

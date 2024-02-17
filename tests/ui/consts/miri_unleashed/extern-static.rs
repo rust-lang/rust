@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(thread_local)]
 #![allow(static_mut_ref)]
 

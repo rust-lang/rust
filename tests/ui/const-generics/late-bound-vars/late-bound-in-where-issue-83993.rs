@@ -1,4 +1,4 @@
-// known-bug: unknown
+//@ known-bug: unknown
 // see comment on `tests/ui/const-generics/late-bound-vars/simple.rs`
 
 #![feature(generic_const_exprs)]

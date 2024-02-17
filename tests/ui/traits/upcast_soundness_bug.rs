@@ -1,6 +1,6 @@
 #![feature(trait_upcasting)]
-// known-bug: #120222
-// check-pass
+//@ known-bug: #120222
+//@ check-pass
 //! This will segfault at runtime.
 
 pub trait SupSupA {

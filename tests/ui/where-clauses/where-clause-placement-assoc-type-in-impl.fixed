@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@ check-pass
+//@ run-rustfix
 
 #![allow(dead_code)]
 

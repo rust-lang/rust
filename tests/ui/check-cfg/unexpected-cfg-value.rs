@@ -1,8 +1,8 @@
 // Check for unexpected configuration value in the code.
 //
-// check-pass
-// compile-flags: --cfg=feature="rand" -Z unstable-options
-// compile-flags: --check-cfg=cfg(feature,values("serde","full"))
+//@ check-pass
+//@ compile-flags: --cfg=feature="rand" -Z unstable-options
+//@ compile-flags: --check-cfg=cfg(feature,values("serde","full"))
 
 #[cfg(feature = "sedre")]
 //~^ WARNING unexpected `cfg` condition value

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #[allow(unused_parens)]
 fn main() {
     let _ = 1; //~ ERROR leading `+` is not supported

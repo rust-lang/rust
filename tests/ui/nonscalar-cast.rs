@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #[derive(Debug)]
 struct Foo {

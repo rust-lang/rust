@@ -1,6 +1,6 @@
-// aux-build:crayte.rs
-// edition:2018
-// run-pass
+//@ aux-build:crayte.rs
+//@ edition:2018
+//@ run-pass
 extern crate crayte;
 
 use crayte::*;

@@ -1,4 +1,4 @@
-// edition:2015
+//@ edition:2015
 
 #[macro_export]
 macro_rules! generate_trait_2015_ident {

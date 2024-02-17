@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 use std::sync::{Arc, Mutex};
 
 struct Struct<T> {

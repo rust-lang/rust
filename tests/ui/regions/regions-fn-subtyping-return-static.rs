@@ -6,7 +6,7 @@
 // This can safely be considered to be an instance of `F` because all
 // lifetimes are sublifetimes of 'static.
 //
-// check-pass
+//@ check-pass
 
 #![allow(dead_code)]
 #![allow(unused_variables)]

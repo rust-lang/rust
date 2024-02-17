@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_braces)]
 #![allow(unused_assignments)]
 

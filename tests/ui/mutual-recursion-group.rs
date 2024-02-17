@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 enum colour { red, green, blue, }
 

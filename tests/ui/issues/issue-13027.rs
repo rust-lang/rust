@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Tests that match expression handles overlapped literal and range
 // properly in the presence of guard function.

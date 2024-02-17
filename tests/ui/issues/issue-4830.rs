@@ -1,7 +1,7 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub struct Scheduler {
     /// The event loop used to drive the scheduler and perform I/O

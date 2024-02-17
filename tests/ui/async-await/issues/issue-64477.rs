@@ -3,8 +3,8 @@
 // We were incorrectly claiming that the `f(x).await` future captured
 // a value of type `T`, and hence that `T: Send` would have to hold.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 use std::future::Future;
 use std::pin::Pin;

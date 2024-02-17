@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn test(foo: isize) { assert_eq!(foo, 10); }
 

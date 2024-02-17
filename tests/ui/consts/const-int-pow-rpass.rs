@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(wrapping_next_power_of_two)]
 

@@ -1,6 +1,6 @@
 // Test that we get implied bounds from complex projections after normalization.
 
-// check-pass
+//@ check-pass
 
 // implementations wil ensure that
 // WF(<T as Combine<'a>>::Ty) implies T: 'a

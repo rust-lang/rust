@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![allow(dead_code)]
 trait Inner {
     type T;

@@ -1,5 +1,5 @@
-// edition:2018
-// incremental
+//@ edition:2018
+//@ incremental
 
 use std::fs::File;
 use std::future::Future;
