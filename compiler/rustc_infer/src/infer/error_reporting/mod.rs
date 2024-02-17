@@ -2786,19 +2786,8 @@ pub enum FailureCode {
     Error0644,
 }
 
-pub trait ObligationCauseExt<'tcx> {
-    fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode;
-
-    fn as_failure_code_diag(
-        &self,
-        terr: TypeError<'tcx>,
-        span: Span,
-        subdiags: Vec<TypeErrorAdditionalDiags>,
-    ) -> ObligationCauseFailureCode;
-    fn as_requirement_str(&self) -> &'static str;
-}
-
-impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
+#[extension(pub trait ObligationCauseExt<'tcx>)]
+impl<'tcx> ObligationCause<'tcx> {
     fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode {
         use self::FailureCode::*;
         use crate::traits::ObligationCauseCode::*;

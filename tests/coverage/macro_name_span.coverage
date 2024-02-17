@@ -21,6 +21,6 @@
    LL|       |macro_name_span_helper::macro_that_defines_a_function! {
    LL|      1|    fn affected_function() {
    LL|      1|        macro_with_an_unreasonably_and_egregiously_long_name!();
-   LL|      1|    }
+   LL|       |    }
    LL|       |}
 

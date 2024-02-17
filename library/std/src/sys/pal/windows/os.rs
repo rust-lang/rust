@@ -318,13 +318,33 @@ pub fn temp_dir() -> PathBuf {
     super::fill_utf16_buf(|buf, sz| unsafe { c::GetTempPath2W(sz, buf) }, super::os2path).unwrap()
 }
 
-#[cfg(not(target_vendor = "uwp"))]
+#[cfg(all(not(target_vendor = "uwp"), not(target_vendor = "win7")))]
 fn home_dir_crt() -> Option<PathBuf> {
     unsafe {
-        // The magic constant -4 can be used as the token passed to GetUserProfileDirectoryW below
-        // instead of us having to go through these multiple steps to get a token. However this is
-        // not implemented on Windows 7, only Windows 8 and up. When we drop support for Windows 7
-        // we can simplify this code. See #90144 for details.
+        // Defined in processthreadsapi.h.
+        const CURRENT_PROCESS_TOKEN: usize = -4_isize as usize;
+
+        super::fill_utf16_buf(
+            |buf, mut sz| {
+                match c::GetUserProfileDirectoryW(
+                    ptr::invalid_mut(CURRENT_PROCESS_TOKEN),
+                    buf,
+                    &mut sz,
+                ) {
+                    0 if api::get_last_error().code != c::ERROR_INSUFFICIENT_BUFFER => 0,
+                    0 => sz,
+                    _ => sz - 1, // sz includes the null terminator
+                }
+            },
+            super::os2path,
+        )
+        .ok()
+    }
+}
+
+#[cfg(target_vendor = "win7")]
+fn home_dir_crt() -> Option<PathBuf> {
+    unsafe {
         use crate::sys::handle::Handle;
 
         let me = c::GetCurrentProcess();

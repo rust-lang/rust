@@ -131,22 +131,12 @@ pub enum GenerateProofTree {
     Never,
 }
 
-pub trait InferCtxtEvalExt<'tcx> {
+#[extension(pub trait InferCtxtEvalExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Evaluates a goal from **outside** of the trait solver.
     ///
     /// Using this while inside of the solver is wrong as it uses a new
     /// search graph which would break cycle detection.
-    fn evaluate_root_goal(
-        &self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-        generate_proof_tree: GenerateProofTree,
-    ) -> (
-        Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
-        Option<inspect::GoalEvaluation<'tcx>>,
-    );
-}
-
-impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn evaluate_root_goal(
         &self,

@@ -14,13 +14,13 @@
    LL|       |#[coverage(on)]
    LL|      1|fn contains_closures_on() {
    LL|      1|    let _local_closure_on = #[coverage(on)]
-   LL|      1|    |input: &str| {
+   LL|      0|    |input: &str| {
    LL|      0|        println!("{input}");
-   LL|      1|    };
+   LL|      0|    };
    LL|      1|    let _local_closure_off = #[coverage(off)]
-   LL|      1|    |input: &str| {
+   LL|       |    |input: &str| {
    LL|       |        println!("{input}");
-   LL|      1|    };
+   LL|       |    };
    LL|      1|}
    LL|       |
    LL|       |#[coverage(off)]
