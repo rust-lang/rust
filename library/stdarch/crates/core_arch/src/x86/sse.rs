@@ -853,7 +853,7 @@ pub unsafe fn _mm_cvtt_ss2si(a: __m128) -> i32 {
 // no-op, and on Windows it's just a `mov`.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtss_f32(a: __m128) -> f32 {
-    simd_extract(a, 0)
+    simd_extract!(a, 0)
 }
 
 /// Converts a 32 bit integer to a 32 bit float. The result vector is the input
@@ -1224,7 +1224,7 @@ pub unsafe fn _mm_loadu_si64(mem_addr: *const u8) -> __m128i {
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
-    *p = simd_extract(a, 0);
+    *p = simd_extract!(a, 0);
 }
 
 /// Stores the lowest 32 bit float of `a` repeated four times into *aligned*

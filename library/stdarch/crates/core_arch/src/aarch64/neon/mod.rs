@@ -436,7 +436,7 @@ pub unsafe fn vcopy_laneq_s64<const LANE1: i32, const LANE2: i32>(
 ) -> int64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    transmute::<i64, _>(simd_extract(b, LANE2 as u32))
+    transmute::<i64, _>(simd_extract!(b, LANE2 as u32))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -451,7 +451,7 @@ pub unsafe fn vcopy_laneq_u64<const LANE1: i32, const LANE2: i32>(
 ) -> uint64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    transmute::<u64, _>(simd_extract(b, LANE2 as u32))
+    transmute::<u64, _>(simd_extract!(b, LANE2 as u32))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -466,7 +466,7 @@ pub unsafe fn vcopy_laneq_p64<const LANE1: i32, const LANE2: i32>(
 ) -> poly64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    transmute::<u64, _>(simd_extract(b, LANE2 as u32))
+    transmute::<u64, _>(simd_extract!(b, LANE2 as u32))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -481,7 +481,7 @@ pub unsafe fn vcopy_laneq_f64<const LANE1: i32, const LANE2: i32>(
 ) -> float64x1_t {
     static_assert!(LANE1 == 0);
     static_assert_uimm_bits!(LANE2, 1);
-    transmute::<f64, _>(simd_extract(b, LANE2 as u32))
+    transmute::<f64, _>(simd_extract!(b, LANE2 as u32))
 }
 
 /// Load multiple single-element structures to one, two, three, or four registers.
@@ -749,7 +749,7 @@ pub unsafe fn vld1q_dup_f64(ptr: *const f64) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld1_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -760,7 +760,7 @@ pub unsafe fn vld1_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x1_t) 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vld1q_lane_f64<const LANE: i32>(ptr: *const f64, src: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers.
@@ -2038,7 +2038,7 @@ pub unsafe fn vmovq_n_f64(value: f64) -> float64x2_t {
 #[cfg_attr(test, assert_instr(mov))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
-    float64x1_t(simd_extract(a, 1))
+    float64x1_t(simd_extract!(a, 1))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2047,7 +2047,7 @@ pub unsafe fn vget_high_f64(a: float64x2_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(ext))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
-    transmute(u64x1::new(simd_extract(a, 1)))
+    transmute(u64x1::new(simd_extract!(a, 1)))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2056,7 +2056,7 @@ pub unsafe fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vget_low_f64(a: float64x2_t) -> float64x1_t {
-    float64x1_t(simd_extract(a, 0))
+    float64x1_t(simd_extract!(a, 0))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2065,7 +2065,7 @@ pub unsafe fn vget_low_f64(a: float64x2_t) -> float64x1_t {
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
-    transmute(u64x1::new(simd_extract(a, 0)))
+    transmute(u64x1::new(simd_extract!(a, 0)))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2076,7 +2076,7 @@ pub unsafe fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, IMM5 = 0))]
 pub unsafe fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
     static_assert!(IMM5 == 0);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2087,7 +2087,7 @@ pub unsafe fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, IMM5 = 0))]
 pub unsafe fn vgetq_lane_f64<const IMM5: i32>(v: float64x2_t) -> f64 {
     static_assert_uimm_bits!(IMM5, 1);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Vector combine

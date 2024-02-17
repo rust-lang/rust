@@ -1329,7 +1329,7 @@ pub unsafe fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi8<const INDEX: i32>(a: __m256i, i: i8) -> __m256i {
     static_assert_uimm_bits!(INDEX, 5);
-    transmute(simd_insert(a.as_i8x32(), INDEX as u32, i))
+    transmute(simd_insert!(a.as_i8x32(), INDEX as u32, i))
 }
 
 /// Copies `a` to result, and inserts the 16-bit integer `i` into result
@@ -1343,7 +1343,7 @@ pub unsafe fn _mm256_insert_epi8<const INDEX: i32>(a: __m256i, i: i8) -> __m256i
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m256i {
     static_assert_uimm_bits!(INDEX, 4);
-    transmute(simd_insert(a.as_i16x16(), INDEX as u32, i))
+    transmute(simd_insert!(a.as_i16x16(), INDEX as u32, i))
 }
 
 /// Copies `a` to result, and inserts the 32-bit integer `i` into result
@@ -1357,7 +1357,7 @@ pub unsafe fn _mm256_insert_epi16<const INDEX: i32>(a: __m256i, i: i16) -> __m25
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi32<const INDEX: i32>(a: __m256i, i: i32) -> __m256i {
     static_assert_uimm_bits!(INDEX, 3);
-    transmute(simd_insert(a.as_i32x8(), INDEX as u32, i))
+    transmute(simd_insert!(a.as_i32x8(), INDEX as u32, i))
 }
 
 /// Loads 256-bits (composed of 4 packed double-precision (64-bit)
@@ -2914,7 +2914,7 @@ pub unsafe fn _mm256_storeu2_m128i(hiaddr: *mut __m128i, loaddr: *mut __m128i, a
 //#[cfg_attr(test, assert_instr(movss))] FIXME
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtss_f32(a: __m256) -> f32 {
-    simd_extract(a, 0)
+    simd_extract!(a, 0)
 }
 
 // LLVM intrinsics used in the above functions

@@ -1294,7 +1294,7 @@ extern "unadjusted" {
 )]
 pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1314,7 +1314,7 @@ pub unsafe fn vld1_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x8_t) -> in
 )]
 pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1334,7 +1334,7 @@ pub unsafe fn vld1q_lane_s8<const LANE: i32>(ptr: *const i8, src: int8x16_t) -> 
 )]
 pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1354,7 +1354,7 @@ pub unsafe fn vld1_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x4_t) ->
 )]
 pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1374,7 +1374,7 @@ pub unsafe fn vld1q_lane_s16<const LANE: i32>(ptr: *const i16, src: int16x8_t) -
 )]
 pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1394,7 +1394,7 @@ pub unsafe fn vld1_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x2_t) ->
 )]
 pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1414,7 +1414,7 @@ pub unsafe fn vld1q_lane_s32<const LANE: i32>(ptr: *const i32, src: int32x4_t) -
 )]
 pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) -> int64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1434,7 +1434,7 @@ pub unsafe fn vld1_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x1_t) ->
 )]
 pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1454,7 +1454,7 @@ pub unsafe fn vld1q_lane_s64<const LANE: i32>(ptr: *const i64, src: int64x2_t) -
 )]
 pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1474,7 +1474,7 @@ pub unsafe fn vld1_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x8_t) -> u
 )]
 pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1494,7 +1494,7 @@ pub unsafe fn vld1q_lane_u8<const LANE: i32>(ptr: *const u8, src: uint8x16_t) ->
 )]
 pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1514,7 +1514,7 @@ pub unsafe fn vld1_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x4_t) -
 )]
 pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1534,7 +1534,7 @@ pub unsafe fn vld1q_lane_u16<const LANE: i32>(ptr: *const u16, src: uint16x8_t) 
 )]
 pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1554,7 +1554,7 @@ pub unsafe fn vld1_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x2_t) -
 )]
 pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1574,7 +1574,7 @@ pub unsafe fn vld1q_lane_u32<const LANE: i32>(ptr: *const u32, src: uint32x4_t) 
 )]
 pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -> uint64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1594,7 +1594,7 @@ pub unsafe fn vld1_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x1_t) -
 )]
 pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1614,7 +1614,7 @@ pub unsafe fn vld1q_lane_u64<const LANE: i32>(ptr: *const u64, src: uint64x2_t) 
 )]
 pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1634,7 +1634,7 @@ pub unsafe fn vld1_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x8_t) -> p
 )]
 pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1654,7 +1654,7 @@ pub unsafe fn vld1q_lane_p8<const LANE: i32>(ptr: *const p8, src: poly8x16_t) ->
 )]
 pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1674,7 +1674,7 @@ pub unsafe fn vld1_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x4_t) -
 )]
 pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1696,7 +1696,7 @@ pub unsafe fn vld1q_lane_p16<const LANE: i32>(ptr: *const p16, src: poly16x8_t) 
 )]
 pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -> poly64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1718,7 +1718,7 @@ pub unsafe fn vld1_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x1_t) -
 )]
 pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) -> poly64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1738,7 +1738,7 @@ pub unsafe fn vld1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t) 
 )]
 pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure to one lane of one register.
@@ -1758,7 +1758,7 @@ pub unsafe fn vld1_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x2_t) 
 )]
 pub unsafe fn vld1q_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(src, LANE as u32, *ptr)
+    simd_insert!(src, LANE as u32, *ptr)
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -5918,7 +5918,7 @@ pub unsafe fn vpmax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 )]
 pub unsafe fn vgetq_lane_u64<const IMM5: i32>(v: uint64x2_t) -> u64 {
     static_assert_uimm_bits!(IMM5, 1);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -5937,7 +5937,7 @@ pub unsafe fn vgetq_lane_u64<const IMM5: i32>(v: uint64x2_t) -> u64 {
 )]
 pub unsafe fn vget_lane_u64<const IMM5: i32>(v: uint64x1_t) -> u64 {
     static_assert!(IMM5 == 0);
-    simd_extract(v, 0)
+    simd_extract!(v, 0)
 }
 
 /// Move vector element to general-purpose register
@@ -5956,7 +5956,7 @@ pub unsafe fn vget_lane_u64<const IMM5: i32>(v: uint64x1_t) -> u64 {
 )]
 pub unsafe fn vget_lane_u16<const IMM5: i32>(v: uint16x4_t) -> u16 {
     static_assert_uimm_bits!(IMM5, 2);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -5975,7 +5975,7 @@ pub unsafe fn vget_lane_u16<const IMM5: i32>(v: uint16x4_t) -> u16 {
 )]
 pub unsafe fn vget_lane_s16<const IMM5: i32>(v: int16x4_t) -> i16 {
     static_assert_uimm_bits!(IMM5, 2);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -5994,7 +5994,7 @@ pub unsafe fn vget_lane_s16<const IMM5: i32>(v: int16x4_t) -> i16 {
 )]
 pub unsafe fn vget_lane_p16<const IMM5: i32>(v: poly16x4_t) -> p16 {
     static_assert_uimm_bits!(IMM5, 2);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6013,7 +6013,7 @@ pub unsafe fn vget_lane_p16<const IMM5: i32>(v: poly16x4_t) -> p16 {
 )]
 pub unsafe fn vget_lane_u32<const IMM5: i32>(v: uint32x2_t) -> u32 {
     static_assert_uimm_bits!(IMM5, 1);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6032,7 +6032,7 @@ pub unsafe fn vget_lane_u32<const IMM5: i32>(v: uint32x2_t) -> u32 {
 )]
 pub unsafe fn vget_lane_s32<const IMM5: i32>(v: int32x2_t) -> i32 {
     static_assert_uimm_bits!(IMM5, 1);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -6051,7 +6051,7 @@ pub unsafe fn vget_lane_s32<const IMM5: i32>(v: int32x2_t) -> i32 {
 )]
 pub unsafe fn vget_lane_f32<const IMM5: i32>(v: float32x2_t) -> f32 {
     static_assert_uimm_bits!(IMM5, 1);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -6070,7 +6070,7 @@ pub unsafe fn vget_lane_f32<const IMM5: i32>(v: float32x2_t) -> f32 {
 )]
 pub unsafe fn vgetq_lane_f32<const IMM5: i32>(v: float32x4_t) -> f32 {
     static_assert_uimm_bits!(IMM5, 2);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6089,7 +6089,7 @@ pub unsafe fn vgetq_lane_f32<const IMM5: i32>(v: float32x4_t) -> f32 {
 )]
 pub unsafe fn vget_lane_p64<const IMM5: i32>(v: poly64x1_t) -> p64 {
     static_assert!(IMM5 == 0);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6108,7 +6108,7 @@ pub unsafe fn vget_lane_p64<const IMM5: i32>(v: poly64x1_t) -> p64 {
 )]
 pub unsafe fn vgetq_lane_p64<const IMM5: i32>(v: poly64x2_t) -> p64 {
     static_assert_uimm_bits!(IMM5, 1);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6127,7 +6127,7 @@ pub unsafe fn vgetq_lane_p64<const IMM5: i32>(v: poly64x2_t) -> p64 {
 )]
 pub unsafe fn vget_lane_s64<const IMM5: i32>(v: int64x1_t) -> i64 {
     static_assert!(IMM5 == 0);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6146,7 +6146,7 @@ pub unsafe fn vget_lane_s64<const IMM5: i32>(v: int64x1_t) -> i64 {
 )]
 pub unsafe fn vgetq_lane_s64<const IMM5: i32>(v: int64x2_t) -> i64 {
     static_assert_uimm_bits!(IMM5, 1);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6165,7 +6165,7 @@ pub unsafe fn vgetq_lane_s64<const IMM5: i32>(v: int64x2_t) -> i64 {
 )]
 pub unsafe fn vgetq_lane_u16<const IMM5: i32>(v: uint16x8_t) -> u16 {
     static_assert_uimm_bits!(IMM5, 3);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6184,7 +6184,7 @@ pub unsafe fn vgetq_lane_u16<const IMM5: i32>(v: uint16x8_t) -> u16 {
 )]
 pub unsafe fn vgetq_lane_u32<const IMM5: i32>(v: uint32x4_t) -> u32 {
     static_assert_uimm_bits!(IMM5, 2);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6203,7 +6203,7 @@ pub unsafe fn vgetq_lane_u32<const IMM5: i32>(v: uint32x4_t) -> u32 {
 )]
 pub unsafe fn vgetq_lane_s16<const IMM5: i32>(v: int16x8_t) -> i16 {
     static_assert_uimm_bits!(IMM5, 3);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6222,7 +6222,7 @@ pub unsafe fn vgetq_lane_s16<const IMM5: i32>(v: int16x8_t) -> i16 {
 )]
 pub unsafe fn vgetq_lane_p16<const IMM5: i32>(v: poly16x8_t) -> p16 {
     static_assert_uimm_bits!(IMM5, 3);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6241,7 +6241,7 @@ pub unsafe fn vgetq_lane_p16<const IMM5: i32>(v: poly16x8_t) -> p16 {
 )]
 pub unsafe fn vgetq_lane_s32<const IMM5: i32>(v: int32x4_t) -> i32 {
     static_assert_uimm_bits!(IMM5, 2);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6260,7 +6260,7 @@ pub unsafe fn vgetq_lane_s32<const IMM5: i32>(v: int32x4_t) -> i32 {
 )]
 pub unsafe fn vget_lane_u8<const IMM5: i32>(v: uint8x8_t) -> u8 {
     static_assert_uimm_bits!(IMM5, 3);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6279,7 +6279,7 @@ pub unsafe fn vget_lane_u8<const IMM5: i32>(v: uint8x8_t) -> u8 {
 )]
 pub unsafe fn vget_lane_s8<const IMM5: i32>(v: int8x8_t) -> i8 {
     static_assert_uimm_bits!(IMM5, 3);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6298,7 +6298,7 @@ pub unsafe fn vget_lane_s8<const IMM5: i32>(v: int8x8_t) -> i8 {
 )]
 pub unsafe fn vget_lane_p8<const IMM5: i32>(v: poly8x8_t) -> p8 {
     static_assert_uimm_bits!(IMM5, 3);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6317,7 +6317,7 @@ pub unsafe fn vget_lane_p8<const IMM5: i32>(v: poly8x8_t) -> p8 {
 )]
 pub unsafe fn vgetq_lane_u8<const IMM5: i32>(v: uint8x16_t) -> u8 {
     static_assert_uimm_bits!(IMM5, 4);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6336,7 +6336,7 @@ pub unsafe fn vgetq_lane_u8<const IMM5: i32>(v: uint8x16_t) -> u8 {
 )]
 pub unsafe fn vgetq_lane_s8<const IMM5: i32>(v: int8x16_t) -> i8 {
     static_assert_uimm_bits!(IMM5, 4);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Move vector element to general-purpose register
@@ -6355,7 +6355,7 @@ pub unsafe fn vgetq_lane_s8<const IMM5: i32>(v: int8x16_t) -> i8 {
 )]
 pub unsafe fn vgetq_lane_p8<const IMM5: i32>(v: poly8x16_t) -> p8 {
     static_assert_uimm_bits!(IMM5, 4);
-    simd_extract(v, IMM5 as u32)
+    simd_extract!(v, IMM5 as u32)
 }
 
 /// Duplicate vector element to vector or scalar
@@ -6427,7 +6427,7 @@ pub unsafe fn vget_high_s32(a: int32x4_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vget_high_s64(a: int64x2_t) -> int64x1_t {
-    int64x1_t(simd_extract(a, 1))
+    int64x1_t(simd_extract!(a, 1))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -6499,7 +6499,7 @@ pub unsafe fn vget_high_u32(a: uint32x4_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
-    uint64x1_t(simd_extract(a, 1))
+    uint64x1_t(simd_extract!(a, 1))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -6621,7 +6621,7 @@ pub unsafe fn vget_low_s32(a: int32x4_t) -> int32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vget_low_s64(a: int64x2_t) -> int64x1_t {
-    int64x1_t(simd_extract(a, 0))
+    int64x1_t(simd_extract!(a, 0))
 }
 
 /// Duplicate vector element to vector or scalar
@@ -6689,7 +6689,7 @@ pub unsafe fn vget_low_u32(a: uint32x4_t) -> uint32x2_t {
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub unsafe fn vget_low_u64(a: uint64x2_t) -> uint64x1_t {
-    uint64x1_t(simd_extract(a, 0))
+    uint64x1_t(simd_extract!(a, 0))
 }
 
 /// Duplicate vector element to vector or scalar

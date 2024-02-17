@@ -1088,7 +1088,7 @@ pub use i64x2_shuffle as u64x2_shuffle;
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_extract_lane<const N: usize>(a: v128) -> i8 {
     static_assert!(N < 16);
-    unsafe { simd_extract(a.as_i8x16(), N as u32) }
+    unsafe { simd_extract!(a.as_i8x16(), N as u32) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 16 packed u8 numbers.
@@ -1102,7 +1102,7 @@ pub fn i8x16_extract_lane<const N: usize>(a: v128) -> i8 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u8x16_extract_lane<const N: usize>(a: v128) -> u8 {
     static_assert!(N < 16);
-    unsafe { simd_extract(a.as_u8x16(), N as u32) }
+    unsafe { simd_extract!(a.as_u8x16(), N as u32) }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 16 packed i8 numbers.
@@ -1116,7 +1116,7 @@ pub fn u8x16_extract_lane<const N: usize>(a: v128) -> u8 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_replace_lane<const N: usize>(a: v128, val: i8) -> v128 {
     static_assert!(N < 16);
-    unsafe { simd_insert(a.as_i8x16(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_i8x16(), N as u32, val).v128() }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 16 packed u8 numbers.
@@ -1130,7 +1130,7 @@ pub fn i8x16_replace_lane<const N: usize>(a: v128, val: i8) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u8x16_replace_lane<const N: usize>(a: v128, val: u8) -> v128 {
     static_assert!(N < 16);
-    unsafe { simd_insert(a.as_u8x16(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_u8x16(), N as u32, val).v128() }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
@@ -1144,7 +1144,7 @@ pub fn u8x16_replace_lane<const N: usize>(a: v128, val: u8) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_extract_lane<const N: usize>(a: v128) -> i16 {
     static_assert!(N < 8);
-    unsafe { simd_extract(a.as_i16x8(), N as u32) }
+    unsafe { simd_extract!(a.as_i16x8(), N as u32) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 8 packed u16 numbers.
@@ -1158,7 +1158,7 @@ pub fn i16x8_extract_lane<const N: usize>(a: v128) -> i16 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u16x8_extract_lane<const N: usize>(a: v128) -> u16 {
     static_assert!(N < 8);
-    unsafe { simd_extract(a.as_u16x8(), N as u32) }
+    unsafe { simd_extract!(a.as_u16x8(), N as u32) }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 8 packed i16 numbers.
@@ -1172,7 +1172,7 @@ pub fn u16x8_extract_lane<const N: usize>(a: v128) -> u16 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_replace_lane<const N: usize>(a: v128, val: i16) -> v128 {
     static_assert!(N < 8);
-    unsafe { simd_insert(a.as_i16x8(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_i16x8(), N as u32, val).v128() }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 8 packed u16 numbers.
@@ -1186,7 +1186,7 @@ pub fn i16x8_replace_lane<const N: usize>(a: v128, val: i16) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u16x8_replace_lane<const N: usize>(a: v128, val: u16) -> v128 {
     static_assert!(N < 8);
-    unsafe { simd_insert(a.as_u16x8(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_u16x8(), N as u32, val).v128() }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 4 packed i32 numbers.
@@ -1200,7 +1200,7 @@ pub fn u16x8_replace_lane<const N: usize>(a: v128, val: u16) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_extract_lane<const N: usize>(a: v128) -> i32 {
     static_assert!(N < 4);
-    unsafe { simd_extract(a.as_i32x4(), N as u32) }
+    unsafe { simd_extract!(a.as_i32x4(), N as u32) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 4 packed u32 numbers.
@@ -1226,7 +1226,7 @@ pub fn u32x4_extract_lane<const N: usize>(a: v128) -> u32 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_replace_lane<const N: usize>(a: v128, val: i32) -> v128 {
     static_assert!(N < 4);
-    unsafe { simd_insert(a.as_i32x4(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_i32x4(), N as u32, val).v128() }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 4 packed u32 numbers.
@@ -1252,7 +1252,7 @@ pub fn u32x4_replace_lane<const N: usize>(a: v128, val: u32) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_extract_lane<const N: usize>(a: v128) -> i64 {
     static_assert!(N < 2);
-    unsafe { simd_extract(a.as_i64x2(), N as u32) }
+    unsafe { simd_extract!(a.as_i64x2(), N as u32) }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 2 packed u64 numbers.
@@ -1278,7 +1278,7 @@ pub fn u64x2_extract_lane<const N: usize>(a: v128) -> u64 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_replace_lane<const N: usize>(a: v128, val: i64) -> v128 {
     static_assert!(N < 2);
-    unsafe { simd_insert(a.as_i64x2(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_i64x2(), N as u32, val).v128() }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 2 packed u64 numbers.
@@ -1304,7 +1304,7 @@ pub fn u64x2_replace_lane<const N: usize>(a: v128, val: u64) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_extract_lane<const N: usize>(a: v128) -> f32 {
     static_assert!(N < 4);
-    unsafe { simd_extract(a.as_f32x4(), N as u32) }
+    unsafe { simd_extract!(a.as_f32x4(), N as u32) }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 4 packed f32 numbers.
@@ -1318,7 +1318,7 @@ pub fn f32x4_extract_lane<const N: usize>(a: v128) -> f32 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f32x4_replace_lane<const N: usize>(a: v128, val: f32) -> v128 {
     static_assert!(N < 4);
-    unsafe { simd_insert(a.as_f32x4(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_f32x4(), N as u32, val).v128() }
 }
 
 /// Extracts a lane from a 128-bit vector interpreted as 2 packed f64 numbers.
@@ -1332,7 +1332,7 @@ pub fn f32x4_replace_lane<const N: usize>(a: v128, val: f32) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_extract_lane<const N: usize>(a: v128) -> f64 {
     static_assert!(N < 2);
-    unsafe { simd_extract(a.as_f64x2(), N as u32) }
+    unsafe { simd_extract!(a.as_f64x2(), N as u32) }
 }
 
 /// Replaces a lane from a 128-bit vector interpreted as 2 packed f64 numbers.
@@ -1346,7 +1346,7 @@ pub fn f64x2_extract_lane<const N: usize>(a: v128) -> f64 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn f64x2_replace_lane<const N: usize>(a: v128, val: f64) -> v128 {
     static_assert!(N < 2);
-    unsafe { simd_insert(a.as_f64x2(), N as u32, val).v128() }
+    unsafe { simd_insert!(a.as_f64x2(), N as u32, val).v128() }
 }
 
 /// Returns a new vector with lanes selected from the lanes of the first input

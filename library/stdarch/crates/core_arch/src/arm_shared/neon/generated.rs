@@ -4141,7 +4141,7 @@ pub unsafe fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
     static_assert_uimm_bits!(N, 1);
-    transmute::<i64, _>(simd_extract(a, N as u32))
+    transmute::<i64, _>(simd_extract!(a, N as u32))
 }
 
 /// Set all vector lanes to the same value
@@ -4157,7 +4157,7 @@ pub unsafe fn vdup_laneq_s64<const N: i32>(a: int64x2_t) -> int64x1_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 1);
-    transmute::<u64, _>(simd_extract(a, N as u32))
+    transmute::<u64, _>(simd_extract!(a, N as u32))
 }
 
 /// Extract vector from pair of vectors
@@ -13117,7 +13117,7 @@ vld4q_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13133,7 +13133,7 @@ pub unsafe fn vst1_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13149,7 +13149,7 @@ pub unsafe fn vst1_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13165,7 +13165,7 @@ pub unsafe fn vst1_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13181,7 +13181,7 @@ pub unsafe fn vst1_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13197,7 +13197,7 @@ pub unsafe fn vst1q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13213,7 +13213,7 @@ pub unsafe fn vst1q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13229,7 +13229,7 @@ pub unsafe fn vst1q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13245,7 +13245,7 @@ pub unsafe fn vst1q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13261,7 +13261,7 @@ pub unsafe fn vst1_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13277,7 +13277,7 @@ pub unsafe fn vst1_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13293,7 +13293,7 @@ pub unsafe fn vst1_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13309,7 +13309,7 @@ pub unsafe fn vst1_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13325,7 +13325,7 @@ pub unsafe fn vst1q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13341,7 +13341,7 @@ pub unsafe fn vst1q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13357,7 +13357,7 @@ pub unsafe fn vst1q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13373,7 +13373,7 @@ pub unsafe fn vst1q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13389,7 +13389,7 @@ pub unsafe fn vst1_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13405,7 +13405,7 @@ pub unsafe fn vst1_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
     static_assert_uimm_bits!(LANE, 4);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13421,7 +13421,7 @@ pub unsafe fn vst1q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13437,7 +13437,7 @@ pub unsafe fn vst1q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13453,7 +13453,7 @@ pub unsafe fn vst1_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13469,7 +13469,7 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -13485,7 +13485,7 @@ pub unsafe fn vst1_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst1q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -21151,7 +21151,7 @@ pub unsafe fn vqdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    vqdmulhq_s16(a, vdupq_n_s16(simd_extract(b, LANE as u32)))
+    vqdmulhq_s16(a, vdupq_n_s16(simd_extract!(b, LANE as u32)))
 }
 
 /// Vector saturating doubling multiply high by scalar
@@ -21167,7 +21167,7 @@ pub unsafe fn vqdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) ->
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 3);
-    vqdmulh_s16(a, vdup_n_s16(simd_extract(b, LANE as u32)))
+    vqdmulh_s16(a, vdup_n_s16(simd_extract!(b, LANE as u32)))
 }
 
 /// Vector saturating doubling multiply high by scalar
@@ -21183,7 +21183,7 @@ pub unsafe fn vqdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> 
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmulhq_s32(a, vdupq_n_s32(simd_extract(b, LANE as u32)))
+    vqdmulhq_s32(a, vdupq_n_s32(simd_extract!(b, LANE as u32)))
 }
 
 /// Vector saturating doubling multiply high by scalar
@@ -21199,7 +21199,7 @@ pub unsafe fn vqdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) ->
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vqdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmulh_s32(a, vdup_n_s32(simd_extract(b, LANE as u32)))
+    vqdmulh_s32(a, vdup_n_s32(simd_extract!(b, LANE as u32)))
 }
 
 /// Signed saturating extract narrow
@@ -28751,7 +28751,7 @@ pub unsafe fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s8<const LANE: i32>(a: i8, b: int8x8_t) -> int8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28767,7 +28767,7 @@ pub unsafe fn vset_lane_s8<const LANE: i32>(a: i8, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28783,7 +28783,7 @@ pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t 
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28799,7 +28799,7 @@ pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t 
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_s64<const LANE: i32>(a: i64, b: int64x1_t) -> int64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28815,7 +28815,7 @@ pub unsafe fn vset_lane_s64<const LANE: i32>(a: i64, b: int64x1_t) -> int64x1_t 
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u8<const LANE: i32>(a: u8, b: uint8x8_t) -> uint8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28831,7 +28831,7 @@ pub unsafe fn vset_lane_u8<const LANE: i32>(a: u8, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28847,7 +28847,7 @@ pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28863,7 +28863,7 @@ pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_u64<const LANE: i32>(a: u64, b: uint64x1_t) -> uint64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28879,7 +28879,7 @@ pub unsafe fn vset_lane_u64<const LANE: i32>(a: u64, b: uint64x1_t) -> uint64x1_
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_p8<const LANE: i32>(a: p8, b: poly8x8_t) -> poly8x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28895,7 +28895,7 @@ pub unsafe fn vset_lane_p8<const LANE: i32>(a: p8, b: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28911,7 +28911,7 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28927,7 +28927,7 @@ pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28943,7 +28943,7 @@ pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28959,7 +28959,7 @@ pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28975,7 +28975,7 @@ pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -28991,7 +28991,7 @@ pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29007,7 +29007,7 @@ pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u16<const LANE: i32>(a: u16, b: uint16x8_t) -> uint16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29023,7 +29023,7 @@ pub unsafe fn vsetq_lane_u16<const LANE: i32>(a: u16, b: uint16x8_t) -> uint16x8
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29039,7 +29039,7 @@ pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29055,7 +29055,7 @@ pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t {
     static_assert_uimm_bits!(LANE, 4);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29071,7 +29071,7 @@ pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8_t {
     static_assert_uimm_bits!(LANE, 3);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29087,7 +29087,7 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29103,7 +29103,7 @@ pub unsafe fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vset_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -29119,7 +29119,7 @@ pub unsafe fn vset_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> float32x
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsetq_lane_f32<const LANE: i32>(a: f32, b: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Signed Shift left

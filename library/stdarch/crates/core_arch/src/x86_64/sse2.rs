@@ -107,7 +107,7 @@ pub unsafe fn _mm_cvtsi64x_si128(a: i64) -> __m128i {
 #[cfg_attr(all(test, not(windows)), assert_instr(movq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
-    simd_extract(a.as_i64x2(), 0)
+    simd_extract!(a.as_i64x2(), 0)
 }
 
 /// Returns the lowest element of `a`.
@@ -130,7 +130,7 @@ pub unsafe fn _mm_cvtsi128_si64x(a: __m128i) -> i64 {
 #[cfg_attr(test, assert_instr(cvtsi2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi64_sd(a: __m128d, b: i64) -> __m128d {
-    simd_insert(a, 0, b as f64)
+    simd_insert!(a, 0, b as f64)
 }
 
 /// Returns `a` with its lower element replaced by `b` after converting it to

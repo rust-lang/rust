@@ -76,3 +76,20 @@ macro_rules! simd_shuffle {
         )
     }};
 }
+
+#[allow(unused)]
+macro_rules! simd_insert {
+    ($x:expr, $idx:expr, $val:expr $(,)?) => {{
+        simd_insert($x, const { $idx }, $val)
+    }};
+}
+
+#[allow(unused)]
+macro_rules! simd_extract {
+    ($x:expr, $idx:expr $(,)?) => {{
+        simd_extract($x, const { $idx })
+    }};
+    ($x:expr, $idx:expr, $ty:ty $(,)?) => {{
+        simd_extract::<_, $ty>($x, const { $idx })
+    }};
+}

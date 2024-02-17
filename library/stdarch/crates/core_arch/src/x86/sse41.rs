@@ -201,7 +201,7 @@ pub unsafe fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
     static_assert_uimm_bits!(IMM8, 2);
-    simd_extract::<_, f32>(a, IMM8 as u32).to_bits() as i32
+    simd_extract!(a, IMM8 as u32, f32).to_bits() as i32
 }
 
 /// Extracts an 8-bit integer from `a`, selected with `IMM8`. Returns a 32-bit
@@ -217,7 +217,7 @@ pub unsafe fn _mm_extract_ps<const IMM8: i32>(a: __m128) -> i32 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi8<const IMM8: i32>(a: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 4);
-    simd_extract::<_, u8>(a.as_u8x16(), IMM8 as u32) as i32
+    simd_extract!(a.as_u8x16(), IMM8 as u32, u8) as i32
 }
 
 /// Extracts an 32-bit integer from `a` selected with `IMM8`
@@ -233,7 +233,7 @@ pub unsafe fn _mm_extract_epi8<const IMM8: i32>(a: __m128i) -> i32 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi32<const IMM8: i32>(a: __m128i) -> i32 {
     static_assert_uimm_bits!(IMM8, 2);
-    simd_extract::<_, i32>(a.as_i32x4(), IMM8 as u32)
+    simd_extract!(a.as_i32x4(), IMM8 as u32, i32)
 }
 
 /// Select a single value in `a` to store at some position in `b`,
@@ -281,7 +281,7 @@ pub unsafe fn _mm_insert_ps<const IMM8: i32>(a: __m128, b: __m128) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi8<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
     static_assert_uimm_bits!(IMM8, 4);
-    transmute(simd_insert(a.as_i8x16(), IMM8 as u32, i as i8))
+    transmute(simd_insert!(a.as_i8x16(), IMM8 as u32, i as i8))
 }
 
 /// Returns a copy of `a` with the 32-bit integer from `i` inserted at a
@@ -295,7 +295,7 @@ pub unsafe fn _mm_insert_epi8<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi32<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
     static_assert_uimm_bits!(IMM8, 2);
-    transmute(simd_insert(a.as_i32x4(), IMM8 as u32, i))
+    transmute(simd_insert!(a.as_i32x4(), IMM8 as u32, i))
 }
 
 /// Compares packed 8-bit integers in `a` and `b` and returns packed maximum

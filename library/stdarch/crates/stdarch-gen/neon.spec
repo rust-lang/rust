@@ -156,7 +156,7 @@ generate float*_t
 
 /// Floating-point absolute difference
 name = vabd
-multi_fn = simd_extract, {vabd-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vabd-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 1.0
 b = 9.0
 validate 8.0
@@ -341,7 +341,7 @@ generate i64:u64, u64
 
 /// Floating-point compare equal
 name = vceq
-multi_fn = simd_extract, {vceq-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vceq-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 1.
 b = 2.
 validate 0
@@ -390,7 +390,7 @@ generate i64:u64, u64
 
 /// Floating-point compare bitwise equal to zero
 name = vceqz
-multi_fn = simd_extract, {vceqz-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vceqz-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
 a = 1.
 validate 0
 
@@ -453,7 +453,7 @@ generate i32:u32:i32, i64:u64:i64
 /// Signed saturating accumulate of unsigned value
 name = vuqadd
 out-suffix
-multi_fn = simd_extract, {vuqadd-out_ntt-noext, {vdup_n-out_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vuqadd-out_ntt-noext, {vdup_n-out_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 1
 b = 2
 validate 3
@@ -530,7 +530,7 @@ generate i64:u64, u64
 
 /// Floating-point compare greater than
 name = vcgt
-multi_fn = simd_extract, {vcgt-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vcgt-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 1.
 b = 2.
 validate 0
@@ -592,7 +592,7 @@ generate i64:u64, u64
 
 /// Floating-point compare less than
 name = vclt
-multi_fn = simd_extract, {vclt-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vclt-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 2.
 b = 1.
 validate 0
@@ -629,7 +629,7 @@ generate i64:u64, u64
 
 /// Floating-point compare greater than or equal
 name = vcge
-multi_fn = simd_extract, {vcge-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vcge-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 1.
 b = 2.
 validate 0
@@ -674,7 +674,7 @@ generate i64:u64, u64
 
 /// Floating-point compare less than or equal
 name = vcle
-multi_fn = simd_extract, {vcle-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vcle-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 2.
 b = 1.
 validate 0
@@ -756,7 +756,7 @@ generate i64:u64
 
 /// Floating-point compare greater than or equal to zero
 name = vcgez
-multi_fn = simd_extract, {vcgez-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vcgez-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
 a = -1.
 validate 0
 
@@ -794,7 +794,7 @@ generate i64:u64
 
 /// Floating-point compare greater than zero
 name = vcgtz
-multi_fn = simd_extract, {vcgtz-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vcgtz-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
 a = -1.
 validate 0
 
@@ -832,7 +832,7 @@ generate i64:u64
 
 /// Floating-point compare less than or equal to zero
 name = vclez
-multi_fn = simd_extract, {vclez-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vclez-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
 a = 2.
 validate 0
 
@@ -870,7 +870,7 @@ generate i64:u64
 
 /// Floating-point compare less than zero
 name = vcltz
-multi_fn = simd_extract, {vcltz-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vcltz-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
 a = 2.
 validate 0
 
@@ -1190,7 +1190,7 @@ generate float64x2_t:float32x2_t
 /// Floating-point convert to lower precision narrow, rounding to odd
 name = vcvtx
 double-suffixes
-multi_fn = simd_extract, {vcvtx-_f32_f64-noext, {vdupq_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vcvtx-_f32_f64-noext, {vdupq_n-in_ntt-noext, a}}, 0
 a = -1.0
 validate -1.0
 
@@ -1513,7 +1513,7 @@ name = vdup
 lane-suffixes
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = transmute--<element_t _>, {simd_extract, a, N as u32}
+multi_fn = transmute--<element_t _>, {simd_extract!, a, N as u32}
 a = 0, 1
 n = HFLEN
 validate 1
@@ -1529,7 +1529,7 @@ name = vdup
 lane-suffixes
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = transmute--<element_t _>, {simd_extract, a, N as u32}
+multi_fn = transmute--<element_t _>, {simd_extract!, a, N as u32}
 a = 0., 1.
 n = HFLEN
 validate 1.
@@ -1542,7 +1542,7 @@ name = vdup
 lane-suffixes
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_extract, a, N as u32
+multi_fn = simd_extract!, a, N as u32
 a = 1, 1, 1, 4, 1, 6, 7, 8, 1, 10, 11, 12, 13, 14, 15, 16
 n = HFLEN
 validate 1
@@ -1557,7 +1557,7 @@ name = vdup
 lane-suffixes
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_extract, a, N as u32
+multi_fn = simd_extract!, a, N as u32
 a = 1., 1., 1., 4.
 n = HFLEN
 validate 1.
@@ -2092,7 +2092,7 @@ generate int*_t
 
 /// Signed saturating negate
 name = vqneg
-multi_fn = simd_extract, {vqneg-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqneg-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
 a = 1
 validate -1
 
@@ -2121,7 +2121,7 @@ generate int*_t, int64x*_t
 name = vqsub
 multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
-multi_fn = simd_extract, {vqsub-in_ntt-noext, a, b}, 0
+multi_fn = simd_extract!, {vqsub-in_ntt-noext, a, b}, 0
 a = 42
 b = 1
 validate 41
@@ -2300,7 +2300,7 @@ generate int*_t, int64x*_t
 name = vqadd
 multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
-multi_fn = simd_extract, {vqadd-in_ntt-noext, a, b}, 0
+multi_fn = simd_extract!, {vqadd-in_ntt-noext, a, b}, 0
 a = 42
 b = 1
 validate 43
@@ -2984,7 +2984,7 @@ generate *const f32:float32x2x4_t:float32x2x4_t, *const f32:float32x4x4_t:float3
 name = vst1
 in1-lane-nox
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = *a, {simd_extract, b, LANE as u32}
+multi_fn = *a, {simd_extract!, b, LANE as u32}
 constn = LANE
 a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 n = 0
@@ -3005,7 +3005,7 @@ generate *mut p64:poly64x1_t:void, *mut p64:poly64x2_t:void
 name = vst1
 in1-lane-nox
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = *a, {simd_extract, b, LANE as u32}
+multi_fn = *a, {simd_extract!, b, LANE as u32}
 constn = LANE
 a = 0., 1., 2., 3., 4., 5., 6., 7., 8.
 n = 0
@@ -3696,7 +3696,7 @@ name = vmul
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_mul, a, {transmute--<element_t _>, {simd_extract, b, LANE as u32}}
+multi_fn = simd_mul, a, {transmute--<element_t _>, {simd_extract!, b, LANE as u32}}
 a = 1., 2., 3., 4.
 b = 2., 0., 0., 0.
 n = 0
@@ -3726,7 +3726,7 @@ generate float32x2_t, float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x2
 name = vmuls_lane
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_extract, b:f32, b, LANE as u32
+multi_fn = simd_extract!, b:f32, b, LANE as u32
 multi_fn = a * b
 a = 1.
 b = 2., 0., 0., 0.
@@ -3739,7 +3739,7 @@ generate f32:float32x2_t:f32, f32:float32x4_t:f32
 name = vmuld_lane
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_extract, b:f64, b, LANE as u32
+multi_fn = simd_extract!, b:f64, b, LANE as u32
 multi_fn = a * b
 a = 1.
 b = 2., 0.
@@ -3845,7 +3845,7 @@ generate poly8x16_t:poly8x16_t:poly16x8_t
 /// Polynomial multiply long
 name = vmull_high
 no-q
-multi_fn = vmull-noqself-noext, {simd_extract, a, 1}, {simd_extract, b, 1}
+multi_fn = vmull-noqself-noext, {simd_extract!, a, 1}, {simd_extract!, b, 1}
 a = 1, 15
 b = 1, 3
 validate 17
@@ -3931,7 +3931,7 @@ name = vmulx
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = vmulx-in0-noext, a, {transmute--<element_t _>, {simd_extract, b, LANE as u32}}
+multi_fn = vmulx-in0-noext, a, {transmute--<element_t _>, {simd_extract!, b, LANE as u32}}
 a = 1.
 b = 2., 0.
 n = 0
@@ -3970,7 +3970,7 @@ name = vmulx
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = vmulx-out-noext, a, {simd_extract, b, LANE as u32}
+multi_fn = vmulx-out-noext, a, {simd_extract!, b, LANE as u32}
 
 a = 2.
 b = 3., 0., 0., 0.
@@ -4022,7 +4022,7 @@ name = vfma
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vfma-out-noext, a, b, {vdup-nout-noext, {simd_extract, c, LANE as u32}}
+multi_fn = vfma-out-noext, a, b, {vdup-nout-noext, {simd_extract!, c, LANE as u32}}
 a = 2., 3., 4., 5.
 b = 6., 4., 7., 8.
 c = 2., 0., 0., 0.
@@ -4041,7 +4041,7 @@ name = vfma
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = simd_extract, c:out_t, c, LANE as u32
+multi_fn = simd_extract!, c:out_t, c, LANE as u32
 multi_fn = vfma-in2lane-_, b, c, a
 a = 2.
 b = 6.
@@ -4096,7 +4096,7 @@ name = vfms
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vfms-out-noext, a, b, {vdup-nout-noext, {simd_extract, c, LANE as u32}}
+multi_fn = vfms-out-noext, a, b, {vdup-nout-noext, {simd_extract!, c, LANE as u32}}
 a = 14., 11., 18., 21.
 b = 6., 4., 7., 8.
 c = 2., 0., 0., 0.
@@ -4982,8 +4982,8 @@ generate float32x2_t
 /// Floating-point add pairwise
 name = vpadd
 out-suffix
-multi_fn = simd_extract, a1:out_t, a, 0
-multi_fn = simd_extract, a2:out_t, a, 1
+multi_fn = simd_extract!, a1:out_t, a, 0
+multi_fn = simd_extract!, a2:out_t, a, 1
 multi_fn = a1 + a2
 a = 1., 2.
 validate 3.
@@ -5050,7 +5050,7 @@ generate int16x4_t:int16x4_t:int32x4_t, int32x2_t:int32x2_t:int64x2_t
 name = vqdmull
 multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
-multi_fn = simd_extract, {vqdmull-in_ntt-noext, a, b}, 0
+multi_fn = simd_extract!, {vqdmull-in_ntt-noext, a, b}, 0
 a = 2
 b = 3
 validate 12
@@ -5127,7 +5127,7 @@ generate int16x4_t:int16x4_t:int32x4_t, int32x2_t:int32x2_t:int64x2_t
 name = vqdmullh_lane
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = simd_extract!, b:in_t0, b, N as u32
 multi_fn = vqdmullh-noqself-noext, a, b
 a = 2
 b = 0, 2, 2, 0, 2, 0, 0, 0
@@ -5141,7 +5141,7 @@ generate i16:int16x4_t:i32, i16:int16x8_t:i32
 name = vqdmulls_lane
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = simd_extract!, b:in_t0, b, N as u32
 multi_fn = vqdmulls-noqself-noext, a, b
 a = 2
 b = 0, 2, 2, 0, 2, 0, 0, 0
@@ -5266,7 +5266,7 @@ generate int32x4_t:int16x8_t:int16x4_t:int32x4_t, int32x4_t:int16x8_t:int16x8_t:
 /// Signed saturating doubling multiply-add long
 name = vqdmlal
 multi_fn = vqdmull-in_ntt-noext, x:out_long_ntt, {vdup_n-in_ntt-noext, b}, {vdup_n-in_ntt-noext, c}
-multi_fn = vqadd-out-noext, a, {simd_extract, x, 0}
+multi_fn = vqadd-out-noext, a, {simd_extract!, x, 0}
 a = 1
 b = 1
 c = 2
@@ -5292,7 +5292,7 @@ name = vqdmlalh_lane
 in2-suffix
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqdmlal-self-noext, a, b, {simd_extract, c, LANE as u32}
+multi_fn = vqdmlal-self-noext, a, b, {simd_extract!, c, LANE as u32}
 a = 1
 b = 1
 c = 2, 1, 1, 1, 1, 1, 1, 1
@@ -5390,7 +5390,7 @@ generate int32x4_t:int16x8_t:int16x4_t:int32x4_t, int32x4_t:int16x8_t:int16x8_t:
 /// Signed saturating doubling multiply-subtract long
 name = vqdmlsl
 multi_fn = vqdmull-in_ntt-noext, x:out_long_ntt, {vdup_n-in_ntt-noext, b}, {vdup_n-in_ntt-noext, c}
-multi_fn = vqsub-out-noext, a, {simd_extract, x, 0}
+multi_fn = vqsub-out-noext, a, {simd_extract!, x, 0}
 a = 10
 b = 1
 c = 2
@@ -5416,7 +5416,7 @@ name = vqdmlslh_lane
 in2-suffix
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqdmlsl-self-noext, a, b, {simd_extract, c, LANE as u32}
+multi_fn = vqdmlsl-self-noext, a, b, {simd_extract!, c, LANE as u32}
 a = 10
 b = 1
 c = 2, 1, 1, 1, 1, 1, 1, 1
@@ -5445,7 +5445,7 @@ generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
 name = vqdmulh
 multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
-multi_fn = simd_extract, {vqdmulh-in_ntt-noext, a, b}, 0
+multi_fn = simd_extract!, {vqdmulh-in_ntt-noext, a, b}, 0
 a = 1
 b = 2
 validate 0
@@ -5483,7 +5483,7 @@ generate int16x8_t:i16:int16x8_t, int32x4_t:i32:int32x4_t
 name = vqdmulhh_lane
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = simd_extract!, b:in_t0, b, N as u32
 multi_fn = vqdmulhh-out_ntt-noext, a, b
 a = 2
 b = 0, 0, MAX, 0, 0, 0, 0, 0
@@ -5497,7 +5497,7 @@ generate i16:int16x4_t:i16, i16:int16x8_t:i16
 name = vqdmulhs_lane
 constn = N
 multi_fn = static_assert_imm-in_exp_len-N
-multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = simd_extract!, b:in_t0, b, N as u32
 multi_fn = vqdmulhs-out_ntt-noext, a, b
 a = 2
 b = 0, MAX, 0, 0
@@ -5512,7 +5512,7 @@ name = vqdmulh
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqdmulh-out-noext, a, {vdup-nout-noext, {simd_extract, b, LANE as u32}}
+multi_fn = vqdmulh-out-noext, a, {vdup-nout-noext, {simd_extract!, b, LANE as u32}}
 a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 b = 2, 1, 1, 1, 1, 1, 1, 1
 n = 0
@@ -5551,7 +5551,7 @@ generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
 
 /// Saturating extract narrow
 name = vqmovn
-multi_fn = simd_extract, {vqmovn-in_ntt-noext, {vdupq_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqmovn-in_ntt-noext, {vdupq_n-in_ntt-noext, a}}, 0
 a = 1
 validate 1
 
@@ -5600,7 +5600,7 @@ generate int16x8_t:uint8x8_t, int32x4_t:uint16x4_t, int64x2_t:uint32x2_t
 
 /// Signed saturating extract unsigned narrow
 name = vqmovun
-multi_fn = simd_extract, {vqmovun-in_ntt-noext, {vdupq_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqmovun-in_ntt-noext, {vdupq_n-in_ntt-noext, a}}, 0
 a = 1
 validate 1
 
@@ -5632,7 +5632,7 @@ generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
 
 /// Signed saturating rounding doubling multiply returning high half
 name = vqrdmulh
-multi_fn = simd_extract, {vqrdmulh-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vqrdmulh-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 1
 b = 2
 validate 0
@@ -5674,7 +5674,7 @@ name = vqrdmulh
 lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = vqrdmulh-out-noext, a, {simd_extract, b, LANE as u32}
+multi_fn = vqrdmulh-out-noext, a, {simd_extract!, b, LANE as u32}
 a = 1
 b = 0, 2, 0, 0, 0, 0, 0, 0,
 n = 1
@@ -5700,7 +5700,7 @@ name = vqrdmlah
 multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
 multi_fn = vdup_n-in_ntt-noext, c:in_ntt, c
-multi_fn = simd_extract, {vqrdmlah-in_ntt-noext, a, b, c}, 0
+multi_fn = simd_extract!, {vqrdmlah-in_ntt-noext, a, b, c}, 0
 a = 1
 b = 1
 c = 2
@@ -5733,7 +5733,7 @@ name = vqrdmlah
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqrdmlah-self-noext, a, b, {simd_extract, c, LANE as u32}
+multi_fn = vqrdmlah-self-noext, a, b, {simd_extract!, c, LANE as u32}
 a = 1
 b = 1
 c = 0, 2, 0, 0, 0, 0, 0, 0
@@ -5761,7 +5761,7 @@ name = vqrdmlsh
 multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
 multi_fn = vdup_n-in_ntt-noext, c:in_ntt, c
-multi_fn = simd_extract, {vqrdmlsh-in_ntt-noext, a, b, c}, 0
+multi_fn = simd_extract!, {vqrdmlsh-in_ntt-noext, a, b, c}, 0
 a = 1
 b = 1
 c = 2
@@ -5794,7 +5794,7 @@ name = vqrdmlsh
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqrdmlsh-self-noext, a, b, {simd_extract, c, LANE as u32}
+multi_fn = vqrdmlsh-self-noext, a, b, {simd_extract!, c, LANE as u32}
 a = 1
 b = 1
 c = 0, 2, 0, 0, 0, 0, 0, 0
@@ -5823,7 +5823,7 @@ generate int*_t, int64x*_t
 name = vqrshl
 multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
-multi_fn = simd_extract, {vqrshl-in_ntt-noext, a, b}, 0
+multi_fn = simd_extract!, {vqrshl-in_ntt-noext, a, b}, 0
 a = 1
 b = 2
 validate 4
@@ -5852,7 +5852,7 @@ name = vqrshl
 out-suffix
 multi_fn = vdup_n-out_ntt-noext, a:out_ntt, a
 multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
-multi_fn = simd_extract, {vqrshl-out_ntt-noext, a, b}, 0
+multi_fn = simd_extract!, {vqrshl-out_ntt-noext, a, b}, 0
 a = 1
 b = 2
 validate 4
@@ -5885,7 +5885,7 @@ noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
 multi_fn = vdupq_n-in_ntt-noext, a:in_long_ntt, a
-multi_fn = simd_extract, {vqrshrn_n-in_ntt-::<N>, a}, 0
+multi_fn = simd_extract!, {vqrshrn_n-in_ntt-::<N>, a}, 0
 a = 4
 n = 2
 validate 1
@@ -5932,7 +5932,7 @@ noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
 multi_fn = vdupq_n-in_ntt-noext, a:in_long_ntt, a
-multi_fn = simd_extract, {vqrshrn_n-in_ntt-::<N>, a}, 0
+multi_fn = simd_extract!, {vqrshrn_n-in_ntt-::<N>, a}, 0
 a = 4
 n = 2
 validate 1
@@ -5979,7 +5979,7 @@ noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
 multi_fn = vdupq_n-in_ntt-noext, a:in_long_ntt, a
-multi_fn = simd_extract, {vqrshrun_n-in_ntt-::<N>, a}, 0
+multi_fn = simd_extract!, {vqrshrun_n-in_ntt-::<N>, a}, 0
 a = 4
 n = 2
 validate 1
@@ -6018,7 +6018,7 @@ generate int*_t, int64x*_t
 /// Signed saturating shift left
 name = vqshl
 multi_fn = vqshl-in_ntt-noext, c:in_ntt, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}
-multi_fn = simd_extract, c, 0
+multi_fn = simd_extract!, c, 0
 a = 1
 b = 2
 validate 4
@@ -6046,7 +6046,7 @@ generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint6
 name = vqshl
 out-suffix
 multi_fn = vqshl-out_ntt-noext, c:out_ntt, {vdup_n-out_ntt-noext, a}, {vdup_n-in_ntt-noext, b}
-multi_fn = simd_extract, c, 0
+multi_fn = simd_extract!, c, 0
 a = 1
 b = 2
 validate 4
@@ -6073,7 +6073,7 @@ name = vqshl
 n-suffix
 constn = N
 multi_fn = static_assert_imm-out_bits_exp_len-N
-multi_fn = simd_extract, {vqshl_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqshl_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
 a = 1
 n = 2
 validate 4
@@ -6100,7 +6100,7 @@ name = vqshl
 n-suffix
 constn = N
 multi_fn = static_assert_imm-out_bits_exp_len-N
-multi_fn = simd_extract, {vqshl_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqshl_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
 a = 1
 n = 2
 validate 4
@@ -6132,7 +6132,7 @@ name = vqshlu
 n-suffix
 constn = N
 multi_fn = static_assert_imm-out_bits_exp_len-N
-multi_fn = simd_extract, {vqshlu_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqshlu_n-in_ntt-::<N>, {vdup_n-in_ntt-noext, a}}, 0
 a = 1
 n = 2
 validate 4
@@ -6165,7 +6165,7 @@ name = vqshrn
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_extract, {vqshrn_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqshrn_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
 a = 4
 n = 2
 validate 1
@@ -6212,7 +6212,7 @@ name = vqshrn
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_extract, {vqshrn_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqshrn_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
 a = 4
 n = 2
 validate 1
@@ -6258,7 +6258,7 @@ name = vqshrun
 noq-n-suffix
 constn = N
 multi_fn = static_assert-N-1-halfbits
-multi_fn = simd_extract, {vqshrun_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqshrun_n-in_ntt-::<N>, {vdupq_n-in_ntt-noext, a}}, 0
 a = 4
 n = 2
 validate 1
@@ -6283,7 +6283,7 @@ generate uint8x8_t:int16x8_t:uint8x16_t, uint16x4_t:int32x4_t:uint16x8_t, uint32
 /// Unsigned saturating accumulate of signed value
 name = vsqadd
 out-suffix
-multi_fn = simd_extract, {vsqadd-out_ntt-noext, {vdup_n-out_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+multi_fn = simd_extract!, {vsqadd-out_ntt-noext, {vdup_n-out_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
 a = 2
 b = 2
 validate 4
@@ -6845,7 +6845,7 @@ generate uint8x8_t:uint16x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint3
 name = vset_lane
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_insert, b, LANE as u32, a
+multi_fn = simd_insert!, b, LANE as u32, a
 a = 1
 b = 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 n = 0
@@ -6867,7 +6867,7 @@ name = vsetq_lane
 no-q
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_insert, b, LANE as u32, a
+multi_fn = simd_insert!, b, LANE as u32, a
 a = 1
 b = 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 n = 0
@@ -6888,7 +6888,7 @@ generate p64:poly64x2_t:poly64x2_t
 name = vset_lane
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_insert, b, LANE as u32, a
+multi_fn = simd_insert!, b, LANE as u32, a
 a = 1.
 b = 0., 2., 3., 4.
 n = 0
@@ -6905,7 +6905,7 @@ name = vsetq_lane
 no-q
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = simd_insert, b, LANE as u32, a
+multi_fn = simd_insert!, b, LANE as u32, a
 a = 1.
 b = 0., 2., 3., 4.
 n = 0
@@ -7241,7 +7241,7 @@ validate -2147483648.0
 a = -2147483648.500000477
 validate -2147483648.0
 
-multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+multi_fn = transmute, {self-out-_, {simd_extract!, a, 0}}
 link-aarch64 = llvm.aarch64.frint32x.f64:f64:::f64
 generate float64x1_t
 
@@ -7282,7 +7282,7 @@ validate -2147483648.0
 a = -2147483649.0
 validate -2147483648.0
 
-multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+multi_fn = transmute, {self-out-_, {simd_extract!, a, 0}}
 link-aarch64 = llvm.aarch64.frint32z.f64:f64:::f64
 generate float64x1_t
 
@@ -7324,7 +7324,7 @@ validate -9223372036854775808.0
 a = -9223372036854777856.0
 validate -9223372036854775808.0
 
-multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+multi_fn = transmute, {self-out-_, {simd_extract!, a, 0}}
 link-aarch64 = llvm.aarch64.frint64x.f64:f64:::f64
 generate float64x1_t
 
@@ -7365,7 +7365,7 @@ validate -9223372036854775808.0
 a = -9223372036854777856.0
 validate -9223372036854775808.0
 
-multi_fn = transmute, {self-out-_, {simd_extract, a, 0}}
+multi_fn = transmute, {self-out-_, {simd_extract!, a, 0}}
 link-aarch64 = llvm.aarch64.frint64z.f64:f64:::f64
 generate float64x1_t
 
@@ -7799,7 +7799,7 @@ generate int64x*_t
 
 /// Signed saturating absolute value
 name = vqabs
-multi_fn = simd_extract, {vqabs-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
+multi_fn = simd_extract!, {vqabs-in_ntt-noext, {vdup_n-in_ntt-noext, a}}, 0
 a = -7
 validate 7
 

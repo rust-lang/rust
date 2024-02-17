@@ -3586,7 +3586,7 @@ pub unsafe fn _mm256_xor_si256(a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extract_epi8<const INDEX: i32>(a: __m256i) -> i32 {
     static_assert_uimm_bits!(INDEX, 5);
-    simd_extract::<_, u8>(a.as_u8x32(), INDEX as u32) as i32
+    simd_extract!(a.as_u8x32(), INDEX as u32, u8) as i32
 }
 
 /// Extracts a 16-bit integer from `a`, selected with `INDEX`. Returns a 32-bit
@@ -3602,7 +3602,7 @@ pub unsafe fn _mm256_extract_epi8<const INDEX: i32>(a: __m256i) -> i32 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
     static_assert_uimm_bits!(INDEX, 4);
-    simd_extract::<_, u16>(a.as_u16x16(), INDEX as u32) as i32
+    simd_extract!(a.as_u16x16(), INDEX as u32, u16) as i32
 }
 
 /// Extracts a 32-bit integer from `a`, selected with `INDEX`.
@@ -3615,7 +3615,7 @@ pub unsafe fn _mm256_extract_epi16<const INDEX: i32>(a: __m256i) -> i32 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
     static_assert_uimm_bits!(INDEX, 3);
-    simd_extract(a.as_i32x8(), INDEX as u32)
+    simd_extract!(a.as_i32x8(), INDEX as u32)
 }
 
 /// Returns the first element of the input vector of `[4 x double]`.
@@ -3626,7 +3626,7 @@ pub unsafe fn _mm256_extract_epi32<const INDEX: i32>(a: __m256i) -> i32 {
 //#[cfg_attr(test, assert_instr(movsd))] FIXME
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
-    simd_extract(a, 0)
+    simd_extract!(a, 0)
 }
 
 /// Returns the first element of the input vector of `[8 x i32]`.
@@ -3636,7 +3636,7 @@ pub unsafe fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
 #[target_feature(enable = "avx2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
-    simd_extract(a.as_i32x8(), 0)
+    simd_extract!(a.as_i32x8(), 0)
 }
 
 #[allow(improper_ctypes)]

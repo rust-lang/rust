@@ -177,7 +177,7 @@ pub unsafe fn vabdq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(fabd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabds_f32(a: f32, b: f32) -> f32 {
-    simd_extract(vabd_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
+    simd_extract!(vabd_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
 }
 
 /// Floating-point absolute difference
@@ -188,7 +188,7 @@ pub unsafe fn vabds_f32(a: f32, b: f32) -> f32 {
 #[cfg_attr(test, assert_instr(fabd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vabdd_f64(a: f64, b: f64) -> f64 {
-    simd_extract(vabd_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
+    simd_extract!(vabd_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
 }
 
 /// Unsigned Absolute difference Long
@@ -390,7 +390,7 @@ pub unsafe fn vceqd_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vceqs_f32(a: f32, b: f32) -> u32 {
-    simd_extract(vceq_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
+    simd_extract!(vceq_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
 }
 
 /// Floating-point compare equal
@@ -401,7 +401,7 @@ pub unsafe fn vceqs_f32(a: f32, b: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vceqd_f64(a: f64, b: f64) -> u64 {
-    simd_extract(vceq_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
+    simd_extract!(vceq_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
 }
 
 /// Signed compare bitwise equal to zero
@@ -722,7 +722,7 @@ pub unsafe fn vceqzd_u64(a: u64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vceqzs_f32(a: f32) -> u32 {
-    simd_extract(vceqz_f32(vdup_n_f32(a)), 0)
+    simd_extract!(vceqz_f32(vdup_n_f32(a)), 0)
 }
 
 /// Floating-point compare bitwise equal to zero
@@ -733,7 +733,7 @@ pub unsafe fn vceqzs_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vceqzd_f64(a: f64) -> u64 {
-    simd_extract(vceqz_f64(vdup_n_f64(a)), 0)
+    simd_extract!(vceqz_f64(vdup_n_f64(a)), 0)
 }
 
 /// Signed compare bitwise Test bits nonzero
@@ -876,7 +876,7 @@ pub unsafe fn vuqaddd_s64(a: i64, b: u64) -> i64 {
 #[cfg_attr(test, assert_instr(suqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuqaddb_s8(a: i8, b: u8) -> i8 {
-    simd_extract(vuqadd_s8(vdup_n_s8(a), vdup_n_u8(b)), 0)
+    simd_extract!(vuqadd_s8(vdup_n_s8(a), vdup_n_u8(b)), 0)
 }
 
 /// Signed saturating accumulate of unsigned value
@@ -887,7 +887,7 @@ pub unsafe fn vuqaddb_s8(a: i8, b: u8) -> i8 {
 #[cfg_attr(test, assert_instr(suqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vuqaddh_s16(a: i16, b: u16) -> i16 {
-    simd_extract(vuqadd_s16(vdup_n_s16(a), vdup_n_u16(b)), 0)
+    simd_extract!(vuqadd_s16(vdup_n_s16(a), vdup_n_u16(b)), 0)
 }
 
 /// Floating-point absolute value
@@ -1008,7 +1008,7 @@ pub unsafe fn vcgtd_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgts_f32(a: f32, b: f32) -> u32 {
-    simd_extract(vcgt_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
+    simd_extract!(vcgt_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
 }
 
 /// Floating-point compare greater than
@@ -1019,7 +1019,7 @@ pub unsafe fn vcgts_f32(a: f32, b: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgtd_f64(a: f64, b: f64) -> u64 {
-    simd_extract(vcgt_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
+    simd_extract!(vcgt_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
 }
 
 /// Compare signed less than
@@ -1118,7 +1118,7 @@ pub unsafe fn vcltd_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclts_f32(a: f32, b: f32) -> u32 {
-    simd_extract(vclt_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
+    simd_extract!(vclt_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
 }
 
 /// Floating-point compare less than
@@ -1129,7 +1129,7 @@ pub unsafe fn vclts_f32(a: f32, b: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcltd_f64(a: f64, b: f64) -> u64 {
-    simd_extract(vclt_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
+    simd_extract!(vclt_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
 }
 
 /// Compare signed less than or equal
@@ -1184,7 +1184,7 @@ pub unsafe fn vcged_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcges_f32(a: f32, b: f32) -> u32 {
-    simd_extract(vcge_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
+    simd_extract!(vcge_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
 }
 
 /// Floating-point compare greater than or equal
@@ -1195,7 +1195,7 @@ pub unsafe fn vcges_f32(a: f32, b: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcged_f64(a: f64, b: f64) -> u64 {
-    simd_extract(vcge_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
+    simd_extract!(vcge_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
 }
 
 /// Compare unsigned less than or equal
@@ -1272,7 +1272,7 @@ pub unsafe fn vcled_u64(a: u64, b: u64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcles_f32(a: f32, b: f32) -> u32 {
-    simd_extract(vcle_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
+    simd_extract!(vcle_f32(vdup_n_f32(a), vdup_n_f32(b)), 0)
 }
 
 /// Floating-point compare less than or equal
@@ -1283,7 +1283,7 @@ pub unsafe fn vcles_f32(a: f32, b: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcled_f64(a: f64, b: f64) -> u64 {
-    simd_extract(vcle_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
+    simd_extract!(vcle_f64(vdup_n_f64(a), vdup_n_f64(b)), 0)
 }
 
 /// Compare signed greater than or equal
@@ -1515,7 +1515,7 @@ pub unsafe fn vcgezd_s64(a: i64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgezs_f32(a: f32) -> u32 {
-    simd_extract(vcgez_f32(vdup_n_f32(a)), 0)
+    simd_extract!(vcgez_f32(vdup_n_f32(a)), 0)
 }
 
 /// Floating-point compare greater than or equal to zero
@@ -1526,7 +1526,7 @@ pub unsafe fn vcgezs_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgezd_f64(a: f64) -> u64 {
-    simd_extract(vcgez_f64(vdup_n_f64(a)), 0)
+    simd_extract!(vcgez_f64(vdup_n_f64(a)), 0)
 }
 
 /// Compare signed greater than zero
@@ -1692,7 +1692,7 @@ pub unsafe fn vcgtzd_s64(a: i64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgtzs_f32(a: f32) -> u32 {
-    simd_extract(vcgtz_f32(vdup_n_f32(a)), 0)
+    simd_extract!(vcgtz_f32(vdup_n_f32(a)), 0)
 }
 
 /// Floating-point compare greater than zero
@@ -1703,7 +1703,7 @@ pub unsafe fn vcgtzs_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcgtzd_f64(a: f64) -> u64 {
-    simd_extract(vcgtz_f64(vdup_n_f64(a)), 0)
+    simd_extract!(vcgtz_f64(vdup_n_f64(a)), 0)
 }
 
 /// Compare signed less than or equal to zero
@@ -1869,7 +1869,7 @@ pub unsafe fn vclezd_s64(a: i64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclezs_f32(a: f32) -> u32 {
-    simd_extract(vclez_f32(vdup_n_f32(a)), 0)
+    simd_extract!(vclez_f32(vdup_n_f32(a)), 0)
 }
 
 /// Floating-point compare less than or equal to zero
@@ -1880,7 +1880,7 @@ pub unsafe fn vclezs_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vclezd_f64(a: f64) -> u64 {
-    simd_extract(vclez_f64(vdup_n_f64(a)), 0)
+    simd_extract!(vclez_f64(vdup_n_f64(a)), 0)
 }
 
 /// Compare signed less than zero
@@ -2046,7 +2046,7 @@ pub unsafe fn vcltzd_s64(a: i64) -> u64 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcltzs_f32(a: f32) -> u32 {
-    simd_extract(vcltz_f32(vdup_n_f32(a)), 0)
+    simd_extract!(vcltz_f32(vdup_n_f32(a)), 0)
 }
 
 /// Floating-point compare less than zero
@@ -2057,7 +2057,7 @@ pub unsafe fn vcltzs_f32(a: f32) -> u32 {
 #[cfg_attr(test, assert_instr(fcmp))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcltzd_f64(a: f64) -> u64 {
-    simd_extract(vcltz_f64(vdup_n_f64(a)), 0)
+    simd_extract!(vcltz_f64(vdup_n_f64(a)), 0)
 }
 
 /// Floating-point absolute compare greater than
@@ -3394,7 +3394,7 @@ pub unsafe fn vcvtx_f32_f64(a: float64x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(fcvtxn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vcvtxd_f32_f64(a: f64) -> f32 {
-    simd_extract(vcvtx_f32_f64(vdupq_n_f64(a)), 0)
+    simd_extract!(vcvtx_f32_f64(vdupq_n_f64(a)), 0)
 }
 
 /// Floating-point convert to lower precision narrow, rounding to odd
@@ -4704,7 +4704,7 @@ pub unsafe fn vdup_lane_f64<const N: i32>(a: float64x1_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdup_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x1_t {
     static_assert_uimm_bits!(N, 1);
-    transmute::<u64, _>(simd_extract(a, N as u32))
+    transmute::<u64, _>(simd_extract!(a, N as u32))
 }
 
 /// Set all vector lanes to the same value
@@ -4717,7 +4717,7 @@ pub unsafe fn vdup_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdup_laneq_f64<const N: i32>(a: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(N, 1);
-    transmute::<f64, _>(simd_extract(a, N as u32))
+    transmute::<f64, _>(simd_extract!(a, N as u32))
 }
 
 /// Set all vector lanes to the same value
@@ -4730,7 +4730,7 @@ pub unsafe fn vdup_laneq_f64<const N: i32>(a: float64x2_t) -> float64x1_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupb_lane_s8<const N: i32>(a: int8x8_t) -> i8 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4743,7 +4743,7 @@ pub unsafe fn vdupb_lane_s8<const N: i32>(a: int8x8_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupb_laneq_s8<const N: i32>(a: int8x16_t) -> i8 {
     static_assert_uimm_bits!(N, 4);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4756,7 +4756,7 @@ pub unsafe fn vdupb_laneq_s8<const N: i32>(a: int8x16_t) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vduph_lane_s16<const N: i32>(a: int16x4_t) -> i16 {
     static_assert_uimm_bits!(N, 2);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4769,7 +4769,7 @@ pub unsafe fn vduph_lane_s16<const N: i32>(a: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vduph_laneq_s16<const N: i32>(a: int16x8_t) -> i16 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4782,7 +4782,7 @@ pub unsafe fn vduph_laneq_s16<const N: i32>(a: int16x8_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdups_lane_s32<const N: i32>(a: int32x2_t) -> i32 {
     static_assert_uimm_bits!(N, 1);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4795,7 +4795,7 @@ pub unsafe fn vdups_lane_s32<const N: i32>(a: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdups_laneq_s32<const N: i32>(a: int32x4_t) -> i32 {
     static_assert_uimm_bits!(N, 2);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4808,7 +4808,7 @@ pub unsafe fn vdups_laneq_s32<const N: i32>(a: int32x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupd_lane_s64<const N: i32>(a: int64x1_t) -> i64 {
     static_assert!(N == 0);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4821,7 +4821,7 @@ pub unsafe fn vdupd_lane_s64<const N: i32>(a: int64x1_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupd_laneq_s64<const N: i32>(a: int64x2_t) -> i64 {
     static_assert_uimm_bits!(N, 1);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4834,7 +4834,7 @@ pub unsafe fn vdupd_laneq_s64<const N: i32>(a: int64x2_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupb_lane_u8<const N: i32>(a: uint8x8_t) -> u8 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4847,7 +4847,7 @@ pub unsafe fn vdupb_lane_u8<const N: i32>(a: uint8x8_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupb_laneq_u8<const N: i32>(a: uint8x16_t) -> u8 {
     static_assert_uimm_bits!(N, 4);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4860,7 +4860,7 @@ pub unsafe fn vdupb_laneq_u8<const N: i32>(a: uint8x16_t) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vduph_lane_u16<const N: i32>(a: uint16x4_t) -> u16 {
     static_assert_uimm_bits!(N, 2);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4873,7 +4873,7 @@ pub unsafe fn vduph_lane_u16<const N: i32>(a: uint16x4_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vduph_laneq_u16<const N: i32>(a: uint16x8_t) -> u16 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4886,7 +4886,7 @@ pub unsafe fn vduph_laneq_u16<const N: i32>(a: uint16x8_t) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdups_lane_u32<const N: i32>(a: uint32x2_t) -> u32 {
     static_assert_uimm_bits!(N, 1);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4899,7 +4899,7 @@ pub unsafe fn vdups_lane_u32<const N: i32>(a: uint32x2_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdups_laneq_u32<const N: i32>(a: uint32x4_t) -> u32 {
     static_assert_uimm_bits!(N, 2);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4912,7 +4912,7 @@ pub unsafe fn vdups_laneq_u32<const N: i32>(a: uint32x4_t) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupd_lane_u64<const N: i32>(a: uint64x1_t) -> u64 {
     static_assert!(N == 0);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4925,7 +4925,7 @@ pub unsafe fn vdupd_lane_u64<const N: i32>(a: uint64x1_t) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupd_laneq_u64<const N: i32>(a: uint64x2_t) -> u64 {
     static_assert_uimm_bits!(N, 1);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4938,7 +4938,7 @@ pub unsafe fn vdupd_laneq_u64<const N: i32>(a: uint64x2_t) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupb_lane_p8<const N: i32>(a: poly8x8_t) -> p8 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4951,7 +4951,7 @@ pub unsafe fn vdupb_lane_p8<const N: i32>(a: poly8x8_t) -> p8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupb_laneq_p8<const N: i32>(a: poly8x16_t) -> p8 {
     static_assert_uimm_bits!(N, 4);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4964,7 +4964,7 @@ pub unsafe fn vdupb_laneq_p8<const N: i32>(a: poly8x16_t) -> p8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vduph_lane_p16<const N: i32>(a: poly16x4_t) -> p16 {
     static_assert_uimm_bits!(N, 2);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4977,7 +4977,7 @@ pub unsafe fn vduph_lane_p16<const N: i32>(a: poly16x4_t) -> p16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vduph_laneq_p16<const N: i32>(a: poly16x8_t) -> p16 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -4990,7 +4990,7 @@ pub unsafe fn vduph_laneq_p16<const N: i32>(a: poly16x8_t) -> p16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdups_lane_f32<const N: i32>(a: float32x2_t) -> f32 {
     static_assert_uimm_bits!(N, 1);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -5003,7 +5003,7 @@ pub unsafe fn vdups_lane_f32<const N: i32>(a: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdups_laneq_f32<const N: i32>(a: float32x4_t) -> f32 {
     static_assert_uimm_bits!(N, 2);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -5016,7 +5016,7 @@ pub unsafe fn vdups_laneq_f32<const N: i32>(a: float32x4_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupd_lane_f64<const N: i32>(a: float64x1_t) -> f64 {
     static_assert!(N == 0);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Set all vector lanes to the same value
@@ -5029,7 +5029,7 @@ pub unsafe fn vdupd_lane_f64<const N: i32>(a: float64x1_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vdupd_laneq_f64<const N: i32>(a: float64x2_t) -> f64 {
     static_assert_uimm_bits!(N, 1);
-    simd_extract(a, N as u32)
+    simd_extract!(a, N as u32)
 }
 
 /// Extract vector from pair of vectors
@@ -5729,7 +5729,7 @@ pub unsafe fn vqnegq_s64(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(sqneg))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqnegb_s8(a: i8) -> i8 {
-    simd_extract(vqneg_s8(vdup_n_s8(a)), 0)
+    simd_extract!(vqneg_s8(vdup_n_s8(a)), 0)
 }
 
 /// Signed saturating negate
@@ -5740,7 +5740,7 @@ pub unsafe fn vqnegb_s8(a: i8) -> i8 {
 #[cfg_attr(test, assert_instr(sqneg))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqnegh_s16(a: i16) -> i16 {
-    simd_extract(vqneg_s16(vdup_n_s16(a)), 0)
+    simd_extract!(vqneg_s16(vdup_n_s16(a)), 0)
 }
 
 /// Signed saturating negate
@@ -5751,7 +5751,7 @@ pub unsafe fn vqnegh_s16(a: i16) -> i16 {
 #[cfg_attr(test, assert_instr(sqneg))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqnegs_s32(a: i32) -> i32 {
-    simd_extract(vqneg_s32(vdup_n_s32(a)), 0)
+    simd_extract!(vqneg_s32(vdup_n_s32(a)), 0)
 }
 
 /// Signed saturating negate
@@ -5762,7 +5762,7 @@ pub unsafe fn vqnegs_s32(a: i32) -> i32 {
 #[cfg_attr(test, assert_instr(sqneg))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqnegd_s64(a: i64) -> i64 {
-    simd_extract(vqneg_s64(vdup_n_s64(a)), 0)
+    simd_extract!(vqneg_s64(vdup_n_s64(a)), 0)
 }
 
 /// Saturating subtract
@@ -5775,7 +5775,7 @@ pub unsafe fn vqnegd_s64(a: i64) -> i64 {
 pub unsafe fn vqsubb_s8(a: i8, b: i8) -> i8 {
     let a: int8x8_t = vdup_n_s8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    simd_extract(vqsub_s8(a, b), 0)
+    simd_extract!(vqsub_s8(a, b), 0)
 }
 
 /// Saturating subtract
@@ -5788,7 +5788,7 @@ pub unsafe fn vqsubb_s8(a: i8, b: i8) -> i8 {
 pub unsafe fn vqsubh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    simd_extract(vqsub_s16(a, b), 0)
+    simd_extract!(vqsub_s16(a, b), 0)
 }
 
 /// Saturating subtract
@@ -5801,7 +5801,7 @@ pub unsafe fn vqsubh_s16(a: i16, b: i16) -> i16 {
 pub unsafe fn vqsubb_u8(a: u8, b: u8) -> u8 {
     let a: uint8x8_t = vdup_n_u8(a);
     let b: uint8x8_t = vdup_n_u8(b);
-    simd_extract(vqsub_u8(a, b), 0)
+    simd_extract!(vqsub_u8(a, b), 0)
 }
 
 /// Saturating subtract
@@ -5814,7 +5814,7 @@ pub unsafe fn vqsubb_u8(a: u8, b: u8) -> u8 {
 pub unsafe fn vqsubh_u16(a: u16, b: u16) -> u16 {
     let a: uint16x4_t = vdup_n_u16(a);
     let b: uint16x4_t = vdup_n_u16(b);
-    simd_extract(vqsub_u16(a, b), 0)
+    simd_extract!(vqsub_u16(a, b), 0)
 }
 
 /// Saturating subtract
@@ -6399,7 +6399,7 @@ pub unsafe fn vrndiq_f64(a: float64x2_t) -> float64x2_t {
 pub unsafe fn vqaddb_s8(a: i8, b: i8) -> i8 {
     let a: int8x8_t = vdup_n_s8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    simd_extract(vqadd_s8(a, b), 0)
+    simd_extract!(vqadd_s8(a, b), 0)
 }
 
 /// Saturating add
@@ -6412,7 +6412,7 @@ pub unsafe fn vqaddb_s8(a: i8, b: i8) -> i8 {
 pub unsafe fn vqaddh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    simd_extract(vqadd_s16(a, b), 0)
+    simd_extract!(vqadd_s16(a, b), 0)
 }
 
 /// Saturating add
@@ -6425,7 +6425,7 @@ pub unsafe fn vqaddh_s16(a: i16, b: i16) -> i16 {
 pub unsafe fn vqaddb_u8(a: u8, b: u8) -> u8 {
     let a: uint8x8_t = vdup_n_u8(a);
     let b: uint8x8_t = vdup_n_u8(b);
-    simd_extract(vqadd_u8(a, b), 0)
+    simd_extract!(vqadd_u8(a, b), 0)
 }
 
 /// Saturating add
@@ -6438,7 +6438,7 @@ pub unsafe fn vqaddb_u8(a: u8, b: u8) -> u8 {
 pub unsafe fn vqaddh_u16(a: u16, b: u16) -> u16 {
     let a: uint16x4_t = vdup_n_u16(a);
     let b: uint16x4_t = vdup_n_u16(b);
-    simd_extract(vqadd_u16(a, b), 0)
+    simd_extract!(vqadd_u16(a, b), 0)
 }
 
 /// Saturating add
@@ -7535,7 +7535,7 @@ pub unsafe fn vld4q_lane_f64<const LANE: i32>(a: *const f64, b: float64x2x4_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1_t) {
     static_assert!(LANE == 0);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -7548,7 +7548,7 @@ pub unsafe fn vst1_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst1q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    *a = simd_extract(b, LANE as u32);
+    *a = simd_extract!(b, LANE as u32);
 }
 
 /// Store multiple single-element structures to one, two, three, or four registers
@@ -8475,7 +8475,7 @@ pub unsafe fn vmulq_n_f64(a: float64x2_t, b: f64) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    simd_mul(a, transmute::<f64, _>(simd_extract(b, LANE as u32)))
+    simd_mul(a, transmute::<f64, _>(simd_extract!(b, LANE as u32)))
 }
 
 /// Floating-point multiply
@@ -8488,7 +8488,7 @@ pub unsafe fn vmul_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmul_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_mul(a, transmute::<f64, _>(simd_extract(b, LANE as u32)))
+    simd_mul(a, transmute::<f64, _>(simd_extract!(b, LANE as u32)))
 }
 
 /// Floating-point multiply
@@ -8527,7 +8527,7 @@ pub unsafe fn vmulq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmuls_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
     static_assert_uimm_bits!(LANE, 1);
-    let b: f32 = simd_extract(b, LANE as u32);
+    let b: f32 = simd_extract!(b, LANE as u32);
     a * b
 }
 
@@ -8541,7 +8541,7 @@ pub unsafe fn vmuls_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmuls_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
     static_assert_uimm_bits!(LANE, 2);
-    let b: f32 = simd_extract(b, LANE as u32);
+    let b: f32 = simd_extract!(b, LANE as u32);
     a * b
 }
 
@@ -8555,7 +8555,7 @@ pub unsafe fn vmuls_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmuld_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
     static_assert!(LANE == 0);
-    let b: f64 = simd_extract(b, LANE as u32);
+    let b: f64 = simd_extract!(b, LANE as u32);
     a * b
 }
 
@@ -8569,7 +8569,7 @@ pub unsafe fn vmuld_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmuld_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
     static_assert_uimm_bits!(LANE, 1);
-    let b: f64 = simd_extract(b, LANE as u32);
+    let b: f64 = simd_extract!(b, LANE as u32);
     a * b
 }
 
@@ -8688,7 +8688,7 @@ pub unsafe fn vmull_high_p8(a: poly8x16_t, b: poly8x16_t) -> poly16x8_t {
 #[cfg_attr(test, assert_instr(pmull))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmull_high_p64(a: poly64x2_t, b: poly64x2_t) -> p128 {
-    vmull_p64(simd_extract(a, 1), simd_extract(b, 1))
+    vmull_p64(simd_extract!(a, 1), simd_extract!(b, 1))
 }
 
 /// Multiply long
@@ -8913,7 +8913,7 @@ pub unsafe fn vmulxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmulx_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    vmulx_f64(a, transmute::<f64, _>(simd_extract(b, LANE as u32)))
+    vmulx_f64(a, transmute::<f64, _>(simd_extract!(b, LANE as u32)))
 }
 
 /// Floating-point multiply extended
@@ -8926,7 +8926,7 @@ pub unsafe fn vmulx_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t) ->
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmulx_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    vmulx_f64(a, transmute::<f64, _>(simd_extract(b, LANE as u32)))
+    vmulx_f64(a, transmute::<f64, _>(simd_extract!(b, LANE as u32)))
 }
 
 /// Floating-point multiply extended
@@ -9049,7 +9049,7 @@ pub unsafe fn vmulxd_f64(a: f64, b: f64) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmulxs_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
     static_assert_uimm_bits!(LANE, 1);
-    vmulxs_f32(a, simd_extract(b, LANE as u32))
+    vmulxs_f32(a, simd_extract!(b, LANE as u32))
 }
 
 /// Floating-point multiply extended
@@ -9062,7 +9062,7 @@ pub unsafe fn vmulxs_lane_f32<const LANE: i32>(a: f32, b: float32x2_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmulxs_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
     static_assert_uimm_bits!(LANE, 2);
-    vmulxs_f32(a, simd_extract(b, LANE as u32))
+    vmulxs_f32(a, simd_extract!(b, LANE as u32))
 }
 
 /// Floating-point multiply extended
@@ -9075,7 +9075,7 @@ pub unsafe fn vmulxs_laneq_f32<const LANE: i32>(a: f32, b: float32x4_t) -> f32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmulxd_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
     static_assert!(LANE == 0);
-    vmulxd_f64(a, simd_extract(b, LANE as u32))
+    vmulxd_f64(a, simd_extract!(b, LANE as u32))
 }
 
 /// Floating-point multiply extended
@@ -9088,7 +9088,7 @@ pub unsafe fn vmulxd_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> f64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vmulxd_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
     static_assert_uimm_bits!(LANE, 1);
-    vmulxd_f64(a, simd_extract(b, LANE as u32))
+    vmulxd_f64(a, simd_extract!(b, LANE as u32))
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -9155,7 +9155,7 @@ pub unsafe fn vfmaq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfma_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfma_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+    vfma_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9168,7 +9168,7 @@ pub unsafe fn vfma_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfma_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    vfma_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+    vfma_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9181,7 +9181,7 @@ pub unsafe fn vfma_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfmaq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+    vfmaq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9194,7 +9194,7 @@ pub unsafe fn vfmaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    vfmaq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+    vfmaq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9207,7 +9207,7 @@ pub unsafe fn vfmaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfma_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    vfma_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+    vfma_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9220,7 +9220,7 @@ pub unsafe fn vfma_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfma_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfma_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+    vfma_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9233,7 +9233,7 @@ pub unsafe fn vfma_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmaq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    vfmaq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+    vfmaq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9246,7 +9246,7 @@ pub unsafe fn vfmaq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmaq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfmaq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+    vfmaq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-add to accumulator
@@ -9264,7 +9264,7 @@ pub unsafe fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) ->
         fn vfmas_lane_f32_(a: f32, b: f32, c: f32) -> f32;
     }
     static_assert_uimm_bits!(LANE, 1);
-    let c: f32 = simd_extract(c, LANE as u32);
+    let c: f32 = simd_extract!(c, LANE as u32);
     vfmas_lane_f32_(b, c, a)
 }
 
@@ -9283,7 +9283,7 @@ pub unsafe fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -
         fn vfmas_laneq_f32_(a: f32, b: f32, c: f32) -> f32;
     }
     static_assert_uimm_bits!(LANE, 2);
-    let c: f32 = simd_extract(c, LANE as u32);
+    let c: f32 = simd_extract!(c, LANE as u32);
     vfmas_laneq_f32_(b, c, a)
 }
 
@@ -9302,7 +9302,7 @@ pub unsafe fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) ->
         fn vfmad_lane_f64_(a: f64, b: f64, c: f64) -> f64;
     }
     static_assert!(LANE == 0);
-    let c: f64 = simd_extract(c, LANE as u32);
+    let c: f64 = simd_extract!(c, LANE as u32);
     vfmad_lane_f64_(b, c, a)
 }
 
@@ -9321,7 +9321,7 @@ pub unsafe fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -
         fn vfmad_laneq_f64_(a: f64, b: f64, c: f64) -> f64;
     }
     static_assert_uimm_bits!(LANE, 1);
-    let c: f64 = simd_extract(c, LANE as u32);
+    let c: f64 = simd_extract!(c, LANE as u32);
     vfmad_laneq_f64_(b, c, a)
 }
 
@@ -9381,7 +9381,7 @@ pub unsafe fn vfmsq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfms_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfms_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+    vfms_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -9394,7 +9394,7 @@ pub unsafe fn vfms_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfms_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_uimm_bits!(LANE, 2);
-    vfms_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+    vfms_f32(a, b, vdup_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -9407,7 +9407,7 @@ pub unsafe fn vfms_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfmsq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+    vfmsq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -9420,7 +9420,7 @@ pub unsafe fn vfmsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    vfmsq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+    vfmsq_f32(a, b, vdupq_n_f32(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -9433,7 +9433,7 @@ pub unsafe fn vfmsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfms_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    vfms_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+    vfms_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -9446,7 +9446,7 @@ pub unsafe fn vfms_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfms_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x2_t) -> float64x1_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfms_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+    vfms_f64(a, b, vdup_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -9459,7 +9459,7 @@ pub unsafe fn vfms_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmsq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x1_t) -> float64x2_t {
     static_assert!(LANE == 0);
-    vfmsq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+    vfmsq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -9472,7 +9472,7 @@ pub unsafe fn vfmsq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c:
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vfmsq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    vfmsq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+    vfmsq_f64(a, b, vdupq_n_f64(simd_extract!(c, LANE as u32)))
 }
 
 /// Floating-point fused multiply-subtract to accumulator
@@ -11119,8 +11119,8 @@ pub unsafe fn vpaddq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vpadds_f32(a: float32x2_t) -> f32 {
-    let a1: f32 = simd_extract(a, 0);
-    let a2: f32 = simd_extract(a, 1);
+    let a1: f32 = simd_extract!(a, 0);
+    let a2: f32 = simd_extract!(a, 1);
     a1 + a2
 }
 
@@ -11132,8 +11132,8 @@ pub unsafe fn vpadds_f32(a: float32x2_t) -> f32 {
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vpaddd_f64(a: float64x2_t) -> f64 {
-    let a1: f64 = simd_extract(a, 0);
-    let a2: f64 = simd_extract(a, 1);
+    let a1: f64 = simd_extract!(a, 0);
+    let a2: f64 = simd_extract!(a, 1);
     a1 + a2
 }
 
@@ -11259,7 +11259,7 @@ pub unsafe fn vpminqd_f64(a: float64x2_t) -> f64 {
 pub unsafe fn vqdmullh_s16(a: i16, b: i16) -> i32 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    simd_extract(vqdmull_s16(a, b), 0)
+    simd_extract!(vqdmull_s16(a, b), 0)
 }
 
 /// Signed saturating doubling multiply long
@@ -11368,7 +11368,7 @@ pub unsafe fn vqdmull_laneq_s32<const N: i32>(a: int32x2_t, b: int32x4_t) -> int
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmullh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i32 {
     static_assert_uimm_bits!(N, 2);
-    let b: i16 = simd_extract(b, N as u32);
+    let b: i16 = simd_extract!(b, N as u32);
     vqdmullh_s16(a, b)
 }
 
@@ -11382,7 +11382,7 @@ pub unsafe fn vqdmullh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmullh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i32 {
     static_assert_uimm_bits!(N, 3);
-    let b: i16 = simd_extract(b, N as u32);
+    let b: i16 = simd_extract!(b, N as u32);
     vqdmullh_s16(a, b)
 }
 
@@ -11396,7 +11396,7 @@ pub unsafe fn vqdmullh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulls_lane_s32<const N: i32>(a: i32, b: int32x2_t) -> i64 {
     static_assert_uimm_bits!(N, 1);
-    let b: i32 = simd_extract(b, N as u32);
+    let b: i32 = simd_extract!(b, N as u32);
     vqdmulls_s32(a, b)
 }
 
@@ -11410,7 +11410,7 @@ pub unsafe fn vqdmulls_lane_s32<const N: i32>(a: i32, b: int32x2_t) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulls_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i64 {
     static_assert_uimm_bits!(N, 2);
-    let b: i32 = simd_extract(b, N as u32);
+    let b: i32 = simd_extract!(b, N as u32);
     vqdmulls_s32(a, b)
 }
 
@@ -11605,7 +11605,7 @@ pub unsafe fn vqdmlal_high_laneq_s32<const N: i32>(a: int64x2_t, b: int32x4_t, c
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlalh_s16(a: i32, b: i16, c: i16) -> i32 {
     let x: int32x4_t = vqdmull_s16(vdup_n_s16(b), vdup_n_s16(c));
-    vqadds_s32(a, simd_extract(x, 0))
+    vqadds_s32(a, simd_extract!(x, 0))
 }
 
 /// Signed saturating doubling multiply-add long
@@ -11630,7 +11630,7 @@ pub unsafe fn vqdmlals_s32(a: i64, b: i32, c: i32) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlalh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmlalh_s16(a, b, simd_extract(c, LANE as u32))
+    vqdmlalh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply-add long
@@ -11643,7 +11643,7 @@ pub unsafe fn vqdmlalh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlalh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) -> i32 {
     static_assert_uimm_bits!(LANE, 3);
-    vqdmlalh_s16(a, b, simd_extract(c, LANE as u32))
+    vqdmlalh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply-add long
@@ -11656,7 +11656,7 @@ pub unsafe fn vqdmlalh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlals_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -> i64 {
     static_assert_uimm_bits!(LANE, 1);
-    vqdmlals_s32(a, b, simd_extract(c, LANE as u32))
+    vqdmlals_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply-add long
@@ -11669,7 +11669,7 @@ pub unsafe fn vqdmlals_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlals_laneq_s32<const LANE: i32>(a: i64, b: i32, c: int32x4_t) -> i64 {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmlals_s32(a, b, simd_extract(c, LANE as u32))
+    vqdmlals_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply-subtract long
@@ -11803,7 +11803,7 @@ pub unsafe fn vqdmlsl_high_laneq_s32<const N: i32>(a: int64x2_t, b: int32x4_t, c
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlslh_s16(a: i32, b: i16, c: i16) -> i32 {
     let x: int32x4_t = vqdmull_s16(vdup_n_s16(b), vdup_n_s16(c));
-    vqsubs_s32(a, simd_extract(x, 0))
+    vqsubs_s32(a, simd_extract!(x, 0))
 }
 
 /// Signed saturating doubling multiply-subtract long
@@ -11828,7 +11828,7 @@ pub unsafe fn vqdmlsls_s32(a: i64, b: i32, c: i32) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlslh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmlslh_s16(a, b, simd_extract(c, LANE as u32))
+    vqdmlslh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply-subtract long
@@ -11841,7 +11841,7 @@ pub unsafe fn vqdmlslh_lane_s16<const LANE: i32>(a: i32, b: i16, c: int16x4_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlslh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) -> i32 {
     static_assert_uimm_bits!(LANE, 3);
-    vqdmlslh_s16(a, b, simd_extract(c, LANE as u32))
+    vqdmlslh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply-subtract long
@@ -11854,7 +11854,7 @@ pub unsafe fn vqdmlslh_laneq_s16<const LANE: i32>(a: i32, b: i16, c: int16x8_t) 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlsls_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -> i64 {
     static_assert_uimm_bits!(LANE, 1);
-    vqdmlsls_s32(a, b, simd_extract(c, LANE as u32))
+    vqdmlsls_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply-subtract long
@@ -11867,7 +11867,7 @@ pub unsafe fn vqdmlsls_lane_s32<const LANE: i32>(a: i64, b: i32, c: int32x2_t) -
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmlsls_laneq_s32<const LANE: i32>(a: i64, b: i32, c: int32x4_t) -> i64 {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmlsls_s32(a, b, simd_extract(c, LANE as u32))
+    vqdmlsls_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating doubling multiply returning high half
@@ -11880,7 +11880,7 @@ pub unsafe fn vqdmlsls_laneq_s32<const LANE: i32>(a: i64, b: i32, c: int32x4_t) 
 pub unsafe fn vqdmulhh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    simd_extract(vqdmulh_s16(a, b), 0)
+    simd_extract!(vqdmulh_s16(a, b), 0)
 }
 
 /// Signed saturating doubling multiply returning high half
@@ -11893,7 +11893,7 @@ pub unsafe fn vqdmulhh_s16(a: i16, b: i16) -> i16 {
 pub unsafe fn vqdmulhs_s32(a: i32, b: i32) -> i32 {
     let a: int32x2_t = vdup_n_s32(a);
     let b: int32x2_t = vdup_n_s32(b);
-    simd_extract(vqdmulh_s32(a, b), 0)
+    simd_extract!(vqdmulh_s32(a, b), 0)
 }
 
 /// Signed saturating doubling multiply returning high half
@@ -11906,7 +11906,7 @@ pub unsafe fn vqdmulhs_s32(a: i32, b: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulhh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i16 {
     static_assert_uimm_bits!(N, 2);
-    let b: i16 = simd_extract(b, N as u32);
+    let b: i16 = simd_extract!(b, N as u32);
     vqdmulhh_s16(a, b)
 }
 
@@ -11920,7 +11920,7 @@ pub unsafe fn vqdmulhh_lane_s16<const N: i32>(a: i16, b: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulhh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i16 {
     static_assert_uimm_bits!(N, 3);
-    let b: i16 = simd_extract(b, N as u32);
+    let b: i16 = simd_extract!(b, N as u32);
     vqdmulhh_s16(a, b)
 }
 
@@ -11934,7 +11934,7 @@ pub unsafe fn vqdmulhh_laneq_s16<const N: i32>(a: i16, b: int16x8_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulhs_lane_s32<const N: i32>(a: i32, b: int32x2_t) -> i32 {
     static_assert_uimm_bits!(N, 1);
-    let b: i32 = simd_extract(b, N as u32);
+    let b: i32 = simd_extract!(b, N as u32);
     vqdmulhs_s32(a, b)
 }
 
@@ -11948,7 +11948,7 @@ pub unsafe fn vqdmulhs_lane_s32<const N: i32>(a: i32, b: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulhs_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i32 {
     static_assert_uimm_bits!(N, 2);
-    let b: i32 = simd_extract(b, N as u32);
+    let b: i32 = simd_extract!(b, N as u32);
     vqdmulhs_s32(a, b)
 }
 
@@ -11962,7 +11962,7 @@ pub unsafe fn vqdmulhs_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmulh_s16(a, vdup_n_s16(simd_extract(b, LANE as u32)))
+    vqdmulh_s16(a, vdup_n_s16(simd_extract!(b, LANE as u32)))
 }
 
 /// Vector saturating doubling multiply high by scalar
@@ -11975,7 +11975,7 @@ pub unsafe fn vqdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_uimm_bits!(LANE, 2);
-    vqdmulhq_s16(a, vdupq_n_s16(simd_extract(b, LANE as u32)))
+    vqdmulhq_s16(a, vdupq_n_s16(simd_extract!(b, LANE as u32)))
 }
 
 /// Vector saturating doubling multiply high by scalar
@@ -11988,7 +11988,7 @@ pub unsafe fn vqdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    vqdmulh_s32(a, vdup_n_s32(simd_extract(b, LANE as u32)))
+    vqdmulh_s32(a, vdup_n_s32(simd_extract!(b, LANE as u32)))
 }
 
 /// Vector saturating doubling multiply high by scalar
@@ -12001,7 +12001,7 @@ pub unsafe fn vqdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> i
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
-    vqdmulhq_s32(a, vdupq_n_s32(simd_extract(b, LANE as u32)))
+    vqdmulhq_s32(a, vdupq_n_s32(simd_extract!(b, LANE as u32)))
 }
 
 /// Saturating extract narrow
@@ -12012,7 +12012,7 @@ pub unsafe fn vqdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> 
 #[cfg_attr(test, assert_instr(sqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqmovnh_s16(a: i16) -> i8 {
-    simd_extract(vqmovn_s16(vdupq_n_s16(a)), 0)
+    simd_extract!(vqmovn_s16(vdupq_n_s16(a)), 0)
 }
 
 /// Saturating extract narrow
@@ -12023,7 +12023,7 @@ pub unsafe fn vqmovnh_s16(a: i16) -> i8 {
 #[cfg_attr(test, assert_instr(sqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqmovns_s32(a: i32) -> i16 {
-    simd_extract(vqmovn_s32(vdupq_n_s32(a)), 0)
+    simd_extract!(vqmovn_s32(vdupq_n_s32(a)), 0)
 }
 
 /// Saturating extract narrow
@@ -12034,7 +12034,7 @@ pub unsafe fn vqmovns_s32(a: i32) -> i16 {
 #[cfg_attr(test, assert_instr(uqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqmovnh_u16(a: u16) -> u8 {
-    simd_extract(vqmovn_u16(vdupq_n_u16(a)), 0)
+    simd_extract!(vqmovn_u16(vdupq_n_u16(a)), 0)
 }
 
 /// Saturating extract narrow
@@ -12045,7 +12045,7 @@ pub unsafe fn vqmovnh_u16(a: u16) -> u8 {
 #[cfg_attr(test, assert_instr(uqxtn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqmovns_u32(a: u32) -> u16 {
-    simd_extract(vqmovn_u32(vdupq_n_u32(a)), 0)
+    simd_extract!(vqmovn_u32(vdupq_n_u32(a)), 0)
 }
 
 /// Saturating extract narrow
@@ -12154,7 +12154,7 @@ pub unsafe fn vqmovn_high_u64(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
 #[cfg_attr(test, assert_instr(sqxtun))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqmovunh_s16(a: i16) -> u8 {
-    simd_extract(vqmovun_s16(vdupq_n_s16(a)), 0)
+    simd_extract!(vqmovun_s16(vdupq_n_s16(a)), 0)
 }
 
 /// Signed saturating extract unsigned narrow
@@ -12165,7 +12165,7 @@ pub unsafe fn vqmovunh_s16(a: i16) -> u8 {
 #[cfg_attr(test, assert_instr(sqxtun))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqmovuns_s32(a: i32) -> u16 {
-    simd_extract(vqmovun_s32(vdupq_n_s32(a)), 0)
+    simd_extract!(vqmovun_s32(vdupq_n_s32(a)), 0)
 }
 
 /// Signed saturating extract unsigned narrow
@@ -12176,7 +12176,7 @@ pub unsafe fn vqmovuns_s32(a: i32) -> u16 {
 #[cfg_attr(test, assert_instr(sqxtun))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqmovund_s64(a: i64) -> u32 {
-    simd_extract(vqmovun_s64(vdupq_n_s64(a)), 0)
+    simd_extract!(vqmovun_s64(vdupq_n_s64(a)), 0)
 }
 
 /// Signed saturating extract unsigned narrow
@@ -12220,7 +12220,7 @@ pub unsafe fn vqmovun_high_s64(a: uint32x2_t, b: int64x2_t) -> uint32x4_t {
 #[cfg_attr(test, assert_instr(sqrdmulh))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqrdmulhh_s16(a: i16, b: i16) -> i16 {
-    simd_extract(vqrdmulh_s16(vdup_n_s16(a), vdup_n_s16(b)), 0)
+    simd_extract!(vqrdmulh_s16(vdup_n_s16(a), vdup_n_s16(b)), 0)
 }
 
 /// Signed saturating rounding doubling multiply returning high half
@@ -12231,7 +12231,7 @@ pub unsafe fn vqrdmulhh_s16(a: i16, b: i16) -> i16 {
 #[cfg_attr(test, assert_instr(sqrdmulh))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqrdmulhs_s32(a: i32, b: i32) -> i32 {
-    simd_extract(vqrdmulh_s32(vdup_n_s32(a), vdup_n_s32(b)), 0)
+    simd_extract!(vqrdmulh_s32(vdup_n_s32(a), vdup_n_s32(b)), 0)
 }
 
 /// Signed saturating rounding doubling multiply returning high half
@@ -12244,7 +12244,7 @@ pub unsafe fn vqrdmulhs_s32(a: i32, b: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqrdmulhh_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> i16 {
     static_assert_uimm_bits!(LANE, 2);
-    vqrdmulhh_s16(a, simd_extract(b, LANE as u32))
+    vqrdmulhh_s16(a, simd_extract!(b, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply returning high half
@@ -12257,7 +12257,7 @@ pub unsafe fn vqrdmulhh_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqrdmulhh_laneq_s16<const LANE: i32>(a: i16, b: int16x8_t) -> i16 {
     static_assert_uimm_bits!(LANE, 3);
-    vqrdmulhh_s16(a, simd_extract(b, LANE as u32))
+    vqrdmulhh_s16(a, simd_extract!(b, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply returning high half
@@ -12270,7 +12270,7 @@ pub unsafe fn vqrdmulhh_laneq_s16<const LANE: i32>(a: i16, b: int16x8_t) -> i16 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqrdmulhs_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> i32 {
     static_assert_uimm_bits!(LANE, 1);
-    vqrdmulhs_s32(a, simd_extract(b, LANE as u32))
+    vqrdmulhs_s32(a, simd_extract!(b, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply returning high half
@@ -12283,7 +12283,7 @@ pub unsafe fn vqrdmulhs_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqrdmulhs_laneq_s32<const LANE: i32>(a: i32, b: int32x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    vqrdmulhs_s32(a, simd_extract(b, LANE as u32))
+    vqrdmulhs_s32(a, simd_extract!(b, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
@@ -12361,7 +12361,7 @@ pub unsafe fn vqrdmlahh_s16(a: i16, b: i16, c: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
     let c: int16x4_t = vdup_n_s16(c);
-    simd_extract(vqrdmlah_s16(a, b, c), 0)
+    simd_extract!(vqrdmlah_s16(a, b, c), 0)
 }
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
@@ -12375,7 +12375,7 @@ pub unsafe fn vqrdmlahs_s32(a: i32, b: i32, c: i32) -> i32 {
     let a: int32x2_t = vdup_n_s32(a);
     let b: int32x2_t = vdup_n_s32(b);
     let c: int32x2_t = vdup_n_s32(c);
-    simd_extract(vqrdmlah_s32(a, b, c), 0)
+    simd_extract!(vqrdmlah_s32(a, b, c), 0)
 }
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
@@ -12500,7 +12500,7 @@ pub unsafe fn vqrdmlahq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlahh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) -> i16 {
     static_assert_uimm_bits!(LANE, 2);
-    vqrdmlahh_s16(a, b, simd_extract(c, LANE as u32))
+    vqrdmlahh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
@@ -12513,7 +12513,7 @@ pub unsafe fn vqrdmlahh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlahh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t) -> i16 {
     static_assert_uimm_bits!(LANE, 3);
-    vqrdmlahh_s16(a, b, simd_extract(c, LANE as u32))
+    vqrdmlahh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
@@ -12526,7 +12526,7 @@ pub unsafe fn vqrdmlahh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t)
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlahs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) -> i32 {
     static_assert_uimm_bits!(LANE, 1);
-    vqrdmlahs_s32(a, b, simd_extract(c, LANE as u32))
+    vqrdmlahs_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
@@ -12539,7 +12539,7 @@ pub unsafe fn vqrdmlahs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlahs_laneq_s32<const LANE: i32>(a: i32, b: i32, c: int32x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    vqrdmlahs_s32(a, b, simd_extract(c, LANE as u32))
+    vqrdmlahs_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply subtract returning high half
@@ -12617,7 +12617,7 @@ pub unsafe fn vqrdmlshh_s16(a: i16, b: i16, c: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
     let c: int16x4_t = vdup_n_s16(c);
-    simd_extract(vqrdmlsh_s16(a, b, c), 0)
+    simd_extract!(vqrdmlsh_s16(a, b, c), 0)
 }
 
 /// Signed saturating rounding doubling multiply subtract returning high half
@@ -12631,7 +12631,7 @@ pub unsafe fn vqrdmlshs_s32(a: i32, b: i32, c: i32) -> i32 {
     let a: int32x2_t = vdup_n_s32(a);
     let b: int32x2_t = vdup_n_s32(b);
     let c: int32x2_t = vdup_n_s32(c);
-    simd_extract(vqrdmlsh_s32(a, b, c), 0)
+    simd_extract!(vqrdmlsh_s32(a, b, c), 0)
 }
 
 /// Signed saturating rounding doubling multiply subtract returning high half
@@ -12756,7 +12756,7 @@ pub unsafe fn vqrdmlshq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlshh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) -> i16 {
     static_assert_uimm_bits!(LANE, 2);
-    vqrdmlshh_s16(a, b, simd_extract(c, LANE as u32))
+    vqrdmlshh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply subtract returning high half
@@ -12769,7 +12769,7 @@ pub unsafe fn vqrdmlshh_lane_s16<const LANE: i32>(a: i16, b: i16, c: int16x4_t) 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlshh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t) -> i16 {
     static_assert_uimm_bits!(LANE, 3);
-    vqrdmlshh_s16(a, b, simd_extract(c, LANE as u32))
+    vqrdmlshh_s16(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply subtract returning high half
@@ -12782,7 +12782,7 @@ pub unsafe fn vqrdmlshh_laneq_s16<const LANE: i32>(a: i16, b: i16, c: int16x8_t)
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlshs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) -> i32 {
     static_assert_uimm_bits!(LANE, 1);
-    vqrdmlshs_s32(a, b, simd_extract(c, LANE as u32))
+    vqrdmlshs_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding doubling multiply subtract returning high half
@@ -12795,7 +12795,7 @@ pub unsafe fn vqrdmlshs_lane_s32<const LANE: i32>(a: i32, b: i32, c: int32x2_t) 
 #[stable(feature = "rdm_intrinsics", since = "1.62.0")]
 pub unsafe fn vqrdmlshs_laneq_s32<const LANE: i32>(a: i32, b: i32, c: int32x4_t) -> i32 {
     static_assert_uimm_bits!(LANE, 2);
-    vqrdmlshs_s32(a, b, simd_extract(c, LANE as u32))
+    vqrdmlshs_s32(a, b, simd_extract!(c, LANE as u32))
 }
 
 /// Signed saturating rounding shift left
@@ -12840,7 +12840,7 @@ pub unsafe fn vqrshld_s64(a: i64, b: i64) -> i64 {
 pub unsafe fn vqrshlb_s8(a: i8, b: i8) -> i8 {
     let a: int8x8_t = vdup_n_s8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    simd_extract(vqrshl_s8(a, b), 0)
+    simd_extract!(vqrshl_s8(a, b), 0)
 }
 
 /// Signed saturating rounding shift left
@@ -12853,7 +12853,7 @@ pub unsafe fn vqrshlb_s8(a: i8, b: i8) -> i8 {
 pub unsafe fn vqrshlh_s16(a: i16, b: i16) -> i16 {
     let a: int16x4_t = vdup_n_s16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    simd_extract(vqrshl_s16(a, b), 0)
+    simd_extract!(vqrshl_s16(a, b), 0)
 }
 
 /// Unsigned signed saturating rounding shift left
@@ -12898,7 +12898,7 @@ pub unsafe fn vqrshld_u64(a: u64, b: i64) -> u64 {
 pub unsafe fn vqrshlb_u8(a: u8, b: i8) -> u8 {
     let a: uint8x8_t = vdup_n_u8(a);
     let b: int8x8_t = vdup_n_s8(b);
-    simd_extract(vqrshl_u8(a, b), 0)
+    simd_extract!(vqrshl_u8(a, b), 0)
 }
 
 /// Unsigned signed saturating rounding shift left
@@ -12911,7 +12911,7 @@ pub unsafe fn vqrshlb_u8(a: u8, b: i8) -> u8 {
 pub unsafe fn vqrshlh_u16(a: u16, b: i16) -> u16 {
     let a: uint16x4_t = vdup_n_u16(a);
     let b: int16x4_t = vdup_n_s16(b);
-    simd_extract(vqrshl_u16(a, b), 0)
+    simd_extract!(vqrshl_u16(a, b), 0)
 }
 
 /// Signed saturating rounded shift right narrow
@@ -12925,7 +12925,7 @@ pub unsafe fn vqrshlh_u16(a: u16, b: i16) -> u16 {
 pub unsafe fn vqrshrnh_n_s16<const N: i32>(a: i16) -> i8 {
     static_assert!(N >= 1 && N <= 8);
     let a: int16x8_t = vdupq_n_s16(a);
-    simd_extract(vqrshrn_n_s16::<N>(a), 0)
+    simd_extract!(vqrshrn_n_s16::<N>(a), 0)
 }
 
 /// Signed saturating rounded shift right narrow
@@ -12939,7 +12939,7 @@ pub unsafe fn vqrshrnh_n_s16<const N: i32>(a: i16) -> i8 {
 pub unsafe fn vqrshrns_n_s32<const N: i32>(a: i32) -> i16 {
     static_assert!(N >= 1 && N <= 16);
     let a: int32x4_t = vdupq_n_s32(a);
-    simd_extract(vqrshrn_n_s32::<N>(a), 0)
+    simd_extract!(vqrshrn_n_s32::<N>(a), 0)
 }
 
 /// Signed saturating rounded shift right narrow
@@ -12953,7 +12953,7 @@ pub unsafe fn vqrshrns_n_s32<const N: i32>(a: i32) -> i16 {
 pub unsafe fn vqrshrnd_n_s64<const N: i32>(a: i64) -> i32 {
     static_assert!(N >= 1 && N <= 32);
     let a: int64x2_t = vdupq_n_s64(a);
-    simd_extract(vqrshrn_n_s64::<N>(a), 0)
+    simd_extract!(vqrshrn_n_s64::<N>(a), 0)
 }
 
 /// Signed saturating rounded shift right narrow
@@ -13006,7 +13006,7 @@ pub unsafe fn vqrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> in
 pub unsafe fn vqrshrnh_n_u16<const N: i32>(a: u16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
     let a: uint16x8_t = vdupq_n_u16(a);
-    simd_extract(vqrshrn_n_u16::<N>(a), 0)
+    simd_extract!(vqrshrn_n_u16::<N>(a), 0)
 }
 
 /// Unsigned saturating rounded shift right narrow
@@ -13020,7 +13020,7 @@ pub unsafe fn vqrshrnh_n_u16<const N: i32>(a: u16) -> u8 {
 pub unsafe fn vqrshrns_n_u32<const N: i32>(a: u32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
     let a: uint32x4_t = vdupq_n_u32(a);
-    simd_extract(vqrshrn_n_u32::<N>(a), 0)
+    simd_extract!(vqrshrn_n_u32::<N>(a), 0)
 }
 
 /// Unsigned saturating rounded shift right narrow
@@ -13034,7 +13034,7 @@ pub unsafe fn vqrshrns_n_u32<const N: i32>(a: u32) -> u16 {
 pub unsafe fn vqrshrnd_n_u64<const N: i32>(a: u64) -> u32 {
     static_assert!(N >= 1 && N <= 32);
     let a: uint64x2_t = vdupq_n_u64(a);
-    simd_extract(vqrshrn_n_u64::<N>(a), 0)
+    simd_extract!(vqrshrn_n_u64::<N>(a), 0)
 }
 
 /// Unsigned saturating rounded shift right narrow
@@ -13087,7 +13087,7 @@ pub unsafe fn vqrshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> 
 pub unsafe fn vqrshrunh_n_s16<const N: i32>(a: i16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
     let a: int16x8_t = vdupq_n_s16(a);
-    simd_extract(vqrshrun_n_s16::<N>(a), 0)
+    simd_extract!(vqrshrun_n_s16::<N>(a), 0)
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -13101,7 +13101,7 @@ pub unsafe fn vqrshrunh_n_s16<const N: i32>(a: i16) -> u8 {
 pub unsafe fn vqrshruns_n_s32<const N: i32>(a: i32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
     let a: int32x4_t = vdupq_n_s32(a);
-    simd_extract(vqrshrun_n_s32::<N>(a), 0)
+    simd_extract!(vqrshrun_n_s32::<N>(a), 0)
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -13115,7 +13115,7 @@ pub unsafe fn vqrshruns_n_s32<const N: i32>(a: i32) -> u16 {
 pub unsafe fn vqrshrund_n_s64<const N: i32>(a: i64) -> u32 {
     static_assert!(N >= 1 && N <= 32);
     let a: int64x2_t = vdupq_n_s64(a);
-    simd_extract(vqrshrun_n_s64::<N>(a), 0)
+    simd_extract!(vqrshrun_n_s64::<N>(a), 0)
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -13182,7 +13182,7 @@ pub unsafe fn vqshld_s64(a: i64, b: i64) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlb_s8(a: i8, b: i8) -> i8 {
     let c: int8x8_t = vqshl_s8(vdup_n_s8(a), vdup_n_s8(b));
-    simd_extract(c, 0)
+    simd_extract!(c, 0)
 }
 
 /// Signed saturating shift left
@@ -13194,7 +13194,7 @@ pub unsafe fn vqshlb_s8(a: i8, b: i8) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlh_s16(a: i16, b: i16) -> i16 {
     let c: int16x4_t = vqshl_s16(vdup_n_s16(a), vdup_n_s16(b));
-    simd_extract(c, 0)
+    simd_extract!(c, 0)
 }
 
 /// Signed saturating shift left
@@ -13206,7 +13206,7 @@ pub unsafe fn vqshlh_s16(a: i16, b: i16) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshls_s32(a: i32, b: i32) -> i32 {
     let c: int32x2_t = vqshl_s32(vdup_n_s32(a), vdup_n_s32(b));
-    simd_extract(c, 0)
+    simd_extract!(c, 0)
 }
 
 /// Unsigned saturating shift left
@@ -13234,7 +13234,7 @@ pub unsafe fn vqshld_u64(a: u64, b: i64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlb_u8(a: u8, b: i8) -> u8 {
     let c: uint8x8_t = vqshl_u8(vdup_n_u8(a), vdup_n_s8(b));
-    simd_extract(c, 0)
+    simd_extract!(c, 0)
 }
 
 /// Unsigned saturating shift left
@@ -13246,7 +13246,7 @@ pub unsafe fn vqshlb_u8(a: u8, b: i8) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlh_u16(a: u16, b: i16) -> u16 {
     let c: uint16x4_t = vqshl_u16(vdup_n_u16(a), vdup_n_s16(b));
-    simd_extract(c, 0)
+    simd_extract!(c, 0)
 }
 
 /// Unsigned saturating shift left
@@ -13258,7 +13258,7 @@ pub unsafe fn vqshlh_u16(a: u16, b: i16) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshls_u32(a: u32, b: i32) -> u32 {
     let c: uint32x2_t = vqshl_u32(vdup_n_u32(a), vdup_n_s32(b));
-    simd_extract(c, 0)
+    simd_extract!(c, 0)
 }
 
 /// Signed saturating shift left
@@ -13271,7 +13271,7 @@ pub unsafe fn vqshls_u32(a: u32, b: i32) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlb_n_s8<const N: i32>(a: i8) -> i8 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(vqshl_n_s8::<N>(vdup_n_s8(a)), 0)
+    simd_extract!(vqshl_n_s8::<N>(vdup_n_s8(a)), 0)
 }
 
 /// Signed saturating shift left
@@ -13284,7 +13284,7 @@ pub unsafe fn vqshlb_n_s8<const N: i32>(a: i8) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlh_n_s16<const N: i32>(a: i16) -> i16 {
     static_assert_uimm_bits!(N, 4);
-    simd_extract(vqshl_n_s16::<N>(vdup_n_s16(a)), 0)
+    simd_extract!(vqshl_n_s16::<N>(vdup_n_s16(a)), 0)
 }
 
 /// Signed saturating shift left
@@ -13297,7 +13297,7 @@ pub unsafe fn vqshlh_n_s16<const N: i32>(a: i16) -> i16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshls_n_s32<const N: i32>(a: i32) -> i32 {
     static_assert_uimm_bits!(N, 5);
-    simd_extract(vqshl_n_s32::<N>(vdup_n_s32(a)), 0)
+    simd_extract!(vqshl_n_s32::<N>(vdup_n_s32(a)), 0)
 }
 
 /// Signed saturating shift left
@@ -13310,7 +13310,7 @@ pub unsafe fn vqshls_n_s32<const N: i32>(a: i32) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshld_n_s64<const N: i32>(a: i64) -> i64 {
     static_assert_uimm_bits!(N, 6);
-    simd_extract(vqshl_n_s64::<N>(vdup_n_s64(a)), 0)
+    simd_extract!(vqshl_n_s64::<N>(vdup_n_s64(a)), 0)
 }
 
 /// Unsigned saturating shift left
@@ -13323,7 +13323,7 @@ pub unsafe fn vqshld_n_s64<const N: i32>(a: i64) -> i64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlb_n_u8<const N: i32>(a: u8) -> u8 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(vqshl_n_u8::<N>(vdup_n_u8(a)), 0)
+    simd_extract!(vqshl_n_u8::<N>(vdup_n_u8(a)), 0)
 }
 
 /// Unsigned saturating shift left
@@ -13336,7 +13336,7 @@ pub unsafe fn vqshlb_n_u8<const N: i32>(a: u8) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlh_n_u16<const N: i32>(a: u16) -> u16 {
     static_assert_uimm_bits!(N, 4);
-    simd_extract(vqshl_n_u16::<N>(vdup_n_u16(a)), 0)
+    simd_extract!(vqshl_n_u16::<N>(vdup_n_u16(a)), 0)
 }
 
 /// Unsigned saturating shift left
@@ -13349,7 +13349,7 @@ pub unsafe fn vqshlh_n_u16<const N: i32>(a: u16) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshls_n_u32<const N: i32>(a: u32) -> u32 {
     static_assert_uimm_bits!(N, 5);
-    simd_extract(vqshl_n_u32::<N>(vdup_n_u32(a)), 0)
+    simd_extract!(vqshl_n_u32::<N>(vdup_n_u32(a)), 0)
 }
 
 /// Unsigned saturating shift left
@@ -13362,7 +13362,7 @@ pub unsafe fn vqshls_n_u32<const N: i32>(a: u32) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshld_n_u64<const N: i32>(a: u64) -> u64 {
     static_assert_uimm_bits!(N, 6);
-    simd_extract(vqshl_n_u64::<N>(vdup_n_u64(a)), 0)
+    simd_extract!(vqshl_n_u64::<N>(vdup_n_u64(a)), 0)
 }
 
 /// Signed saturating shift left unsigned
@@ -13375,7 +13375,7 @@ pub unsafe fn vqshld_n_u64<const N: i32>(a: u64) -> u64 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlub_n_s8<const N: i32>(a: i8) -> u8 {
     static_assert_uimm_bits!(N, 3);
-    simd_extract(vqshlu_n_s8::<N>(vdup_n_s8(a)), 0)
+    simd_extract!(vqshlu_n_s8::<N>(vdup_n_s8(a)), 0)
 }
 
 /// Signed saturating shift left unsigned
@@ -13388,7 +13388,7 @@ pub unsafe fn vqshlub_n_s8<const N: i32>(a: i8) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshluh_n_s16<const N: i32>(a: i16) -> u16 {
     static_assert_uimm_bits!(N, 4);
-    simd_extract(vqshlu_n_s16::<N>(vdup_n_s16(a)), 0)
+    simd_extract!(vqshlu_n_s16::<N>(vdup_n_s16(a)), 0)
 }
 
 /// Signed saturating shift left unsigned
@@ -13401,7 +13401,7 @@ pub unsafe fn vqshluh_n_s16<const N: i32>(a: i16) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlus_n_s32<const N: i32>(a: i32) -> u32 {
     static_assert_uimm_bits!(N, 5);
-    simd_extract(vqshlu_n_s32::<N>(vdup_n_s32(a)), 0)
+    simd_extract!(vqshlu_n_s32::<N>(vdup_n_s32(a)), 0)
 }
 
 /// Signed saturating shift left unsigned
@@ -13414,7 +13414,7 @@ pub unsafe fn vqshlus_n_s32<const N: i32>(a: i32) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshlud_n_s64<const N: i32>(a: i64) -> u64 {
     static_assert_uimm_bits!(N, 6);
-    simd_extract(vqshlu_n_s64::<N>(vdup_n_s64(a)), 0)
+    simd_extract!(vqshlu_n_s64::<N>(vdup_n_s64(a)), 0)
 }
 
 /// Signed saturating shift right narrow
@@ -13445,7 +13445,7 @@ pub unsafe fn vqshrnd_n_s64<const N: i32>(a: i64) -> i32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshrnh_n_s16<const N: i32>(a: i16) -> i8 {
     static_assert!(N >= 1 && N <= 8);
-    simd_extract(vqshrn_n_s16::<N>(vdupq_n_s16(a)), 0)
+    simd_extract!(vqshrn_n_s16::<N>(vdupq_n_s16(a)), 0)
 }
 
 /// Signed saturating shift right narrow
@@ -13458,7 +13458,7 @@ pub unsafe fn vqshrnh_n_s16<const N: i32>(a: i16) -> i8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshrns_n_s32<const N: i32>(a: i32) -> i16 {
     static_assert!(N >= 1 && N <= 16);
-    simd_extract(vqshrn_n_s32::<N>(vdupq_n_s32(a)), 0)
+    simd_extract!(vqshrn_n_s32::<N>(vdupq_n_s32(a)), 0)
 }
 
 /// Signed saturating shift right narrow
@@ -13528,7 +13528,7 @@ pub unsafe fn vqshrnd_n_u64<const N: i32>(a: u64) -> u32 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshrnh_n_u16<const N: i32>(a: u16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
-    simd_extract(vqshrn_n_u16::<N>(vdupq_n_u16(a)), 0)
+    simd_extract!(vqshrn_n_u16::<N>(vdupq_n_u16(a)), 0)
 }
 
 /// Unsigned saturating shift right narrow
@@ -13541,7 +13541,7 @@ pub unsafe fn vqshrnh_n_u16<const N: i32>(a: u16) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshrns_n_u32<const N: i32>(a: u32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
-    simd_extract(vqshrn_n_u32::<N>(vdupq_n_u32(a)), 0)
+    simd_extract!(vqshrn_n_u32::<N>(vdupq_n_u32(a)), 0)
 }
 
 /// Unsigned saturating shift right narrow
@@ -13593,7 +13593,7 @@ pub unsafe fn vqshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> u
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshrunh_n_s16<const N: i32>(a: i16) -> u8 {
     static_assert!(N >= 1 && N <= 8);
-    simd_extract(vqshrun_n_s16::<N>(vdupq_n_s16(a)), 0)
+    simd_extract!(vqshrun_n_s16::<N>(vdupq_n_s16(a)), 0)
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -13606,7 +13606,7 @@ pub unsafe fn vqshrunh_n_s16<const N: i32>(a: i16) -> u8 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshruns_n_s32<const N: i32>(a: i32) -> u16 {
     static_assert!(N >= 1 && N <= 16);
-    simd_extract(vqshrun_n_s32::<N>(vdupq_n_s32(a)), 0)
+    simd_extract!(vqshrun_n_s32::<N>(vdupq_n_s32(a)), 0)
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -13619,7 +13619,7 @@ pub unsafe fn vqshruns_n_s32<const N: i32>(a: i32) -> u16 {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqshrund_n_s64<const N: i32>(a: i64) -> u32 {
     static_assert!(N >= 1 && N <= 32);
-    simd_extract(vqshrun_n_s64::<N>(vdupq_n_s64(a)), 0)
+    simd_extract!(vqshrun_n_s64::<N>(vdupq_n_s64(a)), 0)
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -13669,7 +13669,7 @@ pub unsafe fn vqshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> u
 #[cfg_attr(test, assert_instr(usqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vsqaddb_u8(a: u8, b: i8) -> u8 {
-    simd_extract(vsqadd_u8(vdup_n_u8(a), vdup_n_s8(b)), 0)
+    simd_extract!(vsqadd_u8(vdup_n_u8(a), vdup_n_s8(b)), 0)
 }
 
 /// Unsigned saturating accumulate of signed value
@@ -13680,7 +13680,7 @@ pub unsafe fn vsqaddb_u8(a: u8, b: i8) -> u8 {
 #[cfg_attr(test, assert_instr(usqadd))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vsqaddh_u16(a: u16, b: i16) -> u16 {
-    simd_extract(vsqadd_u16(vdup_n_u16(a), vdup_n_s16(b)), 0)
+    simd_extract!(vsqadd_u16(vdup_n_u16(a), vdup_n_s16(b)), 0)
 }
 
 /// Unsigned saturating accumulate of signed value
@@ -14975,7 +14975,7 @@ pub unsafe fn vrsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> u
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vset_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> float64x1_t {
     static_assert!(LANE == 0);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Insert vector element from another vector element
@@ -14988,7 +14988,7 @@ pub unsafe fn vset_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> float64x
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vsetq_lane_f64<const LANE: i32>(a: f64, b: float64x2_t) -> float64x2_t {
     static_assert_uimm_bits!(LANE, 1);
-    simd_insert(b, LANE as u32, a)
+    simd_insert!(b, LANE as u32, a)
 }
 
 /// Signed Shift left
@@ -15396,7 +15396,7 @@ pub unsafe fn vrnd32x_f64(a: float64x1_t) -> float64x1_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.frint32x.f64")]
         fn vrnd32x_f64_(a: f64) -> f64;
     }
-    transmute(vrnd32x_f64_(simd_extract(a, 0)))
+    transmute(vrnd32x_f64_(simd_extract!(a, 0)))
 }
 
 /// Floating-point round to 32-bit integer toward zero
@@ -15460,7 +15460,7 @@ pub unsafe fn vrnd32z_f64(a: float64x1_t) -> float64x1_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.frint32z.f64")]
         fn vrnd32z_f64_(a: f64) -> f64;
     }
-    transmute(vrnd32z_f64_(simd_extract(a, 0)))
+    transmute(vrnd32z_f64_(simd_extract!(a, 0)))
 }
 
 /// Floating-point round to 64-bit integer, using current rounding mode
@@ -15524,7 +15524,7 @@ pub unsafe fn vrnd64x_f64(a: float64x1_t) -> float64x1_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.frint64x.f64")]
         fn vrnd64x_f64_(a: f64) -> f64;
     }
-    transmute(vrnd64x_f64_(simd_extract(a, 0)))
+    transmute(vrnd64x_f64_(simd_extract!(a, 0)))
 }
 
 /// Floating-point round to 64-bit integer toward zero
@@ -15588,7 +15588,7 @@ pub unsafe fn vrnd64z_f64(a: float64x1_t) -> float64x1_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.frint64z.f64")]
         fn vrnd64z_f64_(a: f64) -> f64;
     }
-    transmute(vrnd64z_f64_(simd_extract(a, 0)))
+    transmute(vrnd64z_f64_(simd_extract!(a, 0)))
 }
 
 /// Transpose vectors
@@ -17170,7 +17170,7 @@ pub unsafe fn vqabsq_s64(a: int64x2_t) -> int64x2_t {
 #[cfg_attr(test, assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabsb_s8(a: i8) -> i8 {
-    simd_extract(vqabs_s8(vdup_n_s8(a)), 0)
+    simd_extract!(vqabs_s8(vdup_n_s8(a)), 0)
 }
 
 /// Signed saturating absolute value
@@ -17181,7 +17181,7 @@ pub unsafe fn vqabsb_s8(a: i8) -> i8 {
 #[cfg_attr(test, assert_instr(sqabs))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vqabsh_s16(a: i16) -> i16 {
-    simd_extract(vqabs_s16(vdup_n_s16(a)), 0)
+    simd_extract!(vqabs_s16(vdup_n_s16(a)), 0)
 }
 
 /// Signed saturating absolute value

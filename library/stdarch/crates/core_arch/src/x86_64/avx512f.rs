@@ -59,7 +59,7 @@ pub unsafe fn _mm_cvtsd_u64(a: __m128d) -> u64 {
 #[cfg_attr(test, assert_instr(vcvtsi2ss))]
 pub unsafe fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
     let b = b as f32;
-    simd_insert(a, 0, b)
+    simd_insert!(a, 0, b)
 }
 
 /// Convert the signed 64-bit integer b to a double-precision (64-bit) floating-point element, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
@@ -71,7 +71,7 @@ pub unsafe fn _mm_cvti64_ss(a: __m128, b: i64) -> __m128 {
 #[cfg_attr(test, assert_instr(vcvtsi2sd))]
 pub unsafe fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
     let b = b as f64;
-    simd_insert(a, 0, b)
+    simd_insert!(a, 0, b)
 }
 
 /// Convert the unsigned 64-bit integer b to a single-precision (32-bit) floating-point element, store the result in the lower element of dst, and copy the upper 3 packed elements from a to the upper elements of dst.
@@ -83,7 +83,7 @@ pub unsafe fn _mm_cvti64_sd(a: __m128d, b: i64) -> __m128d {
 #[cfg_attr(test, assert_instr(vcvtusi2ss))]
 pub unsafe fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
     let b = b as f32;
-    simd_insert(a, 0, b)
+    simd_insert!(a, 0, b)
 }
 
 /// Convert the unsigned 64-bit integer b to a double-precision (64-bit) floating-point element, store the result in the lower element of dst, and copy the upper element from a to the upper element of dst.
@@ -95,7 +95,7 @@ pub unsafe fn _mm_cvtu64_ss(a: __m128, b: u64) -> __m128 {
 #[cfg_attr(test, assert_instr(vcvtusi2sd))]
 pub unsafe fn _mm_cvtu64_sd(a: __m128d, b: u64) -> __m128d {
     let b = b as f64;
-    simd_insert(a, 0, b)
+    simd_insert!(a, 0, b)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in a to a 64-bit integer with truncation, and store the result in dst.
