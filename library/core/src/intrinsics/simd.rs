@@ -3,6 +3,24 @@
 //! In this module, a "vector" is any `repr(simd)` type.
 
 extern "platform-intrinsic" {
+    /// Insert an element into a vector, returning the updated vector.
+    ///
+    /// `T` must be a vector with element type `U`.
+    ///
+    /// # Safety
+    ///
+    /// `idx` must be in-bounds of the vector.
+    pub fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;
+
+    /// Extract an element from a vector.
+    ///
+    /// `T` must be a vector with element type `U`.
+    ///
+    /// # Safety
+    ///
+    /// `idx` must be in-bounds of the vector.
+    pub fn simd_extract<T, U>(x: T, idx: u32) -> U;
+
     /// Add two simd vectors elementwise.
     ///
     /// `T` must be a vector of integer or floating point primitive types.
@@ -315,6 +333,18 @@ extern "platform-intrinsic" {
     /// Starting with the value `y`, add the elements of `x` and accumulate.
     pub fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 
+    /// Add elements within a vector in arbitrary order, and without regard
+    /// for signed zeros.
+    ///
+    /// `T` must be a vector of integer or floating-point primitive types.
+    ///
+    /// `U` must be the element type of `T`.
+    ///
+    /// # Safety
+    ///
+    /// All input elements must be finite (i.e., not NAN and not +/- INF).
+    pub fn simd_reduce_add_unordered<T, U>(x: T) -> U;
+
     /// Multiply elements within a vector from left to right.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
@@ -323,6 +353,18 @@ extern "platform-intrinsic" {
     ///
     /// Starting with the value `y`, multiply the elements of `x` and accumulate.
     pub fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
+
+    /// Multiply elements within a vector in arbitrary order, and without regard
+    /// for signed zeros.
+    ///
+    /// `T` must be a vector of integer or floating-point primitive types.
+    ///
+    /// `U` must be the element type of `T`.
+    ///
+    /// # Safety
+    ///
+    /// All input elements must be finite (i.e., not NAN and not +/- INF).
+    pub fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
 
     /// Check if all mask values are true.
     ///
@@ -349,6 +391,19 @@ extern "platform-intrinsic" {
     /// For floating-point values, uses IEEE-754 `maxNum`.
     pub fn simd_reduce_max<T, U>(x: T) -> U;
 
+    /// Return the maximum element of a vector.
+    ///
+    /// `T` must be a vector of integer or floating-point primitive types.
+    ///
+    /// `U` must be the element type of `T`.
+    ///
+    /// For floating-point values, uses IEEE-754 `maxNum`.
+    ///
+    /// # Safety
+    ///
+    /// All input elements must be finite (i.e., not NAN and not +/- INF).
+    pub fn simd_reduce_max_nanless<T, U>(x: T) -> U;
+
     /// Return the minimum element of a vector.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
@@ -357,6 +412,19 @@ extern "platform-intrinsic" {
     ///
     /// For floating-point values, uses IEEE-754 `minNum`.
     pub fn simd_reduce_min<T, U>(x: T) -> U;
+
+    /// Return the minimum element of a vector.
+    ///
+    /// `T` must be a vector of integer or floating-point primitive types.
+    ///
+    /// `U` must be the element type of `T`.
+    ///
+    /// For floating-point values, uses IEEE-754 `minNum`.
+    ///
+    /// # Safety
+    ///
+    /// All input elements must be finite (i.e., not NAN and not +/- INF).
+    pub fn simd_reduce_min_nanless<T, U>(x: T) -> U;
 
     /// Logical "and" all elements together.
     ///
@@ -516,4 +584,39 @@ extern "platform-intrinsic" {
     ///
     /// `T` must be a vector of floats.
     pub fn simd_fma<T>(x: T, y: T, z: T) -> T;
+
+    // Computes the sine of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fsin<T>(a: T) -> T;
+
+    // Computes the cosine of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fcos<T>(a: T) -> T;
+
+    // Computes the exponential function of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fexp<T>(a: T) -> T;
+
+    // Computes 2 raised to the power of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fexp2<T>(a: T) -> T;
+
+    // Computes the base 10 logarithm of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_flog10<T>(a: T) -> T;
+
+    // Computes the base 2 logarithm of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_flog2<T>(a: T) -> T;
+
+    // Computes the natural logarithm of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_flog<T>(a: T) -> T;
 }
