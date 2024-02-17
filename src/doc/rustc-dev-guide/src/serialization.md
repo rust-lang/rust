@@ -8,8 +8,6 @@ Specifically:
   crate, these are then deserialized by crates that depend on that library.
 - Certain query outputs are serialized in a binary format to
   [persist incremental compilation results].
-- The `-Z ast-json` and `-Z ast-json-noexpand` flags serialize the [AST] to json
-  and output the result to stdout.
 - [`CrateInfo`] is serialized to json when the `-Z no-link` flag is used, and
   deserialized from json when the `-Z link-only` flag is used.
 
