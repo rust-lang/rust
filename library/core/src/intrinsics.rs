@@ -937,52 +937,68 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn unreachable() -> !;
 
-    /// Informs the optimizer that a condition is always true.
-    /// If the condition is false, the behavior is undefined.
-    ///
-    /// No code is generated for this intrinsic, but the optimizer will try
-    /// to preserve it (and its condition) between passes, which may interfere
-    /// with optimization of surrounding code and reduce performance. It should
-    /// not be used if the invariant can be discovered by the optimizer on its
-    /// own, or if it does not enable any significant optimizations.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_stable(feature = "const_assume", since = "1.77.0")]
-    #[rustc_nounwind]
-    pub fn assume(b: bool);
+}
 
-    /// Hints to the compiler that branch condition is likely to be true.
-    /// Returns the value passed to it.
-    ///
-    /// Any use other than with `if` statements will probably not have an effect.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_likely", issue = "none")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn likely(b: bool) -> bool;
+/// Informs the optimizer that a condition is always true.
+/// If the condition is false, the behavior is undefined.
+///
+/// No code is generated for this intrinsic, but the optimizer will try
+/// to preserve it (and its condition) between passes, which may interfere
+/// with optimization of surrounding code and reduce performance. It should
+/// not be used if the invariant can be discovered by the optimizer on its
+/// own, or if it does not enable any significant optimizations.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_stable(feature = "const_assume", since = "1.77.0")]
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const unsafe fn assume(b: bool) {
+    if !b {
+        // SAFETY: the caller must guarantee the argument is never `false`
+        unsafe { unreachable() }
+    }
+}
 
-    /// Hints to the compiler that branch condition is likely to be false.
-    /// Returns the value passed to it.
-    ///
-    /// Any use other than with `if` statements will probably not have an effect.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
-    /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_likely", issue = "none")]
-    #[rustc_safe_intrinsic]
-    #[rustc_nounwind]
-    pub fn unlikely(b: bool) -> bool;
+/// Hints to the compiler that branch condition is likely to be true.
+/// Returns the value passed to it.
+///
+/// Any use other than with `if` statements will probably not have an effect.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_nounwind]
+pub const fn likely(b: bool) -> bool {
+    b
+}
 
+/// Hints to the compiler that branch condition is likely to be false.
+/// Returns the value passed to it.
+///
+/// Any use other than with `if` statements will probably not have an effect.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic does not have a stable counterpart.
+#[rustc_const_unstable(feature = "const_likely", issue = "none")]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_nounwind]
+pub const fn unlikely(b: bool) -> bool {
+    b
+}
+
+extern "rust-intrinsic" {
     /// Executes a breakpoint trap, for inspection by a debugger.
     ///
     /// This intrinsic does not have a stable counterpart.
