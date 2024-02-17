@@ -1032,11 +1032,20 @@ pub trait SpanEncoder: Encoder {
     fn encode_def_id(&mut self, def_id: DefId);
 }
 
+const N: usize = max_leb128_len::<u32>();
+
+use rustc_serialize::leb128::write_u32_leb128;
+use rustc_serialize::leb128::max_leb128_len;
 impl SpanEncoder for FileEncoder {
     fn encode_span(&mut self, span: Span) {
         let span = span.data();
-        span.lo.encode(self);
-        span.hi.encode(self);
+        self.write_with(|dest: &mut [u8; N * 2]| {
+            let head: &mut [u8; N] = dest.split_at_mut(N).0.try_into().unwrap();
+            let lo_used = write_u32_leb128(head, span.lo.0);
+            let head: &mut [u8; N] = dest.split_at_mut(lo_used).0.try_into().unwrap();
+            let hi_used = write_u32_leb128(head, span.hi.0);
+            lo_used + hi_used
+        });
     }
 
     fn encode_symbol(&mut self, symbol: Symbol) {
