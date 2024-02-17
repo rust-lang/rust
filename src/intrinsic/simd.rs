@@ -710,7 +710,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         };
         let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
 
-        let mut values = vec![];
+        let mut values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
             let int = bx.context.new_vector_access(None, pointers, index).to_rvalue();
@@ -723,18 +723,25 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         let vector = bx.context.new_rvalue_from_vector(None, vector_type, &values);
 
-        let mut mask_types = vec![];
-        let mut mask_values = vec![];
+        let mut mask_types = Vec::with_capacity(in_len as usize);
+        let mut mask_values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
             mask_types.push(bx.context.new_field(None, bx.i32_type, "m"));
             let mask_value = bx.context.new_vector_access(None, mask, index).to_rvalue();
-            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value;
+            let mask_value_cast = bx.context.new_cast(None, mask_value, bx.i32_type);
+            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value_cast;
             let value = index + masked;
             mask_values.push(value);
         }
         let mask_type = bx.context.new_struct_type(None, "mask_type", &mask_types);
         let mask = bx.context.new_struct_constructor(None, mask_type.as_type(), None, &mask_values);
+
+        // FIXME(antoyo): We sometimes need to bitcast here, since usize/isize sometimes (but not
+        // always) get canonicalized to their corresponding integer type (i.e. uint64_t/int64_t on
+        // 64-bit platforms).  This causes the shuffle_vector call below to panic, since the types
+        // of the two vectors aren't the same.  This is a workaround for now.
+        let vector = bx.bitcast_if_needed(vector, default.get_type());
 
         if invert {
             bx.shuffle_vector(vector, default, mask)
