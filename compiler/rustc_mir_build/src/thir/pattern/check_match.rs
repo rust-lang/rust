@@ -1109,7 +1109,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     let all_arms_have_guards = arms.iter().all(|arm_id| thir[*arm_id].guard.is_some());
     if !is_empty_match && all_arms_have_guards {
-        err.subdiagnostic(NonExhaustiveMatchAllArmsGuarded);
+        err.subdiagnostic(cx.tcx.dcx(), NonExhaustiveMatchAllArmsGuarded);
     }
     if let Some((span, sugg)) = suggestion {
         err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);

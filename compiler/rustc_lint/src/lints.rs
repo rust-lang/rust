@@ -1757,7 +1757,7 @@ impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
             diag.note(note.to_string());
         }
         if let Some(sugg) = self.suggestion {
-            diag.subdiagnostic(sugg);
+            diag.subdiagnostic(diag.dcx, sugg);
         }
     }
 

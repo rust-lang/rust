@@ -173,21 +173,21 @@ pub fn add_feature_diagnostics_for_issue(
     feature_from_cli: bool,
 ) {
     if let Some(n) = find_feature_issue(feature, issue) {
-        err.subdiagnostic(FeatureDiagnosticForIssue { n });
+        err.subdiagnostic(sess.dcx(), FeatureDiagnosticForIssue { n });
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.parse_sess.unstable_features.is_nightly_build() {
         if feature_from_cli {
-            err.subdiagnostic(CliFeatureDiagnosticHelp { feature });
+            err.subdiagnostic(sess.dcx(), CliFeatureDiagnosticHelp { feature });
         } else {
-            err.subdiagnostic(FeatureDiagnosticHelp { feature });
+            err.subdiagnostic(sess.dcx(), FeatureDiagnosticHelp { feature });
         }
 
         if sess.opts.unstable_opts.ui_testing {
-            err.subdiagnostic(SuggestUpgradeCompiler::ui_testing());
+            err.subdiagnostic(sess.dcx(), SuggestUpgradeCompiler::ui_testing());
         } else if let Some(suggestion) = SuggestUpgradeCompiler::new() {
-            err.subdiagnostic(suggestion);
+            err.subdiagnostic(sess.dcx(), suggestion);
         }
     }
 }
