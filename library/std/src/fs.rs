@@ -982,7 +982,10 @@ impl OpenOptions {
     /// single `write()` call depends on the operating system and file system. A
     /// successful `write()` is allowed to write only part of the given data, so even if
     /// you're careful to provide the whole message in a single call to `write()`, there
-    /// is no guarantee that it will written out in full.
+    /// is no guarantee that it will written out in full. If you rely on the filesystem
+    /// accepting the message in a single write, make sure that all data that belongs
+    /// together is written in one operation. This can be done by concatenating strings
+    /// before passing them to [`write()`].
     ///
     /// If a file is opened with both read and append access, beware that after
     /// opening, and after every write, the position for reading may be set at the
