@@ -1,4 +1,4 @@
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:14:14
    |
 LL | impl Foo for Range<usize> {}
@@ -10,55 +10,55 @@ note: the lint level is defined here
 LL | #![deny(trait_impl_range)]
    |         ^^^^^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `RangeInclusive` type
   --> $DIR/trait_impl_range.rs:15:14
    |
 LL | impl Foo for core::ops::RangeInclusive<usize> {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:16:15
    |
 LL | impl Foo for [Range<usize>; 2] {}
    |               ^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:17:16
    |
 LL | impl Foo for &[Range<usize>] {}
    |                ^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:18:21
    |
 LL | impl Foo for *const Range<usize> {}
    |                     ^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:19:15
    |
 LL | impl Foo for &Range<usize> {}
    |               ^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:20:19
    |
 LL | impl Foo for (u8, Range<usize>) {}
    |                   ^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:21:36
    |
 LL | impl Foo for std::mem::MaybeUninit<Range<usize>> {}
    |                                    ^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `RangeFrom` type
   --> $DIR/trait_impl_range.rs:22:17
    |
 LL | impl<T> Foo for RangeFrom<T> {}
    |                 ^^^^^^^^^^^^
 
-error: public trait impl involving range type
+error: public trait impl involving `Range` type
   --> $DIR/trait_impl_range.rs:25:22
    |
 LL | impl std::ops::Index<Range<usize>> for Thing {

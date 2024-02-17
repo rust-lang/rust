@@ -590,10 +590,10 @@ lint_unused_result = unused result of type `{$ty}`
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
 
-lint_explicit_range = explicit usage of range type
+lint_explicit_range = explicit usage of `{$ty}` type in public {$kind}
 
-lint_trait_impl_range = public trait impl involving range type
+lint_trait_impl_range = public trait impl involving `{$ty}` type
 
-lint_range_syntax = usage of range syntax
+lint_range_syntax = usage of `{$ty}` range syntax
 
-lint_range_bounds = usage of `RangeBounds` trait
+lint_range_bounds = usage of `RangeBounds` trait bound in public {$kind}

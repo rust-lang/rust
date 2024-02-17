@@ -1,4 +1,4 @@
-error: usage of range syntax
+error: usage of `Range` range syntax
   --> $DIR/range_syntax.rs:5:5
    |
 LL |     0..1;
@@ -10,13 +10,13 @@ note: the lint level is defined here
 LL | #![deny(range_syntax)]
    |         ^^^^^^^^^^^^
 
-error: usage of range syntax
+error: usage of `RangeInclusive` range syntax
   --> $DIR/range_syntax.rs:7:5
    |
 LL |     2..=3;
    |     ^^^^^
 
-error: usage of range syntax
+error: usage of `RangeFrom` range syntax
   --> $DIR/range_syntax.rs:9:5
    |
 LL |     4..;

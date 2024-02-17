@@ -17,16 +17,16 @@ fn crate_is_library<'tcx>(cx: &LateContext<'tcx>) -> bool {
 
 struct TyVisitor<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
-    ranges: [DefId; 3],
+    ranges: [(DefId, &'static str); 3],
 }
 
 impl<'cx, 'tcx> TyVisitor<'cx, 'tcx> {
     fn new(cx: &'cx LateContext<'tcx>) -> Self {
         let ranges = [
-            hir::LangItem::Range,
-            hir::LangItem::RangeFrom,
-            hir::LangItem::RangeInclusiveStruct,
-        ].map(|x| cx.tcx.lang_items().get(x).unwrap());
+            (hir::LangItem::Range, "Range"),
+            (hir::LangItem::RangeFrom, "RangeFrom"),
+            (hir::LangItem::RangeInclusiveStruct, "RangeInclusive"),
+        ].map(|(x, s)| (cx.tcx.lang_items().get(x).unwrap(), s));
 
         Self {
             cx,
@@ -34,19 +34,31 @@ impl<'cx, 'tcx> TyVisitor<'cx, 'tcx> {
         }
     }
 
+    fn matches(&self, def_id: DefId) -> Option<&'static str> {
+        self.ranges.iter().find(|&&(d, _)| d == def_id).map(|(_, s)| *s)
+    }
+
     // Recursively search for instances of `Range` in the type
-    fn check_ty(&self, hir_ty: hir::Ty<'_>) -> Result<(), rustc_span::Span> {
+    fn check_ty<F>(&self, hir_ty: hir::Ty<'_>, lint: F)
+    where F: Fn(rustc_span::Span, &'static str),
+    {
+        self.check_ty_impl(hir_ty, &lint);
+    }
+
+    fn check_ty_impl<F>(&self, hir_ty: hir::Ty<'_>, lint: &F)
+    where F: Fn(rustc_span::Span, &'static str),
+    {
         match hir_ty.kind {
             hir::TyKind::Path(qpath) => {
                 match self.cx.qpath_res(&qpath, hir_ty.hir_id) {
                     hir::def::Res::Def(_, def_id) => {
                         if let Some(local_id) = def_id.as_local()
                         && !self.cx.effective_visibilities.is_exported(local_id) {
-                            return Ok(());
+                            return;
                         }
 
-                        if self.ranges.contains(&def_id) {
-                            return Err(hir_ty.span);
+                        if let Some(ty) = self.matches(def_id) {
+                            lint(hir_ty.span, ty);
                         }
                     }
                     // hir::def::Res::PrimTy(_) => todo!(),
@@ -60,35 +72,31 @@ impl<'cx, 'tcx> TyVisitor<'cx, 'tcx> {
                     _ => (),
                 }
 
-                let hir::QPath::Resolved(_, path) = qpath else { return Ok(()); };
+                let hir::QPath::Resolved(_, path) = qpath else { return };
 
                 for segment in path.segments {
                     for hir_arg in segment.args().args {
                         if let hir::GenericArg::Type(&hir_ty) = hir_arg {
-                            self.check_ty(hir_ty)?;
+                            self.check_ty_impl(hir_ty, lint);
                         }
                     }
                 }
-
-                Ok(())
             }
             hir::TyKind::Array(hir_ty, _) |
             hir::TyKind::Slice(hir_ty) |
             hir::TyKind::Ptr(hir::MutTy { ty: hir_ty, .. }) |
-            hir::TyKind::Ref(_, hir::MutTy { ty: hir_ty, .. }) => self.check_ty(*hir_ty),
+            hir::TyKind::Ref(_, hir::MutTy { ty: hir_ty, .. }) => self.check_ty_impl(*hir_ty, lint),
             // ty::FnPtr(sig) => sig.skip_binder().inputs_and_output.iter().any(|ty| check_ty(cx, ranges, ty)),
             // ty::Dynamic(_, _, _) => todo!(),
             hir::TyKind::Tup(hir_tys) => {
-                if let Some(span) = hir_tys.iter().find_map(|hir_ty| self.check_ty(*hir_ty).err()) {
-                    Err(span)
-                } else {
-                    Ok(())
+                for &hir_ty in hir_tys {
+                    self.check_ty_impl(hir_ty, lint);
                 }
             }
             // ty::Alias(_, alias) => check_ty(cx, ranges, alias.to_ty(cx.tcx)),
             // ty::Param(param) => param.,
 
-            _ => Ok(()),
+            _ => (),
         }
     }
 }
@@ -159,10 +167,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
             inputs.next();
         }
 
-        for h in inputs {
-            if let Err(span) = visitor.check_ty(*h) {
-                cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
-            }
+        for &hir_ty in inputs {
+            visitor.check_ty(hir_ty, |span, ty| cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag {
+                kind: "function",
+                ty,
+            }));
         }
     }
 
@@ -183,13 +192,24 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
         let visitor = TyVisitor::new(cx);
 
         match item.kind {
-            hir::ItemKind::Static(ty, _, _) |
-            hir::ItemKind::Const(ty, _, _) |
+            hir::ItemKind::Static(ty, _, _) => {
+                visitor.check_ty(*ty, |span, ty| cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag {
+                    kind: "static",
+                    ty
+                }));
+            }
+            hir::ItemKind::Const(ty, _, _) => {
+                visitor.check_ty(*ty, |span, ty| cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag {
+                    kind: "const",
+                    ty
+                }));
+            }
             hir::ItemKind::TyAlias(ty, _) => {
-                if let Err(span) = visitor.check_ty(*ty) {
-                    cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
-                }
-            },
+                visitor.check_ty(*ty, |span, ty| cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag {
+                    kind: "type alias",
+                    ty
+                }));
+            }
             hir::ItemKind::Enum(enu, _) => {
                 for v in enu.variants {
                     for field in v.data.fields() {
@@ -197,24 +217,37 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
                             continue;
                         }
 
-                        if let Err(span) = visitor.check_ty(*field.ty) {
-                            cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
-                        }
+                        visitor.check_ty(*field.ty, |span, ty| cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag {
+                            kind: "enum definition",
+                            ty
+                        }));
                     }
                 }
             },
-            hir::ItemKind::Struct(data, _) |
+            hir::ItemKind::Struct(data, _) => {
+                for field in data.fields() {
+                    if !cx.effective_visibilities.is_exported(field.def_id) {
+                        continue;
+                    }
+
+                    visitor.check_ty(*field.ty, |span, ty| cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag {
+                        kind: "struct field",
+                        ty
+                    }));
+                }
+            }
             hir::ItemKind::Union(data, _) => {
                 for field in data.fields() {
                     if !cx.effective_visibilities.is_exported(field.def_id) {
                         continue;
                     }
 
-                    if let Err(span) = visitor.check_ty(*field.ty) {
-                        cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag)
-                    }
+                    visitor.check_ty(*field.ty, |span, ty| cx.emit_span_lint(EXPLICIT_RANGE, span, ExplicitRangeDiag {
+                        kind: "union field",
+                        ty
+                    }));
                 }
-            },
+            }
 
             _ => (),
         }
@@ -280,16 +313,12 @@ impl<'tcx> LateLintPass<'tcx> for TraitImplRange {
                     return;
                 }
 
-                if let Err(span) = visitor.check_ty(*imp.self_ty) {
-                    cx.emit_span_lint(TRAIT_IMPL_RANGE, span, TraitImplRangeDiag);
-                }
+                visitor.check_ty(*imp.self_ty, |span, ty| cx.emit_span_lint(TRAIT_IMPL_RANGE, span, TraitImplRangeDiag { ty }));
 
                 for segment in of_trait.path.segments {
                     for hir_arg in segment.args().args {
                         if let hir::GenericArg::Type(&hir_ty) = hir_arg {
-                            if let Err(span) = visitor.check_ty(hir_ty) {
-                                cx.emit_span_lint(TRAIT_IMPL_RANGE, span, TraitImplRangeDiag);
-                            }
+                            visitor.check_ty(hir_ty, |span, ty| cx.emit_span_lint(TRAIT_IMPL_RANGE, span, TraitImplRangeDiag { ty }));
                         }
                     }
                 }
@@ -336,15 +365,18 @@ declare_lint_pass!(RangeSyntax => [RANGE_SYNTAX]);
 
 impl EarlyLintPass for RangeSyntax {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &rustc_ast::Expr) {
-        match expr.kind {
-            // Range, RangeInclusive - a..b, a..=b
-            rustc_ast::ExprKind::Range(Some(_), Some(_), _) |
+        let ty = match expr.kind {
+            // Range - a..=b
+            rustc_ast::ExprKind::Range(Some(_), Some(_), rustc_ast::RangeLimits::HalfOpen) => "Range",
+            // RangeInclusive - a..=b
+            rustc_ast::ExprKind::Range(Some(_), Some(_), rustc_ast::RangeLimits::Closed) => "RangeInclusive",
             // RangeFrom - a..
-            rustc_ast::ExprKind::Range(Some(_), None, _) => {
-                cx.emit_span_lint(RANGE_SYNTAX, expr.span, RangeSyntaxDiag);
-            }
-            _ => (),
-        }
+            rustc_ast::ExprKind::Range(Some(_), None, _) => "RangeFrom",
+
+            _ => return,
+        };
+
+        cx.emit_span_lint(RANGE_SYNTAX, expr.span, RangeSyntaxDiag { ty });
     }
 }
 
@@ -393,22 +425,22 @@ impl<'cx, 'tcx> BoundsVisitor<'cx, 'tcx> {
         self.cx.match_def_path(def_id, &self.range_bounds)
     }
 
-    fn check_bounds(&self, bounds: hir::GenericBounds<'_>) {
+    fn check_bounds(&self, bounds: hir::GenericBounds<'_>, kind: &'static str) {
         for bound in bounds {
             let hir::GenericBound::Trait(of_trait, _) = bound else { continue };
 
             if let Some(def_id) = of_trait.trait_ref.trait_def_id()
             && self.is_range_bounds(def_id) {
-                self.cx.emit_span_lint(RANGE_BOUNDS, of_trait.span, RangeBoundsDiag);
+                self.cx.emit_span_lint(RANGE_BOUNDS, of_trait.span, RangeBoundsDiag { kind });
             }
         }
     }
 
-    fn check_generics(&self, generics: &'tcx hir::Generics<'_>) {
+    fn check_generics(&self, generics: &'tcx hir::Generics<'_>, kind: &'static str) {
         for pred in generics.predicates {
             let hir::WherePredicate::BoundPredicate(pred) = pred else { continue }; 
 
-            self.check_bounds(pred.bounds);
+            self.check_bounds(pred.bounds, kind);
         }
     }
 }
@@ -438,7 +470,7 @@ impl<'tcx> LateLintPass<'tcx> for RangeBounds {
         let Some(generics) = cx.generics else { return };
 
         let visitor = BoundsVisitor::new(cx);
-        visitor.check_generics(generics);
+        visitor.check_generics(generics, "function");
     }
 
     fn check_item(
@@ -457,18 +489,29 @@ impl<'tcx> LateLintPass<'tcx> for RangeBounds {
         let visitor = BoundsVisitor::new(cx);
 
         match item.kind {
-            hir::ItemKind::Enum(_, generics) |
-            hir::ItemKind::Struct(_, generics) |
-            hir::ItemKind::Union(_, generics) => {
-                visitor.check_generics(generics);
-            }
+            hir::ItemKind::Enum(_, generics) => visitor.check_generics(generics, "enum definition"),
+            hir::ItemKind::Struct(_, generics) => visitor.check_generics(generics, "struct definition"),
+            hir::ItemKind::Union(_, generics) => visitor.check_generics(generics, "union definition"),
             hir::ItemKind::Trait(_, _, generics, bounds, _) => {
-                visitor.check_generics(generics);
-                visitor.check_bounds(bounds);
-            },
+                visitor.check_generics(generics, "trait definition");
+                visitor.check_bounds(bounds, "trait definition");
+            }
             hir::ItemKind::Impl(imp) => {
-                visitor.check_generics(imp.generics);
-            },
+                let kind = if imp.of_trait.is_some() {
+                    "trait impl"
+                } else {
+                    let hir::TyKind::Path(qpath) = imp.self_ty.kind else { return };
+                    let hir::def::Res::Def(kind, _) = cx.qpath_res(&qpath, imp.self_ty.hir_id) else { return };
+                    match kind {
+                        hir::def::DefKind::Struct => "struct impl",
+                        hir::def::DefKind::Union => "union impl",
+                        hir::def::DefKind::Enum => "enum impl",
+
+                        _ => return,
+                    }
+                };
+                visitor.check_generics(imp.generics, kind);
+            }
 
             _ => (),
         }

@@ -1841,16 +1841,30 @@ pub struct UnitBindingsDiag {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_explicit_range)]
-pub struct ExplicitRangeDiag;
+pub struct ExplicitRangeDiag {
+    /// function | trait impl | struct impl
+    pub kind: &'static str,
+    /// Range, RangeInclusive, RangeFrom
+    pub ty: &'static str,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_trait_impl_range)]
-pub struct TraitImplRangeDiag;
+pub struct TraitImplRangeDiag {
+    /// Range, RangeInclusive, RangeFrom
+    pub ty: &'static str,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_range_syntax)]
-pub struct RangeSyntaxDiag;
+pub struct RangeSyntaxDiag {
+    /// Range, RangeInclusive, RangeFrom
+    pub ty: &'static str,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_range_bounds)]
-pub struct RangeBoundsDiag;
+pub struct RangeBoundsDiag {
+    /// function | trait impl | struct impl
+    pub kind: &'static str,
+}
