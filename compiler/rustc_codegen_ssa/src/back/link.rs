@@ -1560,17 +1560,13 @@ fn print_native_static_libs(
     match out {
         OutFileName::Real(path) => {
             out.overwrite(&lib_args.join(" "), sess);
-            if !lib_args.is_empty() {
-                sess.dcx().emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
-            }
+            sess.dcx().emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
         }
         OutFileName::Stdout => {
-            if !lib_args.is_empty() {
-                sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
-                // Prefix for greppability
-                // Note: This must not be translated as tools are allowed to depend on this exact string.
-                sess.dcx().note(format!("native-static-libs: {}", lib_args.join(" ")));
-            }
+            sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
+            // Prefix for greppability
+            // Note: This must not be translated as tools are allowed to depend on this exact string.
+            sess.dcx().note(format!("native-static-libs: {}", lib_args.join(" ")));
         }
     }
 }
