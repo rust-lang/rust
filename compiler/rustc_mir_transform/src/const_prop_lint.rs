@@ -32,11 +32,6 @@ impl<'tcx> MirLint<'tcx> for ConstPropLint {
             return;
         }
 
-        // will be evaluated by miri and produce its errors there
-        if body.source.promoted.is_some() {
-            return;
-        }
-
         let def_id = body.source.def_id().expect_local();
         let def_kind = tcx.def_kind(def_id);
         let is_fn_like = def_kind.is_fn_like();
