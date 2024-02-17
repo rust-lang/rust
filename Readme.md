@@ -17,6 +17,18 @@ A secondary goal is to check if using the gcc backend will provide any run-time 
 **This requires a patched libgccjit in order to work.
 You need to use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
 
+```bash
+$ cp config.example.toml config.toml
+```
+
+If don't need to test GCC patches you wrote in our GCC fork, then the default configuration should
+be all you need. You can update the `rustc_codegen_gcc` without worrying about GCC.
+
+### Building with your own GCC version
+
+If you wrote a patch for GCC and want to test it without this backend, you will need
+to do a few more things.
+
 To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
 
 ```bash
@@ -51,18 +63,17 @@ $ make check-jit RUNTESTFLAGS="-v -v -v jit.exp=jit.dg/test-asm.cc"
 
 **Put the path to your custom build of libgccjit in the file `config.toml`.**
 
-If you followed the instructions exactly as written (ie, you have created a `gcc-build` folder
-where gcc is built), the only thing you need to do is:
-
-```bash
-$ cp config.example.toml config.toml
-```
-
-But if you did something different, you also need to set the `gcc-path` value in `config.toml` with
-the result of this command:
+You now need to set the `gcc-path` value in `config.toml` with the result of this command:
 
 ```bash
 $ dirname $(readlink -f `find . -name libgccjit.so`)
+```
+
+and to comment the `download-gccjit` setting:
+
+```toml
+gcc-path = "[MY PATH]"
+# download-gccjit = true
 ```
 
 Then you can run commands like this:
