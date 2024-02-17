@@ -239,12 +239,32 @@ impl<'a> BorrowedCursor<'a> {
     /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
     /// and its unfilled portion (and the capacity of this cursor) shrinks by `n` elements.
     ///
+    /// If less than `n` bytes initialized (by the cursor's point of view), `set_init` should be
+    /// called first.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there are less than `n` bytes initialized.
+    #[inline]
+    pub fn advance(&mut self, n: usize) -> &mut Self {
+        assert!(self.buf.init >= self.buf.filled + n);
+
+        self.buf.filled += n;
+        self
+    }
+
+    /// Advance the cursor by asserting that `n` bytes have been filled.
+    ///
+    /// After advancing, the `n` bytes are no longer accessible via the cursor and can only be
+    /// accessed via the underlying buffer. I.e., the buffer's filled portion grows by `n` elements
+    /// and its unfilled portion (and the capacity of this cursor) shrinks by `n` elements.
+    ///
     /// # Safety
     ///
     /// The caller must ensure that the first `n` bytes of the cursor have been properly
     /// initialised.
     #[inline]
-    pub unsafe fn advance(&mut self, n: usize) -> &mut Self {
+    pub unsafe fn advance_unchecked(&mut self, n: usize) -> &mut Self {
         self.buf.filled += n;
         self.buf.init = cmp::max(self.buf.init, self.buf.filled);
         self
