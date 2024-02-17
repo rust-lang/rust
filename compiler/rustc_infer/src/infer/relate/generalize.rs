@@ -1,6 +1,5 @@
 use std::mem;
 
-use crate::infer::nll_relate::TypeRelatingDelegate;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind, TypeVariableValue};
 use crate::infer::{InferCtxt, ObligationEmittingRelation, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
@@ -43,13 +42,7 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // We then relate `generalized_ty <: source_ty`,adding constraints like `'x: '?2` and `?1 <: ?3`.
         let Generalization { value_may_be_infer: generalized_ty, has_unconstrained_ty_var } =
-            generalize(
-                self,
-                &mut CombineDelegate { infcx: self, span: relation.span() },
-                source_ty,
-                target_vid,
-                ambient_variance,
-            )?;
+            self.generalize(relation.span(), target_vid, ambient_variance, source_ty)?;
 
         // Constrain `b_vid` to the generalized type `generalized_ty`.
         if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
@@ -180,13 +173,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: generalized_ct, has_unconstrained_ty_var } =
-            generalize(
-                self,
-                &mut CombineDelegate { infcx: self, span },
-                source_ct,
-                target_vid,
-                ty::Variance::Invariant,
-            )?;
+            self.generalize(span, target_vid, ty::Variance::Invariant, source_ct)?;
 
         debug_assert!(!generalized_ct.is_ct_infer());
         if has_unconstrained_ty_var {
@@ -199,96 +186,48 @@ impl<'tcx> InferCtxt<'tcx> {
             .union_value(target_vid, ConstVariableValue::Known { value: generalized_ct });
 
         // FIXME(generic_const_exprs): We have to make sure we actually equate
-        // `generalized_ct` and `source_ct` here.`
+        // `generalized_ct` and `source_ct` here.
         Ok(generalized_ct)
     }
-}
 
-/// Attempts to generalize `term` for the type variable `for_vid`.
-/// This checks for cycles -- that is, whether the type `term`
-/// references `for_vid`.
-pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Relate<'tcx>>(
-    infcx: &InferCtxt<'tcx>,
-    delegate: &mut D,
-    term: T,
-    for_vid: impl Into<ty::TermVid>,
-    ambient_variance: ty::Variance,
-) -> RelateResult<'tcx, Generalization<T>> {
-    let (for_universe, root_vid) = match for_vid.into() {
-        ty::TermVid::Ty(ty_vid) => (
-            infcx.probe_ty_var(ty_vid).unwrap_err(),
-            ty::TermVid::Ty(infcx.inner.borrow_mut().type_variables().sub_root_var(ty_vid)),
-        ),
-        ty::TermVid::Const(ct_vid) => (
-            infcx.probe_const_var(ct_vid).unwrap_err(),
-            ty::TermVid::Const(infcx.inner.borrow_mut().const_unification_table().find(ct_vid).vid),
-        ),
-    };
+    /// Attempts to generalize `source_term` for the type variable `target_vid`.
+    /// This checks for cycles -- that is, whether `source_term` references `target_vid`.
+    fn generalize<T: Into<Term<'tcx>> + Relate<'tcx>>(
+        &self,
+        span: Span,
+        target_vid: impl Into<ty::TermVid>,
+        ambient_variance: ty::Variance,
+        source_term: T,
+    ) -> RelateResult<'tcx, Generalization<T>> {
+        assert!(!source_term.has_escaping_bound_vars());
+        let (for_universe, root_vid) = match target_vid.into() {
+            ty::TermVid::Ty(ty_vid) => (
+                self.probe_ty_var(ty_vid).unwrap_err(),
+                ty::TermVid::Ty(self.inner.borrow_mut().type_variables().sub_root_var(ty_vid)),
+            ),
+            ty::TermVid::Const(ct_vid) => (
+                self.probe_const_var(ct_vid).unwrap_err(),
+                ty::TermVid::Const(
+                    self.inner.borrow_mut().const_unification_table().find(ct_vid).vid,
+                ),
+            ),
+        };
 
-    let mut generalizer = Generalizer {
-        infcx,
-        delegate,
-        ambient_variance,
-        root_vid,
-        for_universe,
-        root_term: term.into(),
-        in_alias: false,
-        has_unconstrained_ty_var: false,
-        cache: Default::default(),
-    };
+        let mut generalizer = Generalizer {
+            infcx: self,
+            span,
+            root_vid,
+            for_universe,
+            ambient_variance,
+            root_term: source_term.into(),
+            in_alias: false,
+            has_unconstrained_ty_var: false,
+            cache: Default::default(),
+        };
 
-    assert!(!term.has_escaping_bound_vars());
-    let value_may_be_infer = generalizer.relate(term, term)?;
-    let has_unconstrained_ty_var = generalizer.has_unconstrained_ty_var;
-    Ok(Generalization { value_may_be_infer, has_unconstrained_ty_var })
-}
-
-/// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
-/// in the generalizer code.
-pub trait GeneralizerDelegate<'tcx> {
-    fn forbid_inference_vars() -> bool;
-
-    fn span(&self) -> Span;
-
-    fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
-}
-
-pub struct CombineDelegate<'cx, 'tcx> {
-    pub infcx: &'cx InferCtxt<'tcx>,
-    pub span: Span,
-}
-
-impl<'tcx> GeneralizerDelegate<'tcx> for CombineDelegate<'_, 'tcx> {
-    fn forbid_inference_vars() -> bool {
-        false
-    }
-
-    fn span(&self) -> Span {
-        self.span
-    }
-
-    fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        // FIXME: This is non-ideal because we don't give a
-        // very descriptive origin for this region variable.
-        self.infcx
-            .next_region_var_in_universe(RegionVariableOrigin::MiscVariable(self.span), universe)
-    }
-}
-
-impl<'tcx, T> GeneralizerDelegate<'tcx> for T
-where
-    T: TypeRelatingDelegate<'tcx>,
-{
-    fn forbid_inference_vars() -> bool {
-        <Self as TypeRelatingDelegate<'tcx>>::forbid_inference_vars()
-    }
-
-    fn span(&self) -> Span {
-        <Self as TypeRelatingDelegate<'tcx>>::span(&self)
-    }
-
-    fn generalize_region(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        <Self as TypeRelatingDelegate<'tcx>>::generalize_existential(self, universe)
+        let value_may_be_infer = generalizer.relate(source_term, source_term)?;
+        let has_unconstrained_ty_var = generalizer.has_unconstrained_ty_var;
+        Ok(Generalization { value_may_be_infer, has_unconstrained_ty_var })
     }
 }
 
@@ -305,18 +244,10 @@ where
 /// establishes `'0: 'x` as a constraint.
 ///
 /// [blog post]: https://is.gd/0hKvIr
-struct Generalizer<'me, 'tcx, D> {
+struct Generalizer<'me, 'tcx> {
     infcx: &'me InferCtxt<'tcx>,
 
-    /// This is used to abstract the behaviors of the three previous
-    /// generalizer-like implementations (`Generalizer`, `TypeGeneralizer`,
-    /// and `ConstInferUnifier`). See [`GeneralizerDelegate`] for more
-    /// information.
-    delegate: &'me mut D,
-
-    /// After we generalize this type, we are going to relate it to
-    /// some other type. What will be the variance at this point?
-    ambient_variance: ty::Variance,
+    span: Span,
 
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
@@ -327,6 +258,10 @@ struct Generalizer<'me, 'tcx, D> {
     /// instantiated. If we find anything that this universe cannot name,
     /// we reject the relation.
     for_universe: ty::UniverseIndex,
+
+    /// After we generalize this type, we are going to relate it to
+    /// some other type. What will be the variance at this point?
+    ambient_variance: ty::Variance,
 
     /// The root term (const or type) we're generalizing. Used for cycle errors.
     root_term: Term<'tcx>,
@@ -344,7 +279,7 @@ struct Generalizer<'me, 'tcx, D> {
     has_unconstrained_ty_var: bool,
 }
 
-impl<'tcx, D> Generalizer<'_, 'tcx, D> {
+impl<'tcx> Generalizer<'_, 'tcx> {
     /// Create an error that corresponds to the term kind in `root_term`
     fn cyclic_term_error(&self) -> TypeError<'tcx> {
         match self.root_term.unpack() {
@@ -354,10 +289,7 @@ impl<'tcx, D> Generalizer<'_, 'tcx, D> {
     }
 }
 
-impl<'tcx, D> TypeRelation<'tcx> for Generalizer<'_, 'tcx, D>
-where
-    D: GeneralizerDelegate<'tcx>,
-{
+impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -426,12 +358,6 @@ where
         // subtyping. This is basically our "occurs check", preventing
         // us from creating infinitely sized types.
         let g = match *t.kind() {
-            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
-                if D::forbid_inference_vars() =>
-            {
-                bug!("unexpected inference variable encountered in NLL generalization: {t}");
-            }
-
             ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("unexpected infer type: {t}")
             }
@@ -534,7 +460,7 @@ where
                             Ok(self.infcx.next_ty_var_in_universe(
                                 TypeVariableOrigin {
                                     kind: TypeVariableOriginKind::MiscVariable,
-                                    span: self.delegate.span(),
+                                    span: self.span,
                                 },
                                 self.for_universe,
                             ))
@@ -592,7 +518,10 @@ where
             }
         }
 
-        Ok(self.delegate.generalize_region(self.for_universe))
+        Ok(self.infcx.next_region_var_in_universe(
+            RegionVariableOrigin::MiscVariable(self.span),
+            self.for_universe,
+        ))
     }
 
     #[instrument(level = "debug", skip(self, c2), ret)]
@@ -604,9 +533,6 @@ where
         assert_eq!(c, c2); // we are misusing TypeRelation here; both LHS and RHS ought to be ==
 
         match c.kind() {
-            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
-                bug!("unexpected inference variable encountered in NLL generalization: {:?}", c);
-            }
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 // If root const vids are equal, then `root_vid` and
                 // `vid` are related and we'd be inferring an infinitely
