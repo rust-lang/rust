@@ -1,5 +1,5 @@
 error: use of a disallowed method `rustc_lint::context::LintContext::span_lint`
-  --> $DIR/disallow_span_lint.rs:14:5
+  --> tests/ui-internal/disallow_span_lint.rs:14:5
    |
 LL |     cx.span_lint(lint, span, msg, |_| {});
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     cx.span_lint(lint, span, msg, |_| {});
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_methods)]`
 
 error: use of a disallowed method `rustc_middle::ty::context::TyCtxt::node_span_lint`
-  --> $DIR/disallow_span_lint.rs:24:5
+  --> tests/ui-internal/disallow_span_lint.rs:24:5
    |
 LL |     tcx.node_span_lint(lint, hir_id, span, msg, |_| {});
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: use of a disallowed/placeholder name `foo`
-  --> $DIR/disallowed_names.rs:12:9
+  --> tests/ui/disallowed_names.rs:12:9
    |
 LL | fn test(foo: ()) {}
    |         ^^^
@@ -8,79 +8,79 @@ LL | fn test(foo: ()) {}
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
 
 error: use of a disallowed/placeholder name `foo`
-  --> $DIR/disallowed_names.rs:17:9
+  --> tests/ui/disallowed_names.rs:17:9
    |
 LL |     let foo = 42;
    |         ^^^
 
 error: use of a disallowed/placeholder name `baz`
-  --> $DIR/disallowed_names.rs:19:9
+  --> tests/ui/disallowed_names.rs:19:9
    |
 LL |     let baz = 42;
    |         ^^^
 
 error: use of a disallowed/placeholder name `quux`
-  --> $DIR/disallowed_names.rs:21:9
+  --> tests/ui/disallowed_names.rs:21:9
    |
 LL |     let quux = 42;
    |         ^^^^
 
 error: use of a disallowed/placeholder name `foo`
-  --> $DIR/disallowed_names.rs:33:10
+  --> tests/ui/disallowed_names.rs:33:10
    |
 LL |         (foo, Some(baz), quux @ Some(_)) => (),
    |          ^^^
 
 error: use of a disallowed/placeholder name `baz`
-  --> $DIR/disallowed_names.rs:33:20
+  --> tests/ui/disallowed_names.rs:33:20
    |
 LL |         (foo, Some(baz), quux @ Some(_)) => (),
    |                    ^^^
 
 error: use of a disallowed/placeholder name `quux`
-  --> $DIR/disallowed_names.rs:33:26
+  --> tests/ui/disallowed_names.rs:33:26
    |
 LL |         (foo, Some(baz), quux @ Some(_)) => (),
    |                          ^^^^
 
 error: use of a disallowed/placeholder name `foo`
-  --> $DIR/disallowed_names.rs:41:19
+  --> tests/ui/disallowed_names.rs:41:19
    |
 LL | fn issue_1647(mut foo: u8) {
    |                   ^^^
 
 error: use of a disallowed/placeholder name `baz`
-  --> $DIR/disallowed_names.rs:43:13
+  --> tests/ui/disallowed_names.rs:43:13
    |
 LL |     let mut baz = 0;
    |             ^^^
 
 error: use of a disallowed/placeholder name `quux`
-  --> $DIR/disallowed_names.rs:45:21
+  --> tests/ui/disallowed_names.rs:45:21
    |
 LL |     if let Some(mut quux) = Some(42) {}
    |                     ^^^^
 
 error: use of a disallowed/placeholder name `baz`
-  --> $DIR/disallowed_names.rs:50:13
+  --> tests/ui/disallowed_names.rs:50:13
    |
 LL |     let ref baz = 0;
    |             ^^^
 
 error: use of a disallowed/placeholder name `quux`
-  --> $DIR/disallowed_names.rs:52:21
+  --> tests/ui/disallowed_names.rs:52:21
    |
 LL |     if let Some(ref quux) = Some(42) {}
    |                     ^^^^
 
 error: use of a disallowed/placeholder name `baz`
-  --> $DIR/disallowed_names.rs:57:17
+  --> tests/ui/disallowed_names.rs:57:17
    |
 LL |     let ref mut baz = 0;
    |                 ^^^
 
 error: use of a disallowed/placeholder name `quux`
-  --> $DIR/disallowed_names.rs:59:25
+  --> tests/ui/disallowed_names.rs:59:25
    |
 LL |     if let Some(ref mut quux) = Some(42) {}
    |                         ^^^^

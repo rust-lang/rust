@@ -1,5 +1,5 @@
 error: non-binding `let` on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:10:5
+  --> tests/ui/let_underscore_lock.rs:10:5
    |
 LL |     let _ = p_m.lock();
    |     ^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let _ = p_m.lock();
    = help: to override `-D warnings` add `#[allow(clippy::let_underscore_lock)]`
 
 error: non-binding `let` on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:14:5
+  --> tests/ui/let_underscore_lock.rs:14:5
    |
 LL |     let _ = p_m1.lock();
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let _ = p_m1.lock();
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: non-binding `let` on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:18:5
+  --> tests/ui/let_underscore_lock.rs:18:5
    |
 LL |     let _ = p_rw.read();
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     let _ = p_rw.read();
    = help: consider using an underscore-prefixed named binding or dropping explicitly with `std::mem::drop`
 
 error: non-binding `let` on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:20:5
+  --> tests/ui/let_underscore_lock.rs:20:5
    |
 LL |     let _ = p_rw.write();
    |     ^^^^^^^^^^^^^^^^^^^^^

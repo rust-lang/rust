@@ -1,5 +1,5 @@
 error: unknown lint: `clippy::All`
-  --> $DIR/unknown_clippy_lints.rs:3:10
+  --> tests/ui/unknown_clippy_lints.rs:3:10
    |
 LL | #![allow(clippy::All)]
    |          ^^^^^^^^^^^ help: did you mean: `clippy::all`
@@ -8,31 +8,31 @@ LL | #![allow(clippy::All)]
    = help: to override `-D warnings` add `#[allow(unknown_lints)]`
 
 error: unknown lint: `clippy::CMP_OWNED`
-  --> $DIR/unknown_clippy_lints.rs:4:9
+  --> tests/ui/unknown_clippy_lints.rs:4:9
    |
 LL | #![warn(clippy::CMP_OWNED)]
    |         ^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::cmp_owned`
 
 error: unknown lint: `clippy::if_not_els`
-  --> $DIR/unknown_clippy_lints.rs:7:8
+  --> tests/ui/unknown_clippy_lints.rs:7:8
    |
 LL | #[warn(clippy::if_not_els)]
    |        ^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::if_not_else`
 
 error: unknown lint: `clippy::UNNecsaRy_cAst`
-  --> $DIR/unknown_clippy_lints.rs:8:8
+  --> tests/ui/unknown_clippy_lints.rs:8:8
    |
 LL | #[warn(clippy::UNNecsaRy_cAst)]
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::unnecessary_cast`
 
 error: unknown lint: `clippy::useles_transute`
-  --> $DIR/unknown_clippy_lints.rs:9:8
+  --> tests/ui/unknown_clippy_lints.rs:9:8
    |
 LL | #[warn(clippy::useles_transute)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::useless_transmute`
 
 error: unknown lint: `clippy::dead_cod`
-  --> $DIR/unknown_clippy_lints.rs:11:8
+  --> tests/ui/unknown_clippy_lints.rs:11:8
    |
 LL | #[warn(clippy::dead_cod)]
    |        ^^^^^^^^^^^^^^^^
@@ -43,19 +43,19 @@ LL | #[warn(dead_code)]
    |        ~~~~~~~~~
 
 error: unknown lint: `clippy::unused_colle`
-  --> $DIR/unknown_clippy_lints.rs:13:8
+  --> tests/ui/unknown_clippy_lints.rs:13:8
    |
 LL | #[warn(clippy::unused_colle)]
    |        ^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::unused_self`
 
 error: unknown lint: `clippy::const_static_lifetim`
-  --> $DIR/unknown_clippy_lints.rs:15:8
+  --> tests/ui/unknown_clippy_lints.rs:15:8
    |
 LL | #[warn(clippy::const_static_lifetim)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::redundant_static_lifetimes`
 
 error: unknown lint: `clippy::missing_docs`
-  --> $DIR/unknown_clippy_lints.rs:17:8
+  --> tests/ui/unknown_clippy_lints.rs:17:8
    |
 LL | #[warn(clippy::missing_docs)]
    |        ^^^^^^^^^^^^^^^^^^^^

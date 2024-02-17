@@ -1,5 +1,5 @@
 error: `filter` for `Ok` followed by `unwrap`
-  --> $DIR/result_filter_map.rs:13:10
+  --> tests/ui/result_filter_map.rs:13:10
    |
 LL |           .filter(Result::is_ok)
    |  __________^
@@ -11,7 +11,7 @@ LL | |         .map(Result::unwrap);
    = help: to override `-D warnings` add `#[allow(clippy::result_filter_map)]`
 
 error: `filter` for `Ok` followed by `unwrap`
-  --> $DIR/result_filter_map.rs:19:10
+  --> tests/ui/result_filter_map.rs:19:10
    |
 LL |           .filter(|o| o.is_ok())
    |  __________^
@@ -20,7 +20,7 @@ LL | |         .map(|o| o.unwrap());
    | |____________________________^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Ok` followed by `unwrap`
-  --> $DIR/result_filter_map.rs:26:10
+  --> tests/ui/result_filter_map.rs:26:10
    |
 LL |           .filter(Result::is_ok)
    |  __________^
@@ -29,7 +29,7 @@ LL | |         .map(Result::unwrap);
    | |____________________________^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Ok` followed by `unwrap`
-  --> $DIR/result_filter_map.rs:32:10
+  --> tests/ui/result_filter_map.rs:32:10
    |
 LL |           .filter(|o| o.is_ok())
    |  __________^

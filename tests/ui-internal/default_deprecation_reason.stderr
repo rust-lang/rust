@@ -1,5 +1,5 @@
 error: the lint `COOL_LINT_DEFAULT` has the default deprecation reason
-  --> $DIR/default_deprecation_reason.rs:8:1
+  --> tests/ui-internal/default_deprecation_reason.rs:8:1
    |
 LL | / declare_deprecated_lint! {
 LL | |     /// ### What it does
@@ -11,7 +11,7 @@ LL | | }
    | |_^
    |
 note: the lint level is defined here
-  --> $DIR/default_deprecation_reason.rs:1:9
+  --> tests/ui-internal/default_deprecation_reason.rs:1:9
    |
 LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^

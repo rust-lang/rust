@@ -1,5 +1,5 @@
 error: removed `unsafe` from the name of `UnsafeCell` in use as `TotallySafeCell`
-  --> $DIR/unsafe_removed_from_name.rs:5:1
+  --> tests/ui/unsafe_removed_from_name.rs:5:1
    |
 LL | use std::cell::UnsafeCell as TotallySafeCell;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,25 +8,25 @@ LL | use std::cell::UnsafeCell as TotallySafeCell;
    = help: to override `-D warnings` add `#[allow(clippy::unsafe_removed_from_name)]`
 
 error: removed `unsafe` from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
-  --> $DIR/unsafe_removed_from_name.rs:9:1
+  --> tests/ui/unsafe_removed_from_name.rs:9:1
    |
 LL | use std::cell::UnsafeCell as TotallySafeCellAgain;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: removed `unsafe` from the name of `Unsafe` in use as `LieAboutModSafety`
-  --> $DIR/unsafe_removed_from_name.rs:28:1
+  --> tests/ui/unsafe_removed_from_name.rs:28:1
    |
 LL | use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: removed `unsafe` from the name of `Unsafe` in use as `A`
-  --> $DIR/unsafe_removed_from_name.rs:32:1
+  --> tests/ui/unsafe_removed_from_name.rs:32:1
    |
 LL | use mod_with_some_unsafe_things::{Unsafe as A, Unsafe as B};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: removed `unsafe` from the name of `Unsafe` in use as `B`
-  --> $DIR/unsafe_removed_from_name.rs:32:1
+  --> tests/ui/unsafe_removed_from_name.rs:32:1
    |
 LL | use mod_with_some_unsafe_things::{Unsafe as A, Unsafe as B};
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

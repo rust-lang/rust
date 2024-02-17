@@ -126,7 +126,6 @@ fn base_config(test_dir: &str) -> (Config, Args) {
     }))
     .into();
     config.comment_defaults.base().diagnostic_code_prefix = Some(Spanned::dummy("clippy::".into())).into();
-    config.filter(&format!("tests/{test_dir}"), "$$DIR");
     config.with_args(&args);
     let current_exe_path = env::current_exe().unwrap();
     let deps_path = current_exe_path.parent().unwrap();

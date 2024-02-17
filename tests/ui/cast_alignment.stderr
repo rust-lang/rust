@@ -1,5 +1,5 @@
 error: casting from `*const u8` to a more-strictly-aligned pointer (`*const u16`) (1 < 2 bytes)
-  --> $DIR/cast_alignment.rs:19:5
+  --> tests/ui/cast_alignment.rs:19:5
    |
 LL |     (&1u8 as *const u8) as *const u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,19 +8,19 @@ LL |     (&1u8 as *const u8) as *const u16;
    = help: to override `-D warnings` add `#[allow(clippy::cast_ptr_alignment)]`
 
 error: casting from `*mut u8` to a more-strictly-aligned pointer (`*mut u16`) (1 < 2 bytes)
-  --> $DIR/cast_alignment.rs:22:5
+  --> tests/ui/cast_alignment.rs:22:5
    |
 LL |     (&mut 1u8 as *mut u8) as *mut u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting from `*const u8` to a more-strictly-aligned pointer (`*const u16`) (1 < 2 bytes)
-  --> $DIR/cast_alignment.rs:26:5
+  --> tests/ui/cast_alignment.rs:26:5
    |
 LL |     (&1u8 as *const u8).cast::<u16>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting from `*mut u8` to a more-strictly-aligned pointer (`*mut u16`) (1 < 2 bytes)
-  --> $DIR/cast_alignment.rs:28:5
+  --> tests/ui/cast_alignment.rs:28:5
    |
 LL |     (&mut 1u8 as *mut u8).cast::<u16>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

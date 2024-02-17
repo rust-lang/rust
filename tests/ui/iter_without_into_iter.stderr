@@ -1,5 +1,5 @@
 error: `iter` method without an `IntoIterator` impl for `&S1`
-  --> $DIR/iter_without_into_iter.rs:8:5
+  --> tests/ui/iter_without_into_iter.rs:8:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |
@@ -22,7 +22,7 @@ LL + }
    |
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S1`
-  --> $DIR/iter_without_into_iter.rs:12:5
+  --> tests/ui/iter_without_into_iter.rs:12:5
    |
 LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
 LL | |
@@ -43,7 +43,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&S3<'a>`
-  --> $DIR/iter_without_into_iter.rs:28:5
+  --> tests/ui/iter_without_into_iter.rs:28:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |
@@ -64,7 +64,7 @@ LL + }
    |
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S3<'a>`
-  --> $DIR/iter_without_into_iter.rs:32:5
+  --> tests/ui/iter_without_into_iter.rs:32:5
    |
 LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
 LL | |
@@ -85,7 +85,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&S8<T>`
-  --> $DIR/iter_without_into_iter.rs:69:5
+  --> tests/ui/iter_without_into_iter.rs:69:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'static, T> {
 LL | |         todo!()
@@ -105,7 +105,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&S9<T>`
-  --> $DIR/iter_without_into_iter.rs:77:5
+  --> tests/ui/iter_without_into_iter.rs:77:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'_, T> {
 LL | |
@@ -126,7 +126,7 @@ LL + }
    |
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S9<T>`
-  --> $DIR/iter_without_into_iter.rs:81:5
+  --> tests/ui/iter_without_into_iter.rs:81:5
    |
 LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
 LL | |
@@ -147,7 +147,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&Issue12037`
-  --> $DIR/iter_without_into_iter.rs:130:13
+  --> tests/ui/iter_without_into_iter.rs:130:13
    |
 LL | /             fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |                 todo!()

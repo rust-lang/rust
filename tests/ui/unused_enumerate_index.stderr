@@ -1,5 +1,5 @@
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> $DIR/unused_enumerate_index.rs:8:19
+  --> tests/ui/unused_enumerate_index.rs:8:19
    |
 LL |     for (_, x) in v.iter().enumerate() {
    |                   ^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     for x in v.iter() {
    |         ~    ~~~~~~~~
 
 error: you seem to use `.enumerate()` and immediately discard the index
-  --> $DIR/unused_enumerate_index.rs:55:19
+  --> tests/ui/unused_enumerate_index.rs:55:19
    |
 LL |     for (_, x) in dummy.enumerate() {
    |                   ^^^^^^^^^^^^^^^^^

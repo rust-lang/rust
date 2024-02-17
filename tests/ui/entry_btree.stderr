@@ -1,5 +1,5 @@
 error: usage of `contains_key` followed by `insert` on a `BTreeMap`
-  --> $DIR/entry_btree.rs:10:5
+  --> tests/ui/entry_btree.rs:10:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);

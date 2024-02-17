@@ -1,5 +1,5 @@
 error: manually checking if a float is infinite
-  --> $DIR/manual_float_methods.rs:23:8
+  --> tests/ui/manual_float_methods.rs:23:8
    |
 LL |     if x == f32::INFINITY || x == f32::NEG_INFINITY {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
@@ -8,7 +8,7 @@ LL |     if x == f32::INFINITY || x == f32::NEG_INFINITY {}
    = help: to override `-D warnings` add `#[allow(clippy::manual_is_infinite)]`
 
 error: manually checking if a float is finite
-  --> $DIR/manual_float_methods.rs:24:8
+  --> tests/ui/manual_float_methods.rs:24:8
    |
 LL |     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,13 +29,13 @@ LL |     if !x.is_infinite() {}
    |        ~~~~~~~~~~~~~~~~
 
 error: manually checking if a float is infinite
-  --> $DIR/manual_float_methods.rs:25:8
+  --> tests/ui/manual_float_methods.rs:25:8
    |
 LL |     if x == INFINITE || x == NEG_INFINITE {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
 
 error: manually checking if a float is finite
-  --> $DIR/manual_float_methods.rs:26:8
+  --> tests/ui/manual_float_methods.rs:26:8
    |
 LL |     if x != INFINITE && x != NEG_INFINITE {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -54,13 +54,13 @@ LL |     if !x.is_infinite() {}
    |        ~~~~~~~~~~~~~~~~
 
 error: manually checking if a float is infinite
-  --> $DIR/manual_float_methods.rs:28:8
+  --> tests/ui/manual_float_methods.rs:28:8
    |
 LL |     if x == f64::INFINITY || x == f64::NEG_INFINITY {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the dedicated method instead: `x.is_infinite()`
 
 error: manually checking if a float is finite
-  --> $DIR/manual_float_methods.rs:29:8
+  --> tests/ui/manual_float_methods.rs:29:8
    |
 LL |     if x != f64::INFINITY && x != f64::NEG_INFINITY {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

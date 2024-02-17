@@ -1,5 +1,5 @@
 error: called `assert!` with `Result::is_ok`
-  --> $DIR/assertions_on_result_states.rs:24:5
+  --> tests/ui/assertions_on_result_states.rs:24:5
    |
 LL |     assert!(r.is_ok());
    |     ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
@@ -8,37 +8,37 @@ LL |     assert!(r.is_ok());
    = help: to override `-D warnings` add `#[allow(clippy::assertions_on_result_states)]`
 
 error: called `assert!` with `Result::is_ok`
-  --> $DIR/assertions_on_result_states.rs:42:5
+  --> tests/ui/assertions_on_result_states.rs:42:5
    |
 LL |     assert!(get_ok().is_ok());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `get_ok().unwrap()`
 
 error: called `assert!` with `Result::is_ok`
-  --> $DIR/assertions_on_result_states.rs:45:5
+  --> tests/ui/assertions_on_result_states.rs:45:5
    |
 LL |     assert!(get_ok_macro!().is_ok());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `get_ok_macro!().unwrap()`
 
 error: called `assert!` with `Result::is_ok`
-  --> $DIR/assertions_on_result_states.rs:58:5
+  --> tests/ui/assertions_on_result_states.rs:58:5
    |
 LL |     assert!(r.is_ok());
    |     ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
 
 error: called `assert!` with `Result::is_ok`
-  --> $DIR/assertions_on_result_states.rs:64:9
+  --> tests/ui/assertions_on_result_states.rs:64:9
    |
 LL |         assert!(r.is_ok());
    |         ^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap()`
 
 error: called `assert!` with `Result::is_err`
-  --> $DIR/assertions_on_result_states.rs:72:5
+  --> tests/ui/assertions_on_result_states.rs:72:5
    |
 LL |     assert!(r.is_err());
    |     ^^^^^^^^^^^^^^^^^^^ help: replace with: `r.unwrap_err()`
 
 error: called `assert!` with `Result::is_err`
-  --> $DIR/assertions_on_result_states.rs:82:5
+  --> tests/ui/assertions_on_result_states.rs:82:5
    |
 LL |     assert!(res.is_err())
    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with: `res.unwrap_err();`

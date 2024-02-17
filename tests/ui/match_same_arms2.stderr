@@ -1,5 +1,5 @@
 error: this match arm has an identical body to the `_` wildcard arm
-  --> $DIR/match_same_arms2.rs:15:9
+  --> tests/ui/match_same_arms2.rs:15:9
    |
 LL | /         42 => {
 LL | |             foo();
@@ -12,7 +12,7 @@ LL | |         },
    |
    = help: or try changing either arm body
 note: `_` wildcard arm here
-  --> $DIR/match_same_arms2.rs:24:9
+  --> tests/ui/match_same_arms2.rs:24:9
    |
 LL | /         _ => {
 LL | |             foo();
@@ -26,7 +26,7 @@ LL | |         },
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:38:9
+  --> tests/ui/match_same_arms2.rs:38:9
    |
 LL |         51 => foo(),
    |         --^^^^^^^^^
@@ -35,13 +35,13 @@ LL |         51 => foo(),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:37:9
+  --> tests/ui/match_same_arms2.rs:37:9
    |
 LL |         42 => foo(),
    |         ^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:44:9
+  --> tests/ui/match_same_arms2.rs:44:9
    |
 LL |         None => 24,
    |         ----^^^^^^
@@ -50,13 +50,13 @@ LL |         None => 24,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:43:9
+  --> tests/ui/match_same_arms2.rs:43:9
    |
 LL |         Some(_) => 24,
    |         ^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:66:9
+  --> tests/ui/match_same_arms2.rs:66:9
    |
 LL |         (None, Some(a)) => bar(a),
    |         ---------------^^^^^^^^^^
@@ -65,13 +65,13 @@ LL |         (None, Some(a)) => bar(a),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:65:9
+  --> tests/ui/match_same_arms2.rs:65:9
    |
 LL |         (Some(a), None) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:71:9
+  --> tests/ui/match_same_arms2.rs:71:9
    |
 LL |         (Some(a), ..) => bar(a),
    |         -------------^^^^^^^^^^
@@ -80,13 +80,13 @@ LL |         (Some(a), ..) => bar(a),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:72:9
+  --> tests/ui/match_same_arms2.rs:72:9
    |
 LL |         (.., Some(a)) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:105:9
+  --> tests/ui/match_same_arms2.rs:105:9
    |
 LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    |         ----------------^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,13 +95,13 @@ LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:106:9
+  --> tests/ui/match_same_arms2.rs:106:9
    |
 LL |         (Ok(_), Some(x)) => println!("ok {}", x),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:121:9
+  --> tests/ui/match_same_arms2.rs:121:9
    |
 LL |         Ok(_) => println!("ok"),
    |         -----^^^^^^^^^^^^^^^^^^
@@ -110,13 +110,13 @@ LL |         Ok(_) => println!("ok"),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:120:9
+  --> tests/ui/match_same_arms2.rs:120:9
    |
 LL |         Ok(3) => println!("ok"),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:148:9
+  --> tests/ui/match_same_arms2.rs:148:9
    |
 LL |           1 => {
    |           ^ help: try merging the arm patterns: `1 | 0`
@@ -128,7 +128,7 @@ LL | |         },
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:145:9
+  --> tests/ui/match_same_arms2.rs:145:9
    |
 LL | /         0 => {
 LL | |             empty!(0);
@@ -136,7 +136,7 @@ LL | |         },
    | |_________^
 
 error: match expression looks like `matches!` macro
-  --> $DIR/match_same_arms2.rs:167:16
+  --> tests/ui/match_same_arms2.rs:167:16
    |
 LL |       let _ans = match x {
    |  ________________^
@@ -150,7 +150,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::match_like_matches_macro)]`
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:199:9
+  --> tests/ui/match_same_arms2.rs:199:9
    |
 LL |         Foo::X(0) => 1,
    |         ---------^^^^^
@@ -159,13 +159,13 @@ LL |         Foo::X(0) => 1,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:201:9
+  --> tests/ui/match_same_arms2.rs:201:9
    |
 LL |         Foo::Z(_) => 1,
    |         ^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:209:9
+  --> tests/ui/match_same_arms2.rs:209:9
    |
 LL |         Foo::Z(_) => 1,
    |         ---------^^^^^
@@ -174,13 +174,13 @@ LL |         Foo::Z(_) => 1,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:207:9
+  --> tests/ui/match_same_arms2.rs:207:9
    |
 LL |         Foo::X(0) => 1,
    |         ^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:232:9
+  --> tests/ui/match_same_arms2.rs:232:9
    |
 LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
    |         ----------------------------^^^^^
@@ -189,13 +189,13 @@ LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:229:9
+  --> tests/ui/match_same_arms2.rs:229:9
    |
 LL |         Some(Bar { x: 0, y: 5, .. }) => 1,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:246:9
+  --> tests/ui/match_same_arms2.rs:246:9
    |
 LL |         1 => cfg!(not_enable),
    |         -^^^^^^^^^^^^^^^^^^^^
@@ -204,7 +204,7 @@ LL |         1 => cfg!(not_enable),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms2.rs:245:9
+  --> tests/ui/match_same_arms2.rs:245:9
    |
 LL |         0 => cfg!(not_enable),
    |         ^^^^^^^^^^^^^^^^^^^^^

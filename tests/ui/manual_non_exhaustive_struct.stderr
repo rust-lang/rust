@@ -1,5 +1,5 @@
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:5:5
+  --> tests/ui/manual_non_exhaustive_struct.rs:5:5
    |
 LL |       struct S {
    |       ^-------
@@ -14,7 +14,7 @@ LL | |     }
    | |_____^
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:9:9
+  --> tests/ui/manual_non_exhaustive_struct.rs:9:9
    |
 LL |         _c: (),
    |         ^^^^^^
@@ -22,7 +22,7 @@ LL |         _c: (),
    = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:14:5
+  --> tests/ui/manual_non_exhaustive_struct.rs:14:5
    |
 LL | /     struct Sp {
 LL | |
@@ -33,13 +33,13 @@ LL | |     }
    | |_____^
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:18:9
+  --> tests/ui/manual_non_exhaustive_struct.rs:18:9
    |
 LL |         _c: (),
    |         ^^^^^^
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:29:5
+  --> tests/ui/manual_non_exhaustive_struct.rs:29:5
    |
 LL |       struct NoUnderscore {
    |       ^------------------
@@ -53,13 +53,13 @@ LL | |     }
    | |_____^
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:32:9
+  --> tests/ui/manual_non_exhaustive_struct.rs:32:9
    |
 LL |         c: (),
    |         ^^^^^
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:56:5
+  --> tests/ui/manual_non_exhaustive_struct.rs:56:5
    |
 LL |     struct T(pub i32, pub i32, ());
    |     --------^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,19 +67,19 @@ LL |     struct T(pub i32, pub i32, ());
    |     help: add the attribute: `#[non_exhaustive] struct T`
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:56:32
+  --> tests/ui/manual_non_exhaustive_struct.rs:56:32
    |
 LL |     struct T(pub i32, pub i32, ());
    |                                ^^
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_struct.rs:61:5
+  --> tests/ui/manual_non_exhaustive_struct.rs:61:5
    |
 LL |     struct Tp(pub i32, pub i32, ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: remove this field
-  --> $DIR/manual_non_exhaustive_struct.rs:61:33
+  --> tests/ui/manual_non_exhaustive_struct.rs:61:33
    |
 LL |     struct Tp(pub i32, pub i32, ());
    |                                 ^^

@@ -1,5 +1,5 @@
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:10:5
+  --> tests/ui/unused_io_amount.rs:10:5
    |
 LL |     s.write(b"test")?;
    |     ^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     s.write(b"test")?;
    = help: to override `-D warnings` add `#[allow(clippy::unused_io_amount)]`
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:13:5
+  --> tests/ui/unused_io_amount.rs:13:5
    |
 LL |     s.read(&mut buf)?;
    |     ^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     s.read(&mut buf)?;
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:19:5
+  --> tests/ui/unused_io_amount.rs:19:5
    |
 LL |     s.write(b"test").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     s.write(b"test").unwrap();
    = help: use `Write::write_all` instead, or handle partial writes
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:22:5
+  --> tests/ui/unused_io_amount.rs:22:5
    |
 LL |     s.read(&mut buf).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,19 +33,19 @@ LL |     s.read(&mut buf).unwrap();
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:27:5
+  --> tests/ui/unused_io_amount.rs:27:5
    |
 LL |     s.read_vectored(&mut [io::IoSliceMut::new(&mut [])])?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:29:5
+  --> tests/ui/unused_io_amount.rs:29:5
    |
 LL |     s.write_vectored(&[io::IoSlice::new(&[])])?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:37:5
+  --> tests/ui/unused_io_amount.rs:37:5
    |
 LL |     reader.read(&mut result).ok()?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL |     reader.read(&mut result).ok()?;
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:47:5
+  --> tests/ui/unused_io_amount.rs:47:5
    |
 LL |     reader.read(&mut result).or_else(|err| Err(err))?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL |     reader.read(&mut result).or_else(|err| Err(err))?;
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:60:5
+  --> tests/ui/unused_io_amount.rs:60:5
    |
 LL |     reader.read(&mut result).or(Err(Error::Kind))?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL |     reader.read(&mut result).or(Err(Error::Kind))?;
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:68:5
+  --> tests/ui/unused_io_amount.rs:68:5
    |
 LL | /     reader
 LL | |
@@ -82,7 +82,7 @@ LL | |         .expect("error");
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:78:5
+  --> tests/ui/unused_io_amount.rs:78:5
    |
 LL |     s.write(b"ok").is_ok();
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL |     s.write(b"ok").is_ok();
    = help: use `Write::write_all` instead, or handle partial writes
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:80:5
+  --> tests/ui/unused_io_amount.rs:80:5
    |
 LL |     s.write(b"err").is_err();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,7 +98,7 @@ LL |     s.write(b"err").is_err();
    = help: use `Write::write_all` instead, or handle partial writes
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:83:5
+  --> tests/ui/unused_io_amount.rs:83:5
    |
 LL |     s.read(&mut buf).is_ok();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -106,7 +106,7 @@ LL |     s.read(&mut buf).is_ok();
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:85:5
+  --> tests/ui/unused_io_amount.rs:85:5
    |
 LL |     s.read(&mut buf).is_err();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,7 +114,7 @@ LL |     s.read(&mut buf).is_err();
    = help: use `Read::read_exact` instead, or handle partial reads
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:90:5
+  --> tests/ui/unused_io_amount.rs:90:5
    |
 LL |     w.write(b"hello world").await.unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +122,7 @@ LL |     w.write(b"hello world").await.unwrap();
    = help: use `AsyncWriteExt::write_all` instead, or handle partial writes
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:96:5
+  --> tests/ui/unused_io_amount.rs:96:5
    |
 LL |     r.read(&mut buf[..]).await.unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -130,7 +130,7 @@ LL |     r.read(&mut buf[..]).await.unwrap();
    = help: use `AsyncReadExt::read_exact` instead, or handle partial reads
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:104:5
+  --> tests/ui/unused_io_amount.rs:104:5
    |
 LL |     w.write(b"hello world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ LL |     w.write(b"hello world");
    = help: use `AsyncWriteExt::write_all` instead, or handle partial writes
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:110:9
+  --> tests/ui/unused_io_amount.rs:110:9
    |
 LL |         w.write(b"hello world").await?;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -146,7 +146,7 @@ LL |         w.write(b"hello world").await?;
    = help: use `AsyncWriteExt::write_all` instead, or handle partial writes
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:119:9
+  --> tests/ui/unused_io_amount.rs:119:9
    |
 LL |         r.read(&mut buf[..]).await.or(Err(Error::Kind))?;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,7 +154,7 @@ LL |         r.read(&mut buf[..]).await.or(Err(Error::Kind))?;
    = help: use `AsyncReadExt::read_exact` instead, or handle partial reads
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:128:5
+  --> tests/ui/unused_io_amount.rs:128:5
    |
 LL |     w.write(b"hello world").await.unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -162,7 +162,7 @@ LL |     w.write(b"hello world").await.unwrap();
    = help: use `AsyncWriteExt::write_all` instead, or handle partial writes
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:134:5
+  --> tests/ui/unused_io_amount.rs:134:5
    |
 LL |     r.read(&mut buf[..]).await.unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -170,92 +170,92 @@ LL |     r.read(&mut buf[..]).await.unwrap();
    = help: use `AsyncReadExt::read_exact` instead, or handle partial reads
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:147:11
+  --> tests/ui/unused_io_amount.rs:147:11
    |
 LL |     match s.write(b"test") {
    |           ^^^^^^^^^^^^^^^^
    |
    = help: use `Write::write_all` instead, or handle partial writes
 note: the result is consumed here, but the amount of I/O bytes remains unhandled
-  --> $DIR/unused_io_amount.rs:149:9
+  --> tests/ui/unused_io_amount.rs:149:9
    |
 LL |         Ok(_) => todo!(),
    |         ^^^^^
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:155:11
+  --> tests/ui/unused_io_amount.rs:155:11
    |
 LL |     match s.read(&mut buf) {
    |           ^^^^^^^^^^^^^^^^
    |
    = help: use `Read::read_exact` instead, or handle partial reads
 note: the result is consumed here, but the amount of I/O bytes remains unhandled
-  --> $DIR/unused_io_amount.rs:157:9
+  --> tests/ui/unused_io_amount.rs:157:9
    |
 LL |         Ok(_) => todo!(),
    |         ^^^^^
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:164:11
+  --> tests/ui/unused_io_amount.rs:164:11
    |
 LL |     match s.read(&mut [0u8; 4]) {
    |           ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use `Read::read_exact` instead, or handle partial reads
 note: the result is consumed here, but the amount of I/O bytes remains unhandled
-  --> $DIR/unused_io_amount.rs:166:9
+  --> tests/ui/unused_io_amount.rs:166:9
    |
 LL |         Ok(_) => todo!(),
    |         ^^^^^
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:173:11
+  --> tests/ui/unused_io_amount.rs:173:11
    |
 LL |     match s.write(b"test") {
    |           ^^^^^^^^^^^^^^^^
    |
    = help: use `Write::write_all` instead, or handle partial writes
 note: the result is consumed here, but the amount of I/O bytes remains unhandled
-  --> $DIR/unused_io_amount.rs:175:9
+  --> tests/ui/unused_io_amount.rs:175:9
    |
 LL |         Ok(_) => todo!(),
    |         ^^^^^
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:186:8
+  --> tests/ui/unused_io_amount.rs:186:8
    |
 LL |     if let Ok(_) = s.read(&mut [0u8; 4]) {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use `Read::read_exact` instead, or handle partial reads
 note: the result is consumed here, but the amount of I/O bytes remains unhandled
-  --> $DIR/unused_io_amount.rs:186:12
+  --> tests/ui/unused_io_amount.rs:186:12
    |
 LL |     if let Ok(_) = s.read(&mut [0u8; 4]) {
    |            ^^^^^
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:193:8
+  --> tests/ui/unused_io_amount.rs:193:8
    |
 LL |     if let Ok(_) = s.write(b"test") {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use `Write::write_all` instead, or handle partial writes
 note: the result is consumed here, but the amount of I/O bytes remains unhandled
-  --> $DIR/unused_io_amount.rs:193:12
+  --> tests/ui/unused_io_amount.rs:193:12
    |
 LL |     if let Ok(_) = s.write(b"test") {
    |            ^^^^^
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:200:8
+  --> tests/ui/unused_io_amount.rs:200:8
    |
 LL |     if let Ok(..) = s.write(b"test") {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: use `Write::write_all` instead, or handle partial writes
 note: the result is consumed here, but the amount of I/O bytes remains unhandled
-  --> $DIR/unused_io_amount.rs:200:12
+  --> tests/ui/unused_io_amount.rs:200:12
    |
 LL |     if let Ok(..) = s.write(b"test") {
    |            ^^^^^^

@@ -1,5 +1,5 @@
 error: usage of deprecated attribute
-  --> $DIR/renamed_builtin_attr.rs:1:11
+  --> tests/ui/renamed_builtin_attr.rs:1:11
    |
 LL | #[clippy::cyclomatic_complexity = "1"]
    |           ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `cognitive_complexity`

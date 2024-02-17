@@ -1,5 +1,5 @@
 error: initializer for `thread_local` value can be made `const`
-  --> $DIR/thread_local_initializer_can_be_made_const.rs:8:41
+  --> tests/ui/thread_local_initializer_can_be_made_const.rs:8:41
    |
 LL |         static BUF_1: RefCell<String> = RefCell::new(String::new());
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { RefCell::new(String::new()) }`
@@ -8,19 +8,19 @@ LL |         static BUF_1: RefCell<String> = RefCell::new(String::new());
    = help: to override `-D warnings` add `#[allow(clippy::thread_local_initializer_can_be_made_const)]`
 
 error: initializer for `thread_local` value can be made `const`
-  --> $DIR/thread_local_initializer_can_be_made_const.rs:18:29
+  --> tests/ui/thread_local_initializer_can_be_made_const.rs:18:29
    |
 LL |         static SIMPLE:i32 = 1;
    |                             ^ help: replace with: `const { 1 }`
 
 error: initializer for `thread_local` value can be made `const`
-  --> $DIR/thread_local_initializer_can_be_made_const.rs:24:59
+  --> tests/ui/thread_local_initializer_can_be_made_const.rs:24:59
    |
 LL |         static BUF_3_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { RefCell::new(String::new()) }`
 
 error: initializer for `thread_local` value can be made `const`
-  --> $DIR/thread_local_initializer_can_be_made_const.rs:26:59
+  --> tests/ui/thread_local_initializer_can_be_made_const.rs:26:59
    |
 LL |         static BUF_4_CAN_BE_MADE_CONST: RefCell<String> = RefCell::new(String::new());
    |                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `const { RefCell::new(String::new()) }`

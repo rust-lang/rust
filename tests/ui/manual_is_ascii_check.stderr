@@ -1,5 +1,5 @@
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:5:13
+  --> tests/ui/manual_is_ascii_check.rs:5:13
    |
 LL |     assert!(matches!('x', 'a'..='z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_lowercase()`
@@ -8,127 +8,127 @@ LL |     assert!(matches!('x', 'a'..='z'));
    = help: to override `-D warnings` add `#[allow(clippy::manual_is_ascii_check)]`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:6:13
+  --> tests/ui/manual_is_ascii_check.rs:6:13
    |
 LL |     assert!(matches!('X', 'A'..='Z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'X'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:7:13
+  --> tests/ui/manual_is_ascii_check.rs:7:13
    |
 LL |     assert!(matches!(b'x', b'a'..=b'z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'x'.is_ascii_lowercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:8:13
+  --> tests/ui/manual_is_ascii_check.rs:8:13
    |
 LL |     assert!(matches!(b'X', b'A'..=b'Z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'X'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:11:13
+  --> tests/ui/manual_is_ascii_check.rs:11:13
    |
 LL |     assert!(matches!(num, '0'..='9'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:12:13
+  --> tests/ui/manual_is_ascii_check.rs:12:13
    |
 LL |     assert!(matches!(b'1', b'0'..=b'9'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'1'.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:13:13
+  --> tests/ui/manual_is_ascii_check.rs:13:13
    |
 LL |     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_alphabetic()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:17:5
+  --> tests/ui/manual_is_ascii_check.rs:17:5
    |
 LL |     (b'0'..=b'9').contains(&b'0');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'0'.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:18:5
+  --> tests/ui/manual_is_ascii_check.rs:18:5
    |
 LL |     (b'a'..=b'z').contains(&b'a');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'a'.is_ascii_lowercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:19:5
+  --> tests/ui/manual_is_ascii_check.rs:19:5
    |
 LL |     (b'A'..=b'Z').contains(&b'A');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'A'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:21:5
+  --> tests/ui/manual_is_ascii_check.rs:21:5
    |
 LL |     ('0'..='9').contains(&'0');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'0'.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:22:5
+  --> tests/ui/manual_is_ascii_check.rs:22:5
    |
 LL |     ('a'..='z').contains(&'a');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'a'.is_ascii_lowercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:23:5
+  --> tests/ui/manual_is_ascii_check.rs:23:5
    |
 LL |     ('A'..='Z').contains(&'A');
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'A'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:26:5
+  --> tests/ui/manual_is_ascii_check.rs:26:5
    |
 LL |     ('0'..='9').contains(cool_letter);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cool_letter.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:27:5
+  --> tests/ui/manual_is_ascii_check.rs:27:5
    |
 LL |     ('a'..='z').contains(cool_letter);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cool_letter.is_ascii_lowercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:28:5
+  --> tests/ui/manual_is_ascii_check.rs:28:5
    |
 LL |     ('A'..='Z').contains(cool_letter);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cool_letter.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:41:13
+  --> tests/ui/manual_is_ascii_check.rs:41:13
    |
 LL |     assert!(matches!(b'1', b'0'..=b'9'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'1'.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:42:13
+  --> tests/ui/manual_is_ascii_check.rs:42:13
    |
 LL |     assert!(matches!('X', 'A'..='Z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'X'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:43:13
+  --> tests/ui/manual_is_ascii_check.rs:43:13
    |
 LL |     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_alphabetic()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:44:13
+  --> tests/ui/manual_is_ascii_check.rs:44:13
    |
 LL |     assert!(matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_hexdigit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:55:23
+  --> tests/ui/manual_is_ascii_check.rs:55:23
    |
 LL |     const FOO: bool = matches!('x', '0'..='9');
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:56:23
+  --> tests/ui/manual_is_ascii_check.rs:56:23
    |
 LL |     const BAR: bool = matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F');
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_hexdigit()`

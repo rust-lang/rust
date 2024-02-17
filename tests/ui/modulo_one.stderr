@@ -1,5 +1,5 @@
 error: this operation will panic at runtime
-  --> $DIR/modulo_one.rs:15:5
+  --> tests/ui/modulo_one.rs:15:5
    |
 LL |     i32::MIN % (-1);
    |     ^^^^^^^^^^^^^^^ attempt to compute `i32::MIN % -1_i32`, which would overflow
@@ -7,13 +7,13 @@ LL |     i32::MIN % (-1);
    = note: `#[deny(unconditional_panic)]` on by default
 
 error: this operation will panic at runtime
-  --> $DIR/modulo_one.rs:33:5
+  --> tests/ui/modulo_one.rs:33:5
    |
 LL |     INT_MIN % NEG_ONE;
    |     ^^^^^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
 
 error: any number modulo 1 will be 0
-  --> $DIR/modulo_one.rs:8:5
+  --> tests/ui/modulo_one.rs:8:5
    |
 LL |     10 % 1;
    |     ^^^^^^
@@ -22,31 +22,31 @@ LL |     10 % 1;
    = help: to override `-D warnings` add `#[allow(clippy::modulo_one)]`
 
 error: any number modulo -1 will panic/overflow or result in 0
-  --> $DIR/modulo_one.rs:11:5
+  --> tests/ui/modulo_one.rs:11:5
    |
 LL |     10 % -1;
    |     ^^^^^^^
 
 error: any number modulo -1 will panic/overflow or result in 0
-  --> $DIR/modulo_one.rs:15:5
+  --> tests/ui/modulo_one.rs:15:5
    |
 LL |     i32::MIN % (-1);
    |     ^^^^^^^^^^^^^^^
 
 error: any number modulo 1 will be 0
-  --> $DIR/modulo_one.rs:24:5
+  --> tests/ui/modulo_one.rs:24:5
    |
 LL |     2 % ONE;
    |     ^^^^^^^
 
 error: any number modulo -1 will panic/overflow or result in 0
-  --> $DIR/modulo_one.rs:28:5
+  --> tests/ui/modulo_one.rs:28:5
    |
 LL |     2 % NEG_ONE;
    |     ^^^^^^^^^^^
 
 error: any number modulo -1 will panic/overflow or result in 0
-  --> $DIR/modulo_one.rs:33:5
+  --> tests/ui/modulo_one.rs:33:5
    |
 LL |     INT_MIN % NEG_ONE;
    |     ^^^^^^^^^^^^^^^^^

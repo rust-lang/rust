@@ -1,5 +1,5 @@
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:14:13
+  --> tests/ui/iter_kv_map.rs:14:13
    |
 LL |     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys()`
@@ -8,73 +8,73 @@ LL |     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
    = help: to override `-D warnings` add `#[allow(clippy::iter_kv_map)]`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:15:13
+  --> tests/ui/iter_kv_map.rs:15:13
    |
 LL |     let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:16:13
+  --> tests/ui/iter_kv_map.rs:16:13
    |
 LL |     let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().map(|v| v + 2)`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:18:13
+  --> tests/ui/iter_kv_map.rs:18:13
    |
 LL |     let _ = map.clone().into_iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_keys()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:19:13
+  --> tests/ui/iter_kv_map.rs:19:13
    |
 LL |     let _ = map.clone().into_iter().map(|(key, _)| key + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_keys().map(|key| key + 2)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:21:13
+  --> tests/ui/iter_kv_map.rs:21:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, val)| val).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:22:13
+  --> tests/ui/iter_kv_map.rs:22:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, val)| val + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values().map(|val| val + 2)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:24:13
+  --> tests/ui/iter_kv_map.rs:24:13
    |
 LL |     let _ = map.clone().iter().map(|(_, val)| val).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().values()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:25:13
+  --> tests/ui/iter_kv_map.rs:25:13
    |
 LL |     let _ = map.iter().map(|(key, _)| key).filter(|x| *x % 2 == 0).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:35:13
+  --> tests/ui/iter_kv_map.rs:35:13
    |
 LL |     let _ = map.iter().map(|(key, _value)| key * 9).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys().map(|key| key * 9)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:36:13
+  --> tests/ui/iter_kv_map.rs:36:13
    |
 LL |     let _ = map.iter().map(|(_key, value)| value * 17).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().map(|value| value * 17)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:39:13
+  --> tests/ui/iter_kv_map.rs:39:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, ref val)| ref_acceptor(val)).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values().map(|ref val| ref_acceptor(val))`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:42:13
+  --> tests/ui/iter_kv_map.rs:42:13
    |
 LL |       let _ = map
    |  _____________^
@@ -96,85 +96,85 @@ LL +         })
    |
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:52:13
+  --> tests/ui/iter_kv_map.rs:52:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, mut val)| val).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:56:13
+  --> tests/ui/iter_kv_map.rs:56:13
    |
 LL |     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:57:13
+  --> tests/ui/iter_kv_map.rs:57:13
    |
 LL |     let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:58:13
+  --> tests/ui/iter_kv_map.rs:58:13
    |
 LL |     let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().map(|v| v + 2)`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:60:13
+  --> tests/ui/iter_kv_map.rs:60:13
    |
 LL |     let _ = map.clone().into_iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_keys()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:61:13
+  --> tests/ui/iter_kv_map.rs:61:13
    |
 LL |     let _ = map.clone().into_iter().map(|(key, _)| key + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_keys().map(|key| key + 2)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:63:13
+  --> tests/ui/iter_kv_map.rs:63:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, val)| val).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:64:13
+  --> tests/ui/iter_kv_map.rs:64:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, val)| val + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values().map(|val| val + 2)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:66:13
+  --> tests/ui/iter_kv_map.rs:66:13
    |
 LL |     let _ = map.clone().iter().map(|(_, val)| val).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().values()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:67:13
+  --> tests/ui/iter_kv_map.rs:67:13
    |
 LL |     let _ = map.iter().map(|(key, _)| key).filter(|x| *x % 2 == 0).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:77:13
+  --> tests/ui/iter_kv_map.rs:77:13
    |
 LL |     let _ = map.iter().map(|(key, _value)| key * 9).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys().map(|key| key * 9)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:78:13
+  --> tests/ui/iter_kv_map.rs:78:13
    |
 LL |     let _ = map.iter().map(|(_key, value)| value * 17).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().map(|value| value * 17)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:81:13
+  --> tests/ui/iter_kv_map.rs:81:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, ref val)| ref_acceptor(val)).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values().map(|ref val| ref_acceptor(val))`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:84:13
+  --> tests/ui/iter_kv_map.rs:84:13
    |
 LL |       let _ = map
    |  _____________^
@@ -196,67 +196,67 @@ LL +         })
    |
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:94:13
+  --> tests/ui/iter_kv_map.rs:94:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, mut val)| val).count();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:109:13
+  --> tests/ui/iter_kv_map.rs:109:13
    |
 LL |     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:111:13
+  --> tests/ui/iter_kv_map.rs:111:13
    |
 LL |     let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:113:13
+  --> tests/ui/iter_kv_map.rs:113:13
    |
 LL |     let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().map(|v| v + 2)`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:122:13
+  --> tests/ui/iter_kv_map.rs:122:13
    |
 LL |     let _ = map.clone().into_iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_keys()`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:124:13
+  --> tests/ui/iter_kv_map.rs:124:13
    |
 LL |     let _ = map.clone().into_iter().map(|(key, _)| key + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_keys().map(|key| key + 2)`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:127:13
+  --> tests/ui/iter_kv_map.rs:127:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, val)| val).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:129:13
+  --> tests/ui/iter_kv_map.rs:129:13
    |
 LL |     let _ = map.clone().into_iter().map(|(_, val)| val + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.clone().into_values().map(|val| val + 2)`
 
 error: iterating on a map's keys
-  --> $DIR/iter_kv_map.rs:132:13
+  --> tests/ui/iter_kv_map.rs:132:13
    |
 LL |     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.keys()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:134:13
+  --> tests/ui/iter_kv_map.rs:134:13
    |
 LL |     let _ = map.iter().map(|(_, value)| value).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values()`
 
 error: iterating on a map's values
-  --> $DIR/iter_kv_map.rs:136:13
+  --> tests/ui/iter_kv_map.rs:136:13
    |
 LL |     let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `map.values().map(|v| v + 2)`

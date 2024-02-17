@@ -1,11 +1,11 @@
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:7:1
+  --> tests/ui/future_not_send.rs:7:1
    |
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `private_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:9:20
+  --> tests/ui/future_not_send.rs:9:20
    |
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                         -- has type `std::rc::Rc<[u8]>` which is not `Send`
@@ -14,7 +14,7 @@ LL |     async { true }.await
    |                    ^^^^^ await occurs here, with `rc` maybe used later
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> $DIR/future_not_send.rs:7:39
+  --> tests/ui/future_not_send.rs:7:39
    |
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                                       ^^^^ has type `&std::cell::Cell<usize>` which is not `Send`, because `std::cell::Cell<usize>` is not `Sync`
@@ -23,13 +23,13 @@ LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    = help: to override `-D warnings` add `#[allow(clippy::future_not_send)]`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:12:1
+  --> tests/ui/future_not_send.rs:12:1
    |
 LL | pub async fn public_future(rc: Rc<[u8]>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `public_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:14:20
+  --> tests/ui/future_not_send.rs:14:20
    |
 LL | pub async fn public_future(rc: Rc<[u8]>) {
    |                            -- has type `std::rc::Rc<[u8]>` which is not `Send`
@@ -39,45 +39,45 @@ LL |     async { true }.await;
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:21:1
+  --> tests/ui/future_not_send.rs:21:1
    |
 LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `private_future2` is not `Send`
    |
 note: captured value is not `Send`
-  --> $DIR/future_not_send.rs:21:26
+  --> tests/ui/future_not_send.rs:21:26
    |
 LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                          ^^ has type `std::rc::Rc<[u8]>` which is not `Send`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> $DIR/future_not_send.rs:21:40
+  --> tests/ui/future_not_send.rs:21:40
    |
 LL | async fn private_future2(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                                        ^^^^ has type `&std::cell::Cell<usize>` which is not `Send`, because `std::cell::Cell<usize>` is not `Sync`
    = note: `std::cell::Cell<usize>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:26:1
+  --> tests/ui/future_not_send.rs:26:1
    |
 LL | pub async fn public_future2(rc: Rc<[u8]>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `public_future2` is not `Send`
    |
 note: captured value is not `Send`
-  --> $DIR/future_not_send.rs:26:29
+  --> tests/ui/future_not_send.rs:26:29
    |
 LL | pub async fn public_future2(rc: Rc<[u8]>) {}
    |                             ^^ has type `std::rc::Rc<[u8]>` which is not `Send`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:38:5
+  --> tests/ui/future_not_send.rs:38:5
    |
 LL |     async fn private_future(&self) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `private_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:40:24
+  --> tests/ui/future_not_send.rs:40:24
    |
 LL |     async fn private_future(&self) -> usize {
    |                             ----- has type `&Dummy` which is not `Send`
@@ -87,20 +87,20 @@ LL |         async { true }.await;
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:44:5
+  --> tests/ui/future_not_send.rs:44:5
    |
 LL |     pub async fn public_future(&self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `public_future` is not `Send`
    |
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> $DIR/future_not_send.rs:44:32
+  --> tests/ui/future_not_send.rs:44:32
    |
 LL |     pub async fn public_future(&self) {
    |                                ^^^^^ has type `&Dummy` which is not `Send`, because `Dummy` is not `Sync`
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:55:1
+  --> tests/ui/future_not_send.rs:55:1
    |
 LL | / async fn generic_future<T>(t: T) -> T
 LL | |
@@ -109,7 +109,7 @@ LL | |     T: Send,
    | |____________^ future returned by `generic_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:61:20
+  --> tests/ui/future_not_send.rs:61:20
    |
 LL |     let rt = &t;
    |         -- has type `&T` which is not `Send`
@@ -118,13 +118,13 @@ LL |     async { true }.await;
    = note: `T` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely
-  --> $DIR/future_not_send.rs:73:1
+  --> tests/ui/future_not_send.rs:73:1
    |
 LL | async fn unclear_future<T>(t: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `unclear_future` is not `Send`
    |
 note: captured value is not `Send`
-  --> $DIR/future_not_send.rs:73:28
+  --> tests/ui/future_not_send.rs:73:28
    |
 LL | async fn unclear_future<T>(t: T) {}
    |                            ^ has type `T` which is not `Send`
