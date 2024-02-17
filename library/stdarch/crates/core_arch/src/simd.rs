@@ -18,17 +18,28 @@ macro_rules! simd_ty {
             #[inline(always)]
             pub(crate) const fn splat(value: $ety) -> Self {
                 $id($({
+                    // We want this to be repeated for each element.
+                    // So we need to use `elem_name` in a `$(...)`.
+                    // But we don't actually need that name for anything so we use a dummy struct.
                     #[allow(non_camel_case_types, dead_code)]
                     struct $elem_name;
                     value
                 }),*)
             }
 
+            /// Extract the element at position `index`.
+            /// `index` is not a constant so this is not efficient!
+            /// Use for testing only.
             // FIXME: Workaround rust@60637
             #[inline(always)]
             pub(crate) fn extract(self, index: usize) -> $ety {
+                // Here we assume that there is no padding.
+                let len = crate::mem::size_of::<Self>() / crate::mem::size_of::<$ety>();
+                assert!(index < len);
+                // Now that we know this is in-bounds, use pointer arithmetic to access the right element.
+                let self_ptr = &self as *const Self as *const $ety;
                 unsafe {
-                    crate::core_arch::simd_llvm::simd_extract(self, index as u32)
+                    self_ptr.add(index).read()
                 }
             }
         }
@@ -61,15 +72,6 @@ macro_rules! simd_m_ty {
                     struct $elem_name;
                     Self::bool_to_internal(value)
                 }),*)
-            }
-
-            // FIXME: Workaround rust@60637
-            #[inline(always)]
-            pub(crate) fn extract(self, index: usize) -> bool {
-                let r: $ety = unsafe {
-                    crate::core_arch::simd_llvm::simd_extract(self, index as u32)
-                };
-                r != 0
             }
         }
     }
