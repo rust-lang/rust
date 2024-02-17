@@ -1,13 +1,10 @@
-use std::ops::ControlFlow;
-
 use rustc_data_structures::intern::Interned;
 
 use crate::infer::canonical::{CanonicalVarValues, QueryRegionConstraints};
 use crate::traits::query::NoSolution;
 use crate::traits::{Canonical, DefiningAnchor};
 use crate::ty::{
-    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable,
-    TypeVisitor,
+    self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitor,
 };
 use rustc_span::def_id::DefId;
 
@@ -110,7 +107,7 @@ pub struct QueryInput<'tcx, T> {
 }
 
 /// Additional constraints returned on success.
-#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, HashStable, Default, TypeVisitable, TypeFoldable)]
 pub struct PredefinedOpaquesData<'tcx> {
     pub opaque_types: Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
 }
@@ -167,21 +164,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(FallibleTypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
-            region_constraints: self.region_constraints.clone().try_fold_with(folder)?,
-            opaque_types: self
-                .opaque_types
-                .iter()
-                .map(|opaque| opaque.try_fold_with(folder))
-                .collect::<Result<_, F::Error>>()?,
-        }))
-    }
-
-    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        TypeFolder::interner(folder).mk_external_constraints(ExternalConstraintsData {
-            region_constraints: self.region_constraints.clone().fold_with(folder),
-            opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
-        })
+        Ok(folder.interner().mk_external_constraints((*self).clone().try_fold_with(folder)?))
     }
 }
 
@@ -190,9 +173,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         &self,
         visitor: &mut V,
     ) -> std::ops::ControlFlow<V::BreakTy> {
-        self.region_constraints.visit_with(visitor)?;
-        self.opaque_types.visit_with(visitor)?;
-        ControlFlow::Continue(())
+        (**self).visit_with(visitor)
     }
 }
 
@@ -206,21 +187,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(FallibleTypeFolder::interner(folder).mk_predefined_opaques_in_body(
-            PredefinedOpaquesData {
-                opaque_types: self
-                    .opaque_types
-                    .iter()
-                    .map(|opaque| opaque.try_fold_with(folder))
-                    .collect::<Result<_, F::Error>>()?,
-            },
-        ))
-    }
-
-    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        TypeFolder::interner(folder).mk_predefined_opaques_in_body(PredefinedOpaquesData {
-            opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
-        })
+        Ok(folder.interner().mk_predefined_opaques_in_body((*self).clone().try_fold_with(folder)?))
     }
 }
 
@@ -229,7 +196,7 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for PredefinedOpaques<'tcx> {
         &self,
         visitor: &mut V,
     ) -> std::ops::ControlFlow<V::BreakTy> {
-        self.opaque_types.visit_with(visitor)
+        (**self).visit_with(visitor)
     }
 }
 

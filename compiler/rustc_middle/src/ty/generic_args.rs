@@ -67,6 +67,8 @@ const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
 #[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Clone, TypeFoldable, TypeVisitable)]
+#[inline_traversals]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -231,21 +233,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
-            GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
-        }
+        self.unpack().try_fold_with(folder).map(GenericArgKind::pack)
     }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
+    #[inline]
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
-            GenericArgKind::Type(ty) => ty.visit_with(visitor),
-            GenericArgKind::Const(ct) => ct.visit_with(visitor),
-        }
+        self.unpack().visit_with(visitor)
     }
 }
 

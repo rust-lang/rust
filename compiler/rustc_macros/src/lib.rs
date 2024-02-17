@@ -19,8 +19,7 @@ mod lift;
 mod query;
 mod serialize;
 mod symbols;
-mod type_foldable;
-mod type_visitable;
+mod traversable;
 
 // Reads the rust version (e.g. "1.75.0") from the CFG_RELEASE env var and
 // produces a `RustcVersion` literal containing that version (e.g.
@@ -62,25 +61,62 @@ decl_derive!([TyEncodable] => serialize::type_encodable_derive);
 decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
 decl_derive!(
-    [TypeFoldable, attributes(type_foldable)] =>
+    [TypeFoldable, attributes(type_foldable, inline_traversals)] =>
     /// Derives `TypeFoldable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
-    /// The fold will produce a value of the same struct or enum variant as the input, with
-    /// each field respectively folded using the `TypeFoldable` implementation for its type.
-    /// However, if a field of a struct or an enum variant is annotated with
-    /// `#[type_foldable(identity)]` then that field will retain its incumbent value (and its
-    /// type is not required to implement `TypeFoldable`).
-    type_foldable::type_foldable_derive
+    /// Folds will produce a value of the same struct or enum variant as the input, with each field
+    /// respectively folded (in definition order) using the `TypeFoldable` implementation for its
+    /// type. However, if a field of a struct or of an enum variant is annotated with
+    /// `#[type_foldable(identity)]` then that field will retain its incumbent value (and its type
+    /// is not required to implement `TypeFoldable`). However use of this attribute is dangerous
+    /// and should be used with extreme caution: should the type of the annotated field contain
+    /// (now or in the future) a type that is of interest to a folder, it will not get folded (which
+    /// may result in unexpected, hard-to-track bugs that could result in unsoundness).
+    ///
+    /// If the annotated item has a `'tcx` lifetime parameter, then that will be used as the
+    /// lifetime for the type context/interner; otherwise the lifetime of the type context/interner
+    /// will be unrelated to the annotated type. It therefore matters how any lifetime parameters of
+    /// the annotated type are named. For example, deriving `TypeFoldable` for both `Foo<'a>` and
+    /// `Bar<'tcx>` will respectively produce:
+    ///
+    /// `impl<'a, 'tcx> TypeFoldable<TyCtxt<'tcx>> for Foo<'a>`
+    ///
+    /// and
+    ///
+    /// `impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Bar<'tcx>`
+    ///
+    /// The annotated item may be decorated with an `#[inline_traversals]` attribute to cause the
+    /// generated folding method to be marked `#[inline]`.
+    traversable::traversable_derive::<traversable::Foldable>
 );
 decl_derive!(
-    [TypeVisitable, attributes(type_visitable)] =>
+    [TypeVisitable, attributes(type_visitable, inline_traversals)] =>
     /// Derives `TypeVisitable` for the annotated `struct` or `enum` (`union` is not supported).
     ///
-    /// Each field of the struct or enum variant will be visited in definition order, using the
-    /// `TypeVisitable` implementation for its type. However, if a field of a struct or an enum
-    /// variant is annotated with `#[type_visitable(ignore)]` then that field will not be
-    /// visited (and its type is not required to implement `TypeVisitable`).
-    type_visitable::type_visitable_derive
+    /// Each field of the struct or enum variant will be visited (in definition order) using the
+    /// `TypeVisitable` implementation for its type. However, if a field of a struct or of an enum
+    /// variant is annotated with `#[type_visitable(ignore)]` then that field will not be visited
+    /// (and its type is not required to implement `TypeVisitable`). However use of this attribute
+    /// is dangerous and should be used with extreme caution: should the type of the annotated
+    /// field (now or in the future) a type that is of interest to a visitor, it will not get
+    /// visited (which may result in unexpected, hard-to-track bugs that could result in
+    /// unsoundness).
+    ///
+    /// If the annotated item has a `'tcx` lifetime parameter, then that will be used as the
+    /// lifetime for the type context/interner; otherwise the lifetime of the type context/interner
+    /// will be unrelated to the annotated type. It therefore matters how any lifetime parameters of
+    /// the annotated type are named. For example, deriving `TypeVisitable` for both `Foo<'a>` and
+    /// `Bar<'tcx>` will respectively produce:
+    ///
+    /// `impl<'a, 'tcx> TypeVisitable<TyCtxt<'tcx>> for Foo<'a>`
+    ///
+    /// and
+    ///
+    /// `impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Bar<'tcx>`
+    ///
+    /// The annotated item may be decorated with an `#[inline_traversals]` attribute to cause the
+    /// generated folding method to be marked `#[inline]`.
+    traversable::traversable_derive::<traversable::Visitable>
 );
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
