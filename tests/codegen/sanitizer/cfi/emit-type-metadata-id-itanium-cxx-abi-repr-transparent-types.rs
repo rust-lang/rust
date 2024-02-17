@@ -28,7 +28,7 @@ pub struct Type2<'a> {
     member3: &'a Type2<'a>,
 }
 
-pub struct Bar;
+pub struct Bar(i32);
 
 // repr(transparent) user-defined generic type
 #[repr(transparent)]
