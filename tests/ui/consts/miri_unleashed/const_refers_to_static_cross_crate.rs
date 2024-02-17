@@ -11,7 +11,7 @@ const SLICE_MUT: &[u8; 1] = {
     //~^ ERROR undefined behavior to use this value
     //~| encountered a reference pointing to a static variable
     unsafe { &static_cross_crate::ZERO }
-    //~^ WARN shared reference of mutable static is discouraged [static_mut_ref]
+    //~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
 };
 
 const U8_MUT: &u8 = {
