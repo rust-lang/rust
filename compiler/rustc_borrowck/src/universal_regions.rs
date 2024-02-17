@@ -22,6 +22,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_macros::extension;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty, TyCtxt};
@@ -793,27 +794,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     }
 }
 
-trait InferCtxtExt<'tcx> {
-    fn replace_free_regions_with_nll_infer_vars<T>(
-        &self,
-        origin: NllRegionVariableOrigin,
-        value: T,
-    ) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>;
-
-    fn replace_bound_regions_with_nll_infer_vars<T>(
-        &self,
-        origin: NllRegionVariableOrigin,
-        all_outlive_scope: LocalDefId,
-        value: ty::Binder<'tcx, T>,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    ) -> T
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>;
-}
-
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
+#[extension(trait InferCtxtExt<'tcx>)]
+impl<'cx, 'tcx> BorrowckInferCtxt<'cx, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn replace_free_regions_with_nll_infer_vars<T>(
         &self,

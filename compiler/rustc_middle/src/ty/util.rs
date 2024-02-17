@@ -96,13 +96,8 @@ impl<'tcx> Discr<'tcx> {
     }
 }
 
-pub trait IntTypeExt {
-    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-    fn disr_incr<'tcx>(&self, tcx: TyCtxt<'tcx>, val: Option<Discr<'tcx>>) -> Option<Discr<'tcx>>;
-    fn initial_discriminant<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Discr<'tcx>;
-}
-
-impl IntTypeExt for IntegerType {
+#[extension(pub trait IntTypeExt)]
+impl IntegerType {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
             IntegerType::Pointer(true) => tcx.types.isize,

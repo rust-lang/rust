@@ -23,24 +23,6 @@ use crate::errors::{
 
 use crate::traits::error_reporting::type_err_ctxt_ext::InferCtxtPrivExt;
 
-pub trait TypeErrCtxtExt<'tcx> {
-    /*private*/
-    fn impl_similar_to(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> Option<(DefId, GenericArgsRef<'tcx>)>;
-
-    /*private*/
-    fn describe_enclosure(&self, def_id: LocalDefId) -> Option<&'static str>;
-
-    fn on_unimplemented_note(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> OnUnimplementedNote;
-}
-
 /// The symbols which are always allowed in a format string
 static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
     kw::SelfUpper,
@@ -56,7 +38,8 @@ static ALLOWED_FORMAT_SYMBOLS: &[Symbol] = &[
     sym::Trait,
 ];
 
-impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn impl_similar_to(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,

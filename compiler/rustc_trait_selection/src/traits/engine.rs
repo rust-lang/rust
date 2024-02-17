@@ -27,11 +27,8 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub trait TraitEngineExt<'tcx> {
-    fn new(infcx: &InferCtxt<'tcx>) -> Box<Self>;
-}
-
-impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
+#[extension(pub trait TraitEngineExt<'tcx>)]
+impl<'tcx> dyn TraitEngine<'tcx> {
     fn new(infcx: &InferCtxt<'tcx>) -> Box<Self> {
         if infcx.next_trait_solver() {
             Box::new(NextFulfillmentCtxt::new(infcx))
