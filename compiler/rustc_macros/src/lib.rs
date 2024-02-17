@@ -14,6 +14,7 @@ use proc_macro::TokenStream;
 
 mod current_version;
 mod diagnostics;
+mod extension;
 mod hash_stable;
 mod lift;
 mod query;
@@ -38,6 +39,11 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn symbols(input: TokenStream) -> TokenStream {
     symbols::symbols(input.into()).into()
+}
+
+#[proc_macro_attribute]
+pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
+    extension::extension(attr, input)
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);

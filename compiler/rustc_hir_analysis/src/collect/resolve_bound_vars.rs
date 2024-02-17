@@ -14,6 +14,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeName, Node};
+use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
@@ -27,17 +28,8 @@ use std::fmt;
 
 use crate::errors;
 
-trait RegionExt {
-    fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg);
-
-    fn late(index: u32, param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg);
-
-    fn id(&self) -> Option<DefId>;
-
-    fn shifted(self, amount: u32) -> ResolvedArg;
-}
-
-impl RegionExt for ResolvedArg {
+#[extension(trait RegionExt)]
+impl ResolvedArg {
     fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
         debug!("ResolvedArg::early: def_id={:?}", param.def_id);
         (param.def_id, ResolvedArg::EarlyBound(param.def_id.to_def_id()))

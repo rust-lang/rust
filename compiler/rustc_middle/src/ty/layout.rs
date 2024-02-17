@@ -23,20 +23,8 @@ use std::fmt;
 use std::num::NonZero;
 use std::ops::Bound;
 
-pub trait IntegerExt {
-    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
-    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer;
-    fn from_uint_ty<C: HasDataLayout>(cx: &C, uty: ty::UintTy) -> Integer;
-    fn repr_discr<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        repr: &ReprOptions,
-        min: i128,
-        max: i128,
-    ) -> (Integer, bool);
-}
-
-impl IntegerExt for Integer {
+#[extension(pub trait IntegerExt)]
+impl Integer {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
@@ -123,12 +111,8 @@ impl IntegerExt for Integer {
     }
 }
 
-pub trait PrimitiveExt {
-    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-    fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-}
-
-impl PrimitiveExt for Primitive {
+#[extension(pub trait PrimitiveExt)]
+impl Primitive {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {

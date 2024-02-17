@@ -4,32 +4,8 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
-pub trait InferCtxtExt<'tcx> {
-    fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool;
-
-    fn predicate_must_hold_considering_regions(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> bool;
-
-    fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'tcx>) -> bool;
-
-    fn evaluate_obligation(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> Result<EvaluationResult, OverflowError>;
-
-    // Helper function that canonicalizes and runs the query. If an
-    // overflow results, we re-run it in the local context so we can
-    // report a nice error.
-    /*crate*/
-    fn evaluate_obligation_no_overflow(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> EvaluationResult;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
     /// in the given `ParamEnv`.
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
@@ -114,9 +90,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         }
     }
 
-    // Helper function that canonicalizes and runs the query. If an
-    // overflow results, we re-run it in the local context so we can
-    // report a nice error.
+    /// Helper function that canonicalizes and runs the query. If an
+    /// overflow results, we re-run it in the local context so we can
+    /// report a nice error.
     fn evaluate_obligation_no_overflow(
         &self,
         obligation: &PredicateObligation<'tcx>,

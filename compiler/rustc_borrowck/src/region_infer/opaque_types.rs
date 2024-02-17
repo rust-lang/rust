@@ -6,6 +6,7 @@ use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
+use rustc_macros::extension;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
@@ -225,15 +226,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 }
 
-pub trait InferCtxtExt<'tcx> {
-    fn infer_opaque_definition_from_instantiation(
-        &self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: OpaqueHiddenType<'tcx>,
-    ) -> Ty<'tcx>;
-}
-
-impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Given the fully resolved, instantiated type for an opaque
     /// type, i.e., the value of an inference variable like C1 or C2
     /// (*), computes the "definition type" for an opaque type
