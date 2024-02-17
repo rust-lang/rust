@@ -415,8 +415,11 @@ impl ConfigInfo {
         if let Some(linker) = linker {
             rustflags.push(linker.to_string());
         }
+
+        #[cfg(not(feature="master"))]
+        rustflags.push("-Csymbol-mangling-version=v0".to_string());
+
         rustflags.extend_from_slice(&[
-            "-Csymbol-mangling-version=v0".to_string(),
             "-Cdebuginfo=2".to_string(),
             format!("-Zcodegen-backend={}", self.cg_backend_path),
         ]);

@@ -255,6 +255,7 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
     }
     #[cfg(feature="master")]
     {
+        context.set_allow_special_chars_in_func_names(true);
         let version = Version::get();
         let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
         context.set_output_ident(&format!("rustc version {} with libgccjit {}",

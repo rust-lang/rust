@@ -612,6 +612,21 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
 
+    let rustc_args =
+        &format!(
+            r#"-Zpanic-abort-tests \
+            -Zcodegen-backend="{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}" \
+            --sysroot "{pwd}/build_sysroot/sysroot" -Cpanic=abort"#,
+            pwd = std::env::current_dir()
+                .map_err(|error| format!("`current_dir` failed: {:?}", error))?
+                .display(),
+            channel = args.config_info.channel.as_str(),
+            dylib_ext = args.config_info.dylib_ext,
+        );
+
+    #[cfg(not(feature="master"))]
+    let rustc_args = format!("{} -Csymbol-mangling-version=v0", rustc_args);
+
     run_command_with_env(
         &[
             &"./x.py",
@@ -622,17 +637,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"0",
             &"tests/assembly/asm",
             &"--rustc-args",
-            &format!(
-                r#"-Zpanic-abort-tests -Csymbol-mangling-version=v0 \
-                -Zcodegen-backend="{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}" \
-                --sysroot "{pwd}/build_sysroot/sysroot" -Cpanic=abort"#,
-                pwd = std::env::current_dir()
-                    .map_err(|error| format!("`current_dir` failed: {:?}", error))?
-                    .display(),
-                channel = args.config_info.channel.as_str(),
-                dylib_ext = args.config_info.dylib_ext,
-            )
-            .as_str(),
+            &rustc_args,
         ],
         Some(&rust_dir),
         Some(&env),
@@ -1065,11 +1070,14 @@ where
     println!("[TEST] rustc test suite");
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
     let rustc_args = format!(
-        "{} -Csymbol-mangling-version=v0 -Zcodegen-backend={} --sysroot {}",
+        "{} -Zcodegen-backend={} --sysroot {}",
         env.get("TEST_FLAGS").unwrap_or(&String::new()),
         args.config_info.cg_backend_path,
         args.config_info.sysroot_path,
     );
+
+    #[cfg(not(feature="master"))]
+    let rustc_args = format!("{} -Csymbol-mangling-version=v0", rustc_args);
 
     env.get_mut("RUSTFLAGS").unwrap().clear();
     run_command_with_output_and_env(
