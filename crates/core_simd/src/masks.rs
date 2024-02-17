@@ -12,7 +12,7 @@
 )]
 mod mask_impl;
 
-use crate::simd::{cmp::SimdPartialEq, LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount};
 use core::cmp::Ordering;
 use core::{fmt, mem};
 
@@ -58,7 +58,16 @@ macro_rules! impl_element {
             where
                 LaneCount<N>: SupportedLaneCount,
             {
-                (value.simd_eq(Simd::splat(0 as _)) | value.simd_eq(Simd::splat(-1 as _))).all()
+                // We can't use `Simd` directly, because `Simd`'s functions call this function and
+                // we will end up with an infinite loop.
+                // Safety: `value` is an integer vector
+                unsafe {
+                    use core::intrinsics::simd;
+                    let falses: Simd<Self, N> = simd::simd_eq(value, Simd::splat(0 as _));
+                    let trues: Simd<Self, N> = simd::simd_eq(value, Simd::splat(-1 as _));
+                    let valid: Simd<Self, N> = simd::simd_or(falses, trues);
+                    simd::simd_reduce_all(valid)
+                }
             }
 
             #[inline]
