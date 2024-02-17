@@ -715,7 +715,7 @@ pub const fn i8x16(
     a14: i8,
     a15: i8,
 ) -> v128 {
-    simd::i8x16(
+    simd::i8x16::new(
         a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15,
     )
     .v128()
@@ -747,7 +747,7 @@ pub const fn u8x16(
     a14: u8,
     a15: u8,
 ) -> v128 {
-    simd::u8x16(
+    simd::u8x16::new(
         a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14, a15,
     )
     .v128()
@@ -776,7 +776,7 @@ pub const fn u8x16(
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn i16x8(a0: i16, a1: i16, a2: i16, a3: i16, a4: i16, a5: i16, a6: i16, a7: i16) -> v128 {
-    simd::i16x8(a0, a1, a2, a3, a4, a5, a6, a7).v128()
+    simd::i16x8::new(a0, a1, a2, a3, a4, a5, a6, a7).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -788,7 +788,7 @@ pub const fn i16x8(a0: i16, a1: i16, a2: i16, a3: i16, a4: i16, a5: i16, a6: i16
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn u16x8(a0: u16, a1: u16, a2: u16, a3: u16, a4: u16, a5: u16, a6: u16, a7: u16) -> v128 {
-    simd::u16x8(a0, a1, a2, a3, a4, a5, a6, a7).v128()
+    simd::u16x8::new(a0, a1, a2, a3, a4, a5, a6, a7).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -801,7 +801,7 @@ pub const fn u16x8(a0: u16, a1: u16, a2: u16, a3: u16, a4: u16, a5: u16, a6: u16
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn i32x4(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
-    simd::i32x4(a0, a1, a2, a3).v128()
+    simd::i32x4::new(a0, a1, a2, a3).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -813,7 +813,7 @@ pub const fn i32x4(a0: i32, a1: i32, a2: i32, a3: i32) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn u32x4(a0: u32, a1: u32, a2: u32, a3: u32) -> v128 {
-    simd::u32x4(a0, a1, a2, a3).v128()
+    simd::u32x4::new(a0, a1, a2, a3).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -826,7 +826,7 @@ pub const fn u32x4(a0: u32, a1: u32, a2: u32, a3: u32) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn i64x2(a0: i64, a1: i64) -> v128 {
-    simd::i64x2(a0, a1).v128()
+    simd::i64x2::new(a0, a1).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -838,7 +838,7 @@ pub const fn i64x2(a0: i64, a1: i64) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd", since = "1.54.0")]
 pub const fn u64x2(a0: u64, a1: u64) -> v128 {
-    simd::u64x2(a0, a1).v128()
+    simd::u64x2::new(a0, a1).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -851,7 +851,7 @@ pub const fn u64x2(a0: u64, a1: u64) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
 pub const fn f32x4(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
-    simd::f32x4(a0, a1, a2, a3).v128()
+    simd::f32x4::new(a0, a1, a2, a3).v128()
 }
 
 /// Materializes a SIMD value from the provided operands.
@@ -864,7 +864,7 @@ pub const fn f32x4(a0: f32, a1: f32, a2: f32, a3: f32) -> v128 {
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 #[rustc_const_stable(feature = "wasm_simd_const", since = "1.56.0")]
 pub const fn f64x2(a0: f64, a1: f64) -> v128 {
-    simd::f64x2(a0, a1).v128()
+    simd::f64x2::new(a0, a1).v128()
 }
 
 /// Returns a new vector with lanes selected from the lanes of the two input
@@ -2183,7 +2183,7 @@ pub fn f64x2_ge(a: v128, b: v128) -> v128 {
 #[doc(alias("v128.not"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn v128_not(a: v128) -> v128 {
-    unsafe { simd_xor(a.as_i64x2(), simd::i64x2(!0, !0)).v128() }
+    unsafe { simd_xor(a.as_i64x2(), simd::i64x2::new(!0, !0)).v128() }
 }
 
 /// Performs a bitwise and of the two input 128-bit vectors, returning the
@@ -2206,7 +2206,13 @@ pub fn v128_and(a: v128, b: v128) -> v128 {
 #[doc(alias("v128.andnot"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn v128_andnot(a: v128, b: v128) -> v128 {
-    unsafe { simd_and(a.as_i64x2(), simd_xor(b.as_i64x2(), simd::i64x2(-1, -1))).v128() }
+    unsafe {
+        simd_and(
+            a.as_i64x2(),
+            simd_xor(b.as_i64x2(), simd::i64x2::new(-1, -1)),
+        )
+        .v128()
+    }
 }
 
 /// Performs a bitwise or of the two input 128-bit vectors, returning the

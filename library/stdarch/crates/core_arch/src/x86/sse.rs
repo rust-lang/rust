@@ -1211,7 +1211,7 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[stable(feature = "simd_x86_mm_loadu_si64", since = "1.46.0")]
 pub unsafe fn _mm_loadu_si64(mem_addr: *const u8) -> __m128i {
-    transmute(i64x2(ptr::read_unaligned(mem_addr as *const i64), 0))
+    transmute(i64x2::new(ptr::read_unaligned(mem_addr as *const i64), 0))
 }
 
 /// Stores the lowest 32 bit float of `a` into memory.
