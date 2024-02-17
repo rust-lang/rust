@@ -701,33 +701,30 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
     let attrs = attrs
-        .into_iter()
         .filter(|attr| attr.name_or_empty() == sym::rustc_autodiff)
         .collect::<Vec<_>>();
 
-    if !attrs.is_empty() {
-        dbg!("autodiff_attrs amount = {}", attrs.len());
-    }
-
     // check for exactly one autodiff attribute on extern block
-    let msg_once = "autodiff attribute can only be applied once";
-    let attr = match &attrs[..] {
-        &[] => return AutoDiffAttrs::inactive(),
-        &[elm] => elm,
-        x => {
+    let msg_once = "cg_ssa: autodiff attribute can only be applied once";
+    let attr = match attrs.len() {
+        0 => return AutoDiffAttrs::inactive(),
+        1 => attrs.get(0).unwrap(),
+        _ => {
             tcx.sess
-                .struct_span_err(x[1].span, msg_once)
-                .span_label(x[1].span, "more than one")
+                .struct_span_err(attrs[1].span, msg_once)
+                .span_label(attrs[1].span, "more than one")
                 .emit();
-
             return AutoDiffAttrs::inactive();
         }
     };
+    dbg!("autodiff_attr = {:?}", &attr);
 
     let list = attr.meta_item_list().unwrap_or_default();
+    dbg!("autodiff_attrs list = {:?}", &list);
 
     // empty autodiff attribute macros (i.e. `#[autodiff]`) are used to mark source functions
     if list.len() == 0 {
+        dbg!("autodiff_attrs: source");
         return AutoDiffAttrs::source();
     }
 

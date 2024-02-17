@@ -702,6 +702,7 @@ pub(crate) unsafe fn enzyme_ad(
     diag_handler: &DiagCtxt,
     item: AutoDiffItem,
 ) -> Result<(), FatalError> {
+    dbg!("\n\n\n\n\n\n AUTO DIFF \n");
     let autodiff_mode = item.attrs.mode;
     let rust_name = item.source;
     let rust_name2 = &item.target;

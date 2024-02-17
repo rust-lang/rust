@@ -852,7 +852,6 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     input_tts: Vec<TypeTree>,
     output_tt: TypeTree,
 ) -> &Value {
-    let mut ret_primary_ret = false;
     let ret_activity = cdiffe_from(ret_diffactivity);
     assert!(ret_activity != CDIFFE_TYPE::DFT_OUT_DIFF);
     let mut input_activity: Vec<CDIFFE_TYPE> = vec![];
@@ -866,17 +865,12 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
         input_activity.push(act);
     }
 
-    if ret_activity == CDIFFE_TYPE::DFT_DUP_ARG {
-        if ret_primary_ret != true {
-            dbg!("overwriting ret_primary_ret!");
-        }
-        ret_primary_ret = true;
-    } else if ret_activity == CDIFFE_TYPE::DFT_DUP_NONEED {
-        if ret_primary_ret != false {
-            dbg!("overwriting ret_primary_ret!");
-        }
-        ret_primary_ret = false;
-    }
+    let ret_primary_ret = match ret_activity {
+        CDIFFE_TYPE::DFT_CONSTANT => true,
+        CDIFFE_TYPE::DFT_DUP_ARG => true,
+        CDIFFE_TYPE::DFT_DUP_NONEED => false,
+        _ => panic!("Implementation error in enzyme_rust_forward_diff."),
+    };
 
     let mut args_tree = input_tts.iter().map(|x| x.inner).collect::<Vec<_>>();
     //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
@@ -916,7 +910,6 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     )
 }
 
-#[allow(dead_code)]
 pub(crate) unsafe fn enzyme_rust_reverse_diff(
     logic_ref: EnzymeLogicRef,
     type_analysis: EnzymeTypeAnalysisRef,
@@ -928,7 +921,7 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
 ) -> &Value {
     let (primary_ret, ret_activity) = match ret_activity {
         DiffActivity::Const => (true, CDIFFE_TYPE::DFT_CONSTANT),
-        DiffActivity::Active => (true, CDIFFE_TYPE::DFT_DUP_ARG),
+        DiffActivity::Active => (true, CDIFFE_TYPE::DFT_OUT_DIFF),
         DiffActivity::None => (false, CDIFFE_TYPE::DFT_CONSTANT),
         _ => panic!("Invalid return activity"),
     };
@@ -962,6 +955,9 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
         KnownValues: known_values.as_mut_ptr(),
     };
 
+    dbg!(&primary_ret);
+    dbg!(&ret_activity);
+    dbg!(&input_activity);
     let res = EnzymeCreatePrimalAndGradient(
         logic_ref, // Logic
         std::ptr::null(),

@@ -412,6 +412,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn expr_loop(&self, sp: Span, block: P<ast::Block>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Loop(block, None, sp))
     }
+    pub fn expr_asm(&self, sp: Span, expr: P<ast::InlineAsm>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::InlineAsm(expr))
+    }
 
     pub fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr> {
         self.expr_call_global(

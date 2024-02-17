@@ -91,7 +91,7 @@ pub fn expand(
         new_decl_span,
         idents,
     );
-    let d_ident = meta_item_vec[0].meta_item().unwrap().path.segments[0].ident;
+    let d_ident = first_ident(&meta_item_vec[0]);
 
     // The first element of it is the name of the function to be generated
     let asdf = ItemKind::Fn(Box::new(ast::Fn {
@@ -102,11 +102,12 @@ pub fn expand(
     }));
     let mut rustc_ad_attr =
         P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
-    let attr: ast::Attribute = ast::Attribute {
+    let mut attr: ast::Attribute = ast::Attribute {
         kind: ast::AttrKind::Normal(rustc_ad_attr.clone()),
-        id: ast::AttrId::from_u32(0),
+        //id: ast::DUMMY_TR_ID,
+        id: ast::AttrId::from_u32(12341), // TODO: fix
         style: ast::AttrStyle::Outer,
-        span: span,
+        span,
     };
     orig_item.attrs.push(attr.clone());
 
@@ -116,21 +117,15 @@ pub fn expand(
         delim: rustc_ast::token::Delimiter::Parenthesis,
         tokens: ts,
     });
-    let attr2: ast::Attribute = ast::Attribute {
-        kind: ast::AttrKind::Normal(rustc_ad_attr),
-        id: ast::AttrId::from_u32(0),
-        style: ast::AttrStyle::Outer,
-        span: span,
-    };
-    let attr_vec: rustc_ast::AttrVec = thin_vec![attr2];
-    let d_fn = ecx.item(span, d_ident, attr_vec, asdf);
+    attr.kind = ast::AttrKind::Normal(rustc_ad_attr);
+    let d_fn = ecx.item(span, d_ident, thin_vec![attr], asdf);
 
-    let orig_annotatable = Annotatable::Item(orig_item.clone());
+    let orig_annotatable = Annotatable::Item(orig_item);
     let d_annotatable = Annotatable::Item(d_fn);
     return vec![orig_annotatable, d_annotatable];
 }
 
-// shadow arguments must be mutable references or ptrs, because Enzyme will write into them.
+// shadow arguments in reverse mode must be mutable references or ptrs, because Enzyme will write into them.
 #[cfg(llvm_enzyme)]
 fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
     let mut ty = ty.clone();
@@ -165,6 +160,25 @@ fn gen_enzyme_body(
 ) -> P<ast::Block> {
     let blackbox_path = ecx.std_path(&[Symbol::intern("hint"), Symbol::intern("black_box")]);
     let empty_loop_block = ecx.block(span, ThinVec::new());
+    let noop = ast::InlineAsm {
+        template: vec![ast::InlineAsmTemplatePiece::String("NOP".to_string())],
+        template_strs: Box::new([]),
+        operands: vec![],
+        clobber_abis: vec![],
+        options: ast::InlineAsmOptions::PURE & ast::InlineAsmOptions::NOMEM,
+        line_spans: vec![],
+    };
+    let noop_expr = ecx.expr_asm(span, P(noop));
+    let unsf = ast::BlockCheckMode::Unsafe(ast::UnsafeSource::CompilerGenerated);
+    let unsf_block = ast::Block {
+        stmts: thin_vec![ecx.stmt_semi(noop_expr)],
+        id: ast::DUMMY_NODE_ID,
+        tokens: None,
+        rules: unsf,
+        span,
+        could_be_bare_literal: false,
+    };
+    let unsf_expr = ecx.expr_block(P(unsf_block));
     let loop_expr = ecx.expr_loop(span, empty_loop_block);
     let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
     let primal_call = gen_primal_call(ecx, span, primal, idents);
@@ -185,7 +199,7 @@ fn gen_enzyme_body(
     );
 
     let mut body = ecx.block(span, ThinVec::new());
-    body.stmts.push(ecx.stmt_semi(primal_call));
+    body.stmts.push(ecx.stmt_semi(unsf_expr));
     body.stmts.push(ecx.stmt_semi(black_box_primal_call));
     body.stmts.push(ecx.stmt_semi(black_box_remaining_args));
     body.stmts.push(ecx.stmt_expr(loop_expr));
@@ -234,7 +248,11 @@ fn gen_enzyme_decl(
             }
             DiffActivity::Duplicated | DiffActivity::Dual => {
                 let mut shadow_arg = arg.clone();
-                shadow_arg.ty = P(assure_mut_ref(&arg.ty));
+                // We += into the shadow in reverse mode.
+                // Otherwise copy mutability of the original argument.
+                if activity == &DiffActivity::Duplicated {
+                    shadow_arg.ty = P(assure_mut_ref(&arg.ty));
+                }
                 // adjust name depending on mode
                 let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                     ident.name
@@ -242,7 +260,6 @@ fn gen_enzyme_decl(
                     dbg!(&shadow_arg.pat);
                     panic!("not an ident?");
                 };
-                //old_names.push(old_name.to_string());
                 let name: String = match x.mode {
                     DiffMode::Reverse => format!("d{}", old_name),
                     DiffMode::Forward => format!("b{}", old_name),

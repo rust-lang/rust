@@ -255,9 +255,11 @@ where
             export_generics,
         );
 
-        //if visibility == Visibility::Hidden && can_be_internalized {
-        let autodiff_active =
-            characteristic_def_id.map(|x| cx.tcx.autodiff_attrs(x).is_active()).unwrap_or(false);
+        // We can't differentiate something that got inlined.
+        let autodiff_active = match characteristic_def_id {
+            Some(def_id) => cx.tcx.autodiff_attrs(def_id).is_active(),
+            None => false,
+        };
 
         if !autodiff_active && visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
@@ -1166,6 +1168,10 @@ fn collect_and_partition_mono_items(
         .filter_map(|(item, instance)| {
             let target_id = instance.def_id();
             let target_attrs = tcx.autodiff_attrs(target_id);
+            if target_attrs.is_source() {
+                dbg!("source");
+                dbg!(&target_attrs);
+            }
             if !target_attrs.apply_autodiff() {
                 return None;
             }
