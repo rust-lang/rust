@@ -2,7 +2,7 @@
 
 use std::iter::repeat;
 
-use rustc_ast::{ast, MatchKind, ptr};
+use rustc_ast::{ast, ptr, MatchKind};
 use rustc_span::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
@@ -72,8 +72,7 @@ pub(crate) fn rewrite_match(
     shape: Shape,
     span: Span,
     attrs: &[ast::Attribute],
-    // TODO: Use this
-    _: MatchKind,
+    match_kind: MatchKind,
 ) -> Option<String> {
     // Do not take the rhs overhead from the upper expressions into account
     // when rewriting match condition.
@@ -133,15 +132,27 @@ pub(crate) fn rewrite_match(
         }
     } else {
         let span_after_cond = mk_sp(cond.span.hi(), span.hi());
-        Some(format!(
-            "match {}{}{{\n{}{}{}\n{}}}",
-            cond_str,
-            block_sep,
-            inner_attrs_str,
-            nested_indent_str,
-            rewrite_match_arms(context, arms, shape, span_after_cond, open_brace_pos)?,
-            shape.indent.to_string(context.config),
-        ))
+
+        match match_kind {
+            MatchKind::Prefix => Some(format!(
+                "match {}{}{{\n{}{}{}\n{}}}",
+                cond_str,
+                block_sep,
+                inner_attrs_str,
+                nested_indent_str,
+                rewrite_match_arms(context, arms, shape, span_after_cond, open_brace_pos)?,
+                shape.indent.to_string(context.config),
+            )),
+            MatchKind::Postfix => Some(format!(
+                "{}.match{}{{\n{}{}{}\n{}}}",
+                cond_str,
+                block_sep,
+                inner_attrs_str,
+                nested_indent_str,
+                rewrite_match_arms(context, arms, shape, span_after_cond, open_brace_pos)?,
+                shape.indent.to_string(context.config),
+            )),
+        }
     }
 }
 

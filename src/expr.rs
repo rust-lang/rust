@@ -3,7 +3,7 @@ use std::cmp::min;
 
 use itertools::Itertools;
 use rustc_ast::token::{Delimiter, Lit, LitKind};
-use rustc_ast::{ast, MatchKind, ptr, token, ForLoopKind};
+use rustc_ast::{ast, ptr, token, ForLoopKind, MatchKind};
 use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
