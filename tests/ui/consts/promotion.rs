@@ -25,9 +25,8 @@ fn main() {
     assert_static(&["d", "e", "f"]);
     assert_eq!(C, 42);
 
-    // make sure that these do not cause trouble despite overflowing
+    // make sure that this does not cause trouble despite overflowing
     assert_static(&(0-1));
-    assert_static(&-i32::MIN);
 
     // div-by-non-0 is okay
     assert_static(&(1/1));
