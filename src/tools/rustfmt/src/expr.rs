@@ -3,7 +3,7 @@ use std::cmp::min;
 
 use itertools::Itertools;
 use rustc_ast::token::{Delimiter, Lit, LitKind};
-use rustc_ast::{ast, ptr, token, ForLoopKind};
+use rustc_ast::{ast, MatchKind, ptr, token, ForLoopKind};
 use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
@@ -170,8 +170,8 @@ pub(crate) fn format_expr(
                 }
             }
         }
-        ast::ExprKind::Match(ref cond, ref arms) => {
-            rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs)
+        ast::ExprKind::Match(ref cond, ref arms, kind) => {
+            rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs, kind)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
             rewrite_path(context, PathContext::Expr, qself, path, shape)
@@ -625,7 +625,7 @@ pub(crate) fn rewrite_cond(
     shape: Shape,
 ) -> Option<String> {
     match expr.kind {
-        ast::ExprKind::Match(ref cond, _) => {
+        ast::ExprKind::Match(ref cond, _, MatchKind::Prefix) => {
             // `match `cond` {`
             let cond_shape = match context.config.indent_style() {
                 IndentStyle::Visual => shape.shrink_left(6).and_then(|s| s.sub_width(2))?,

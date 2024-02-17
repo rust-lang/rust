@@ -181,7 +181,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                 }),
                 ExprKind::TryBlock(body) => self.lower_expr_try_block(body),
-                ExprKind::Match(expr, arms) => hir::ExprKind::Match(
+                ExprKind::Match(expr, arms, _) => hir::ExprKind::Match(
                     self.lower_expr(expr),
                     self.arena.alloc_from_iter(arms.iter().map(|x| self.lower_arm(x))),
                     hir::MatchSource::Normal,
