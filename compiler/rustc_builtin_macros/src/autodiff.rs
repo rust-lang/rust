@@ -102,6 +102,25 @@ pub fn expand(
     }));
     let mut rustc_ad_attr =
         P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
+    let ts2: Vec<TokenTree> = vec![
+            TokenTree::Token(
+            Token::new(TokenKind::Ident(sym::never, false), span),
+            Spacing::Joint,
+        )];
+    let never_arg = ast::DelimArgs {
+        dspan: ast::tokenstream::DelimSpan::from_single(span),
+        delim: ast::token::Delimiter::Parenthesis,
+        tokens: ast::tokenstream::TokenStream::from_iter(ts2),
+    };
+    let inline_item = ast::AttrItem {
+        path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
+        args: ast::AttrArgs::Delimited(never_arg),
+        tokens: None,
+    };
+    let inline_never_attr = P(ast::NormalAttr {
+        item: inline_item,
+        tokens: None,
+    });
     let mut attr: ast::Attribute = ast::Attribute {
         kind: ast::AttrKind::Normal(rustc_ad_attr.clone()),
         //id: ast::DUMMY_TR_ID,
@@ -109,9 +128,19 @@ pub fn expand(
         style: ast::AttrStyle::Outer,
         span,
     };
+    let inline_never : ast::Attribute = ast::Attribute {
+        kind: ast::AttrKind::Normal(inline_never_attr),
+        //id: ast::DUMMY_TR_ID,
+        id: ast::AttrId::from_u32(12342), // TODO: fix
+        style: ast::AttrStyle::Outer,
+        span,
+    };
     // don't add it multiple times:
-    if !orig_item.iter().any(|a| a.id == attr.id) {
+    if !orig_item.attrs.iter().any(|a| a.id == attr.id) {
         orig_item.attrs.push(attr.clone());
+    }
+    if !orig_item.attrs.iter().any(|a| a.id == inline_never.id) {
+        orig_item.attrs.push(inline_never);
     }
 
     // Now update for d_fn
