@@ -81,7 +81,6 @@ mod traits;
 mod types;
 mod unit_bindings;
 mod unused;
-mod rfc3550_range;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
@@ -116,6 +115,9 @@ use traits::*;
 use types::*;
 use unit_bindings::*;
 use unused::*;
+
+// Data gathering for RFC 3550
+mod rfc3550_range;
 use rfc3550_range::*;
 
 /// Useful for other parts of the compiler / Clippy.
