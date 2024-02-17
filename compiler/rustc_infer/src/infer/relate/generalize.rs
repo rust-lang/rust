@@ -1,5 +1,8 @@
 use std::mem;
 
+use crate::infer::nll_relate::TypeRelatingDelegate;
+use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind, TypeVariableValue};
+use crate::infer::{InferCtxt, ObligationEmittingRelation, RegionVariableOrigin};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
@@ -7,17 +10,204 @@ use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::MaxUniverse;
-use rustc_middle::ty::{self, InferConst, Term, Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{AliasRelationDirection, InferConst, Term, TypeVisitable, TypeVisitableExt};
 use rustc_span::Span;
 
-use crate::infer::nll_relate::TypeRelatingDelegate;
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind, TypeVariableValue};
-use crate::infer::{InferCtxt, RegionVariableOrigin};
+impl<'tcx> InferCtxt<'tcx> {
+    /// The idea is that we should ensure that the type variable `target_vid`
+    /// is equal to, a subtype of, or a supertype of `source_ty`.
+    ///
+    /// For this, we will instantiate `target_vid` with a *generalized* version
+    /// of `source_ty`. Generalization introduces other inference variables wherever
+    /// subtyping could occur. This also does the occurs checks, detecting whether
+    /// instantiating `target_vid` would result in a cyclic type. We eagerly error
+    /// in this case.
+    #[instrument(skip(self, relation, target_is_expected), level = "debug")]
+    pub(super) fn instantiate_ty_var<R: ObligationEmittingRelation<'tcx>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: ty::TyVid,
+        ambient_variance: ty::Variance,
+        source_ty: Ty<'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        debug_assert!(self.inner.borrow_mut().type_variables().probe(target_vid).is_unknown());
+
+        // Generalize `source_ty` depending on the current variance. As an example, assume
+        // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
+        // variable.
+        //
+        // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
+        // region/type inference variables.
+        //
+        // We then relate `generalized_ty <: source_ty`,adding constraints like `'x: '?2` and `?1 <: ?3`.
+        let Generalization { value_may_be_infer: generalized_ty, has_unconstrained_ty_var } =
+            generalize(
+                self,
+                &mut CombineDelegate { infcx: self, span: relation.span() },
+                source_ty,
+                target_vid,
+                ambient_variance,
+            )?;
+
+        // Constrain `b_vid` to the generalized type `generalized_ty`.
+        if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
+            self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
+        } else {
+            self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
+        }
+
+        // See the comment on `Generalization::has_unconstrained_ty_var`.
+        if has_unconstrained_ty_var {
+            relation.register_predicates([ty::ClauseKind::WellFormed(generalized_ty.into())]);
+        }
+
+        // Finally, relate `generalized_ty` to `source_ty`, as described in previous comment.
+        //
+        // FIXME(#16847): This code is non-ideal because all these subtype
+        // relations wind up attributed to the same spans. We need
+        // to associate causes/spans with each of the relations in
+        // the stack to get this right.
+        if generalized_ty.is_ty_var() {
+            // This happens for cases like `<?0 as Trait>::Assoc == ?0`.
+            // We can't instantiate `?0` here as that would result in a
+            // cyclic type. We instead delay the unification in case
+            // the alias can be normalized to something which does not
+            // mention `?0`.
+            if self.next_trait_solver() {
+                let (lhs, rhs, direction) = match ambient_variance {
+                    ty::Variance::Invariant => {
+                        (generalized_ty.into(), source_ty.into(), AliasRelationDirection::Equate)
+                    }
+                    ty::Variance::Covariant => {
+                        (generalized_ty.into(), source_ty.into(), AliasRelationDirection::Subtype)
+                    }
+                    ty::Variance::Contravariant => {
+                        (source_ty.into(), generalized_ty.into(), AliasRelationDirection::Subtype)
+                    }
+                    ty::Variance::Bivariant => unreachable!("bivariant generalization"),
+                };
+
+                relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
+            } else {
+                match source_ty.kind() {
+                    &ty::Alias(ty::Projection, data) => {
+                        // FIXME: This does not handle subtyping correctly, we could
+                        // instead create a new inference variable `?normalized_source`, emitting
+                        // `Projection(normalized_source, ?ty_normalized)` and `?normalized_source <: generalized_ty`.
+                        relation.register_predicates([ty::ProjectionPredicate {
+                            projection_ty: data,
+                            term: generalized_ty.into(),
+                        }]);
+                    }
+                    // The old solver only accepts projection predicates for associated types.
+                    ty::Alias(ty::Inherent | ty::Weak | ty::Opaque, _) => {
+                        return Err(TypeError::CyclicTy(source_ty));
+                    }
+                    _ => bug!("generalized `{source_ty:?} to infer, not an alias"),
+                }
+            }
+        } else {
+            // HACK: make sure that we `a_is_expected` continues to be
+            // correct when relating the generalized type with the source.
+            if target_is_expected == relation.a_is_expected() {
+                relation.relate_with_variance(
+                    ambient_variance,
+                    ty::VarianceDiagInfo::default(),
+                    generalized_ty,
+                    source_ty,
+                )?;
+            } else {
+                relation.relate_with_variance(
+                    ambient_variance.xform(ty::Contravariant),
+                    ty::VarianceDiagInfo::default(),
+                    source_ty,
+                    generalized_ty,
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Instantiates the const variable `target_vid` with the given constant.
+    ///
+    /// This also tests if the given const `ct` contains an inference variable which was previously
+    /// unioned with `target_vid`. If this is the case, inferring `target_vid` to `ct`
+    /// would result in an infinite type as we continuously replace an inference variable
+    /// in `ct` with `ct` itself.
+    ///
+    /// This is especially important as unevaluated consts use their parents generics.
+    /// They therefore often contain unused args, making these errors far more likely.
+    ///
+    /// A good example of this is the following:
+    ///
+    /// ```compile_fail,E0308
+    /// #![feature(generic_const_exprs)]
+    ///
+    /// fn bind<const N: usize>(value: [u8; N]) -> [u8; 3 + 4] {
+    ///     todo!()
+    /// }
+    ///
+    /// fn main() {
+    ///     let mut arr = Default::default();
+    ///     arr = bind(arr);
+    /// }
+    /// ```
+    ///
+    /// Here `3 + 4` ends up as `ConstKind::Unevaluated` which uses the generics
+    /// of `fn bind` (meaning that its args contain `N`).
+    ///
+    /// `bind(arr)` now infers that the type of `arr` must be `[u8; N]`.
+    /// The assignment `arr = bind(arr)` now tries to equate `N` with `3 + 4`.
+    ///
+    /// As `3 + 4` contains `N` in its args, this must not succeed.
+    ///
+    /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn instantiate_const_var(
+        &self,
+        target_vid: ty::ConstVid,
+        source_ct: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        let span = match self.inner.borrow_mut().const_unification_table().probe_value(target_vid) {
+            ConstVariableValue::Known { value } => {
+                bug!("instantiating a known const var: {target_vid:?} {value} {source_ct}")
+            }
+            ConstVariableValue::Unknown { origin, universe: _ } => origin.span,
+        };
+        // FIXME(generic_const_exprs): Occurs check failures for unevaluated
+        // constants and generic expressions are not yet handled correctly.
+        let Generalization { value_may_be_infer: generalized_ct, has_unconstrained_ty_var } =
+            generalize(
+                self,
+                &mut CombineDelegate { infcx: self, span },
+                source_ct,
+                target_vid,
+                ty::Variance::Invariant,
+            )?;
+
+        debug_assert!(!generalized_ct.is_ct_infer());
+        if has_unconstrained_ty_var {
+            span_bug!(span, "unconstrained ty var when generalizing `{source_ct:?}`");
+        }
+
+        self.inner
+            .borrow_mut()
+            .const_unification_table()
+            .union_value(target_vid, ConstVariableValue::Known { value: generalized_ct });
+
+        // FIXME(generic_const_exprs): We have to make sure we actually equate
+        // `generalized_ct` and `source_ct` here.`
+        Ok(generalized_ct)
+    }
+}
 
 /// Attempts to generalize `term` for the type variable `for_vid`.
 /// This checks for cycles -- that is, whether the type `term`
 /// references `for_vid`.
-pub fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Relate<'tcx>>(
+pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Relate<'tcx>>(
     infcx: &InferCtxt<'tcx>,
     delegate: &mut D,
     term: T,

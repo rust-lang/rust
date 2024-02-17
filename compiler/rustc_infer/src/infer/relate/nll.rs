@@ -670,6 +670,10 @@ impl<'tcx, D> ObligationEmittingRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
+    fn span(&self) -> Span {
+        self.delegate.span()
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
     }
