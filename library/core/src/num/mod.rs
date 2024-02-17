@@ -1442,18 +1442,21 @@ pub fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> boo
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
 
-fn check_positivity(src: &str, is_signed_ty: bool) -> Option<(&[u8], bool)> {
+fn check_positivity(src: &str, is_signed_ty: bool) -> Result<(&[u8], bool), ParseIntError> {
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
     // and cast them to chars. .to_digit() will safely return None for anything
     // other than a valid ascii digit for the given radix, including the first-byte
     // of multi-byte sequences
     let src = src.as_bytes();
 
-    match src[0] {
-        b'+' | b'-' if src[1..].is_empty() => None,
-        b'+' => Some((&src[1..], true)),
-        b'-' if is_signed_ty => Some((&src[1..], false)),
-        _ => Some((src, true)),
+    match src.get(0) {
+        None => Err(ParseIntError { kind: IntErrorKind::Empty }),
+        Some(b'+' | b'-') if src[1..].is_empty() => {
+            Err(ParseIntError { kind: IntErrorKind::InvalidDigit })
+        }
+        Some(b'+') => Ok((&src[1..], true)),
+        Some(b'-') if is_signed_ty => Ok((&src[1..], false)),
+        Some(_) => Ok((src, true)),
     }
 }
 
@@ -1466,14 +1469,8 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}",
     );
 
-    if src.is_empty() {
-        return Err(PIE { kind: Empty });
-    }
-
     let is_signed_ty = T::from_u32(0) > T::MIN;
-    let Some((digits, is_positive)) = check_positivity(src, is_signed_ty) else {
-        return Err(PIE { kind: InvalidDigit });
-    };
+    let (digits, is_positive) = check_positivity(src, is_signed_ty)?;
 
     let mut result = T::from_u32(0);
 
