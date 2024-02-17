@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -39,6 +40,16 @@ impl Translate for SilentEmitter {
 
     fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
         panic!("silent emitter attempted to translate a diagnostic");
+    }
+
+    // Override `translate_message` for the silent emitter because eager translation of
+    // subdiagnostics result in a call to this.
+    fn translate_message<'a>(
+        &'a self,
+        message: &'a rustc_errors::DiagnosticMessage,
+        _: &'a rustc_errors::translation::FluentArgs<'_>,
+    ) -> Result<Cow<'_, str>, rustc_errors::error::TranslateError<'_>> {
+        rustc_errors::emitter::silent_translate(message)
     }
 }
 
