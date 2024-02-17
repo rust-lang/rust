@@ -205,7 +205,7 @@ pub(super) fn builtin(
                 Vec::new()
             };
 
-            let is_from_cargo = std::env::var_os("CARGO").is_some();
+            let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
             let mut is_feature_cfg = name == sym::feature;
 
             if is_feature_cfg && is_from_cargo {
@@ -340,7 +340,7 @@ pub(super) fn builtin(
                 .copied()
                 .flatten()
                 .collect();
-            let is_from_cargo = std::env::var_os("CARGO").is_some();
+            let is_from_cargo = rustc_session::utils::was_invoked_from_cargo();
 
             // Show the full list if all possible values for a given name, but don't do it
             // for names as the possibilities could be very long

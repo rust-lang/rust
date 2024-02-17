@@ -1,7 +1,10 @@
 use crate::session::Session;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_fs_util::try_canonicalize;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::OnceLock,
+};
 
 impl Session {
     pub fn timer(&self, what: &'static str) -> VerboseTimingGuard<'_> {
@@ -157,4 +160,19 @@ pub fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     }
 
     if !result.is_empty() { Some((result, excluded_cargo_defaults)) } else { None }
+}
+
+/// Returns whenever rustc was launched by Cargo as opposed to another build system.
+///
+/// To be used in diagnostics to avoid printing Cargo specific suggestions to other
+/// build systems (like Bazel, Buck2, Makefile, ...).
+pub fn was_invoked_from_cargo() -> bool {
+    static FROM_CARGO: OnceLock<bool> = OnceLock::new();
+
+    // To be able to detect Cargo, we use the simplest and least intrusive
+    // way: we check whenever the `CARGO_CRATE_NAME` env is set.
+    //
+    // Note that it is common in Makefiles to define the `CARGO` env even
+    // though we may not have been called by Cargo, so we avoid using it.
+    *FROM_CARGO.get_or_init(|| std::env::var_os("CARGO_CRATE_NAME").is_some())
 }

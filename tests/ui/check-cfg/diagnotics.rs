@@ -1,7 +1,7 @@
 //@ check-pass
 //@ revisions: cargo rustc
-//@ [rustc]unset-rustc-env:CARGO
-//@ [cargo]rustc-env:CARGO=/usr/bin/cargo
+//@ [rustc]unset-rustc-env:CARGO_CRATE_NAME
+//@ [cargo]rustc-env:CARGO_CRATE_NAME=foo
 //@ compile-flags: --check-cfg=cfg(feature,values("foo")) --check-cfg=cfg(no_values) -Z unstable-options
 
 #[cfg(featur)]

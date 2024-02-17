@@ -492,7 +492,7 @@ fn lock_directory(
                 lock_err,
                 session_dir,
                 is_unsupported_lock,
-                is_cargo: std::env::var_os("CARGO").map(|_| ()),
+                is_cargo: rustc_session::utils::was_invoked_from_cargo().then_some(()),
             }))
         }
     }
