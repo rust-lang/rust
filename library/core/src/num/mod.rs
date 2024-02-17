@@ -1442,14 +1442,28 @@ pub fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> boo
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
 
+fn check_positivity(src: &str, is_signed_ty: bool) -> Option<(&[u8], bool)> {
+    // all valid digits are ascii, so we will just iterate over the utf8 bytes
+    // and cast them to chars. .to_digit() will safely return None for anything
+    // other than a valid ascii digit for the given radix, including the first-byte
+    // of multi-byte sequences
+    let src = src.as_bytes();
+
+    match src[0] {
+        b'+' | b'-' if src[1..].is_empty() => None,
+        b'+' => Some((&src[1..], true)),
+        b'-' if is_signed_ty => Some((&src[1..], false)),
+        _ => Some((src, true)),
+    }
+}
+
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
 
     assert!(
         (2..=36).contains(&radix),
-        "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
-        radix
+        "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}",
     );
 
     if src.is_empty() {
@@ -1457,20 +1471,8 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     }
 
     let is_signed_ty = T::from_u32(0) > T::MIN;
-
-    // all valid digits are ascii, so we will just iterate over the utf8 bytes
-    // and cast them to chars. .to_digit() will safely return None for anything
-    // other than a valid ascii digit for the given radix, including the first-byte
-    // of multi-byte sequences
-    let src = src.as_bytes();
-
-    let (is_positive, digits) = match src[0] {
-        b'+' | b'-' if src[1..].is_empty() => {
-            return Err(PIE { kind: InvalidDigit });
-        }
-        b'+' => (true, &src[1..]),
-        b'-' if is_signed_ty => (false, &src[1..]),
-        _ => (true, src),
+    let Some((digits, is_positive)) = check_positivity(src, is_signed_ty) else {
+        return Err(PIE { kind: InvalidDigit });
     };
 
     let mut result = T::from_u32(0);
