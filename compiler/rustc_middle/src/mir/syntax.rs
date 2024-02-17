@@ -415,10 +415,8 @@ impl StatementKind<'_> {
 pub enum ExpectKind {
     /// condition is probably true
     True,
-
     /// condition is probably false
     False,
-
     /// condition is unpredictable by hardware
     Unpredictable,
 }
