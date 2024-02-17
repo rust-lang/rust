@@ -55,7 +55,7 @@ impl EarlyProps {
             &mut poisoned,
             testfile,
             rdr,
-            &mut |_, _, ln, _| {
+            &mut |HeaderLine { directive: ln, .. }| {
                 config.push_name_value_directive(ln, directives::AUX_BUILD, &mut props.aux, |r| {
                     r.trim().to_string()
                 });
@@ -330,8 +330,8 @@ impl TestProps {
                 &mut poisoned,
                 testfile,
                 file,
-                &mut |revision, _, ln, _| {
-                    if revision.is_some() && revision != cfg {
+                &mut |HeaderLine { header_revision, directive: ln, .. }| {
+                    if header_revision.is_some() && header_revision != cfg {
                         return;
                     }
 
@@ -678,7 +678,7 @@ fn iter_header<R: Read>(
     poisoned: &mut bool,
     testfile: &Path,
     rdr: R,
-    it: &mut dyn FnMut(Option<&str>, &str, &str, usize),
+    it: &mut dyn FnMut(HeaderLine<'_>),
 ) {
     iter_header_extra(mode, suite, poisoned, testfile, rdr, &[], it)
 }
@@ -801,6 +801,18 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "unset-rustc-env",
 ];
 
+/// Arguments passed to the callback in [`iter_header`].
+struct HeaderLine<'ln> {
+    /// Contents of the square brackets preceding this header, if present.
+    header_revision: Option<&'ln str>,
+    /// Raw line from the test file, including comment prefix and any revision.
+    original_line: &'ln str,
+    /// Remainder of the directive line, after the initial comment prefix
+    /// (`//` or `//@` or `#`) and revision (if any) have been stripped.
+    directive: &'ln str,
+    line_number: usize,
+}
+
 fn iter_header_extra(
     mode: Mode,
     suite: &str,
@@ -808,7 +820,7 @@ fn iter_header_extra(
     testfile: &Path,
     rdr: impl Read,
     extra_directives: &[&str],
-    it: &mut dyn FnMut(Option<&str>, &str, &str, usize),
+    it: &mut dyn FnMut(HeaderLine<'_>),
 ) {
     if testfile.is_dir() {
         return;
@@ -817,7 +829,7 @@ fn iter_header_extra(
     // Process any extra directives supplied by the caller (e.g. because they
     // are implied by the test mode), with a dummy line number of 0.
     for directive in extra_directives {
-        it(None, directive, directive, 0);
+        it(HeaderLine { header_revision: None, original_line: "", directive, line_number: 0 });
     }
 
     let comment = if testfile.extension().is_some_and(|e| e == "rs") {
@@ -843,14 +855,14 @@ fn iter_header_extra(
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
-        let orig_ln = &ln;
+        let original_line = &ln;
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
 
         // First try to accept `ui_test` style comments
-        } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
-            it(lncfg, orig_ln, ln, line_number);
+        } else if let Some((header_revision, directive)) = line_directive(comment, ln) {
+            it(HeaderLine { header_revision, original_line, directive, line_number });
         } else if mode == Mode::Ui && suite == "ui" && !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
@@ -1179,8 +1191,8 @@ pub fn make_test_description<R: Read>(
         path,
         src,
         extra_directives,
-        &mut |revision, og_ln, ln, line_number| {
-            if revision.is_some() && revision != cfg {
+        &mut |HeaderLine { header_revision, original_line, directive: ln, line_number }| {
+            if header_revision.is_some() && header_revision != cfg {
                 return;
             }
 
@@ -1204,7 +1216,7 @@ pub fn make_test_description<R: Read>(
                 };
             }
 
-            if let Some((_, post)) = og_ln.trim_start().split_once("//") {
+            if let Some((_, post)) = original_line.trim_start().split_once("//") {
                 let post = post.trim_start();
                 if post.starts_with("ignore-tidy")
                     && config.mode == Mode::Ui
