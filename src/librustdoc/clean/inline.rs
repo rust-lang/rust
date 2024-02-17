@@ -443,11 +443,13 @@ pub(crate) fn build_impl(
             return;
         }
 
-        if let Some(stab) = tcx.lookup_stability(did)
-            && stab.is_unstable()
-            && stab.feature == sym::rustc_private
-        {
-            return;
+        if !tcx.features().rustc_private && !cx.render_options.force_unstable_if_unmarked {
+            if let Some(stab) = tcx.lookup_stability(did)
+                && stab.is_unstable()
+                && stab.feature == sym::rustc_private
+            {
+                return;
+            }
         }
     }
 
@@ -477,8 +479,11 @@ pub(crate) fn build_impl(
                 return;
             }
 
-            if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.is_unstable() && stab.feature == sym::rustc_private {
+            if !tcx.features().rustc_private && !cx.render_options.force_unstable_if_unmarked {
+                if let Some(stab) = tcx.lookup_stability(did)
+                    && stab.is_unstable()
+                    && stab.feature == sym::rustc_private
+                {
                     return;
                 }
             }
