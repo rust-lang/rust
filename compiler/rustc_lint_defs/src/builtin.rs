@@ -89,7 +89,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
-        STATIC_MUT_REF,
+        STATIC_MUT_REFS,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -1769,7 +1769,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `static_mut_ref` lint checks for shared or mutable references
+    /// The `static_mut_refs` lint checks for shared or mutable references
     /// of mutable static inside `unsafe` blocks and `unsafe` functions.
     ///
     /// ### Example
@@ -1807,9 +1807,9 @@ declare_lint! {
     /// Shared or mutable references of mutable static are almost always a mistake and
     /// can lead to undefined behavior and various other problems in your code.
     ///
-    /// This lint is "warn" by default on editions up to 2021, from 2024 there is
+    /// This lint is "warn" by default on editions up to 2021, in 2024 there is
     /// a hard error instead.
-    pub STATIC_MUT_REF,
+    pub STATIC_MUT_REFS,
     Warn,
     "shared references or mutable references of mutable static is discouraged",
     @future_incompatible = FutureIncompatibleInfo {

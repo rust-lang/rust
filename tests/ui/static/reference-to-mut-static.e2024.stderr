@@ -1,5 +1,5 @@
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static.rs:16:18
+  --> $DIR/reference-to-mut-static.rs:16:18
    |
 LL |         let _y = &X;
    |                  ^^ shared reference to mutable static
@@ -11,7 +11,7 @@ LL |         let _y = addr_of!(X);
    |                  ~~~~~~~~~~~
 
 error[E0796]: creating a mutable reference to a mutable static
-  --> $DIR/reference-of-mut-static.rs:20:18
+  --> $DIR/reference-to-mut-static.rs:20:18
    |
 LL |         let _y = &mut X;
    |                  ^^^^^^ mutable reference to mutable static
@@ -23,7 +23,7 @@ LL |         let _y = addr_of_mut!(X);
    |                  ~~~~~~~~~~~~~~~
 
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static.rs:28:22
+  --> $DIR/reference-to-mut-static.rs:28:22
    |
 LL |         let ref _a = X;
    |                      ^ shared reference to mutable static
@@ -35,7 +35,7 @@ LL |         let ref _a = addr_of!(X);
    |                      ~~~~~~~~~~~
 
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static.rs:32:25
+  --> $DIR/reference-to-mut-static.rs:32:25
    |
 LL |         let (_b, _c) = (&X, &Y);
    |                         ^^ shared reference to mutable static
@@ -47,7 +47,7 @@ LL |         let (_b, _c) = (addr_of!(X), &Y);
    |                         ~~~~~~~~~~~
 
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static.rs:32:29
+  --> $DIR/reference-to-mut-static.rs:32:29
    |
 LL |         let (_b, _c) = (&X, &Y);
    |                             ^^ shared reference to mutable static
@@ -59,7 +59,7 @@ LL |         let (_b, _c) = (&X, addr_of!(Y));
    |                             ~~~~~~~~~~~
 
 error[E0796]: creating a shared reference to a mutable static
-  --> $DIR/reference-of-mut-static.rs:38:13
+  --> $DIR/reference-to-mut-static.rs:38:13
    |
 LL |         foo(&X);
    |             ^^ shared reference to mutable static
