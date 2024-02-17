@@ -55,8 +55,6 @@ impl Arch {
         match self {
             Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
             X86_64_macabi | Arm64_macabi => "macabi",
-            // x86_64-apple-ios is a simulator target, even though it isn't
-            // declared that way in the target like the other ones...
             I386_sim | Arm64_sim | X86_64_sim => "sim",
         }
     }

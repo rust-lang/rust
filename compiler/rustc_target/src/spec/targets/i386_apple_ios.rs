@@ -2,6 +2,8 @@ use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
+    // i386-apple-ios is a simulator target, even though it isn't declared
+    // that way in the target name like the other ones...
     let arch = Arch::I386_sim;
     Target {
         // Clang automatically chooses a more specific target based on
