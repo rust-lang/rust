@@ -1,6 +1,5 @@
 #![no_std]
 #![feature(
-    core_intrinsics,
     const_intrinsic_copy,
     const_refs_to_cell,
     const_maybe_uninit_as_mut_ptr,

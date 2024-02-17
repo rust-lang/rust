@@ -33,7 +33,7 @@ mod sealed {
 
         fn eq(self, other: Self) -> bool;
 
-        fn as_usize(self) -> usize;
+        fn to_usize(self) -> usize;
 
         type Unsigned: SimdElement;
 
@@ -65,7 +65,7 @@ macro_rules! impl_element {
             fn eq(self, other: Self) -> bool { self == other }
 
             #[inline]
-            fn as_usize(self) -> usize {
+            fn to_usize(self) -> usize {
                 self as usize
             }
 
@@ -394,7 +394,7 @@ where
         if min_index.eq(T::TRUE) {
             None
         } else {
-            Some(min_index.as_usize())
+            Some(min_index.to_usize())
         }
     }
 }
