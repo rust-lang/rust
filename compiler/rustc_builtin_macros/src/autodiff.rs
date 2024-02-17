@@ -109,7 +109,10 @@ pub fn expand(
         style: ast::AttrStyle::Outer,
         span,
     };
-    orig_item.attrs.push(attr.clone());
+    // don't add it multiple times:
+    if !orig_item.iter().any(|a| a.id == attr.id) {
+        orig_item.attrs.push(attr.clone());
+    }
 
     // Now update for d_fn
     rustc_ad_attr.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
