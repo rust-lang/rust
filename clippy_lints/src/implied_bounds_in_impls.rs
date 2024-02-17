@@ -2,7 +2,10 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use rustc_errors::{Applicability, SuggestionStyle};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{GenericArg, GenericBound, GenericBounds, ItemKind, TraitBoundModifier, TyKind, TypeBinding};
+use rustc_hir::{
+    GenericArg, GenericBound, GenericBounds, ItemKind, PredicateOrigin, TraitBoundModifier, TyKind, TypeBinding,
+    WherePredicate,
+};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, ClauseKind, Generics, Ty, TyCtxt};
@@ -326,6 +329,19 @@ fn check<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds<'tcx>) {
 }
 
 impl<'tcx> LateLintPass<'tcx> for ImpliedBoundsInImpls {
+    fn check_generics(&mut self, cx: &LateContext<'tcx>, generics: &rustc_hir::Generics<'tcx>) {
+        for predicate in generics.predicates {
+            if let WherePredicate::BoundPredicate(predicate) = predicate
+                // In theory, the origin doesn't really matter,
+                // we *could* also lint on explicit where clauses written out by the user,
+                // not just impl trait desugared ones, but that contradicts with the lint name...
+                && let PredicateOrigin::ImplTrait = predicate.origin
+            {
+                check(cx, predicate.bounds);
+            }
+        }
+    }
+
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &rustc_hir::Ty<'_>) {
         if let TyKind::OpaqueDef(item_id, ..) = ty.kind
             && let item = cx.tcx.hir().item(item_id)

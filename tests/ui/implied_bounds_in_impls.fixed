@@ -151,7 +151,7 @@ fn issue11880() {
     fn f5() -> impl Y<T = u32, U = String> {}
 }
 
-fn apit(_: impl Deref + DerefMut) {}
+fn apit(_: impl DerefMut) {}
 
 trait Rpitit {
     fn f() -> impl DerefMut;

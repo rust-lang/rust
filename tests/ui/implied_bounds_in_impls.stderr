@@ -229,6 +229,18 @@ LL +     fn f5() -> impl Y<T = u32, U = String> {}
    |
 
 error: this bound is already specified as the supertrait of `DerefMut`
+  --> tests/ui/implied_bounds_in_impls.rs:154:17
+   |
+LL | fn apit(_: impl Deref + DerefMut) {}
+   |                 ^^^^^
+   |
+help: try removing this bound
+   |
+LL - fn apit(_: impl Deref + DerefMut) {}
+LL + fn apit(_: impl DerefMut) {}
+   |
+
+error: this bound is already specified as the supertrait of `DerefMut`
   --> tests/ui/implied_bounds_in_impls.rs:157:20
    |
 LL |     fn f() -> impl Deref + DerefMut;
@@ -264,5 +276,5 @@ LL - type Tait = impl Deref + DerefMut;
 LL + type Tait = impl DerefMut;
    |
 
-error: aborting due to 22 previous errors
+error: aborting due to 23 previous errors
 
