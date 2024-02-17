@@ -33,7 +33,7 @@ mod sealed {
 
         fn eq(self, other: Self) -> bool;
 
-        fn as_usize(self) -> usize;
+        fn to_usize(self) -> usize;
 
         type Unsigned: SimdElement;
 
@@ -65,7 +65,7 @@ macro_rules! impl_element {
             fn eq(self, other: Self) -> bool { self == other }
 
             #[inline]
-            fn as_usize(self) -> usize {
+            fn to_usize(self) -> usize {
                 self as usize
             }
 
@@ -174,10 +174,7 @@ where
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
         // Safety: the caller must confirm this invariant
-        unsafe {
-            core::intrinsics::assume(<T as Sealed>::valid(value));
-            Self(mask_impl::Mask::from_int_unchecked(value))
-        }
+        unsafe { Self(mask_impl::Mask::from_int_unchecked(value)) }
     }
 
     /// Converts a vector of integers to a mask, where 0 represents `false` and -1
@@ -394,7 +391,7 @@ where
         if min_index.eq(T::TRUE) {
             None
         } else {
-            Some(min_index.as_usize())
+            Some(min_index.to_usize())
         }
     }
 }
