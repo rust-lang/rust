@@ -1,0 +1,4 @@
+note: Link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
+
+note: native-static-libs: 
+
