@@ -944,6 +944,21 @@ impl<T, A: Allocator> Rc<T, A> {
     /// is in fact equivalent to <code>[Rc::try_unwrap]\(this).[ok][Result::ok]()</code>.
     /// (Note that the same kind of equivalence does **not** hold true for
     /// [`Arc`](crate::sync::Arc), due to race conditions that do not apply to `Rc`!)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(3);
+    /// assert_eq!(Rc::into_inner(x), Some(3));
+    ///
+    /// let x = Rc::new(4);
+    /// let y = Rc::clone(&x);
+    ///
+    /// assert_eq!(Rc::into_inner(y), None);
+    /// assert_eq!(Rc::into_inner(x), Some(4));
+    /// ```
     #[inline]
     #[stable(feature = "rc_into_inner", since = "1.70.0")]
     pub fn into_inner(this: Self) -> Option<T> {
