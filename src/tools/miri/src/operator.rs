@@ -1,7 +1,5 @@
 use std::iter;
 
-use log::trace;
-
 use rand::{seq::IteratorRandom, Rng};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;

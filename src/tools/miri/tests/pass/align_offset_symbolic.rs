@@ -113,7 +113,7 @@ fn vtable() {
 
     let ptr: &dyn Send = &0;
     let parts: (*const (), *const u8) = unsafe { mem::transmute(ptr) };
-    let vtable = parts.1 ;
+    let vtable = parts.1;
     let offset = vtable.align_offset(mem::align_of::<TWOPTR>());
     let _vtable_aligned = vtable.wrapping_add(offset) as *const [TWOPTR; 0];
     // FIXME: we can't actually do the access since vtable pointers act like zero-sized allocations.

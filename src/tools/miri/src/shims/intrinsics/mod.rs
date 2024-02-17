@@ -3,8 +3,6 @@ mod simd;
 
 use std::iter;
 
-use log::trace;
-
 use rand::Rng;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::LayoutOf;

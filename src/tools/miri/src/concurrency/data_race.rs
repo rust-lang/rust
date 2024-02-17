@@ -466,7 +466,7 @@ impl MemoryCellClocks {
         index: VectorIdx,
         access_size: Size,
     ) -> Result<(), DataRace> {
-        log::trace!("Atomic read with vectors: {:#?} :: {:#?}", self, thread_clocks);
+        trace!("Atomic read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         let atomic = self.atomic_access(thread_clocks, access_size)?;
         atomic.read_vector.set_at_index(&thread_clocks.clock, index);
         // Make sure the last non-atomic write and all non-atomic reads were before this access.
@@ -485,7 +485,7 @@ impl MemoryCellClocks {
         index: VectorIdx,
         access_size: Size,
     ) -> Result<(), DataRace> {
-        log::trace!("Atomic write with vectors: {:#?} :: {:#?}", self, thread_clocks);
+        trace!("Atomic write with vectors: {:#?} :: {:#?}", self, thread_clocks);
         let atomic = self.atomic_access(thread_clocks, access_size)?;
         atomic.write_vector.set_at_index(&thread_clocks.clock, index);
         // Make sure the last non-atomic write and all non-atomic reads were before this access.
@@ -504,7 +504,7 @@ impl MemoryCellClocks {
         index: VectorIdx,
         current_span: Span,
     ) -> Result<(), DataRace> {
-        log::trace!("Unsynchronized read with vectors: {:#?} :: {:#?}", self, thread_clocks);
+        trace!("Unsynchronized read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
             thread_clocks.clock[index].span = current_span;
         }
@@ -533,7 +533,7 @@ impl MemoryCellClocks {
         write_type: NaWriteType,
         current_span: Span,
     ) -> Result<(), DataRace> {
-        log::trace!("Unsynchronized write with vectors: {:#?} :: {:#?}", self, thread_clocks);
+        trace!("Unsynchronized write with vectors: {:#?} :: {:#?}", self, thread_clocks);
         if !current_span.is_dummy() {
             thread_clocks.clock[index].span = current_span;
         }
@@ -743,7 +743,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                 &this.machine.threads,
                 current_span,
                 |index, mut clocks| {
-                    log::trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
+                    trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
 
                     // Apply data-race detection for the current fences
                     // this treats AcqRel and SeqCst as the same as an acquire
@@ -841,7 +841,7 @@ impl VClockAlloc {
     // Find an index, if one exists where the value
     // in `l` is greater than the value in `r`.
     fn find_gt_index(l: &VClock, r: &VClock) -> Option<VectorIdx> {
-        log::trace!("Find index where not {:?} <= {:?}", l, r);
+        trace!("Find index where not {:?} <= {:?}", l, r);
         let l_slice = l.as_slice();
         let r_slice = r.as_slice();
         l_slice
@@ -1270,7 +1270,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                 // Load and log the atomic operation.
                 // Note that atomic loads are possible even from read-only allocations, so `get_alloc_extra_mut` is not an option.
                 let alloc_meta = this.get_alloc_extra(alloc_id)?.data_race.as_ref().unwrap();
-                log::trace!(
+                trace!(
                     "Atomic op({}) with ordering {:?} on {:?} (size={})",
                     access.description(),
                     &atomic,
@@ -1311,11 +1311,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                 )?;
 
                 // Log changes to atomic memory.
-                if log::log_enabled!(log::Level::Trace) {
+                if tracing::enabled!(tracing::Level::TRACE) {
                     for (_offset, mem_clocks) in
                         alloc_meta.alloc_ranges.borrow().iter(base_offset, size)
                     {
-                        log::trace!(
+                        trace!(
                             "Updated atomic memory({:?}, size={}) to {:#?}",
                             place.ptr(),
                             size.bytes(),
@@ -1530,7 +1530,7 @@ impl GlobalState {
             vector_info.push(thread)
         };
 
-        log::trace!("Creating thread = {:?} with vector index = {:?}", thread, created_index);
+        trace!("Creating thread = {:?} with vector index = {:?}", thread, created_index);
 
         // Mark the chosen vector index as in use by the thread.
         thread_info[thread].vector_index = Some(created_index);

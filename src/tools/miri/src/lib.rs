@@ -63,6 +63,8 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+#[macro_use]
+extern crate tracing;
 
 // Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
 // files.

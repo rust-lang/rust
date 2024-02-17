@@ -7,9 +7,6 @@ use std::path::PathBuf;
 use std::task::Poll;
 use std::thread;
 
-use log::info;
-use rustc_middle::ty::Ty;
-
 use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
 use rustc_data_structures::fx::FxHashSet;
@@ -18,7 +15,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
     self,
     layout::{LayoutCx, LayoutOf},
-    TyCtxt,
+    Ty, TyCtxt,
 };
 use rustc_target::spec::abi::Abi;
 

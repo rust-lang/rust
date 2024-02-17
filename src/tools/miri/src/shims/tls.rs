@@ -4,8 +4,6 @@ use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
 use std::task::Poll;
 
-use log::trace;
-
 use rustc_middle::ty;
 use rustc_target::abi::{HasDataLayout, Size};
 use rustc_target::spec::abi::Abi;

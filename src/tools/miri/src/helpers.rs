@@ -3,8 +3,6 @@ use std::iter;
 use std::num::NonZero;
 use std::time::Duration;
 
-use log::trace;
-
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_hir::def::{DefKind, Namespace};

@@ -1,8 +1,6 @@
 use std::fmt::{self, Write};
 use std::num::NonZero;
 
-use log::trace;
-
 use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Level};
 use rustc_span::{SpanData, Symbol, DUMMY_SP};
 use rustc_target::abi::{Align, Size};
@@ -102,10 +100,7 @@ impl MachineStopType for TerminationInfo {
     }
     fn add_args(
         self: Box<Self>,
-        _: &mut dyn FnMut(
-            std::borrow::Cow<'static, str>,
-            rustc_errors::DiagnosticArgValue,
-        ),
+        _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue),
     ) {
     }
 }
@@ -290,7 +285,10 @@ pub fn report_error<'tcx, 'mir>(
                 ) =>
             {
                 ecx.handle_ice(); // print interpreter backtrace
-                bug!("This validation error should be impossible in Miri: {}", format_interp_error(ecx.tcx.dcx(), e));
+                bug!(
+                    "This validation error should be impossible in Miri: {}",
+                    format_interp_error(ecx.tcx.dcx(), e)
+                );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
             ResourceExhaustion(_) => "resource exhaustion",
@@ -304,7 +302,10 @@ pub fn report_error<'tcx, 'mir>(
             ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace
-                bug!("This error should be impossible in Miri: {}", format_interp_error(ecx.tcx.dcx(), e));
+                bug!(
+                    "This error should be impossible in Miri: {}",
+                    format_interp_error(ecx.tcx.dcx(), e)
+                );
             }
         };
         #[rustfmt::skip]

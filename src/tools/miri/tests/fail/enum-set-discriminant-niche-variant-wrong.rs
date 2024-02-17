@@ -4,11 +4,11 @@
 use std::intrinsics::mir::*;
 use std::num::NonZeroI32;
 
-// We define our own option type so that we can control the varian indices.
+// We define our own option type so that we can control the variant indices.
 #[allow(unused)]
 enum Option<T> {
-    None,
-    Some(T),
+    None,    // variant 0
+    Some(T), // variant 1
 }
 use Option::*;
 

@@ -5,16 +5,25 @@
 use std::io::Error;
 use std::{ptr, slice};
 
-fn test_mmap() {
+fn test_mmap<Offset: Default>(
+    mmap: unsafe extern "C" fn(
+        *mut libc::c_void,
+        libc::size_t,
+        libc::c_int,
+        libc::c_int,
+        libc::c_int,
+        Offset,
+    ) -> *mut libc::c_void,
+) {
     let page_size = page_size::get();
     let ptr = unsafe {
-        libc::mmap(
+        mmap(
             ptr::null_mut(),
             page_size,
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
             -1,
-            0,
+            Default::default(),
         )
     };
     assert!(!ptr.is_null());
@@ -35,40 +44,40 @@ fn test_mmap() {
 
     // Test all of our error conditions
     let ptr = unsafe {
-        libc::mmap(
+        mmap(
             ptr::null_mut(),
             page_size,
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_SHARED, // Can't be both private and shared
             -1,
-            0,
+            Default::default(),
         )
     };
     assert_eq!(ptr, libc::MAP_FAILED);
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 
     let ptr = unsafe {
-        libc::mmap(
+        mmap(
             ptr::null_mut(),
             0, // Can't map no memory
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
             -1,
-            0,
+            Default::default(),
         )
     };
     assert_eq!(ptr, libc::MAP_FAILED);
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 
     let ptr = unsafe {
-        libc::mmap(
+        mmap(
             ptr::invalid_mut(page_size * 64),
             page_size,
             libc::PROT_READ | libc::PROT_WRITE,
             // We don't support MAP_FIXED
             libc::MAP_PRIVATE | libc::MAP_ANONYMOUS | libc::MAP_FIXED,
             -1,
-            0,
+            Default::default(),
         )
     };
     assert_eq!(ptr, libc::MAP_FAILED);
@@ -77,13 +86,13 @@ fn test_mmap() {
     // We don't support protections other than read+write
     for prot in [libc::PROT_NONE, libc::PROT_EXEC, libc::PROT_READ, libc::PROT_WRITE] {
         let ptr = unsafe {
-            libc::mmap(
+            mmap(
                 ptr::null_mut(),
                 page_size,
                 prot,
                 libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
                 -1,
-                0,
+                Default::default(),
             )
         };
         assert_eq!(ptr, libc::MAP_FAILED);
@@ -93,13 +102,13 @@ fn test_mmap() {
     // We report an error for mappings whose length cannot be rounded up to a multiple of
     // the page size.
     let ptr = unsafe {
-        libc::mmap(
+        mmap(
             ptr::null_mut(),
             usize::MAX - 1,
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_ANONYMOUS,
             -1,
-            0,
+            Default::default(),
         )
     };
     assert_eq!(ptr, libc::MAP_FAILED);
@@ -163,7 +172,9 @@ fn test_mremap() {
 }
 
 fn main() {
-    test_mmap();
+    test_mmap(libc::mmap);
+    #[cfg(target_os = "linux")]
+    test_mmap(libc::mmap64);
     #[cfg(target_os = "linux")]
     test_mremap();
 }

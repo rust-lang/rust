@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::fmt;
 use std::num::NonZero;
 
-use log::trace;
 use smallvec::SmallVec;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};

@@ -1,7 +1,5 @@
 use std::{collections::hash_map::Entry, io::Write, iter, path::Path};
 
-use log::trace;
-
 use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_hir::{

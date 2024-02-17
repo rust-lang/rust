@@ -385,7 +385,7 @@ impl<'tcx> Stack {
             let upper = unique_range.end;
             for item in &mut self.borrows[lower..upper] {
                 if item.perm() == Permission::Unique {
-                    log::trace!("access: disabling item {:?}", item);
+                    trace!("access: disabling item {:?}", item);
                     visitor(*item)?;
                     item.set_permission(Permission::Disabled);
                     // Also update all copies of this item in the cache.

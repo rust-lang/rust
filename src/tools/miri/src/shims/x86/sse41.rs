@@ -57,10 +57,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                         this.write_immediate(*src_value, &dest)?;
                     } else {
                         // copy from `left`
-                        this.copy_op(
-                            &this.project_index(&left, i)?,
-                            &dest,
-                        )?;
+                        this.copy_op(&this.project_index(&left, i)?, &dest)?;
                     }
                 }
             }
