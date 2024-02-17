@@ -452,7 +452,6 @@ impl<'a> Parser<'a> {
         let mut expected = self
             .expected_tokens
             .iter()
-            .cloned()
             .filter(|token| {
                 // Filter out suggestions that suggest the same token which was found and deemed incorrect.
                 fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
@@ -464,7 +463,7 @@ impl<'a> Parser<'a> {
                     false
                 }
 
-                if *token != parser::TokenType::Token(self.token.kind.clone()) {
+                if **token != parser::TokenType::Token(self.token.kind.clone()) {
                     let eq = is_ident_eq_keyword(&self.token.kind, &token);
                     // If the suggestion is a keyword and the found token is an ident,
                     // the content of which are equal to the suggestion's content,
@@ -483,6 +482,7 @@ impl<'a> Parser<'a> {
                 }
                 false
             })
+            .cloned()
             .collect::<Vec<_>>();
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();

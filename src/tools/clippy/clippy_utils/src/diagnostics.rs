@@ -84,9 +84,9 @@ pub fn span_lint_and_help<T: LintContext>(
     cx.span_lint(lint, span, msg.to_string(), |diag| {
         let help = help.to_string();
         if let Some(help_span) = help_span {
-            diag.span_help(help_span, help.to_string());
+            diag.span_help(help_span, help);
         } else {
-            diag.help(help.to_string());
+            diag.help(help);
         }
         docs_link(diag, lint);
     });

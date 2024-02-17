@@ -311,7 +311,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: &mut bool,
     ) {
         if let Some((if_span, msg)) = ret_reason {
-            err.span_label(if_span, msg.clone());
+            err.span_label(if_span, msg);
         } else if let ExprKind::Block(block, _) = then_expr.kind
             && let Some(expr) = block.expr
         {
