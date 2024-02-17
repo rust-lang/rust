@@ -333,17 +333,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         scalar: abi::Scalar,
         backend_ty: Bx::Type,
     ) {
-        if matches!(self.cx.sess().opts.optimize, OptLevel::No | OptLevel::Less)
-            // For now, the critical niches are all over `Int`eger values.
-            // Should floating-point values or pointers ever get more complex
-            // niches, then this code will probably want to handle them too.
-            || !matches!(scalar.primitive(), abi::Primitive::Int(..))
-            || scalar.is_always_valid(self.cx)
-        {
+        if matches!(self.cx.sess().opts.optimize, OptLevel::No | OptLevel::Less) {
             return;
         }
 
-        let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
+        if scalar.is_always_valid(self.cx) {
+            return;
+        }
+        let valid_range = scalar.valid_range(self.cx);
+
+        match scalar.primitive() {
+            abi::Primitive::Pointer(addrspace) => {
+                assert!(!valid_range.contains(0));
+                let null = bx.const_null(bx.type_ptr_ext(addrspace));
+                let cmp = bx.icmp(IntPredicate::IntNE, imm, null);
+                bx.assume(cmp);
+                return;
+            }
+            abi::Primitive::Int(..) => {}
+            _ => return,
+        }
+
+        let abi::WrappingRange { start, end } = valid_range;
 
         if start <= end {
             if start > 0 {
