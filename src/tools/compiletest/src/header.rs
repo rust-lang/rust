@@ -289,20 +289,20 @@ impl TestProps {
         }
     }
 
-    pub fn from_aux_file(&self, testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
+    pub fn from_aux_file(&self, testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
 
         // copy over select properties to the aux build:
         props.incremental_dir = self.incremental_dir.clone();
         props.ignore_pass = true;
-        props.load_from(testfile, cfg, config);
+        props.load_from(testfile, revision, config);
 
         props
     }
 
-    pub fn from_file(testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
+    pub fn from_file(testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
-        props.load_from(testfile, cfg, config);
+        props.load_from(testfile, revision, config);
 
         match (props.pass_mode, props.fail_mode) {
             (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
@@ -315,9 +315,9 @@ impl TestProps {
 
     /// Loads properties from `testfile` into `props`. If a property is
     /// tied to a particular revision `foo` (indicated by writing
-    /// `//[foo]`), then the property is ignored unless `cfg` is
+    /// `//@[foo]`), then the property is ignored unless `test_revision` is
     /// `Some("foo")`.
-    fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
+    fn load_from(&mut self, testfile: &Path, test_revision: Option<&str>, config: &Config) {
         let mut has_edition = false;
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
@@ -331,7 +331,7 @@ impl TestProps {
                 testfile,
                 file,
                 &mut |HeaderLine { header_revision, directive: ln, .. }| {
-                    if header_revision.is_some() && header_revision != cfg {
+                    if header_revision.is_some() && header_revision != test_revision {
                         return;
                     }
 
@@ -455,7 +455,7 @@ impl TestProps {
                         &mut self.check_test_line_numbers_match,
                     );
 
-                    self.update_pass_mode(ln, cfg, config);
+                    self.update_pass_mode(ln, test_revision, config);
                     self.update_fail_mode(ln, config);
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
@@ -645,7 +645,7 @@ impl TestProps {
     }
 }
 
-/// Extract a `(Option<line_config>, directive)` directive from a line if comment is present.
+/// Extract an `(Option<line_revision>, directive)` directive from a line if comment is present.
 ///
 /// See [`HeaderLine`] for a diagram.
 pub fn line_directive<'line>(
@@ -664,8 +664,8 @@ pub fn line_directive<'line>(
                 );
             };
 
-            let lncfg = &ln[1..close_brace];
-            Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
+            let line_revision = &ln[1..close_brace];
+            Some((Some(line_revision), ln[(close_brace + 1)..].trim_start()))
         } else {
             Some((None, ln))
         }
@@ -1176,7 +1176,7 @@ pub fn make_test_description<R: Read>(
     name: test::TestName,
     path: &Path,
     src: R,
-    cfg: Option<&str>,
+    test_revision: Option<&str>,
     poisoned: &mut bool,
 ) -> test::TestDesc {
     let mut ignore = false;
@@ -1192,7 +1192,7 @@ pub fn make_test_description<R: Read>(
         path,
         src,
         &mut |HeaderLine { header_revision, original_line, directive: ln, line_number }| {
-            if header_revision.is_some() && header_revision != cfg {
+            if header_revision.is_some() && header_revision != test_revision {
                 return;
             }
 
