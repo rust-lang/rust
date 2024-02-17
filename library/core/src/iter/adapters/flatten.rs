@@ -917,10 +917,10 @@ where
     }
 }
 
-// Specialization: For iterators that never return more than one item, the `frontiter` and
+// Specialization: When the inner iterator `U` never returns more than one item, the `frontiter` and
 // `backiter` states are a waste, because they'll always have already consumed their item. So in
 // this impl, we completely ignore them and just focus on `self.iter`, and we only call the inner
-// `next()` one time.
+// `U::next()` one time.
 //
 // It's mostly fine if we accidentally mix this with the more generic impls, e.g. by forgetting to
 // specialize one of the methods. If the other impl did set the front or back, we wouldn't see it
