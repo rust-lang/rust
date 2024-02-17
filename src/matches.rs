@@ -2,7 +2,7 @@
 
 use std::iter::repeat;
 
-use rustc_ast::{ast, ptr};
+use rustc_ast::{ast, MatchKind, ptr};
 use rustc_span::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, rewrite_comment};
@@ -72,6 +72,8 @@ pub(crate) fn rewrite_match(
     shape: Shape,
     span: Span,
     attrs: &[ast::Attribute],
+    // TODO: Use this
+    _: MatchKind,
 ) -> Option<String> {
     // Do not take the rhs overhead from the upper expressions into account
     // when rewriting match condition.
