@@ -9,9 +9,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 
-use crate::astconv::{
-    AstConv, ConvertedBinding, ConvertedBindingKind, OnlySelfBounds, PredicateFilter,
-};
+use crate::astconv::{AstConv, OnlySelfBounds, PredicateFilter};
 use crate::bounds::Bounds;
 use crate::errors;
 
@@ -238,7 +236,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        binding: &ConvertedBinding<'_, 'tcx>,
+        binding: &hir::TypeBinding<'tcx>,
         bounds: &mut Bounds<'tcx>,
         speculative: bool,
         dup_bindings: &mut FxIndexMap<DefId, Span>,
@@ -263,21 +261,20 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         let tcx = self.tcx();
 
-        let assoc_kind =
-            if binding.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation {
-                ty::AssocKind::Fn
-            } else if let ConvertedBindingKind::Equality(term) = binding.kind
-                && let ty::TermKind::Const(_) = term.node.unpack()
-            {
-                ty::AssocKind::Const
-            } else {
-                ty::AssocKind::Type
-            };
+        let assoc_kind = if binding.gen_args.parenthesized
+            == hir::GenericArgsParentheses::ReturnTypeNotation
+        {
+            ty::AssocKind::Fn
+        } else if let hir::TypeBindingKind::Equality { term: hir::Term::Const(_) } = binding.kind {
+            ty::AssocKind::Const
+        } else {
+            ty::AssocKind::Type
+        };
 
         let candidate = if self.trait_defines_associated_item_named(
             trait_ref.def_id(),
             assoc_kind,
-            binding.item_name,
+            binding.ident,
         ) {
             // Simple case: The assoc item is defined in the current trait.
             trait_ref
@@ -289,14 +286,14 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 trait_ref.skip_binder().print_only_trait_name(),
                 None,
                 assoc_kind,
-                binding.item_name,
+                binding.ident,
                 path_span,
-                Some(&binding),
+                Some(binding),
             )?
         };
 
         let (assoc_ident, def_scope) =
-            tcx.adjust_ident_and_get_scope(binding.item_name, candidate.def_id(), hir_ref_id);
+            tcx.adjust_ident_and_get_scope(binding.ident, candidate.def_id(), hir_ref_id);
 
         // We have already adjusted the item name above, so compare with `.normalize_to_macros_2_0()`
         // instead of calling `filter_by_name_and_kind` which would needlessly normalize the
@@ -312,7 +309,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 .dcx()
                 .struct_span_err(
                     binding.span,
-                    format!("{} `{}` is private", assoc_item.kind, binding.item_name),
+                    format!("{} `{}` is private", assoc_item.kind, binding.ident),
                 )
                 .with_span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
@@ -327,7 +324,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     tcx.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
                         span: binding.span,
                         prev_span: *prev_span,
-                        item_name: binding.item_name,
+                        item_name: binding.ident,
                         def_path: tcx.def_path_str(assoc_item.container_id(tcx)),
                     });
                 })
@@ -390,14 +387,12 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             {
                 alias_ty
             } else {
-                return Err(self.tcx().dcx().emit_err(
-                    crate::errors::ReturnTypeNotationOnNonRpitit {
-                        span: binding.span,
-                        ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
-                        fn_span: tcx.hir().span_if_local(assoc_item.def_id),
-                        note: (),
-                    },
-                ));
+                return Err(tcx.dcx().emit_err(crate::errors::ReturnTypeNotationOnNonRpitit {
+                    span: binding.span,
+                    ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
+                    fn_span: tcx.hir().span_if_local(assoc_item.def_id),
+                    note: (),
+                }));
             };
 
             // Finally, move the fn return type's bound vars over to account for the early bound
@@ -410,9 +405,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             let bound_vars = tcx.late_bound_vars(binding.hir_id);
             ty::Binder::bind_with_vars(instantiation_output, bound_vars)
         } else {
-            // Append the generic arguments of the associated type to the `trait_ref`.
+            // Create the generic arguments for the associated type or constant by joining the
+            // parent arguments (the arguments of the trait) and the own arguments (the ones of
+            // the associated item itself) and construct an alias type using them.
             candidate.map_bound(|trait_ref| {
-                let ident = Ident::new(assoc_item.name, binding.item_name.span);
+                let ident = Ident::new(assoc_item.name, binding.ident.span);
                 let item_segment = hir::PathSegment {
                     ident,
                     hir_id: binding.hir_id,
@@ -421,77 +418,82 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     infer_args: false,
                 };
 
-                let args_trait_ref_and_assoc_item = self.create_args_for_associated_item(
+                let alias_args = self.create_args_for_associated_item(
                     path_span,
                     assoc_item.def_id,
                     &item_segment,
                     trait_ref.args,
                 );
+                debug!(?alias_args);
 
-                debug!(?args_trait_ref_and_assoc_item);
-
-                ty::AliasTy::new(tcx, assoc_item.def_id, args_trait_ref_and_assoc_item)
+                // Note that we're indeed also using `AliasTy` (alias *type*) for associated
+                // *constants* to represent *const projections*. Alias *term* would be a more
+                // appropriate name but alas.
+                ty::AliasTy::new(tcx, assoc_item.def_id, alias_args)
             })
         };
 
-        if !speculative {
-            // Find any late-bound regions declared in `ty` that are not
-            // declared in the trait-ref or assoc_item. These are not well-formed.
-            //
-            // Example:
-            //
-            //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
-            //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
-            if let ConvertedBindingKind::Equality(ty) = binding.kind {
-                let late_bound_in_trait_ref =
-                    tcx.collect_constrained_late_bound_regions(&projection_ty);
-                let late_bound_in_ty =
-                    tcx.collect_referenced_late_bound_regions(&trait_ref.rebind(ty.node));
-                debug!(?late_bound_in_trait_ref);
-                debug!(?late_bound_in_ty);
-
-                // FIXME: point at the type params that don't have appropriate lifetimes:
-                // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
-                //                         ----  ----     ^^^^^^^
-                self.validate_late_bound_regions(
-                    late_bound_in_trait_ref,
-                    late_bound_in_ty,
-                    |br_name| {
-                        struct_span_code_err!(
-                            tcx.dcx(),
-                            binding.span,
-                            E0582,
-                            "binding for associated type `{}` references {}, \
-                             which does not appear in the trait input types",
-                            binding.item_name,
-                            br_name
-                        )
-                    },
-                );
-            }
-        }
-
         match binding.kind {
-            ConvertedBindingKind::Equality(..) if let ty::AssocKind::Fn = assoc_kind => {
-                return Err(self.tcx().dcx().emit_err(
-                    crate::errors::ReturnTypeNotationEqualityBound { span: binding.span },
-                ));
+            hir::TypeBindingKind::Equality { .. } if let ty::AssocKind::Fn = assoc_kind => {
+                return Err(tcx.dcx().emit_err(crate::errors::ReturnTypeNotationEqualityBound {
+                    span: binding.span,
+                }));
             }
-            ConvertedBindingKind::Equality(term) => {
+            hir::TypeBindingKind::Equality { term } => {
+                let term = match term {
+                    hir::Term::Ty(ty) => self.ast_ty_to_ty(ty).into(),
+                    hir::Term::Const(ct) => ty::Const::from_anon_const(tcx, ct.def_id).into(),
+                };
+
+                if !speculative {
+                    // Find any late-bound regions declared in `ty` that are not
+                    // declared in the trait-ref or assoc_item. These are not well-formed.
+                    //
+                    // Example:
+                    //
+                    //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+                    //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+                    let late_bound_in_projection_ty =
+                        tcx.collect_constrained_late_bound_regions(&projection_ty);
+                    let late_bound_in_term =
+                        tcx.collect_referenced_late_bound_regions(&trait_ref.rebind(term));
+                    debug!(?late_bound_in_projection_ty);
+                    debug!(?late_bound_in_term);
+
+                    // FIXME: point at the type params that don't have appropriate lifetimes:
+                    // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
+                    //                         ----  ----     ^^^^^^^
+                    // NOTE(associated_const_equality): This error should be impossible to trigger
+                    //                                  with associated const equality bounds.
+                    self.validate_late_bound_regions(
+                        late_bound_in_projection_ty,
+                        late_bound_in_term,
+                        |br_name| {
+                            struct_span_code_err!(
+                                tcx.dcx(),
+                                binding.span,
+                                E0582,
+                                "binding for associated type `{}` references {}, \
+                                 which does not appear in the trait input types",
+                                binding.ident,
+                                br_name
+                            )
+                        },
+                    );
+                }
+
                 // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
                 bounds.push_projection_bound(
                     tcx,
-                    projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
-                        projection_ty,
-                        term: term.node,
-                    }),
+                    projection_ty
+                        .map_bound(|projection_ty| ty::ProjectionPredicate { projection_ty, term }),
                     binding.span,
                 );
             }
-            ConvertedBindingKind::Constraint(ast_bounds) => {
+            hir::TypeBindingKind::Constraint { bounds: ast_bounds } => {
                 // "Desugar" a constraint like `T: Iterator<Item: Debug>` to
                 //
                 // `<T as Iterator>::Item: Debug`
