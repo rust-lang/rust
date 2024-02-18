@@ -657,7 +657,7 @@ fn lint_nan<'tcx>(
 fn lint_wide_pointer<'tcx>(
     cx: &LateContext<'tcx>,
     e: &'tcx hir::Expr<'tcx>,
-    binop: hir::BinOpKind,
+    binop: Option<hir::BinOpKind>,
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
@@ -676,7 +676,7 @@ fn lint_wide_pointer<'tcx>(
         }
     };
 
-    // PartialEq::{eq,ne} takes references, remove any explicit references
+    // the left and right operands can have references, remove any explicit references
     let l = l.peel_borrows();
     let r = r.peel_borrows();
 
@@ -704,8 +704,8 @@ fn lint_wide_pointer<'tcx>(
         );
     };
 
-    let ne = if binop == hir::BinOpKind::Ne { "!" } else { "" };
-    let is_eq_ne = matches!(binop, hir::BinOpKind::Eq | hir::BinOpKind::Ne);
+    let ne = if binop == Some(hir::BinOpKind::Ne) { "!" } else { "" };
+    let is_eq_ne = matches!(binop, Some(hir::BinOpKind::Eq | hir::BinOpKind::Ne));
     let is_dyn_comparison = l_inner_ty_is_dyn && r_inner_ty_is_dyn;
 
     let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
@@ -742,12 +742,12 @@ fn lint_wide_pointer<'tcx>(
                 AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
                     deref_left,
                     deref_right,
-                    // those two Options are required for correctness as having
-                    // an empty span and an empty suggestion is not permitted
-                    left_before: (l_ty_refs != 0).then_some(left),
-                    right_before: (r_ty_refs != 0).then(|| r_span.shrink_to_lo()),
-                    left: l_span.shrink_to_hi(),
-                    right,
+                    paren_left: (l_ty_refs != 0).then_some(")").unwrap_or_default(),
+                    paren_right: (r_ty_refs != 0).then_some(")").unwrap_or_default(),
+                    left_before: (l_ty_refs != 0).then_some(l_span.shrink_to_lo()),
+                    left_after: l_span.shrink_to_hi(),
+                    right_before: (r_ty_refs != 0).then_some(r_span.shrink_to_lo()),
+                    right_after: r_span.shrink_to_hi(),
                 }
             },
         },
@@ -770,7 +770,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         cx.emit_span_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
-                        lint_wide_pointer(cx, e, binop.node, l, r);
+                        lint_wide_pointer(cx, e, Some(binop.node), l, r);
                     }
                 }
             }
@@ -779,14 +779,14 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                     && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-                    && let Some(binop) = partialeq_binop(diag_item) =>
+                    && let Some(binop) = diag_item_binop(diag_item) =>
             {
                 lint_wide_pointer(cx, e, binop, l, r);
             }
             hir::ExprKind::MethodCall(_, l, [r], _)
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
                     && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
-                    && let Some(binop) = partialeq_binop(diag_item) =>
+                    && let Some(binop) = diag_item_binop(diag_item) =>
             {
                 lint_wide_pointer(cx, e, binop, l, r);
             }
@@ -873,13 +873,19 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             )
         }
 
-        fn partialeq_binop(diag_item: Symbol) -> Option<hir::BinOpKind> {
-            if diag_item == sym::cmp_partialeq_eq {
-                Some(hir::BinOpKind::Eq)
-            } else if diag_item == sym::cmp_partialeq_ne {
-                Some(hir::BinOpKind::Ne)
-            } else {
-                None
+        fn diag_item_binop(diag_item: Symbol) -> Option<Option<hir::BinOpKind>> {
+            match diag_item {
+                sym::cmp_ord_max => Some(None),
+                sym::cmp_ord_min => Some(None),
+                sym::ord_cmp_method => Some(None),
+                sym::cmp_partialeq_eq => Some(Some(hir::BinOpKind::Eq)),
+                sym::cmp_partialeq_ne => Some(Some(hir::BinOpKind::Ne)),
+                sym::cmp_partialord_cmp => Some(None),
+                sym::cmp_partialord_ge => Some(Some(hir::BinOpKind::Ge)),
+                sym::cmp_partialord_gt => Some(Some(hir::BinOpKind::Gt)),
+                sym::cmp_partialord_le => Some(Some(hir::BinOpKind::Le)),
+                sym::cmp_partialord_lt => Some(Some(hir::BinOpKind::Lt)),
+                _ => None,
             }
         }
     }
