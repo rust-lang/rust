@@ -36,9 +36,8 @@ use libc::{c_int, pid_t};
 )))]
 use libc::{gid_t, uid_t};
 
-cfg_if::cfg_if! {
-    if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
-        use crate::thread;
+cfg_match! {
+    cfg(all(target_os = "nto", target_env = "nto71")) => {
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
         use crate::time::Duration;
         use crate::sync::LazyLock;

@@ -1,5 +1,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
+#![feature(cfg_match)]
 #![feature(link_cfg)]
 #![feature(staged_api)]
 #![feature(c_unwind)]
@@ -8,28 +9,32 @@
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![allow(internal_features)]
 
-cfg_if::cfg_if! {
-    if #[cfg(target_env = "msvc")] {
+cfg_match! {
+    cfg(target_env = "msvc") => {
         // Windows MSVC no extra unwinder support needed
-    } else if #[cfg(any(
+    }
+    cfg(any(
         target_os = "l4re",
         target_os = "none",
         target_os = "espidf",
-    ))] {
+    )) => {
         // These "unix" family members do not have unwinder.
-    } else if #[cfg(any(
+    }
+    cfg(any(
         unix,
         windows,
         target_os = "psp",
         target_os = "solid_asp3",
         all(target_vendor = "fortanix", target_env = "sgx"),
-    ))] {
+    )) => {
         mod libunwind;
         pub use libunwind::*;
-    } else if #[cfg(target_os = "xous")] {
+    }
+    cfg(target_os = "xous") => {
         mod unwinding;
         pub use unwinding::*;
-    } else {
+    }
+    _ => {
         // no unwinder on the system!
         // - wasm32 (not emscripten, which is "unix" family)
         // - os=none ("bare metal" targets)
@@ -42,17 +47,20 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(target_env = "musl")]
-cfg_if::cfg_if! {
-    if #[cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind"))] {
+cfg_match! {
+    cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind")) => {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
-    } else if #[cfg(feature = "llvm-libunwind")] {
+    }
+    cfg(feature = "llvm-libunwind") => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
         extern "C" {}
-    } else if #[cfg(feature = "system-llvm-libunwind")] {
+    }
+    cfg(feature = "system-llvm-libunwind") => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
-    } else {
+    }
+    _ => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
@@ -62,13 +70,15 @@ cfg_if::cfg_if! {
 // This is the same as musl except that we default to using the system libunwind
 // instead of libgcc.
 #[cfg(target_env = "ohos")]
-cfg_if::cfg_if! {
-    if #[cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind"))] {
+cfg_match! {
+    cfg(all(feature = "llvm-libunwind", feature = "system-llvm-libunwind")) => {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
-    } else if #[cfg(feature = "llvm-libunwind")] {
+    }
+    cfg(feature = "llvm-libunwind") => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
         extern "C" {}
-    } else {
+    }
+    _ => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
@@ -76,10 +86,11 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(target_os = "android")]
-cfg_if::cfg_if! {
-    if #[cfg(feature = "llvm-libunwind")] {
+cfg_match! {
+    cfg(feature = "llvm-libunwind") => {
         compile_error!("`llvm-libunwind` is not supported for Android targets");
-    } else {
+    }
+    _ => {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
         extern "C" {}

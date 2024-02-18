@@ -122,8 +122,8 @@ extern "C" {
     pub fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
 }
 
-cfg_if::cfg_if! {
-if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", target_os = "netbsd", not(target_arch = "arm")))] {
+cfg_match! {
+cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", target_os = "netbsd", not(target_arch = "arm"))) => {
     // Not ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
@@ -149,8 +149,8 @@ if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", targe
                                  -> _Unwind_Word;
         pub fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void;
     }
-
-} else {
+}
+_ => {
     // ARM EHABI
     #[repr(C)]
     #[derive(Copy, Clone, PartialEq)]
@@ -257,8 +257,8 @@ if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", targe
 }
 } // cfg_if!
 
-cfg_if::cfg_if! {
-if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
+cfg_match! {
+cfg(not(all(target_os = "ios", target_arch = "arm"))) => {
     // Not 32-bit iOS
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
@@ -276,7 +276,8 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
                                  trace_argument: *mut c_void)
                                  -> _Unwind_Reason_Code;
     }
-} else {
+}
+_ => {
     // 32-bit iOS uses SjLj and does not provide _Unwind_Backtrace()
     extern "C-unwind" {
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
@@ -286,8 +287,8 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
 }
 } // cfg_if!
 
-cfg_if::cfg_if! {
-if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+cfg_match! {
+cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu")) => {
     // We declare these as opaque types. This is fine since you just need to
     // pass them to _GCC_specific_handler and forget about them.
     pub enum EXCEPTION_RECORD {}

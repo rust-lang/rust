@@ -34,23 +34,25 @@ pub mod thread_parking;
 pub mod wstr;
 pub mod wtf8;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "windows")] {
+cfg_match! {
+    cfg(target_os = "windows") => {
         pub use crate::sys::thread_local_key;
-    } else {
+    }
+    _ => {
         pub mod thread_local_key;
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(any(
+cfg_match! {
+    cfg(any(
         all(unix, not(target_os = "l4re")),
         windows,
         target_os = "hermit",
         target_os = "solid_asp3"
-    ))] {
+    )) => {
         pub mod net;
-    } else {
+    }
+    _ => {
         pub use crate::sys::net;
     }
 }

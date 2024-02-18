@@ -91,8 +91,8 @@ const UNWIND_DATA_REG: (i32, i32) = (4, 5); // a0, a1
 // https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/libsupc++/eh_personality.cc
 // https://github.com/gcc-mirror/gcc/blob/trunk/libgcc/unwind-c.c
 
-cfg_if::cfg_if! {
-    if #[cfg(all(target_arch = "arm", not(target_os = "ios"), not(target_os = "tvos"), not(target_os = "watchos"), not(target_os = "netbsd")))] {
+cfg_match! {
+    cfg(all(target_arch = "arm", not(target_os = "ios"), not(target_os = "tvos"), not(target_os = "watchos"), not(target_os = "netbsd"))) => {
         // ARM EHABI personality routine.
         // https://web.archive.org/web/20190728160938/https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
         //
@@ -189,7 +189,8 @@ cfg_if::cfg_if! {
                 ) -> uw::_Unwind_Reason_Code;
             }
         }
-    } else {
+    }
+    _ => {
         // Default personality routine, which is used directly on most targets
         // and indirectly on Windows x86_64 via SEH.
         unsafe extern "C" fn rust_eh_personality_impl(
@@ -232,8 +233,8 @@ cfg_if::cfg_if! {
             }
         }
 
-        cfg_if::cfg_if! {
-            if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+        cfg_match! {
+            cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu")) => {
                 // On x86_64 MinGW targets, the unwinding mechanism is SEH however the unwind
                 // handler data (aka LSDA) uses GCC-compatible encoding.
                 #[lang = "eh_personality"]
@@ -252,7 +253,8 @@ cfg_if::cfg_if! {
                         rust_eh_personality_impl,
                     )
                 }
-            } else {
+            }
+            _ => {
                 // The personality routine for most of our targets.
                 #[lang = "eh_personality"]
                 unsafe extern "C" fn rust_eh_personality(

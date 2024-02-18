@@ -10,8 +10,8 @@
     target_os = "fuchsia",
 )))]
 
-cfg_if::cfg_if! {
-    if #[cfg(all(
+cfg_match! {
+    cfg(all(
         any(
             target_os = "macos",
             target_os = "ios",
@@ -19,13 +19,15 @@ cfg_if::cfg_if! {
             target_os = "tvos",
         ),
         not(miri),
-    ))] {
+    )) => {
         mod darwin;
         pub use darwin::Parker;
-    } else if #[cfg(target_os = "netbsd")] {
+    }
+    cfg(target_os = "netbsd") => {
         mod netbsd;
         pub use netbsd::{current, park, park_timeout, unpark, ThreadId};
-    } else {
+    }
+    _ => {
         mod pthread;
         pub use pthread::Parker;
     }

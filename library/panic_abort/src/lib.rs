@@ -8,6 +8,7 @@
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
 #![allow(unused_features)]
+#![feature(cfg_match)]
 #![feature(core_intrinsics)]
 #![feature(panic_runtime)]
 #![feature(std_internals)]
@@ -42,16 +43,17 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
 
     abort();
 
-    cfg_if::cfg_if! {
-        if #[cfg(any(unix, target_os = "solid_asp3"))] {
+    cfg_match! {
+        cfg(any(unix, target_os = "solid_asp3")) => {
             unsafe fn abort() -> ! {
                 libc::abort();
             }
-        } else if #[cfg(any(target_os = "hermit",
-                            all(target_vendor = "fortanix", target_env = "sgx"),
-                            target_os = "xous",
-                            target_os = "uefi",
-        ))] {
+        }
+        cfg(any(target_os = "hermit",
+            all(target_vendor = "fortanix", target_env = "sgx"),
+            target_os = "xous",
+            target_os = "uefi",
+        )) => {
             unsafe fn abort() -> ! {
                 // call std::sys::abort_internal
                 extern "C" {
@@ -59,7 +61,8 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
                 }
                 __rust_abort();
             }
-        } else if #[cfg(all(windows, not(miri)))] {
+        }
+        cfg(all(windows, not(miri))) => {
             // On Windows, use the processor-specific __fastfail mechanism. In Windows 8
             // and later, this will terminate the process immediately without running any
             // in-process exception handlers. In earlier versions of Windows, this
@@ -86,7 +89,8 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
                 }
                 core::intrinsics::unreachable();
             }
-        } else if #[cfg(target_os = "teeos")] {
+        }
+        cfg(target_os = "teeos") => {
             mod teeos {
                 extern "C" {
                     pub fn TEE_Panic(code: u32) -> !;
@@ -96,7 +100,8 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
             unsafe fn abort() -> ! {
                 teeos::TEE_Panic(1);
             }
-        } else {
+        }
+        _ => {
             unsafe fn abort() -> ! {
                 core::intrinsics::abort();
             }

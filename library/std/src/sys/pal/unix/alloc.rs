@@ -52,8 +52,8 @@ unsafe impl GlobalAlloc for System {
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(any(
+cfg_match! {
+    cfg(any(
         target_os = "android",
         target_os = "illumos",
         target_os = "redox",
@@ -61,7 +61,7 @@ cfg_if::cfg_if! {
         target_os = "espidf",
         target_os = "horizon",
         target_os = "vita",
-    ))] {
+    )) => {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             // On android we currently target API level 9 which unfortunately
@@ -83,7 +83,8 @@ cfg_if::cfg_if! {
             //                                       /memory/aligned_memory.cc
             libc::memalign(layout.align(), layout.size()) as *mut u8
         }
-    } else if #[cfg(target_os = "wasi")] {
+    }
+    cfg(target_os = "wasi") => {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             // C11 aligned_alloc requires that the size be a multiple of the alignment.
@@ -92,7 +93,8 @@ cfg_if::cfg_if! {
             let size = layout.size().next_multiple_of(align);
             libc::aligned_alloc(align, size) as *mut u8
         }
-    } else {
+    }
+    _ => {
         #[inline]
         unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
             let mut out = ptr::null_mut();

@@ -371,31 +371,36 @@ pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "android")] {
+cfg_match! {
+    cfg(target_os = "android") => {
         #[link(name = "dl", kind = "static", modifiers = "-bundle",
             cfg(target_feature = "crt-static"))]
         #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
         #[link(name = "log", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
-    } else if #[cfg(target_os = "freebsd")] {
+    }
+    cfg(target_os = "freebsd") => {
         #[link(name = "execinfo")]
         #[link(name = "pthread")]
         extern "C" {}
-    } else if #[cfg(target_os = "netbsd")] {
+    }
+    cfg(target_os = "netbsd") => {
         #[link(name = "pthread")]
         #[link(name = "rt")]
         extern "C" {}
-    } else if #[cfg(any(target_os = "dragonfly", target_os = "openbsd"))] {
+    }
+    cfg(any(target_os = "dragonfly", target_os = "openbsd")) => {
         #[link(name = "pthread")]
         extern "C" {}
-    } else if #[cfg(target_os = "solaris")] {
+    }
+    cfg(target_os = "solaris") => {
         #[link(name = "socket")]
         #[link(name = "posix4")]
         #[link(name = "pthread")]
         #[link(name = "resolv")]
         extern "C" {}
-    } else if #[cfg(target_os = "illumos")] {
+    }
+    cfg(target_os = "illumos") => {
         #[link(name = "socket")]
         #[link(name = "posix4")]
         #[link(name = "pthread")]
@@ -404,22 +409,27 @@ cfg_if::cfg_if! {
         // Use libumem for the (malloc-compatible) allocator
         #[link(name = "umem")]
         extern "C" {}
-    } else if #[cfg(target_os = "macos")] {
+    }
+    cfg(target_os = "macos") => {
         #[link(name = "System")]
         extern "C" {}
-    } else if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
+    }
+    cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos")) => {
         #[link(name = "System")]
         #[link(name = "objc")]
         #[link(name = "Foundation", kind = "framework")]
         extern "C" {}
-    } else if #[cfg(target_os = "fuchsia")] {
+    }
+    cfg(target_os = "fuchsia") => {
         #[link(name = "zircon")]
         #[link(name = "fdio")]
         extern "C" {}
-    } else if #[cfg(all(target_os = "linux", target_env = "uclibc"))] {
+    }
+    cfg(all(target_os = "linux", target_env = "uclibc")) => {
         #[link(name = "dl")]
         extern "C" {}
-    } else if #[cfg(target_os = "vita")] {
+    }
+    cfg(target_os = "vita") => {
         #[link(name = "pthread", kind = "static", modifiers = "-bundle")]
         extern "C" {}
     }

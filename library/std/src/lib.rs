@@ -314,6 +314,7 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
+#![feature(cfg_match)]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]

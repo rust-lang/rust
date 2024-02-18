@@ -5999,7 +5999,6 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
- "cfg-if",
  "compiler_builtins",
  "core",
  "libc",
