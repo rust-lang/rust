@@ -116,12 +116,12 @@ impl SocketAddr {
             // socket name's length is more than what the buffer
             // actually contains. Figure out the length for ourselves.
             // https://marc.info/?l=openbsd-bugs&m=170105481926736&w=2
-            let sun_path: &[u8] = unsafe { crate::mem::transmute::<&[i8], &[u8]>(&addr.sun_path) };
+            let sun_path: &[u8] = unsafe { crate::mem::transmute::<&[libc::c_char], &[u8]>(&addr.sun_path) };
             len = crate::sys::memchr::memchr(0, sun_path)
                 .map_or(len, |new_len| (new_len + sun_path_offset(&addr)) as libc::socklen_t);
         }
 
-        if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
+        if len != 0 && addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "file descriptor did not correspond to a Unix socket",
