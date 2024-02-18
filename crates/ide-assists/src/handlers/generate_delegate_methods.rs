@@ -1,4 +1,4 @@
-use hir::{self, HasCrate, HasVisibility};
+use hir::{HasCrate, HasVisibility};
 use ide_db::{path_transform::PathTransform, FxHashSet};
 use syntax::{
     ast::{

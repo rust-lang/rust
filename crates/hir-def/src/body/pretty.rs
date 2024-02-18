@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     hir::{
-        Array, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Literal, LiteralOrConst,
+        Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, LiteralOrConst,
         Movability, Statement,
     },
     pretty::{print_generic_args, print_path, print_type_ref},
