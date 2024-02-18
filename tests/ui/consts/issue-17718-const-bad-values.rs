@@ -1,4 +1,4 @@
-#![allow(static_mut_ref)]
+#![allow(static_mut_refs)]
 
 const C1: &'static mut [usize] = &mut [];
 //~^ ERROR: mutable references are not allowed

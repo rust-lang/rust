@@ -11,8 +11,9 @@ pub macro thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         #[inline] // see comments below
         #[deny(unsafe_op_in_unsafe_fn)]
-        // FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
-        #[allow(static_mut_ref)]
+        // FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
+        #[cfg_attr(bootstrap, allow(static_mut_ref))]
+        #[cfg_attr(not(bootstrap), allow(static_mut_refs))]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
         ) -> $crate::option::Option<&'static $t> {

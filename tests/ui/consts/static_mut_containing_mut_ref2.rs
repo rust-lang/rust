@@ -1,5 +1,5 @@
 //@ revisions: stock mut_refs
-#![allow(static_mut_ref)]
+#![allow(static_mut_refs)]
 #![cfg_attr(mut_refs, feature(const_mut_refs))]
 
 static mut STDERR_BUFFER_SPACE: u8 = 0;
