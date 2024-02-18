@@ -11,7 +11,7 @@ extern crate rustc_driver as _;
 
 mod rustc_wrapper;
 
-use std::{env, fs, path::PathBuf, process, sync::Arc};
+use std::{env, fs, path::PathBuf, process::ExitCode, sync::Arc};
 
 use anyhow::Context;
 use lsp_server::Connection;
@@ -27,21 +27,15 @@ static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<ExitCode> {
     if std::env::var("RA_RUSTC_WRAPPER").is_ok() {
-        let mut args = std::env::args_os();
-        let _me = args.next().unwrap();
-        let rustc = args.next().unwrap();
-        let code = match rustc_wrapper::run_rustc_skipping_cargo_checking(rustc, args.collect()) {
-            Ok(rustc_wrapper::ExitCode(code)) => code.unwrap_or(102),
-            Err(err) => {
-                eprintln!("{err}");
-                101
-            }
-        };
-        process::exit(code);
+        rustc_wrapper::main().map_err(Into::into)
+    } else {
+        actual_main()
     }
+}
 
+fn actual_main() -> anyhow::Result<ExitCode> {
     let flags = flags::RustAnalyzer::from_env_or_exit();
 
     #[cfg(debug_assertions)]
@@ -58,14 +52,14 @@ fn main() -> anyhow::Result<()> {
     let verbosity = flags.verbosity();
 
     match flags.subcommand {
-        flags::RustAnalyzerCmd::LspServer(cmd) => {
+        flags::RustAnalyzerCmd::LspServer(cmd) => 'lsp_server: {
             if cmd.print_config_schema {
                 println!("{:#}", Config::json_schema());
-                return Ok(());
+                break 'lsp_server;
             }
             if cmd.version {
                 println!("rust-analyzer {}", rust_analyzer::version());
-                return Ok(());
+                break 'lsp_server;
             }
 
             // rust-analyzer’s “main thread” is actually
@@ -90,7 +84,7 @@ fn main() -> anyhow::Result<()> {
         flags::RustAnalyzerCmd::RunTests(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::RustcTests(cmd) => cmd.run()?,
     }
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }
 
 fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {

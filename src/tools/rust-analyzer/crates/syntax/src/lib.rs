@@ -27,11 +27,6 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
-
 mod parsing;
 mod ptr;
 mod syntax_error;

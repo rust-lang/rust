@@ -91,6 +91,91 @@ fn check_nth_fix_with_config(
     assert_eq_text!(&after, &actual);
 }
 
+pub(crate) fn check_fixes_unordered(ra_fixture_before: &str, ra_fixtures_after: Vec<&str>) {
+    for ra_fixture_after in ra_fixtures_after.iter() {
+        check_has_fix(ra_fixture_before, ra_fixture_after)
+    }
+}
+
+#[track_caller]
+pub(crate) fn check_has_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+    let after = trim_indent(ra_fixture_after);
+
+    let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
+    let mut conf = DiagnosticsConfig::test_sample();
+    conf.expr_fill_default = ExprFillDefaultMode::Default;
+    let fix = super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+        .into_iter()
+        .find(|d| {
+            d.fixes
+                .as_ref()
+                .and_then(|fixes| {
+                    fixes.iter().find(|fix| {
+                        if !fix.target.contains_inclusive(file_position.offset) {
+                            return false;
+                        }
+                        let actual = {
+                            let source_change = fix.source_change.as_ref().unwrap();
+                            let file_id = *source_change.source_file_edits.keys().next().unwrap();
+                            let mut actual = db.file_text(file_id).to_string();
+
+                            for (edit, snippet_edit) in source_change.source_file_edits.values() {
+                                edit.apply(&mut actual);
+                                if let Some(snippet_edit) = snippet_edit {
+                                    snippet_edit.apply(&mut actual);
+                                }
+                            }
+                            actual
+                        };
+                        after == actual
+                    })
+                })
+                .is_some()
+        });
+    assert!(fix.is_some(), "no diagnostic with desired fix");
+}
+
+#[track_caller]
+pub(crate) fn check_has_single_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+    let after = trim_indent(ra_fixture_after);
+
+    let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
+    let mut conf = DiagnosticsConfig::test_sample();
+    conf.expr_fill_default = ExprFillDefaultMode::Default;
+    let mut n_fixes = 0;
+    let fix = super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+        .into_iter()
+        .find(|d| {
+            d.fixes
+                .as_ref()
+                .and_then(|fixes| {
+                    n_fixes += fixes.len();
+                    fixes.iter().find(|fix| {
+                        if !fix.target.contains_inclusive(file_position.offset) {
+                            return false;
+                        }
+                        let actual = {
+                            let source_change = fix.source_change.as_ref().unwrap();
+                            let file_id = *source_change.source_file_edits.keys().next().unwrap();
+                            let mut actual = db.file_text(file_id).to_string();
+
+                            for (edit, snippet_edit) in source_change.source_file_edits.values() {
+                                edit.apply(&mut actual);
+                                if let Some(snippet_edit) = snippet_edit {
+                                    snippet_edit.apply(&mut actual);
+                                }
+                            }
+                            actual
+                        };
+                        after == actual
+                    })
+                })
+                .is_some()
+        });
+    assert!(fix.is_some(), "no diagnostic with desired fix");
+    assert!(n_fixes == 1, "Too many fixes suggested");
+}
+
 /// Checks that there's a diagnostic *without* fix at `$0`.
 pub(crate) fn check_no_fix(ra_fixture: &str) {
     let (db, file_position) = RootDatabase::with_position(ra_fixture);

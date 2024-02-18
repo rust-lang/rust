@@ -68,7 +68,9 @@
         "typescript": "^5.1.6"
     },
     "activationEvents": [
+        "workspaceContains:Cargo.toml",
         "workspaceContains:*/Cargo.toml",
+        "workspaceContains:rust-project.json",
         "workspaceContains:*/rust-project.json"
     ],
     "main": "./out/main",
@@ -588,7 +590,7 @@
                 },
                 "rust-analyzer.cargo.buildScripts.rebuildOnSave": {
                     "markdownDescription": "Rerun proc-macros building/build-scripts running when proc-macro\nor build-script sources change and are saved.",
-                    "default": false,
+                    "default": true,
                     "type": "boolean"
                 },
                 "rust-analyzer.cargo.buildScripts.useRustcWrapper": {
@@ -775,7 +777,7 @@
                     ]
                 },
                 "rust-analyzer.check.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option\n(if your client supports the `colorDiagnosticOutput` experimental\ncapability, you can use `--message-format=json-diagnostic-rendered-ansi`).\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects/workspaces, this command is invoked for\neach of them, with the working directory being the workspace root\n(i.e., the folder containing the `Cargo.toml`). This can be overwritten\nby changing `#rust-analyzer.check.invocationStrategy#` and\n`#rust-analyzer.check.invocationLocation#`.\n\nIf `$saved_file` is part of the command, rust-analyzer will pass\nthe absolute path of the saved file to the provided command. This is\nintended to be used with non-Cargo build systems.\nNote that `$saved_file` is experimental and may be removed in the futureg.\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
                     "default": null,
                     "type": [
                         "null",
@@ -901,6 +903,11 @@
                         }
                     },
                     "type": "object"
+                },
+                "rust-analyzer.completion.termSearch.enable": {
+                    "markdownDescription": "Whether to enable term search based snippets like `Some(foo.bar().baz())`.",
+                    "default": false,
+                    "type": "boolean"
                 },
                 "rust-analyzer.diagnostics.disabled": {
                     "markdownDescription": "List of rust-analyzer diagnostics to disable.",
@@ -1520,11 +1527,6 @@
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.rename.allowExternalItems": {
-                    "markdownDescription": "Allow renaming of items not belonging to the loaded workspaces.",
-                    "default": false,
-                    "type": "boolean"
-                },
                 "rust-analyzer.runnables.command": {
                     "markdownDescription": "Command to be executed instead of 'cargo' for runnables.",
                     "default": null,
@@ -1756,6 +1758,13 @@
                     "rs"
                 ],
                 "configuration": "language-configuration.json"
+            },
+            {
+                "id": "rustdoc",
+                "extensions": [
+                    ".rustdoc"
+                ],
+                "configuration": "./language-configuration-rustdoc.json"
             }
         ],
         "grammars": [
@@ -1763,6 +1772,27 @@
                 "language": "ra_syntax_tree",
                 "scopeName": "source.ra_syntax_tree",
                 "path": "ra_syntax_tree.tmGrammar.json"
+            },
+            {
+                "language": "rustdoc",
+                "scopeName": "text.html.markdown.rustdoc",
+                "path": "rustdoc.json",
+                "embeddedLanguages": {
+                    "meta.embedded.block.html": "html",
+                    "meta.embedded.block.markdown": "markdown",
+                    "meta.embedded.block.rust": "rust"
+                }
+            },
+            {
+                "injectTo": [
+                    "source.rust"
+                ],
+                "scopeName": "comment.markdown-cell-inject.rustdoc",
+                "path": "rustdoc-inject.json",
+                "embeddedLanguages": {
+                    "meta.embedded.block.rustdoc": "rustdoc",
+                    "meta.embedded.block.rust": "rust"
+                }
             }
         ],
         "problemMatchers": [
