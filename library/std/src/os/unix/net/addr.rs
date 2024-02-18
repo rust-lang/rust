@@ -122,7 +122,7 @@ impl SocketAddr {
                 .map_or(len, |new_len| (new_len + sun_path_offset(&addr)) as libc::socklen_t);
         }
 
-        if len != 0 && addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
+        if len == 0 && addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
             return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
                 "file descriptor did not correspond to a Unix socket",
