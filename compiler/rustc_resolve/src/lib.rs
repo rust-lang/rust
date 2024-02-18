@@ -175,6 +175,23 @@ enum ImplTraitContext {
     Universal,
 }
 
+/// Used for tracking import use types which will be used for redundant import checking.
+/// ### Used::Scope Example
+///  ```rust,compile_fail
+/// #![deny(unused_imports)]
+/// use std::mem::drop;
+/// fn main() {
+///     let s = Box::new(32);
+///     drop(s);
+/// }
+/// ```
+/// Used::Other is for other situations like module-relative uses.
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+enum Used {
+    Scope,
+    Other,
+}
+
 #[derive(Debug)]
 struct BindingError {
     name: Symbol,
@@ -695,7 +712,7 @@ impl<'a> ToNameBinding<'a> for NameBinding<'a> {
 enum NameBindingKind<'a> {
     Res(Res),
     Module(Module<'a>),
-    Import { binding: NameBinding<'a>, import: Import<'a>, used: Cell<bool> },
+    Import { binding: NameBinding<'a>, import: Import<'a> },
 }
 
 impl<'a> NameBindingKind<'a> {
@@ -1784,15 +1801,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         false
     }
 
-    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, is_lexical_scope: bool) {
-        self.record_use_inner(ident, used_binding, is_lexical_scope, used_binding.warn_ambiguity);
+    fn record_use(&mut self, ident: Ident, used_binding: NameBinding<'a>, used: Used) {
+        self.record_use_inner(ident, used_binding, used, used_binding.warn_ambiguity);
     }
 
     fn record_use_inner(
         &mut self,
         ident: Ident,
         used_binding: NameBinding<'a>,
-        is_lexical_scope: bool,
+        used: Used,
         warn_ambiguity: bool,
     ) {
         if let Some((b2, kind)) = used_binding.ambiguity {
@@ -1810,27 +1827,35 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.ambiguity_errors.push(ambiguity_error);
             }
         }
-        if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
+        if let NameBindingKind::Import { import, binding } = used_binding.kind {
             if let ImportKind::MacroUse { warn_private: true } = import.kind {
                 let msg = format!("macro `{ident}` is private");
                 self.lint_buffer().buffer_lint(PRIVATE_MACRO_USE, import.root_id, ident.span, msg);
             }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
-            if is_lexical_scope {
+            if used == Used::Scope {
                 if let Some(entry) = self.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
                     if !entry.introduced_by_item && entry.binding == Some(used_binding) {
                         return;
                     }
                 }
             }
-            used.set(true);
-            import.used.set(true);
+            let old_used = import.used.get();
+            let new_used = Some(used);
+            if new_used > old_used {
+                import.used.set(new_used);
+            }
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident);
-            self.record_use_inner(ident, binding, false, warn_ambiguity || binding.warn_ambiguity);
+            self.record_use_inner(
+                ident,
+                binding,
+                Used::Other,
+                warn_ambiguity || binding.warn_ambiguity,
+            );
         }
     }
 
@@ -1985,7 +2010,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if !entry.is_import() {
                         self.crate_loader(|c| c.process_path_extern(ident.name, ident.span));
                     } else if entry.introduced_by_item {
-                        self.record_use(ident, binding, false);
+                        self.record_use(ident, binding, Used::Other);
                     }
                 }
                 binding
@@ -2115,7 +2140,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let is_import = name_binding.is_import();
         let span = name_binding.span;
         if let Res::Def(DefKind::Fn, _) = res {
-            self.record_use(ident, name_binding, false);
+            self.record_use(ident, name_binding, Used::Other);
         }
         self.main_def = Some(MainDefinition { res, is_import, span });
     }
@@ -2176,6 +2201,8 @@ struct Finalize {
     /// Whether to report privacy errors or silently return "no resolution" for them,
     /// similarly to speculative resolution.
     report_private: bool,
+    /// Tracks whether an item is used in scope or used relatively to a module.
+    used: Used,
 }
 
 impl Finalize {
@@ -2184,7 +2211,7 @@ impl Finalize {
     }
 
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
-        Finalize { node_id, path_span, root_span, report_private: true }
+        Finalize { node_id, path_span, root_span, report_private: true, used: Used::Other }
     }
 }
 
