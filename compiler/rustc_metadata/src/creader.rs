@@ -926,7 +926,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         what: &str,
         needs_dep: &dyn Fn(&CrateMetadata) -> bool,
     ) {
-        // don't perform this validation if the session has errors, as one of
+        // Don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.
         if self.dcx().has_errors().is_some() {
