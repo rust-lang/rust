@@ -181,6 +181,25 @@ impl<T, A: Allocator> RawVec<T, A> {
 
     #[cfg(not(no_global_oom_handling))]
     fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
+        // This is split out to remove dependance on the `T` generic, reducing monomorphisation bloat.
+        fn handle_alloc<A>(alloc: &A, layout: Layout, init: AllocInit) -> Unique<[u8]>
+        where
+            A: Allocator,
+        {
+            match alloc_guard(layout.size()) {
+                Ok(_) => {}
+                Err(_) => capacity_overflow(),
+            }
+            let result = match init {
+                AllocInit::Uninitialized => alloc.allocate(layout),
+                AllocInit::Zeroed => alloc.allocate_zeroed(layout),
+            };
+            match result {
+                Ok(ptr) => Unique::from(ptr),
+                Err(_) => handle_alloc_error(layout),
+            }
+        }
+
         // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
         if T::IS_ZST || capacity == 0 {
             Self::new_in(alloc)
@@ -191,23 +210,12 @@ impl<T, A: Allocator> RawVec<T, A> {
                 Ok(layout) => layout,
                 Err(_) => capacity_overflow(),
             };
-            match alloc_guard(layout.size()) {
-                Ok(_) => {}
-                Err(_) => capacity_overflow(),
-            }
-            let result = match init {
-                AllocInit::Uninitialized => alloc.allocate(layout),
-                AllocInit::Zeroed => alloc.allocate_zeroed(layout),
-            };
-            let ptr = match result {
-                Ok(ptr) => ptr,
-                Err(_) => handle_alloc_error(layout),
-            };
 
             // Allocators currently return a `NonNull<[u8]>` whose length
             // matches the size requested. If that ever changes, the capacity
             // here should change to `ptr.len() / mem::size_of::<T>()`.
-            Self { ptr: Unique::from(ptr.cast()), cap: unsafe { Cap(capacity) }, alloc }
+            let ptr = handle_alloc(&alloc, layout, init);
+            Self { ptr: ptr.cast(), cap: unsafe { Cap(capacity) }, alloc }
         }
     }
 
