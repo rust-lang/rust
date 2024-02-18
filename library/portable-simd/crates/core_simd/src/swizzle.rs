@@ -1,4 +1,3 @@
-use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Mask, MaskElement, Simd, SimdElement, SupportedLaneCount};
 
 /// Constructs a new SIMD vector by copying elements from selected elements in other vectors.
@@ -88,7 +87,7 @@ pub trait Swizzle<const N: usize> {
     {
         // Safety: `vector` is a vector, and the index is a const array of u32.
         unsafe {
-            intrinsics::simd_shuffle(
+            core::intrinsics::simd::simd_shuffle(
                 vector,
                 vector,
                 const {
@@ -124,7 +123,7 @@ pub trait Swizzle<const N: usize> {
     {
         // Safety: `first` and `second` are vectors, and the index is a const array of u32.
         unsafe {
-            intrinsics::simd_shuffle(
+            core::intrinsics::simd::simd_shuffle(
                 first,
                 second,
                 const {

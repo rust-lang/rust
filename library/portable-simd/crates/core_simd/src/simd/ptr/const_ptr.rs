@@ -1,7 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{
-    cmp::SimdPartialEq, intrinsics, num::SimdUint, LaneCount, Mask, Simd, SupportedLaneCount,
-};
+use crate::simd::{cmp::SimdPartialEq, num::SimdUint, LaneCount, Mask, Simd, SupportedLaneCount};
 
 /// Operations on SIMD vectors of constant pointers.
 pub trait SimdConstPtr: Copy + Sealed {
@@ -103,13 +101,13 @@ where
         assert_eq!(size_of::<<U as Pointee>::Metadata>(), 0);
 
         // Safety: pointers can be cast
-        unsafe { intrinsics::simd_cast_ptr(self) }
+        unsafe { core::intrinsics::simd::simd_cast_ptr(self) }
     }
 
     #[inline]
     fn cast_mut(self) -> Self::MutPtr {
         // Safety: pointers can be cast
-        unsafe { intrinsics::simd_cast_ptr(self) }
+        unsafe { core::intrinsics::simd::simd_cast_ptr(self) }
     }
 
     #[inline]
@@ -135,19 +133,19 @@ where
     #[inline]
     fn expose_addr(self) -> Self::Usize {
         // Safety: `self` is a pointer vector
-        unsafe { intrinsics::simd_expose_addr(self) }
+        unsafe { core::intrinsics::simd::simd_expose_addr(self) }
     }
 
     #[inline]
     fn from_exposed_addr(addr: Self::Usize) -> Self {
         // Safety: `self` is a pointer vector
-        unsafe { intrinsics::simd_from_exposed_addr(addr) }
+        unsafe { core::intrinsics::simd::simd_from_exposed_addr(addr) }
     }
 
     #[inline]
     fn wrapping_offset(self, count: Self::Isize) -> Self {
         // Safety: simd_arith_offset takes a vector of pointers and a vector of offsets
-        unsafe { intrinsics::simd_arith_offset(self, count) }
+        unsafe { core::intrinsics::simd::simd_arith_offset(self, count) }
     }
 
     #[inline]
