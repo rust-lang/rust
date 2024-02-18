@@ -27,7 +27,7 @@ rustc_tools_util = "0.3.0"
 tempfile = { version = "3.2", optional = true }
 termize = "0.1"
 color-print = "0.3.4"
-anstream = "0.5.0"
+anstream = "0.6.0"
 
 [dev-dependencies]
 ui_test = "0.22.1"
