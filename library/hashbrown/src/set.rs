@@ -1003,7 +1003,7 @@ where
     ///         match singles.entry(ch) {
     ///             Vacant(single_entry) => {
     ///                 // We found a new character for the first time.
-    ///                 single_entry.insert()
+    ///                 single_entry.insert();
     ///             }
     ///             Occupied(single_entry) => {
     ///                 // We've already seen this once, "move" it to dupes.
@@ -2211,7 +2211,7 @@ impl<T: fmt::Debug, S, A: Allocator> fmt::Debug for OccupiedEntry<'_, T, S, A> {
 ///
 /// // Nonexistent key (insert)
 /// match set.entry("b") {
-///     Entry::Vacant(view) => view.insert(),
+///     Entry::Vacant(view) => { view.insert(); },
 ///     Entry::Occupied(_) => unreachable!(),
 /// }
 /// assert!(set.contains("b") && set.len() == 2);
@@ -2247,7 +2247,7 @@ impl<'a, T, S, A: Allocator> Entry<'a, T, S, A> {
     {
         match self {
             Entry::Occupied(entry) => entry,
-            Entry::Vacant(entry) => entry.insert_entry(),
+            Entry::Vacant(entry) => entry.insert(),
         }
     }
 
@@ -2442,16 +2442,7 @@ impl<'a, T, S, A: Allocator> VacantEntry<'a, T, S, A> {
     /// assert!(set.contains("poneyland"));
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert(self)
-    where
-        T: Hash,
-        S: BuildHasher,
-    {
-        self.inner.insert(());
-    }
-
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn insert_entry(self) -> OccupiedEntry<'a, T, S, A>
+    pub fn insert(self) -> OccupiedEntry<'a, T, S, A>
     where
         T: Hash,
         S: BuildHasher,
