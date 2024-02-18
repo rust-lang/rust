@@ -132,11 +132,13 @@ impl PrevCovspan {
         self.merged_spans.push(other.span);
     }
 
-    fn cutoff_statements_at(&mut self, cutoff_pos: BytePos) {
+    fn cutoff_statements_at(mut self, cutoff_pos: BytePos) -> Option<RefinedCovspan> {
         self.merged_spans.retain(|span| span.hi() <= cutoff_pos);
         if let Some(max_hi) = self.merged_spans.iter().map(|span| span.hi()).max() {
             self.span = self.span.with_hi(max_hi);
         }
+
+        if self.merged_spans.is_empty() { None } else { Some(self.into_refined()) }
     }
 
     fn refined_copy(&self) -> RefinedCovspan {
@@ -374,13 +376,11 @@ impl SpansRefiner {
         );
 
         let curr_span = self.curr().span;
-        self.prev_mut().cutoff_statements_at(curr_span.lo());
-        if self.prev().merged_spans.is_empty() {
-            debug!("  ... no non-overlapping statements to add");
-        } else {
-            debug!("  ... adding modified prev={:?}", self.prev());
-            let prev = self.take_prev().into_refined();
+        if let Some(prev) = self.take_prev().cutoff_statements_at(curr_span.lo()) {
+            debug!("after cutoff, adding {prev:?}");
             self.refined_spans.push(prev);
+        } else {
+            debug!("prev was eliminated by cutoff");
         }
     }
 }
