@@ -6,7 +6,7 @@ use crate::fmt;
 use crate::mem;
 use crate::rc::Rc;
 use crate::sync::Arc;
-use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
+use crate::sys_common::wtf8::{check_utf8_boundary, Wtf8, Wtf8Buf};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 #[derive(Clone, Hash)]
@@ -169,6 +169,11 @@ impl Slice {
     #[inline]
     pub unsafe fn from_encoded_bytes_unchecked(s: &[u8]) -> &Slice {
         mem::transmute(Wtf8::from_bytes_unchecked(s))
+    }
+
+    #[track_caller]
+    pub fn check_public_boundary(&self, index: usize) {
+        check_utf8_boundary(&self.inner, index);
     }
 
     #[inline]
