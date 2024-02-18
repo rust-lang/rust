@@ -12,9 +12,7 @@
 )]
 mod mask_impl;
 
-use crate::simd::{
-    cmp::SimdPartialEq, intrinsics, LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount,
-};
+use crate::simd::{LaneCount, Simd, SimdCast, SimdElement, SupportedLaneCount};
 use core::cmp::Ordering;
 use core::{fmt, mem};
 
@@ -35,7 +33,7 @@ mod sealed {
 
         fn eq(self, other: Self) -> bool;
 
-        fn as_usize(self) -> usize;
+        fn to_usize(self) -> usize;
 
         type Unsigned: SimdElement;
 
@@ -60,14 +58,23 @@ macro_rules! impl_element {
             where
                 LaneCount<N>: SupportedLaneCount,
             {
-                (value.simd_eq(Simd::splat(0 as _)) | value.simd_eq(Simd::splat(-1 as _))).all()
+                // We can't use `Simd` directly, because `Simd`'s functions call this function and
+                // we will end up with an infinite loop.
+                // Safety: `value` is an integer vector
+                unsafe {
+                    use core::intrinsics::simd;
+                    let falses: Simd<Self, N> = simd::simd_eq(value, Simd::splat(0 as _));
+                    let trues: Simd<Self, N> = simd::simd_eq(value, Simd::splat(-1 as _));
+                    let valid: Simd<Self, N> = simd::simd_or(falses, trues);
+                    simd::simd_reduce_all(valid)
+                }
             }
 
             #[inline]
             fn eq(self, other: Self) -> bool { self == other }
 
             #[inline]
-            fn as_usize(self) -> usize {
+            fn to_usize(self) -> usize {
                 self as usize
             }
 
@@ -141,8 +148,9 @@ where
         // but these are "dependently-sized" types, so copy elision it is!
         unsafe {
             let bytes: [u8; N] = mem::transmute_copy(&array);
-            let bools: Simd<i8, N> = intrinsics::simd_ne(Simd::from_array(bytes), Simd::splat(0u8));
-            Mask::from_int_unchecked(intrinsics::simd_cast(bools))
+            let bools: Simd<i8, N> =
+                core::intrinsics::simd::simd_ne(Simd::from_array(bytes), Simd::splat(0u8));
+            Mask::from_int_unchecked(core::intrinsics::simd::simd_cast(bools))
         }
     }
 
@@ -160,7 +168,7 @@ where
         // This would be hypothetically valid as an "in-place" transmute,
         // but these are "dependently-sized" types, so copy elision it is!
         unsafe {
-            let mut bytes: Simd<i8, N> = intrinsics::simd_cast(self.to_int());
+            let mut bytes: Simd<i8, N> = core::intrinsics::simd::simd_cast(self.to_int());
             bytes &= Simd::splat(1i8);
             mem::transmute_copy(&bytes)
         }
@@ -175,7 +183,10 @@ where
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
         // Safety: the caller must confirm this invariant
-        unsafe { Self(mask_impl::Mask::from_int_unchecked(value)) }
+        unsafe {
+            core::intrinsics::assume(<T as Sealed>::valid(value));
+            Self(mask_impl::Mask::from_int_unchecked(value))
+        }
     }
 
     /// Converts a vector of integers to a mask, where 0 represents `false` and -1
@@ -374,15 +385,17 @@ where
         );
 
         // Safety: the input and output are integer vectors
-        let index: Simd<T, N> = unsafe { intrinsics::simd_cast(index) };
+        let index: Simd<T, N> = unsafe { core::intrinsics::simd::simd_cast(index) };
 
         let masked_index = self.select(index, Self::splat(true).to_int());
 
         // Safety: the input and output are integer vectors
-        let masked_index: Simd<T::Unsigned, N> = unsafe { intrinsics::simd_cast(masked_index) };
+        let masked_index: Simd<T::Unsigned, N> =
+            unsafe { core::intrinsics::simd::simd_cast(masked_index) };
 
         // Safety: the input is an integer vector
-        let min_index: T::Unsigned = unsafe { intrinsics::simd_reduce_min(masked_index) };
+        let min_index: T::Unsigned =
+            unsafe { core::intrinsics::simd::simd_reduce_min(masked_index) };
 
         // Safety: the return value is the unsigned version of T
         let min_index: T = unsafe { core::mem::transmute_copy(&min_index) };
@@ -390,7 +403,7 @@ where
         if min_index.eq(T::TRUE) {
             None
         } else {
-            Some(min_index.as_usize())
+            Some(min_index.to_usize())
         }
     }
 }
