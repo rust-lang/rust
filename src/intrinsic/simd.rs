@@ -697,18 +697,12 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         default: RValue<'gcc>,
         pointers: RValue<'gcc>,
         mask: RValue<'gcc>,
-        pointer_count: usize,
         bx: &mut Builder<'a, 'gcc, 'tcx>,
         in_len: u64,
-        underlying_ty: Ty<'tcx>,
         invert: bool,
     ) -> RValue<'gcc> {
-        let vector_type = if pointer_count > 1 {
-            bx.context.new_vector_type(bx.usize_type, in_len)
-        } else {
-            vector_ty(bx, underlying_ty, in_len)
-        };
-        let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
+        let vector_type = default.get_type();
+        let elem_type = vector_type.unqualified().dyncast_vector().expect("vector type").get_element_type();
 
         let mut values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
@@ -736,12 +730,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         }
         let mask_type = bx.context.new_struct_type(None, "mask_type", &mask_types);
         let mask = bx.context.new_struct_constructor(None, mask_type.as_type(), None, &mask_values);
-
-        // FIXME(antoyo): We sometimes need to bitcast here, since usize/isize sometimes (but not
-        // always) get canonicalized to their corresponding integer type (i.e. uint64_t/int64_t on
-        // 64-bit platforms).  This causes the shuffle_vector call below to panic, since the types
-        // of the two vectors aren't the same.  This is a workaround for now.
-        let vector = bx.bitcast_if_needed(vector, default.get_type());
 
         if invert {
             bx.shuffle_vector(vector, default, mask)
@@ -865,10 +853,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             args[0].immediate(),
             args[1].immediate(),
             args[2].immediate(),
-            pointer_count,
             bx,
             in_len,
-            underlying_ty,
             false,
         ));
     }
@@ -983,10 +969,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             args[0].immediate(),
             args[1].immediate(),
             args[2].immediate(),
-            pointer_count,
             bx,
             in_len,
-            underlying_ty,
             true,
         );
 
