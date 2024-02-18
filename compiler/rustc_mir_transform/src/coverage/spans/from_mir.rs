@@ -52,13 +52,18 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
             // - Span A extends further left, or
             // - Both have the same start and span A extends further right
             .then_with(|| Ord::cmp(&a.span.hi(), &b.span.hi()).reverse())
-            // If both spans are equal, sort the BCBs in dominator order,
-            // so that dominating BCBs come before other BCBs they dominate.
-            .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb))
-            // If two spans are otherwise identical, put closure spans first,
-            // as this seems to be what the refinement step expects.
+            // If two spans have the same lo & hi, put closure spans first,
+            // as they take precedence over non-closure spans.
             .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
+            // After deduplication, we want to keep only the most-dominated BCB.
+            .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
     });
+
+    // Among covspans with the same span, keep only one. Closure spans take
+    // precedence, otherwise keep the one with the most-dominated BCB.
+    // (Ideally we should try to preserve _all_ non-dominating BCBs, but that
+    // requires a lot more complexity in the span refiner, for little benefit.)
+    initial_spans.dedup_by(|b, a| a.span.source_equal(b.span));
 
     initial_spans
 }
