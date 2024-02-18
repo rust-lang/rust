@@ -550,7 +550,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body = match M::find_mir_or_extra_fn(self, instance, caller_abi)? {
+                let body = match M::find_mir_or_extra_fn(self, instance)? {
                     Either::Left(b) => b,
                     Either::Right(f) => {
                         return M::call_extra_fn(

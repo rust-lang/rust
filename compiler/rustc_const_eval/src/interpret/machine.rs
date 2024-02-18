@@ -195,7 +195,6 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     fn find_mir_or_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        abi: CallAbi,
     ) -> InterpResult<'tcx, Either<&'mir mir::Body<'tcx>, Self::ExtraFnVal>>;
 
     /// Execute `fn_val`. It is the hook's responsibility to advance the instruction

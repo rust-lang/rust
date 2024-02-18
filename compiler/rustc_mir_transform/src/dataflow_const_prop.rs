@@ -904,7 +904,6 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     fn find_mir_or_extra_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
-        _abi: rustc_target::spec::abi::Abi,
     ) -> interpret::InterpResult<'tcx, Either<&'mir Body<'tcx>, Self::ExtraFnVal>> {
         unimplemented!()
     }

@@ -943,7 +943,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     fn find_mir_or_extra_fn(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         instance: ty::Instance<'tcx>,
-        abi: Abi,
     ) -> InterpResult<'tcx, Either<&'mir mir::Body<'tcx>, ExtraFnVal>> {
         // For foreign items, we return `ExtraFnVal::ForeignFn` to later try to see if we can
         // emulate them.

@@ -398,7 +398,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn find_mir_or_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        _abi: CallAbi,
     ) -> InterpResult<'tcx, Either<&'mir mir::Body<'tcx>, Self::ExtraFnVal>> {
         debug!("find_mir_or_extra_fn: {:?}", instance);
 
