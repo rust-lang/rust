@@ -1118,7 +1118,7 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path, |path| File::open_c(path, opts))
+        run_path_with_cstr(path, &|path| File::open_c(path, opts))
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
@@ -1394,7 +1394,7 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        run_path_with_cstr(p, |p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
+        run_path_with_cstr(p, &|p| cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }).map(|_| ()))
     }
 
     pub fn set_mode(&mut self, mode: u32) {
@@ -1575,7 +1575,7 @@ impl fmt::Debug for File {
 }
 
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let ptr = run_path_with_cstr(path, |p| unsafe { Ok(libc::opendir(p.as_ptr())) })?;
+    let ptr = run_path_with_cstr(path, &|p| unsafe { Ok(libc::opendir(p.as_ptr())) })?;
     if ptr.is_null() {
         Err(Error::last_os_error())
     } else {
@@ -1586,27 +1586,27 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    run_path_with_cstr(p, |p| cvt(unsafe { libc::unlink(p.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(p, &|p| cvt(unsafe { libc::unlink(p.as_ptr()) }).map(|_| ()))
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    run_path_with_cstr(old, |old| {
-        run_path_with_cstr(new, |new| {
+    run_path_with_cstr(old, &|old| {
+        run_path_with_cstr(new, &|new| {
             cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) }).map(|_| ())
         })
     })
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    run_path_with_cstr(p, |p| cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ()))
+    run_path_with_cstr(p, &|p| cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ()))
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    run_path_with_cstr(p, |p| cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(p, &|p| cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ()))
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    run_path_with_cstr(p, |c_path| {
+    run_path_with_cstr(p, &|c_path| {
         let p = c_path.as_ptr();
 
         let mut buf = Vec::with_capacity(256);
@@ -1635,16 +1635,16 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(original: &Path, link: &Path) -> io::Result<()> {
-    run_path_with_cstr(original, |original| {
-        run_path_with_cstr(link, |link| {
+    run_path_with_cstr(original, &|original| {
+        run_path_with_cstr(link, &|link| {
             cvt(unsafe { libc::symlink(original.as_ptr(), link.as_ptr()) }).map(|_| ())
         })
     })
 }
 
 pub fn link(original: &Path, link: &Path) -> io::Result<()> {
-    run_path_with_cstr(original, |original| {
-        run_path_with_cstr(link, |link| {
+    run_path_with_cstr(original, &|original| {
+        run_path_with_cstr(link, &|link| {
             cfg_if::cfg_if! {
                 if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
                     // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
@@ -1678,7 +1678,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    run_path_with_cstr(p, |p| {
+    run_path_with_cstr(p, &|p| {
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
                 libc::AT_FDCWD,
@@ -1697,7 +1697,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    run_path_with_cstr(p, |p| {
+    run_path_with_cstr(p, &|p| {
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
                 libc::AT_FDCWD,
@@ -1716,7 +1716,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    let r = run_path_with_cstr(p, |path| unsafe {
+    let r = run_path_with_cstr(p, &|path| unsafe {
         Ok(libc::realpath(path.as_ptr(), ptr::null_mut()))
     })?;
     if r.is_null() {
@@ -1879,7 +1879,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     // Opportunistically attempt to create a copy-on-write clone of `from`
     // using `fclonefileat`.
     if HAS_FCLONEFILEAT.load(Ordering::Relaxed) {
-        let clonefile_result = run_path_with_cstr(to, |to| {
+        let clonefile_result = run_path_with_cstr(to, &|to| {
             cvt(unsafe { fclonefileat(reader.as_raw_fd(), libc::AT_FDCWD, to.as_ptr(), 0) })
         });
         match clonefile_result {
@@ -1925,7 +1925,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 pub fn chown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
-    run_path_with_cstr(path, |path| {
+    run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::chown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
             .map(|_| ())
     })
@@ -1937,7 +1937,7 @@ pub fn fchown(fd: c_int, uid: u32, gid: u32) -> io::Result<()> {
 }
 
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
-    run_path_with_cstr(path, |path| {
+    run_path_with_cstr(path, &|path| {
         cvt(unsafe { libc::lchown(path.as_ptr(), uid as libc::uid_t, gid as libc::gid_t) })
             .map(|_| ())
     })
@@ -1945,7 +1945,7 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
 
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
 pub fn chroot(dir: &Path) -> io::Result<()> {
-    run_path_with_cstr(dir, |dir| cvt(unsafe { libc::chroot(dir.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(dir, &|dir| cvt(unsafe { libc::chroot(dir.as_ptr()) }).map(|_| ()))
 }
 
 pub use remove_dir_impl::remove_dir_all;
@@ -2140,7 +2140,7 @@ mod remove_dir_impl {
         if attr.file_type().is_symlink() {
             crate::fs::remove_file(p)
         } else {
-            run_path_with_cstr(p, |p| remove_dir_all_recursive(None, &p))
+            run_path_with_cstr(p, &|p| remove_dir_all_recursive(None, &p))
         }
     }
 
