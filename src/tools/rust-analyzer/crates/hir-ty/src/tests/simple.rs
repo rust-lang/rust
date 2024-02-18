@@ -3376,11 +3376,8 @@ fn main() {
     [x,] = &[1,];
   //^^^^expected &[i32; 1], got [{unknown}; _]
 
-    // FIXME we only want the outermost error, but this matches the current
-    // behavior of slice patterns
     let x;
     [(x,),] = &[(1,),];
-  // ^^^^expected {unknown}, got ({unknown},)
   //^^^^^^^expected &[(i32,); 1], got [{unknown}; _]
 
     let x;

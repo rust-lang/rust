@@ -911,20 +911,18 @@ fn root_contains_symlink_out_dirs_check() {
 #[cfg(any(feature = "sysroot-abi", rust_analyzer))]
 fn resolve_proc_macro() {
     use expect_test::expect;
+    use vfs::AbsPathBuf;
     if skip_slow_tests() {
         return;
     }
 
-    // skip using the sysroot config as to prevent us from loading the sysroot sources
-    let mut rustc = std::process::Command::new(toolchain::rustc());
-    rustc.args(["--print", "sysroot"]);
-    let output = rustc.output().unwrap();
-    let sysroot =
-        vfs::AbsPathBuf::try_from(std::str::from_utf8(&output.stdout).unwrap().trim()).unwrap();
+    let sysroot = project_model::Sysroot::discover_no_source(
+        &AbsPathBuf::assert(std::env::current_dir().unwrap()),
+        &Default::default(),
+    )
+    .unwrap();
 
-    let standalone_server_name =
-        format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
-    let proc_macro_server_path = sysroot.join("libexec").join(&standalone_server_name);
+    let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
 
     let server = Project::with_fixture(
         r###"

@@ -169,8 +169,8 @@ fn test_fn_like_mk_idents() {
 fn test_fn_like_macro_clone_literals() {
     assert_expand(
         "fn_like_clone_tokens",
-        r#"1u16, 2_u32, -4i64, 3.14f32, "hello bridge""#,
-        expect![[r#"
+        r###"1u16, 2_u32, -4i64, 3.14f32, "hello bridge", "suffixed"suffix, r##"raw"##"###,
+        expect![[r###"
             SUBTREE $$ 1 1
               LITERAL 1u16 1
               PUNCH   , [alone] 1
@@ -181,8 +181,12 @@ fn test_fn_like_macro_clone_literals() {
               PUNCH   , [alone] 1
               LITERAL 3.14f32 1
               PUNCH   , [alone] 1
-              LITERAL "hello bridge" 1"#]],
-        expect![[r#"
+              LITERAL ""hello bridge"" 1
+              PUNCH   , [alone] 1
+              LITERAL ""suffixed""suffix 1
+              PUNCH   , [alone] 1
+              LITERAL r##"r##"raw"##"## 1"###]],
+        expect![[r###"
             SUBTREE $$ SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) } SpanData { range: 0..100, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
               LITERAL 1u16 SpanData { range: 0..4, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
               PUNCH   , [alone] SpanData { range: 4..5, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
@@ -193,7 +197,11 @@ fn test_fn_like_macro_clone_literals() {
               PUNCH   , [alone] SpanData { range: 18..19, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
               LITERAL 3.14f32 SpanData { range: 20..27, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
               PUNCH   , [alone] SpanData { range: 27..28, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
-              LITERAL "hello bridge" SpanData { range: 29..43, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"#]],
+              LITERAL ""hello bridge"" SpanData { range: 29..43, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
+              PUNCH   , [alone] SpanData { range: 43..44, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
+              LITERAL ""suffixed""suffix SpanData { range: 45..61, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
+              PUNCH   , [alone] SpanData { range: 61..62, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }
+              LITERAL r##"r##"raw"##"## SpanData { range: 63..73, anchor: SpanAnchor(FileId(42), 2), ctx: SyntaxContextId(0) }"###]],
     );
 }
 

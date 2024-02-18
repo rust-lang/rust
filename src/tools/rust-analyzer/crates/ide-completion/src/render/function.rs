@@ -8,8 +8,13 @@ use syntax::{format_smolstr, AstNode, SmolStr};
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, PathCompletionCtx, PathKind},
-    item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
-    render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
+    item::{
+        Builder, CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevanceFn,
+        CompletionRelevanceReturnType,
+    },
+    render::{
+        compute_exact_name_match, compute_ref_match, compute_type_match, match_types, RenderContext,
+    },
     CallableSnippets,
 };
 
@@ -61,9 +66,9 @@ fn render(
         ),
         _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
-
+    let has_self_param = func.self_param(db).is_some();
     let mut item = CompletionItem::new(
-        if func.self_param(db).is_some() {
+        if has_self_param {
             CompletionItemKind::Method
         } else {
             CompletionItemKind::SymbolKind(SymbolKind::Function)
@@ -99,6 +104,15 @@ fn render(
         .filter(|_| !has_call_parens)
         .and_then(|cap| Some((cap, params(ctx.completion, func, &func_kind, has_dot_receiver)?)));
 
+    let function = assoc_item
+        .and_then(|assoc_item| assoc_item.implementing_ty(db))
+        .map(|self_type| compute_return_type_match(db, &ctx, self_type, &ret_type))
+        .map(|return_type| CompletionRelevanceFn {
+            has_params: has_self_param || func.num_params(db) > 0,
+            has_self_param,
+            return_type,
+        });
+
     item.set_relevance(CompletionRelevance {
         type_match: if has_call_parens || complete_call_parens.is_some() {
             compute_type_match(completion, &ret_type)
@@ -106,6 +120,7 @@ fn render(
             compute_type_match(completion, &func.ty(db))
         },
         exact_name_match: compute_exact_name_match(completion, &call),
+        function,
         is_op_method,
         is_item_from_notable_trait,
         ..ctx.completion_relevance()
@@ -154,6 +169,33 @@ fn render(
 
     item.doc_aliases(ctx.doc_aliases);
     item
+}
+
+fn compute_return_type_match(
+    db: &dyn HirDatabase,
+    ctx: &RenderContext<'_>,
+    self_type: hir::Type,
+    ret_type: &hir::Type,
+) -> CompletionRelevanceReturnType {
+    if match_types(ctx.completion, &self_type, ret_type).is_some() {
+        // fn([..]) -> Self
+        CompletionRelevanceReturnType::DirectConstructor
+    } else if ret_type
+        .type_arguments()
+        .any(|ret_type_arg| match_types(ctx.completion, &self_type, &ret_type_arg).is_some())
+    {
+        // fn([..]) -> Result<Self, E> OR Wrapped<Foo, Self>
+        CompletionRelevanceReturnType::Constructor
+    } else if ret_type
+        .as_adt()
+        .and_then(|adt| adt.name(db).as_str().map(|name| name.ends_with("Builder")))
+        .unwrap_or(false)
+    {
+        // fn([..]) -> [..]Builder
+        CompletionRelevanceReturnType::Builder
+    } else {
+        CompletionRelevanceReturnType::Other
+    }
 }
 
 pub(super) fn add_call_parens<'b>(

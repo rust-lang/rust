@@ -33,7 +33,7 @@ m!(&k");
 "#,
         expect![[r#"
 macro_rules! m { ($i:literal) => {}; }
-/* error: invalid token tree */"#]],
+/* error: mismatched delimiters */"#]],
     );
 }
 

@@ -192,6 +192,8 @@ fn main() {
             bt u32                  u32
             kw crate::
             kw self::
+            ex Foo::default()
+            ex foo
         "#]],
     );
     check(

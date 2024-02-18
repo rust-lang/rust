@@ -68,26 +68,26 @@ m2!();
 "#,
         expect![[r#"
 macro_rules! i1 { invalid }
-/* error: invalid macro definition: expected subtree */
+/* error: macro definition has parse errors */
 
 macro_rules! e1 { $i:ident => () }
-/* error: invalid macro definition: expected subtree */
+/* error: macro definition has parse errors */
 macro_rules! e2 { ($i:ident) () }
-/* error: invalid macro definition: expected `=` */
+/* error: macro definition has parse errors */
 macro_rules! e3 { ($(i:ident)_) => () }
-/* error: invalid macro definition: invalid repeat */
+/* error: macro definition has parse errors */
 
 macro_rules! f1 { ($i) => ($i) }
-/* error: invalid macro definition: missing fragment specifier */
+/* error: macro definition has parse errors */
 macro_rules! f2 { ($i:) => ($i) }
-/* error: invalid macro definition: missing fragment specifier */
+/* error: macro definition has parse errors */
 macro_rules! f3 { ($i:_) => () }
-/* error: invalid macro definition: missing fragment specifier */
+/* error: macro definition has parse errors */
 
 macro_rules! m1 { ($$i) => () }
-/* error: invalid macro definition: `$$` is not allowed on the pattern side */
+/* error: macro definition has parse errors */
 macro_rules! m2 { () => ( ${invalid()} ) }
-/* error: invalid macro definition: invalid metavariable expression */
+/* error: macro definition has parse errors */
 "#]],
     )
 }
@@ -137,18 +137,18 @@ macro_rules! m9 { ($($($($i:ident)?)*)+) => {}; }
 macro_rules! mA { ($($($($i:ident)+)?)*) => {}; }
 macro_rules! mB { ($($($($i:ident)+)*)?) => {}; }
 
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
-/* error: invalid macro definition: empty token tree in repetition */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
+/* error: macro definition has parse errors */
     "#]],
     );
 }
