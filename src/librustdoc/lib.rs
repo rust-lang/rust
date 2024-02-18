@@ -787,7 +787,7 @@ fn main_args(
             gcx.enter(|tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-                });
+                })?;
                 info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {
