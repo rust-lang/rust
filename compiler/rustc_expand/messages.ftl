@@ -61,6 +61,11 @@ expand_invalid_cfg_multiple_predicates = multiple `cfg` predicates are specified
 expand_invalid_cfg_no_parens = `cfg` is not followed by parentheses
 expand_invalid_cfg_no_predicate = `cfg` predicate is not specified
 expand_invalid_cfg_predicate_literal = `cfg` predicate key cannot be a literal
+
+expand_invalid_fragment_specifier =
+    invalid fragment specifier `{$fragment}`
+    .help = {$help}
+
 expand_macro_body_stability =
     macros cannot have body stability attributes
     .label = invalid body stability attribute

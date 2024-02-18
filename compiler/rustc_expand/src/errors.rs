@@ -408,3 +408,13 @@ pub struct DuplicateMatcherBinding {
     #[label(expand_label2)]
     pub prev: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_invalid_fragment_specifier)]
+#[help]
+pub struct InvalidFragmentSpecifier {
+    #[primary_span]
+    pub span: Span,
+    pub fragment: Ident,
+    pub help: String,
+}
