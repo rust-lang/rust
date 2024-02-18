@@ -4,7 +4,7 @@
 //
 //@ check-pass
 //@ revisions: some none
-//@ rustc-env:CARGO=/usr/bin/cargo
+//@ rustc-env:CARGO_CRATE_NAME=foo
 //@ compile-flags: -Z unstable-options
 //@ [none]compile-flags: --check-cfg=cfg(feature,values())
 //@ [some]compile-flags: --check-cfg=cfg(feature,values("bitcode"))
