@@ -13,7 +13,7 @@ use rustc_errors::DiagnosticBuilder;
 use rustc_errors::{pluralize, PResult};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::{with_metavar_spans, Span, SyntaxContext};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
@@ -254,7 +254,8 @@ pub(super) fn transcribe<'a>(
                         MatchedTokenTree(tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            result.push(maybe_use_metavar_location(cx, &stack, sp, tt));
+                            let tt = maybe_use_metavar_location(cx, &stack, sp, tt, &mut marker);
+                            result.push(tt);
                         }
                         MatchedNonterminal(nt) => {
                             // Other variables are emitted into the output stream as groups with
@@ -319,6 +320,17 @@ pub(super) fn transcribe<'a>(
     }
 }
 
+/// Store the metavariable span for this original span into a side table.
+/// FIXME: Try to put the metavariable span into `SpanData` instead of a side table (#118517).
+/// An optimal encoding for inlined spans will need to be selected to minimize regressions.
+/// The side table approach is relatively good, but not perfect due to collisions.
+/// In particular, collisions happen when token is passed as an argument through several macro
+/// calls, like in recursive macros.
+/// The old heuristic below is used to improve spans in case of collisions, but diagnostics are
+/// still degraded sometimes in those cases.
+///
+/// The old heuristic:
+///
 /// Usually metavariables `$var` produce interpolated tokens, which have an additional place for
 /// keeping both the original span and the metavariable span. For `tt` metavariables that's not the
 /// case however, and there's no place for keeping a second span. So we try to give the single
@@ -338,15 +350,12 @@ pub(super) fn transcribe<'a>(
 ///   These are typically used for passing larger amounts of code, and tokens in that code usually
 ///   combine with each other and not with tokens outside of the sequence.
 /// - The metavariable span comes from a different crate, then we prefer the more local span.
-///
-/// FIXME: Find a way to keep both original and metavariable spans for all tokens without
-/// regressing compilation time too much. Several experiments for adding such spans were made in
-/// the past (PR #95580, #118517, #118671) and all showed some regressions.
 fn maybe_use_metavar_location(
     cx: &ExtCtxt<'_>,
     stack: &[Frame<'_>],
-    metavar_span: Span,
+    mut metavar_span: Span,
     orig_tt: &TokenTree,
+    marker: &mut Marker,
 ) -> TokenTree {
     let undelimited_seq = matches!(
         stack.last(),
@@ -357,18 +366,44 @@ fn maybe_use_metavar_location(
             ..
         })
     );
-    if undelimited_seq || cx.source_map().is_imported(metavar_span) {
+    if undelimited_seq {
+        // Do not record metavar spans for tokens from undelimited sequences, for perf reasons.
         return orig_tt.clone();
     }
 
+    let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
+        Ok(_) => true,
+        Err(err) => *err.entry.get() == ms, // Tried to insert the same span, still success
+    };
+    marker.visit_span(&mut metavar_span);
+    let no_collision = match orig_tt {
+        TokenTree::Token(token, ..) => {
+            with_metavar_spans(|mspans| insert(mspans, token.span, metavar_span))
+        }
+        TokenTree::Delimited(dspan, ..) => with_metavar_spans(|mspans| {
+            insert(mspans, dspan.open, metavar_span)
+                && insert(mspans, dspan.close, metavar_span)
+                && insert(mspans, dspan.entire(), metavar_span)
+        }),
+    };
+    if no_collision || cx.source_map().is_imported(metavar_span) {
+        return orig_tt.clone();
+    }
+
+    // Setting metavar spans for the heuristic spans gives better opportunities for combining them
+    // with neighboring spans even despite their different syntactic contexts.
     match orig_tt {
         TokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
+            with_metavar_spans(|mspans| insert(mspans, span, metavar_span));
             TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
-            let open = metavar_span.shrink_to_lo().with_ctxt(dspan.open.ctxt());
-            let close = metavar_span.shrink_to_hi().with_ctxt(dspan.close.ctxt());
+            let open = metavar_span.with_ctxt(dspan.open.ctxt());
+            let close = metavar_span.with_ctxt(dspan.close.ctxt());
+            with_metavar_spans(|mspans| {
+                insert(mspans, open, metavar_span) && insert(mspans, close, metavar_span)
+            });
             let dspan = DelimSpan::from_pair(open, close);
             TokenTree::Delimited(dspan, *dspacing, *delimiter, tts.clone())
         }

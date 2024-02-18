@@ -72,6 +72,7 @@ pub mod fatal_error;
 
 pub mod profiling;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, HashStable, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
 
@@ -98,6 +99,9 @@ mod tests;
 pub struct SessionGlobals {
     symbol_interner: symbol::Interner,
     span_interner: Lock<span_encoding::SpanInterner>,
+    /// Maps a macro argument token into use of the corresponding metavariable in the macro body.
+    /// Collisions are possible and processed in `maybe_use_metavar_location` on best effort basis.
+    metavar_spans: Lock<FxHashMap<Span, Span>>,
     hygiene_data: Lock<hygiene::HygieneData>,
 
     /// A reference to the source map in the `Session`. It's an `Option`
@@ -115,6 +119,7 @@ impl SessionGlobals {
         SessionGlobals {
             symbol_interner: symbol::Interner::fresh(),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
+            metavar_spans: Default::default(),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
             source_map: Lock::new(None),
         }
@@ -167,6 +172,11 @@ pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
 // and `decode_expn_id` will need to be updated to handle concurrent
 // deserialization.
 scoped_tls::scoped_thread_local!(static SESSION_GLOBALS: SessionGlobals);
+
+#[inline]
+pub fn with_metavar_spans<R>(f: impl FnOnce(&mut FxHashMap<Span, Span>) -> R) -> R {
+    with_session_globals(|session_globals| f(&mut session_globals.metavar_spans.lock()))
+}
 
 // FIXME: We should use this enum or something like it to get rid of the
 // use of magic `/rust/1.x/...` paths across the board.
@@ -824,29 +834,64 @@ impl Span {
         )
     }
 
+    /// Check if you can select metavar spans for the given spans to get matching contexts.
+    fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
+        let get = |mspans: &FxHashMap<_, _>, s| mspans.get(&s).copied();
+        match with_metavar_spans(|mspans| (get(mspans, a_orig), get(mspans, b_orig))) {
+            (None, None) => {}
+            (Some(meta_a), None) => {
+                let meta_a = meta_a.data();
+                if meta_a.ctxt == b.ctxt {
+                    return (meta_a, b);
+                }
+            }
+            (None, Some(meta_b)) => {
+                let meta_b = meta_b.data();
+                if a.ctxt == meta_b.ctxt {
+                    return (a, meta_b);
+                }
+            }
+            (Some(meta_a), Some(meta_b)) => {
+                let meta_b = meta_b.data();
+                if a.ctxt == meta_b.ctxt {
+                    return (a, meta_b);
+                }
+                let meta_a = meta_a.data();
+                if meta_a.ctxt == b.ctxt {
+                    return (meta_a, b);
+                } else if meta_a.ctxt == meta_b.ctxt {
+                    return (meta_a, meta_b);
+                }
+            }
+        }
+
+        (a, b)
+    }
+
     /// Prepare two spans to a combine operation like `to` or `between`.
-    /// FIXME: consider using declarative macro metavariable spans for the given spans if they are
-    /// better suitable for combining (#119412).
     fn prepare_to_combine(
         a_orig: Span,
         b_orig: Span,
     ) -> Result<(SpanData, SpanData, Option<LocalDefId>), Span> {
         let (a, b) = (a_orig.data(), b_orig.data());
-
-        if a.ctxt != b.ctxt {
-            // Context mismatches usually happen when procedural macros combine spans copied from
-            // the macro input with spans produced by the macro (`Span::*_site`).
-            // In that case we consider the combined span to be produced by the macro and return
-            // the original macro-produced span as the result.
-            // Otherwise we just fall back to returning the first span.
-            // Combining locations typically doesn't make sense in case of context mismatches.
-            // `is_root` here is a fast path optimization.
-            let a_is_callsite = a.ctxt.is_root() || a.ctxt == b.span().source_callsite().ctxt();
-            return Err(if a_is_callsite { b_orig } else { a_orig });
+        if a.ctxt == b.ctxt {
+            return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
         }
 
-        let parent = if a.parent == b.parent { a.parent } else { None };
-        Ok((a, b, parent))
+        let (a, b) = Span::try_metavars(a, b, a_orig, b_orig);
+        if a.ctxt == b.ctxt {
+            return Ok((a, b, if a.parent == b.parent { a.parent } else { None }));
+        }
+
+        // Context mismatches usually happen when procedural macros combine spans copied from
+        // the macro input with spans produced by the macro (`Span::*_site`).
+        // In that case we consider the combined span to be produced by the macro and return
+        // the original macro-produced span as the result.
+        // Otherwise we just fall back to returning the first span.
+        // Combining locations typically doesn't make sense in case of context mismatches.
+        // `is_root` here is a fast path optimization.
+        let a_is_callsite = a.ctxt.is_root() || a.ctxt == b.span().source_callsite().ctxt();
+        Err(if a_is_callsite { b_orig } else { a_orig })
     }
 
     /// This span, but in a larger context, may switch to the metavariable span if suitable.

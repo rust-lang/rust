@@ -4,10 +4,10 @@
 
 macro_rules! m {
     ($a:tt $b:tt) => {
-        $b $a; //~ WARN struct `S` is never constructed
+        $b $a;
     }
 }
 
 fn main() {
-    m!(S struct);
+    m!(S struct); //~ WARN struct `S` is never constructed
 }
