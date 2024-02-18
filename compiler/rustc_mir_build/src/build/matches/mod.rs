@@ -1408,7 +1408,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-        block: BasicBlock,
+        start_block: BasicBlock,
         otherwise_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
@@ -1423,7 +1423,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     span,
                     scrutinee_span,
                     candidates,
-                    block,
+                    start_block,
                     otherwise_block,
                     fake_borrows,
                 );
@@ -1432,7 +1432,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let match_pairs = mem::take(&mut first_candidate.match_pairs);
-        first_candidate.pre_binding_block = Some(block);
 
         let remainder_start = self.cfg.start_new_block();
         for match_pair in match_pairs {
@@ -1442,9 +1441,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let or_span = match_pair.pattern.span;
 
             first_candidate.visit_leaves(|leaf_candidate| {
+                let or_start = leaf_candidate.pre_binding_block.unwrap_or(start_block);
+                let or_otherwise = leaf_candidate.otherwise_block.unwrap_or(remainder_start);
                 self.test_or_pattern(
                     leaf_candidate,
-                    remainder_start,
+                    or_start,
+                    or_otherwise,
                     pats,
                     or_span,
                     &match_pair.place,
@@ -1464,13 +1466,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     #[instrument(
-        skip(self, otherwise, or_span, place, fake_borrows, candidate, pats),
+        skip(self, start_block, otherwise_block, or_span, place, fake_borrows, candidate, pats),
         level = "debug"
     )]
     fn test_or_pattern<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
-        otherwise: BasicBlock,
+        start_block: BasicBlock,
+        otherwise_block: BasicBlock,
         pats: &'pat [Box<Pat<'tcx>>],
         or_span: Span,
         place: &PlaceBuilder<'tcx>,
@@ -1482,16 +1485,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard, self))
             .collect();
         let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
-        let otherwise = if let Some(otherwise_block) = candidate.otherwise_block {
-            otherwise_block
-        } else {
-            otherwise
-        };
         self.match_candidates(
             or_span,
             or_span,
-            candidate.pre_binding_block.unwrap(),
-            otherwise,
+            start_block,
+            otherwise_block,
             &mut or_candidate_refs,
             fake_borrows,
         );
