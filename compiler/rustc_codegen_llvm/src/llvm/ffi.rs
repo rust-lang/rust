@@ -1619,6 +1619,7 @@ extern "C" {
 
     pub fn LLVMRustSetFastMath(Instr: &Value);
     pub fn LLVMRustSetAlgebraicMath(Instr: &Value);
+    pub fn LLVMRustSetAllowReassoc(Instr: &Value);
 
     // Miscellaneous instructions
     pub fn LLVMRustGetInstrProfIncrementIntrinsic(M: &Module) -> &Value;

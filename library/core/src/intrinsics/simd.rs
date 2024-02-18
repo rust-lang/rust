@@ -335,16 +335,12 @@ extern "platform-intrinsic" {
     /// Starting with the value `y`, add the elements of `x` and accumulate.
     pub fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 
-    /// Add elements within a vector in arbitrary order, and without regard
-    /// for signed zeros.
+    /// Add elements within a vector in arbitrary order. May also be re-associated with
+    /// unordered additions on the inputs/outputs.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
     /// `U` must be the element type of `T`.
-    ///
-    /// # Safety
-    ///
-    /// All input elements must be finite (i.e., not NAN and not +/- INF).
     pub fn simd_reduce_add_unordered<T, U>(x: T) -> U;
 
     /// Multiply elements within a vector from left to right.
@@ -356,16 +352,12 @@ extern "platform-intrinsic" {
     /// Starting with the value `y`, multiply the elements of `x` and accumulate.
     pub fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
 
-    /// Multiply elements within a vector in arbitrary order, and without regard
-    /// for signed zeros.
+    /// Add elements within a vector in arbitrary order. May also be re-associated with
+    /// unordered additions on the inputs/outputs.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
     /// `U` must be the element type of `T`.
-    ///
-    /// # Safety
-    ///
-    /// All input elements must be finite (i.e., not NAN and not +/- INF).
     pub fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
 
     /// Check if all mask values are true.

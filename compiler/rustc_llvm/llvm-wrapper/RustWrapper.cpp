@@ -418,11 +418,17 @@ extern "C" LLVMAttributeRef LLVMRustCreateMemoryEffectsAttr(LLVMContextRef C,
   }
 }
 
+<<<<<<< HEAD
 // Enable all fast-math flags, including those which will cause floating-point operations
 // to return poison for some well-defined inputs. This function can only be used to build
 // unsafe Rust intrinsics. That unsafety does permit additional optimizations, but at the
 // time of writing, their value is not well-understood relative to those enabled by
 // LLVMRustSetAlgebraicMath.
+||||||| parent of 019019d83e2 (make simd_reduce_{mul,add}_unordered use only the 'reassoc' flag, not all fast-math flags)
+// Enable a fast-math flag
+=======
+// Enable all fast-math flags
+>>>>>>> 019019d83e2 (make simd_reduce_{mul,add}_unordered use only the 'reassoc' flag, not all fast-math flags)
 //
 // https://llvm.org/docs/LangRef.html#fast-math-flags
 extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
@@ -447,6 +453,15 @@ extern "C" void LLVMRustSetAlgebraicMath(LLVMValueRef V) {
     I->setHasAllowContract(true);
     I->setHasAllowReciprocal(true);
     I->setHasNoSignedZeros(true);
+  }
+}
+
+// Enable the reassoc fast-math flag
+//
+// https://llvm.org/docs/LangRef.html#fast-math-flags
+extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+    I->setHasAllowReassoc(true);
   }
 }
 
