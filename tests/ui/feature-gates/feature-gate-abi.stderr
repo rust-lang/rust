@@ -187,12 +187,16 @@ error[E0093]: unrecognized intrinsic function: `f1`
    |
 LL | extern "rust-intrinsic" fn f1() {}
    |                            ^^ unrecognized intrinsic
+   |
+   = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error[E0093]: unrecognized intrinsic function: `f2`
   --> $DIR/feature-gate-abi.rs:18:32
    |
 LL | extern "platform-intrinsic" fn f2() {}
    |                                ^^ unrecognized intrinsic
+   |
+   = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
   --> $DIR/feature-gate-abi.rs:25:32
