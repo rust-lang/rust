@@ -3,6 +3,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 
+use either::Either;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::IndexEntry;
@@ -14,6 +15,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
+use rustc_middle::ty::Ty;
 use rustc_session::lint::builtin::WRITES_THROUGH_IMMUTABLE_POINTER;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -191,6 +193,16 @@ impl interpret::MayLeak for ! {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ExtraFnVal<'tcx> {
+    /// `#[rustc_const_panic_str]` or `#[lang = "begin_panic"]`
+    BeginPanic,
+    /// `#[lang = "panic_fmt"]`
+    PanicFmt(ty::Instance<'tcx>),
+    /// `#[lang = "align_offset"]`
+    AlignOffset(ty::Instance<'tcx>),
+}
+
 impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
@@ -212,56 +224,29 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
 
     /// "Intercept" a function call, because we have something special to do for it.
     /// All `#[rustc_do_not_const_check]` functions should be hooked here.
-    /// If this returns `Some` function, which may be `instance` or a different function with
-    /// compatible arguments, then evaluation should continue with that function.
-    /// If this returns `None`, the function call has been handled and the function has returned.
-    fn hook_special_const_fn(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        args: &[FnArg<'tcx>],
-        dest: &PlaceTy<'tcx>,
-        ret: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
+    ///
+    /// If this returns `Some`, the function should be executed via [`call_extra_fn`].
+    /// If this returns `None`, the function should be executed as normal.
+    ///
+    /// [`call_extra_fn`]: interpret::Machine::call_extra_fn
+    fn hook_special_const_fn(&mut self, instance: ty::Instance<'tcx>) -> Option<ExtraFnVal<'tcx>> {
         let def_id = instance.def_id();
 
         if self.tcx.has_attr(def_id, sym::rustc_const_panic_str)
             || Some(def_id) == self.tcx.lang_items().begin_panic_fn()
         {
-            let args = self.copy_fn_args(args)?;
-            // &str or &&str
-            assert!(args.len() == 1);
-
-            let mut msg_place = self.deref_pointer(&args[0])?;
-            while msg_place.layout.ty.is_ref() {
-                msg_place = self.deref_pointer(&msg_place)?;
-            }
-
-            let msg = Symbol::intern(self.read_str(&msg_place)?);
-            let span = self.find_closest_untracked_caller_location();
-            let (file, line, col) = self.location_triple_for_span(span);
-            return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
-        } else if Some(def_id) == self.tcx.lang_items().panic_fmt() {
-            // For panic_fmt, call const_panic_fmt instead.
-            let const_def_id = self.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
-            let new_instance = ty::Instance::resolve(
-                *self.tcx,
-                ty::ParamEnv::reveal_all(),
-                const_def_id,
-                instance.args,
-            )
-            .unwrap()
-            .unwrap();
-
-            return Ok(Some(new_instance));
-        } else if Some(def_id) == self.tcx.lang_items().align_offset_fn() {
-            let args = self.copy_fn_args(args)?;
-            // For align_offset, we replace the function call if the pointer has no address.
-            match self.align_offset(instance, &args, dest, ret)? {
-                ControlFlow::Continue(()) => return Ok(Some(instance)),
-                ControlFlow::Break(()) => return Ok(None),
-            }
+            return Some(ExtraFnVal::BeginPanic);
         }
-        Ok(Some(instance))
+
+        if Some(def_id) == self.tcx.lang_items().panic_fmt() {
+            return Some(ExtraFnVal::PanicFmt(instance));
+        }
+
+        if Some(def_id) == self.tcx.lang_items().align_offset_fn() {
+            return Some(ExtraFnVal::AlignOffset(instance));
+        }
+
+        None
     }
 
     /// `align_offset(ptr, target_align)` needs special handling in const eval, because the pointer
@@ -371,6 +356,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     compile_time_machine!(<'mir, 'tcx>);
 
     type MemoryKind = MemoryKind;
+    type ExtraFnVal = ExtraFnVal<'tcx>;
 
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
@@ -399,7 +385,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                         .delayed_bug("This is likely a const item that is missing from its impl");
                     throw_inval!(AlreadyReported(guar.into()));
                 } else {
-                    // `find_mir_or_eval_fn` checks that this is a const fn before even calling us,
+                    // `find_mir_or_extra_fn` checks that this is a const fn before even calling us,
                     // so this should be unreachable.
                     let path = ecx.tcx.def_path_str(def);
                     bug!("trying to call extern function `{path}` at compile-time");
@@ -409,22 +395,17 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
     }
 
-    fn find_mir_or_eval_fn(
+    fn find_mir_or_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        orig_instance: ty::Instance<'tcx>,
+        instance: ty::Instance<'tcx>,
         _abi: CallAbi,
-        args: &[FnArg<'tcx>],
-        dest: &PlaceTy<'tcx>,
-        ret: Option<mir::BasicBlock>,
-        _unwind: mir::UnwindAction, // unwinding is not supported in consts
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        debug!("find_mir_or_eval_fn: {:?}", orig_instance);
+    ) -> InterpResult<'tcx, Either<&'mir mir::Body<'tcx>, Self::ExtraFnVal>> {
+        debug!("find_mir_or_extra_fn: {:?}", instance);
 
         // Replace some functions.
-        let Some(instance) = ecx.hook_special_const_fn(orig_instance, args, dest, ret)? else {
-            // Call has already been handled.
-            return Ok(None);
-        };
+        if let Some(extra) = ecx.hook_special_const_fn(instance) {
+            return Ok(Either::Right(extra));
+        }
 
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def) = instance.def {
@@ -442,10 +423,75 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         }
 
-        // This is a const fn. Call it.
-        // In case of replacement, we return the *original* instance to make backtraces work out
-        // (and we hope this does not confuse the FnAbi checks too much).
-        Ok(Some((ecx.load_mir(instance.def, None)?, orig_instance)))
+        // This is a const fn. Return its mir to be called.
+        ecx.load_mir(instance.def, None).map(Either::Left)
+    }
+
+    #[inline(always)]
+    fn call_extra_fn(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: Self::ExtraFnVal,
+        abis: (CallAbi, &rustc_target::abi::call::FnAbi<'tcx, Ty<'tcx>>),
+        args: &[FnArg<'tcx>],
+        destination: &PlaceTy<'tcx, Self::Provenance>,
+        target: Option<mir::BasicBlock>,
+        unwind: mir::UnwindAction,
+    ) -> InterpResult<'tcx> {
+        match fn_val {
+            ExtraFnVal::BeginPanic => {
+                let args = ecx.copy_fn_args(args)?;
+                // &str or &&str
+                assert!(args.len() == 1);
+
+                let mut msg_place = ecx.deref_pointer(&args[0])?;
+                while msg_place.layout.ty.is_ref() {
+                    msg_place = ecx.deref_pointer(&msg_place)?;
+                }
+
+                let msg = Symbol::intern(ecx.read_str(&msg_place)?);
+                let span = ecx.find_closest_untracked_caller_location();
+                let (file, line, col) = ecx.location_triple_for_span(span);
+                return Err(ConstEvalErrKind::Panic { msg, file, line, col }.into());
+            }
+            ExtraFnVal::PanicFmt(instance) => {
+                // For panic_fmt, call const_panic_fmt instead.
+                let const_def_id = ecx.tcx.require_lang_item(LangItem::ConstPanicFmt, None);
+                let new_instance = ty::Instance::resolve(
+                    *ecx.tcx,
+                    ty::ParamEnv::reveal_all(),
+                    const_def_id,
+                    instance.args,
+                )
+                .unwrap()
+                .unwrap();
+
+                ecx.eval_fn_call(
+                    FnVal::Instance(new_instance),
+                    abis,
+                    args,
+                    true,
+                    destination,
+                    target,
+                    unwind,
+                )
+            }
+            ExtraFnVal::AlignOffset(instance) => {
+                let args2 = ecx.copy_fn_args(args)?;
+                // For align_offset, we replace the function call if the pointer has no address.
+                match ecx.align_offset(instance, &args2, destination, target)? {
+                    ControlFlow::Continue(()) => ecx.eval_fn_call(
+                        FnVal::Instance(instance),
+                        abis,
+                        args,
+                        false,
+                        destination,
+                        target,
+                        unwind,
+                    ),
+                    ControlFlow::Break(()) => Ok(()),
+                }
+            }
+        }
     }
 
     fn panic_nounwind(ecx: &mut InterpCx<'mir, 'tcx, Self>, msg: &str) -> InterpResult<'tcx> {

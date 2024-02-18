@@ -2,6 +2,7 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
+use either::Either;
 use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, OpTy, PlaceTy, PointerArithmetic, Projectable,
 };
@@ -867,6 +868,7 @@ pub(crate) struct DummyMachine;
 impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);
     type MemoryKind = !;
+    type ExtraFnVal = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
     #[inline(always)]
@@ -899,15 +901,11 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         Ok(())
     }
 
-    fn find_mir_or_eval_fn(
+    fn find_mir_or_extra_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _abi: rustc_target::spec::abi::Abi,
-        _args: &[rustc_const_eval::interpret::FnArg<'tcx, Self::Provenance>],
-        _destination: &rustc_const_eval::interpret::PlaceTy<'tcx, Self::Provenance>,
-        _target: Option<BasicBlock>,
-        _unwind: UnwindAction,
-    ) -> interpret::InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> interpret::InterpResult<'tcx, Either<&'mir Body<'tcx>, Self::ExtraFnVal>> {
         unimplemented!()
     }
 
@@ -1015,5 +1013,17 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
         rustc_const_eval::interpret::Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
     > {
         unimplemented!()
+    }
+
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: Self::ExtraFnVal,
+        _: (rustc_target::spec::abi::Abi, &rustc_target::abi::call::FnAbi<'tcx, Ty<'tcx>>),
+        _args: &[rustc_const_eval::interpret::FnArg<'tcx, Self::Provenance>],
+        _destination: &PlaceTy<'tcx, Self::Provenance>,
+        _target: Option<rustc_middle::mir::BasicBlock>,
+        _unwind: rustc_middle::mir::UnwindAction,
+    ) -> InterpResult<'tcx> {
+        match fn_val {}
     }
 }

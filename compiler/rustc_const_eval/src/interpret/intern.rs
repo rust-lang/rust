@@ -24,12 +24,12 @@ use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceT
 use crate::const_eval;
 use crate::errors::{DanglingPtrInFinal, MutablePtrInFinal};
 
-pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
+pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T, U = const_eval::ExtraFnVal<'tcx>> = Machine<
         'mir,
         'tcx,
         MemoryKind = T,
         Provenance = CtfeProvenance,
-        ExtraFnVal = !,
+        ExtraFnVal = U,
         FrameExtra = (),
         AllocExtra = (),
         MemoryMap = FxIndexMap<AllocId, (MemoryKind<T>, Allocation)>,
@@ -42,7 +42,7 @@ pub trait CompileTimeMachine<'mir, 'tcx: 'mir, T> = Machine<
 /// already mutable (as a sanity check).
 ///
 /// Returns an iterator over all relocations referred to by this allocation.
-fn intern_shallow<'rt, 'mir, 'tcx, T, M: CompileTimeMachine<'mir, 'tcx, T>>(
+fn intern_shallow<'rt, 'mir, 'tcx, T, U, M: CompileTimeMachine<'mir, 'tcx, T, U>>(
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
@@ -236,7 +236,8 @@ pub fn intern_const_alloc_for_constprop<
     'mir,
     'tcx: 'mir,
     T,
-    M: CompileTimeMachine<'mir, 'tcx, T>,
+    U,
+    M: CompileTimeMachine<'mir, 'tcx, T, U>,
 >(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     alloc_id: AllocId,
@@ -255,7 +256,7 @@ pub fn intern_const_alloc_for_constprop<
     Ok(())
 }
 
-impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
+impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !, !>>
     InterpCx<'mir, 'tcx, M>
 {
     /// A helper function that allocates memory for the layout given and gives you access to mutate

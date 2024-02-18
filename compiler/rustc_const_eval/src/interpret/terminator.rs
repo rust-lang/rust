@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use either::Either;
 use rustc_ast::ast::InlineAsmOptions;
 use rustc_middle::{
     mir,
@@ -515,7 +516,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return M::call_extra_fn(
                     self,
                     extra,
-                    caller_abi,
+                    (caller_abi, caller_fn_abi),
                     args,
                     destination,
                     target,
@@ -549,21 +550,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::ThreadLocalShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let Some((body, instance)) = M::find_mir_or_eval_fn(
-                    self,
-                    instance,
-                    caller_abi,
-                    args,
-                    destination,
-                    target,
-                    unwind,
-                )?
-                else {
-                    return Ok(());
+                let body = match M::find_mir_or_extra_fn(self, instance, caller_abi)? {
+                    Either::Left(b) => b,
+                    Either::Right(f) => {
+                        return M::call_extra_fn(
+                            self,
+                            f,
+                            (caller_abi, caller_fn_abi),
+                            args,
+                            destination,
+                            target,
+                            unwind,
+                        );
+                    }
                 };
 
                 // Compute callee information using the `instance` returned by
-                // `find_mir_or_eval_fn`.
+                // `find_mir_or_extra_fn`.
                 // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
                 let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 

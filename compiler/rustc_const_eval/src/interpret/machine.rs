@@ -6,12 +6,13 @@ use std::borrow::{Borrow, Cow};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use either::Either;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
@@ -191,22 +192,18 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// nor just jump to `ret`, but instead push their own stack frame.)
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
-    fn find_mir_or_eval_fn(
+    fn find_mir_or_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         abi: CallAbi,
-        args: &[FnArg<'tcx, Self::Provenance>],
-        destination: &PlaceTy<'tcx, Self::Provenance>,
-        target: Option<mir::BasicBlock>,
-        unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>>;
+    ) -> InterpResult<'tcx, Either<&'mir mir::Body<'tcx>, Self::ExtraFnVal>>;
 
     /// Execute `fn_val`. It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
-        abi: CallAbi,
+        abis: (CallAbi, &rustc_target::abi::call::FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, Self::Provenance>],
         destination: &PlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
@@ -555,8 +552,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type Provenance = CtfeProvenance;
     type ProvenanceExtra = bool; // the "immutable" flag
 
-    type ExtraFnVal = !;
-
     type MemoryMap =
         rustc_data_structures::fx::FxIndexMap<AllocId, (MemoryKind<Self::MemoryKind>, Allocation)>;
     const GLOBAL_KIND: Option<Self::MemoryKind> = None; // no copying of globals from `tcx` to machine memory
@@ -576,19 +571,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _reason: mir::UnwindTerminateReason,
     ) -> InterpResult<$tcx> {
         unreachable!("unwinding cannot happen during compile-time evaluation")
-    }
-
-    #[inline(always)]
-    fn call_extra_fn(
-        _ecx: &mut InterpCx<$mir, $tcx, Self>,
-        fn_val: !,
-        _abi: CallAbi,
-        _args: &[FnArg<$tcx>],
-        _destination: &PlaceTy<$tcx, Self::Provenance>,
-        _target: Option<mir::BasicBlock>,
-        _unwind: mir::UnwindAction,
-    ) -> InterpResult<$tcx> {
-        match fn_val {}
     }
 
     #[inline(always)]

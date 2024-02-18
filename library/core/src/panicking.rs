@@ -258,6 +258,7 @@ fn panic_in_cleanup() -> ! {
 
 /// This function is used instead of panic_fmt in const eval.
 #[lang = "const_panic_fmt"]
+#[track_caller]
 #[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
