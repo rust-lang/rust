@@ -859,6 +859,11 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     }
 }
 
+const N: usize = max_leb128_len::<u32>();
+
+use rustc_serialize::leb128::max_leb128_len;
+use rustc_serialize::leb128::write_u32_leb128;
+
 impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
         rustc_span::hygiene::raw_encode_syntax_context(syntax_context, self.hygiene_context, self);
@@ -881,9 +886,20 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
         if let Some(parent) = span_data.parent {
             let enclosing = self.tcx.source_span_untracked(parent).data_untracked();
             if enclosing.contains(span_data) {
-                TAG_RELATIVE_SPAN.encode(self);
-                (span_data.lo - enclosing.lo).to_u32().encode(self);
-                (span_data.hi - enclosing.lo).to_u32().encode(self);
+                let lo = (span_data.lo - enclosing.lo).to_u32();
+                let hi = (span_data.hi - enclosing.lo).to_u32();
+                self.encoder.write_with(|dest: &mut [u8; 1 + N * 2]| {
+                    dest[0] = TAG_RELATIVE_SPAN;
+                    let dest = &mut dest[1..];
+
+                    let head: &mut [u8; N] = dest.split_at_mut(N).0.try_into().unwrap();
+                    let lo_used = write_u32_leb128(head, lo);
+                    let dest = &mut dest[lo_used..];
+
+                    let head: &mut [u8; N] = dest.split_at_mut(N).0.try_into().unwrap();
+                    let hi_used = write_u32_leb128(head, hi);
+                    1 + lo_used + hi_used
+                });
                 return;
             }
         }

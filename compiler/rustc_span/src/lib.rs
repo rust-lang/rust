@@ -1034,8 +1034,8 @@ pub trait SpanEncoder: Encoder {
 
 const N: usize = max_leb128_len::<u32>();
 
-use rustc_serialize::leb128::write_u32_leb128;
 use rustc_serialize::leb128::max_leb128_len;
+use rustc_serialize::leb128::write_u32_leb128;
 impl SpanEncoder for FileEncoder {
     fn encode_span(&mut self, span: Span) {
         let span = span.data();
