@@ -1,13 +1,13 @@
 //! Tidy check to ensure below in UI test directories:
 //! - the number of entries in each directory must be less than `ENTRY_LIMIT`
 //! - there are no stray `.stderr` files
-
 use ignore::Walk;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use std::ffi::OsStr;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 // FIXME: GitHub's UI truncates file lists that exceed 1000 entries, so these
@@ -97,13 +97,16 @@ fn check_entries(tests_path: &Path, bad: &mut bool) {
     }
 }
 
-pub fn check(path: &Path, bad: &mut bool) {
+pub fn check(path: &Path, bless: bool, bad: &mut bool) {
     check_entries(&path, bad);
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
-    let mut allowed_issue_filenames: HashSet<String> = HashSet::from(
+    // BTreeSet because we would like a stable ordering so --bless works
+    let allowed_issue_names = BTreeSet::from(
         include!("issues.txt").map(|path| path.replace("/", std::path::MAIN_SEPARATOR_STR)),
     );
+
+    let mut remaining_issue_names: BTreeSet<String> = allowed_issue_names.clone();
 
     let (ui, ui_fulldeps) = (path.join("ui"), path.join("ui-fulldeps"));
     let paths = [ui.as_path(), ui_fulldeps.as_path()];
@@ -156,7 +159,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 if let Some(test_name) = ISSUE_NAME_REGEX.captures(testname) {
                     // these paths are always relative to the passed `path` and always UTF8
                     let stripped_path = file_path.strip_prefix(path).unwrap().to_str().unwrap();
-                    if !allowed_issue_filenames.remove(stripped_path) {
+                    if !remaining_issue_names.remove(stripped_path) {
                         tidy_error!(
                             bad,
                             "file `{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
@@ -169,8 +172,30 @@ pub fn check(path: &Path, bad: &mut bool) {
     });
 
     // if an excluded file is renamed, it must be removed from this list
-    if allowed_issue_filenames.len() > 0 {
-        for file_name in allowed_issue_filenames {
+    // do this automatically on bless, otherwise issue a tidy error
+    if bless {
+        let issues_txt_header = r#"
+/*
+============================================================
+    ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
+============================================================
+*/
+[
+"#;
+        let tidy_src = std::env::current_dir().unwrap().join("src/tools/tidy/src");
+        // instead of overwriting the file, recreate it and use an "atomic rename"
+        // so we don't bork things on panic or a contributor using Ctrl+C
+        let blessed_issues_path = tidy_src.join("issues_blessed.txt");
+        let mut blessed_issues_txt = fs::File::create(&blessed_issues_path).unwrap();
+        blessed_issues_txt.write(issues_txt_header.as_bytes()).unwrap();
+        for filename in allowed_issue_names.difference(&remaining_issue_names) {
+            write!(blessed_issues_txt, "\"{filename}\",\n").unwrap();
+        }
+        write!(blessed_issues_txt, "]\n").unwrap();
+        let old_issues_path = tidy_src.join("issues.txt");
+        fs::rename(blessed_issues_path, old_issues_path).unwrap();
+    } else {
+        for file_name in remaining_issue_names {
             let mut p = PathBuf::from(path);
             p.push(file_name);
             tidy_error!(
