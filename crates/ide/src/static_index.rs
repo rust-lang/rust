@@ -166,6 +166,7 @@ impl StaticIndex<'_> {
             documentation: true,
             keywords: true,
             format: crate::HoverDocFormat::Markdown,
+            trait_item_display_on_hover: Some(7)
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -196,7 +197,7 @@ impl StaticIndex<'_> {
                     enclosing_moniker: current_crate
                         .zip(def.enclosing_definition(self.db))
                         .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
-                    signature: Some(def.label(self.db)),
+                    signature: Some(def.label(self.db, hover_config.trait_item_display_on_hover)),
                     kind: def_to_kind(self.db, def),
                 });
                 self.def_map.insert(def, it);

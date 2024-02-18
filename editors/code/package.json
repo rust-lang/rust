@@ -1648,6 +1648,15 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.trait.item.display.on.hover": {
+                    "markdownDescription": "How many trait item display on hover.",
+                    "default": 7,
+                    "type": [
+                        "null",
+                        "integer"
+                    ],
+                    "minimum": 0
+                },
                 "rust-analyzer.typing.autoClosingAngleBrackets.enable": {
                     "markdownDescription": "Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.",
                     "default": false,

@@ -511,7 +511,6 @@ config_data! {
         /// Exclude tests from find-all-references.
         references_excludeTests: bool = "false",
 
-
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = "null",
         /// Additional arguments to be passed to cargo for runnables such as
@@ -590,6 +589,9 @@ config_data! {
         signatureInfo_detail: SignatureDetail                           = "\"full\"",
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = "true",
+
+        /// How many trait item display on hover.
+        trait_item_display_on_hover: Option<usize> = "7",
 
         /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
         typing_autoClosingAngleBrackets_enable: bool = "false",
@@ -1683,6 +1685,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
+            trait_item_display_on_hover: self.data.trait_item_display_on_hover,
         }
     }
 

@@ -927,6 +927,11 @@ Show full signature of the callable. Only shows parameters if disabled.
 --
 Show documentation.
 --
+[[rust-analyzer.trait.item.display.on.hover]]rust-analyzer.trait.item.display.on.hover (default: `7`)::
++
+--
+How many trait item display on hover.
+--
 [[rust-analyzer.typing.autoClosingAngleBrackets.enable]]rust-analyzer.typing.autoClosingAngleBrackets.enable (default: `false`)::
 +
 --

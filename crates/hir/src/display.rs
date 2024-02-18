@@ -593,12 +593,14 @@ impl HirDisplay for Trait {
         write_generic_params(def_id, f)?;
         write_where_clause(def_id, f)?;
 
+        let mut display_size = 0;
+        let max_display_size = f.max_size.unwrap_or(7);
         let assoc_items = self.items(f.db);
         if assoc_items.is_empty() {
             f.write_str(" {}")?;
         } else {
             f.write_str(" {\n")?;
-            for item in assoc_items {
+            for (index, item) in assoc_items.iter().enumerate() {
                 f.write_str("    ")?;
                 match item {
                     AssocItem::Function(func) => {
@@ -612,6 +614,11 @@ impl HirDisplay for Trait {
                     }
                 };
                 f.write_str(",\n")?;
+                display_size += 1;
+                if display_size == max_display_size && index != assoc_items.len() - 1{
+                    f.write_str("    ...\n")?;
+                    break;
+                }
             }
             f.write_str("}")?;
         }

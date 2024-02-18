@@ -213,7 +213,7 @@ impl Definition {
         })
     }
 
-    pub fn label(&self, db: &RootDatabase) -> String {
+    pub fn label(&self, db: &RootDatabase, max_size: Option<usize>) -> String {
         match *self {
             Definition::Macro(it) => it.display(db).to_string(),
             Definition::Field(it) => it.display(db).to_string(),
@@ -224,7 +224,7 @@ impl Definition {
             Definition::Variant(it) => it.display(db).to_string(),
             Definition::Const(it) => it.display(db).to_string(),
             Definition::Static(it) => it.display(db).to_string(),
-            Definition::Trait(it) => it.display(db).to_string(),
+            Definition::Trait(it) => it.display_truncated(db, max_size).to_string(),
             Definition::TraitAlias(it) => it.display(db).to_string(),
             Definition::TypeAlias(it) => it.display(db).to_string(),
             Definition::BuiltinType(it) => it.name().display(db).to_string(),

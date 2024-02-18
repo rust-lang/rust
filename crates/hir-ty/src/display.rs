@@ -62,7 +62,7 @@ pub struct HirFormatter<'a> {
     fmt: &'a mut dyn HirWrite,
     buf: String,
     curr_size: usize,
-    pub(crate) max_size: Option<usize>,
+    pub max_size: Option<usize>,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_target: DisplayTarget,
