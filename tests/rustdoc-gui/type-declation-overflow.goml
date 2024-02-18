@@ -39,8 +39,8 @@ assert-property: ("pre.item-decl", {"scrollWidth": "950"})
 set-window-size: (600, 600)
 go-to: "file://" + |DOC_PATH| + "/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html"
 // It shouldn't have an overflow in the topbar either.
-store-property: (".mobile-topbar h2", {"scrollWidth": scrollWidth})
-assert-property: (".mobile-topbar h2", {"clientWidth": |scrollWidth|})
+store-property: (".mobile-topbar", {"scrollWidth": scrollWidth})
+assert-property: (".mobile-topbar", {"clientWidth": |scrollWidth|})
 assert-css: (".mobile-topbar h2", {"overflow-x": "hidden"})
 
 // Check wrapping for top main-heading h1 and out-of-band.
