@@ -476,9 +476,10 @@ struct DiagCtxtInner {
     emitted_diagnostics: FxHashSet<Hash128>,
 
     /// Stashed diagnostics emitted in one stage of the compiler that may be
-    /// stolen by other stages (e.g. to improve them and add more information).
-    /// The stashed diagnostics count towards the total error count.
-    /// When `.abort_if_errors()` is called, these are also emitted.
+    /// stolen and emitted/cancelled by other stages (e.g. to improve them and
+    /// add more information). All stashed diagnostics must be emitted with
+    /// `emit_stashed_diagnostics` by the time the `DiagCtxtInner` is dropped,
+    /// otherwise an assertion failure will occur.
     stashed_diagnostics: FxIndexMap<(Span, StashKey), Diagnostic>,
 
     future_breakage_diagnostics: Vec<Diagnostic>,
@@ -563,7 +564,9 @@ pub struct DiagCtxtFlags {
 
 impl Drop for DiagCtxtInner {
     fn drop(&mut self) {
-        self.emit_stashed_diagnostics();
+        // Any stashed diagnostics should have been handled by
+        // `emit_stashed_diagnostics` by now.
+        assert!(self.stashed_diagnostics.is_empty());
 
         if self.err_guars.is_empty() {
             self.flush_delayed()
@@ -755,7 +758,7 @@ impl DiagCtxt {
     }
 
     /// Emit all stashed diagnostics.
-    pub fn emit_stashed_diagnostics(&self) {
+    pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
@@ -801,7 +804,9 @@ impl DiagCtxt {
     pub fn print_error_count(&self, registry: &Registry) {
         let mut inner = self.inner.borrow_mut();
 
-        inner.emit_stashed_diagnostics();
+        // Any stashed diagnostics should have been handled by
+        // `emit_stashed_diagnostics` by now.
+        assert!(inner.stashed_diagnostics.is_empty());
 
         if inner.treat_err_as_bug() {
             return;
@@ -877,9 +882,7 @@ impl DiagCtxt {
     }
 
     pub fn abort_if_errors(&self) {
-        let mut inner = self.inner.borrow_mut();
-        inner.emit_stashed_diagnostics();
-        if !inner.err_guars.is_empty() {
+        if self.has_errors().is_some() {
             FatalError.raise();
         }
     }
@@ -1280,7 +1283,8 @@ impl DiagCtxt {
 // `DiagCtxtInner::foo`.
 impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
-    fn emit_stashed_diagnostics(&mut self) {
+    fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
+        let mut guar = None;
         let has_errors = !self.err_guars.is_empty();
         for (_, diag) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
             if diag.is_error() {
@@ -1295,8 +1299,9 @@ impl DiagCtxtInner {
                     continue;
                 }
             }
-            self.emit_diagnostic(diag);
+            guar = guar.or(self.emit_diagnostic(diag));
         }
+        guar
     }
 
     // Return value is only `Some` if the level is `Error` or `DelayedBug`.
@@ -1489,6 +1494,11 @@ impl DiagCtxtInner {
     }
 
     fn flush_delayed(&mut self) {
+        // Stashed diagnostics must be emitted before delayed bugs are flushed.
+        // Otherwise, we might ICE prematurely when errors would have
+        // eventually happened.
+        assert!(self.stashed_diagnostics.is_empty());
+
         if self.delayed_bugs.is_empty() {
             return;
         }

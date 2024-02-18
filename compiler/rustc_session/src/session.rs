@@ -258,7 +258,8 @@ impl Session {
         }
     }
 
-    fn check_miri_unleashed_features(&self) {
+    fn check_miri_unleashed_features(&self) -> Option<ErrorGuaranteed> {
+        let mut guar = None;
         let unleashed_features = self.miri_unleashed_features.lock();
         if !unleashed_features.is_empty() {
             let mut must_err = false;
@@ -279,18 +280,22 @@ impl Session {
             // If we should err, make sure we did.
             if must_err && self.dcx().has_errors().is_none() {
                 // We have skipped a feature gate, and not run into other errors... reject.
-                self.dcx().emit_err(errors::NotCircumventFeature);
+                guar = Some(self.dcx().emit_err(errors::NotCircumventFeature));
             }
         }
+        guar
     }
 
     /// Invoked all the way at the end to finish off diagnostics printing.
-    pub fn finish_diagnostics(&self, registry: &Registry) {
-        self.check_miri_unleashed_features();
+    pub fn finish_diagnostics(&self, registry: &Registry) -> Option<ErrorGuaranteed> {
+        let mut guar = None;
+        guar = guar.or(self.check_miri_unleashed_features());
+        guar = guar.or(self.dcx().emit_stashed_diagnostics());
         self.dcx().print_error_count(registry);
         if self.opts.json_future_incompat {
             self.dcx().emit_future_breakage_report();
         }
+        guar
     }
 
     /// Returns true if the crate is a testing one.
@@ -314,7 +319,6 @@ impl Session {
 
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
         if let Some(reported) = self.dcx().has_errors() {
-            self.dcx().emit_stashed_diagnostics();
             Err(reported)
         } else {
             Ok(())
