@@ -6,6 +6,7 @@ use rustc_span::Symbol;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::foreign_items::ExtraFnVal;
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 use shims::unix::fs::EvalContextExt as _;
@@ -308,7 +309,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let symbol = this.read_pointer(symbol)?;
                 let name = this.read_c_str(symbol)?;
                 if let Ok(name) = str::from_utf8(name) && is_dyn_sym(name, &this.tcx.sess.target.os) {
-                    let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
+                    let ptr = this.fn_ptr(FnVal::Other(ExtraFnVal::DynSym(DynSym::from_str(name))));
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;

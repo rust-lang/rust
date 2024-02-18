@@ -997,7 +997,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
         self.check_abi(abi, exp_abi)?;
-        if let Some((body, instance)) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
+        if let Some(instance) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
             // If compiler-builtins is providing the symbol, then don't treat it as a clash.
             // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
             // performance. Note that this means we won't catch any undefined behavior in
@@ -1006,6 +1006,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if self.eval_context_ref().tcx.is_compiler_builtins(instance.def_id().krate) {
                 return Ok(());
             }
+
+            let body = self.eval_context_mut().load_mir(instance.def, None)?;
 
             throw_machine_stop!(TerminationInfo::SymbolShimClashing {
                 link_name,

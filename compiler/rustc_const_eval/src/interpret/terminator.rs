@@ -498,7 +498,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// `with_caller_location` indicates whether the caller passed a caller location. Miri
     /// implements caller locations without argument passing, but to match `FnAbi` we need to know
     /// when those arguments are present.
-    pub(crate) fn eval_fn_call(
+    pub fn eval_fn_call(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         (caller_abi, caller_fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),

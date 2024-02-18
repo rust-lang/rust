@@ -28,9 +28,11 @@ use rustc_middle::{
 };
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
+use crate::shims::foreign_items::ExtraFnVal;
 use crate::{
     concurrency::{data_race, weak_memory},
     shims::unix::FileHandler,
@@ -853,7 +855,7 @@ impl<'mir, 'tcx> MiriInterpCxExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {
 /// Machine hook implementations.
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     type MemoryKind = MiriMemoryKind;
-    type ExtraFnVal = DynSym;
+    type ExtraFnVal = ExtraFnVal;
 
     type FrameExtra = FrameExtra<'tcx>;
     type AllocExtra = AllocExtra<'tcx>;
@@ -938,44 +940,40 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn find_mir_or_eval_fn(
+    fn find_mir_or_extra_fn(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         instance: ty::Instance<'tcx>,
         abi: Abi,
-        args: &[FnArg<'tcx, Provenance>],
-        dest: &PlaceTy<'tcx, Provenance>,
-        ret: Option<mir::BasicBlock>,
-        unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
-        // For foreign items, try to see if we can emulate them.
+    ) -> InterpResult<'tcx, Either<&'mir mir::Body<'tcx>, ExtraFnVal>> {
+        // For foreign items, we return `ExtraFnVal::ForeignFn` to later try to see if we can
+        // emulate them.
         if ecx.tcx.is_foreign_item(instance.def_id()) {
-            // An external function call that does not have a MIR body. We either find MIR elsewhere
-            // or emulate its effect.
-            // This will be Ok(None) if we're emulating the intrinsic entirely within Miri (no need
-            // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
-            // foreign function
-            // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
             let link_name = ecx.item_link_name(instance.def_id());
-            return ecx.emulate_foreign_item(link_name, abi, &args, dest, ret, unwind);
+            return Ok(Either::Right(ExtraFnVal::ForeignFn { link_name }));
         }
 
         // Otherwise, load the MIR.
-        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
+        ecx.load_mir(instance.def, None).map(Either::Left)
     }
 
     #[inline(always)]
     fn call_extra_fn(
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
-        fn_val: DynSym,
-        abi: Abi,
+        fn_val: ExtraFnVal,
+        abis: (Abi, &FnAbi<'tcx, Ty<'tcx>>),
         args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
-        ecx.emulate_dyn_sym(fn_val, abi, &args, dest, ret, unwind)
+        match fn_val {
+            // An external function call that does not have a MIR body. We either find MIR elsewhere
+            // or emulate its effect.
+            // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
+            ExtraFnVal::ForeignFn { link_name } =>
+                ecx.emulate_foreign_item(link_name, abis, &args, dest, ret, unwind).map(|_| ()),
+            ExtraFnVal::DynSym(sym) => ecx.emulate_dyn_sym(sym, abis, &args, dest, ret, unwind),
+        }
     }
 
     #[inline(always)]

@@ -1,6 +1,6 @@
 //! Provides the `extern static` that this platform expects.
 
-use crate::*;
+use crate::{shims::foreign_items::ExtraFnVal, *};
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
     fn alloc_extern_static(
@@ -62,7 +62,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 // "signal" -- just needs a non-zero pointer value (function does not even get called),
                 // but we arrange for this to call the `signal` function anyway.
                 let layout = this.machine.layouts.const_raw_ptr;
-                let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str("signal")));
+                let ptr = this.fn_ptr(FnVal::Other(ExtraFnVal::DynSym(DynSym::from_str("signal"))));
                 let val = ImmTy::from_scalar(Scalar::from_pointer(ptr, this), layout);
                 Self::alloc_extern_static(this, "signal", val)?;
             }

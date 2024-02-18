@@ -6,22 +6,31 @@ use rustc_hir::{
     def::DefKind,
     def_id::{CrateNum, LOCAL_CRATE},
 };
-use rustc_middle::middle::{
-    codegen_fn_attrs::CodegenFnAttrFlags, dependency_format::Linkage,
-    exported_symbols::ExportedSymbol,
-};
 use rustc_middle::mir;
 use rustc_middle::ty;
+use rustc_middle::{
+    middle::{
+        codegen_fn_attrs::CodegenFnAttrFlags, dependency_format::Linkage,
+        exported_symbols::ExportedSymbol,
+    },
+    ty::Ty,
+};
 use rustc_session::config::CrateType;
 use rustc_span::Symbol;
 use rustc_target::{
-    abi::{Align, Size},
+    abi::{call::FnAbi, Align, Size},
     spec::abi::Abi,
 };
 
 use super::backtrace::EvalContextExt as _;
 use crate::*;
 use helpers::{ToHost, ToSoft};
+
+#[derive(Debug, Copy, Clone)]
+pub enum ExtraFnVal {
+    ForeignFn { link_name: Symbol },
+    DynSym(DynSym),
+}
 
 /// Type of dynamic symbols (for `dlsym` et al)
 #[derive(Debug, Copy, Clone)]
@@ -55,12 +64,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_foreign_item(
         &mut self,
         link_name: Symbol,
-        abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
+        (abi, fn_abi): (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> InterpResult<'tcx, Option<()>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -69,26 +78,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             None =>
                 match link_name.as_str() {
                     "miri_start_panic" => {
+                        let args = this.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+
                         // `check_shim` happens inside `handle_miri_start_panic`.
-                        this.handle_miri_start_panic(abi, link_name, args, unwind)?;
+                        this.handle_miri_start_panic(abi, link_name, &args, unwind)?;
                         return Ok(None);
                     }
                     // This matches calls to the foreign item `panic_impl`.
                     // The implementation is provided by the function with the `#[panic_handler]` attribute.
                     "panic_impl" => {
                         // We don't use `check_shim` here because we are just forwarding to the lang
-                        // item. Argument count checking will be performed when the returned `Body` is
-                        // called.
+                        // item. Argument count checking will be performed in `eval_fn_call`.
                         this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
                         let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
                         let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                        return Ok(Some((
-                            this.load_mir(panic_impl_instance.def, None)?,
-                            panic_impl_instance,
-                        )));
+
+                        this.eval_fn_call(
+                            FnVal::Instance(panic_impl_instance),
+                            (abi, fn_abi),
+                            args,
+                            false,
+                            dest,
+                            ret,
+                            unwind,
+                        )?;
+
+                        return Ok(Some(()));
                     }
                     #[rustfmt::skip]
-                    | "exit"
+                    "exit"
                     | "ExitProcess"
                     => {
                         let exp_abi = if link_name.as_str() == "exit" {
@@ -96,24 +114,39 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         } else {
                             Abi::System { unwind: false }
                         };
-                        let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
+                        let args = this.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+                        let [code] = this.check_shim(abi, exp_abi, link_name, &args)?;
                         // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                         let code = this.read_scalar(code)?.to_i32()?;
                         throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
                     }
                     "abort" => {
-                        let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                        let args = this.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+                        let [] =
+                            this.check_shim(abi, Abi::C { unwind: false }, link_name, &args)?;
                         throw_machine_stop!(TerminationInfo::Abort(
                             "the program aborted execution".to_owned()
                         ))
                     }
                     _ => {
-                        if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                            return Ok(Some(body));
+                        if let Some(instance) = this.lookup_exported_symbol(link_name)? {
+                            this.eval_fn_call(
+                                FnVal::Instance(instance),
+                                (abi, fn_abi),
+                                args,
+                                false,
+                                dest,
+                                ret,
+                                unwind,
+                            )?;
+
+                            return Ok(Some(()));
                         }
+
                         this.handle_unsupported(format!(
                             "can't call (diverging) foreign function: {link_name}"
                         ))?;
+
                         return Ok(None);
                     }
                 },
@@ -121,15 +154,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         };
 
         // Second: functions that return immediately.
-        match this.emulate_foreign_item_inner(link_name, abi, args, dest)? {
+        let args2 = this.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+        match this.emulate_foreign_item_inner(link_name, abi, &args2, dest)? {
             EmulateForeignItemResult::NeedsJumping => {
                 trace!("{:?}", this.dump_place(dest));
                 this.go_to_block(ret);
             }
             EmulateForeignItemResult::AlreadyJumped => (),
             EmulateForeignItemResult::NotSupported => {
-                if let Some(body) = this.lookup_exported_symbol(link_name)? {
-                    return Ok(Some(body));
+                if let Some(instance) = this.lookup_exported_symbol(link_name)? {
+                    this.eval_fn_call(
+                        FnVal::Instance(instance),
+                        (abi, fn_abi),
+                        args,
+                        false,
+                        dest,
+                        Some(ret),
+                        unwind,
+                    )?;
+
+                    return Ok(Some(()));
                 }
 
                 this.handle_unsupported(format!(
@@ -147,13 +191,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn emulate_dyn_sym(
         &mut self,
         sym: DynSym,
-        abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
+        abis: (Abi, &FnAbi<'tcx, Ty<'tcx>>),
+        args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let res = self.emulate_foreign_item(sym.0, abi, args, dest, ret, unwind)?;
+        let res = self.emulate_foreign_item(sym.0, abis, args, dest, ret, unwind)?;
         assert!(res.is_none(), "DynSyms that delegate are not supported");
         Ok(())
     }
@@ -162,7 +206,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn lookup_exported_symbol(
         &mut self,
         link_name: Symbol,
-    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
+    ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -246,10 +290,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 e.insert(instance_and_crate.map(|ic| ic.0))
             }
         };
-        match instance {
-            None => Ok(None), // no symbol with this name
-            Some(instance) => Ok(Some((this.load_mir(instance.def, None)?, instance))),
-        }
+
+        Ok(instance)
     }
 
     fn malloc(
