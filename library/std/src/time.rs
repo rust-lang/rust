@@ -151,12 +151,6 @@ pub use core::time::TryFromFloatSecsError;
 /// [`checked_duration_since`]: Instant::checked_duration_since
 ///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[doc(alias = "insecure_time")]
-#[doc(alias = "clock_gettime")]
-#[doc(alias = "mach_absolute_time")]
-#[doc(alias = "get_tim")]
-#[doc(alias = "__wasi_clock_time_get")]
-#[doc(alias = "QueryPerformanceCounter")]
 #[stable(feature = "time2", since = "1.8.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
 pub struct Instant(time::Instant);
@@ -250,12 +244,6 @@ pub struct Instant(time::Instant);
 ///
 /// [`add`]: SystemTime::add
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[doc(alias = "insecure_time")]
-#[doc(alias = "clock_gettime")]
-#[doc(alias = "gettimeofday")]
-#[doc(alias = "SOLID_RTC_ReadTime")]
-#[doc(alias = "__wasi_clock_time_get")]
-#[doc(alias = "GetSystemTimePreciseAsFileTime")]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTime(time::SystemTime);
 

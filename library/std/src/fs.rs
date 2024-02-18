@@ -2108,7 +2108,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "ln", alias = "CreateHardLink", alias = "linkat")]
+#[doc(alias = "CreateHardLink", alias = "linkat")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     fs_imp::link(original.as_ref(), link.as_ref())
