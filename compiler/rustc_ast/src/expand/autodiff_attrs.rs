@@ -3,6 +3,8 @@ use std::str::FromStr;
 use thin_vec::ThinVec;
 use std::fmt::{Display, Formatter};
 use crate::NestedMetaItem;
+use crate::ptr::P;
+use crate::{Ty, TyKind};
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -40,7 +42,29 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
         }
     }
 }
-
+fn is_ptr_or_ref(ty: &Ty) -> bool {
+    match ty.kind {
+        TyKind::Ptr(_) | TyKind::Ref(_, _) => true,
+        _ => false,
+    }
+}
+// TODO We should make this more robust to also
+// accept aliases of f32 and f64
+//fn is_float(ty: &Ty) -> bool {
+//    false
+//}
+pub fn valid_ty_for_activity(ty: &P<Ty>, activity: DiffActivity) -> bool {
+    if is_ptr_or_ref(ty) {
+        return activity == DiffActivity::Dual || activity == DiffActivity::DualOnly ||
+            activity == DiffActivity::Duplicated || activity == DiffActivity::DuplicatedOnly ||
+            activity == DiffActivity::Const;
+    }
+    true
+    //if is_scalar_ty(&ty) {
+    //    return activity == DiffActivity::Active || activity == DiffActivity::ActiveOnly ||
+    //        activity == DiffActivity::Const;
+    //}
+}
 pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
         return match mode {
             DiffMode::Inactive => false,

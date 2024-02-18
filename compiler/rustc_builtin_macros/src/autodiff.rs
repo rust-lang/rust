@@ -3,7 +3,7 @@
 //use crate::util::check_autodiff;
 
 use crate::errors;
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ty_for_activity};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::*;
@@ -175,25 +175,6 @@ fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
     ty
 }
 
-// TODO We should make this more robust to also
-// accept aliases of f32 and f64
-#[cfg(llvm_enzyme)]
-fn is_float(ty: &ast::Ty) -> bool {
-    match ty.kind {
-        TyKind::Path(_, ref path) => {
-            let last = path.segments.last().unwrap();
-            last.ident.name == sym::f32 || last.ident.name == sym::f64
-        }
-        _ => false,
-    }
-}
-#[cfg(llvm_enzyme)]
-fn is_ptr_or_ref(ty: &ast::Ty) -> bool {
-    match ty.kind {
-        TyKind::Ptr(_) | TyKind::Ref(_, _) => true,
-        _ => false,
-    }
-}
 
 // The body of our generated functions will consist of two black_Box calls.
 // The first will call the primal function with the original arguments.
@@ -277,7 +258,7 @@ fn gen_primal_call(
 // zero-initialized by Enzyme). Active arguments are not handled yet.
 // Each argument of the primal function (and the return type if existing) must be annotated with an
 // activity.
-#[cfg(llvm_enzyme)]
+//#[cfg(llvm_enzyme)]
 fn gen_enzyme_decl(
     ecx: &ExtCtxt<'_>,
     sig: &ast::FnSig,
@@ -301,13 +282,17 @@ fn gen_enzyme_decl(
                 act: activity.to_string()
             });
         }
+        if !valid_ty_for_activity(&arg.ty, *activity) {
+            ecx.sess.dcx().emit_err(errors::AutoDiffInvalidTypeForActivity {
+                span: arg.ty.span,
+                act: activity.to_string()
+            });
+        }
         match activity {
             DiffActivity::Active => {
-                assert!(is_float(&arg.ty));
                 act_ret.push(arg.ty.clone());
             }
             DiffActivity::Duplicated => {
-                assert!(is_ptr_or_ref(&arg.ty));
                 let mut shadow_arg = arg.clone();
                 // We += into the shadow in reverse mode.
                 shadow_arg.ty = P(assure_mut_ref(&arg.ty));
