@@ -548,24 +548,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::FnPtrAddrShim(..)
             | ty::InstanceDef::ThreadLocalShim(..)
-            | ty::InstanceDef::Item(_) => {
-                // We need MIR for this fn
-                let body = match M::find_mir_or_extra_fn(self, instance)? {
-                    Either::Left(b) => b,
-                    Either::Right(f) => {
-                        return M::call_extra_fn(
-                            self,
-                            f,
-                            (caller_abi, caller_fn_abi),
-                            args,
-                            destination,
-                            target,
-                            unwind,
-                        );
-                    }
-                };
-
-                self.eval_body(
+            | ty::InstanceDef::Item(_) => match M::find_mir_or_extra_fn(self, instance)? {
+                Either::Left(body) => self.eval_body(
                     instance,
                     body,
                     (caller_abi, caller_fn_abi),
@@ -574,8 +558,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     destination,
                     target,
                     unwind,
-                )
-            }
+                ),
+                Either::Right(f) => M::call_extra_fn(
+                    self,
+                    f,
+                    (caller_abi, caller_fn_abi),
+                    args,
+                    destination,
+                    target,
+                    unwind,
+                ),
+            },
             // `InstanceDef::Virtual` does not have callable MIR. Calls to `Virtual` instances must be
             // codegen'd / interpreted as virtual calls through the vtable.
             ty::InstanceDef::Virtual(def_id, idx) => {
