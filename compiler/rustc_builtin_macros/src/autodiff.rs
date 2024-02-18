@@ -3,7 +3,7 @@
 //use crate::util::check_autodiff;
 
 use crate::errors;
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::*;
@@ -80,7 +80,7 @@ pub fn expand(
     dbg!(&x);
     let span = ecx.with_def_site_ctxt(expand_span);
 
-    let (d_sig, new_args, idents) = gen_enzyme_decl(&sig, &x, span);
+    let (d_sig, new_args, idents) = gen_enzyme_decl(ecx, &sig, &x, span);
     let new_decl_span = d_sig.span;
     let d_body = gen_enzyme_body(
         ecx,
@@ -175,6 +175,26 @@ fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
     ty
 }
 
+// TODO We should make this more robust to also
+// accept aliases of f32 and f64
+#[cfg(llvm_enzyme)]
+fn is_float(ty: &ast::Ty) -> bool {
+    match ty.kind {
+        TyKind::Path(_, ref path) => {
+            let last = path.segments.last().unwrap();
+            last.ident.name == sym::f32 || last.ident.name == sym::f64
+        }
+        _ => false,
+    }
+}
+#[cfg(llvm_enzyme)]
+fn is_ptr_or_ref(ty: &ast::Ty) -> bool {
+    match ty.kind {
+        TyKind::Ptr(_) | TyKind::Ref(_, _) => true,
+        _ => false,
+    }
+}
+
 // The body of our generated functions will consist of two black_Box calls.
 // The first will call the primal function with the original arguments.
 // The second will just take a tuple containing the new arguments.
@@ -259,6 +279,7 @@ fn gen_primal_call(
 // activity.
 #[cfg(llvm_enzyme)]
 fn gen_enzyme_decl(
+    ecx: &ExtCtxt<'_>,
     sig: &ast::FnSig,
     x: &AutoDiffAttrs,
     span: Span,
@@ -273,31 +294,50 @@ fn gen_enzyme_decl(
     let mut act_ret = ThinVec::new();
     for (arg, activity) in sig.decl.inputs.iter().zip(x.input_activity.iter()) {
         d_inputs.push(arg.clone());
+        if !valid_input_activity(x.mode, *activity) {
+            ecx.sess.dcx().emit_err(errors::AutoDiffInvalidApplicationModeAct {
+                span,
+                mode: x.mode.to_string(),
+                act: activity.to_string()
+            });
+        }
         match activity {
             DiffActivity::Active => {
-                assert!(x.mode == DiffMode::Reverse);
+                assert!(is_float(&arg.ty));
                 act_ret.push(arg.ty.clone());
             }
-            DiffActivity::Duplicated | DiffActivity::Dual => {
+            DiffActivity::Duplicated => {
+                assert!(is_ptr_or_ref(&arg.ty));
                 let mut shadow_arg = arg.clone();
                 // We += into the shadow in reverse mode.
-                // Otherwise copy mutability of the original argument.
-                if activity == &DiffActivity::Duplicated {
-                    shadow_arg.ty = P(assure_mut_ref(&arg.ty));
-                }
-                // adjust name depending on mode
+                shadow_arg.ty = P(assure_mut_ref(&arg.ty));
                 let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                     ident.name
                 } else {
                     dbg!(&shadow_arg.pat);
                     panic!("not an ident?");
                 };
-                let name: String = match x.mode {
-                    DiffMode::Reverse => format!("d{}", old_name),
-                    DiffMode::Forward => format!("b{}", old_name),
-                    _ => panic!("unsupported mode: {}", old_name),
+                let name: String = format!("d{}", old_name);
+                new_inputs.push(name.clone());
+                let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
+                shadow_arg.pat = P(ast::Pat {
+                    // TODO: Check id
+                    id: ast::DUMMY_NODE_ID,
+                    kind: PatKind::Ident(BindingAnnotation::NONE, ident, None),
+                    span: shadow_arg.pat.span,
+                    tokens: shadow_arg.pat.tokens.clone(),
+                });
+                d_inputs.push(shadow_arg);
+            }
+            DiffActivity::Dual => {
+                let mut shadow_arg = arg.clone();
+                let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+                    ident.name
+                } else {
+                    dbg!(&shadow_arg.pat);
+                    panic!("not an ident?");
                 };
-                dbg!(&name);
+                let name: String = format!("b{}", old_name);
                 new_inputs.push(name.clone());
                 let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
                 shadow_arg.pat = P(ast::Pat {
@@ -311,6 +351,7 @@ fn gen_enzyme_decl(
             }
             _ => {
                 dbg!(&activity);
+                panic!("Not implemented");
             }
         }
         if let PatKind::Ident(_, ident, _) = arg.pat.kind {

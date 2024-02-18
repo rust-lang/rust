@@ -3,6 +3,7 @@ builtin_macros_alloc_must_statics = allocators must be statics
 
 builtin_macros_autodiff = autodiff must be applied to function
 builtin_macros_autodiff_not_build = this rustc version does not support autodiff
+builtin_macros_autodiff_mode_activity = {$act} can not be used in {$mode} Mode
 
 builtin_macros_asm_clobber_abi = clobber_abi
 builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs

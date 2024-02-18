@@ -165,6 +165,15 @@ pub(crate) struct AllocMustStatics {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_autodiff_mode_activity)]
+pub(crate) struct AutoDiffInvalidApplicationModeAct {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) mode: String,
+    pub(crate) act: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_autodiff)]
 pub(crate) struct AutoDiffInvalidApplication {
     #[primary_span]

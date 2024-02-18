@@ -1,7 +1,7 @@
 use crate::expand::typetree::TypeTree;
 use std::str::FromStr;
 use thin_vec::ThinVec;
-
+use std::fmt::{Display, Formatter};
 use crate::NestedMetaItem;
 
 #[allow(dead_code)]
@@ -11,6 +11,17 @@ pub enum DiffMode {
     Source,
     Forward,
     Reverse,
+}
+
+impl Display for DiffMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DiffMode::Inactive => write!(f, "Inactive"),
+            DiffMode::Source => write!(f, "Source"),
+            DiffMode::Forward => write!(f, "Forward"),
+            DiffMode::Reverse => write!(f, "Reverse"),
+        }
+    }
 }
 
 pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
@@ -30,26 +41,28 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
     }
 }
 
-pub fn valid_input_activities(mode: DiffMode, activity_vec: &[DiffActivity]) -> bool {
-    for &activity in activity_vec {
-        let valid = match mode {
+pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
+        return match mode {
             DiffMode::Inactive => false,
             DiffMode::Source => false,
             DiffMode::Forward => {
                 // These are the only valid cases
-                activity == DiffActivity::Dual || activity == DiffActivity::DualOnly || activity == DiffActivity::Const
+                activity == DiffActivity::Dual ||
+                    activity == DiffActivity::DualOnly ||
+                    activity == DiffActivity::Const
             }
             DiffMode::Reverse => {
                 // These are the only valid cases
-                activity == DiffActivity::Active || activity == DiffActivity::ActiveOnly || activity == DiffActivity::Const
-                    || activity == DiffActivity::Duplicated || activity == DiffActivity::DuplicatedOnly
+                activity == DiffActivity::Active ||
+                    activity == DiffActivity::ActiveOnly ||
+                    activity == DiffActivity::Const ||
+                    activity == DiffActivity::Duplicated ||
+                    activity == DiffActivity::DuplicatedOnly
             }
         };
-        if !valid {
-            return false;
-        }
-    }
-    true
+}
+pub fn valid_input_activities(mode: DiffMode, activity_vec: &[DiffActivity]) -> bool {
+    return activity_vec.iter().any(|&x| !valid_input_activity(mode, x));
 }
 
 #[allow(dead_code)]
@@ -63,6 +76,21 @@ pub enum DiffActivity {
     DualOnly,
     Duplicated,
     DuplicatedOnly,
+}
+
+impl Display for DiffActivity {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DiffActivity::None => write!(f, "None"),
+            DiffActivity::Const => write!(f, "Const"),
+            DiffActivity::Active => write!(f, "Active"),
+            DiffActivity::ActiveOnly => write!(f, "ActiveOnly"),
+            DiffActivity::Dual => write!(f, "Dual"),
+            DiffActivity::DualOnly => write!(f, "DualOnly"),
+            DiffActivity::Duplicated => write!(f, "Duplicated"),
+            DiffActivity::DuplicatedOnly => write!(f, "DuplicatedOnly"),
+        }
+    }
 }
 
 impl FromStr for DiffMode {
