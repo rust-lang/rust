@@ -754,13 +754,20 @@ impl DiagCtxt {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
-    /// This excludes lint errors, delayed bugs, and stashed errors.
+    /// This excludes lint errors, delayed bugs and stashed errors.
     #[inline]
-    pub fn err_count(&self) -> usize {
+    pub fn err_count_excluding_lint_errs(&self) -> usize {
         self.inner.borrow().err_guars.len()
     }
 
-    /// This excludes normal errors, lint errors and delayed bugs. Unless
+    /// This excludes delayed bugs and stashed errors.
+    #[inline]
+    pub fn err_count(&self) -> usize {
+        let inner = self.inner.borrow();
+        inner.err_guars.len() + inner.lint_err_guars.len()
+    }
+
+    /// This excludes normal errors, lint errors, and delayed bugs. Unless
     /// absolutely necessary, avoid using this. It's dubious because stashed
     /// errors can later be cancelled, so the presence of a stashed error at
     /// some point of time doesn't guarantee anything -- there are no
@@ -769,21 +776,21 @@ impl DiagCtxt {
         self.inner.borrow().stashed_err_count
     }
 
-    /// This excludes lint errors, delayed bugs, and stashed errors.
+    /// This excludes lint errors, delayed bugs, and stashed errors. Unless
+    /// absolutely necessary, prefer `has_errors` to this method.
+    pub fn has_errors_excluding_lint_errors(&self) -> Option<ErrorGuaranteed> {
+        self.inner.borrow().has_errors_excluding_lint_errors()
+    }
+
+    /// This excludes delayed bugs and stashed errors.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors()
     }
 
-    /// This excludes delayed bugs and stashed errors. Unless absolutely
-    /// necessary, prefer `has_errors` to this method.
-    pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors_or_lint_errors()
-    }
-
     /// This excludes stashed errors. Unless absolutely necessary, prefer
-    /// `has_errors` or `has_errors_or_lint_errors` to this method.
-    pub fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors_or_lint_errors_or_delayed_bugs()
+    /// `has_errors` to this method.
+    pub fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.inner.borrow().has_errors_or_delayed_bugs()
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
@@ -1328,7 +1335,7 @@ impl DiagCtxtInner {
             DelayedBug => {
                 // If we have already emitted at least one error, we don't need
                 // to record the delayed bug, because it'll never be used.
-                return if let Some(guar) = self.has_errors_or_lint_errors() {
+                return if let Some(guar) = self.has_errors() {
                     Some(guar)
                 } else {
                     let backtrace = std::backtrace::Backtrace::capture();
@@ -1444,17 +1451,16 @@ impl DiagCtxtInner {
             .is_some_and(|c| self.err_guars.len() + self.lint_err_guars.len() + 1 >= c.get())
     }
 
-    fn has_errors(&self) -> Option<ErrorGuaranteed> {
+    fn has_errors_excluding_lint_errors(&self) -> Option<ErrorGuaranteed> {
         self.err_guars.get(0).copied()
     }
 
-    fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        self.has_errors().or_else(|| self.lint_err_guars.get(0).copied())
+    fn has_errors(&self) -> Option<ErrorGuaranteed> {
+        self.has_errors_excluding_lint_errors().or_else(|| self.lint_err_guars.get(0).copied())
     }
 
-    fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.has_errors_or_lint_errors()
-            .or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
+    fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
     /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.

@@ -772,7 +772,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // lot of annoying errors in the ui tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
-    if let Some(reported) = sess.dcx().has_errors() {
+    if let Some(reported) = sess.dcx().has_errors_excluding_lint_errors() {
         return Err(reported);
     } else if sess.dcx().stashed_err_count() > 0 {
         // Without this case we sometimes get delayed bug ICEs and I don't
