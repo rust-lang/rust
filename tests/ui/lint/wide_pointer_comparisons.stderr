@@ -29,8 +29,8 @@ LL |     let _ = a < b;
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |     let _ = a as *const () < b as *const ();
-   |               ++++++++++++     ++++++++++++
+LL |     let _ = a.cast::<()>() < b.cast::<()>();
+   |              +++++++++++++    +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
   --> $DIR/wide_pointer_comparisons.rs:25:13
@@ -40,8 +40,8 @@ LL |     let _ = a <= b;
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |     let _ = a as *const () <= b as *const ();
-   |               ++++++++++++      ++++++++++++
+LL |     let _ = a.cast::<()>() <= b.cast::<()>();
+   |              +++++++++++++     +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
   --> $DIR/wide_pointer_comparisons.rs:27:13
@@ -51,8 +51,8 @@ LL |     let _ = a > b;
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |     let _ = a as *const () > b as *const ();
-   |               ++++++++++++     ++++++++++++
+LL |     let _ = a.cast::<()>() > b.cast::<()>();
+   |              +++++++++++++    +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
   --> $DIR/wide_pointer_comparisons.rs:29:13
@@ -62,8 +62,8 @@ LL |     let _ = a >= b;
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |     let _ = a as *const () >= b as *const ();
-   |               ++++++++++++      ++++++++++++
+LL |     let _ = a.cast::<()>() >= b.cast::<()>();
+   |              +++++++++++++     +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
   --> $DIR/wide_pointer_comparisons.rs:32:13
@@ -110,7 +110,73 @@ LL |     let _ = !std::ptr::addr_eq(a, b);
    |             +++++++++++++++++++ ~  ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:46:17
+  --> $DIR/wide_pointer_comparisons.rs:40:13
+   |
+LL |     let _ = a.cmp(&b);
+   |             ^^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |     let _ = a.cast::<()>().cmp(&b.cast::<()>());
+   |              +++++++++++++       +++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:42:13
+   |
+LL |     let _ = a.partial_cmp(&b);
+   |             ^^^^^^^^^^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |     let _ = a.cast::<()>().partial_cmp(&b.cast::<()>());
+   |              +++++++++++++               +++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:44:13
+   |
+LL |     let _ = a.le(&b);
+   |             ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |     let _ = a.cast::<()>().le(&b.cast::<()>());
+   |              +++++++++++++      +++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:46:13
+   |
+LL |     let _ = a.lt(&b);
+   |             ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |     let _ = a.cast::<()>().lt(&b.cast::<()>());
+   |              +++++++++++++      +++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:48:13
+   |
+LL |     let _ = a.ge(&b);
+   |             ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |     let _ = a.cast::<()>().ge(&b.cast::<()>());
+   |              +++++++++++++      +++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:50:13
+   |
+LL |     let _ = a.gt(&b);
+   |             ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |     let _ = a.cast::<()>().gt(&b.cast::<()>());
+   |              +++++++++++++      +++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:58:17
    |
 LL |         let _ = a == b;
    |                 ^^^^^^
@@ -121,7 +187,7 @@ LL |         let _ = std::ptr::addr_eq(*a, *b);
    |                 +++++++++++++++++++ ~~~ +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:48:17
+  --> $DIR/wide_pointer_comparisons.rs:60:17
    |
 LL |         let _ = a != b;
    |                 ^^^^^^
@@ -132,51 +198,51 @@ LL |         let _ = !std::ptr::addr_eq(*a, *b);
    |                 ++++++++++++++++++++ ~~~ +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:50:17
+  --> $DIR/wide_pointer_comparisons.rs:62:17
    |
 LL |         let _ = a < b;
    |                 ^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = *a as *const () < *b as *const ();
-   |                 +  ++++++++++++   +  ++++++++++++
+LL |         let _ = (*a).cast::<()>() < (*b).cast::<()>();
+   |                 ++ ++++++++++++++   ++ ++++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:52:17
+  --> $DIR/wide_pointer_comparisons.rs:64:17
    |
 LL |         let _ = a <= b;
    |                 ^^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = *a as *const () <= *b as *const ();
-   |                 +  ++++++++++++    +  ++++++++++++
+LL |         let _ = (*a).cast::<()>() <= (*b).cast::<()>();
+   |                 ++ ++++++++++++++    ++ ++++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:54:17
+  --> $DIR/wide_pointer_comparisons.rs:66:17
    |
 LL |         let _ = a > b;
    |                 ^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = *a as *const () > *b as *const ();
-   |                 +  ++++++++++++   +  ++++++++++++
+LL |         let _ = (*a).cast::<()>() > (*b).cast::<()>();
+   |                 ++ ++++++++++++++   ++ ++++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:56:17
+  --> $DIR/wide_pointer_comparisons.rs:68:17
    |
 LL |         let _ = a >= b;
    |                 ^^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = *a as *const () >= *b as *const ();
-   |                 +  ++++++++++++    +  ++++++++++++
+LL |         let _ = (*a).cast::<()>() >= (*b).cast::<()>();
+   |                 ++ ++++++++++++++    ++ ++++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:59:17
+  --> $DIR/wide_pointer_comparisons.rs:71:17
    |
 LL |         let _ = PartialEq::eq(a, b);
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -187,7 +253,7 @@ LL |         let _ = std::ptr::addr_eq(*a, *b);
    |                 ~~~~~~~~~~~~~~~~~~~ ~~~ ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:61:17
+  --> $DIR/wide_pointer_comparisons.rs:73:17
    |
 LL |         let _ = PartialEq::ne(a, b);
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -198,7 +264,7 @@ LL |         let _ = !std::ptr::addr_eq(*a, *b);
    |                 ~~~~~~~~~~~~~~~~~~~~ ~~~ ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:63:17
+  --> $DIR/wide_pointer_comparisons.rs:75:17
    |
 LL |         let _ = PartialEq::eq(&a, &b);
    |                 ^^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +275,7 @@ LL |         let _ = std::ptr::addr_eq(*a, *b);
    |                 ~~~~~~~~~~~~~~~~~~~ ~~~ ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:65:17
+  --> $DIR/wide_pointer_comparisons.rs:77:17
    |
 LL |         let _ = PartialEq::ne(&a, &b);
    |                 ^^^^^^^^^^^^^^^^^^^^^
@@ -220,7 +286,7 @@ LL |         let _ = !std::ptr::addr_eq(*a, *b);
    |                 ~~~~~~~~~~~~~~~~~~~~ ~~~ ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:67:17
+  --> $DIR/wide_pointer_comparisons.rs:79:17
    |
 LL |         let _ = a.eq(b);
    |                 ^^^^^^^
@@ -231,7 +297,7 @@ LL |         let _ = std::ptr::addr_eq(*a, *b);
    |                 +++++++++++++++++++ ~~~ ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:69:17
+  --> $DIR/wide_pointer_comparisons.rs:81:17
    |
 LL |         let _ = a.ne(b);
    |                 ^^^^^^^
@@ -242,7 +308,73 @@ LL |         let _ = !std::ptr::addr_eq(*a, *b);
    |                 ++++++++++++++++++++ ~~~ ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:74:13
+  --> $DIR/wide_pointer_comparisons.rs:83:17
+   |
+LL |         let _ = a.cmp(&b);
+   |                 ^^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |         let _ = (*a).cast::<()>().cmp(&(*b).cast::<()>());
+   |                 ++ ++++++++++++++      ++ ++++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:85:17
+   |
+LL |         let _ = a.partial_cmp(&b);
+   |                 ^^^^^^^^^^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |         let _ = (*a).cast::<()>().partial_cmp(&(*b).cast::<()>());
+   |                 ++ ++++++++++++++              ++ ++++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:87:17
+   |
+LL |         let _ = a.le(&b);
+   |                 ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |         let _ = (*a).cast::<()>().le(&(*b).cast::<()>());
+   |                 ++ ++++++++++++++     ++ ++++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:89:17
+   |
+LL |         let _ = a.lt(&b);
+   |                 ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |         let _ = (*a).cast::<()>().lt(&(*b).cast::<()>());
+   |                 ++ ++++++++++++++     ++ ++++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:91:17
+   |
+LL |         let _ = a.ge(&b);
+   |                 ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |         let _ = (*a).cast::<()>().ge(&(*b).cast::<()>());
+   |                 ++ ++++++++++++++     ++ ++++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:93:17
+   |
+LL |         let _ = a.gt(&b);
+   |                 ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |         let _ = (*a).cast::<()>().gt(&(*b).cast::<()>());
+   |                 ++ ++++++++++++++     ++ ++++++++++++++
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:98:13
    |
 LL |     let _ = s == s;
    |             ^^^^^^
@@ -257,7 +389,7 @@ LL |     let _ = std::ptr::eq(s, s);
    |             +++++++++++++ ~  +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:78:13
+  --> $DIR/wide_pointer_comparisons.rs:102:13
    |
 LL |     let _ = s == s;
    |             ^^^^^^
@@ -272,7 +404,7 @@ LL |     let _ = std::ptr::eq(s, s);
    |             +++++++++++++ ~  +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:82:17
+  --> $DIR/wide_pointer_comparisons.rs:106:17
    |
 LL |         let _ = a == b;
    |                 ^^^^^^
@@ -287,7 +419,7 @@ LL |         let _ = std::ptr::eq(a, b);
    |                 +++++++++++++ ~  +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:84:17
+  --> $DIR/wide_pointer_comparisons.rs:108:17
    |
 LL |         let _ = a != b;
    |                 ^^^^^^
@@ -302,51 +434,51 @@ LL |         let _ = !std::ptr::eq(a, b);
    |                 ++++++++++++++ ~  +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:86:17
+  --> $DIR/wide_pointer_comparisons.rs:110:17
    |
 LL |         let _ = a < b;
    |                 ^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = a as *const () < b as *const ();
-   |                   ++++++++++++     ++++++++++++
+LL |         let _ = a.cast::<()>() < b.cast::<()>();
+   |                  +++++++++++++    +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:88:17
+  --> $DIR/wide_pointer_comparisons.rs:112:17
    |
 LL |         let _ = a <= b;
    |                 ^^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = a as *const () <= b as *const ();
-   |                   ++++++++++++      ++++++++++++
+LL |         let _ = a.cast::<()>() <= b.cast::<()>();
+   |                  +++++++++++++     +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:90:17
+  --> $DIR/wide_pointer_comparisons.rs:114:17
    |
 LL |         let _ = a > b;
    |                 ^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = a as *const () > b as *const ();
-   |                   ++++++++++++     ++++++++++++
+LL |         let _ = a.cast::<()>() > b.cast::<()>();
+   |                  +++++++++++++    +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:92:17
+  --> $DIR/wide_pointer_comparisons.rs:116:17
    |
 LL |         let _ = a >= b;
    |                 ^^^^^^
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL |         let _ = a as *const () >= b as *const ();
-   |                   ++++++++++++      ++++++++++++
+LL |         let _ = a.cast::<()>() >= b.cast::<()>();
+   |                  +++++++++++++     +++++++++++++
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:95:17
+  --> $DIR/wide_pointer_comparisons.rs:119:17
    |
 LL |         let _ = PartialEq::eq(&a, &b);
    |                 ^^^^^^^^^^^^^^^^^^^^^
@@ -361,7 +493,7 @@ LL |         let _ = std::ptr::eq(a, b);
    |                 ~~~~~~~~~~~~~ ~  ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:97:17
+  --> $DIR/wide_pointer_comparisons.rs:121:17
    |
 LL |         let _ = PartialEq::ne(&a, &b);
    |                 ^^^^^^^^^^^^^^^^^^^^^
@@ -376,7 +508,7 @@ LL |         let _ = !std::ptr::eq(a, b);
    |                 ~~~~~~~~~~~~~~ ~  ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:99:17
+  --> $DIR/wide_pointer_comparisons.rs:123:17
    |
 LL |         let _ = a.eq(&b);
    |                 ^^^^^^^^
@@ -391,7 +523,7 @@ LL |         let _ = std::ptr::eq(a, b);
    |                 +++++++++++++ ~  ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:101:17
+  --> $DIR/wide_pointer_comparisons.rs:125:17
    |
 LL |         let _ = a.ne(&b);
    |                 ^^^^^^^^
@@ -406,7 +538,7 @@ LL |         let _ = !std::ptr::eq(a, b);
    |                 ++++++++++++++ ~  ~
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:106:9
+  --> $DIR/wide_pointer_comparisons.rs:130:9
    |
 LL |         &*a == &*b
    |         ^^^^^^^^^^
@@ -421,7 +553,7 @@ LL |         std::ptr::eq(*a, *b)
    |         ~~~~~~~~~~~~~  ~   +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:117:14
+  --> $DIR/wide_pointer_comparisons.rs:141:14
    |
 LL |         cmp!(a, b);
    |              ^^^^
@@ -432,7 +564,7 @@ LL |         cmp!(std::ptr::addr_eq(a, b));
    |              ++++++++++++++++++ ~  +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:123:39
+  --> $DIR/wide_pointer_comparisons.rs:147:39
    |
 LL |             ($a:ident, $b:ident) => { $a == $b }
    |                                       ^^^^^^^^
@@ -447,7 +579,7 @@ LL |             ($a:ident, $b:ident) => { std::ptr::addr_eq($a, $b) }
    |                                       ++++++++++++++++++  ~   +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:133:37
+  --> $DIR/wide_pointer_comparisons.rs:157:37
    |
 LL |             ($a:expr, $b:expr) => { $a == $b }
    |                                     ^^
@@ -459,5 +591,5 @@ LL |         cmp!(&a, &b);
    = help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    = note: this warning originates in the macro `cmp` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 38 warnings emitted
+warning: 50 warnings emitted
 
