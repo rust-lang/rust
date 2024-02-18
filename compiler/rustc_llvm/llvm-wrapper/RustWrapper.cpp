@@ -418,12 +418,21 @@ extern "C" LLVMAttributeRef LLVMRustCreateMemoryEffectsAttr(LLVMContextRef C,
   }
 }
 
-// Enable a fast-math flag
+// Enable all fast-math flags
 //
 // https://llvm.org/docs/LangRef.html#fast-math-flags
 extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
     I->setFast(true);
+  }
+}
+
+// Enable the reassoc fast-math flag
+//
+// https://llvm.org/docs/LangRef.html#fast-math-flags
+extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+    I->setHasAllowReassoc(true);
   }
 }
 
