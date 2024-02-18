@@ -478,15 +478,22 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 let args2 = ecx.copy_fn_args(args)?;
                 // For align_offset, we replace the function call if the pointer has no address.
                 match ecx.align_offset(instance, &args2, destination, target)? {
-                    ControlFlow::Continue(()) => ecx.eval_fn_call(
-                        FnVal::Instance(instance),
-                        abis,
-                        args,
-                        false,
-                        destination,
-                        target,
-                        unwind,
-                    ),
+                    ControlFlow::Continue(()) => {
+                        // Can't use `eval_fn_call` here because `eval_fn_call` tries to call
+                        // const eval extra fn which ends up here, so calling `eval_fn_call`
+                        // would cause infinite recursion and stack overflow.
+                        let body = ecx.load_mir(instance.def, None)?;
+                        ecx.eval_body(
+                            instance,
+                            body,
+                            abis,
+                            args,
+                            false,
+                            destination,
+                            target,
+                            unwind,
+                        )
+                    }
                     ControlFlow::Break(()) => Ok(()),
                 }
             }
