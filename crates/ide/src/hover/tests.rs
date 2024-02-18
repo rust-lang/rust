@@ -411,7 +411,7 @@ fn main() {
                                 name: "FnOnce",
                                 kind: Trait,
                                 container_name: "function",
-                                description: "pub trait FnOnce<Args>\nwhere\n    Args: Tuple,",
+                                description: "pub trait FnOnce<Args>\nwhere\n    Args: Tuple, {\n    pub type Output,\n    pub extern \"rust-call\" fn call_once(self, args: Args) -> Self::Output,\n}",
                             },
                         },
                     ],
@@ -2766,7 +2766,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 19..22,
                                 name: "Bar",
                                 kind: Trait,
-                                description: "trait Bar",
+                                description: "trait Bar {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -2779,7 +2779,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo",
+                                description: "trait Foo {}",
                             },
                         },
                     ],
@@ -2816,7 +2816,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 22..25,
                                 name: "Bar",
                                 kind: Trait,
-                                description: "trait Bar<T>",
+                                description: "trait Bar<T> {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -2829,7 +2829,7 @@ fn main() { let s$0t = foo(); }
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo<T>",
+                                description: "trait Foo<T> {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -2920,7 +2920,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                                 focus_range: 19..22,
                                 name: "Bar",
                                 kind: Trait,
-                                description: "trait Bar<T>",
+                                description: "trait Bar<T> {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -2933,7 +2933,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                                 focus_range: 6..9,
                                 name: "Foo",
                                 kind: Trait,
-                                description: "trait Foo",
+                                description: "trait Foo {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -3220,7 +3220,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 focus_range: 28..36,
                                 name: "DynTrait",
                                 kind: Trait,
-                                description: "trait DynTrait<T>",
+                                description: "trait DynTrait<T> {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -3233,7 +3233,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                 focus_range: 6..15,
                                 name: "ImplTrait",
                                 kind: Trait,
-                                description: "trait ImplTrait<T>",
+                                description: "trait ImplTrait<T> {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -7456,7 +7456,7 @@ impl Iterator for S {
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
-                                description: "pub trait Future",
+                                description: "pub trait Future {\n    pub type Output,\n    pub fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>,\n}",
                             },
                         },
                         HoverGotoTypeData {
@@ -7470,7 +7470,7 @@ impl Iterator for S {
                                 name: "Iterator",
                                 kind: Trait,
                                 container_name: "iterator",
-                                description: "pub trait Iterator",
+                                description: "pub trait Iterator {\n    pub type Item,\n    pub fn next(&mut self) -> Option<Self::Item>,\n    pub fn nth(&mut self, n: usize) -> Option<Self::Item>,\n    pub fn by_ref(&mut self) -> &mut Self\nwhere\n    Self: Sized,,\n}",
                             },
                         },
                         HoverGotoTypeData {
@@ -7483,7 +7483,7 @@ impl Iterator for S {
                                 focus_range: 49..56,
                                 name: "Notable",
                                 kind: Trait,
-                                description: "trait Notable",
+                                description: "trait Notable {}",
                             },
                         },
                         HoverGotoTypeData {

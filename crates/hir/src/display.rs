@@ -17,10 +17,7 @@ use hir_ty::{
 };
 
 use crate::{
-    Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl, Field,
-    Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module, SelfParam,
-    Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias, TypeOrConstParam,
-    TypeParam, Union, Variant,
+    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module, SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant
 };
 
 impl HirDisplay for Function {
