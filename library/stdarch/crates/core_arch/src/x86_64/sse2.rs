@@ -67,6 +67,15 @@ pub unsafe fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
 /// used again soon).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_stream_si64)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movnti))]

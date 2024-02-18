@@ -1348,14 +1348,73 @@ pub unsafe fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle!(a, b, [4, 1, 2, 3])
 }
 
-/// Performs a serializing operation on all store-to-memory instructions that
-/// were issued prior to this instruction.
+/// Performs a serializing operation on all non-temporal ("streaming") store instructions that
+/// were issued by the current thread prior to this instruction.
 ///
-/// Guarantees that every store instruction that precedes, in program order, is
-/// globally visible before any store instruction which follows the fence in
-/// program order.
+/// Guarantees that every non-temporal store instruction that precedes this fence, in program order, is
+/// ordered before any load or store instruction which follows the fence in
+/// synchronization order.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sfence)
+/// (but note that Intel is only documenting the hardware-level concerns related to this
+/// instruction; the Intel documentation does not take into account the extra concerns that arise
+/// because the Rust memory model is different from the x86 memory model.)
+///
+/// # Safety of non-temporal stores
+///
+/// After using any non-temporal store intrinsic, but before any other access to the memory that the
+/// intrinsic mutates, a call to `_mm_sfence` must be performed on the thread that used the
+/// intrinsic.
+///
+/// Non-temporal stores behave very different from regular stores. For the purpose of the Rust
+/// memory model, these stores are happening asynchronously in a background thread. This means a
+/// non-temporal store can cause data races with other accesses, even other accesses on the same
+/// thread. It also means that cross-thread synchronization does not work as expected: let's say the
+/// intrinsic is called on thread T1, and T1 performs synchronization with some other thread T2. The
+/// non-temporal store acts as if it happened not in T1 but in a different thread T3, and T2 has not
+/// synchronized with T3! Calling `_mm_sfence` makes the current thread wait for and synchronize
+/// with all the non-temporal stores previously started on this thread, which means in particular
+/// that subsequent synchronization with other threads will then work as intended again.
+///
+/// The general pattern to use non-temporal stores correctly is to call `_mm_sfence` before your
+/// code jumps back to code outside your library. This ensures all stores inside your function
+/// are synchronized-before the return, and thus transitively synchronized-before everything
+/// the caller does after your function returns.
+//
+// The following is not a doc comment since it's not clear whether we want to put this into the
+// docs, but it should be written out somewhere.
+//
+// Formally, we consider non-temporal stores and sfences to be opaque blobs that the compiler cannot
+// inspect, and that behave like the following functions. This explains where the docs above come
+// from.
+// ```
+// #[thread_local]
+// static mut PENDING_NONTEMP_WRITES = AtomicUsize::new(0);
+//
+// pub unsafe fn nontemporal_store<T>(ptr: *mut T, val: T) {
+//     PENDING_NONTEMP_WRITES.fetch_add(1, Relaxed);
+//     // Spawn a thread that will eventually do our write.
+//     // We need to fetch a pointer to this thread's pending-write
+//     // counter, so that we can access it from the background thread.
+//     let pending_writes = addr_of!(PENDING_NONTEMP_WRITES);
+//     // If this was actual Rust code we'd have to do some extra work
+//     // because `ptr`, `val`, `pending_writes` are all `!Send`. We skip that here.
+//     std::thread::spawn(move || {
+//         // Do the write in the background thread.
+//         ptr.write(val);
+//         // Register the write as done. Crucially, this is `Release`, so it
+//         // syncs-with the `Acquire in `sfence`.
+//         (&*pending_writes).fetch_sub(1, Release);
+//     });
+// }
+//
+// pub fn sfence() {
+//     unsafe {
+//         // Wait until there are no more pending writes.
+//         while PENDING_NONTEMP_WRITES.load(Acquire) > 0 {}
+//     }
+// }
+// ```
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sfence))]
@@ -1938,6 +1997,15 @@ extern "C" {
 /// exception _may_ be generated.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_stream_ps)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movntps))]

@@ -27998,6 +27998,15 @@ pub unsafe fn _mm_mask_testn_epi64_mask(k: __mmask8, a: __m128i, b: __m128i) -> 
 /// Store 512-bits (composed of 16 packed single-precision (32-bit) floating-point elements) from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_stream_ps&expand=5671)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28010,6 +28019,15 @@ pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
 /// Store 512-bits (composed of 8 packed double-precision (64-bit) floating-point elements) from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_stream_pd&expand=5667)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
@@ -28022,6 +28040,15 @@ pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
 /// Store 512-bits of integer data from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_stream_si512&expand=5675)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]

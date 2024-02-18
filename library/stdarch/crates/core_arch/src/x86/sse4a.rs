@@ -59,6 +59,15 @@ pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
 /// Non-temporal store of `a.0` into `p`.
 ///
 /// Writes 64-bit data to a memory location without polluting the caches.
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntsd))]
@@ -70,6 +79,15 @@ pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
 /// Non-temporal store of `a.0` into `p`.
 ///
 /// Writes 32-bit data to a memory location without polluting the caches.
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntss))]

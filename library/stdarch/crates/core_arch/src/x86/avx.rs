@@ -1692,6 +1692,15 @@ pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
 /// non-temporal (unlikely to be used again soon)
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_stream_si256)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntdq
@@ -1705,6 +1714,15 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
 /// flagged as non-temporal (unlikely to be used again soon).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_stream_pd)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntpd
@@ -1720,6 +1738,15 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
 /// soon).
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_stream_ps)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))]
