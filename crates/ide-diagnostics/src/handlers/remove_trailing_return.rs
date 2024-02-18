@@ -183,6 +183,18 @@ fn foo() -> u8 {
     }
 
     #[test]
+    fn no_diagnostic_if_not_last_statement2() {
+        check_diagnostics(
+            r#"
+fn foo() -> u8 {
+    return 2;
+    fn bar() {}
+}
+"#,
+        );
+    }
+
+    #[test]
     fn replace_with_expr() {
         check_fix(
             r#"

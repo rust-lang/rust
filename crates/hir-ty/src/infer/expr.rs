@@ -502,6 +502,7 @@ impl InferenceContext<'_> {
                 self.result.standard_types.never.clone()
             }
             &Expr::Return { expr } => self.infer_expr_return(tgt_expr, expr),
+            &Expr::Become { expr } => self.infer_expr_become(expr),
             Expr::Yield { expr } => {
                 if let Some((resume_ty, yield_ty)) = self.resume_yield_tys.clone() {
                     if let Some(expr) = expr {
@@ -1084,6 +1085,27 @@ impl InferenceContext<'_> {
         self.result.standard_types.never.clone()
     }
 
+    fn infer_expr_become(&mut self, expr: ExprId) -> Ty {
+        match &self.return_coercion {
+            Some(return_coercion) => {
+                let ret_ty = return_coercion.expected_ty();
+
+                let call_expr_ty =
+                    self.infer_expr_inner(expr, &Expectation::HasType(ret_ty.clone()));
+
+                // NB: this should *not* coerce.
+                //     tail calls don't support any coercions except lifetimes ones (like `&'static u8 -> &'a u8`).
+                self.unify(&call_expr_ty, &ret_ty);
+            }
+            None => {
+                // FIXME: diagnose `become` outside of functions
+                self.infer_expr_no_expect(expr);
+            }
+        }
+
+        self.result.standard_types.never.clone()
+    }
+
     fn infer_expr_box(&mut self, inner_expr: ExprId, expected: &Expectation) -> Ty {
         if let Some(box_id) = self.resolve_boxed_box() {
             let table = &mut self.table;
@@ -1367,6 +1389,7 @@ impl InferenceContext<'_> {
                                 );
                             }
                         }
+                        Statement::Item => (),
                     }
                 }
 

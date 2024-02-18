@@ -261,6 +261,11 @@ impl Printer<'_> {
                     self.print_expr(*expr);
                 }
             }
+            Expr::Become { expr } => {
+                w!(self, "become");
+                self.whitespace();
+                self.print_expr(*expr);
+            }
             Expr::Yield { expr } => {
                 w!(self, "yield");
                 if let Some(expr) = expr {
@@ -623,6 +628,7 @@ impl Printer<'_> {
                 }
                 wln!(self);
             }
+            Statement::Item => (),
         }
     }
 

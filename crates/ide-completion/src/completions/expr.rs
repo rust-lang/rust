@@ -328,3 +328,59 @@ pub(crate) fn complete_expr_path(
         }
     }
 }
+
+pub(crate) fn complete_expr(acc: &mut Completions, ctx: &CompletionContext<'_>) {
+    let _p = tracing::span!(tracing::Level::INFO, "complete_expr").entered();
+
+    if !ctx.config.enable_term_search {
+        return;
+    }
+
+    if !ctx.qualifier_ctx.none() {
+        return;
+    }
+
+    if let Some(ty) = &ctx.expected_type {
+        // Ignore unit types as they are not very interesting
+        if ty.is_unit() || ty.is_unknown() {
+            return;
+        }
+
+        let term_search_ctx = hir::term_search::TermSearchCtx {
+            sema: &ctx.sema,
+            scope: &ctx.scope,
+            goal: ty.clone(),
+            config: hir::term_search::TermSearchConfig {
+                enable_borrowcheck: false,
+                many_alternatives_threshold: 1,
+                depth: 6,
+            },
+        };
+        let exprs = hir::term_search::term_search(&term_search_ctx);
+        for expr in exprs {
+            // Expand method calls
+            match expr {
+                hir::term_search::Expr::Method { func, generics, target, params }
+                    if target.is_many() =>
+                {
+                    let target_ty = target.ty(ctx.db);
+                    let term_search_ctx =
+                        hir::term_search::TermSearchCtx { goal: target_ty, ..term_search_ctx };
+                    let target_exprs = hir::term_search::term_search(&term_search_ctx);
+
+                    for expr in target_exprs {
+                        let expanded_expr = hir::term_search::Expr::Method {
+                            func,
+                            generics: generics.clone(),
+                            target: Box::new(expr),
+                            params: params.clone(),
+                        };
+
+                        acc.add_expr(ctx, &expanded_expr)
+                    }
+                }
+                _ => acc.add_expr(ctx, &expr),
+            }
+        }
+    }
+}

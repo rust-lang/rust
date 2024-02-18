@@ -12,8 +12,9 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use serde_json::from_value;
+use toolchain::Tool;
 
-use crate::{utf8_stdout, InvocationLocation, ManifestPath};
+use crate::{utf8_stdout, InvocationLocation, ManifestPath, Sysroot};
 use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
@@ -188,8 +189,6 @@ pub struct TargetData {
     pub root: AbsPathBuf,
     /// Kind of target
     pub kind: TargetKind,
-    /// Is this target a proc-macro
-    pub is_proc_macro: bool,
     /// Required features of the target without which it won't build
     pub required_features: Vec<String>,
 }
@@ -198,7 +197,10 @@ pub struct TargetData {
 pub enum TargetKind {
     Bin,
     /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
-    Lib,
+    Lib {
+        /// Is this target a proc-macro
+        is_proc_macro: bool,
+    },
     Example,
     Test,
     Bench,
@@ -215,8 +217,8 @@ impl TargetKind {
                 "bench" => TargetKind::Bench,
                 "example" => TargetKind::Example,
                 "custom-build" => TargetKind::BuildScript,
-                "proc-macro" => TargetKind::Lib,
-                _ if kind.contains("lib") => TargetKind::Lib,
+                "proc-macro" => TargetKind::Lib { is_proc_macro: true },
+                _ if kind.contains("lib") => TargetKind::Lib { is_proc_macro: false },
                 _ => continue,
             };
         }
@@ -236,12 +238,13 @@ impl CargoWorkspace {
         cargo_toml: &ManifestPath,
         current_dir: &AbsPath,
         config: &CargoConfig,
+        sysroot: Option<&Sysroot>,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<cargo_metadata::Metadata> {
-        let targets = find_list_of_build_targets(config, cargo_toml);
+        let targets = find_list_of_build_targets(config, cargo_toml, sysroot);
 
         let mut meta = MetadataCommand::new();
-        meta.cargo_path(toolchain::cargo());
+        meta.cargo_path(Tool::Cargo.path());
         meta.manifest_path(cargo_toml.to_path_buf());
         match &config.features {
             CargoFeatures::All => {
@@ -289,6 +292,7 @@ impl CargoWorkspace {
 
         (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
             let mut command = meta.cargo_command();
+            Sysroot::set_rustup_toolchain_env(&mut command, sysroot);
             command.envs(&config.extra_env);
             let output = command.output()?;
             if !output.status.success() {
@@ -368,7 +372,6 @@ impl CargoWorkspace {
                     name,
                     root: AbsPathBuf::assert(src_path.into()),
                     kind: TargetKind::new(&kind),
-                    is_proc_macro: *kind == ["proc-macro"],
                     required_features,
                 });
                 pkg_data.targets.push(tgt);
@@ -476,24 +479,30 @@ impl CargoWorkspace {
     }
 }
 
-fn find_list_of_build_targets(config: &CargoConfig, cargo_toml: &ManifestPath) -> Vec<String> {
+fn find_list_of_build_targets(
+    config: &CargoConfig,
+    cargo_toml: &ManifestPath,
+    sysroot: Option<&Sysroot>,
+) -> Vec<String> {
     if let Some(target) = &config.target {
         return [target.into()].to_vec();
     }
 
-    let build_targets = cargo_config_build_target(cargo_toml, &config.extra_env);
+    let build_targets = cargo_config_build_target(cargo_toml, &config.extra_env, sysroot);
     if !build_targets.is_empty() {
         return build_targets;
     }
 
-    rustc_discover_host_triple(cargo_toml, &config.extra_env).into_iter().collect()
+    rustc_discover_host_triple(cargo_toml, &config.extra_env, sysroot).into_iter().collect()
 }
 
 fn rustc_discover_host_triple(
     cargo_toml: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
+    sysroot: Option<&Sysroot>,
 ) -> Option<String> {
-    let mut rustc = Command::new(toolchain::rustc());
+    let mut rustc = Command::new(Tool::Rustc.path());
+    Sysroot::set_rustup_toolchain_env(&mut rustc, sysroot);
     rustc.envs(extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);
@@ -519,8 +528,10 @@ fn rustc_discover_host_triple(
 fn cargo_config_build_target(
     cargo_toml: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
+    sysroot: Option<&Sysroot>,
 ) -> Vec<String> {
-    let mut cargo_config = Command::new(toolchain::cargo());
+    let mut cargo_config = Command::new(Tool::Cargo.path());
+    Sysroot::set_rustup_toolchain_env(&mut cargo_config, sysroot);
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())

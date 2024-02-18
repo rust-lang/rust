@@ -169,9 +169,9 @@ impl ExprValidator {
             return;
         }
 
-        let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db, &pattern_arena);
+        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
 
+        let pattern_arena = Arena::new();
         let mut m_arms = Vec::with_capacity(arms.len());
         let mut has_lowering_errors = false;
         for arm in arms {
@@ -196,8 +196,9 @@ impl ExprValidator {
                     // If we had a NotUsefulMatchArm diagnostic, we could
                     // check the usefulness of each pattern as we added it
                     // to the matrix here.
+                    let pat = self.lower_pattern(&cx, arm.pat, db, &body, &mut has_lowering_errors);
                     let m_arm = pat_analysis::MatchArm {
-                        pat: self.lower_pattern(&cx, arm.pat, db, &body, &mut has_lowering_errors),
+                        pat: pattern_arena.alloc(pat),
                         has_guard: arm.guard.is_some(),
                         arm_data: (),
                     };
@@ -223,7 +224,7 @@ impl ExprValidator {
             ValidityConstraint::ValidOnly,
         ) {
             Ok(report) => report,
-            Err(void) => match void {},
+            Err(()) => return,
         };
 
         // FIXME Report unreachable arms
@@ -245,10 +246,10 @@ impl ExprValidator {
         db: &dyn HirDatabase,
         body: &Body,
         have_errors: &mut bool,
-    ) -> &'p DeconstructedPat<'p> {
+    ) -> DeconstructedPat<'p> {
         let mut patcx = match_check::PatCtxt::new(db, &self.infer, body);
         let pattern = patcx.lower_pattern(pat);
-        let pattern = cx.pattern_arena.alloc(cx.lower_pat(&pattern));
+        let pattern = cx.lower_pat(&pattern);
         if !patcx.errors.is_empty() {
             *have_errors = true;
         }

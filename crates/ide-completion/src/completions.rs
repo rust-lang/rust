@@ -40,7 +40,8 @@ use crate::{
         literal::{render_struct_literal, render_variant_lit},
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
-        render_field, render_path_resolution, render_pattern_resolution, render_tuple_field,
+        render_expr, render_field, render_path_resolution, render_pattern_resolution,
+        render_tuple_field,
         type_alias::{render_type_alias, render_type_alias_with_eq},
         union_literal::render_union_literal,
         RenderContext,
@@ -155,6 +156,12 @@ impl Completions {
             None => item.insert_text(if snippet.contains('$') { kw } else { snippet }),
         };
         item.add_to(self, ctx.db);
+    }
+
+    pub(crate) fn add_expr(&mut self, ctx: &CompletionContext<'_>, expr: &hir::term_search::Expr) {
+        if let Some(item) = render_expr(ctx, expr) {
+            item.add_to(self, ctx.db)
+        }
     }
 
     pub(crate) fn add_crate_roots(
@@ -694,6 +701,7 @@ pub(super) fn complete_name_ref(
             match &path_ctx.kind {
                 PathKind::Expr { expr_ctx } => {
                     expr::complete_expr_path(acc, ctx, path_ctx, expr_ctx);
+                    expr::complete_expr(acc, ctx);
 
                     dot::complete_undotted_self(acc, ctx, path_ctx, expr_ctx);
                     item_list::complete_item_list_in_expr(acc, ctx, path_ctx, expr_ctx);

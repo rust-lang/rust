@@ -775,6 +775,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.set_terminator(current, TerminatorKind::Return, expr_id.into());
                 Ok(None)
             }
+            Expr::Become { .. } => not_supported!("tail-calls"),
             Expr::Yield { .. } => not_supported!("yield"),
             Expr::RecordLit { fields, path, spread, ellipsis: _, is_assignee_expr: _ } => {
                 let spread_place = match spread {
@@ -1246,7 +1247,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.push_assignment(current, place, op.into(), expr_id.into());
                 Ok(Some(current))
             }
-            Expr::Underscore => not_supported!("underscore"),
+            Expr::Underscore => Ok(Some(current)),
         }
     }
 
@@ -1780,6 +1781,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.push_fake_read(c, p, expr.into());
                     current = scope2.pop_and_drop(self, c, expr.into());
                 }
+                hir_def::hir::Statement::Item => (),
             }
         }
         if let Some(tail) = tail {

@@ -174,7 +174,7 @@ impl CargoTargetSpec {
                 buf.push("--example".to_owned());
                 buf.push(self.target);
             }
-            TargetKind::Lib => {
+            TargetKind::Lib { is_proc_macro: _ } => {
                 buf.push("--lib".to_owned());
             }
             TargetKind::Other | TargetKind::BuildScript => (),
