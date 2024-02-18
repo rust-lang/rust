@@ -95,7 +95,7 @@ fn install_sh(
     }
 
     let datadir = prefix.join(default_path(&builder.config.datadir, "share"));
-    let docdir = prefix.join(default_path(&builder.config.docdir, "share/doc/rust"));
+    let docdir = prefix.join(default_path(&builder.config.docdir, &format!("share/doc/{package}")));
     let mandir = prefix.join(default_path(&builder.config.mandir, "share/man"));
     let libdir = prefix.join(default_path(&builder.config.libdir, "lib"));
     let bindir = prefix.join(&builder.config.bindir); // Default in config.rs
