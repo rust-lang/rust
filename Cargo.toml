@@ -57,3 +57,6 @@ debug = false
 [profile.release.build-override]
 opt-level = 0
 debug = false
+
+[package.metadata.rust-analyzer]
+rustc_private = true
