@@ -22,7 +22,7 @@ use crate::traits::{
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan, StashKey, StringPart,
+    FatalError, MultiSpan, StashKey, StringPart,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
@@ -193,14 +193,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut err = self.build_overflow_error(predicate, span, suggest_increasing_limit);
         mutate(&mut err);
         err.emit();
-
-        self.dcx().abort_if_errors();
-        // FIXME: this should be something like `build_overflow_error_fatal`, which returns
-        // `DiagnosticBuilder<', !>`. Then we don't even need anything after that `emit()`.
-        unreachable!(
-            "did not expect compilation to continue after `abort_if_errors`, \
-            since an error was definitely emitted!"
-        );
+        FatalError.raise();
     }
 
     fn build_overflow_error<T>(

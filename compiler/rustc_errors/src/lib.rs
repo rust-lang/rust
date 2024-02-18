@@ -876,6 +876,10 @@ impl DiagCtxt {
         }
     }
 
+    /// This excludes delayed bugs and stashed errors. Used for early aborts
+    /// after errors occurred -- e.g. because continuing in the face of errors is
+    /// likely to lead to bad results, such as spurious/uninteresting
+    /// additional errors -- when returning an error `Result` is difficult.
     pub fn abort_if_errors(&self) {
         if self.has_errors().is_some() {
             FatalError.raise();

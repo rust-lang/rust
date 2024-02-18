@@ -936,9 +936,7 @@ pub fn start_codegen<'tcx>(
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
         if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
-            let dcx = tcx.dcx();
-            dcx.emit_err(errors::CantEmitMIR { error });
-            dcx.abort_if_errors();
+            tcx.dcx().emit_fatal(errors::CantEmitMIR { error });
         }
     }
 

@@ -3,7 +3,7 @@ use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{DiagCtxt, ErrorGuaranteed};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed, FatalError};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
@@ -722,10 +722,7 @@ fn link_dwarf_object<'a>(
         Ok(())
     }) {
         Ok(()) => {}
-        Err(e) => {
-            sess.dcx().emit_err(errors::ThorinErrorWrapper(e));
-            sess.dcx().abort_if_errors();
-        }
+        Err(e) => sess.dcx().emit_fatal(errors::ThorinErrorWrapper(e)),
     }
 }
 
@@ -1001,7 +998,7 @@ fn link_natively<'a>(
                 sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
                 sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
             }
-            sess.dcx().abort_if_errors();
+            FatalError.raise();
         }
     }
 
