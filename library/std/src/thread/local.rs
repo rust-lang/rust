@@ -180,8 +180,8 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
-#[allow(static_mut_ref)]
+// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
+#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
