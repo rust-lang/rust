@@ -69,7 +69,6 @@ impl Lock {
                 &mut overlapped,
             )
         }
-        .ok()
         .map_err(|e| {
             let err = io::Error::from_raw_os_error(e.code().0);
             debug!("failed acquiring file lock: {}", err);
