@@ -1447,10 +1447,10 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// Both the starting and resulting pointer must be either in bounds or one
-    /// byte past the end of an allocated object. If either pointer is out of
-    /// bounds or arithmetic overflow occurs then any further use of the
-    /// returned value will result in undefined behavior.
+    /// If the computed offset is non-zero, then both the starting and resulting pointer must be
+    /// either in bounds or one byte past the end of an allocated object. If either pointer is out
+    /// of bounds or arithmetic overflow occurs then any further use of the returned value will
+    /// result in undefined behavior.
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
@@ -2404,6 +2404,10 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
+    ///
+    /// However, the actual safety contract of the intrinsic is slightly weaker than the one
+    /// for these functions: when `ptr.addr() == base.addr()`, the intrinsic is always
+    /// well-defined, no matter the provenance of these pointers.
     #[rustc_const_stable(feature = "const_ptr_offset_from", since = "1.65.0")]
     #[rustc_nounwind]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;

@@ -431,8 +431,9 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
+    ///   either in bounds or one byte past the end of the same [allocated object].
+    ///   (If it is zero, then the function is allays well-defined.)
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -803,11 +804,11 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both `self` and `origin` must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * `self` and `origin` must either
     ///
-    /// * Both pointers must be *derived from* a pointer to the same object.
-    ///   (See below for an example.)
+    ///   * both be *derived from* a pointer to the same [allocated object], and they must be either
+    ///     in bounds or one byte past the end of that object. (See below for an example.)
+    ///   * or both be derived from an integer literal/constant, and point to the same address.
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
@@ -870,14 +871,14 @@ impl<T: ?Sized> *mut T {
     /// let ptr1 = Box::into_raw(Box::new(0u8));
     /// let ptr2 = Box::into_raw(Box::new(1u8));
     /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);
-    /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
-    /// let ptr2_other = (ptr1 as *mut u8).wrapping_offset(diff);
+    /// // Make ptr2_other an "alias" of ptr2.add(1), but derived from ptr1.
+    /// let ptr2_other = (ptr1 as *mut u8).wrapping_offset(diff).wrapping_offset(1);
     /// assert_eq!(ptr2 as usize, ptr2_other as usize);
     /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
     /// // computing their offset is undefined behavior, even though
-    /// // they point to the same address!
+    /// // they point to addresses that are in-bounds of the same object!
     /// unsafe {
-    ///     let zero = ptr2_other.offset_from(ptr2); // Undefined Behavior
+    ///     let one = ptr2_other.offset_from(ptr2); // Undefined Behavior
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
@@ -994,8 +995,9 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
+    ///   either in bounds or one byte past the end of the same [allocated object].
+    ///   (If it is zero, then the function is allays well-defined.)
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -1078,8 +1080,9 @@ impl<T: ?Sized> *mut T {
     /// If any of the following conditions are violated, the result is Undefined
     /// Behavior:
     ///
-    /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same [allocated object].
+    /// * If the computed offset is non-zero, then both the starting and resulting pointer must be
+    ///   either in bounds or one byte past the end of the same [allocated object].
+    ///   (If it is zero, then the function is allays well-defined.)
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
