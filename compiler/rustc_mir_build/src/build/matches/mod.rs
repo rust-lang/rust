@@ -1052,7 +1052,7 @@ struct Ascription<'tcx> {
     variance: ty::Variance,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
     // This place...
     place: PlaceBuilder<'tcx>,
@@ -1413,48 +1413,61 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
-
-        // All of the or-patterns have been sorted to the end, so if the first
-        // pattern is an or-pattern we only have or-patterns.
-        match first_candidate.match_pairs[0].pattern.kind {
-            PatKind::Or { .. } => (),
-            _ => {
-                self.test_candidates(
-                    span,
-                    scrutinee_span,
-                    candidates,
-                    start_block,
-                    otherwise_block,
-                    fake_borrows,
-                );
-                return;
-            }
+        assert!(first_candidate.subcandidates.is_empty());
+        if !matches!(first_candidate.match_pairs[0].pattern.kind, PatKind::Or { .. }) {
+            self.test_candidates(
+                span,
+                scrutinee_span,
+                candidates,
+                start_block,
+                otherwise_block,
+                fake_borrows,
+            );
+            return;
         }
 
         let match_pairs = mem::take(&mut first_candidate.match_pairs);
+        let (first_match_pair, remaining_match_pairs) = match_pairs.split_first().unwrap();
+        let PatKind::Or { ref pats } = &first_match_pair.pattern.kind else { unreachable!() };
 
         let remainder_start = self.cfg.start_new_block();
-        for match_pair in match_pairs {
-            let PatKind::Or { ref pats } = &match_pair.pattern.kind else {
-                bug!("Or-patterns should have been sorted to the end");
-            };
-            let or_span = match_pair.pattern.span;
+        let or_span = first_match_pair.pattern.span;
+        // Test the alternatives of this or-pattern.
+        self.test_or_pattern(
+            first_candidate,
+            start_block,
+            remainder_start,
+            pats,
+            or_span,
+            &first_match_pair.place,
+            fake_borrows,
+        );
 
+        if !remaining_match_pairs.is_empty() {
+            // If more match pairs remain, test them after each subcandidate.
+            // We could add them to the or-candidates before the call to `test_or_pattern` but this
+            // would make it impossible to detect simplifiable or-patterns. That would guarantee
+            // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
             first_candidate.visit_leaves(|leaf_candidate| {
-                let or_start = leaf_candidate.pre_binding_block.unwrap_or(start_block);
+                assert!(leaf_candidate.match_pairs.is_empty());
+                leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
+                let or_start = leaf_candidate.pre_binding_block.unwrap();
+                // In a case like `(a | b, c | d)`, if `a` succeeds and `c | d` fails, we know `(b,
+                // c | d)` will fail too. If there is no guard, we skip testing of `b` by branching
+                // directly to `remainder_start`. If there is a guard, we have to try `(b, c | d)`.
                 let or_otherwise = leaf_candidate.otherwise_block.unwrap_or(remainder_start);
-                self.test_or_pattern(
-                    leaf_candidate,
+                self.test_candidates_with_or(
+                    span,
+                    scrutinee_span,
+                    &mut [leaf_candidate],
                     or_start,
                     or_otherwise,
-                    pats,
-                    or_span,
-                    &match_pair.place,
                     fake_borrows,
                 );
             });
         }
 
+        // Test the remaining candidates.
         self.match_candidates(
             span,
             scrutinee_span,
@@ -1462,7 +1475,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             otherwise_block,
             remaining_candidates,
             fake_borrows,
-        )
+        );
     }
 
     #[instrument(
