@@ -11,6 +11,14 @@ LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
    |                ^^^^^^^^^^^^^
 
 note: erroneous constant encountered
+  --> $DIR/defaults-not-assumed-fail.rs:33:16
+   |
+LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above
+   |                ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
   --> $DIR/defaults-not-assumed-fail.rs:33:5
    |
 LL |     assert_eq!(<() as Tr>::B, 0);    // causes the error above

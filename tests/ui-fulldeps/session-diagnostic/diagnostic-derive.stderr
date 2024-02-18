@@ -468,11 +468,11 @@ LL | #[label]
    |
    = help: `#[label]` and `#[suggestion]` can only be applied to fields
 
-error: `eager` is the only supported nested attribute for `subdiagnostic`
-  --> $DIR/diagnostic-derive.rs:703:7
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:703:5
    |
 LL |     #[subdiagnostic(bad)]
-   |       ^^^^^^^^^^^^^
+   |     ^
 
 error: `#[subdiagnostic = ...]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:711:5
@@ -480,40 +480,50 @@ error: `#[subdiagnostic = ...]` is not a valid attribute
 LL |     #[subdiagnostic = "bad"]
    |     ^
 
-error: `eager` is the only supported nested attribute for `subdiagnostic`
-  --> $DIR/diagnostic-derive.rs:719:7
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:719:5
    |
 LL |     #[subdiagnostic(bad, bad)]
-   |       ^^^^^^^^^^^^^
+   |     ^
 
-error: `eager` is the only supported nested attribute for `subdiagnostic`
-  --> $DIR/diagnostic-derive.rs:727:7
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:727:5
    |
 LL |     #[subdiagnostic("bad")]
-   |       ^^^^^^^^^^^^^
+   |     ^
 
 error: `#[subdiagnostic(...)]` is not a valid attribute
   --> $DIR/diagnostic-derive.rs:735:5
    |
 LL |     #[subdiagnostic(eager)]
    |     ^
+
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:743:5
    |
-   = help: eager subdiagnostics are not supported on lints
+LL |     #[subdiagnostic(eager)]
+   |     ^
+
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:764:5
+   |
+LL |     #[subdiagnostic(eager)]
+   |     ^
 
 error: expected at least one string literal for `code(...)`
-  --> $DIR/diagnostic-derive.rs:793:23
+  --> $DIR/diagnostic-derive.rs:795:23
    |
 LL |     #[suggestion(code())]
    |                       ^
 
 error: `code(...)` must contain only string literals
-  --> $DIR/diagnostic-derive.rs:801:23
+  --> $DIR/diagnostic-derive.rs:803:23
    |
 LL |     #[suggestion(code(foo))]
    |                       ^^^
 
 error: `#[suggestion(...)]` is not a valid attribute
-  --> $DIR/diagnostic-derive.rs:825:5
+  --> $DIR/diagnostic-derive.rs:827:5
    |
 LL |     #[suggestion(no_crate_suggestion, code = "")]
    |     ^
@@ -529,13 +539,13 @@ LL | #[diag = "E0123"]
    |        ^ maybe a missing crate `core`?
 
 error[E0433]: failed to resolve: maybe a missing crate `core`?
-  --> $DIR/diagnostic-derive.rs:801:23
+  --> $DIR/diagnostic-derive.rs:803:23
    |
 LL |     #[suggestion(code(foo))]
    |                       ^^^ maybe a missing crate `core`?
 
 error[E0433]: failed to resolve: maybe a missing crate `core`?
-  --> $DIR/diagnostic-derive.rs:810:25
+  --> $DIR/diagnostic-derive.rs:812:25
    |
 LL |     #[suggestion(code = 3)]
    |                         ^ maybe a missing crate `core`?
@@ -601,7 +611,7 @@ LL | #[diag(nonsense, code = E0123)]
    |        ^^^^^^^^ not found in `crate::fluent_generated`
 
 error[E0425]: cannot find value `__code_34` in this scope
-  --> $DIR/diagnostic-derive.rs:807:10
+  --> $DIR/diagnostic-derive.rs:809:10
    |
 LL | #[derive(Diagnostic)]
    |          ^^^^^^^^^^ not found in this scope
@@ -622,7 +632,7 @@ note: required by a bound in `DiagnosticBuilder::<'a, G>::arg`
   --> $COMPILER_DIR/rustc_errors/src/diagnostic_builder.rs:LL:CC
    = note: this error originates in the macro `forward` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 84 previous errors
+error: aborting due to 86 previous errors
 
 Some errors have detailed explanations: E0277, E0425, E0433.
 For more information about an error, try `rustc --explain E0277`.

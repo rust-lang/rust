@@ -17,6 +17,7 @@ pub enum Arch {
     Arm64e,
     Arm64_32,
     I386,
+    I386_sim,
     I686,
     X86_64,
     X86_64h,
@@ -34,7 +35,7 @@ impl Arch {
             Arm64 | Arm64_macabi | Arm64_sim => "arm64",
             Arm64e => "arm64e",
             Arm64_32 => "arm64_32",
-            I386 => "i386",
+            I386 | I386_sim => "i386",
             I686 => "i686",
             X86_64 | X86_64_sim | X86_64_macabi => "x86_64",
             X86_64h => "x86_64h",
@@ -45,7 +46,7 @@ impl Arch {
         Cow::Borrowed(match self {
             Armv7k | Armv7s => "arm",
             Arm64 | Arm64e | Arm64_32 | Arm64_macabi | Arm64_sim => "aarch64",
-            I386 | I686 => "x86",
+            I386 | I386_sim | I686 => "x86",
             X86_64 | X86_64_sim | X86_64_macabi | X86_64h => "x86_64",
         })
     }
@@ -54,9 +55,7 @@ impl Arch {
         match self {
             Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => "",
             X86_64_macabi | Arm64_macabi => "macabi",
-            // x86_64-apple-ios is a simulator target, even though it isn't
-            // declared that way in the target like the other ones...
-            Arm64_sim | X86_64_sim => "sim",
+            I386_sim | Arm64_sim | X86_64_sim => "sim",
         }
     }
 
@@ -70,7 +69,7 @@ impl Arch {
             // Only macOS 10.12+ is supported, which means
             // all x86_64/x86 CPUs must be running at least penryn
             // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
-            I386 | I686 => "penryn",
+            I386 | I386_sim | I686 => "penryn",
             X86_64 | X86_64_sim => "penryn",
             X86_64_macabi => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
@@ -85,7 +84,7 @@ impl Arch {
     fn stack_probes(self) -> StackProbeType {
         match self {
             Armv7k | Armv7s => StackProbeType::None,
-            Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h | X86_64_sim
+            Arm64 | Arm64e | Arm64_32 | I386 | I386_sim | I686 | X86_64 | X86_64h | X86_64_sim
             | X86_64_macabi | Arm64_macabi | Arm64_sim => StackProbeType::Inline,
         }
     }
@@ -302,8 +301,8 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         // Otherwise if cross-compiling for a different OS/SDK, remove any part
         // of the linking environment that's wrong and reversed.
         match arch {
-            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64_sim
-            | X86_64h | Arm64_sim => {
+            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I386_sim | I686 | X86_64
+            | X86_64_sim | X86_64h | Arm64_sim => {
                 cvs!["MACOSX_DEPLOYMENT_TARGET"]
             }
             X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],

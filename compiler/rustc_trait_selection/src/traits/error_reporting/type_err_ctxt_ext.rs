@@ -57,78 +57,8 @@ use super::{
 
 pub use rustc_infer::traits::error_reporting::*;
 
-pub trait TypeErrCtxtExt<'tcx> {
-    fn build_overflow_error<T>(
-        &self,
-        predicate: &T,
-        span: Span,
-        suggest_increasing_limit: bool,
-    ) -> DiagnosticBuilder<'tcx>
-    where
-        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>;
-
-    fn report_overflow_error<T>(
-        &self,
-        predicate: &T,
-        span: Span,
-        suggest_increasing_limit: bool,
-        mutate: impl FnOnce(&mut Diagnostic),
-    ) -> !
-    where
-        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>;
-
-    fn report_overflow_no_abort(&self, obligation: PredicateObligation<'tcx>) -> ErrorGuaranteed;
-
-    fn report_fulfillment_errors(&self, errors: Vec<FulfillmentError<'tcx>>) -> ErrorGuaranteed;
-
-    fn report_overflow_obligation<T>(
-        &self,
-        obligation: &Obligation<'tcx, T>,
-        suggest_increasing_limit: bool,
-    ) -> !
-    where
-        T: ToPredicate<'tcx> + Clone;
-
-    fn suggest_new_overflow_limit(&self, err: &mut Diagnostic);
-
-    fn report_overflow_obligation_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> !;
-
-    /// The `root_obligation` parameter should be the `root_obligation` field
-    /// from a `FulfillmentError`. If no `FulfillmentError` is available,
-    /// then it should be the same as `obligation`.
-    fn report_selection_error(
-        &self,
-        obligation: PredicateObligation<'tcx>,
-        root_obligation: &PredicateObligation<'tcx>,
-        error: &SelectionError<'tcx>,
-    ) -> ErrorGuaranteed;
-
-    fn emit_specialized_closure_kind_error(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Option<ErrorGuaranteed>;
-
-    fn fn_arg_obligation(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> Result<(), ErrorGuaranteed>;
-
-    fn try_conversion_context(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::TraitRef<'tcx>,
-        err: &mut Diagnostic,
-    ) -> bool;
-
-    fn report_const_param_not_wf(
-        &self,
-        ty: Ty<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-    ) -> DiagnosticBuilder<'tcx>;
-}
-
-impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub trait TypeErrCtxtExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn report_fulfillment_errors(
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
@@ -382,6 +312,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err.emit()
     }
 
+    /// The `root_obligation` parameter should be the `root_obligation` field
+    /// from a `FulfillmentError`. If no `FulfillmentError` is available,
+    /// then it should be the same as `obligation`.
     fn report_selection_error(
         &self,
         mut obligation: PredicateObligation<'tcx>,
@@ -1393,209 +1326,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 }
 
-pub(super) trait InferCtxtPrivExt<'tcx> {
-    // returns if `cond` not occurring implies that `error` does not occur - i.e., that
-    // `error` occurring implies that `cond` occurs.
-    fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool;
-
-    fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>) -> ErrorGuaranteed;
-
-    fn report_projection_error(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        error: &MismatchedProjectionTypes<'tcx>,
-    ) -> ErrorGuaranteed;
-
-    fn maybe_detailed_projection_msg(
-        &self,
-        pred: ty::ProjectionPredicate<'tcx>,
-        normalized_ty: ty::Term<'tcx>,
-        expected_ty: ty::Term<'tcx>,
-    ) -> Option<String>;
-
-    fn fuzzy_match_tys(
-        &self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        ignoring_lifetimes: bool,
-    ) -> Option<CandidateSimilarity>;
-
-    fn describe_closure(&self, kind: hir::ClosureKind) -> &'static str;
-
-    fn find_similar_impl_candidates(
-        &self,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) -> Vec<ImplCandidate<'tcx>>;
-
-    fn report_similar_impl_candidates(
-        &self,
-        impl_candidates: &[ImplCandidate<'tcx>],
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        body_def_id: LocalDefId,
-        err: &mut Diagnostic,
-        other: bool,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> bool;
-
-    fn report_similar_impl_candidates_for_root_obligation(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        trait_predicate: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
-        body_def_id: LocalDefId,
-        err: &mut Diagnostic,
-    );
-
-    /// Gets the parent trait chain start
-    fn get_parent_trait_ref(
-        &self,
-        code: &ObligationCauseCode<'tcx>,
-    ) -> Option<(Ty<'tcx>, Option<Span>)>;
-
-    /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
-    /// with the same path as `trait_ref`, a help message about
-    /// a probable version mismatch is added to `err`
-    fn note_version_mismatch(
-        &self,
-        err: &mut Diagnostic,
-        trait_ref: &ty::PolyTraitRef<'tcx>,
-    ) -> bool;
-
-    /// Creates a `PredicateObligation` with `new_self_ty` replacing the existing type in the
-    /// `trait_ref`.
-    ///
-    /// For this to work, `new_self_ty` must have no escaping bound variables.
-    fn mk_trait_obligation_with_new_self_ty(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        trait_ref_and_ty: ty::Binder<'tcx, (ty::TraitPredicate<'tcx>, Ty<'tcx>)>,
-    ) -> PredicateObligation<'tcx>;
-
-    fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>) -> ErrorGuaranteed;
-
-    fn predicate_can_apply(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        pred: ty::PolyTraitPredicate<'tcx>,
-    ) -> bool;
-
-    fn note_obligation_cause(&self, err: &mut Diagnostic, obligation: &PredicateObligation<'tcx>);
-
-    fn suggest_unsized_bound_if_applicable(
-        &self,
-        err: &mut Diagnostic,
-        obligation: &PredicateObligation<'tcx>,
-    );
-
-    fn annotate_source_of_ambiguity(
-        &self,
-        err: &mut Diagnostic,
-        impls: &[ambiguity::Ambiguity],
-        predicate: ty::Predicate<'tcx>,
-    );
-
-    fn maybe_suggest_unsized_generics(&self, err: &mut Diagnostic, span: Span, node: Node<'tcx>);
-
-    fn maybe_indirection_for_unsized(
-        &self,
-        err: &mut Diagnostic,
-        item: &'tcx Item<'tcx>,
-        param: &'tcx GenericParam<'tcx>,
-    ) -> bool;
-
-    fn is_recursive_obligation(
-        &self,
-        obligated_types: &mut Vec<Ty<'tcx>>,
-        cause_code: &ObligationCauseCode<'tcx>,
-    ) -> bool;
-
-    fn get_standard_error_message(
-        &self,
-        trait_predicate: &ty::PolyTraitPredicate<'tcx>,
-        message: Option<String>,
-        predicate_is_const: bool,
-        append_const_msg: Option<AppendConstMessage>,
-        post_message: String,
-    ) -> String;
-
-    fn get_safe_transmute_error_and_reason(
-        &self,
-        obligation: PredicateObligation<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        span: Span,
-    ) -> GetSafeTransmuteErrorAndReason;
-
-    fn add_tuple_trait_message(
-        &self,
-        obligation_cause_code: &ObligationCauseCode<'tcx>,
-        err: &mut Diagnostic,
-    );
-
-    fn try_to_add_help_message(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        trait_predicate: &ty::PolyTraitPredicate<'tcx>,
-        err: &mut Diagnostic,
-        span: Span,
-        is_fn_trait: bool,
-        suggested: bool,
-        unsatisfied_const: bool,
-    );
-
-    fn add_help_message_for_fn_trait(
-        &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-        err: &mut Diagnostic,
-        implemented_kind: ty::ClosureKind,
-        params: ty::Binder<'tcx, Ty<'tcx>>,
-    );
-
-    fn maybe_add_note_for_unsatisfied_const(
-        &self,
-        trait_predicate: &ty::PolyTraitPredicate<'tcx>,
-        err: &mut Diagnostic,
-        span: Span,
-    ) -> UnsatisfiedConst;
-
-    fn report_closure_error(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        closure_def_id: DefId,
-        found_kind: ty::ClosureKind,
-        kind: ty::ClosureKind,
-        trait_prefix: &'static str,
-    ) -> DiagnosticBuilder<'tcx>;
-
-    fn report_cyclic_signature_error(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        terr: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx>;
-
-    fn report_opaque_type_auto_trait_leakage(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        def_id: DefId,
-    ) -> DiagnosticBuilder<'tcx>;
-
-    fn report_signature_mismatch_error(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        span: Span,
-        found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-        expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-    ) -> Result<DiagnosticBuilder<'tcx>, ErrorGuaranteed>;
-
-    fn report_not_const_evaluatable_error(
-        &self,
-        obligation: &PredicateObligation<'tcx>,
-        span: Span,
-    ) -> Result<DiagnosticBuilder<'tcx>, ErrorGuaranteed>;
-}
-
-impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
+#[extension(pub(super) trait InferCtxtPrivExt<'tcx>)]
+impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
@@ -2414,6 +2146,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         suggested
     }
 
+    /// Creates a `PredicateObligation` with `new_self_ty` replacing the existing type in the
+    /// `trait_ref`.
+    ///
+    /// For this to work, `new_self_ty` must have no escaping bound variables.
     fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,

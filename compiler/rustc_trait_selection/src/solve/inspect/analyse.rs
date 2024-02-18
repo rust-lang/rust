@@ -216,22 +216,17 @@ pub trait ProofTreeVisitor<'tcx> {
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy>;
 }
 
-pub trait ProofTreeInferCtxtExt<'tcx> {
-    fn visit_proof_tree<V: ProofTreeVisitor<'tcx>>(
-        &self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-        visitor: &mut V,
-    ) -> ControlFlow<V::BreakTy>;
-}
-
-impl<'tcx> ProofTreeInferCtxtExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait ProofTreeInferCtxtExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     fn visit_proof_tree<V: ProofTreeVisitor<'tcx>>(
         &self,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
-        let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
-        let proof_tree = proof_tree.unwrap();
-        visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
+        self.probe(|_| {
+            let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
+            let proof_tree = proof_tree.unwrap();
+            visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
+        })
     }
 }

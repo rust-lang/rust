@@ -29,8 +29,7 @@
    LL|       |
    LL|       |macro_rules! macro_that_defines_a_function {
    LL|       |    (fn $名:ident () $体:tt) => {
-   LL|      [0;35m1[0m|        fn $名 () $体 [0;41mfn 他 () {}[0m
-                                      ^0
+   LL|      0|        fn $名 () $体 [0;41mfn 他 () {}[0m
    LL|       |    }
    LL|       |}
    LL|       |

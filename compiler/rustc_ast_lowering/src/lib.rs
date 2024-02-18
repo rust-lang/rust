@@ -57,6 +57,7 @@ use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ConstArg, GenericArg, ItemLocalMap, ParamName, TraitCandidate};
 use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
@@ -190,16 +191,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-trait ResolverAstLoweringExt {
-    fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>>;
-    fn get_partial_res(&self, id: NodeId) -> Option<PartialRes>;
-    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
-    fn get_label_res(&self, id: NodeId) -> Option<NodeId>;
-    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes>;
-    fn take_extra_lifetime_params(&mut self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)>;
-}
-
-impl ResolverAstLoweringExt for ResolverAstLowering {
+#[extension(trait ResolverAstLoweringExt)]
+impl ResolverAstLowering {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already

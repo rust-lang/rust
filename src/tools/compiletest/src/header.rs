@@ -6,6 +6,7 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
@@ -829,7 +830,8 @@ fn iter_header_extra(
     let mut ln = String::new();
     let mut line_number = 0;
 
-    let revision_magic_comment = Regex::new("//(\\[.*\\])?~.*").unwrap();
+    static REVISION_MAGIC_COMMENT_RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new("//(\\[.*\\])?~.*").unwrap());
 
     loop {
         line_number += 1;
@@ -849,7 +851,7 @@ fn iter_header_extra(
         // First try to accept `ui_test` style comments
         } else if let Some((lncfg, ln)) = line_directive(comment, ln) {
             it(lncfg, orig_ln, ln, line_number);
-        } else if mode == Mode::Ui && suite == "ui" && !revision_magic_comment.is_match(ln) {
+        } else if mode == Mode::Ui && suite == "ui" && !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
             };

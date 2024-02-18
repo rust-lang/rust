@@ -8,23 +8,21 @@ use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::InferOk;
 use crate::regions::InferCtxtRegionExt;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
-use crate::solve::{deeply_normalize_for_diagnostics, inspect};
-use crate::traits::engine::TraitEngineExt;
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::solve::{deeply_normalize_for_diagnostics, inspect, FulfillmentCtxt};
+use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::structural_normalize::StructurallyNormalizeExt;
 use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    Obligation, ObligationCause, ObligationCtxt, PredicateObligation, PredicateObligations,
-    SelectionContext,
+    Obligation, ObligationCause, PredicateObligation, PredicateObligations, SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, TraitEngine};
+use rustc_infer::traits::{util, TraitEngine, TraitEngineExt};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -310,29 +308,35 @@ fn equate_impl_headers<'tcx>(
 fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligations: &'a [PredicateObligation<'tcx>],
-) -> Option<&'a PredicateObligation<'tcx>> {
+) -> Option<PredicateObligation<'tcx>> {
     let infcx = selcx.infcx;
 
-    obligations.iter().find(|obligation| {
-        let evaluation_result = if infcx.next_trait_solver() {
-            infcx.evaluate_obligation(obligation)
-        } else {
+    if infcx.next_trait_solver() {
+        let mut fulfill_cx = FulfillmentCtxt::new(infcx);
+        fulfill_cx.register_predicate_obligations(infcx, obligations.iter().cloned());
+
+        // We only care about the obligations that are *definitely* true errors.
+        // Ambiguities do not prove the disjointness of two impls.
+        let mut errors = fulfill_cx.select_where_possible(infcx);
+        errors.pop().map(|err| err.obligation)
+    } else {
+        obligations.iter().cloned().find(|obligation| {
             // We use `evaluate_root_obligation` to correctly track intercrate
             // ambiguity clauses. We cannot use this in the new solver.
-            selcx.evaluate_root_obligation(obligation)
-        };
+            let evaluation_result = selcx.evaluate_root_obligation(obligation);
 
-        match evaluation_result {
-            Ok(result) => !result.may_apply(),
-            // If overflow occurs, we need to conservatively treat the goal as possibly holding,
-            // since there can be instantiations of this goal that don't overflow and result in
-            // success. This isn't much of a problem in the old solver, since we treat overflow
-            // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
-            // but in the new solver, this is very important for correctness, since overflow
-            // *must* be treated as ambiguity for completeness.
-            Err(_overflow) => false,
-        }
-    })
+            match evaluation_result {
+                Ok(result) => !result.may_apply(),
+                // If overflow occurs, we need to conservatively treat the goal as possibly holding,
+                // since there can be instantiations of this goal that don't overflow and result in
+                // success. This isn't much of a problem in the old solver, since we treat overflow
+                // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
+                // but in the new solver, this is very important for correctness, since overflow
+                // *must* be treated as ambiguity for completeness.
+                Err(_overflow) => false,
+            }
+        })
+    }
 }
 
 /// Check if both impls can be satisfied by a common type by considering whether
@@ -522,15 +526,13 @@ fn try_prove_negated_where_clause<'tcx>(
     // Without this, we over-eagerly register coherence ambiguity candidates when
     // impl candidates do exist.
     let ref infcx = root_infcx.fork_with_intercrate(false);
-    let ocx = ObligationCtxt::new(infcx);
+    let mut fulfill_cx = FulfillmentCtxt::new(infcx);
 
-    ocx.register_obligation(Obligation::new(
-        infcx.tcx,
-        ObligationCause::dummy(),
-        param_env,
-        negative_predicate,
-    ));
-    if !ocx.select_all_or_error().is_empty() {
+    fulfill_cx.register_predicate_obligation(
+        infcx,
+        Obligation::new(infcx.tcx, ObligationCause::dummy(), param_env, negative_predicate),
+    );
+    if !fulfill_cx.select_all_or_error(infcx).is_empty() {
         return false;
     }
 

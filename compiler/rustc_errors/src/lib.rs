@@ -643,7 +643,8 @@ impl DiagCtxt {
         message: DiagnosticMessage,
         args: impl Iterator<Item = DiagnosticArg<'a>>,
     ) -> SubdiagnosticMessage {
-        SubdiagnosticMessage::Eager(Cow::from(self.eagerly_translate_to_string(message, args)))
+        let inner = self.inner.borrow();
+        inner.eagerly_translate(message, args)
     }
 
     /// Translate `message` eagerly with `args` to `String`.
@@ -653,8 +654,7 @@ impl DiagCtxt {
         args: impl Iterator<Item = DiagnosticArg<'a>>,
     ) -> String {
         let inner = self.inner.borrow();
-        let args = crate::translation::to_fluent_args(args);
-        inner.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()
+        inner.eagerly_translate_to_string(message, args)
     }
 
     // This is here to not allow mutation of flags;
@@ -1464,6 +1464,25 @@ impl DiagCtxtInner {
             .or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
+    /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
+    pub fn eagerly_translate<'a>(
+        &self,
+        message: DiagnosticMessage,
+        args: impl Iterator<Item = DiagnosticArg<'a>>,
+    ) -> SubdiagnosticMessage {
+        SubdiagnosticMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
+    }
+
+    /// Translate `message` eagerly with `args` to `String`.
+    pub fn eagerly_translate_to_string<'a>(
+        &self,
+        message: DiagnosticMessage,
+        args: impl Iterator<Item = DiagnosticArg<'a>>,
+    ) -> String {
+        let args = crate::translation::to_fluent_args(args);
+        self.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()
+    }
+
     fn flush_delayed(&mut self) {
         if self.delayed_bugs.is_empty() {
             return;
@@ -1502,15 +1521,22 @@ impl DiagCtxtInner {
             }
 
             let mut bug =
-                if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
+                if backtrace || self.ice_file.is_none() { bug.decorate(self) } else { bug.inner };
 
             // "Undelay" the delayed bugs (into plain `Bug`s).
             if bug.level != DelayedBug {
                 // NOTE(eddyb) not panicking here because we're already producing
                 // an ICE, and the more information the merrier.
-                bug.subdiagnostic(InvalidFlushedDelayedDiagnosticLevel {
+                let subdiag = InvalidFlushedDelayedDiagnosticLevel {
                     span: bug.span.primary_span().unwrap(),
                     level: bug.level,
+                };
+                // FIXME: Cannot use `Diagnostic::subdiagnostic` which takes `DiagCtxt`, but it
+                // just uses `DiagCtxtInner` functions.
+                subdiag.add_to_diagnostic_with(&mut bug, |diag, msg| {
+                    let args = diag.args();
+                    let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
+                    self.eagerly_translate(msg, args)
                 });
             }
             bug.level = Bug;
@@ -1545,25 +1571,35 @@ impl DelayedDiagnostic {
         DelayedDiagnostic { inner: diagnostic, note: backtrace }
     }
 
-    fn decorate(mut self) -> Diagnostic {
+    fn decorate(mut self, dcx: &DiagCtxtInner) -> Diagnostic {
+        // FIXME: Cannot use `Diagnostic::subdiagnostic` which takes `DiagCtxt`, but it
+        // just uses `DiagCtxtInner` functions.
+        let subdiag_with = |diag: &mut Diagnostic, msg| {
+            let args = diag.args();
+            let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
+            dcx.eagerly_translate(msg, args)
+        };
+
         match self.note.status() {
             BacktraceStatus::Captured => {
                 let inner = &self.inner;
-                self.inner.subdiagnostic(DelayedAtWithNewline {
+                let subdiag = DelayedAtWithNewline {
                     span: inner.span.primary_span().unwrap_or(DUMMY_SP),
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
-                });
+                };
+                subdiag.add_to_diagnostic_with(&mut self.inner, subdiag_with);
             }
             // Avoid the needless newline when no backtrace has been captured,
             // the display impl should just be a single line.
             _ => {
                 let inner = &self.inner;
-                self.inner.subdiagnostic(DelayedAtWithoutNewline {
+                let subdiag = DelayedAtWithoutNewline {
                     span: inner.span.primary_span().unwrap_or(DUMMY_SP),
                     emitted_at: inner.emitted_at.clone(),
                     note: self.note,
-                });
+                };
+                subdiag.add_to_diagnostic_with(&mut self.inner, subdiag_with);
             }
         }
 
@@ -1709,15 +1745,15 @@ impl Level {
 }
 
 // FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.
-pub fn add_elided_lifetime_in_path_suggestion(
+pub fn add_elided_lifetime_in_path_suggestion<E: EmissionGuarantee>(
     source_map: &SourceMap,
-    diag: &mut Diagnostic,
+    diag: &mut DiagnosticBuilder<'_, E>,
     n: usize,
     path_span: Span,
     incl_angl_brckt: bool,
     insertion_span: Span,
 ) {
-    diag.subdiagnostic(ExpectedLifetimeParameter { span: path_span, count: n });
+    diag.subdiagnostic(diag.dcx, ExpectedLifetimeParameter { span: path_span, count: n });
     if !source_map.is_span_accessible(insertion_span) {
         // Do not try to suggest anything if generated by a proc-macro.
         return;
@@ -1726,11 +1762,10 @@ pub fn add_elided_lifetime_in_path_suggestion(
     let suggestion =
         if incl_angl_brckt { format!("<{anon_lts}>") } else { format!("{anon_lts}, ") };
 
-    diag.subdiagnostic(IndicateAnonymousLifetime {
-        span: insertion_span.shrink_to_hi(),
-        count: n,
-        suggestion,
-    });
+    diag.subdiagnostic(
+        diag.dcx,
+        IndicateAnonymousLifetime { span: insertion_span.shrink_to_hi(), count: n, suggestion },
+    );
 }
 
 pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(

@@ -84,7 +84,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             start_sp: return_sp.with_hi(return_sp.lo() + BytePos(4)),
             end_sp: return_sp.shrink_to_hi(),
         };
-        err.subdiagnostic(sugg);
+        err.subdiagnostic(self.dcx(), sugg);
 
         let mut starts = Vec::new();
         let mut ends = Vec::new();
@@ -93,7 +93,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ends.push(span.shrink_to_hi());
         }
         let sugg = SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends };
-        err.subdiagnostic(sugg);
+        err.subdiagnostic(self.dcx(), sugg);
     }
 
     pub(super) fn suggest_tuple_pattern(
@@ -138,7 +138,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             span_low: cause.span.shrink_to_lo(),
                             span_high: cause.span.shrink_to_hi(),
                         };
-                        diag.subdiagnostic(sugg);
+                        diag.subdiagnostic(self.dcx(), sugg);
                     }
                     _ => {
                         // More than one matching variant.
@@ -147,7 +147,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             cause_span: cause.span,
                             compatible_variants,
                         };
-                        diag.subdiagnostic(sugg);
+                        diag.subdiagnostic(self.dcx(), sugg);
                     }
                 }
             }
@@ -219,9 +219,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             },
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
                 // FIXME: Seems like we can't have a suggestion and a note with different spans in a single subdiagnostic
-                diag.subdiagnostic(ConsiderAddingAwait::FutureSugg {
-                    span: exp_span.shrink_to_hi(),
-                });
+                diag.subdiagnostic(
+                    self.dcx(),
+                    ConsiderAddingAwait::FutureSugg { span: exp_span.shrink_to_hi() },
+                );
                 Some(ConsiderAddingAwait::FutureSuggNote { span: exp_span })
             }
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
@@ -249,7 +250,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             _ => None,
         };
         if let Some(subdiag) = subdiag {
-            diag.subdiagnostic(subdiag);
+            diag.subdiagnostic(self.dcx(), subdiag);
         }
     }
 
@@ -285,7 +286,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         } else {
                             return;
                         };
-                        diag.subdiagnostic(suggestion);
+                        diag.subdiagnostic(self.dcx(), suggestion);
                     }
                 }
             }
@@ -325,15 +326,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (true, false) => FunctionPointerSuggestion::UseRef { span, fn_name },
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
-                        diag.subdiagnostic(FnItemsAreDistinct);
+                        diag.subdiagnostic(self.dcx(), FnItemsAreDistinct);
                         FunctionPointerSuggestion::CastRef { span, fn_name, sig: *sig }
                     }
                     (false, false) => {
-                        diag.subdiagnostic(FnItemsAreDistinct);
+                        diag.subdiagnostic(self.dcx(), FnItemsAreDistinct);
                         FunctionPointerSuggestion::Cast { span, fn_name, sig: *sig }
                     }
                 };
-                diag.subdiagnostic(sugg);
+                diag.subdiagnostic(self.dcx(), sugg);
             }
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let expected_sig =
@@ -342,7 +343,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
 
                 if self.same_type_modulo_infer(*expected_sig, *found_sig) {
-                    diag.subdiagnostic(FnUniqTypes);
+                    diag.subdiagnostic(self.dcx(), FnUniqTypes);
                 }
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
@@ -371,7 +372,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 };
 
-                diag.subdiagnostic(sug);
+                diag.subdiagnostic(self.dcx(), sug);
             }
             (ty::FnDef(did, args), ty::FnPtr(sig)) => {
                 let expected_sig =
@@ -390,7 +391,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     format!("{fn_name} as {found_sig}")
                 };
 
-                diag.subdiagnostic(FnConsiderCasting { casting });
+                diag.subdiagnostic(self.dcx(), FnConsiderCasting { casting });
             }
             _ => {
                 return;
@@ -822,7 +823,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let diag = self.consider_returning_binding_diag(blk, expected_ty);
         match diag {
             Some(diag) => {
-                err.subdiagnostic(diag);
+                err.subdiagnostic(self.dcx(), diag);
                 true
             }
             None => false,

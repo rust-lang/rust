@@ -5,11 +5,11 @@
 extern "rust-intrinsic" {
     fn size_of<T>() -> usize; //~ ERROR intrinsic safety mismatch
     //~^ ERROR intrinsic safety mismatch
-
-    #[rustc_safe_intrinsic]
-    fn assume(b: bool); //~ ERROR intrinsic safety mismatch
-    //~^ ERROR intrinsic safety mismatch
 }
+
+#[rustc_intrinsic]
+const fn assume(_b: bool) {} //~ ERROR intrinsic safety mismatch
+//~| ERROR intrinsic has wrong type
 
 #[rustc_intrinsic]
 const fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}

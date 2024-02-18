@@ -32,9 +32,9 @@ pub fn vec_iter_is_empty_nonnull(it: &vec::IntoIter<u8>) -> bool {
     it.is_empty()
 }
 
-// CHECK-LABEL: @vec_iter_next
+// CHECK-LABEL: @vec_iter_next_nonnull
 #[no_mangle]
-pub fn vec_iter_next(it: &mut vec::IntoIter<u8>) -> Option<u8> {
+pub fn vec_iter_next_nonnull(it: &mut vec::IntoIter<u8>) -> Option<u8> {
     // CHECK: load ptr
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
@@ -43,4 +43,17 @@ pub fn vec_iter_next(it: &mut vec::IntoIter<u8>) -> Option<u8> {
     // CHECK-SAME: !noundef
     // CHECK: ret
     it.next()
+}
+
+// CHECK-LABEL: @vec_iter_next_back_nonnull
+#[no_mangle]
+pub fn vec_iter_next_back_nonnull(it: &mut vec::IntoIter<u8>) -> Option<u8> {
+    // CHECK: load ptr
+    // CHECK-SAME: !nonnull
+    // CHECK-SAME: !noundef
+    // CHECK: load ptr
+    // CHECK-SAME: !nonnull
+    // CHECK-SAME: !noundef
+    // CHECK: ret
+    it.next_back()
 }
