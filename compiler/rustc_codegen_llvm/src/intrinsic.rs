@@ -1920,9 +1920,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     minmax_red!(simd_reduce_min: vector_reduce_min, vector_reduce_fmin);
     minmax_red!(simd_reduce_max: vector_reduce_max, vector_reduce_fmax);
 
-    minmax_red!(simd_reduce_min_nanless: vector_reduce_min, vector_reduce_fmin_fast);
-    minmax_red!(simd_reduce_max_nanless: vector_reduce_max, vector_reduce_fmax_fast);
-
     macro_rules! bitwise_red {
         ($name:ident : $red:ident, $boolean:expr) => {
             if name == sym::$name {

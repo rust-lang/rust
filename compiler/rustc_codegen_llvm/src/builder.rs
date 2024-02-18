@@ -1406,22 +1406,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false)
         }
     }
-    pub fn vector_reduce_fmin_fast(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            let instr =
-                llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetFastMath(instr);
-            instr
-        }
-    }
-    pub fn vector_reduce_fmax_fast(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            let instr =
-                llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
-            llvm::LLVMRustSetFastMath(instr);
-            instr
-        }
-    }
     pub fn vector_reduce_min(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed) }
     }

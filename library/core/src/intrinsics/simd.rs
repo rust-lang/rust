@@ -385,19 +385,6 @@ extern "platform-intrinsic" {
     /// For floating-point values, uses IEEE-754 `maxNum`.
     pub fn simd_reduce_max<T, U>(x: T) -> U;
 
-    /// Return the maximum element of a vector.
-    ///
-    /// `T` must be a vector of integer or floating-point primitive types.
-    ///
-    /// `U` must be the element type of `T`.
-    ///
-    /// For floating-point values, uses IEEE-754 `maxNum`.
-    ///
-    /// # Safety
-    ///
-    /// All input elements must be finite (i.e., not NAN and not +/- INF).
-    pub fn simd_reduce_max_nanless<T, U>(x: T) -> U;
-
     /// Return the minimum element of a vector.
     ///
     /// `T` must be a vector of integer or floating-point primitive types.
@@ -406,19 +393,6 @@ extern "platform-intrinsic" {
     ///
     /// For floating-point values, uses IEEE-754 `minNum`.
     pub fn simd_reduce_min<T, U>(x: T) -> U;
-
-    /// Return the minimum element of a vector.
-    ///
-    /// `T` must be a vector of integer or floating-point primitive types.
-    ///
-    /// `U` must be the element type of `T`.
-    ///
-    /// For floating-point values, uses IEEE-754 `minNum`.
-    ///
-    /// # Safety
-    ///
-    /// All input elements must be finite (i.e., not NAN and not +/- INF).
-    pub fn simd_reduce_min_nanless<T, U>(x: T) -> U;
 
     /// Logical "and" all elements together.
     ///
