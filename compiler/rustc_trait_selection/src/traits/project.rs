@@ -52,12 +52,22 @@ pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::AliasTy<'tcx>>;
 
 pub(super) struct InProgress;
 
-pub trait NormalizeExt<'tcx> {
+#[extension(pub trait NormalizeExt<'tcx>)]
+impl<'tcx> At<'_, 'tcx> {
     /// Normalize a value using the `AssocTypeNormalizer`.
     ///
     /// This normalization should be used when the type contains inference variables or the
     /// projection may be fallible.
-    fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> InferOk<'tcx, T>;
+    fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
+        if self.infcx.next_trait_solver() {
+            InferOk { value, obligations: Vec::new() }
+        } else {
+            let mut selcx = SelectionContext::new(self.infcx);
+            let Normalized { value, obligations } =
+                normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
+            InferOk { value, obligations }
+        }
+    }
 
     /// Deeply normalizes `value`, replacing all aliases which can by normalized in
     /// the current environment. In the new solver this errors in case normalization
@@ -73,25 +83,6 @@ pub trait NormalizeExt<'tcx> {
     /// existing fulfillment context in the old solver. Once we also eagerly prove goals with
     /// the old solver or have removed the old solver, remove `traits::fully_normalize` and
     /// rename this function to `At::fully_normalize`.
-    fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
-        self,
-        value: T,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Result<T, Vec<FulfillmentError<'tcx>>>;
-}
-
-impl<'tcx> NormalizeExt<'tcx> for At<'_, 'tcx> {
-    fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
-        if self.infcx.next_trait_solver() {
-            InferOk { value, obligations: Vec::new() }
-        } else {
-            let mut selcx = SelectionContext::new(self.infcx);
-            let Normalized { value, obligations } =
-                normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
-            InferOk { value, obligations }
-        }
-    }
-
     fn deeply_normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
         self,
         value: T,

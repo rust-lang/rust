@@ -132,18 +132,23 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     bcb_data.basic_blocks.iter().flat_map(move |&bb| {
         let data = &mir_body[bb];
 
+        let unexpand = move |expn_span| {
+            unexpand_into_body_span_with_visible_macro(expn_span, body_span)
+                // Discard any spans that fill the entire body, because they tend
+                // to represent compiler-inserted code, e.g. implicitly returning `()`.
+                .filter(|(span, _)| !span.source_equal(body_span))
+        };
+
         let statement_spans = data.statements.iter().filter_map(move |statement| {
             let expn_span = filtered_statement_span(statement)?;
-            let (span, visible_macro) =
-                unexpand_into_body_span_with_visible_macro(expn_span, body_span)?;
+            let (span, visible_macro) = unexpand(expn_span)?;
 
             Some(SpanFromMir::new(span, visible_macro, bcb, is_closure_like(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
             let expn_span = filtered_terminator_span(terminator)?;
-            let (span, visible_macro) =
-                unexpand_into_body_span_with_visible_macro(expn_span, body_span)?;
+            let (span, visible_macro) = unexpand(expn_span)?;
 
             Some(SpanFromMir::new(span, visible_macro, bcb, false))
         });

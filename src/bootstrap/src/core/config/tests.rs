@@ -11,9 +11,15 @@ use std::{
 };
 
 fn parse(config: &str) -> Config {
-    Config::parse_inner(&["check".to_owned(), "--config=/does/not/exist".to_owned()], |&_| {
-        toml::from_str(config).unwrap()
-    })
+    let config = format!("{config} \r\n build.rustc = \"/does-not-exists\" ");
+    Config::parse_inner(
+        &[
+            "check".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+            "--skip-stage0-validation".to_owned(),
+        ],
+        |&_| toml::from_str(&config).unwrap(),
+    )
 }
 
 #[test]

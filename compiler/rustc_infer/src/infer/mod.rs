@@ -626,11 +626,8 @@ pub struct InferCtxtBuilder<'tcx> {
     next_trait_solver: bool,
 }
 
-pub trait TyCtxtInferExt<'tcx> {
-    fn infer_ctxt(self) -> InferCtxtBuilder<'tcx>;
-}
-
-impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
+#[extension(pub trait TyCtxtInferExt<'tcx>)]
+impl<'tcx> TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             tcx: self,

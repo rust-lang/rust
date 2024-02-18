@@ -845,7 +845,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         arm_ty,
                         arm_span,
                     ) {
-                        err.subdiagnostic(subdiag);
+                        err.subdiagnostic(self.dcx(), subdiag);
                     }
                     if let Some(ret_sp) = opt_suggest_box_span {
                         // Get return type span and point to it.
@@ -882,7 +882,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     else_ty,
                     else_span,
                 ) {
-                    err.subdiagnostic(subdiag);
+                    err.subdiagnostic(self.dcx(), subdiag);
                 }
                 // don't suggest wrapping either blocks in `if .. {} else {}`
                 let is_empty_arm = |id| {
@@ -2786,19 +2786,8 @@ pub enum FailureCode {
     Error0644,
 }
 
-pub trait ObligationCauseExt<'tcx> {
-    fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode;
-
-    fn as_failure_code_diag(
-        &self,
-        terr: TypeError<'tcx>,
-        span: Span,
-        subdiags: Vec<TypeErrorAdditionalDiags>,
-    ) -> ObligationCauseFailureCode;
-    fn as_requirement_str(&self) -> &'static str;
-}
-
-impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
+#[extension(pub trait ObligationCauseExt<'tcx>)]
+impl<'tcx> ObligationCause<'tcx> {
     fn as_failure_code(&self, terr: TypeError<'tcx>) -> FailureCode {
         use self::FailureCode::*;
         use crate::traits::ObligationCauseCode::*;

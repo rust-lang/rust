@@ -1933,7 +1933,7 @@ impl<'a> Parser<'a> {
         if self.token.kind == token::Not {
             if let Err(mut err) = self.unexpected::<FieldDef>() {
                 // Encounter the macro invocation
-                err.subdiagnostic(MacroExpandsToAdtField { adt_ty });
+                err.subdiagnostic(self.dcx(), MacroExpandsToAdtField { adt_ty });
                 return Err(err);
             }
         }
@@ -2352,10 +2352,13 @@ impl<'a> Parser<'a> {
                             .into_iter()
                             .any(|s| self.prev_token.is_ident_named(s));
 
-                        err.subdiagnostic(errors::FnTraitMissingParen {
-                            span: self.prev_token.span,
-                            machine_applicable,
-                        });
+                        err.subdiagnostic(
+                            self.dcx(),
+                            errors::FnTraitMissingParen {
+                                span: self.prev_token.span,
+                                machine_applicable,
+                            },
+                        );
                     }
                     return Err(err);
                 }

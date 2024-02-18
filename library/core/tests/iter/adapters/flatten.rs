@@ -212,3 +212,69 @@ fn test_flatten_last() {
     assert_eq!(it.advance_by(3), Ok(())); // 22..22
     assert_eq!(it.clone().last(), None);
 }
+
+#[test]
+fn test_flatten_one_shot() {
+    // This could be `filter_map`, but people often do flatten options.
+    let mut it = (0i8..10).flat_map(|i| NonZero::new(i % 7));
+    assert_eq!(it.size_hint(), (0, Some(10)));
+    assert_eq!(it.clone().count(), 8);
+    assert_eq!(it.clone().last(), NonZero::new(2));
+
+    // sum -> fold
+    let sum: i8 = it.clone().map(|n| n.get()).sum();
+    assert_eq!(sum, 24);
+
+    // the product overflows at 6, remaining are 7,8,9 -> 1,2
+    let one = NonZero::new(1i8).unwrap();
+    let product = it.try_fold(one, |acc, x| acc.checked_mul(x));
+    assert_eq!(product, None);
+    assert_eq!(it.size_hint(), (0, Some(3)));
+    assert_eq!(it.clone().count(), 2);
+
+    assert_eq!(it.advance_by(0), Ok(()));
+    assert_eq!(it.clone().next(), NonZero::new(1));
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.clone().next(), NonZero::new(2));
+    assert_eq!(it.advance_by(100), Err(NonZero::new(99).unwrap()));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_flatten_one_shot_rev() {
+    let mut it = (0i8..10).flat_map(|i| NonZero::new(i % 7)).rev();
+    assert_eq!(it.size_hint(), (0, Some(10)));
+    assert_eq!(it.clone().count(), 8);
+    assert_eq!(it.clone().last(), NonZero::new(1));
+
+    // sum -> Rev fold -> rfold
+    let sum: i8 = it.clone().map(|n| n.get()).sum();
+    assert_eq!(sum, 24);
+
+    // Rev try_fold -> try_rfold
+    // the product overflows at 4, remaining are 3,2,1,0 -> 3,2,1
+    let one = NonZero::new(1i8).unwrap();
+    let product = it.try_fold(one, |acc, x| acc.checked_mul(x));
+    assert_eq!(product, None);
+    assert_eq!(it.size_hint(), (0, Some(4)));
+    assert_eq!(it.clone().count(), 3);
+
+    // Rev advance_by -> advance_back_by
+    assert_eq!(it.advance_by(0), Ok(()));
+    assert_eq!(it.clone().next(), NonZero::new(3));
+    assert_eq!(it.advance_by(1), Ok(()));
+    assert_eq!(it.clone().next(), NonZero::new(2));
+    assert_eq!(it.advance_by(100), Err(NonZero::new(98).unwrap()));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
+fn test_flatten_one_shot_arrays() {
+    let it = (0..10).flat_map(|i| [i]);
+    assert_eq!(it.size_hint(), (10, Some(10)));
+    assert_eq!(it.sum::<i32>(), 45);
+
+    let mut it = (0..10).flat_map(|_| -> [i32; 0] { [] });
+    assert_eq!(it.size_hint(), (0, Some(0)));
+    assert_eq!(it.next(), None);
+}

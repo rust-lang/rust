@@ -13,10 +13,9 @@ fn b() {
 }
 
 fn c() {
-    let _ = [
-        std::intrinsics::likely,
+    let _: [unsafe extern "rust-intrinsic" fn(bool) -> bool; 2] = [
+        std::intrinsics::likely, //~ ERROR cannot coerce
         std::intrinsics::unlikely,
-        //~^ ERROR cannot coerce
     ];
 }
 

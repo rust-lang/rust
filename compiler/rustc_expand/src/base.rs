@@ -96,7 +96,7 @@ impl Annotatable {
         }
     }
 
-    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
+    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) -> V::Result {
         match self {
             Annotatable::Item(item) => visitor.visit_item(item),
             Annotatable::TraitItem(item) => visitor.visit_assoc_item(item, AssocCtxt::Trait),

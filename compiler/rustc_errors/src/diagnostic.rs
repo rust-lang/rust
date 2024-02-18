@@ -852,17 +852,10 @@ impl Diagnostic {
     }
 
     /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
-    /// [rustc_macros::Subdiagnostic]).
-    pub fn subdiagnostic(&mut self, subdiagnostic: impl AddToDiagnostic) -> &mut Self {
-        subdiagnostic.add_to_diagnostic(self);
-        self
-    }
-
-    /// Add a subdiagnostic from a type that implements `Subdiagnostic` (see
     /// [rustc_macros::Subdiagnostic]). Performs eager translation of any translatable messages
     /// used in the subdiagnostic, so suitable for use with repeated messages (i.e. re-use of
     /// interpolated variables).
-    pub fn eager_subdiagnostic(
+    pub fn subdiagnostic(
         &mut self,
         dcx: &crate::DiagCtxt,
         subdiagnostic: impl AddToDiagnostic,
@@ -918,7 +911,7 @@ impl Diagnostic {
     /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
     /// combining it with the primary message of the diagnostic (if translatable, otherwise it just
     /// passes the user's string along).
-    fn subdiagnostic_message_to_diagnostic_message(
+    pub(crate) fn subdiagnostic_message_to_diagnostic_message(
         &self,
         attr: impl Into<SubdiagnosticMessage>,
     ) -> DiagnosticMessage {

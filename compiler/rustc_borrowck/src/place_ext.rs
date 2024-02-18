@@ -1,24 +1,16 @@
 use crate::borrow_set::LocalsStateAtExit;
 use rustc_hir as hir;
+use rustc_macros::extension;
 use rustc_middle::mir::ProjectionElem;
 use rustc_middle::mir::{Body, Mutability, Place};
 use rustc_middle::ty::{self, TyCtxt};
 
-/// Extension methods for the `Place` type.
-pub trait PlaceExt<'tcx> {
+#[extension(pub trait PlaceExt<'tcx>)]
+impl<'tcx> Place<'tcx> {
     /// Returns `true` if we can safely ignore borrows of this place.
     /// This is true whenever there is no action that the user can do
     /// to the place `self` that would invalidate the borrow. This is true
     /// for borrows of raw pointer dereferents as well as shared references.
-    fn ignore_borrow(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        locals_state_at_exit: &LocalsStateAtExit,
-    ) -> bool;
-}
-
-impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
     fn ignore_borrow(
         &self,
         tcx: TyCtxt<'tcx>,

@@ -331,44 +331,7 @@ impl DiagnosticDeriveVariantBuilder {
                 }
             }
             (Meta::Path(_), "subdiagnostic") => {
-                if FieldInnerTy::from_type(&info.binding.ast().ty).will_iterate() {
-                    let DiagnosticDeriveKind::Diagnostic = self.kind else {
-                        // No eager translation for lints.
-                        return Ok(quote! { diag.subdiagnostic(#binding); });
-                    };
-                    return Ok(quote! { diag.eager_subdiagnostic(dcx, #binding); });
-                } else {
-                    return Ok(quote! { diag.subdiagnostic(#binding); });
-                }
-            }
-            (Meta::List(meta_list), "subdiagnostic") => {
-                let err = || {
-                    span_err(
-                        meta_list.span().unwrap(),
-                        "`eager` is the only supported nested attribute for `subdiagnostic`",
-                    )
-                    .emit();
-                };
-
-                let Ok(p): Result<Path, _> = meta_list.parse_args() else {
-                    err();
-                    return Ok(quote! {});
-                };
-
-                if !p.is_ident("eager") {
-                    err();
-                    return Ok(quote! {});
-                }
-
-                match &self.kind {
-                    DiagnosticDeriveKind::Diagnostic => {}
-                    DiagnosticDeriveKind::LintDiagnostic => {
-                        throw_invalid_attr!(attr, |diag| {
-                            diag.help("eager subdiagnostics are not supported on lints")
-                        })
-                    }
-                };
-                return Ok(quote! { diag.eager_subdiagnostic(dcx, #binding); });
+                return Ok(quote! { diag.subdiagnostic(diag.dcx, #binding); });
             }
             _ => (),
         }

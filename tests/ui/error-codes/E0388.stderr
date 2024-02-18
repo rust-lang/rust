@@ -19,7 +19,7 @@ error[E0764]: mutable references are not allowed in the final value of constants
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^
 
-error[E0658]: mutation through a reference is not allowed in statics
+error[E0658]: mutable references are not allowed in statics
   --> $DIR/E0388.rs:6:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
@@ -29,20 +29,8 @@ LL | static STATIC_REF: &'static mut i32 = &mut X;
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/E0388.rs:6:39
-   |
-LL | static STATIC_REF: &'static mut i32 = &mut X;
-   |                                       ^^^^^^
-
-error[E0596]: cannot borrow immutable static item `X` as mutable
-  --> $DIR/E0388.rs:6:39
-   |
-LL | static STATIC_REF: &'static mut i32 = &mut X;
-   |                                       ^^^^^^ cannot borrow as mutable
-
 warning: taking a mutable reference to a `const` item
-  --> $DIR/E0388.rs:10:38
+  --> $DIR/E0388.rs:8:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^
@@ -56,12 +44,12 @@ LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/E0388.rs:10:38
+  --> $DIR/E0388.rs:8:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^
 
-error: aborting due to 5 previous errors; 2 warnings emitted
+error: aborting due to 3 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0596, E0658, E0764.
-For more information about an error, try `rustc --explain E0596`.
+Some errors have detailed explanations: E0658, E0764.
+For more information about an error, try `rustc --explain E0658`.

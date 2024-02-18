@@ -259,7 +259,7 @@ pub struct Linker {
 impl Linker {
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
         let (codegen_results, work_products) =
-            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)?;
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames);
 
         sess.compile_status()?;
 

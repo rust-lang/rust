@@ -17,14 +17,8 @@ use crate::solve::inspect::ProofTreeBuilder;
 use crate::traits::StructurallyNormalizeExt;
 use crate::traits::TraitEngineExt;
 
-pub trait InferCtxtSelectExt<'tcx> {
-    fn select_in_new_trait_solver(
-        &self,
-        obligation: &PolyTraitObligation<'tcx>,
-    ) -> SelectionResult<'tcx, Selection<'tcx>>;
-}
-
-impl<'tcx> InferCtxtSelectExt<'tcx> for InferCtxt<'tcx> {
+#[extension(pub trait InferCtxtSelectExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     fn select_in_new_trait_solver(
         &self,
         obligation: &PolyTraitObligation<'tcx>,
