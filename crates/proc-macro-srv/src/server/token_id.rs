@@ -234,7 +234,7 @@ impl server::TokenStream for TokenIdServer {
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
                         // FIXME: handle literal kinds
-                        kind: bridge::LitKind::Err,
+                        kind: bridge::LitKind::Integer, // dummy
                         symbol: Symbol::intern(self.interner, &lit.text),
                         // FIXME: handle suffixes
                         suffix: None,
