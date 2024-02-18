@@ -697,20 +697,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         default: RValue<'gcc>,
         pointers: RValue<'gcc>,
         mask: RValue<'gcc>,
-        pointer_count: usize,
         bx: &mut Builder<'a, 'gcc, 'tcx>,
         in_len: u64,
-        underlying_ty: Ty<'tcx>,
         invert: bool,
     ) -> RValue<'gcc> {
-        let vector_type = if pointer_count > 1 {
-            bx.context.new_vector_type(bx.usize_type, in_len)
-        } else {
-            vector_ty(bx, underlying_ty, in_len)
-        };
-        let elem_type = vector_type.dyncast_vector().expect("vector type").get_element_type();
+        let vector_type = default.get_type();
+        let elem_type = vector_type.unqualified().dyncast_vector().expect("vector type").get_element_type();
 
-        let mut values = vec![];
+        let mut values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
             let int = bx.context.new_vector_access(None, pointers, index).to_rvalue();
@@ -723,13 +717,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
         let vector = bx.context.new_rvalue_from_vector(None, vector_type, &values);
 
-        let mut mask_types = vec![];
-        let mut mask_values = vec![];
+        let mut mask_types = Vec::with_capacity(in_len as usize);
+        let mut mask_values = Vec::with_capacity(in_len as usize);
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
             mask_types.push(bx.context.new_field(None, bx.i32_type, "m"));
             let mask_value = bx.context.new_vector_access(None, mask, index).to_rvalue();
-            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value;
+            let mask_value_cast = bx.context.new_cast(None, mask_value, bx.i32_type);
+            let masked = bx.context.new_rvalue_from_int(bx.i32_type, in_len as i32) & mask_value_cast;
             let value = index + masked;
             mask_values.push(value);
         }
@@ -858,10 +853,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             args[0].immediate(),
             args[1].immediate(),
             args[2].immediate(),
-            pointer_count,
             bx,
             in_len,
-            underlying_ty,
             false,
         ));
     }
@@ -976,10 +969,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             args[0].immediate(),
             args[1].immediate(),
             args[2].immediate(),
-            pointer_count,
             bx,
             in_len,
-            underlying_ty,
             true,
         );
 

@@ -48,7 +48,6 @@ tests/ui/rfcs/rfc-1857-stabilize-drop-order/drop-order.rs
 tests/ui/rfcs/rfc-2091-track-caller/std-panic-locations.rs
 tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
-tests/ui/simd/issue-89193.rs
 tests/ui/statics/issue-91050-1.rs
 tests/ui/statics/issue-91050-2.rs
 tests/ui/alloc-error/default-alloc-error-hook.rs
