@@ -2998,6 +2998,12 @@ impl<'hir> Item<'hir> {
         ItemId { owner_id: self.owner_id }
     }
 
+    /// Check if this is an [`ItemKind::Enum`], [`ItemKind::Struct`] or
+    /// [`ItemKind::Union`].
+    pub fn is_adt(&self) -> bool {
+        matches!(self.kind, ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..))
+    }
+
     expect_methods_self_kind! {
         expect_extern_crate, Option<Symbol>, ItemKind::ExternCrate(s), *s;
 
