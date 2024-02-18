@@ -211,6 +211,8 @@ lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
 
+lint_explicit_range = explicit usage of `{$ty}` type in public {$kind}
+
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
@@ -471,7 +473,11 @@ lint_ptr_null_checks_ref = references are not nullable, so checking them for nul
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
+lint_range_bounds = usage of `RangeBounds` trait bound in public {$kind}
+
 lint_range_endpoint_out_of_range = range endpoint is out of range for `{$ty}`
+
+lint_range_syntax = usage of `{$ty}` range syntax
 
 lint_range_use_inclusive_range = use an inclusive range instead
 
@@ -510,6 +516,8 @@ lint_suspicious_double_ref_clone =
 
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
+
+lint_trait_impl_range = public trait impl involving `{$ty}` type
 
 lint_trivial_untranslatable_diag = diagnostic with static strings only
 
@@ -589,11 +597,3 @@ lint_unused_result = unused result of type `{$ty}`
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
-
-lint_explicit_range = explicit usage of `{$ty}` type in public {$kind}
-
-lint_trait_impl_range = public trait impl involving `{$ty}` type
-
-lint_range_syntax = usage of `{$ty}` range syntax
-
-lint_range_bounds = usage of `RangeBounds` trait bound in public {$kind}

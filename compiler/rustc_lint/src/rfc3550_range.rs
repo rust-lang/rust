@@ -21,15 +21,15 @@ struct TyVisitor<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> TyVisitor<'cx, 'tcx> {
-    fn new(cx: &'cx LateContext<'tcx>) -> Self {
-        let ranges = [
-            (hir::LangItem::Range, "Range"),
-            (hir::LangItem::RangeFrom, "RangeFrom"),
-            (hir::LangItem::RangeInclusiveStruct, "RangeInclusive"),
-        ]
-        .map(|(x, s)| (cx.tcx.lang_items().get(x).unwrap(), s));
-
-        Self { cx, ranges }
+    fn new(cx: &'cx LateContext<'tcx>) -> Option<Self> {
+        Some(Self {
+            cx,
+            ranges: [
+                (cx.tcx.lang_items().get(hir::LangItem::Range)?, "Range"),
+                (cx.tcx.lang_items().get(hir::LangItem::RangeFrom)?, "RangeFrom"),
+                (cx.tcx.lang_items().get(hir::LangItem::RangeInclusiveStruct)?, "RangeInclusive"),
+            ],
+        })
     }
 
     fn matches(&self, def_id: DefId) -> Option<&'static str> {
@@ -109,29 +109,34 @@ declare_lint! {
     ///
     /// ### Examples
     ///
-    /// ```rust
-    /// pub fn takes_range(range: Range<usize>)
+    /// ```rust,ignore (I gave up)
+    /// # #![allow(unused_variables, dead_code)]
+    /// # #![deny(explicit_range)]
+    /// # use std::ops::{Range, RangeFrom, RangeInclusive};
     ///
-    /// pub trait Foo {
-    ///     fn foo(self, range: Range<u8>) {}
+    /// pub fn takes_range(range: Range<usize>) {
+    ///     // ...
     /// }
-    /// impl Foo for Thing {
-    ///     fn foo(self, range: Range<u8>) {}
+    ///
+    /// pub struct Thing;
+    /// impl Thing {
+    ///     pub fn foo(&self, range: RangeInclusive<u8>) {
+    ///         // ...
+    ///     }
     /// }
     ///
-    /// pub trait Bar
-    /// impl Bar for Range<usize>
-    /// pub fn bar(b: impl Bar)
+    /// pub const DOZEN: Range<u8> = 0..12;
     ///
-    /// pub struct Thing
-    /// impl Index<Range<usize>> for Thing
+    /// pub type RangeFrom32 = RangeFrom<u32>;
+    /// ```
+    ///
+    /// This will produce:
+    /// ```text
     /// ```
     ///
     /// ### Explanation
     ///
-    /// Gather data for [concerns in RFC 3550].
-    ///
-    /// [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
+    /// Gather data for [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
     pub(super) EXPLICIT_RANGE,
     Allow,
     "explicit usage of range type in public API"
@@ -161,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
             return;
         }
 
-        let visitor = TyVisitor::new(cx);
+        let Some(visitor) = TyVisitor::new(cx) else { return };
 
         let mut inputs = decl.inputs.iter();
         // Skip implicit `self` arg
@@ -185,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitRange {
             return;
         }
 
-        let visitor = TyVisitor::new(cx);
+        let Some(visitor) = TyVisitor::new(cx) else { return };
 
         match item.kind {
             hir::ItemKind::Static(ty, _, _) => {
@@ -270,19 +275,32 @@ declare_lint! {
     ///
     /// ### Examples
     ///
-    /// ```rust
-    /// pub trait Bar
-    /// impl Bar for Range<usize>
+    /// ```rust,ignore (I gave up)
+    /// # #![allow(unused_variables, dead_code)]
+    /// # #![deny(trait_impl_range)]
+    /// # use std::ops::{Index, Range, RangeFrom, RangeInclusive};
     ///
-    /// pub struct Thing
-    /// impl Index<Range<usize>> for Thing
+    /// pub trait Bar {}
+    /// impl Bar for Range<usize> {}
+    /// impl<T> Bar for Option<RangeInclusive<T>> {}
+    ///
+    /// pub struct Thing;
+    /// impl Index<RangeFrom<usize>> for Thing {
+    /// #    type Output = ();
+    /// #    fn index(&self, _: RangeFrom<usize>) -> &Self::Output {
+    /// #        &()
+    /// #    }
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    /// ```text
     /// ```
     ///
     /// ### Explanation
     ///
-    /// Gather data for [concerns in RFC 3550].
-    ///
-    /// [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
+    /// Gather data for [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
     pub(super) TRAIT_IMPL_RANGE,
     Allow,
     "public trait impl involving range type"
@@ -297,7 +315,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitImplRange {
             return;
         }
 
-        let visitor = TyVisitor::new(cx);
+        let Some(visitor) = TyVisitor::new(cx) else { return };
 
         match item.kind {
             hir::ItemKind::Impl(imp) => {
@@ -354,19 +372,21 @@ declare_lint! {
     ///
     /// ### Examples
     ///
-    /// ```rust
-    /// 1..5
+    /// ```rust,ignore (I gave up)
+    /// 1..5;
     ///
-    /// 0..=255
+    /// 0..=255;
     ///
-    /// 1..
+    /// 1..;
+    /// ```
+    ///
+    /// This will produce:
+    /// ```text
     /// ```
     ///
     /// ### Explanation
     ///
-    /// Gather data for [concerns in RFC 3550].
-    ///
-    /// [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
+    /// Gather data for [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
     pub(super) RANGE_SYNTAX,
     Allow,
     "usage of range syntax"
@@ -401,19 +421,31 @@ declare_lint! {
     ///
     /// ### Examples
     ///
-    /// ```rust
-    /// pub fn takes_range_1(range: impl RangeBounds<usize>)
+    /// ```rust,ignore (I gave up)
+    /// # #![allow(unused_variables, dead_code)]
+    /// # use std::ops::{RangeBounds, Index};
     ///
-    /// pub fn takes_range_2<I, R>(range: R) where R: RangeBounds<I>
+    /// pub fn takes_range_1(range: impl RangeBounds<usize>) {}
     ///
-    /// impl<R: RangeBounds<usize>> Index<R> for Foo
+    /// pub fn takes_range_2<I, R>(range: R) where R: RangeBounds<I> {}
+    ///
+    /// pub struct Foo;
+    /// impl<R: RangeBounds<usize>> Index<R> for Foo {
+    /// #    type Output = ();
+    /// #    fn index(&self, _: R) -> &Self::Output {
+    /// #        &()
+    /// #    }
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    /// ```text
     /// ```
     ///
     /// ### Explanation
     ///
-    /// Gather data for [concerns in RFC 3550].
-    ///
-    /// [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
+    /// Gather data for [concerns in RFC 3550](https://github.com/rust-lang/rfcs/pull/3550#issuecomment-1935112286)
     pub(super) RANGE_BOUNDS,
     Allow,
     "usage of `RangeBounds` trait"
