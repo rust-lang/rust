@@ -266,15 +266,15 @@ fn unconstrained_parent_impl_args<'tcx>(
                 continue;
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(&projection_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projection_ty, true));
 
-            for param in cgp::parameters_for(&projected_ty, false) {
+            for param in cgp::parameters_for(tcx, &projected_ty, false) {
                 if !unconstrained_parameters.contains(&param) {
                     constrained_params.insert(param.0);
                 }
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(&projected_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projected_ty, true));
         }
     }
 
@@ -312,7 +312,7 @@ fn check_duplicate_params<'tcx>(
     parent_args: &Vec<GenericArg<'tcx>>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    let mut base_params = cgp::parameters_for(parent_args, true);
+    let mut base_params = cgp::parameters_for(tcx, parent_args, true);
     base_params.sort_by_key(|param| param.0);
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_args[duplicate.0 as usize];

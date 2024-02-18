@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -27,12 +28,13 @@ impl From<ty::ParamConst> for Parameter {
 
 /// Returns the set of parameters constrained by the impl header.
 pub fn parameters_for_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_self_ty: Ty<'tcx>,
     impl_trait_ref: Option<ty::TraitRef<'tcx>>,
 ) -> FxHashSet<Parameter> {
     let vec = match impl_trait_ref {
-        Some(tr) => parameters_for(&tr, false),
-        None => parameters_for(&impl_self_ty, false),
+        Some(tr) => parameters_for(tcx, &tr, false),
+        None => parameters_for(tcx, &impl_self_ty, false),
     };
     vec.into_iter().collect()
 }
@@ -43,25 +45,46 @@ pub fn parameters_for_impl<'tcx>(
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
 pub fn parameters_for<'tcx>(
+    tcx: TyCtxt<'tcx>,
     t: &impl TypeVisitable<TyCtxt<'tcx>>,
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
-    let mut collector = ParameterCollector { parameters: vec![], include_nonconstraining };
+    let mut collector =
+        ParameterCollector { tcx, parameters: vec![], include_nonconstraining, depth: 0 };
     t.visit_with(&mut collector);
     collector.parameters
 }
 
-struct ParameterCollector {
+struct ParameterCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
     parameters: Vec<Parameter>,
     include_nonconstraining: bool,
+    depth: usize,
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector<'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
-            ty::Alias(..) if !self.include_nonconstraining => {
-                // projections are not injective
+            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _)
+                if !self.include_nonconstraining =>
+            {
+                // Projections are not injective in general.
                 return ControlFlow::Continue(());
+            }
+            ty::Alias(ty::Weak, alias) if !self.include_nonconstraining => {
+                if !self.tcx.recursion_limit().value_within_limit(self.depth) {
+                    // Other constituent types may still constrain some generic params, consider
+                    // `<T> (Overflow, T)` for example. Therefore we want to continue instead of
+                    // breaking. Only affects diagnostics.
+                    return ControlFlow::Continue(());
+                }
+                self.depth += 1;
+                return ensure_sufficient_stack(|| {
+                    self.tcx
+                        .type_of(alias.def_id)
+                        .instantiate(self.tcx, alias.args)
+                        .visit_with(self)
+                });
             }
             ty::Param(data) => {
                 self.parameters.push(Parameter::from(data));
@@ -82,7 +105,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         match c.kind() {
             ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
-                // Constant expressions are not injective
+                // Constant expressions are not injective in general.
                 return c.ty().visit_with(self);
             }
             ty::ConstKind::Param(data) => {
@@ -201,12 +224,12 @@ pub fn setup_constraining_predicates<'tcx>(
                 //     `<<T as Bar>::Baz as Iterator>::Output = <U as Iterator>::Output`
                 // Then the projection only applies if `T` is known, but it still
                 // does not determine `U`.
-                let inputs = parameters_for(&projection.projection_ty, true);
+                let inputs = parameters_for(tcx, &projection.projection_ty, true);
                 let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(p));
                 if !relies_only_on_inputs {
                     continue;
                 }
-                input_parameters.extend(parameters_for(&projection.term, false));
+                input_parameters.extend(parameters_for(tcx, &projection.term, false));
             } else {
                 continue;
             }
