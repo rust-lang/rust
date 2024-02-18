@@ -12,5 +12,3 @@ LL |     builder.state().on_entry(|_| {});
 
 query stack during panic:
 end of query stack
-error: aborting due to 1 previous error
-
