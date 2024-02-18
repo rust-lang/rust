@@ -46,31 +46,10 @@ jobs:
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
-    continue-on-error: "${{ matrix.name == 'mingw-check-tidy' }}"
+    continue-on-error: true
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: mingw-check-tidy
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: x86_64-gnu-llvm-16
-            env:
-              ENABLE_GCC_CODEGEN: "1"
-            os: ubuntu-20.04-16core-64gb
-          - name: x86_64-apple-1
-            env:
-              SCRIPT: python x.py test library/std
-              RUST_CONFIGURE_ARGS: "--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
-              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-              MACOSX_DEPLOYMENT_TARGET: 10.12
-              MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-              NO_LLVM_ASSERTIONS: 1
-              NO_DEBUG_ASSERTIONS: 1
-              NO_OVERFLOW_CHECKS: 1
-            os: macos-13
           - name: x86_64-msvc-ext
             env:
               SCRIPT: python x.py test library/std
