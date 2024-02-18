@@ -143,6 +143,7 @@ pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_unrecognized_intrinsic_function, code = E0093)]
+#[help]
 pub struct UnrecognizedIntrinsicFunction {
     #[primary_span]
     #[label]

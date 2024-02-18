@@ -469,6 +469,7 @@ hir_analysis_unrecognized_atomic_operation =
 hir_analysis_unrecognized_intrinsic_function =
     unrecognized intrinsic function: `{$name}`
     .label = unrecognized intrinsic
+    .help = if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 hir_analysis_unused_associated_type_bounds =
     unnecessary associated type bound for not object safe associated type
