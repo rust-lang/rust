@@ -317,14 +317,6 @@ impl Session {
         err
     }
 
-    pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
-        if let Some(reported) = self.dcx().has_errors() {
-            Err(reported)
-        } else {
-            Ok(())
-        }
-    }
-
     /// Record the fact that we called `trimmed_def_paths`, and do some
     /// checking about whether its cost was justified.
     pub fn record_trimmed_def_paths(&self) {

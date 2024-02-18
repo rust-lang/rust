@@ -487,7 +487,9 @@ fn collate_raw_dylibs<'a, 'b>(
             }
         }
     }
-    sess.compile_status()?;
+    if let Some(guar) = sess.dcx().has_errors() {
+        return Err(guar);
+    }
     Ok(dylib_table
         .into_iter()
         .map(|(name, imports)| {

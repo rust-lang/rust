@@ -357,18 +357,25 @@ fn run_compiler(
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
 
+        // This is used for early exits unrelated to errors. E.g. when just
+        // printing some information without compiling, or exiting immediately
+        // after parsing, etc.
+        let early_exit = || {
+            if let Some(guar) = sess.dcx().has_errors() { Err(guar) } else { Ok(()) }
+        };
+
         // This implements `-Whelp`. It should be handled very early, like
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
             describe_lints(sess);
-            return sess.compile_status();
+            return early_exit();
         }
 
         let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
 
         if print_crate_info(&early_dcx, codegen_backend, sess, has_input) == Compilation::Stop {
-            return sess.compile_status();
+            return early_exit();
         }
 
         if !has_input {
@@ -377,16 +384,16 @@ fn run_compiler(
 
         if !sess.opts.unstable_opts.ls.is_empty() {
             list_metadata(&early_dcx, sess, &*codegen_backend.metadata_loader());
-            return sess.compile_status();
+            return early_exit();
         }
 
         if sess.opts.unstable_opts.link_only {
             process_rlink(sess, compiler);
-            return sess.compile_status();
+            return early_exit();
         }
 
         let linker = compiler.enter(|queries| {
-            let early_exit = || sess.compile_status().map(|_| None);
+            let early_exit = || early_exit().map(|_| None);
             queries.parse()?;
 
             if let Some(ppm) = &sess.opts.pretty {
