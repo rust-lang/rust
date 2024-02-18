@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:impl_privacy_xc_2.rs
+//@ run-pass
+//@ aux-build:impl_privacy_xc_2.rs
 
 extern crate impl_privacy_xc_2;
 

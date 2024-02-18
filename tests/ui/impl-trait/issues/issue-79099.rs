@@ -1,7 +1,7 @@
 struct Bug {
     V1: [(); {
         let f: impl core::future::Future<Output = u8> = async { 1 };
-        //~^ `impl Trait` only allowed in function and inherent method argument and return types
+        //~^ `impl Trait` is not allowed in the type of variable bindings
         //~| expected identifier
         1
     }],

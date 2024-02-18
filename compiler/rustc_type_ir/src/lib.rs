@@ -2,8 +2,6 @@
     feature = "nightly",
     feature(associated_type_defaults, min_specialization, never_type, rustc_attrs)
 )]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
@@ -32,6 +30,7 @@ pub mod visit;
 
 #[macro_use]
 mod macros;
+mod binder;
 mod canonical;
 mod const_kind;
 mod debug;
@@ -41,6 +40,7 @@ mod interner;
 mod predicate_kind;
 mod region_kind;
 
+pub use binder::*;
 pub use canonical::*;
 #[cfg(feature = "nightly")]
 pub use codec::*;
@@ -327,21 +327,21 @@ impl UniverseIndex {
     /// name the region `'a`, but that region was not nameable from
     /// `U` because it was not in scope there.
     pub fn next_universe(self) -> UniverseIndex {
-        UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
+        UniverseIndex::from_u32(self.as_u32().checked_add(1).unwrap())
     }
 
     /// Returns `true` if `self` can name a name from `other` -- in other words,
     /// if the set of names in `self` is a superset of those in
     /// `other` (`self >= other`).
     pub fn can_name(self, other: UniverseIndex) -> bool {
-        self.private >= other.private
+        self >= other
     }
 
     /// Returns `true` if `self` cannot name some names from `other` -- in other
     /// words, if the set of names in `self` is a strict subset of
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
-        self.private < other.private
+        self < other
     }
 }
 

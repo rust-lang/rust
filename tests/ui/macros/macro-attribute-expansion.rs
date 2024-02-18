@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! descriptions {
     ($name:ident is $desc:expr) => {
         // Check that we will correctly expand attributes

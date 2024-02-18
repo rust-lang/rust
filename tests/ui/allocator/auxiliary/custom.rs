@@ -1,4 +1,4 @@
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 
 #![feature(allocator_api)]
 #![crate_type = "rlib"]

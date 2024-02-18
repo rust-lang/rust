@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 fn main() {
     let _: i32 = (match "" {
         "+" => ::std::ops::Add::add,

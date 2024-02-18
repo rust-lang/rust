@@ -465,9 +465,12 @@ impl<'tcx> LayoutOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
-            self.0.sess.span_fatal(span, err.to_string())
+            self.0.sess.dcx().span_fatal(span, err.to_string())
         } else {
-            self.0.sess.span_fatal(span, format!("failed to get layout for `{}`: {}", ty, err))
+            self.0
+                .sess
+                .dcx()
+                .span_fatal(span, format!("failed to get layout for `{}`: {}", ty, err))
         }
     }
 }
@@ -483,7 +486,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for RevealAllLayoutCx<'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.0.sess.emit_fatal(Spanned { span, node: err })
+            self.0.sess.dcx().emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

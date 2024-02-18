@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags:--test
+//@ run-pass
+//@ compile-flags:--test
 #![cfg(any())] // This test should be configured away
 #![feature(rustc_attrs)] // Test that this is allowed on stable/beta
 #![feature(iter_arith_traits)] // Test that this is not unused

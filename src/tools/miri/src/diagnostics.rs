@@ -1,7 +1,5 @@
 use std::fmt::{self, Write};
-use std::num::NonZeroU64;
-
-use log::trace;
+use std::num::NonZero;
 
 use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Level};
 use rustc_span::{SpanData, Symbol, DUMMY_SP};
@@ -102,10 +100,7 @@ impl MachineStopType for TerminationInfo {
     }
     fn add_args(
         self: Box<Self>,
-        _: &mut dyn FnMut(
-            std::borrow::Cow<'static, str>,
-            rustc_errors::DiagnosticArgValue<'static>,
-        ),
+        _: &mut dyn FnMut(std::borrow::Cow<'static, str>, rustc_errors::DiagnosticArgValue),
     ) {
     }
 }
@@ -115,7 +110,7 @@ pub enum NonHaltingDiagnostic {
     /// (new_tag, new_perm, (alloc_id, base_offset, orig_tag))
     ///
     /// new_perm is `None` for base tags.
-    CreatedPointerTag(NonZeroU64, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
+    CreatedPointerTag(NonZero<u64>, Option<String>, Option<(AllocId, AllocRange, ProvenanceExtra)>),
     /// This `Item` was popped from the borrow stack. The string explains the reason.
     PoppedPointerTag(Item, String),
     CreatedCallId(CallId),
@@ -290,7 +285,10 @@ pub fn report_error<'tcx, 'mir>(
                 ) =>
             {
                 ecx.handle_ice(); // print interpreter backtrace
-                bug!("This validation error should be impossible in Miri: {}", ecx.format_error(e));
+                bug!(
+                    "This validation error should be impossible in Miri: {}",
+                    format_interp_error(ecx.tcx.dcx(), e)
+                );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
             ResourceExhaustion(_) => "resource exhaustion",
@@ -304,7 +302,10 @@ pub fn report_error<'tcx, 'mir>(
             ) => "post-monomorphization error",
             _ => {
                 ecx.handle_ice(); // print interpreter backtrace
-                bug!("This error should be impossible in Miri: {}", ecx.format_error(e));
+                bug!(
+                    "This error should be impossible in Miri: {}",
+                    format_interp_error(ecx.tcx.dcx(), e)
+                );
             }
         };
         #[rustfmt::skip]
@@ -370,7 +371,7 @@ pub fn report_error<'tcx, 'mir>(
         _ => {}
     }
 
-    msg.insert(0, ecx.format_error(e));
+    msg.insert(0, format_interp_error(ecx.tcx.dcx(), e));
 
     report_msg(
         DiagLevel::Error,
@@ -384,7 +385,7 @@ pub fn report_error<'tcx, 'mir>(
 
     // Include a note like `std` does when we omit frames from a backtrace
     if was_pruned {
-        ecx.tcx.sess.dcx().note(
+        ecx.tcx.dcx().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }
@@ -431,7 +432,7 @@ pub fn report_leaks<'mir, 'tcx>(
         );
     }
     if any_pruned {
-        ecx.tcx.sess.dcx().note(
+        ecx.tcx.dcx().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }
@@ -454,12 +455,12 @@ pub fn report_msg<'tcx>(
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
     let sess = machine.tcx.sess;
     let level = match diag_level {
-        DiagLevel::Error => Level::Error { lint: false },
-        DiagLevel::Warning => Level::Warning(None),
+        DiagLevel::Error => Level::Error,
+        DiagLevel::Warning => Level::Warning,
         DiagLevel::Note => Level::Note,
     };
     let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, title);
-    err.set_span(span);
+    err.span(span);
 
     // Show main message.
     if span != DUMMY_SP {
@@ -499,14 +500,12 @@ pub fn report_msg<'tcx>(
         err.note(if extra_span { "BACKTRACE (of the first span):" } else { "BACKTRACE:" });
     }
 
-    let (mut err, handler) = err.into_diagnostic().unwrap();
-
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
         let is_local = machine.is_local(frame_info);
         // No span for non-local frames and the first frame (which is the error site).
         if is_local && idx > 0 {
-            err.eager_subdiagnostic(handler, frame_info.as_note(machine.tcx));
+            err.subdiagnostic(err.dcx, frame_info.as_note(machine.tcx));
         } else {
             let sm = sess.source_map();
             let span = sm.span_to_embeddable_string(frame_info.span);
@@ -514,7 +513,7 @@ pub fn report_msg<'tcx>(
         }
     }
 
-    handler.emit_diagnostic(err);
+    err.emit();
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {

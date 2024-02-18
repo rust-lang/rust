@@ -1,5 +1,6 @@
 //! This module greps parser's code for specially formatted comments and turns
 //! them into tests.
+#![allow(clippy::disallowed_types, clippy::print_stdout)]
 
 use std::{
     collections::HashMap,
@@ -22,7 +23,7 @@ fn sourcegen_parser_tests() {
         }
         // ok is never actually read, but it needs to be specified to create a Test in existing_tests
         let existing = existing_tests(&tests_dir, true);
-        for t in existing.keys().filter(|&t| !tests.contains_key(t)) {
+        if let Some(t) = existing.keys().find(|&t| !tests.contains_key(t)) {
             panic!("Test is deleted: {t}");
         }
 
@@ -59,9 +60,9 @@ fn collect_tests(s: &str) -> Vec<Test> {
     for comment_block in sourcegen::CommentBlock::extract_untagged(s) {
         let first_line = &comment_block.contents[0];
         let (name, ok) = if let Some(name) = first_line.strip_prefix("test ") {
-            (name.to_string(), true)
+            (name.to_owned(), true)
         } else if let Some(name) = first_line.strip_prefix("test_err ") {
-            (name.to_string(), false)
+            (name.to_owned(), false)
         } else {
             continue;
         };

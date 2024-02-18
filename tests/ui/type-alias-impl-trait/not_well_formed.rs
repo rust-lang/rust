@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
 

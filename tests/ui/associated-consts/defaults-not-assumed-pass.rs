@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait Tr {
     const A: u8 = 255;

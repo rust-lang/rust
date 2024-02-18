@@ -1024,6 +1024,7 @@ impl AsFd for UnixDatagram {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixDatagram> for OwnedFd {
+    /// Takes ownership of a [`UnixDatagram`]'s socket file descriptor.
     #[inline]
     fn from(unix_datagram: UnixDatagram) -> OwnedFd {
         unsafe { OwnedFd::from_raw_fd(unix_datagram.into_raw_fd()) }

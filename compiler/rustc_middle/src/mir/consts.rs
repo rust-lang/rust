@@ -195,7 +195,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// Constants
 
 #[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(TypeFoldable, TypeVisitable, Lift)]
 pub enum Const<'tcx> {
     /// This constant came from the type system.
     ///
@@ -456,7 +456,7 @@ impl<'tcx> Const<'tcx> {
 
 /// An unevaluated (potentially generic) constant used in MIR.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
-#[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Hash, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct UnevaluatedConst<'tcx> {
     pub def: DefId,
     pub args: GenericArgsRef<'tcx>,

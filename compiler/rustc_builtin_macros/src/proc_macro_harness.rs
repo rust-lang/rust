@@ -194,7 +194,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
                     self.dcx
                         .struct_span_err(attr.span, msg)
-                        .span_label(prev_attr.span, "previous attribute here")
+                        .with_span_label(prev_attr.span, "previous attribute here")
                         .emit();
 
                     return;

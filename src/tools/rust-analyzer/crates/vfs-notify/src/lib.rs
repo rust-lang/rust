@@ -103,7 +103,12 @@ impl NotifyActor {
                         let config_version = config.version;
 
                         let n_total = config.load.len();
-                        self.send(loader::Message::Progress { n_total, n_done: 0, config_version });
+                        self.send(loader::Message::Progress {
+                            n_total,
+                            n_done: None,
+                            config_version,
+                            dir: None,
+                        });
 
                         self.watched_entries.clear();
 
@@ -112,12 +117,19 @@ impl NotifyActor {
                             if watch {
                                 self.watched_entries.push(entry.clone());
                             }
-                            let files = self.load_entry(entry, watch);
+                            let files =
+                                self.load_entry(entry, watch, |file| loader::Message::Progress {
+                                    n_total,
+                                    n_done: Some(i),
+                                    dir: Some(file),
+                                    config_version,
+                                });
                             self.send(loader::Message::Loaded { files });
                             self.send(loader::Message::Progress {
                                 n_total,
-                                n_done: i + 1,
+                                n_done: Some(i + 1),
                                 config_version,
+                                dir: None,
                             });
                         }
                     }
@@ -160,7 +172,7 @@ impl NotifyActor {
                                 Some((path, contents))
                             })
                             .collect();
-                        self.send(loader::Message::Loaded { files });
+                        self.send(loader::Message::Changed { files });
                     }
                 }
             }
@@ -170,6 +182,7 @@ impl NotifyActor {
         &mut self,
         entry: loader::Entry,
         watch: bool,
+        make_message: impl Fn(AbsPathBuf) -> loader::Message,
     ) -> Vec<(AbsPathBuf, Option<Vec<u8>>)> {
         match entry {
             loader::Entry::Files(files) => files
@@ -186,6 +199,7 @@ impl NotifyActor {
                 let mut res = Vec::new();
 
                 for root in &dirs.include {
+                    self.send(make_message(root.clone()));
                     let walkdir =
                         WalkDir::new(root).follow_links(true).into_iter().filter_entry(|entry| {
                             if !entry.file_type().is_dir() {
@@ -197,9 +211,13 @@ impl NotifyActor {
                         });
 
                     let files = walkdir.filter_map(|it| it.ok()).filter_map(|entry| {
+                        let depth = entry.depth();
                         let is_dir = entry.file_type().is_dir();
                         let is_file = entry.file_type().is_file();
                         let abs_path = AbsPathBuf::assert(entry.into_path());
+                        if depth < 2 && is_dir {
+                            self.send(make_message(abs_path.clone()));
+                        }
                         if is_dir && watch {
                             self.watch(abs_path.clone());
                         }

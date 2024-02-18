@@ -2,7 +2,7 @@
 // The note should relate to the fact that it cannot be shown forall N that it maps 1-1 to a new
 // type.
 
-// revisions: full min
+//@ revisions: full min
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![cfg_attr(full, allow(incomplete_features))]
 

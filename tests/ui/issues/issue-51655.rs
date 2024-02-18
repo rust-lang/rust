@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 
 const PATH_DOT: &[u8] = &[b'.'];

@@ -1,6 +1,6 @@
-// revisions: base extended
-//[base] check-fail
-//[extended] check-pass
+//@ revisions: base extended
+//@[base] check-fail
+//@[extended] check-pass
 
 #![cfg_attr(extended, feature(generic_associated_types_extended))]
 #![cfg_attr(extended, allow(incomplete_features))]

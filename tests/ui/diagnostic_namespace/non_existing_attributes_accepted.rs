@@ -1,5 +1,5 @@
 #![feature(diagnostic_namespace)]
-// check-pass
+//@ check-pass
 #[diagnostic::non_existing_attribute]
 //~^WARN unknown diagnostic attribute
 pub trait Bar {

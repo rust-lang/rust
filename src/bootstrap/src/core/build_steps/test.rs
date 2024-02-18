@@ -20,12 +20,12 @@ use crate::core::build_steps::llvm;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
+use crate::core::builder;
 use crate::core::builder::crate_description;
 use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
-use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
@@ -37,23 +37,6 @@ use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
-
-// mir-opt tests have different variants depending on whether a target is 32bit or 64bit, and
-// blessing them requires blessing with each target. To aid developers, when blessing the mir-opt
-// test suite the corresponding target of the opposite pointer size is also blessed.
-//
-// This array serves as the known mappings between 32bit and 64bit targets. If you're developing on
-// a target where a target with the opposite pointer size exists, feel free to add it here.
-const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
-    // (32bit, 64bit)
-    ("i686-unknown-linux-gnu", "x86_64-unknown-linux-gnu"),
-    ("i686-unknown-linux-musl", "x86_64-unknown-linux-musl"),
-    ("i686-pc-windows-msvc", "x86_64-pc-windows-msvc"),
-    ("i686-pc-windows-gnu", "x86_64-pc-windows-gnu"),
-    // ARM Macs don't have a corresponding 32-bit target that they can (easily)
-    // build for, so there is no entry for "aarch64-apple-darwin" here.
-    // Likewise, i686 for macOS is no longer possible to build.
-];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateBootstrap {
@@ -385,7 +368,7 @@ impl Step for RustAnalyzer {
             "test",
             crate_path,
             SourceType::InTree,
-            &["sysroot-abi".to_owned()],
+            &["in-rust-tree".to_owned()],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
@@ -398,7 +381,7 @@ impl Step for RustAnalyzer {
         // work in Rust CI
         cargo.env("SKIP_SLOW_TESTS", "1");
 
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder);
         run_cargo_test(cargo, &[], &[], "rust-analyzer", "rust-analyzer", compiler, host, builder);
     }
 }
@@ -427,9 +410,7 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder
-            .ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -446,7 +427,7 @@ impl Step for Rustfmt {
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder);
 
         run_cargo_test(cargo, &[], &[], "rustfmt", "rustfmt", compiler, host, builder);
     }
@@ -476,9 +457,11 @@ impl Step for RustDemangler {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let rust_demangler = builder
-            .ensure(tool::RustDemangler { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let rust_demangler = builder.ensure(tool::RustDemangler {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -494,7 +477,7 @@ impl Step for RustDemangler {
         t!(fs::create_dir_all(&dir));
 
         cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder);
 
         run_cargo_test(
             cargo,
@@ -535,7 +518,7 @@ impl Miri {
             SourceType::InTree,
             &[],
         );
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder);
         cargo.arg("--").arg("miri").arg("setup");
         cargo.arg("--target").arg(target.rustc_target_arg());
 
@@ -609,12 +592,13 @@ impl Step for Miri {
         // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
         let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
-        let miri = builder
-            .ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
-        let _cargo_miri = builder
-            .ensure(tool::CargoMiri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let miri =
+            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
+        let _cargo_miri = builder.ensure(tool::CargoMiri {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
         // The stdlib we need might be at a different stage. And just asking for the
         // sysroot does not seem to populate it, so we do that first.
         builder.ensure(compile::Std::new(compiler_std, host));
@@ -635,7 +619,7 @@ impl Step for Miri {
         );
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "miri", host, target);
 
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder);
 
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
@@ -688,7 +672,7 @@ impl Step for Miri {
             SourceType::Submodule,
             &[],
         );
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder);
         cargo.arg("--").arg("miri").arg("test");
         if builder.config.locked_deps {
             cargo.arg("--locked");
@@ -788,9 +772,7 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder
-            .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        builder.ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -807,7 +789,7 @@ impl Step for Clippy {
         let host_libs = builder.stage_out(compiler, Mode::ToolRustc).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
 
-        cargo.add_rustc_lib_path(builder, compiler);
+        cargo.add_rustc_lib_path(builder);
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "clippy", compiler, host, builder);
 
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
@@ -1488,46 +1470,18 @@ impl Step for MirOpt {
             })
         };
 
-        // We use custom logic to bless the mir-opt suite: mir-opt tests have multiple variants
-        // (32bit vs 64bit, and panic=abort vs panic=unwind), and all of them needs to be blessed.
-        // When blessing, we try best-effort to also bless the other variants, to aid developers.
         if builder.config.cmd.bless() {
-            let targets = MIR_OPT_BLESS_TARGET_MAPPING
-                .iter()
-                .filter(|(target_32bit, target_64bit)| {
-                    *target_32bit == &*self.target.triple || *target_64bit == &*self.target.triple
-                })
-                .next()
-                .map(|(target_32bit, target_64bit)| {
-                    let target_32bit = TargetSelection::from_user(target_32bit);
-                    let target_64bit = TargetSelection::from_user(target_64bit);
+            // All that we really need to do is cover all combinations of 32/64-bit and unwind/abort,
+            // but while we're at it we might as well flex our cross-compilation support. This
+            // selection covers all our tier 1 operating systems and architectures using only tier
+            // 1 targets.
 
-                    // Running compiletest requires a C compiler to be available, but it might not
-                    // have been detected by bootstrap if the target we're testing wasn't in the
-                    // --target flags.
-                    if !builder.cc.borrow().contains_key(&target_32bit) {
-                        utils::cc_detect::find_target(builder, target_32bit);
-                    }
-                    if !builder.cc.borrow().contains_key(&target_64bit) {
-                        utils::cc_detect::find_target(builder, target_64bit);
-                    }
+            for target in ["aarch64-unknown-linux-gnu", "i686-pc-windows-msvc"] {
+                run(TargetSelection::from_user(target));
+            }
 
-                    vec![target_32bit, target_64bit]
-                })
-                .unwrap_or_else(|| {
-                    eprintln!(
-                        "\
-Note that not all variants of mir-opt tests are going to be blessed, as no mapping between
-a 32bit and a 64bit target was found for {target}.
-You can add that mapping by changing MIR_OPT_BLESS_TARGET_MAPPING in src/bootstrap/test.rs",
-                        target = self.target,
-                    );
-                    vec![self.target]
-                });
-
-            for target in targets {
-                run(target);
-
+            for target in ["x86_64-apple-darwin", "i686-unknown-linux-musl"] {
+                let target = TargetSelection::from_user(target);
                 let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
                     compiler: self.compiler,
                     base: target,
@@ -1597,8 +1551,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
         let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            compiler = builder.compiler(compiler.stage - 1, target);
-            format!("stage{}-{}", compiler.stage + 1, target)
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
+            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
+            // to `build.build` in the configuration.
+            let build = builder.build.build;
+
+            compiler = builder.compiler(compiler.stage - 1, build);
+            format!("stage{}-{}", compiler.stage + 1, build)
         } else {
             format!("stage{}-{}", compiler.stage, target)
         };
@@ -1612,21 +1571,26 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
-        // ensure that `libproc_macro` is available on the host.
-        builder.ensure(compile::Std::new(compiler, compiler.host));
-
         // Also provide `rust_test_helpers` for the host.
         builder.ensure(TestHelpers { target: compiler.host });
 
+        // ensure that `libproc_macro` is available on the host.
+        builder.ensure(compile::Std::new(compiler, compiler.host));
+
         // As well as the target, except for plain wasm32, which can't build it
-        if !target.contains("wasm") || target.contains("emscripten") {
+        if suite != "mir-opt" && !target.contains("wasm") && !target.contains("emscripten") {
             builder.ensure(TestHelpers { target });
         }
 
-        builder.ensure(RemoteCopyLibs { compiler, target });
-
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
+
+        if suite == "mir-opt" {
+            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, target));
+        } else {
+            builder.ensure(compile::Std::new(compiler, target));
+        }
+
+        builder.ensure(RemoteCopyLibs { compiler, target });
 
         // compiletest currently has... a lot of arguments, so let's just pass all
         // of them!
@@ -1668,13 +1632,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if mode == "coverage-run" {
             // The demangler doesn't need the current compiler, so we can avoid
             // unnecessary rebuilds by using the bootstrap compiler instead.
-            let rust_demangler = builder
-                .ensure(tool::RustDemangler {
-                    compiler: compiler.with_stage(0),
-                    target: compiler.host,
-                    extra_features: Vec::new(),
-                })
-                .expect("in-tree tool");
+            let rust_demangler = builder.ensure(tool::RustDemangler {
+                compiler: compiler.with_stage(0),
+                target: compiler.host,
+                extra_features: Vec::new(),
+            });
             cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
 
@@ -1738,11 +1700,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
         flags.extend(builder.config.cmd.rustc_args().iter().map(|s| s.to_string()));
 
-        if let Some(linker) = builder.linker(target) {
-            cmd.arg("--target-linker").arg(linker);
-        }
-        if let Some(linker) = builder.linker(compiler.host) {
-            cmd.arg("--host-linker").arg(linker);
+        if suite != "mir-opt" {
+            if let Some(linker) = builder.linker(target) {
+                cmd.arg("--target-linker").arg(linker);
+            }
+            if let Some(linker) = builder.linker(compiler.host) {
+                cmd.arg("--host-linker").arg(linker);
+            }
         }
 
         let mut hostflags = flags.clone();
@@ -1834,7 +1798,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
-        if builder.config.llvm_enabled() {
+        if builder.config.llvm_enabled(compiler.host) {
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
@@ -1848,6 +1812,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 llvm_components_passed = true;
             }
             if !builder.is_rust_llvm(target) {
+                // FIXME: missing Rust patches is not the same as being system llvm; we should rename the flag at some point.
+                // Inspecting the tests with `// no-system-llvm` in src/test *looks* like this is doing the right thing, though.
                 cmd.arg("--system-llvm");
             }
 
@@ -1927,17 +1893,42 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--remote-test-client").arg(builder.tool_exe(Tool::RemoteTestClient));
         }
 
-        // Running a C compiler on MSVC requires a few env vars to be set, to be
-        // sure to set them here.
-        //
-        // Note that if we encounter `PATH` we make sure to append to our own `PATH`
-        // rather than stomp over it.
-        if !builder.config.dry_run() && target.is_msvc() {
-            for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
-                if k != "PATH" {
-                    cmd.env(k, v);
+        if suite != "mir-opt" {
+            // Running a C compiler on MSVC requires a few env vars to be set, to be
+            // sure to set them here.
+            //
+            // Note that if we encounter `PATH` we make sure to append to our own `PATH`
+            // rather than stomp over it.
+            if !builder.config.dry_run() && target.is_msvc() {
+                for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
+                    if k != "PATH" {
+                        cmd.env(k, v);
+                    }
                 }
             }
+        }
+
+        // Special setup to enable running with sanitizers on MSVC.
+        if !builder.config.dry_run()
+            && target.contains("msvc")
+            && builder.config.sanitizers_enabled(target)
+        {
+            // Ignore interception failures: not all dlls in the process will have been built with
+            // address sanitizer enabled (e.g., ntdll.dll).
+            cmd.env("ASAN_WIN_CONTINUE_ON_INTERCEPTION_FAILURE", "1");
+            // Add the address sanitizer runtime to the PATH - it is located next to cl.exe.
+            let asan_runtime_path =
+                builder.cc.borrow()[&target].path().parent().unwrap().to_path_buf();
+            let old_path = cmd
+                .get_envs()
+                .find_map(|(k, v)| (k == "PATH").then_some(v))
+                .flatten()
+                .map_or_else(|| env::var_os("PATH").unwrap_or_default(), |v| v.to_owned());
+            let new_path = env::join_paths(
+                env::split_paths(&old_path).chain(std::iter::once(asan_runtime_path)),
+            )
+            .expect("Could not add ASAN runtime path to PATH");
+            cmd.env("PATH", new_path);
         }
 
         // Some UI tests trigger behavior in rustc where it reads $CARGO and changes behavior if it exists.
@@ -1956,7 +1947,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if builder.config.profiler_enabled(target) {
-            cmd.env("RUSTC_PROFILER_SUPPORT", "1");
+            cmd.arg("--profiler-support");
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.tempdir());
@@ -2509,8 +2500,15 @@ impl Step for Crate {
         // we're working with automatically.
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
-        let mut cargo =
-            builder.cargo(compiler, mode, SourceType::InTree, target, builder.kind.as_str());
+        let mut cargo = builder::Cargo::new(
+            builder,
+            compiler,
+            mode,
+            SourceType::InTree,
+            target,
+            builder.kind.as_str(),
+        );
+
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
@@ -3123,7 +3121,8 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        if !builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("cranelift")) {
+        if !builder.config.codegen_backends(run.target).contains(&INTERNER.intern_str("cranelift"))
+        {
             builder.info("cranelift not in rust.codegen-backends. skipping");
             return;
         }
@@ -3144,13 +3143,15 @@ impl Step for CodegenCranelift {
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
         let build_cargo = || {
-            let mut cargo = builder.cargo(
+            let mut cargo = builder::Cargo::new(
+                builder,
                 compiler,
                 Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
                 SourceType::InTree,
                 target,
                 "run",
             );
+
             cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
             cargo
                 .arg("--manifest-path")
@@ -3245,7 +3246,7 @@ impl Step for CodegenGCC {
             return;
         }
 
-        if !builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("gcc")) {
+        if !builder.config.codegen_backends(run.target).contains(&INTERNER.intern_str("gcc")) {
             builder.info("gcc not in rust.codegen-backends. skipping");
             return;
         }
@@ -3270,13 +3271,15 @@ impl Step for CodegenGCC {
         let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
 
         let build_cargo = || {
-            let mut cargo = builder.cargo(
+            let mut cargo = builder::Cargo::new(
+                builder,
                 compiler,
                 Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
                 SourceType::InTree,
                 target,
                 "run",
             );
+
             cargo.current_dir(&builder.src.join("compiler/rustc_codegen_gcc"));
             cargo
                 .arg("--manifest-path")

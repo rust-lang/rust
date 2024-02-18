@@ -18,4 +18,6 @@ static STATIC_BAR: str = *"bar";
 
 fn main() {
     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
+    //~^ ERROR: cannot move a value of type `str`
+    //~| ERROR: cannot move a value of type `dyn Debug + Sync`
 }

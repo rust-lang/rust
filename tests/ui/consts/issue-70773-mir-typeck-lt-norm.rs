@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 
 const HASH_LEN: usize = 20;
-struct Hash(#[allow(unused_tuple_struct_fields)] [u8; HASH_LEN]);
+struct Hash(#[allow(dead_code)] [u8; HASH_LEN]);
 fn init_hash(_: &mut [u8; HASH_LEN]) {}
 
 fn foo<'a>() -> &'a () {

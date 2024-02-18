@@ -1,4 +1,4 @@
-// aux-build:lint_stability_fields.rs
+//@ aux-build:lint_stability_fields.rs
 #![allow(deprecated)]
 #![allow(dead_code)]
 #![feature(staged_api)]

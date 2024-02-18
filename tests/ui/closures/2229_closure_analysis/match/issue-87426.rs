@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@ run-pass
+//@ edition:2021
 
 pub fn foo() {
     let ref_x_ck = 123;

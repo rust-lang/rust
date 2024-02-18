@@ -5,7 +5,8 @@ use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
-use rustc_session::parse::{feature_err, ParseSess};
+use rustc_session::parse::feature_err;
+use rustc_session::Session;
 use rustc_span::symbol::{kw, sym, Ident};
 
 use rustc_span::edition::Edition;
@@ -38,7 +39,7 @@ const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
 pub(super) fn parse(
     input: &tokenstream::TokenStream,
     parsing_patterns: bool,
-    sess: &ParseSess,
+    sess: &Session,
     node_id: NodeId,
     features: &Features,
     edition: Edition,
@@ -72,7 +73,7 @@ pub(super) fn parse(
                                             // `SyntaxContext::root()` from a foreign crate will
                                             // have the edition of that crate (which we manually
                                             // retrieve via the `edition` parameter).
-                                            if span.ctxt().is_root() {
+                                            if !span.from_expansion() {
                                                 edition
                                             } else {
                                                 span.edition()
@@ -84,9 +85,9 @@ pub(super) fn parse(
                                                     "invalid fragment specifier `{}`",
                                                     frag.name
                                                 );
-                                                sess.dcx
+                                                sess.dcx()
                                                     .struct_span_err(span, msg)
-                                                    .help(VALID_FRAGMENT_NAMES_MSG)
+                                                    .with_help(VALID_FRAGMENT_NAMES_MSG)
                                                     .emit();
                                                 token::NonterminalKind::Ident
                                             },
@@ -113,7 +114,7 @@ pub(super) fn parse(
 }
 
 /// Asks for the `macro_metavar_expr` feature if it is not already declared
-fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &ParseSess, span: Span) {
+fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, span: Span) {
     if !features.macro_metavar_expr {
         let msg = "meta-variable expressions are unstable";
         feature_err(sess, sym::macro_metavar_expr, span, msg).emit();
@@ -138,7 +139,7 @@ fn parse_tree<'a>(
     tree: &'a tokenstream::TokenTree,
     outer_trees: &mut impl Iterator<Item = &'a tokenstream::TokenTree>,
     parsing_patterns: bool,
-    sess: &ParseSess,
+    sess: &Session,
     node_id: NodeId,
     features: &Features,
     edition: Edition,
@@ -174,8 +175,9 @@ fn parse_tree<'a>(
                                 // The delimiter is `{`. This indicates the beginning
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
-                                match MetaVarExpr::parse(tts, delim_span.entire(), sess) {
-                                    Err(mut err) => {
+                                match MetaVarExpr::parse(tts, delim_span.entire(), &sess.parse_sess)
+                                {
+                                    Err(err) => {
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
                                         // unrelated diagnostics that could be performed afterwards
@@ -195,7 +197,7 @@ fn parse_tree<'a>(
                             _ => {
                                 let tok = pprust::token_kind_to_string(&token::OpenDelim(delim));
                                 let msg = format!("expected `(` or `{{`, found `{tok}`");
-                                sess.dcx.span_err(delim_span.entire(), msg);
+                                sess.dcx().span_err(delim_span.entire(), msg);
                             }
                         }
                     }
@@ -244,7 +246,7 @@ fn parse_tree<'a>(
                 Some(tokenstream::TokenTree::Token(token, _)) => {
                     let msg =
                         format!("expected identifier, found `{}`", pprust::token_to_string(token),);
-                    sess.dcx.span_err(token.span, msg);
+                    sess.dcx().span_err(token.span, msg);
                     TokenTree::MetaVar(token.span, Ident::empty())
                 }
 
@@ -313,7 +315,7 @@ fn parse_kleene_op<'a>(
 fn parse_sep_and_kleene_op<'a>(
     input: &mut impl Iterator<Item = &'a tokenstream::TokenTree>,
     span: Span,
-    sess: &ParseSess,
+    sess: &Session,
 ) -> (Option<Token>, KleeneToken) {
     // We basically look at two token trees here, denoted as #1 and #2 below
     let span = match parse_kleene_op(input, span) {
@@ -325,7 +327,7 @@ fn parse_sep_and_kleene_op<'a>(
             // #2 is the `?` Kleene op, which does not take a separator (error)
             Ok(Ok((KleeneOp::ZeroOrOne, span))) => {
                 // Error!
-                sess.dcx.span_err(
+                sess.dcx().span_err(
                     token.span,
                     "the `?` macro repetition operator does not take a separator",
                 );
@@ -346,7 +348,7 @@ fn parse_sep_and_kleene_op<'a>(
     };
 
     // If we ever get to this point, we have experienced an "unexpected token" error
-    sess.dcx.span_err(span, "expected one of: `*`, `+`, or `?`");
+    sess.dcx().span_err(span, "expected one of: `*`, `+`, or `?`");
 
     // Return a dummy
     (None, KleeneToken::new(KleeneOp::ZeroOrMore, span))
@@ -355,9 +357,10 @@ fn parse_sep_and_kleene_op<'a>(
 // `$$` or a meta-variable is the lhs of a macro but shouldn't.
 //
 // For example, `macro_rules! foo { ( ${length()} ) => {} }`
-fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &ParseSess, token: &Token) {
-    sess.dcx.span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));
-    sess.dcx.span_note(
+fn span_dollar_dollar_or_metavar_in_the_lhs_err(sess: &Session, token: &Token) {
+    sess.dcx()
+        .span_err(token.span, format!("unexpected token: {}", pprust::token_to_string(token)));
+    sess.dcx().span_note(
         token.span,
         "`$$` and meta-variable expressions are not allowed inside macro parameter definitions",
     );

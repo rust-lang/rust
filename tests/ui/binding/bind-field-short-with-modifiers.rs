@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 #![allow(non_shorthand_field_patterns)]

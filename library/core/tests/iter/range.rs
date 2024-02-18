@@ -1,6 +1,6 @@
 use super::*;
 use core::ascii::Char as AsciiChar;
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 
 #[test]
 fn test_range() {
@@ -314,7 +314,7 @@ fn test_range_advance_by() {
 
     assert_eq!((r.start, r.end), (1, usize::MAX - 1));
 
-    assert_eq!(Err(NonZeroUsize::new(2).unwrap()), r.advance_by(usize::MAX));
+    assert_eq!(Err(NonZero::new(2).unwrap()), r.advance_by(usize::MAX));
 
     assert_eq!(Ok(()), r.advance_by(0));
     assert_eq!(Ok(()), r.advance_back_by(0));
@@ -472,6 +472,16 @@ fn test_range_inclusive_size_hint() {
     assert_eq!((imin..=imax - 1).size_hint(), (usize::MAX, Some(usize::MAX)));
     assert_eq!((imin..=imax).size_hint(), (usize::MAX, None));
     assert_eq!((imin..=imax + 1).size_hint(), (usize::MAX, None));
+}
+
+#[test]
+fn test_range_trusted_random_access() {
+    let mut range = 0..10;
+    unsafe {
+        assert_eq!(range.next(), Some(0));
+        assert_eq!(range.__iterator_get_unchecked(0), 1);
+        assert_eq!(range.__iterator_get_unchecked(1), 2);
+    }
 }
 
 #[test]

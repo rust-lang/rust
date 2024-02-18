@@ -10,6 +10,7 @@ impl<'a, 'd: 'a> Visitor<'d> for &'a () {
 }
 
 fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
-//~^ ERROR
+//~^ ERROR lifetime may not live long enough
+//~| ERROR cannot infer
 
 fn main() {}

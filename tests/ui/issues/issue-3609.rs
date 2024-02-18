@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(unused_must_use)]
 #![allow(dead_code)]
 #![allow(unused_mut)]

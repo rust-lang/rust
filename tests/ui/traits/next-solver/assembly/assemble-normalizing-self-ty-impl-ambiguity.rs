@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // Checks that we do not get ambiguity by considering an impl
 // multiple times if we're able to normalize the self type.

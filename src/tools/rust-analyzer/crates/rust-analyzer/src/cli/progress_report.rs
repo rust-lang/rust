@@ -59,7 +59,7 @@ impl<'a> ProgressReport<'a> {
             "{}/{} {percent:3>}% {}",
             self.pos,
             self.len,
-            self.msg.as_ref().map_or_else(|| String::new(), |it| it())
+            self.msg.as_ref().map_or_else(String::new, |it| it())
         );
         self.update_text(&text);
     }
@@ -92,7 +92,7 @@ impl<'a> ProgressReport<'a> {
 
         let _ = io::stdout().write(output.as_bytes());
         let _ = io::stdout().flush();
-        self.text = text.to_string();
+        self.text = text.to_owned();
     }
 
     fn set_value(&mut self, value: f32) {

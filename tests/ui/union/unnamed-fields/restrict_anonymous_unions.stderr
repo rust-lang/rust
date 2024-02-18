@@ -1,29 +1,29 @@
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:5:12
+  --> $DIR/restrict_anonymous_unions.rs:5:13
    |
-LL |     field: union { field: u8 },
-   |            ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
+LL |     field1: union { field2: u8 },
+   |             ^^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: unnamed fields can only have struct or union types
-  --> $DIR/restrict_anonymous_unions.rs:12:5
+  --> $DIR/restrict_anonymous_unions.rs:10:5
    |
 LL |     _: (u8, u8),
    |     ^  -------- not a struct or union
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:16:12
+  --> $DIR/restrict_anonymous_unions.rs:14:13
    |
-LL |     field: union { field: u8 },
-   |            ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
+LL |     field1: union { field2: u8 },
+   |             ^^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: unnamed fields can only have struct or union types
-  --> $DIR/restrict_anonymous_unions.rs:23:5
+  --> $DIR/restrict_anonymous_unions.rs:19:5
    |
 LL |     _: (u8, u8),
    |     ^  -------- not a struct or union
 
 error: unnamed fields are not allowed outside of structs or unions
-  --> $DIR/restrict_anonymous_unions.rs:28:9
+  --> $DIR/restrict_anonymous_unions.rs:24:9
    |
 LL |         _ : union { field: u8 },
    |         -^^^^^^^^^^^^^^^^^^^^^^
@@ -31,48 +31,18 @@ LL |         _ : union { field: u8 },
    |         unnamed field declared here
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:28:13
+  --> $DIR/restrict_anonymous_unions.rs:24:13
    |
 LL |         _ : union { field: u8 },
    |             ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: unnamed fields are not allowed outside of structs or unions
-  --> $DIR/restrict_anonymous_unions.rs:33:9
+  --> $DIR/restrict_anonymous_unions.rs:28:9
    |
 LL |         _ : u8,
    |         -^^^^^
    |         |
    |         unnamed field declared here
 
-error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:5:12
-   |
-LL |     field: union { field: u8 },
-   |            ^^^^^^^^^^^^^^^^^^^
-
-error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:7:8
-   |
-LL |     _: union { field: u8 },
-   |        ^^^^^^^^^^^^^^^^^^^
-
-error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:16:12
-   |
-LL |     field: union { field: u8 },
-   |            ^^^^^^^^^^^^^^^^^^^
-
-error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:18:8
-   |
-LL |     _: union { field: u8 },
-   |        ^^^^^^^^^^^^^^^^^^^
-
-error: anonymous unions are unimplemented
-  --> $DIR/restrict_anonymous_unions.rs:28:13
-   |
-LL |         _ : union { field: u8 },
-   |             ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 12 previous errors
+error: aborting due to 7 previous errors
 

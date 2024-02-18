@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags:-Zmir-opt-level=3
+//@ build-pass
+//@ compile-flags:-Zmir-opt-level=3
 
 struct D;
 

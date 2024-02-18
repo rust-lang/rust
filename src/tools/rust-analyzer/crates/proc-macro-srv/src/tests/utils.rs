@@ -2,47 +2,96 @@
 
 use expect_test::Expect;
 use proc_macro_api::msg::TokenId;
+use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
 
-fn parse_string(code: &str, call_site: TokenId) -> Option<crate::server::TokenStream> {
-    // This is a bit strange. We need to parse a string into a token stream into
-    // order to create a tt::SubTree from it in fixtures. `into_subtree` is
-    // implemented by all the ABIs we have so we arbitrarily choose one ABI to
-    // write a `parse_string` function for and use that. The tests don't really
-    // care which ABI we're using as the `into_subtree` function isn't part of
-    // the ABI and shouldn't change between ABI versions.
-    crate::server::TokenStream::from_str(code, call_site).ok()
+fn parse_string(call_site: TokenId, src: &str) -> crate::server::TokenStream<TokenId> {
+    crate::server::TokenStream::with_subtree(
+        mbe::parse_to_token_tree_static_span(call_site, src).unwrap(),
+    )
 }
 
-pub fn assert_expand(macro_name: &str, ra_fixture: &str, expect: Expect) {
-    assert_expand_impl(macro_name, ra_fixture, None, expect);
+fn parse_string_spanned(
+    anchor: SpanAnchor,
+    call_site: SyntaxContextId,
+    src: &str,
+) -> crate::server::TokenStream<Span> {
+    crate::server::TokenStream::with_subtree(
+        mbe::parse_to_token_tree(anchor, call_site, src).unwrap(),
+    )
 }
 
-pub fn assert_expand_attr(macro_name: &str, ra_fixture: &str, attr_args: &str, expect: Expect) {
-    assert_expand_impl(macro_name, ra_fixture, Some(attr_args), expect);
+pub fn assert_expand(macro_name: &str, ra_fixture: &str, expect: Expect, expect_s: Expect) {
+    assert_expand_impl(macro_name, ra_fixture, None, expect, expect_s);
 }
 
-fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect: Expect) {
+pub fn assert_expand_attr(
+    macro_name: &str,
+    ra_fixture: &str,
+    attr_args: &str,
+    expect: Expect,
+    expect_s: Expect,
+) {
+    assert_expand_impl(macro_name, ra_fixture, Some(attr_args), expect, expect_s);
+}
+
+fn assert_expand_impl(
+    macro_name: &str,
+    input: &str,
+    attr: Option<&str>,
+    expect: Expect,
+    expect_s: Expect,
+) {
+    let path = proc_macro_test_dylib_path();
+    let expander = dylib::Expander::new(&path).unwrap();
+
     let def_site = TokenId(0);
     let call_site = TokenId(1);
     let mixed_site = TokenId(2);
-    let path = proc_macro_test_dylib_path();
-    let expander = dylib::Expander::new(&path).unwrap();
-    let fixture = parse_string(input, call_site).unwrap();
-    let attr = attr.map(|attr| parse_string(attr, call_site).unwrap().into_subtree(call_site));
+    let input_ts = parse_string(call_site, input);
+    let attr_ts = attr.map(|attr| parse_string(call_site, attr).into_subtree(call_site));
 
     let res = expander
         .expand(
             macro_name,
-            &fixture.into_subtree(call_site),
-            attr.as_ref(),
+            input_ts.into_subtree(call_site),
+            attr_ts,
             def_site,
             call_site,
             mixed_site,
         )
         .unwrap();
     expect.assert_eq(&format!("{res:?}"));
+
+    let def_site = Span {
+        range: TextRange::new(0.into(), 150.into()),
+        anchor: SpanAnchor {
+            file_id: FileId::from_raw(41),
+            ast_id: ErasedFileAstId::from_raw(From::from(1)),
+        },
+        ctx: SyntaxContextId::ROOT,
+    };
+    let call_site = Span {
+        range: TextRange::new(0.into(), 100.into()),
+        anchor: SpanAnchor {
+            file_id: FileId::from_raw(42),
+            ast_id: ErasedFileAstId::from_raw(From::from(2)),
+        },
+        ctx: SyntaxContextId::ROOT,
+    };
+    let mixed_site = call_site;
+
+    let fixture = parse_string_spanned(call_site.anchor, call_site.ctx, input);
+    let attr = attr.map(|attr| {
+        parse_string_spanned(call_site.anchor, call_site.ctx, attr).into_subtree(call_site)
+    });
+
+    let res = expander
+        .expand(macro_name, fixture.into_subtree(call_site), attr, def_site, call_site, mixed_site)
+        .unwrap();
+    expect_s.assert_eq(&format!("{res:?}"));
 }
 
 pub(crate) fn list() -> Vec<String> {

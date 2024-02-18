@@ -1,5 +1,5 @@
 #![feature(thread_sleep_until)]
-
+use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -26,4 +26,25 @@ fn sleep_until() {
 
     let elapsed = now.elapsed();
     assert!(elapsed >= period);
+}
+
+#[test]
+fn thread_local_containing_const_statements() {
+    // This exercises the `const $init:block` cases of the thread_local macro.
+    // Despite overlapping with expression syntax, the `const { ... }` is not
+    // parsed as `$init:expr`.
+    thread_local! {
+        static CELL: Cell<u32> = const {
+            let value = 1;
+            Cell::new(value)
+        };
+
+        static REFCELL: RefCell<u32> = const {
+            let value = 1;
+            RefCell::new(value)
+        };
+    }
+
+    assert_eq!(CELL.get(), 1);
+    assert_eq!(REFCELL.take(), 1);
 }

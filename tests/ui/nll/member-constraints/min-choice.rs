@@ -5,7 +5,7 @@
 // We will have to exclude `['b, 'c]` because they're incomparable,
 // and then we should pick `'a` because we know `'static: 'a`.
 
-// check-pass
+//@ check-pass
 
 trait Cap<'a> {}
 impl<T> Cap<'_> for T {}

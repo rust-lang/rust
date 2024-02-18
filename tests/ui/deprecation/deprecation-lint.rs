@@ -1,4 +1,4 @@
-// aux-build:deprecation-lint.rs
+//@ aux-build:deprecation-lint.rs
 
 #![deny(deprecated)]
 #![allow(warnings)]

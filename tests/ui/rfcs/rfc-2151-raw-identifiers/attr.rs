@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::mem;
 
 #[r#repr(r#C, r#packed)]
@@ -7,7 +7,7 @@ struct Test {
 }
 
 #[r#derive(r#Debug)]
-struct Test2(#[allow(unused_tuple_struct_fields)] u32);
+struct Test2(#[allow(dead_code)] u32);
 
 pub fn main() {
     assert_eq!(mem::size_of::<Test>(), 9);

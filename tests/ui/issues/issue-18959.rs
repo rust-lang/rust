@@ -11,10 +11,14 @@ impl Foo for Thing {
 fn foo(b: &dyn Bar) {
     //~^ ERROR E0038
     b.foo(&0)
+    //~^ ERROR E0038
 }
 
 fn main() {
     let mut thing = Thing;
     let test: &dyn Bar = &mut thing;
+    //~^ ERROR E0038
+    //~| ERROR E0038
     foo(test);
+    //~^ ERROR E0038
 }

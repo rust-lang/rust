@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 // Test an issue where we reported ambiguity between the where-clause
 // and the blanket impl. The only important thing is that compilation
 // succeeds here. Issue #22110.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 

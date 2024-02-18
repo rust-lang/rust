@@ -1,5 +1,5 @@
-// revisions: good1 good2 good3
-// check-pass
+//@ revisions: good1 good2 good3
+//@ check-pass
 
 use std::ops::Drop;
 

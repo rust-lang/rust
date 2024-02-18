@@ -1,4 +1,4 @@
-use rustc_errors::MultiSpan;
+use rustc_errors::{codes::*, MultiSpan};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{GenericArg, Ty};
 use rustc_span::Span;
@@ -6,7 +6,7 @@ use rustc_span::Span;
 use crate::diagnostics::RegionName;
 
 #[derive(Diagnostic)]
-#[diag(borrowck_move_unsized, code = "E0161")]
+#[diag(borrowck_move_unsized, code = E0161)]
 pub(crate) struct MoveUnsized<'tcx> {
     pub ty: Ty<'tcx>,
     #[primary_span]
@@ -281,7 +281,7 @@ pub(crate) enum CaptureVarCause {
 }
 
 #[derive(Diagnostic)]
-#[diag(borrowck_cannot_move_when_borrowed, code = "E0505")]
+#[diag(borrowck_cannot_move_when_borrowed, code = E0505)]
 pub(crate) struct MoveBorrow<'a> {
     pub place: &'a str,
     pub borrow_place: &'a str,
@@ -294,7 +294,7 @@ pub(crate) struct MoveBorrow<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(borrowck_opaque_type_non_generic_param, code = "E0792")]
+#[diag(borrowck_opaque_type_non_generic_param, code = E0792)]
 pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
     pub ty: GenericArg<'tcx>,
     pub kind: &'a str,

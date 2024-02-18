@@ -1,7 +1,7 @@
 // Regression test for issue #101980.
 // Ensure that we don't suggest impl'ing `Copy` for a type if it already impl's `!Copy`.
 
-// check-pass
+//@ check-pass
 
 #![feature(negative_impls)]
 #![deny(missing_copy_implementations)]

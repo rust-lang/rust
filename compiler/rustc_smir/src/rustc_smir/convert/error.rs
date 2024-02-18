@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::LayoutError;
 impl<'tcx> Stable<'tcx> for LayoutError<'tcx> {
     type T = stable_mir::Error;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         stable_mir::Error::new(format!("{self:?}"))
     }
 }
@@ -16,7 +16,7 @@ impl<'tcx> Stable<'tcx> for LayoutError<'tcx> {
 impl<'tcx> Stable<'tcx> for AllocError {
     type T = stable_mir::Error;
 
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, _tables: &mut Tables<'_>) -> Self::T {
         stable_mir::Error::new(format!("{self:?}"))
     }
 }

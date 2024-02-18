@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // When expanding a macro, documentation attributes (including documentation comments) must be
 // passed "as is" without being parsed. Otherwise, some text will be incorrectly interpreted as
 // escape sequences, leading to an ICE.

@@ -917,8 +917,36 @@ class RustBuild(object):
             if toml_val is not None:
                 env["{}_{}".format(var_name, host_triple_sanitized)] = toml_val
 
-        # preserve existing RUSTFLAGS
-        env.setdefault("RUSTFLAGS", "")
+        # In src/etc/rust_analyzer_settings.json, we configure rust-analyzer to
+        # pass RUSTC_BOOTSTRAP=1 to all cargo invocations because the standard
+        # library uses unstable Cargo features. Without RUSTC_BOOTSTRAP,
+        # rust-analyzer would fail to fetch workspace layout when the system's
+        # default toolchain is not nightly.
+        #
+        # But that setting has the collateral effect of rust-analyzer also
+        # passing RUSTC_BOOTSTRAP=1 to all x.py invocations too (the various
+        # overrideCommand).
+        #
+        # Set a consistent RUSTC_BOOTSTRAP=1 here to prevent spurious rebuilds
+        # of bootstrap when rust-analyzer x.py invocations are interleaved with
+        # handwritten ones on the command line.
+        env["RUSTC_BOOTSTRAP"] = "1"
+
+        # If any of RUSTFLAGS or RUSTFLAGS_BOOTSTRAP are present and nonempty,
+        # we allow arbitrary compiler flags in there, including unstable ones
+        # such as `-Zthreads=8`.
+        #
+        # But if there aren't custom flags being passed to bootstrap, then we
+        # cancel the RUSTC_BOOTSTRAP=1 from above by passing `-Zallow-features=`
+        # to ensure unstable language or library features do not accidentally
+        # get introduced into bootstrap over time. Distros rely on being able to
+        # compile bootstrap with a variety of their toolchains, not necessarily
+        # the same as Rust's CI uses.
+        if env.get("RUSTFLAGS", "") or env.get("RUSTFLAGS_BOOTSTRAP", ""):
+            # Preserve existing RUSTFLAGS.
+            env.setdefault("RUSTFLAGS", "")
+        else:
+            env["RUSTFLAGS"] = "-Zallow-features="
 
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
@@ -1006,7 +1034,16 @@ class RustBuild(object):
                 eprint('ERROR: vendoring required, but vendor directory does not exist.')
                 eprint('       Run `cargo vendor {}` to initialize the '
                       'vendor directory.'.format(sync_dirs))
-                eprint('Alternatively, use the pre-vendored `rustc-src` dist component.')
+                eprint('       Alternatively, use the pre-vendored `rustc-src` dist component.')
+                eprint('       To get a stable/beta/nightly version, download it from: ')
+                eprint('       '
+                'https://forge.rust-lang.org/infra/other-installation-methods.html#source-code')
+                eprint('       To get a specific commit version, download it using the below URL,')
+                eprint('       replacing <commit> with a specific commit checksum: ')
+                eprint('       '
+                'https://ci-artifacts.rust-lang.org/rustc-builds/<commit>/rustc-nightly-src.tar.xz')
+                eprint('       Once you have the source downloaded, place the vendor directory')
+                eprint('       from the archive in the root of the rust project.')
                 raise Exception("{} not found".format(vendor_dir))
 
             if not os.path.exists(cargo_dir):

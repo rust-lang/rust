@@ -202,11 +202,7 @@ impl TyExt for Ty {
     fn callable_sig(&self, db: &dyn HirDatabase) -> Option<CallableSig> {
         match self.kind(Interner) {
             TyKind::Function(fn_ptr) => Some(CallableSig::from_fn_ptr(fn_ptr)),
-            TyKind::FnDef(def, parameters) => {
-                let callable_def = db.lookup_intern_callable_def((*def).into());
-                let sig = db.callable_item_signature(callable_def);
-                Some(sig.substitute(Interner, parameters))
-            }
+            TyKind::FnDef(def, parameters) => Some(CallableSig::from_def(db, *def, parameters)),
             TyKind::Closure(.., substs) => ClosureSubst(substs).sig_ty().callable_sig(db),
             _ => None,
         }
@@ -218,7 +214,7 @@ impl TyExt for Ty {
             // invariant ensured by `TyLoweringContext::lower_dyn_trait()`.
             // FIXME: dyn types may not have principal trait and we don't want to return auto trait
             // here.
-            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
+            TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().first().and_then(|b| {
                 match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),
                     _ => None,
@@ -427,7 +423,7 @@ pub trait DynTyExt {
 
 impl DynTyExt for DynTy {
     fn principal(&self) -> Option<&TraitRef> {
-        self.bounds.skip_binders().interned().get(0).and_then(|b| match b.skip_binders() {
+        self.bounds.skip_binders().interned().first().and_then(|b| match b.skip_binders() {
             crate::WhereClause::Implemented(trait_ref) => Some(trait_ref),
             _ => None,
         })

@@ -1,5 +1,5 @@
-// run-rustfix
-// edition:2018
+//@ run-rustfix
+//@ edition:2018
 // Most of items are taken from ./recover-const-async-fn-ptr.rs but this is able to apply rustfix.
 
 pub type T0 =  fn(); //~ ERROR an `fn` pointer type cannot be `const`

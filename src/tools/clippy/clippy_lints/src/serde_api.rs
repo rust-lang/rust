@@ -6,7 +6,7 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for mis-uses of the serde API.
+    /// Checks for misuses of the serde API.
     ///
     /// ### Why is this bad?
     /// Serde is very finnicky about how its API should be

@@ -151,6 +151,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_try_fold`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold)
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`iter_kv_map`](https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map)
+* [`manual_c_str_literals`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_c_str_literals)
 
 
 ## `cognitive-complexity-threshold`
@@ -212,7 +213,7 @@ default configuration of Clippy. By default, any configuration will replace the 
 * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
 * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
 
-**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenDNS", "WebGL", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
+**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "ClojureScript", "CoffeeScript", "JavaScript", "PureScript", "TypeScript", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "WebGL", "WebGL2", "WebGPU", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
 
 ---
 **Affected lints:**
@@ -768,7 +769,19 @@ Additional dotfiles (files or directories starting with a dot) to allow
 * [`path_ends_with_ext`](https://rust-lang.github.io/rust-clippy/master/index.html#path_ends_with_ext)
 
 
+## `allowed-duplicate-crates`
+A list of crate names to allow duplicates of
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`multiple_crate_versions`](https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions)
+
+
 ## `enforce-iter-loop-reborrow`
+Whether to recommend using implicit into iter for reborrowed values.
+
 #### Example
 ```no_run
 let mut vec = vec![1, 2, 3];
@@ -793,7 +806,7 @@ for _ in &mut *rmvec {}
 
 
 ## `check-private-items`
-
+Whether to also run the listed lints on private items.
 
 **Default Value:** `false`
 
@@ -803,5 +816,48 @@ for _ in &mut *rmvec {}
 * [`unnecessary_safety_doc`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_safety_doc)
 * [`missing_panics_doc`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_panics_doc)
 * [`missing_errors_doc`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc)
+
+
+## `pub-underscore-fields-behavior`
+Lint "public" fields in a struct that are prefixed with an underscore based on their
+exported visibility, or whether they are marked as "pub".
+
+**Default Value:** `"PubliclyExported"`
+
+---
+**Affected lints:**
+* [`pub_underscore_fields`](https://rust-lang.github.io/rust-clippy/master/index.html#pub_underscore_fields)
+
+
+## `allow-comparison-to-zero`
+Don't lint when comparing the result of a modulo operation to zero.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`modulo_arithmetic`](https://rust-lang.github.io/rust-clippy/master/index.html#modulo_arithmetic)
+
+
+## `allowed-wildcard-imports`
+List of path segments allowed to have wildcard imports.
+
+#### Example
+
+```toml
+allowed-wildcard-imports = [ "utils", "common" ]
+```
+
+#### Noteworthy
+
+1. This configuration has no effects if used with `warn_on_all_wildcard_imports = true`.
+2. Paths with any segment that containing the word 'prelude'
+are already allowed by default.
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`wildcard_imports`](https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports)
 
 

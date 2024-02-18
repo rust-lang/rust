@@ -22,13 +22,13 @@ pub fn expand_cfg(
         Ok(cfg) => {
             let matches_cfg = attr::cfg_matches(
                 &cfg,
-                &cx.sess.parse_sess,
+                &cx.sess,
                 cx.current_expansion.lint_node_id,
                 Some(cx.ecfg.features),
             );
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }
@@ -39,7 +39,7 @@ fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(cx.create_err(errors::RequiresCfgPattern { span }));
+        return Err(cx.dcx().create_err(errors::RequiresCfgPattern { span }));
     }
 
     let cfg = p.parse_meta_item()?;
@@ -47,7 +47,7 @@ fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<
     let _ = p.eat(&token::Comma);
 
     if !p.eat(&token::Eof) {
-        return Err(cx.create_err(errors::OneCfgPattern { span }));
+        return Err(cx.dcx().create_err(errors::OneCfgPattern { span }));
     }
 
     Ok(cfg)

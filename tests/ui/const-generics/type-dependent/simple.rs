@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct R;
 
 impl R {

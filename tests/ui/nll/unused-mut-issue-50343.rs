@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![deny(unused_mut)]
 #![allow(unused_variables)] // for rustfix

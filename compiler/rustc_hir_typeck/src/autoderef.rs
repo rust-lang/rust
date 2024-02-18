@@ -2,6 +2,7 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, PlaceOp};
 
+use itertools::Itertools;
 use rustc_hir_analysis::autoderef::{Autoderef, AutoderefKind};
 use rustc_infer::infer::InferOk;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
@@ -32,8 +33,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
-        let mut obligations = vec![];
         let steps = autoderef.steps();
+        if steps.is_empty() {
+            return InferOk { obligations: vec![], value: vec![] };
+        }
+
+        let mut obligations = vec![];
         let targets =
             steps.iter().skip(1).map(|&(ty, _)| ty).chain(iter::once(autoderef.final_ty(false)));
         let steps: Vec<_> = steps
@@ -54,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None
                 }
             })
-            .zip(targets)
+            .zip_eq(targets)
             .map(|(autoderef, target)| Adjustment { kind: Adjust::Deref(autoderef), target })
             .collect();
 

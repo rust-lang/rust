@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -Z mir-opt-level=4
+//@ run-pass
+//@ compile-flags: -Z mir-opt-level=4
 
 // Checks that the compiler does not ICE when passing references to field of by-value struct
 // with -Z mir-opt-level=4

@@ -1,5 +1,5 @@
-// run-pass
-// ignore-emscripten
+//@ run-pass
+//@ ignore-emscripten
 
 #![feature(extern_types)]
 #![feature(repr_simd)]

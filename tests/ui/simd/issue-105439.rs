@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -O -Zverify-llvm-ir
+//@ run-pass
+//@ compile-flags: -O -Zverify-llvm-ir
 
 #![feature(repr_simd)]
 #![feature(platform_intrinsics)]

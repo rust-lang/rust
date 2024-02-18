@@ -1,5 +1,5 @@
 use hir::HirId;
-use rustc_errors::struct_span_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
@@ -48,7 +48,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let to = normalize(to);
         trace!(?from, ?to);
         if from.has_non_region_infer() || to.has_non_region_infer() {
-            tcx.sess.span_delayed_bug(span, "argument to transmute has inference variables");
+            tcx.dcx().span_delayed_bug(span, "argument to transmute has inference variables");
             return;
         }
         // Transmutes that are only changing lifetimes are always ok.
@@ -73,10 +73,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to)
                 && size_to == Pointer(dl.instruction_address_space).size(&tcx)
             {
-                struct_span_err!(tcx.sess, span, E0591, "can't transmute zero-sized type")
-                    .note(format!("source type: {from}"))
-                    .note(format!("target type: {to}"))
-                    .help("cast with `as` to a pointer instead")
+                struct_span_code_err!(tcx.dcx(), span, E0591, "can't transmute zero-sized type")
+                    .with_note(format!("source type: {from}"))
+                    .with_note(format!("target type: {to}"))
+                    .with_help("cast with `as` to a pointer instead")
                     .emit();
                 return;
             }
@@ -112,8 +112,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(err) => err.to_string(),
         };
 
-        let mut err = struct_span_err!(
-            tcx.sess,
+        let mut err = struct_span_code_err!(
+            tcx.dcx(),
             span,
             E0512,
             "cannot transmute between types of different sizes, \
@@ -121,6 +121,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         if from == to {
             err.note(format!("`{from}` does not have a fixed size"));
+            err.emit();
         } else {
             err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
@@ -128,8 +129,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.delay_as_bug();
             } else if let Err(LayoutError::ReferencesError(_)) = sk_to {
                 err.delay_as_bug();
+            } else {
+                err.emit();
             }
         }
-        err.emit();
     }
 }

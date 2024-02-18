@@ -1,7 +1,7 @@
 // Checks that in a derived implementation of PartialOrd the lt, le, ge, gt methods are consistent
 // with partial_cmp. Also verifies that implementation is consistent with that for tuples.
 //
-// run-pass
+//@ run-pass
 
 #[derive(PartialEq, PartialOrd)]
 struct P(f64, f64);

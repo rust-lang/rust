@@ -131,7 +131,7 @@ error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:409:9
    |
 LL |         while let Some(x) = it.next() {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.by_ref()`
 
 error: this loop could be written as a `for` loop
   --> $DIR/while_let_on_iterator.rs:419:9
@@ -152,10 +152,16 @@ LL |         while let Some(x) = it.next() {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:449:5
+  --> $DIR/while_let_on_iterator.rs:451:9
+   |
+LL |         while let Some(x) = it.next() {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:461:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`
 
-error: aborting due to 26 previous errors
+error: aborting due to 27 previous errors
 

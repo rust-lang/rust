@@ -159,7 +159,7 @@ LL |     if let ....3 = 0 {}
    |            ^^^ help: use `..=` instead
 
 error: range-to patterns with `...` are not allowed
-  --> $DIR/recover-range-pats.rs:149:17
+  --> $DIR/recover-range-pats.rs:153:17
    |
 LL |             let ...$e;
    |                 ^^^ help: use `..=` instead
@@ -170,7 +170,7 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:153:19
+  --> $DIR/recover-range-pats.rs:160:19
    |
 LL |             let $e...;
    |                   ^^^ help: use `..` instead
@@ -182,7 +182,7 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
-  --> $DIR/recover-range-pats.rs:154:19
+  --> $DIR/recover-range-pats.rs:162:19
    |
 LL |             let $e..=;
    |                   ^^^ help: use `..` instead
@@ -271,7 +271,7 @@ LL |     if let X... .0 = 0 {}
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
 
 error: `...` range patterns are deprecated
-  --> $DIR/recover-range-pats.rs:137:20
+  --> $DIR/recover-range-pats.rs:138:20
    |
 LL |             let $e1...$e2;
    |                    ^^^ help: use `..=` for an inclusive range
@@ -478,7 +478,169 @@ LL |     if let ....3 = 0 {}
    |               |
    |               expected integer, found floating-point number
 
-error: aborting due to 60 previous errors
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:136:17
+   |
+LL |             let $e1..$e2;
+   |                 ^^^^^^^^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+...
+LL |     mac2!(0, 1);
+   |     ----------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |             if let $e1..$e2; { todo!() }
+   |             ++               +++++++++++
 
-Some errors have detailed explanations: E0029, E0308, E0586.
-For more information about an error, try `rustc --explain E0029`.
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:138:17
+   |
+LL |             let $e1...$e2;
+   |                 ^^^^^^^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
+...
+LL |     mac2!(0, 1);
+   |     ----------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |             if let $e1...$e2; { todo!() }
+   |             ++                +++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:142:17
+   |
+LL |             let $e1..=$e2;
+   |                 ^^^^^^^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
+...
+LL |     mac2!(0, 1);
+   |     ----------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |             if let $e1..=$e2; { todo!() }
+   |             ++                +++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:151:17
+   |
+LL |             let ..$e;
+   |                 ^^^^ pattern `0_i32..=i32::MAX` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let ..$e; { todo!() }
+   |             ++           +++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:153:17
+   |
+LL |             let ...$e;
+   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let ...$e; { todo!() }
+   |             ++            +++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:156:17
+   |
+LL |             let ..=$e;
+   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let ..=$e; { todo!() }
+   |             ++            +++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:158:17
+   |
+LL |             let $e..;
+   |                 ^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let $e..; { todo!() }
+   |             ++           +++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:160:17
+   |
+LL |             let $e...;
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let $e...; { todo!() }
+   |             ++            +++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/recover-range-pats.rs:162:17
+   |
+LL |             let $e..=;
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `i32`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |             if let $e..=; { todo!() }
+   |             ++            +++++++++++
+
+error: aborting due to 69 previous errors
+
+Some errors have detailed explanations: E0005, E0029, E0308, E0586.
+For more information about an error, try `rustc --explain E0005`.

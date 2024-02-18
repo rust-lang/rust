@@ -1067,3 +1067,82 @@ mod repr {
         );
     }
 }
+
+mod macro_use {
+    use super::*;
+
+    #[test]
+    fn completes_macros() {
+        check(
+            r#"
+//- /dep.rs crate:dep
+#[macro_export]
+macro_rules! foo {
+    () => {};
+}
+
+#[macro_export]
+macro_rules! bar {
+    () => {};
+}
+
+//- /main.rs crate:main deps:dep
+#[macro_use($0)]
+extern crate dep;
+"#,
+            expect![[r#"
+                ma bar
+                ma foo
+            "#]],
+        )
+    }
+
+    #[test]
+    fn only_completes_exported_macros() {
+        check(
+            r#"
+//- /dep.rs crate:dep
+#[macro_export]
+macro_rules! foo {
+    () => {};
+}
+
+macro_rules! bar {
+    () => {};
+}
+
+//- /main.rs crate:main deps:dep
+#[macro_use($0)]
+extern crate dep;
+"#,
+            expect![[r#"
+                ma foo
+            "#]],
+        )
+    }
+
+    #[test]
+    fn does_not_completes_already_imported_macros() {
+        check(
+            r#"
+//- /dep.rs crate:dep
+#[macro_export]
+macro_rules! foo {
+    () => {};
+}
+
+#[macro_export]
+macro_rules! bar {
+    () => {};
+}
+
+//- /main.rs crate:main deps:dep
+#[macro_use(foo, $0)]
+extern crate dep;
+"#,
+            expect![[r#"
+                ma bar
+            "#]],
+        )
+    }
+}

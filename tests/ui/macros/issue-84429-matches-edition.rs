@@ -1,5 +1,5 @@
-// edition:2021
-// check-pass
+//@ edition:2021
+//@ check-pass
 //
 // Regression test for issue #84429
 // Tests that we can properly invoke `matches!` from a 2021-edition crate.

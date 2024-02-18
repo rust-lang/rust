@@ -32,11 +32,12 @@
           StorageLive(_6);
           StorageLive(_7);
           _7 = const 0_usize;
-          _8 = Len(_3);
+-         _8 = Len(_3);
 -         _9 = Lt(_7, _8);
 -         assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> [success: bb1, unwind continue];
-+         _9 = Lt(const 0_usize, _8);
-+         assert(move _9, "index out of bounds: the length is {} but the index is {}", _8, const 0_usize) -> [success: bb1, unwind continue];
++         _8 = const N;
++         _9 = Lt(const 0_usize, const N);
++         assert(move _9, "index out of bounds: the length is {} but the index is {}", const N, const 0_usize) -> [success: bb1, unwind continue];
       }
   
       bb1: {
@@ -57,9 +58,9 @@
 -         _13 = Len(_3);
 -         _14 = Lt(_12, _13);
 -         assert(move _14, "index out of bounds: the length is {} but the index is {}", move _13, _12) -> [success: bb3, unwind continue];
-+         _13 = _8;
-+         _14 = Lt(_2, _8);
-+         assert(move _14, "index out of bounds: the length is {} but the index is {}", _8, _2) -> [success: bb3, unwind continue];
++         _13 = const N;
++         _14 = Lt(_2, const N);
++         assert(move _14, "index out of bounds: the length is {} but the index is {}", const N, _2) -> [success: bb3, unwind continue];
       }
   
       bb3: {

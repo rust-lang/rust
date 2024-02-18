@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(unused_mut)]
 #![allow(non_camel_case_types)]
 
 
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 enum color {
     rgb(isize, isize, isize),
     rgba(isize, isize, isize, isize),

@@ -4,8 +4,8 @@
 // expression was causing an ICE due to a failure to save/restore
 // state in the AST numbering pass when entering a nested body.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 fn block_on<F>(_: F) -> usize {
     0

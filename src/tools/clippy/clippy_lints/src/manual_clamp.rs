@@ -11,7 +11,7 @@ use clippy_utils::{
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::def::Res;
-use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, Guard, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
+use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
@@ -394,7 +394,7 @@ fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opt
         // Find possible min/max branches
         let minmax_values = |a: &'tcx Arm<'tcx>| {
             if let PatKind::Binding(_, var_hir_id, _, None) = &a.pat.kind
-                && let Some(Guard::If(e)) = a.guard
+                && let Some(e) = a.guard
             {
                 Some((e, var_hir_id, a.body))
             } else {

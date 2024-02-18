@@ -9,24 +9,24 @@
 // up clobbering `/dev/null`. Instead we'll use a non-existent path, which
 // also used to ICE, but even root can't magically write there.
 
-// compile-flags: -o ./does-not-exist/output
+//@ compile-flags: -o ./does-not-exist/output
 
 // The error-pattern check occurs *before* normalization, and the error patterns
 // are wildly different between build environments. So this is a cop-out (and we
 // rely on the checking of the normalized stderr output as our actual
 // "verification" of the diagnostic).
 
-// error-pattern: error
+//@ error-pattern: error
 
 // On Mac OS X, we get an error like the below
-// normalize-stderr-test "failed to write bytecode to ./does-not-exist/output.non_ice_error_on_worker_io_fail.*" -> "io error modifying ./does-not-exist/"
+//@ normalize-stderr-test "failed to write bytecode to ./does-not-exist/output.non_ice_error_on_worker_io_fail.*" -> "io error modifying ./does-not-exist/"
 
 // On Linux, we get an error like the below
-// normalize-stderr-test "couldn't create a temp dir.*" -> "io error modifying ./does-not-exist/"
+//@ normalize-stderr-test "couldn't create a temp dir.*" -> "io error modifying ./does-not-exist/"
 
-// ignore-windows - this is a unix-specific test
-// ignore-emscripten - the file-system issues do not replicate here
-// ignore-wasm - the file-system issues do not replicate here
-// ignore-arm - the file-system issues do not replicate here, at least on armhf-gnu
+//@ ignore-windows - this is a unix-specific test
+//@ ignore-emscripten - the file-system issues do not replicate here
+//@ ignore-wasm - the file-system issues do not replicate here
+//@ ignore-arm - the file-system issues do not replicate here, at least on armhf-gnu
 
 #![crate_type = "lib"]

@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 #![feature(proc_macro_quote)]
 #![crate_type = "proc-macro"]

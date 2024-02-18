@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:stdlib-prelude.rs
+//@ check-pass
+//@ aux-build:stdlib-prelude.rs
 
 #![feature(decl_macro)]
 #![feature(prelude_import)]

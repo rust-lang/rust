@@ -1,15 +1,14 @@
 //! Run all tests in a project, similar to `cargo test`, but using the mir interpreter.
 
-use std::{
-    cell::RefCell, collections::HashMap, fs::read_to_string, panic::AssertUnwindSafe, path::PathBuf,
-};
+use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::PathBuf};
 
-use hir::Crate;
-use ide::{AnalysisHost, Change, DiagnosticCode, DiagnosticsConfig};
+use hir::{Change, Crate};
+use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use profile::StopWatch;
 use project_model::{CargoConfig, ProjectWorkspace, RustLibSource, Sysroot};
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
+use rustc_hash::FxHashMap;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, FileId};
 use walkdir::WalkDir;
@@ -27,7 +26,7 @@ struct Tester {
 
 fn string_to_diagnostic_code_leaky(code: &str) -> DiagnosticCode {
     thread_local! {
-        static LEAK_STORE: RefCell<HashMap<String, DiagnosticCode>> = RefCell::new(HashMap::new());
+        static LEAK_STORE: RefCell<FxHashMap<String, DiagnosticCode>> = RefCell::new(FxHashMap::default());
     }
     LEAK_STORE.with_borrow_mut(|s| match s.get(code) {
         Some(c) => *c,
@@ -39,9 +38,9 @@ fn string_to_diagnostic_code_leaky(code: &str) -> DiagnosticCode {
     })
 }
 
-fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> HashMap<DiagnosticCode, usize> {
+fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> FxHashMap<DiagnosticCode, usize> {
     let text = read_to_string(p).unwrap();
-    let mut result = HashMap::new();
+    let mut result = FxHashMap::default();
     {
         let mut text = &*text;
         while let Some(p) = text.find("error[E") {
@@ -55,15 +54,20 @@ fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> HashMap<DiagnosticCode, u
 
 impl Tester {
     fn new() -> Result<Self> {
-        let tmp_file = AbsPathBuf::assert("/tmp/ra-rustc-test.rs".into());
+        let mut path = std::env::temp_dir();
+        path.push("ra-rustc-test.rs");
+        let tmp_file = AbsPathBuf::try_from(path).unwrap();
         std::fs::write(&tmp_file, "")?;
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
+        let cargo_config =
+            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let workspace = ProjectWorkspace::DetachedFiles {
             files: vec![tmp_file.clone()],
-            sysroot: Ok(
-                Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env).unwrap()
-            ),
+            sysroot: Ok(Sysroot::discover(
+                tmp_file.parent().unwrap(),
+                &cargo_config.extra_env,
+                false,
+            )
+            .unwrap()),
             rustc_cfg: vec![],
         };
         let load_cargo_config = LoadCargoConfig {
@@ -101,7 +105,7 @@ impl Tester {
         let expected = if stderr_path.exists() {
             detect_errors_from_rustc_stderr_file(stderr_path)
         } else {
-            HashMap::new()
+            FxHashMap::default()
         };
         let text = read_to_string(&p).unwrap();
         let mut change = Change::new();
@@ -119,26 +123,43 @@ impl Tester {
         change.change_file(self.root_file, Some(Arc::from(text)));
         self.host.apply_change(change);
         let diagnostic_config = DiagnosticsConfig::test_sample();
-        let diags = self
-            .host
-            .analysis()
-            .diagnostics(&diagnostic_config, ide::AssistResolveStrategy::None, self.root_file)
-            .unwrap();
-        let mut actual = HashMap::new();
-        for diag in diags {
-            if !matches!(diag.code, DiagnosticCode::RustcHardError(_)) {
-                continue;
+
+        let mut actual = FxHashMap::default();
+        let panicked = match std::panic::catch_unwind(|| {
+            self.host
+                .analysis()
+                .diagnostics(&diagnostic_config, ide::AssistResolveStrategy::None, self.root_file)
+                .unwrap()
+        }) {
+            Err(e) => Some(e),
+            Ok(diags) => {
+                for diag in diags {
+                    if !matches!(diag.code, DiagnosticCode::RustcHardError(_)) {
+                        continue;
+                    }
+                    if !should_have_no_error && !SUPPORTED_DIAGNOSTICS.contains(&diag.code) {
+                        continue;
+                    }
+                    *actual.entry(diag.code).or_insert(0) += 1;
+                }
+                None
             }
-            if !should_have_no_error && !SUPPORTED_DIAGNOSTICS.contains(&diag.code) {
-                continue;
-            }
-            *actual.entry(diag.code).or_insert(0) += 1;
-        }
+        };
         // Ignore tests with diagnostics that we don't emit.
         ignore_test |= expected.keys().any(|k| !SUPPORTED_DIAGNOSTICS.contains(k));
         if ignore_test {
             println!("{p:?} IGNORE");
             self.ignore_count += 1;
+        } else if let Some(panic) = panicked {
+            if let Some(msg) = panic
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| panic.downcast_ref::<&str>().copied())
+            {
+                println!("{msg:?} ")
+            }
+            println!("PANIC");
+            self.fail_count += 1;
         } else if actual == expected {
             println!("{p:?} PASS");
             self.pass_count += 1;
@@ -222,11 +243,10 @@ impl flags::RustcTests {
                 let tester = AssertUnwindSafe(&mut tester);
                 let p = p.clone();
                 move || {
-                    let tester = tester;
-                    tester.0.test(p);
+                    let _guard = stdx::panic_context::enter(p.display().to_string());
+                    { tester }.0.test(p);
                 }
             }) {
-                println!("panic detected at test {:?}", p);
                 std::panic::resume_unwind(e);
             }
         }

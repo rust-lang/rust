@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that fn item types are zero-sized.
 
 use std::mem::{size_of, size_of_val};

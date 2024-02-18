@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Ensure that diagnostics for mutability error (because the root variable
 // isn't mutable) work with `capture_disjoint_fields` enabled.

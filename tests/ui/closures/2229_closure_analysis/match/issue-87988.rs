@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@ run-pass
+//@ edition:2021
 
 const LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: i32 = 0x01;
 const LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: i32 = 0x02;

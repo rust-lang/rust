@@ -830,6 +830,8 @@ impl TyCoercionStability {
                 | TyKind::Infer
                 | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)
+                | TyKind::InferDelegation(..)
+                | TyKind::AnonAdt(..)
                 | TyKind::Err(_) => Self::Reborrow,
             };
         }
@@ -880,6 +882,7 @@ impl TyCoercionStability {
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
                 | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::Alias(ty::Projection, _) => Self::Deref,
@@ -1086,7 +1089,7 @@ fn report<'tcx>(
                 //
                 // e.g. `&mut x.y.z` where `x` is a union, and accessing `z` requires a
                 // deref through `ManuallyDrop<_>` will not compile.
-                let parent_id = cx.tcx.hir().parent_id(expr.hir_id);
+                let parent_id = cx.tcx.parent_hir_id(expr.hir_id);
                 if parent_id == data.first_expr.hir_id {
                     return;
                 }

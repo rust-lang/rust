@@ -1,6 +1,6 @@
-// check-pass
-// edition:2018
-// aux-build:gensymed.rs
+//@ check-pass
+//@ edition:2018
+//@ aux-build:gensymed.rs
 
 extern crate gensymed;
 

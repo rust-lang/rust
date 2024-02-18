@@ -1,6 +1,6 @@
-// aux-build:edition-extern-crate-allowed.rs
-// edition:2015
-// check-pass
+//@ aux-build:edition-extern-crate-allowed.rs
+//@ edition:2015
+//@ check-pass
 
 #![warn(rust_2018_idioms)]
 

@@ -48,9 +48,20 @@ pub enum Message {
     /// Indicate a gradual progress.
     ///
     /// This is supposed to be the number of loaded files.
-    Progress { n_total: usize, n_done: usize, config_version: u32 },
+    Progress {
+        /// The total files to be loaded.
+        n_total: usize,
+        /// The files that have been loaded successfully.
+        n_done: Option<usize>,
+        /// The dir being loaded, `None` if its for a file.
+        dir: Option<AbsPathBuf>,
+        /// The [`Config`] version.
+        config_version: u32,
+    },
     /// The handle loaded the following files' content.
     Loaded { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
+    /// The handle loaded the following files' content.
+    Changed { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
 }
 
 /// Type that will receive [`Messages`](Message) from a [`Handle`].
@@ -190,7 +201,7 @@ impl Directories {
 /// ```
 fn dirs(base: AbsPathBuf, exclude: &[&str]) -> Directories {
     let exclude = exclude.iter().map(|it| base.join(it)).collect::<Vec<_>>();
-    Directories { extensions: vec!["rs".to_string()], include: vec![base], exclude }
+    Directories { extensions: vec!["rs".to_owned()], include: vec![base], exclude }
 }
 
 impl fmt::Debug for Message {
@@ -199,10 +210,14 @@ impl fmt::Debug for Message {
             Message::Loaded { files } => {
                 f.debug_struct("Loaded").field("n_files", &files.len()).finish()
             }
-            Message::Progress { n_total, n_done, config_version } => f
+            Message::Changed { files } => {
+                f.debug_struct("Changed").field("n_files", &files.len()).finish()
+            }
+            Message::Progress { n_total, n_done, dir, config_version } => f
                 .debug_struct("Progress")
                 .field("n_total", n_total)
                 .field("n_done", n_done)
+                .field("dir", dir)
                 .field("config_version", config_version)
                 .finish(),
         }

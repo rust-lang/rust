@@ -1,7 +1,4 @@
-// run-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
-
+//@ run-pass
 union Foo {
     bar: i8,
     _blah: isize,

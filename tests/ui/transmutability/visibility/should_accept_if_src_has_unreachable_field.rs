@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 //! The presence of an unreachable field in the source type (e.g., a public
 //! field with a private type does not affect transmutability. (This rule is

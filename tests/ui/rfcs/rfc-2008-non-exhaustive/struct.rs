@@ -1,4 +1,4 @@
-// aux-build:structs.rs
+//@ aux-build:structs.rs
 extern crate structs;
 
 use structs::{NormalStruct, UnitStruct, TupleStruct, FunctionalRecord};

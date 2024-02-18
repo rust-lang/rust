@@ -12,7 +12,7 @@
 use crate::escape;
 use crate::fmt;
 use crate::iter::FusedIterator;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 
 mod ascii_char;
 #[unstable(feature = "ascii_char", issue = "110998")]
@@ -96,6 +96,17 @@ pub fn escape_default(c: u8) -> EscapeDefault {
     EscapeDefault(escape::EscapeIterInner::new(data, range))
 }
 
+impl EscapeDefault {
+    pub(crate) fn empty() -> Self {
+        let data = [Char::Null; 4];
+        EscapeDefault(escape::EscapeIterInner::new(data, 0..0))
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = u8;
@@ -122,7 +133,7 @@ impl Iterator for EscapeDefault {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.0.advance_by(n)
     }
 }
@@ -135,7 +146,7 @@ impl DoubleEndedIterator for EscapeDefault {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.0.advance_back_by(n)
     }
 }

@@ -1,6 +1,3 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
 #![feature(rustc_attrs)]
 
 #[rustc_layout_scalar_valid_range_start(1)]

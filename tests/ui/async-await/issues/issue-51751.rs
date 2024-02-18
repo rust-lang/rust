@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 async fn inc(limit: i64) -> i64 {
     limit + 1

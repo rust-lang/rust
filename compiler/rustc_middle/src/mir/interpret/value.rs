@@ -418,8 +418,8 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
 
     #[inline]
     pub fn to_float<F: Float>(self) -> InterpResult<'tcx, F> {
-        // Going through `to_uint` to check size and truncation.
-        Ok(F::from_bits(self.to_uint(Size::from_bits(F::BITS))?))
+        // Going through `to_bits` to check size and truncation.
+        Ok(F::from_bits(self.to_bits(Size::from_bits(F::BITS))?))
     }
 
     #[inline]

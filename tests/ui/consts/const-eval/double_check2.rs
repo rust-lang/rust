@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This test exhibits undefined behavior, but it is very expensive and complex to check for such
 // UB in constants.

@@ -1,9 +1,9 @@
 //! This test checks that walking into binders
 //! during opaque type collection does not ICE or raise errors.
 
-// edition: 2021
+//@ edition: 2021
 
-// check-pass
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 

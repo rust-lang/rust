@@ -34,7 +34,7 @@ fn inclusive_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb0: {
         _4 = RangeInclusive::<u32> { start: _1, end: _2, exhausted: const false };
         StorageLive(_5);
-        _5 = move _4;
+        _5 = _4;
         goto -> bb1;
     }
 

@@ -146,28 +146,39 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
 const TUPLE_FIELD_FIRST: TokenSet =
     types::TYPE_FIRST.union(ATTRIBUTE_FIRST).union(VISIBILITY_FIRST);
 
+// test_err tuple_field_list_recovery
+// struct S(struct S;
+// struct S(A,,B);
 fn tuple_field_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
     let m = p.start();
-    delimited(p, T!['('], T![')'], T![,], TUPLE_FIELD_FIRST, |p| {
-        let m = p.start();
-        // test tuple_field_attrs
-        // struct S (#[attr] f32);
-        attributes::outer_attrs(p);
-        let has_vis = opt_visibility(p, true);
-        if !p.at_ts(types::TYPE_FIRST) {
-            p.error("expected a type");
-            if has_vis {
-                m.complete(p, ERROR);
-            } else {
-                m.abandon(p);
+    delimited(
+        p,
+        T!['('],
+        T![')'],
+        T![,],
+        || "expected tuple field".into(),
+        TUPLE_FIELD_FIRST,
+        |p| {
+            let m = p.start();
+            // test tuple_field_attrs
+            // struct S (#[attr] f32);
+            attributes::outer_attrs(p);
+            let has_vis = opt_visibility(p, true);
+            if !p.at_ts(types::TYPE_FIRST) {
+                p.error("expected a type");
+                if has_vis {
+                    m.complete(p, ERROR);
+                } else {
+                    m.abandon(p);
+                }
+                return false;
             }
-            return false;
-        }
-        types::type_(p);
-        m.complete(p, TUPLE_FIELD);
-        true
-    });
+            types::type_(p);
+            m.complete(p, TUPLE_FIELD);
+            true
+        },
+    );
 
     m.complete(p, TUPLE_FIELD_LIST);
 }

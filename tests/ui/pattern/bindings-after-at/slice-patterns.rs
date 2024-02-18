@@ -1,6 +1,6 @@
 // Test bindings-after-at with slice-patterns
 
-// run-pass
+//@ run-pass
 
 
 #[derive(Debug, PartialEq)]

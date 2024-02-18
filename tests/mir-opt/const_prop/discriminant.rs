@@ -1,4 +1,4 @@
-// unit-test: ConstProp
+// unit-test: GVN
 
 // FIXME(wesleywiser): Ideally, we could const-prop away all of this and just be left with
 // `let x = 42` but that doesn't work because const-prop doesn't support `Operand::Indirect`
@@ -6,7 +6,7 @@
 // Fixing either of those will allow us to const-prop this away.
 
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-// EMIT_MIR discriminant.main.ConstProp.diff
+// EMIT_MIR discriminant.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: bb0: {

@@ -5,15 +5,8 @@ use rustc_middle::ty::{self, Ty};
 
 use crate::traits::{NormalizeExt, Obligation};
 
-pub trait StructurallyNormalizeExt<'tcx> {
-    fn structurally_normalize(
-        &self,
-        ty: Ty<'tcx>,
-        fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Result<Ty<'tcx>, Vec<FulfillmentError<'tcx>>>;
-}
-
-impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
+#[extension(pub trait StructurallyNormalizeExt<'tcx>)]
+impl<'tcx> At<'_, 'tcx> {
     fn structurally_normalize(
         &self,
         ty: Ty<'tcx>,
@@ -22,8 +15,7 @@ impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            // FIXME(-Znext-solver): Should we resolve opaques here?
-            let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _) = *ty.kind() else {
+            let ty::Alias(..) = *ty.kind() else {
                 return Ok(ty);
             };
 

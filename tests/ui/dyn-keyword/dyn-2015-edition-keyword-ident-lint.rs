@@ -4,8 +4,8 @@
 // this file via `rustfix`, we want the rustfix output to be
 // compilable; so the macros here carefully use `dyn` "correctly."
 //
-// edition:2015
-// run-rustfix
+//@ edition:2015
+//@ run-rustfix
 
 #![allow(non_camel_case_types)]
 #![deny(keyword_idents)]

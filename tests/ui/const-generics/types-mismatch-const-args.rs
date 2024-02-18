@@ -1,4 +1,4 @@
-// revisions: full min
+//@ revisions: full min
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![cfg_attr(full, allow(incomplete_features))]
 

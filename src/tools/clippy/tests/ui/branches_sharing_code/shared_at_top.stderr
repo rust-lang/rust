@@ -2,7 +2,6 @@ error: all if blocks contain the same code at the start
   --> $DIR/shared_at_top.rs:11:5
    |
 LL | /     if true {
-LL | |
 LL | |         println!("Hello World!");
    | |_________________________________^
    |
@@ -21,7 +20,6 @@ error: all if blocks contain the same code at the start
   --> $DIR/shared_at_top.rs:21:5
    |
 LL | /     if x == 0 {
-LL | |
 LL | |         let y = 9;
 LL | |         println!("The value y was set to: `{}`", y);
 LL | |         let _z = y;
@@ -54,7 +52,6 @@ error: all if blocks contain the same code at the start
   --> $DIR/shared_at_top.rs:62:5
    |
 LL | /     if x == 10 {
-LL | |
 LL | |         let used_value_name = "Different type";
 LL | |         println!("Str: {}", used_value_name);
    | |_____________________________________________^
@@ -105,13 +102,12 @@ error: this `if` has identical blocks
    |
 LL |       if x == 2019 {
    |  __________________^
-LL | |
 LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/shared_at_top.rs:106:12
+  --> $DIR/shared_at_top.rs:105:12
    |
 LL |       } else {
    |  ____________^

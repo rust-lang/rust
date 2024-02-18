@@ -1,4 +1,4 @@
-// error-pattern:mismatched types
+//@ error-pattern:mismatched types
 
 fn f() -> isize { true }
 

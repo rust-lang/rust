@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // The goal of this test is to ensure that T: Bar<T::Item>
 // in the where clause does not cycle

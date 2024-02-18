@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 struct X { val: i32 }
 impl std::ops::Deref for X {

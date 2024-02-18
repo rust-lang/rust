@@ -33,10 +33,6 @@ hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the as
 
 hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes
 
-hir_analysis_async_trait_impl_should_be_async =
-    method `{$method_name}` should be async because the method from the trait is async
-    .trait_item_label = required because the trait method is async
-
 hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit while auto-dereferencing `{$ty}`
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
@@ -70,7 +66,7 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
 hir_analysis_const_bound_for_non_const_trait =
-    ~const can only be applied to `#[const_trait]` traits
+    `{$modifier}` can only be applied to `#[const_trait]` traits
 
 hir_analysis_const_impl_for_non_const_trait =
     const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
@@ -127,6 +123,28 @@ hir_analysis_field_already_declared =
     .label = field already declared
     .previous_decl_label = `{$field_name}` first declared here
 
+hir_analysis_field_already_declared_both_nested =
+    field `{$field_name}` is already declared
+    .label = field `{$field_name}` declared in this unnamed field
+    .nested_field_decl_note = field `{$field_name}` declared here
+    .previous_decl_label = `{$field_name}` first declared here in this unnamed field
+    .previous_nested_field_decl_note = field `{$field_name}` first declared here
+
+hir_analysis_field_already_declared_current_nested =
+    field `{$field_name}` is already declared
+    .label = field `{$field_name}` declared in this unnamed field
+    .nested_field_decl_note = field `{$field_name}` declared here
+    .previous_decl_label = `{$field_name}` first declared here
+
+hir_analysis_field_already_declared_nested_help =
+    fields from the type of this unnamed field are considered fields of the outer type
+
+hir_analysis_field_already_declared_previous_nested =
+    field `{$field_name}` is already declared
+    .label = field already declared
+    .previous_decl_label = `{$field_name}` first declared here in this unnamed field
+    .previous_nested_field_decl_note = field `{$field_name}` first declared here
+
 hir_analysis_function_not_found_in_trait = function not found in this trait
 
 hir_analysis_function_not_have_default_implementation = function doesn't have a default implementation
@@ -134,6 +152,8 @@ hir_analysis_function_not_have_default_implementation = function doesn't have a 
 
 hir_analysis_functions_names_duplicated = functions names are duplicated
     .note = all `#[rustc_must_implement_one_of]` arguments must be unique
+
+hir_analysis_generic_args_on_overridden_impl = could not resolve generic parameters on overridden impl
 
 hir_analysis_impl_not_marked_default = `{$ident}` specializes an item from a parent `impl`, but that item is not marked `default`
     .label = cannot specialize default item `{$ident}`
@@ -178,6 +198,8 @@ hir_analysis_invalid_union_field =
 hir_analysis_invalid_union_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
+hir_analysis_invalid_unnamed_field_ty = unnamed fields can only have struct or union types
+
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
     .label = const parameter declared here
 
@@ -209,6 +231,9 @@ hir_analysis_manual_implementation =
     manual implementations of `{$trait_name}` are experimental
     .label = manual implementations of `{$trait_name}` are experimental
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
+
+hir_analysis_method_should_return_future = method should be `async` or return a future, but it is synchronous
+    .note = this method is `async` so it expects a future to be returned
 
 hir_analysis_missing_one_of_trait_item = not all trait items implemented, missing one of: `{$missing_items_msg}`
     .label = missing one of `{$missing_items_msg}` in implementation
@@ -262,6 +287,10 @@ hir_analysis_must_implement_not_function_note = all `#[rustc_must_implement_one_
 hir_analysis_must_implement_not_function_span_note = required by this annotation
 
 hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
+
+hir_analysis_not_supported_delegation =
+    {$descr} is not supported yet
+    .label = callee defined here
 
 hir_analysis_only_current_traits_arbitrary = only traits defined in the current crate can be implemented for arbitrary types
 
@@ -346,9 +375,26 @@ hir_analysis_start_not_target_feature = `#[start]` function is not allowed to ha
 hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
     .label = `#[start]` function is not allowed to be `#[track_caller]`
 
-hir_analysis_static_specialize = cannot specialize on `'static` lifetime
+hir_analysis_static_mut_ref = creating a {$shared} reference to a mutable static
+    .label = {$shared} reference to mutable static
+    .note = {$shared ->
+        [shared] this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+        *[mutable] this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
+    }
+    .suggestion = use `addr_of!` instead to create a raw pointer
+    .suggestion_mut = use `addr_of_mut!` instead to create a raw pointer
 
-hir_analysis_substs_on_overridden_impl = could not resolve substs on overridden impl
+hir_analysis_static_mut_refs_lint = creating a {$shared} reference to mutable static is discouraged
+    .label = {$shared} reference to mutable static
+    .suggestion = use `addr_of!` instead to create a raw pointer
+    .suggestion_mut = use `addr_of_mut!` instead to create a raw pointer
+    .note = this will be a hard error in the 2024 edition
+    .why_note = {$shared ->
+        [shared] this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+        *[mutable] this mutable reference has lifetime `'static`, but if the static gets accessed (read or written) by any other means, or any other reference is created, then any further use of this mutable reference is Undefined Behavior
+    }
+
+hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
 hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
     .note = this item must mention the opaque type in its signature in order to be able to register hidden types
@@ -403,6 +449,19 @@ hir_analysis_typeof_reserved_keyword_used =
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
 
+hir_analysis_unnamed_fields_repr_field_defined = unnamed field defined here
+
+hir_analysis_unnamed_fields_repr_field_missing_repr_c =
+    named type of unnamed field must have `#[repr(C)]` representation
+    .label = unnamed field defined here
+    .field_ty_label = `{$field_ty}` defined here
+    .suggestion = add `#[repr(C)]` to this {$field_adt_kind}
+
+hir_analysis_unnamed_fields_repr_missing_repr_c =
+    {$adt_kind} with unnamed fields must have `#[repr(C)]` representation
+    .label = {$adt_kind} `{$adt_name}` defined here
+    .suggestion = add `#[repr(C)]` to this {$adt_kind}
+
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`
     .label = unrecognized atomic operation
@@ -415,6 +474,17 @@ hir_analysis_unused_associated_type_bounds =
     unnecessary associated type bound for not object safe associated type
     .note = this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
     .suggestion = remove this bound
+
+hir_analysis_unused_generic_parameter =
+    {$param_def_kind} `{$param_name}` is never used
+    .label = unused {$param_def_kind}
+    .const_param_help = if you intended `{$param_name}` to be a const parameter, use `const {$param_name}: /* Type */` instead
+hir_analysis_unused_generic_parameter_adt_help =
+    consider removing `{$param_name}`, referring to it in a field, or using a marker such as `{$phantom_data}`
+hir_analysis_unused_generic_parameter_adt_no_phantom_data_help =
+    consider removing `{$param_name}` or referring to it in a field
+hir_analysis_unused_generic_parameter_ty_alias_help =
+    consider removing `{$param_name}` or referring to it in the body of the type alias
 
 hir_analysis_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified

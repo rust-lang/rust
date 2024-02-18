@@ -88,6 +88,7 @@ use crate::str;
 // want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
 // `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
 #[cfg_attr(not(doc), repr(transparent))]
+#[allow(clippy::derived_hash_with_manual_eq)]
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make

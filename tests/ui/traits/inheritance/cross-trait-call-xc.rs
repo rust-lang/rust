@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:xc_call.rs
+//@ run-pass
+//@ aux-build:xc_call.rs
 
 
 extern crate xc_call as aux;

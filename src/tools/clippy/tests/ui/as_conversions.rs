@@ -17,7 +17,7 @@ fn main() {
 with_span!(
     span
 
-    fn coverting() {
+    fn converting() {
         let x = 0u32 as u64;
     }
 );

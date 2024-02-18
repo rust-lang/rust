@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 
 #![allow(dead_code, unused_macros)]
-// aux-build:issue-39889.rs
+//@ aux-build:issue-39889.rs
 
 extern crate issue_39889;
 use issue_39889::Issue39889;

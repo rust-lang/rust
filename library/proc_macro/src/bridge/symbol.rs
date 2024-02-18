@@ -10,14 +10,14 @@
 //! proc_macro, this module should probably be removed or simplified.
 
 use std::cell::RefCell;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 use std::str;
 
 use super::*;
 
 /// Handle for a symbol string stored within the Interner.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Symbol(NonZeroU32);
+pub struct Symbol(NonZero<u32>);
 
 impl !Send for Symbol {}
 impl !Sync for Symbol {}
@@ -137,7 +137,7 @@ thread_local! {
         names: fxhash::FxHashMap::default(),
         strings: Vec::new(),
         // Start with a base of 1 to make sure that `NonZeroU32` works.
-        sym_base: NonZeroU32::new(1).unwrap(),
+        sym_base: NonZero::new(1).unwrap(),
     });
 }
 
@@ -152,7 +152,7 @@ struct Interner {
     // The offset to apply to symbol names stored in the interner. This is used
     // to ensure that symbol names are not re-used after the interner is
     // cleared.
-    sym_base: NonZeroU32,
+    sym_base: NonZero<u32>,
 }
 
 impl Interner {

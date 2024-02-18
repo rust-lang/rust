@@ -1,7 +1,7 @@
 // This test is similar to `basic.rs`, but nested in modules.
 
-// run-pass
-// edition:2018
+//@ run-pass
+//@ edition:2018
 
 #![feature(decl_macro)]
 

@@ -1,5 +1,7 @@
 //@no-rustfix
+//@aux-build:proc_macros.rs
 #![warn(clippy::iter_without_into_iter)]
+extern crate proc_macros;
 
 pub struct S1;
 impl S1 {
@@ -117,6 +119,35 @@ impl<'a, T> IntoIterator for &'a mut S11<T> {
 struct S12;
 impl S12 {
     fn iter(&self) -> std::slice::Iter<'_, u8> {
+        todo!()
+    }
+}
+
+pub struct Issue12037;
+macro_rules! generate_impl {
+    () => {
+        impl Issue12037 {
+            fn iter(&self) -> std::slice::Iter<'_, u8> {
+                todo!()
+            }
+        }
+    };
+}
+generate_impl!();
+
+proc_macros::external! {
+    pub struct ImplWithForeignSpan;
+    impl ImplWithForeignSpan {
+        fn iter(&self) -> std::slice::Iter<'_, u8> {
+            todo!()
+        }
+    }
+}
+
+pub struct Allowed;
+impl Allowed {
+    #[allow(clippy::iter_without_into_iter)]
+    pub fn iter(&self) -> std::slice::Iter<'_, u8> {
         todo!()
     }
 }

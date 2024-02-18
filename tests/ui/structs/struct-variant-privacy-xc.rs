@@ -1,4 +1,4 @@
-// aux-build:struct_variant_privacy.rs
+//@ aux-build:struct_variant_privacy.rs
 extern crate struct_variant_privacy;
 
 fn f(b: struct_variant_privacy::Bar) {

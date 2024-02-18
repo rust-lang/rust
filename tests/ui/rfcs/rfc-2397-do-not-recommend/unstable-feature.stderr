@@ -6,6 +6,7 @@ LL | #[do_not_recommend]
    |
    = note: see issue #51992 <https://github.com/rust-lang/rust/issues/51992> for more information
    = help: add `#![feature(do_not_recommend)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 1 previous error
 

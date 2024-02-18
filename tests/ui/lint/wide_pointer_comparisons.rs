@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 use std::rc::Rc;
 use std::sync::Arc;
@@ -105,6 +105,15 @@ fn main() {
         let b = &b;
         &*a == &*b
         //~^ WARN ambiguous wide pointer comparison
+    }
+
+    {
+        macro_rules! cmp {
+            ($a:tt, $b:tt) => { $a == $b }
+            //~^ WARN ambiguous wide pointer comparison
+        }
+
+        cmp!(a, b);
     }
 
     {

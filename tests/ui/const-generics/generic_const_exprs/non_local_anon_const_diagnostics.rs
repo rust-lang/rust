@@ -1,4 +1,4 @@
-// aux-build:anon_const_non_local.rs
+//@ aux-build:anon_const_non_local.rs
 
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]

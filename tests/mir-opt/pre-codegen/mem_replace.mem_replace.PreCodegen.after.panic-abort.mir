@@ -1,0 +1,33 @@
+// MIR for `mem_replace` after PreCodegen
+
+fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
+    debug r => _1;
+    debug v => _2;
+    let mut _0: u32;
+    scope 1 (inlined std::mem::replace::<u32>) {
+        debug dest => _1;
+        debug src => _2;
+        scope 2 {
+            scope 3 {
+                debug result => _0;
+                scope 6 (inlined std::ptr::write::<u32>) {
+                    debug dst => _1;
+                    debug src => _2;
+                    scope 7 {
+                    }
+                }
+            }
+            scope 4 (inlined std::ptr::read::<u32>) {
+                debug src => _1;
+                scope 5 {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _0 = (*_1);
+        (*_1) = _2;
+        return;
+    }
+}

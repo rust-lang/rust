@@ -1,5 +1,5 @@
-// run-pass
-// ignore-emscripten
+//@ run-pass
+//@ ignore-emscripten
 
 #![allow(non_camel_case_types)]
 #![feature(repr_simd, platform_intrinsics)]

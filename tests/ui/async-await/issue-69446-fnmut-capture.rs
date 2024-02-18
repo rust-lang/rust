@@ -1,6 +1,6 @@
 // Regression test for issue #69446 - we should display
 // which variable is captured
-// edition:2018
+//@ edition:2018
 
 use core::future::Future;
 

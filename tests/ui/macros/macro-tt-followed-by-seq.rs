@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 // Regression test for issue #25436: permit token-trees to be followed
 // by sequences, enabling more general parsing.
 
 use self::Join::*;
 
 #[derive(Debug)]
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 enum Join<A,B> {
   Keep(A,B),
   Skip(A,B),

@@ -57,7 +57,7 @@ fn is_format(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             Some(higher::IfLetOrMatch::Match(_, arms, MatchSource::Normal)) => {
                 arms.iter().any(|arm| is_format(cx, arm.body))
             },
-            Some(higher::IfLetOrMatch::IfLet(_, _, then, r#else)) => {
+            Some(higher::IfLetOrMatch::IfLet(_, _, then, r#else, _)) => {
                 is_format(cx, then) || r#else.is_some_and(|e| is_format(cx, e))
             },
             _ => false,

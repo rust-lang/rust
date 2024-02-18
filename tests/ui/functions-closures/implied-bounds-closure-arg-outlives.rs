@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we are able to handle the relationships between free
 // regions bound in a closure callback.
 

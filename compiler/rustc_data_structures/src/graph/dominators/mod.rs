@@ -394,6 +394,7 @@ impl<Node: Idx> Dominators<Node> {
     /// # Panics
     ///
     /// Panics if `b` is unreachable.
+    #[inline]
     pub fn dominates(&self, a: Node, b: Node) -> bool {
         match &self.kind {
             Kind::Path => a.index() <= b.index(),

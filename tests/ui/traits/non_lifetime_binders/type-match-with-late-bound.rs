@@ -1,5 +1,5 @@
-// edition:2021
-// known-bug: unknown
+//@ edition:2021
+//@ known-bug: unknown
 
 // Checks that test_type_match code doesn't ICE when predicates have late-bound types
 

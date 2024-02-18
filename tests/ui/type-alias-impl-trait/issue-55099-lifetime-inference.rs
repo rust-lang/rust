@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test for issue #55099
 // Tests that we don't incorrectly consider a lifetime to part
 // of the concrete type

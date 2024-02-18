@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub type T = ();
 mod foo { pub use super::T; }

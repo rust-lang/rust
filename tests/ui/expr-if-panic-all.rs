@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // When all branches of an if expression result in panic, the entire if
 // expression results in panic.
 

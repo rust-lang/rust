@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:option_future.rs
+//@ check-pass
+//@ aux-build:option_future.rs
 //
 // Check that if we promise to not impl what would overlap it doesn't actually overlap
 

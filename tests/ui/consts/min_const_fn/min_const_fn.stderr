@@ -14,6 +14,7 @@ LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:39:36
@@ -23,6 +24,7 @@ LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:39:45
@@ -32,6 +34,7 @@ LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:46:28
@@ -49,6 +52,7 @@ LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:48:42
@@ -58,6 +62,7 @@ LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:48:51
@@ -67,6 +72,7 @@ LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `Foo<T>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:55:27
@@ -84,6 +90,7 @@ LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:57:38
@@ -93,6 +100,7 @@ LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:57:47
@@ -102,6 +110,7 @@ LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:64:25
@@ -111,6 +120,7 @@ LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:64:39
@@ -120,6 +130,7 @@ LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/min_const_fn.rs:64:48
@@ -129,22 +140,31 @@ LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0013]: constant functions cannot refer to statics
+error[E0658]: referencing statics in constant functions is unstable
   --> $DIR/min_const_fn.rs:89:27
    |
 LL | const fn foo25() -> u32 { BAR }
    |                           ^^^
    |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
+   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
+   = help: to fix this, the value can be extracted to a `const` and then used.
 
-error[E0013]: constant functions cannot refer to statics
+error[E0658]: referencing statics in constant functions is unstable
   --> $DIR/min_const_fn.rs:90:37
    |
 LL | const fn foo26() -> &'static u32 { &BAR }
    |                                     ^^^
    |
-   = help: consider extracting the value of the `static` to a `const`, and referring to that
+   = note: see issue #119618 <https://github.com/rust-lang/rust/issues/119618> for more information
+   = help: add `#![feature(const_refs_to_static)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
+   = help: to fix this, the value can be extracted to a `const` and then used.
 
 error: pointers cannot be cast to integers during const eval
   --> $DIR/min_const_fn.rs:91:42
@@ -190,6 +210,7 @@ LL | const fn inc(x: &mut i32) { *x += 1 }
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0493]: destructor of `AlanTuring<impl std::fmt::Debug>` cannot be evaluated at compile-time
   --> $DIR/min_const_fn.rs:122:19
@@ -209,5 +230,5 @@ LL | const fn no_apit(_x: impl std::fmt::Debug) {}
 
 error: aborting due to 24 previous errors
 
-Some errors have detailed explanations: E0013, E0493, E0658.
-For more information about an error, try `rustc --explain E0013`.
+Some errors have detailed explanations: E0493, E0658.
+For more information about an error, try `rustc --explain E0493`.

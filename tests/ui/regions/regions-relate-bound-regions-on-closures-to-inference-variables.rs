@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Test that this fairly specialized, but also reasonable, pattern
 // typechecks. The pattern involves regions bound in closures that

@@ -56,7 +56,7 @@ type variable is an instance of a type parameter. That is,
 given a generic function `fn foo<T>(t: T)`, while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
 is treated in abstract. However, when `foo()` is called, `T` will be
-substituted for a fresh type variable `N`. This variable will
+instantiated with a fresh type variable `N`. This variable will
 eventually be resolved to some concrete type (which might itself be
 a type parameter).
 
@@ -66,6 +66,7 @@ mod check;
 mod compare_impl_item;
 pub mod dropck;
 mod entry;
+mod errs;
 pub mod intrinsic;
 pub mod intrinsicck;
 mod region;
@@ -73,12 +74,11 @@ pub mod wfcheck;
 
 pub use check::check_abi;
 
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
-use check::check_mod_item_types;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::ErrorGuaranteed;
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_code_err, Diagnostic, DiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::BitSet;
@@ -110,7 +110,6 @@ pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);
     *providers = Providers {
         adt_destructor,
-        check_mod_item_types,
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,
@@ -144,7 +143,7 @@ fn get_owner_return_paths(
 // FIXME: Move this to a more appropriate place.
 pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
-        tcx.sess.span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
+        tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
     }
 }
 
@@ -174,7 +173,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-        tcx.sess.span_err(tcx.def_span(id), msg);
+        tcx.dcx().span_err(tcx.def_span(id), msg);
     }
 }
 
@@ -187,7 +186,7 @@ fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_imp
         Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
     };
 
-    tcx.sess.emit_err(err);
+    tcx.dcx().emit_err(err);
 }
 
 fn missing_items_err(
@@ -240,7 +239,7 @@ fn missing_items_err(
         }
     }
 
-    tcx.sess.emit_err(errors::MissingTraitItem {
+    tcx.dcx().emit_err(errors::MissingTraitItem {
         span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
         missing_items_msg,
         missing_trait_item_label,
@@ -258,7 +257,7 @@ fn missing_items_must_implement_one_of_err(
     let missing_items_msg =
         missing_items.iter().map(Ident::to_string).collect::<Vec<_>>().join("`, `");
 
-    tcx.sess.emit_err(errors::MissingOneOfTraitItem {
+    tcx.dcx().emit_err(errors::MissingOneOfTraitItem {
         span: impl_span,
         note: annotation_span,
         missing_items_msg,
@@ -271,7 +270,7 @@ fn default_body_is_unstable(
     item_did: DefId,
     feature: Symbol,
     reason: Option<Symbol>,
-    issue: Option<NonZeroU32>,
+    issue: Option<NonZero<u32>>,
 ) {
     let missing_item_name = tcx.associated_item(item_did).name;
     let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
@@ -283,7 +282,7 @@ fn default_body_is_unstable(
         None => none_note = true,
     };
 
-    let mut err = tcx.sess.create_err(errors::MissingTraitItemUnstable {
+    let mut err = tcx.dcx().create_err(errors::MissingTraitItemUnstable {
         span: impl_span,
         some_note,
         none_note,
@@ -294,7 +293,7 @@ fn default_body_is_unstable(
 
     rustc_session::parse::add_feature_diagnostics_for_issue(
         &mut err,
-        &tcx.sess.parse_sess,
+        &tcx.sess,
         feature,
         rustc_feature::GateIssue::Library(issue),
         false,
@@ -308,7 +307,7 @@ fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
 ) -> (String, String) {
-    let mut types: FxHashMap<Ty<'tcx>, Vec<DefId>> = FxHashMap::default();
+    let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
     let mut projections = vec![];
     for (predicate, _) in predicates {
         debug!("predicate {:?}", predicate);
@@ -526,7 +525,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
         spans = start.to_vec();
         many = Some(*end);
     }
-    tcx.sess.emit_err(errors::TransparentEnumVariant {
+    tcx.dcx().emit_err(errors::TransparentEnumVariant {
         span: sp,
         spans,
         many,
@@ -545,14 +544,14 @@ fn bad_non_zero_sized_fields<'tcx>(
     sp: Span,
 ) {
     if adt.is_enum() {
-        tcx.sess.emit_err(errors::TransparentNonZeroSizedEnum {
+        tcx.dcx().emit_err(errors::TransparentNonZeroSizedEnum {
             span: sp,
             spans: field_spans.collect(),
             field_count,
             desc: adt.descr(),
         });
     } else {
-        tcx.sess.emit_err(errors::TransparentNonZeroSized {
+        tcx.dcx().emit_err(errors::TransparentNonZeroSized {
             span: sp,
             spans: field_spans.collect(),
             field_count,
@@ -579,7 +578,7 @@ pub fn check_function_signature<'tcx>(
         fn_id: LocalDefId,
     ) -> rustc_span::Span {
         let mut args = {
-            let node = tcx.hir().expect_owner(fn_id);
+            let node = tcx.expect_hir_owner_node(fn_id);
             let decl = node.fn_decl().unwrap_or_else(|| bug!("expected fn decl, found {:?}", node));
             decl.inputs.iter().map(|t| t.span).chain(std::iter::once(decl.output.span()))
         };
@@ -616,7 +615,7 @@ pub fn check_function_signature<'tcx>(
                 cause.span = extract_span_for_error_reporting(tcx, err, &cause, local_id);
             }
             let failure_code = cause.as_failure_code_diag(err, cause.span, vec![]);
-            let mut diag = tcx.sess.create_err(failure_code);
+            let mut diag = tcx.dcx().create_err(failure_code);
             err_ctxt.note_type_err(
                 &mut diag,
                 &cause,

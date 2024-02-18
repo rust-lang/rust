@@ -1,5 +1,5 @@
 error[E0597]: `arena` does not live long enough
-  --> $DIR/dropck-tarena-unsound-drop.rs:43:7
+  --> $DIR/dropck-tarena-unsound-drop.rs:41:7
    |
 LL |     let arena: TypedArena<C> = TypedArena::default();
    |         ----- binding `arena` declared here

@@ -7,6 +7,25 @@ LL | fn test() -> Pointer<_> {
    |              |       not allowed in type signatures
    |              help: replace with the correct return type: `Pointer<i32>`
 
-error: aborting due to 1 previous error
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/issue-77179.rs:18:25
+   |
+LL |     fn bar() -> Pointer<_>;
+   |                         ^
+   |                         |
+   |                         not allowed in type signatures
+   |                         help: use type parameters instead: `T`
 
-For more information about this error, try `rustc --explain E0121`.
+error[E0792]: expected generic type parameter, found `i32`
+  --> $DIR/issue-77179.rs:9:5
+   |
+LL | type Pointer<T> = impl std::ops::Deref<Target = T>;
+   |              - this generic parameter must be used with a generic type parameter
+...
+LL |     Box::new(1)
+   |     ^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0121, E0792.
+For more information about an error, try `rustc --explain E0121`.

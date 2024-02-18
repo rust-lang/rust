@@ -13,6 +13,7 @@
 - [{arm,thumb}v4t-none-eabi](armv4t-none-eabi.md)
 - [{arm,thumb}v5te-none-eabi](armv5te-none-eabi.md)
 - armv7a-none-eabihf
+- [armv8r-none-eabihf](armv8r-none-eabihf.md)
 
 Bare-metal target for 32-bit ARM CPUs.
 

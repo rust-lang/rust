@@ -18,7 +18,8 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
+use span::Span;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use triomphe::Arc;
 
@@ -26,9 +27,9 @@ use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
     mod_path::ModPath,
-    span::SpanMapRef,
-    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, MacroCallId,
-    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
+    span_map::SpanMapRef,
+    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, Intern,
+    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
 pub fn expand_eager_macro_input(
@@ -36,7 +37,7 @@ pub fn expand_eager_macro_input(
     krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
-    call_site: SyntaxContextId,
+    call_site: Span,
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let ast_map = db.ast_id_map(macro_call.file_id);
@@ -48,13 +49,14 @@ pub fn expand_eager_macro_input(
     // When `lazy_expand` is called, its *parent* file must already exist.
     // Here we store an eager macro id for the argument expanded subtree
     // for that purpose.
-    let arg_id = db.intern_macro_call(MacroCallLoc {
+    let arg_id = MacroCallLoc {
         def,
         krate,
         eager: None,
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
         call_site,
-    });
+    }
+    .intern(db);
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         db.parse_macro_expansion(arg_id.as_macro_file());
 
@@ -81,9 +83,9 @@ pub fn expand_eager_macro_input(
         return ExpandResult { value: None, err };
     };
 
-    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map);
+    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map, call_site);
 
-    subtree.delimiter = crate::tt::Delimiter::DUMMY_INVISIBLE;
+    subtree.delimiter.kind = crate::tt::DelimiterKind::Invisible;
 
     let loc = MacroCallLoc {
         def,
@@ -93,7 +95,7 @@ pub fn expand_eager_macro_input(
         call_site,
     };
 
-    ExpandResult { value: Some(db.intern_macro_call(loc)), err }
+    ExpandResult { value: Some(loc.intern(db)), err }
 }
 
 fn lazy_expand(
@@ -101,7 +103,7 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
-    call_site: SyntaxContextId,
+    call_site: Span,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<ExpansionSpanMap>)> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
@@ -121,7 +123,7 @@ fn eager_macro_recur(
     mut offset: TextSize,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
-    call_site: SyntaxContextId,
+    call_site: Span,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
     let original = curr.value.clone_for_update();

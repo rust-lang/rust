@@ -116,7 +116,7 @@ impl LateLintPass<'_> for UnnecessaryBoxReturns {
     fn check_impl_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::ImplItem<'_>) {
         // Ignore implementations of traits, because the lint should be on the
         // trait, not on the implementation of it.
-        let Node::Item(parent) = cx.tcx.hir().get_parent(item.hir_id()) else {
+        let Node::Item(parent) = cx.tcx.parent_hir_node(item.hir_id()) else {
             return;
         };
         let ItemKind::Impl(parent) = parent.kind else { return };

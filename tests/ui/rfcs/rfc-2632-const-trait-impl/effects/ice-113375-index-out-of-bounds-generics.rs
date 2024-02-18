@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // effects ice https://github.com/rust-lang/rust/issues/113375 index out of bounds
 

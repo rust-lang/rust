@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn main() {
     const X: u8 = 0;
     let out: u8 = match 0u8 {

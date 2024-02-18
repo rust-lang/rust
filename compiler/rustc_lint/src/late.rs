@@ -364,14 +364,11 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
-    let mut passes: Vec<_> = unerased_lint_store(tcx.sess)
-        .late_module_passes
-        .iter()
-        .map(|mk_pass| (mk_pass)(tcx))
-        .collect();
-    if passes.is_empty() {
+    let late_module_passes = &unerased_lint_store(tcx.sess).late_module_passes;
+    if late_module_passes.is_empty() {
         late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
     } else {
+        let mut passes: Vec<_> = late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
         passes.push(Box::new(builtin_lints));
         let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
         late_lint_mod_inner(tcx, module_def_id, context, pass);

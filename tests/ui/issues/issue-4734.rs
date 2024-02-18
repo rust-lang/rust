@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Ensures that destructors are run for expressions of the form "e;" where
 // `e` is a type which requires a destructor.

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(ptr_metadata)]
 
@@ -13,8 +13,8 @@ impl Foo for () {
     type Bar = ();
 }
 
-struct Wrapper1<T: Foo>(#[allow(unused_tuple_struct_fields)] <T as Foo>::Bar);
-struct Wrapper2<T: Foo>(#[allow(unused_tuple_struct_fields)] <Wrapper1<T> as Pointee>::Metadata);
+struct Wrapper1<T: Foo>(#[allow(dead_code)] <T as Foo>::Bar);
+struct Wrapper2<T: Foo>(#[allow(dead_code)] <Wrapper1<T> as Pointee>::Metadata);
 
 fn main() {
     let _: Wrapper2<()> = Wrapper2(());

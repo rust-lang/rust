@@ -1,6 +1,6 @@
 // revisions: cfail
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features, unused_braces)]
+#![allow(incomplete_features, unused_braces, unused_variables)]
 
 trait Delegates<T> {}
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn f() {}
 fn i(_: u32) {}

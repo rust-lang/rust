@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 async fn dont_suggest() -> i32 {
     if false {

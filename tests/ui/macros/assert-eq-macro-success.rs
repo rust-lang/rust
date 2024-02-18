@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(PartialEq, Debug)]
 struct Point { x : isize }
 

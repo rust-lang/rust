@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(yeet_expr)]
 

@@ -12,14 +12,14 @@
 #![feature(rustc_attrs)]
 
 #[cfg(rpass1)]
-#[rustc_clean(cfg="rpass1",except="hir_owner")]
+#[rustc_clean(cfg="rpass1",except="opt_hir_owner_nodes")]
 mod foo {
     struct First;
     struct Second;
 }
 
 #[cfg(rpass2)]
-#[rustc_clean(cfg="rpass2",except="hir_owner")]
+#[rustc_clean(cfg="rpass2",except="opt_hir_owner_nodes")]
 mod foo {
     struct Second;
     struct First;

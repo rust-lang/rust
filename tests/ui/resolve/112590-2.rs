@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 mod foo {
     pub mod bar {
         pub mod baz {

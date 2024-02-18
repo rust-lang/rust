@@ -1,6 +1,6 @@
 // Regression test for #92111.
 //
-// known-bug: #110395
+//@ known-bug: #110395
 // FIXME check-pass
 
 #![feature(const_trait_impl)]

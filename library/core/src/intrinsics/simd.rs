@@ -190,13 +190,26 @@ extern "platform-intrinsic" {
     ///
     /// `T` must be a vector.
     ///
-    /// `U` must be a const array of `i32`s.
+    /// `U` must be a **const** array of `i32`s. This means it must either refer to a named
+    /// const or be given as an inline const expression (`const { ... }`).
     ///
     /// `V` must be a vector with the same element type as `T` and the same length as `U`.
     ///
-    /// Concatenates `x` and `y`, then returns a new vector such that each element is selected from
-    /// the concatenation by the matching index in `idx`.
+    /// Returns a new vector such that element `i` is selected from `xy[idx[i]]`, where `xy`
+    /// is the concatenation of `x` and `y`. It is a compile-time error if `idx[i]` is out-of-bounds
+    /// of `xy`.
     pub fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
+
+    /// Shuffle two vectors by const indices.
+    ///
+    /// `T` must be a vector.
+    ///
+    /// `U` must be a vector with the same element type as `T` and the same length as `IDX`.
+    ///
+    /// Returns a new vector such that element `i` is selected from `xy[IDX[i]]`, where `xy`
+    /// is the concatenation of `x` and `y`. It is a compile-time error if `IDX[i]` is out-of-bounds
+    /// of `xy`.
+    pub fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
     /// Read a vector of pointers.
     ///
@@ -231,6 +244,9 @@ extern "platform-intrinsic" {
     /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, write the
     /// corresponding value in `val` to the pointer.
     /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
+    ///
+    /// The stores happen in left-to-right order.
+    /// (This is relevant in case two of the stores overlap.)
     ///
     /// # Safety
     /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
@@ -468,4 +484,36 @@ extern "platform-intrinsic" {
     ///
     /// `T` must be a vector of integers.
     pub fn simd_cttz<T>(x: T) -> T;
+
+    /// Round up each element to the next highest integer-valued float.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_ceil<T>(x: T) -> T;
+
+    /// Round down each element to the next lowest integer-valued float.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_floor<T>(x: T) -> T;
+
+    /// Round each element to the closest integer-valued float.
+    /// Ties are resolved by rounding away from 0.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_round<T>(x: T) -> T;
+
+    /// Return the integer part of each element as an integer-valued float.
+    /// In other words, non-integer values are truncated towards zero.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_trunc<T>(x: T) -> T;
+
+    /// Takes the square root of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fsqrt<T>(x: T) -> T;
+
+    /// Computes `(x*y) + z` for each element, but without any intermediate rounding.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fma<T>(x: T, y: T, z: T) -> T;
 }

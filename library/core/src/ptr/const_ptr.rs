@@ -220,7 +220,7 @@ impl<T: ?Sized> *const T {
     /// provenance. (Reconstructing address space information, if required, is your responsibility.)
     ///
     /// Using this method means that code is *not* following [Strict
-    /// Provenance][../index.html#strict-provenance] rules. Supporting
+    /// Provenance][super#strict-provenance] rules. Supporting
     /// [`from_exposed_addr`][] complicates specification and reasoning and may not be supported by
     /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
     /// use [`addr`][pointer::addr] wherever possible.
@@ -232,7 +232,7 @@ impl<T: ?Sized> *const T {
     /// available.
     ///
     /// It is unclear whether this method can be given a satisfying unambiguous specification. This
-    /// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+    /// API and its claimed semantics are part of [Exposed Provenance][super#exposed-provenance].
     ///
     /// [`from_exposed_addr`]: from_exposed_addr
     #[must_use]
@@ -285,7 +285,7 @@ impl<T: ?Sized> *const T {
         self.with_addr(f(self.addr()))
     }
 
-    /// Decompose a (possibly wide) pointer into its address and metadata components.
+    /// Decompose a (possibly wide) pointer into its data pointer and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts`].
     #[unstable(feature = "ptr_metadata", issue = "81513")]
@@ -806,13 +806,15 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        let this = self;
         // SAFETY: The comparison has no side-effects, and the intrinsic
         // does this check internally in the CTFE implementation.
         unsafe {
             assert_unsafe_precondition!(
-                "ptr::sub_ptr requires `this >= origin`",
-                [T](this: *const T, origin: *const T) => this >= origin
+                "ptr::sub_ptr requires `self >= origin`",
+                (
+                    this: *const () = self as *const (),
+                    origin: *const () = origin as *const (),
+                ) => this >= origin
             )
         };
 
@@ -1284,7 +1286,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -1304,7 +1306,7 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

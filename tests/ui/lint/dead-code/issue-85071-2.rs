@@ -2,7 +2,7 @@
 // of a function, and the warning is about an unreachable definition
 // instead of an unreachable expression.
 
-// check-pass
+//@ check-pass
 
 #![warn(unused_variables,unreachable_code)]
 

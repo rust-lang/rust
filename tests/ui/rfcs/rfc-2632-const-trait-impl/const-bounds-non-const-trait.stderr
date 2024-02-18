@@ -1,0 +1,14 @@
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-bounds-non-const-trait.rs:6:28
+   |
+LL | const fn perform<T: ~const NonConst>() {}
+   |                            ^^^^^^^^
+
+error: `const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-bounds-non-const-trait.rs:9:21
+   |
+LL | fn operate<T: const NonConst>() {}
+   |                     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

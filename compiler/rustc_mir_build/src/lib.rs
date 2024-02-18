@@ -1,14 +1,16 @@
 //! Construction of MIR from HIR.
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
+
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
+#![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;
@@ -31,7 +33,7 @@ pub fn provide(providers: &mut Providers) {
     providers.mir_built = build::mir_built;
     providers.closure_saved_names_of_captured_variables =
         build::closure_saved_names_of_captured_variables;
-    providers.thir_check_unsafety = check_unsafety::thir_check_unsafety;
+    providers.check_unsafety = check_unsafety::check_unsafety;
     providers.thir_body = thir::cx::thir_body;
     providers.thir_tree = thir::print::thir_tree;
     providers.thir_flat = thir::print::thir_flat;

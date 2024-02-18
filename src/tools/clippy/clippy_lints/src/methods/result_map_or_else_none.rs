@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
             RESULT_MAP_OR_INTO_OPTION,
             expr.span,
             msg,
-            "try using `ok` instead",
+            "consider using `ok`",
             format!("{self_snippet}.ok()"),
             Applicability::MachineApplicable,
         );

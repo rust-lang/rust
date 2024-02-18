@@ -1,6 +1,5 @@
-// run-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@ run-pass
+#![allow(unreachable_patterns)]
 
 #[derive(Copy, Clone)]
 #[allow(dead_code)]
@@ -12,7 +11,7 @@ struct Pie {
 union Foo {
     #[allow(dead_code)]
     bar: i8,
-    baz: Pie
+    baz: Pie,
 }
 
 fn main() {
@@ -32,20 +31,20 @@ fn main() {
     };
 
     let u = Foo { bar: 9 };
-    unsafe { //[mir]~ WARNING unnecessary `unsafe` block
+    unsafe {
         match u {
-            Foo { baz: Pie { .. } } => {},
+            Foo { baz: Pie { .. } } => {}
         };
     }
     let u = Foo { bar: 10 };
-    unsafe { //[mir]~ WARNING unnecessary `unsafe` block
+    unsafe {
         match u {
-            Foo { baz: Pie { slices: _, size: _ } } => {},
+            Foo { baz: Pie { slices: _, size: _ } } => {}
         };
     }
 
     let u = Foo { bar: 11 };
     match u {
-        Foo { baz: _ } => {},
+        Foo { baz: _ } => {}
     };
 }

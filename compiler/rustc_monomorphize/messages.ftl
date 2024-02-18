@@ -20,6 +20,9 @@ monomorphize_recursion_limit =
     reached the recursion limit while instantiating `{$shrunk}`
     .note = `{$def_path_str}` defined here
 
+monomorphize_start_not_found = using `fn main` requires the standard library
+    .help = use `#![no_main]` to bypass the Rust generated entrypoint and declare a platform specific entrypoint yourself, usually with `#[no_mangle]`
+
 monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
 
 monomorphize_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`

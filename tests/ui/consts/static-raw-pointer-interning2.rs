@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 static mut FOO: Foo = Foo {
     field: &mut [42] as *mut [i32] as *mut i32,

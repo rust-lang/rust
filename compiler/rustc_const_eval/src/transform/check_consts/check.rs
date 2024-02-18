@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -20,7 +20,7 @@ use std::mem;
 use std::ops::{ControlFlow, Deref};
 
 use super::ops::{self, NonConstOp, Status};
-use super::qualifs::{self, CustomEq, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
+use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstCx, Qualif};
 use crate::const_eval::is_unstable_const_fn;
@@ -149,37 +149,10 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
         let return_loc = ccx.body.terminator_loc(return_block);
 
-        let custom_eq = match ccx.const_kind() {
-            // We don't care whether a `const fn` returns a value that is not structurally
-            // matchable. Functions calls are opaque and always use type-based qualification, so
-            // this value should never be used.
-            hir::ConstContext::ConstFn => true,
-
-            // If we know that all values of the return type are structurally matchable, there's no
-            // need to run dataflow.
-            // Opaque types do not participate in const generics or pattern matching, so we can safely count them out.
-            _ if ccx.body.return_ty().has_opaque_types()
-                || !CustomEq::in_any_value_of_ty(ccx, ccx.body.return_ty()) =>
-            {
-                false
-            }
-
-            hir::ConstContext::Const { .. } | hir::ConstContext::Static(_) => {
-                let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, ccx.body)
-                    .iterate_to_fixpoint()
-                    .into_results_cursor(ccx.body);
-
-                cursor.seek_after_primary_effect(return_loc);
-                cursor.get().contains(RETURN_PLACE)
-            }
-        };
-
         ConstQualifs {
             needs_drop: self.needs_drop(ccx, RETURN_PLACE, return_loc),
             needs_non_const_drop: self.needs_non_const_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
-            custom_eq,
             tainted_by_errors,
         }
     }
@@ -214,7 +187,7 @@ pub struct Checker<'mir, 'tcx> {
     local_has_storage_dead: Option<BitSet<Local>>,
 
     error_emitted: Option<ErrorGuaranteed>,
-    secondary_errors: Vec<Diagnostic>,
+    secondary_errors: Vec<DiagnosticBuilder<'tcx>>,
 }
 
 impl<'mir, 'tcx> Deref for Checker<'mir, 'tcx> {
@@ -244,7 +217,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
         if self.ccx.is_async() || body.coroutine.is_some() {
-            tcx.sess.span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
+            tcx.dcx().span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
 
@@ -272,14 +245,17 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         // If we got through const-checking without emitting any "primary" errors, emit any
-        // "secondary" errors if they occurred.
+        // "secondary" errors if they occurred. Otherwise, cancel the "secondary" errors.
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
             for error in secondary_errors {
-                self.tcx.sess.dcx().emit_diagnostic(error);
+                error.emit();
             }
         } else {
-            assert!(self.tcx.sess.has_errors().is_some());
+            assert!(self.tcx.dcx().has_errors().is_some());
+            for error in secondary_errors {
+                error.cancel();
+            }
         }
     }
 
@@ -338,7 +314,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
-        let mut err = op.build_error(self.ccx, span);
+        let err = op.build_error(self.ccx, span);
         assert!(err.is_error());
 
         match op.importance() {
@@ -347,14 +323,14 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 self.error_emitted = Some(reported);
             }
 
-            ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),
+            ops::DiagnosticImportance::Secondary => self.secondary_errors.push(err),
         }
     }
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
         if self.tcx.is_thread_local_static(def_id) {
             self.tcx
-                .sess
+                .dcx()
                 .span_delayed_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         self.check_op_spanned(ops::StaticAccess, span)
@@ -368,7 +344,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         visitor.visit_ty(ty);
     }
 
-    fn check_mut_borrow(&mut self, local: Local, kind: hir::BorrowKind) {
+    fn check_mut_borrow(&mut self, place: &Place<'_>, kind: hir::BorrowKind) {
         match self.const_kind() {
             // In a const fn all borrows are transient or point to the places given via
             // references in the arguments (so we already checked them with
@@ -379,10 +355,19 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // to mutable memory.
             hir::ConstContext::ConstFn => self.check_op(ops::TransientMutBorrow(kind)),
             _ => {
+                // For indirect places, we are not creating a new permanent borrow, it's just as
+                // transient as the already existing one. For reborrowing references this is handled
+                // at the top of `visit_rvalue`, but for raw pointers we handle it here.
+                // Pointers/references to `static mut` and cases where the `*` is not the first
+                // projection also end up here.
                 // Locals with StorageDead do not live beyond the evaluation and can
                 // thus safely be borrowed without being able to be leaked to the final
                 // value of the constant.
-                if self.local_has_storage_dead(local) {
+                // Note: This is only sound if every local that has a `StorageDead` has a
+                // `StorageDead` in every control flow path leading to a `return` terminator.
+                // The good news is that interning will detect if any unexpected mutable
+                // pointer slips through.
+                if place.is_indirect() || self.local_has_storage_dead(place.local) {
                     self.check_op(ops::TransientMutBorrow(kind));
                 } else {
                     self.check_op(ops::MutBorrow(kind));
@@ -414,6 +399,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Special-case reborrows to be more like a copy of a reference.
+        // FIXME: this does not actually handle all reborrows. It only detects cases where `*` is the outermost
+        // projection of the borrowed place, it skips deref'ing raw pointers and it skips `static`.
+        // All those cases are handled below with shared/mutable borrows.
+        // Once `const_mut_refs` is stable, we should be able to entirely remove this special case.
+        // (`const_refs_to_cell` is not needed, we already allow all borrows of indirect places anyway.)
         match *rvalue {
             Rvalue::Ref(_, kind, place) => {
                 if let Some(reborrowed_place_ref) = place_as_reborrow(self.tcx, self.body, place) {
@@ -473,33 +463,25 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 }
             }
 
-            Rvalue::Ref(_, BorrowKind::Mut { .. }, place) => {
-                let ty = place.ty(self.body, self.tcx).ty;
-                let is_allowed = match ty.kind() {
-                    // Inside a `static mut`, `&mut [...]` is allowed.
-                    ty::Array(..) | ty::Slice(_)
-                        if self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut) =>
-                    {
-                        true
-                    }
-
-                    // FIXME(ecstaticmorse): We could allow `&mut []` inside a const context given
-                    // that this is merely a ZST and it is already eligible for promotion.
-                    // This may require an RFC?
-                    /*
-                    ty::Array(_, len) if len.try_eval_target_usize(cx.tcx, cx.param_env) == Some(0)
-                        => true,
-                    */
-                    _ => false,
-                };
+            Rvalue::Ref(_, BorrowKind::Mut { .. }, place)
+            | Rvalue::AddressOf(Mutability::Mut, place) => {
+                // Inside mutable statics, we allow arbitrary mutable references.
+                // We've allowed `static mut FOO = &mut [elements];` for a long time (the exact
+                // reasons why are lost to history), and there is no reason to restrict that to
+                // arrays and slices.
+                let is_allowed =
+                    self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
                 if !is_allowed {
-                    self.check_mut_borrow(place.local, hir::BorrowKind::Ref)
+                    self.check_mut_borrow(
+                        place,
+                        if matches!(rvalue, Rvalue::Ref(..)) {
+                            hir::BorrowKind::Ref
+                        } else {
+                            hir::BorrowKind::Raw
+                        },
+                    );
                 }
-            }
-
-            Rvalue::AddressOf(Mutability::Mut, place) => {
-                self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
             Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake, place)
@@ -510,7 +492,14 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     place.as_ref(),
                 );
 
-                if borrowed_place_has_mut_interior {
+                // If the place is indirect, this is basically a reborrow. We have a reborrow
+                // special case above, but for raw pointers and pointers/references to `static` and
+                // when the `*` is not the first projection, `place_as_reborrow` does not recognize
+                // them as such, so we end up here. This should probably be considered a
+                // `TransientCellBorrow` (we consider the equivalent mutable case a
+                // `TransientMutBorrow`), but such reborrows got accidentally stabilized already and
+                // it is too much of a breaking change to take back.
+                if borrowed_place_has_mut_interior && !place.is_indirect() {
                     match self.const_kind() {
                         // In a const fn all borrows are transient or point to the places given via
                         // references in the arguments (so we already checked them with
@@ -527,6 +516,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // final value.
                             // Note: This is only sound if every local that has a `StorageDead` has a
                             // `StorageDead` in every control flow path leading to a `return` terminator.
+                            // The good news is that interning will detect if any unexpected mutable
+                            // pointer slips through.
                             if self.local_has_storage_dead(place.local) {
                                 self.check_op(ops::TransientCellBorrow);
                             } else {
@@ -568,7 +559,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Cast(_, _, _) => {}
 
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_), _) => {}
+            Rvalue::NullaryOp(
+                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::DebugAssertions,
+                _,
+            ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(_, operand) => {
@@ -648,9 +642,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if base_ty.is_unsafe_ptr() {
                     if place_ref.projection.is_empty() {
                         let decl = &self.body.local_decls[place_ref.local];
-                        if let LocalInfo::StaticRef { def_id, .. } = *decl.local_info() {
-                            let span = decl.source_info.span;
-                            self.check_static(def_id, span);
+                        // If this is a static, then this is not really dereferencing a pointer,
+                        // just directly accessing a static. That is not subject to any feature
+                        // gates (except for the one about whether statics can even be used, but
+                        // that is checked already by `visit_operand`).
+                        if let LocalInfo::StaticRef { .. } = *decl.local_info() {
                             return;
                         }
                     }
@@ -801,7 +797,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of the `begin_panic` fn assumes the argument is `&str`
                 if Some(callee) == tcx.lang_items().begin_panic_fn() {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if ty.is_str() => return,
                         _ => self.check_op(ops::PanicNonStr),
                     }
@@ -809,7 +805,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
                 if tcx.has_attr(callee, sym::rustc_const_panic_str) {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                         {
                             return;
@@ -888,7 +884,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
                     // `extern` functions, and these have no way to get marked `const`. So instead we
                     // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
-                    if self.ccx.is_const_stable_const_fn() || tcx.is_intrinsic(callee) {
+                    if self.ccx.is_const_stable_const_fn() || tcx.intrinsic(callee).is_some() {
                         self.check_op(ops::FnCallUnstable(callee, None));
                         return;
                     }
@@ -938,8 +934,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
 
-            TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => {
-                self.check_op(ops::Coroutine(hir::CoroutineKind::Coroutine))
+            TerminatorKind::Yield { .. } => self.check_op(ops::Coroutine(
+                self.tcx
+                    .coroutine_kind(self.body.source.def_id())
+                    .expect("Only expected to have a yield in a coroutine"),
+            )),
+
+            TerminatorKind::CoroutineDrop => {
+                span_bug!(
+                    self.body.source_info(location).span,
+                    "We should not encounter TerminatorKind::CoroutineDrop after coroutine transform"
+                );
             }
 
             TerminatorKind::UnwindTerminate(_) => {
@@ -966,6 +971,12 @@ fn place_as_reborrow<'tcx>(
 ) -> Option<PlaceRef<'tcx>> {
     match place.as_ref().last_projection() {
         Some((place_base, ProjectionElem::Deref)) => {
+            // FIXME: why do statics and raw pointers get excluded here? This makes
+            // some code involving mutable pointers unstable, but it is unclear
+            // why that code is treated differently from mutable references.
+            // Once TransientMutBorrow and TransientCellBorrow are stable,
+            // this can probably be cleaned up without any behavioral changes.
+
             // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
             // that points to the allocation for the static. Don't treat these as reborrows.
             if body.local_decls[place_base.local].is_ref_to_static() {
@@ -994,5 +1005,5 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.tcx.sess.emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
+    ccx.dcx().emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
 }

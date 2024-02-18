@@ -1,6 +1,6 @@
-// edition:2018
-// aux-build:issue-51798.rs
-// check-pass
+//@ edition:2018
+//@ aux-build:issue-51798.rs
+//@ check-pass
 
 extern crate issue_51798;
 

@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Wunused
+//@ check-pass
+//@ compile-flags: -Wunused
 
 // ensure there are no special warnings about uninhabited types
 // when deriving Debug on an empty enum
@@ -9,7 +9,7 @@ enum Void {}
 
 #[derive(Debug)]
 enum Foo {
-    Bar(u8),
+    Bar(#[allow(dead_code)] u8),
     Void(Void), //~ WARN variant `Void` is never constructed
 }
 

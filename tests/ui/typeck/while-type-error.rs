@@ -1,3 +1,3 @@
-// error-pattern: mismatched types
+//@ error-pattern: mismatched types
 
 fn main() { while main { } }

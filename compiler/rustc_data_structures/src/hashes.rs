@@ -25,7 +25,7 @@ impl Hash64 {
     pub const ZERO: Hash64 = Hash64 { inner: 0 };
 
     #[inline]
-    pub(crate) fn new(n: u64) -> Self {
+    pub fn new(n: u64) -> Self {
         Self { inner: n }
     }
 
@@ -75,9 +75,19 @@ impl fmt::LowerHex for Hash64 {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Hash128 {
     inner: u128,
+}
+
+// We expect Hash128 to be well mixed. So there's no point in hashing both parts.
+//
+// This also allows using Hash128-containing types in UnHash-based hashmaps, which would otherwise
+// debug_assert! that we're hashing more than a single u64.
+impl std::hash::Hash for Hash128 {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        h.write_u64(self.truncate().as_u64());
+    }
 }
 
 impl Hash128 {

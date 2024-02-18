@@ -1,5 +1,5 @@
-// aux-build:lint_stability.rs
-// error-pattern: use of deprecated function
+//@ aux-build:lint_stability.rs
+//@ error-pattern: use of deprecated function
 
 #![deny(deprecated)]
 

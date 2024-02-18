@@ -3,8 +3,8 @@
 // This requires that the definition of `my_struct` preserves the hygiene
 // information for the tokens in its definition.
 
-// check-pass
-// aux-build:use_by_macro.rs
+//@ check-pass
+//@ aux-build:use_by_macro.rs
 
 extern crate use_by_macro;
 

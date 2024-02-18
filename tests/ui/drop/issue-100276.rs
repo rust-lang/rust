@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Z validate-mir
+//@ check-pass
+//@ compile-flags: -Z validate-mir
 #![feature(let_chains)]
 
 fn let_chains(entry: std::io::Result<std::fs::DirEntry>) {

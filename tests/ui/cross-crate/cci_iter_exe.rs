@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_iter_lib.rs
+//@ run-pass
+//@ aux-build:cci_iter_lib.rs
 
 extern crate cci_iter_lib;
 

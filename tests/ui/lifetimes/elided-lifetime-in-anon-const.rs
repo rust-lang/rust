@@ -1,5 +1,5 @@
 // Verify that elided lifetimes inside anonymous constants are not forced to be `'static`.
-// check-pass
+//@ check-pass
 
 fn foo() -> [(); {
        let a = 10_usize;

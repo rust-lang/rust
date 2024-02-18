@@ -5,7 +5,7 @@
 // saying that the type of `b` must be known, which was not very
 // helpful.
 
-// run-rustfix
+//@ run-rustfix
 
 use std::collections::HashMap;
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(const_swap)]
 #![feature(const_mut_refs)]

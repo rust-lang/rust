@@ -2,10 +2,7 @@ error[E0599]: the method `get` exists for struct `Victim<'_, Self>`, but its tra
   --> $DIR/impl-derived-implicit-sized-bound.rs:31:19
    |
 LL | struct Victim<'a, T: Perpetrator + ?Sized>
-   | ------------------------------------------
-   | |
-   | method `get` not found for this struct
-   | doesn't satisfy `Victim<'_, Self>: VictimTrait`
+   | ------------------------------------------ method `get` not found for this struct because it doesn't satisfy `Victim<'_, Self>: VictimTrait`
 ...
 LL |     self.getter().get();
    |                   ^^^ method cannot be called on `Victim<'_, Self>` due to unsatisfied trait bounds

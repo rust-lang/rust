@@ -10,6 +10,8 @@ parse_ambiguous_range_pattern = the range pattern here has ambiguous interpretat
 parse_array_brackets_instead_of_braces = this is a block expression, not an array
     .suggestion = to make an array, use square brackets instead of curly braces
 
+parse_array_index_offset_of = array indexing not supported in offset_of
+
 parse_assignment_else_not_allowed = <assignment> ... else {"{"} ... {"}"} is not allowed
 
 parse_assoc_lifetime = associated lifetimes are not supported
@@ -19,6 +21,8 @@ parse_assoc_lifetime = associated lifetimes are not supported
 parse_associated_static_item_not_allowed = associated `static` items are not allowed
 
 parse_async_block_in_2015 = `async` blocks are only allowed in Rust 2018 or later
+
+parse_async_bound_modifier_in_2015 = `async` trait bounds are only allowed in Rust 2018 or later
 
 parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
     .label = to use `async fn`, switch to Rust 2018 or later
@@ -94,9 +98,6 @@ parse_comparison_operators_cannot_be_chained = comparison operators cannot be ch
 parse_compound_assignment_expression_in_let = can't reassign to an uninitialized variable
     .suggestion = initialize the variable
     .help = if you meant to overwrite, remove the `let` binding
-
-parse_const_bounds_missing_tilde = const bounds must start with `~`
-    .suggestion = add `~`
 
 parse_const_generic_without_braces = expressions must be enclosed in braces to be used as const generic arguments
     .suggestion = enclose the `const` expression in braces
@@ -408,6 +409,11 @@ parse_invalid_logical_operator = `{$incorrect}` is not a logical operator
 
 parse_invalid_meta_item = expected unsuffixed literal or identifier, found `{$token}`
 
+parse_invalid_meta_item_unquoted_ident = expected unsuffixed literal, found `{$token}`
+    .suggestion = surround the identifier with quotation marks to parse it as a string
+
+parse_invalid_offset_of = offset_of expects dot-separated field and variant names
+
 parse_invalid_unicode_escape = invalid unicode character escape
     .label = invalid escape
     .help = unicode escape must {$surrogate ->
@@ -555,8 +561,8 @@ parse_missing_trait_in_trait_impl = missing trait in a trait impl
     .suggestion_add_trait = add a trait here
     .suggestion_remove_for = for an inherent impl, drop this `for`
 
-parse_modifier_lifetime = `{$sigil}` may only modify trait bounds, not lifetime bounds
-    .suggestion = remove the `{$sigil}`
+parse_modifier_lifetime = `{$modifier}` may only modify trait bounds, not lifetime bounds
+    .suggestion = remove the `{$modifier}`
 
 parse_more_than_one_char = character literal may only contain one codepoint
     .followed_by = this `{$chr}` is followed by the combining {$len ->
@@ -611,6 +617,8 @@ parse_note_edition_guide = for more on editions, read https://doc.rust-lang.org/
 parse_note_mut_pattern_usage = `mut` may be followed by `variable` and `variable @ pattern`
 
 parse_note_pattern_alternatives_use_single_vert = alternatives in or-patterns are separated with `|`, not `||`
+
+parse_nul_in_c_str = null characters in C string literals are not supported
 
 parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not allowed in function parameters
 parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings
@@ -718,6 +726,8 @@ parse_sugg_turbofish_syntax = use `::<...>` instead of `<...>` to specify lifeti
 
 parse_sugg_wrap_expression_in_parentheses = wrap the expression in parentheses
 
+parse_sugg_wrap_macro_in_parentheses = use parentheses instead of braces for this macro
+
 parse_sugg_wrap_pattern_in_parens = wrap the pattern in parentheses
 
 parse_switch_mut_let_order =
@@ -728,8 +738,6 @@ parse_switch_ref_box_order = switch the order of `ref` and `box`
 
 parse_ternary_operator = Rust has no ternary operator
     .help = use an `if-else` expression instead
-
-parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
 
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
     .suggestion = use `!` to perform bitwise not
@@ -766,11 +774,28 @@ parse_unexpected_const_param_declaration = unexpected `const` parameter declarat
 parse_unexpected_default_value_for_lifetime_in_generic_parameters = unexpected default lifetime parameter
     .label = lifetime parameters cannot have default values
 
+parse_unexpected_expr_in_pat =
+    expected {$is_bound ->
+        [true] a pattern range bound
+       *[false] a pattern
+    }, found {$is_method_call ->
+        [true] a method call
+       *[false] an expression
+    }
+
+    .label = {$is_method_call ->
+        [true] method calls
+       *[false] arbitrary expressions
+    } are not allowed in patterns
+
 parse_unexpected_if_with_if = unexpected `if` in the condition expression
     .suggestion = remove the `if`
 
 parse_unexpected_lifetime_in_pattern = unexpected lifetime `{$symbol}` in pattern
     .suggestion = remove the lifetime
+
+parse_unexpected_paren_in_range_pat = range pattern bounds cannot have parentheses
+parse_unexpected_paren_in_range_pat_sugg = remove these parentheses
 
 parse_unexpected_parentheses_in_for_head = unexpected parentheses surrounding `for` loop head
     .suggestion = remove parentheses in `for` loop

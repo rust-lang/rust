@@ -38,7 +38,7 @@ pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
     let version_part = items.next().ok_or_else(|| err!("no version string"))?;
     let mut version_parts = version_part.split('-');
     let version = version_parts.next().ok_or_else(|| err!("no version"))?;
-    let channel = version_parts.next().unwrap_or_default().to_string();
+    let channel = version_parts.next().unwrap_or_default().to_owned();
 
     let commit = match items.next() {
         Some(commit) => {
@@ -106,9 +106,9 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
 pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     let dylib_file = File::open(dylib_path)?;
-    let dylib_mmaped = unsafe { Mmap::map(&dylib_file) }?;
+    let dylib_mmapped = unsafe { Mmap::map(&dylib_file) }?;
 
-    let dot_rustc = read_section(&dylib_mmaped, ".rustc")?;
+    let dot_rustc = read_section(&dylib_mmapped, ".rustc")?;
 
     // check if magic is valid
     if &dot_rustc[0..4] != b"rust" {

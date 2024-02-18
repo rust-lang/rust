@@ -3,12 +3,13 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_lang_item, peel_mid_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use rustc_errors::Applicability;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
 use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
@@ -37,6 +38,9 @@ pub fn check<'tcx>(
         if is_cloned_or_copied(cx, method_name, method_def_id) {
             unnecessary_iter_cloned::check(cx, expr, method_name, receiver);
         } else if is_to_owned_like(cx, expr, method_name, method_def_id) {
+            if check_split_call_arg(cx, expr, method_name, receiver) {
+                return;
+            }
             // At this point, we know the call is of a `to_owned`-like function. The functions
             // `check_addr_of_expr` and `check_call_arg` determine whether the call is unnecessary
             // based on its context, that is, whether it is a referent in an `AddrOf` expression, an
@@ -233,6 +237,71 @@ fn check_into_iter_call_arg(
     false
 }
 
+/// Checks whether `expr` is an argument in an `into_iter` call and, if so, determines whether its
+/// call of a `to_owned`-like function is unnecessary.
+fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let Some((fn_name, argument_expr)) = get_fn_name_and_arg(cx, parent)
+        && fn_name.as_str() == "split"
+        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+        && let Some(arg_snippet) = snippet_opt(cx, argument_expr.span)
+    {
+        // We may end-up here because of an expression like `x.to_string().split(…)` where the type of `x`
+        // implements `AsRef<str>` but does not implement `Deref<Target = str>`. In this case, we have to
+        // add `.as_ref()` to the suggestion.
+        let as_ref = if is_type_lang_item(cx, cx.typeck_results().expr_ty(expr), LangItem::String)
+            && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
+            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, "Target")
+                != Some(cx.tcx.types.str_)
+        {
+            ".as_ref()"
+        } else {
+            ""
+        };
+
+        // The next suggestion may be incorrect because the removal of the `to_owned`-like
+        // function could cause the iterator to hold a reference to a resource that is used
+        // mutably. See https://github.com/rust-lang/rust-clippy/issues/8148.
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_TO_OWNED,
+            parent.span,
+            &format!("unnecessary use of `{method_name}`"),
+            "use",
+            format!("{receiver_snippet}{as_ref}.split({arg_snippet})"),
+            Applicability::MaybeIncorrect,
+        );
+        return true;
+    }
+    false
+}
+
+fn get_fn_name_and_arg<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<(Symbol, Expr<'tcx>)> {
+    match &expr.kind {
+        ExprKind::MethodCall(path, _, [arg_expr], ..) => Some((path.ident.name, *arg_expr)),
+        ExprKind::Call(
+            Expr {
+                kind: ExprKind::Path(qpath),
+                hir_id: path_hir_id,
+                ..
+            },
+            [arg_expr],
+        ) => {
+            // Only return Fn-like DefIds, not the DefIds of statics/consts/etc that contain or
+            // deref to fn pointers, dyn Fn, impl Fn - #8850
+            if let Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, def_id) =
+                cx.typeck_results().qpath_res(qpath, *path_hir_id)
+                && let Some(fn_name) = cx.tcx.opt_item_name(def_id)
+            {
+                Some((fn_name, *arg_expr))
+            } else {
+                None
+            }
+        },
+        _ => None,
+    }
+}
+
 /// Checks whether `expr` is an argument in a function call and, if so, determines whether its call
 /// of a `to_owned`-like function is unnecessary.
 fn check_other_call_arg<'tcx>(
@@ -389,7 +458,10 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 {
                     let bound_fn_sig = cx.tcx.fn_sig(callee_def_id);
                     let fn_sig = bound_fn_sig.skip_binder();
-                    if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
+                    if let Some(arg_index) = recv
+                        .into_iter()
+                        .chain(call_args)
+                        .position(|arg| arg.hir_id == expr.hir_id)
                         && let param_ty = fn_sig.input(arg_index).skip_binder()
                         && let ty::Param(ParamTy { index: param_index , ..}) = *param_ty.kind()
                         // https://github.com/rust-lang/rust-clippy/issues/9504 and https://github.com/rust-lang/rust-clippy/issues/10021

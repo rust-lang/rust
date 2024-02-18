@@ -200,3 +200,59 @@ let FunctionSearchType;
  * }}
  */
 let FunctionType;
+
+/**
+ * The raw search data for a given crate. `n`, `t`, `d`, `i`, and `f`
+ * are arrays with the same length. `q`, `a`, and `c` use a sparse
+ * representation for compactness.
+ *
+ * `n[i]` contains the name of an item.
+ *
+ * `t[i]` contains the type of that item
+ * (as a string of characters that represent an offset in `itemTypes`).
+ *
+ * `d[i]` contains the description of that item.
+ *
+ * `q` contains the full paths of the items. For compactness, it is a set of
+ * (index, path) pairs used to create a map. If a given index `i` is
+ * not present, this indicates "same as the last index present".
+ *
+ * `i[i]` contains an item's parent, usually a module. For compactness,
+ * it is a set of indexes into the `p` array.
+ *
+ * `f` contains function signatures, or `0` if the item isn't a function.
+ * More information on how they're encoded can be found in rustc-dev-guide
+ *
+ * Functions are themselves encoded as arrays. The first item is a list of
+ * types representing the function's inputs, and the second list item is a list
+ * of types representing the function's output. Tuples are flattened.
+ * Types are also represented as arrays; the first item is an index into the `p`
+ * array, while the second is a list of types representing any generic parameters.
+ *
+ * b[i] contains an item's impl disambiguator. This is only present if an item
+ * is defined in an impl block and, the impl block's type has more than one associated
+ * item with the same name.
+ *
+ * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
+ * points into the n/t/d/q/i/f arrays.
+ *
+ * `doc` contains the description of the crate.
+ *
+ * `p` is a list of path/type pairs. It is used for parents and function parameters.
+ *
+ * `c` is an array of item indices that are deprecated.
+ * @typedef {{
+ *   doc: string,
+ *   a: Object,
+ *   n: Array<string>,
+ *   t: String,
+ *   d: Array<string>,
+ *   q: Array<[Number, string]>,
+ *   i: Array<Number>,
+ *   f: string,
+ *   p: Array<Object>,
+ *   b: Array<[Number, String]>,
+ *   c: Array<Number>
+ * }}
+ */
+let RawSearchIndexCrate;

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 struct Foo<const N: usize>;
 
 impl<const N: usize> Foo<N> {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![deny(meta_variable_misuse)]
 
 macro_rules! foo {

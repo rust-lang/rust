@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
 // Test that we are able to compile calls to associated fns like
 // `decode()` where the bound on the `Self` parameter references a
@@ -6,7 +6,7 @@
 // lifetime parameters must be early bound in the type of the
 // associated item.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::marker;
 

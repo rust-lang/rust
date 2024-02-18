@@ -194,6 +194,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
             }
+            Rvalue::NullaryOp(NullOp::DebugAssertions, _) => tcx.types.bool,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
@@ -201,8 +202,9 @@ impl<'tcx> Rvalue<'tcx> {
                 }
                 AggregateKind::Adt(did, _, args, _, _) => tcx.type_of(did).instantiate(tcx, args),
                 AggregateKind::Closure(did, args) => Ty::new_closure(tcx, did, args),
-                AggregateKind::Coroutine(did, args, movability) => {
-                    Ty::new_coroutine(tcx, did, args, movability)
+                AggregateKind::Coroutine(did, args) => Ty::new_coroutine(tcx, did, args),
+                AggregateKind::CoroutineClosure(did, args) => {
+                    Ty::new_coroutine_closure(tcx, did, args)
                 }
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
@@ -229,6 +231,18 @@ impl<'tcx> Operand<'tcx> {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
             Operand::Constant(c) => c.const_.ty(),
+        }
+    }
+
+    pub fn span<D: ?Sized>(&self, local_decls: &D) -> Span
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        match self {
+            &Operand::Copy(ref l) | &Operand::Move(ref l) => {
+                local_decls.local_decls()[l.local].source_info.span
+            }
+            Operand::Constant(c) => c.span,
         }
     }
 }

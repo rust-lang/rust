@@ -6,8 +6,8 @@ LL |         macro_rules! $macro_name {
    |
 help: change the delimiters to curly braces
    |
-LL |         macro_rules! {} {
-   |                      ~          +
+LL |         macro_rules! {$macro_name} {
+   |                      +           +
 help: add a semicolon
    |
 LL |         macro_rules! $macro_name; {

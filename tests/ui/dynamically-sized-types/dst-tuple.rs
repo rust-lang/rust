@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(type_alias_bounds)]
 
 #![feature(unsized_tuple_coercion)]

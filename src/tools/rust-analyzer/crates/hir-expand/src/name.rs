@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use syntax::{ast, utils::is_raw_identifier, SmolStr};
+use syntax::{ast, format_smolstr, utils::is_raw_identifier, SmolStr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
@@ -69,8 +69,8 @@ impl Name {
     }
 
     /// Shortcut to create inline plain text name. Panics if `text.len() > 22`
-    const fn new_inline(text: &str) -> Name {
-        Name::new_text(SmolStr::new_inline(text))
+    const fn new_static(text: &'static str) -> Name {
+        Name::new_text(SmolStr::new_static(text))
     }
 
     /// Resolve a name from the text of token.
@@ -83,7 +83,7 @@ impl Name {
             // Rust, e.g. "try" in Rust 2015. Even in such cases, we keep track of them in their
             // escaped form.
             None if is_raw_identifier(raw_text) => {
-                Name::new_text(SmolStr::from_iter(["r#", raw_text]))
+                Name::new_text(format_smolstr!("r#{}", raw_text))
             }
             _ => Name::new_text(raw_text.into()),
         }
@@ -99,7 +99,7 @@ impl Name {
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
     pub const fn missing() -> Name {
-        Name::new_inline("[missing name]")
+        Name::new_static("[missing name]")
     }
 
     /// Returns true if this is a fake name for things missing in the source code. See
@@ -119,7 +119,7 @@ impl Name {
         use std::sync::atomic::{AtomicUsize, Ordering};
         static CNT: AtomicUsize = AtomicUsize::new(0);
         let c = CNT.fetch_add(1, Ordering::Relaxed);
-        Name::new_text(format!("<ra@gennew>{c}").into())
+        Name::new_text(format_smolstr!("<ra@gennew>{c}"))
     }
 
     /// Returns the tuple index this name represents if it is a tuple field.
@@ -260,7 +260,7 @@ pub mod known {
             $(
                 #[allow(bad_style)]
                 pub const $ident: super::Name =
-                    super::Name::new_inline(stringify!($ident));
+                    super::Name::new_static(stringify!($ident));
             )*
         };
     }
@@ -318,6 +318,10 @@ pub mod known {
         new_lower_hex,
         new_upper_hex,
         from_usize,
+        panic_2015,
+        panic_2021,
+        unreachable_2015,
+        unreachable_2021,
         // Components of known path (type name)
         Iterator,
         IntoIterator,
@@ -384,6 +388,7 @@ pub mod known {
         log_syntax,
         module_path,
         option_env,
+        quote,
         std_panic,
         stringify,
         trace_macros,
@@ -466,11 +471,11 @@ pub mod known {
     );
 
     // self/Self cannot be used as an identifier
-    pub const SELF_PARAM: super::Name = super::Name::new_inline("self");
-    pub const SELF_TYPE: super::Name = super::Name::new_inline("Self");
+    pub const SELF_PARAM: super::Name = super::Name::new_static("self");
+    pub const SELF_TYPE: super::Name = super::Name::new_static("Self");
 
-    pub const STATIC_LIFETIME: super::Name = super::Name::new_inline("'static");
-    pub const DOLLAR_CRATE: super::Name = super::Name::new_inline("$crate");
+    pub const STATIC_LIFETIME: super::Name = super::Name::new_static("'static");
+    pub const DOLLAR_CRATE: super::Name = super::Name::new_static("$crate");
 
     #[macro_export]
     macro_rules! name {

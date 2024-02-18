@@ -1,6 +1,6 @@
-// build-fail
-// compile-flags: --crate-type lib -Cdebuginfo=2
-// error-pattern: the type has an unknown layout
+//@ build-fail
+//@ compile-flags: --crate-type lib -Cdebuginfo=2
+//@ error-pattern: the type has an unknown layout
 
 #![recursion_limit = "10"]
 macro_rules! link {

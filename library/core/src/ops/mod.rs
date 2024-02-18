@@ -139,6 +139,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod arith;
+mod async_function;
 mod bit;
 mod control_flow;
 mod coroutine;
@@ -172,6 +173,9 @@ pub use self::drop::Drop;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
+
+#[unstable(feature = "async_fn_traits", issue = "none")]
+pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::index::{Index, IndexMut};

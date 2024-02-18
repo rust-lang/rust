@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that resolving, in the value namespace, to an `enum` variant
 // through a type alias is well behaved in the presence of generics.
@@ -9,7 +9,7 @@
 
 #![allow(irrefutable_let_patterns)]
 
-enum Enum<T> { TSVariant(#[allow(unused_tuple_struct_fields)] T), SVariant { _v: T }, UVariant }
+enum Enum<T> { TSVariant(#[allow(dead_code)] T), SVariant { _v: T }, UVariant }
 type Alias<T> = Enum<T>;
 type AliasFixed = Enum<()>;
 

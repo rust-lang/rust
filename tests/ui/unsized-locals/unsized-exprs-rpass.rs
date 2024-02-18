@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(incomplete_features, unused_braces, unused_parens)]
 #![feature(unsized_tuple_coercion, unsized_locals, unsized_fn_params)]
 
-struct A<X: ?Sized>(#[allow(unused_tuple_struct_fields)] X);
+struct A<X: ?Sized>(#[allow(dead_code)] X);
 
 fn udrop<T: ?Sized>(_x: T) {}
 fn foo() -> Box<[u8]> {

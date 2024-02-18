@@ -105,7 +105,7 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
 fn completes_all_the_things_in_fn_body() {
     check(
         r#"
-use non_existant::Unresolved;
+use non_existent::Unresolved;
 mod qualified { pub enum Enum { Variant } }
 
 impl Unit {
@@ -170,7 +170,7 @@ impl Unit {
     );
     check(
         r#"
-use non_existant::Unresolved;
+use non_existent::Unresolved;
 mod qualified { pub enum Enum { Variant } }
 
 impl Unit {
@@ -360,6 +360,27 @@ fn completes_in_loop_ctx() {
             sn macro_rules
             sn pd
             sn ppd
+        "#]],
+    );
+    check_empty(
+        r"fn my() { loop { foo.$0 } }",
+        expect![[r#"
+            sn box    Box::new(expr)
+            sn break  break expr
+            sn call   function(expr)
+            sn dbg    dbg!(expr)
+            sn dbgr   dbg!(&expr)
+            sn deref  *expr
+            sn if     if expr {}
+            sn let    let
+            sn letm   let mut
+            sn match  match expr {}
+            sn not    !expr
+            sn ref    &expr
+            sn refm   &mut expr
+            sn return return expr
+            sn unsafe unsafe {}
+            sn while  while expr {}
         "#]],
     );
 }
@@ -1115,9 +1136,11 @@ fn main() {
             sn call   function(expr)
             sn dbg    dbg!(expr)
             sn dbgr   dbg!(&expr)
+            sn deref  *expr
             sn match  match expr {}
             sn ref    &expr
             sn refm   &mut expr
+            sn return return expr
             sn unsafe unsafe {}
         "#]],
     );
@@ -1139,9 +1162,11 @@ fn main() {
             sn call   function(expr)
             sn dbg    dbg!(expr)
             sn dbgr   dbg!(&expr)
+            sn deref  *expr
             sn match  match expr {}
             sn ref    &expr
             sn refm   &mut expr
+            sn return return expr
             sn unsafe unsafe {}
         "#]],
     );
@@ -1167,9 +1192,11 @@ fn main() {
             sn call   function(expr)
             sn dbg    dbg!(expr)
             sn dbgr   dbg!(&expr)
+            sn deref  *expr
             sn match  match expr {}
             sn ref    &expr
             sn refm   &mut expr
+            sn return return expr
             sn unsafe unsafe {}
         "#]],
     );
@@ -1191,9 +1218,11 @@ fn main() {
             sn call   function(expr)
             sn dbg    dbg!(expr)
             sn dbgr   dbg!(&expr)
+            sn deref  *expr
             sn match  match expr {}
             sn ref    &expr
             sn refm   &mut expr
+            sn return return expr
             sn unsafe unsafe {}
         "#]],
     );
@@ -1215,9 +1244,11 @@ fn main() {
             sn call   function(expr)
             sn dbg    dbg!(expr)
             sn dbgr   dbg!(&expr)
+            sn deref  *expr
             sn match  match expr {}
             sn ref    &expr
             sn refm   &mut expr
+            sn return return expr
             sn unsafe unsafe {}
         "#]],
     );
@@ -1238,11 +1269,13 @@ fn main() {
             sn call   function(expr)
             sn dbg    dbg!(expr)
             sn dbgr   dbg!(&expr)
+            sn deref  *expr
             sn if     if expr {}
             sn match  match expr {}
             sn not    !expr
             sn ref    &expr
             sn refm   &mut expr
+            sn return return expr
             sn unsafe unsafe {}
             sn while  while expr {}
         "#]],

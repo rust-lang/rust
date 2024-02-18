@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! The presence of an `align(X)` annotation must be accounted for.
 
 #![crate_type = "lib"]

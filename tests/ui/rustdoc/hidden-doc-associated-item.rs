@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // See issue #85526.
 // This test should produce no warnings.
 

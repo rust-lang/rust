@@ -1,5 +1,5 @@
 // Verify that we do not warn on types that are used by foreign functions.
-// check-pass
+//@ check-pass
 #![deny(dead_code)]
 
 #[repr(C)]

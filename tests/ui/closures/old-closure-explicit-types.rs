@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
     fn as_buf<T, F>(s: String, f: F) -> T where F: FnOnce(String) -> T { f(s) }

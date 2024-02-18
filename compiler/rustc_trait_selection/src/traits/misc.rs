@@ -1,5 +1,6 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
+use crate::regions::InferCtxtRegionExt;
 use crate::traits::{self, ObligationCause, ObligationCtxt};
 
 use hir::LangItem;
@@ -173,7 +174,7 @@ pub fn all_fields_implement_trait<'tcx>(
             // between expected and found const-generic types. Don't report an
             // additional copy error here, since it's not typically useful.
             if !normalization_errors.is_empty() || ty.references_error() {
-                tcx.sess.span_delayed_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking {tr} implementation", tr = tcx.def_path_str(trait_def_id)));
+                tcx.dcx().span_delayed_bug(field_span, format!("couldn't normalize struct field `{unnormalized_ty}` when checking {tr} implementation", tr = tcx.def_path_str(trait_def_id)));
                 continue;
             }
 
@@ -194,7 +195,7 @@ pub fn all_fields_implement_trait<'tcx>(
                 infcx.implied_bounds_tys(
                     param_env,
                     parent_cause.body_id,
-                    FxIndexSet::from_iter([self_type]),
+                    &FxIndexSet::from_iter([self_type]),
                 ),
             );
             let errors = infcx.resolve_regions(&outlives_env);

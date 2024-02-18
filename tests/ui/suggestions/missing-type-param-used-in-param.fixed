@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn two_type_params<A, B>(_: B) {}
 

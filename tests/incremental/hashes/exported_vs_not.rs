@@ -10,7 +10,7 @@
 #![crate_type="rlib"]
 
 // Case 1: The function body is not exported to metadata. If the body changes,
-//         the hash of the hir_owner_nodes node should change, but not the hash of
+//         the hash of the opt_hir_owner_nodes node should change, but not the hash of
 //         either the hir_owner or the Metadata node.
 
 #[cfg(any(cfail1,cfail4))]
@@ -19,9 +19,9 @@ pub fn body_not_exported_to_metadata() -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 pub fn body_not_exported_to_metadata() -> u32 {
     2
@@ -40,9 +40,9 @@ pub fn body_exported_to_metadata_because_of_inline() -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[inline]
 pub fn body_exported_to_metadata_because_of_inline() -> u32 {
@@ -62,9 +62,9 @@ pub fn body_exported_to_metadata_because_of_generic() -> u32 {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail6")]
 #[inline]
 pub fn body_exported_to_metadata_because_of_generic() -> u32 {

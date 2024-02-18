@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Given how the closure desugaring is implemented (at least at the time of writing this test),
 // we don't need to truncate the captured path to a reference into a packed-struct if the field

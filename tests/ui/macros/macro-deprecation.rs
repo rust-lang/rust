@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:deprecated-macros.rs
+//@ check-pass
+//@ aux-build:deprecated-macros.rs
 
 #[macro_use] extern crate deprecated_macros;
 

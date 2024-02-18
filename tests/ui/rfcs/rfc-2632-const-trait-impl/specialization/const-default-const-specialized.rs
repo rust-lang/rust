@@ -1,7 +1,7 @@
 // Tests that a const default trait impl can be specialized by another const
 // trait impl and that the specializing impl will be used during const-eval.
 
-// run-pass
+//@ run-pass
 
 #![feature(const_trait_impl, effects)]
 #![feature(min_specialization)]

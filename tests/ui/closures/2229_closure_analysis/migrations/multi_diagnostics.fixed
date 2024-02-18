@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
 
@@ -18,10 +18,10 @@ impl Foo {
     }
 }
 
-struct S(#[allow(unused_tuple_struct_fields)] Foo);
+struct S(#[allow(dead_code)] Foo);
 
 #[derive(Clone)]
-struct T(#[allow(unused_tuple_struct_fields)] i32);
+struct T(#[allow(dead_code)] i32);
 
 struct U(S, T);
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 mod first {
     trait Foo { fn m(self: Box<Self>); }

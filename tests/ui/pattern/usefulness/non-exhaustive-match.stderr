@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: `T::A` not covered
-  --> $DIR/non-exhaustive-match.rs:7:11
+  --> $DIR/non-exhaustive-match.rs:5:11
    |
 LL |     match x { T::B => { } }
    |           ^ pattern `T::A` not covered
    |
 note: `T` defined here
-  --> $DIR/non-exhaustive-match.rs:3:6
+  --> $DIR/non-exhaustive-match.rs:1:6
    |
 LL | enum T { A, B }
    |      ^   - not covered
@@ -16,7 +16,7 @@ LL |     match x { T::B => { }, T::A => todo!() }
    |                          +++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `false` not covered
-  --> $DIR/non-exhaustive-match.rs:8:11
+  --> $DIR/non-exhaustive-match.rs:6:11
    |
 LL |     match true {
    |           ^^^^ pattern `false` not covered
@@ -29,7 +29,7 @@ LL +       false => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
-  --> $DIR/non-exhaustive-match.rs:11:11
+  --> $DIR/non-exhaustive-match.rs:9:11
    |
 LL |     match Some(10) {
    |           ^^^^^^^^ pattern `Some(_)` not covered
@@ -47,7 +47,7 @@ LL +       Some(_) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `(_, _, i32::MIN..=3_i32)` and `(_, _, 5_i32..=i32::MAX)` not covered
-  --> $DIR/non-exhaustive-match.rs:14:11
+  --> $DIR/non-exhaustive-match.rs:12:11
    |
 LL |     match (2, 3, 4) {
    |           ^^^^^^^^^ patterns `(_, _, i32::MIN..=3_i32)` and `(_, _, 5_i32..=i32::MAX)` not covered
@@ -60,7 +60,7 @@ LL +       (_, _, i32::MIN..=3_i32) | (_, _, 5_i32..=i32::MAX) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `(T::A, T::A)` and `(T::B, T::B)` not covered
-  --> $DIR/non-exhaustive-match.rs:18:11
+  --> $DIR/non-exhaustive-match.rs:16:11
    |
 LL |     match (T::A, T::A) {
    |           ^^^^^^^^^^^^ patterns `(T::A, T::A)` and `(T::B, T::B)` not covered
@@ -73,13 +73,13 @@ LL +       (T::A, T::A) | (T::B, T::B) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `T::B` not covered
-  --> $DIR/non-exhaustive-match.rs:22:11
+  --> $DIR/non-exhaustive-match.rs:20:11
    |
 LL |     match T::A {
    |           ^^^^ pattern `T::B` not covered
    |
 note: `T` defined here
-  --> $DIR/non-exhaustive-match.rs:3:6
+  --> $DIR/non-exhaustive-match.rs:1:6
    |
 LL | enum T { A, B }
    |      ^      - not covered
@@ -91,7 +91,7 @@ LL +       T::B => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `[]` not covered
-  --> $DIR/non-exhaustive-match.rs:33:11
+  --> $DIR/non-exhaustive-match.rs:31:11
    |
 LL |     match *vec {
    |           ^^^^ pattern `[]` not covered
@@ -104,7 +104,7 @@ LL +         [] => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
-  --> $DIR/non-exhaustive-match.rs:46:11
+  --> $DIR/non-exhaustive-match.rs:44:11
    |
 LL |     match *vec {
    |           ^^^^ pattern `[_, _, _, _, ..]` not covered

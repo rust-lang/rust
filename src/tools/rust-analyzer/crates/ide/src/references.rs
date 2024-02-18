@@ -9,8 +9,6 @@
 //! at the index that the match starts at and its tree parent is
 //! resolved to the search element definition, we get a reference.
 
-use std::collections::HashMap;
-
 use hir::{DescendPreference, PathResolution, Semantics};
 use ide_db::{
     base_db::FileId,
@@ -21,7 +19,6 @@ use ide_db::{
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use syntax::{
-    algo::find_node_at_offset,
     ast::{self, HasName},
     match_ast, AstNode,
     SyntaxKind::*,
@@ -58,7 +55,7 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Option<Vec<ReferenceSearchResult>> {
-    let _p = profile::span("find_all_refs");
+    let _p = tracing::span!(tracing::Level::INFO, "find_all_refs").entered();
     let syntax = sema.parse(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
@@ -80,7 +77,7 @@ pub(crate) fn find_all_refs(
                             .collect(),
                     )
                 })
-                .collect::<HashMap<_, Vec<_>, _>>();
+                .collect::<IntMap<_, Vec<_>>>();
             let declaration = match def {
                 Definition::Module(module) => {
                     Some(NavigationTarget::from_module_to_decl(sema.db, module))
@@ -98,9 +95,8 @@ pub(crate) fn find_all_refs(
                         .or_default()
                         .push((extra_ref.focus_or_full_range(), None));
                 }
-                let decl_range = nav.focus_or_full_range();
                 Declaration {
-                    is_mut: decl_mutability(&def, sema.parse(nav.file_id).syntax(), decl_range),
+                    is_mut: matches!(def, Definition::Local(l) if l.is_mut(sema.db)),
                     nav,
                 }
             });
@@ -187,21 +183,6 @@ pub(crate) fn find_defs<'a>(
             })
             .collect(),
     )
-}
-
-pub(crate) fn decl_mutability(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> bool {
-    match def {
-        Definition::Local(_) | Definition::Field(_) => {}
-        _ => return false,
-    };
-
-    match find_node_at_offset::<ast::LetStmt>(syntax, range.start()) {
-        Some(stmt) if stmt.initializer().is_some() => match stmt.pat() {
-            Some(ast::Pat::IdentPat(it)) => it.mut_token().is_some(),
-            _ => false,
-        },
-        _ => false,
-    }
 }
 
 /// Filter out all non-literal usages for adt-defs
@@ -323,6 +304,51 @@ mod tests {
     use stdx::format_to;
 
     use crate::{fixture, SearchScope};
+
+    #[test]
+    fn exclude_tests() {
+        check(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[test]
+fn test() {
+    test_func();
+}
+"#,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+                FileId(0) 75..84 Test
+            "#]],
+        );
+
+        check(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[::core::prelude::v1::test]
+fn test() {
+    test_func();
+}
+"#,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+                FileId(0) 96..105 Test
+            "#]],
+        );
+    }
 
     #[test]
     fn test_struct_literal_after_space() {
@@ -471,6 +497,7 @@ fn main() {
             "#]],
         );
     }
+
     #[test]
     fn test_variant_tuple_before_paren() {
         check(
@@ -1452,7 +1479,7 @@ fn test$0() {
             expect![[r#"
                 test Function FileId(0) 0..33 11..15
 
-                FileId(0) 24..28
+                FileId(0) 24..28 Test
             "#]],
         );
     }

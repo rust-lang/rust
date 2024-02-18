@@ -1,5 +1,5 @@
-// compile-flags: -Zmir-opt-level=3
-// check-pass
+//@ compile-flags: -Zmir-opt-level=3
+//@ check-pass
 
 #![feature(generic_const_exprs)]
 //~^ WARN the feature `generic_const_exprs` is incomplete

@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:external_extern_fn.rs
+//@ check-pass
+//@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
 #![warn(clashing_extern_declarations)]
 
@@ -436,7 +436,7 @@ mod hidden_niche {
 
             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZeroUsize>>;
             //~^ WARN redeclared with a different signature
-            //~| WARN block uses type `Option<UnsafeCell<NonZeroUsize>>`, which is not FFI-safe
+            //~| WARN block uses type `Option<UnsafeCell<NonZero<usize>>>`, which is not FFI-safe
         }
     }
 }

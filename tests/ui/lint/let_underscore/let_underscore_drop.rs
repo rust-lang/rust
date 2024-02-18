@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![warn(let_underscore_drop)]
 
 struct NontrivialDrop;
@@ -11,4 +11,6 @@ impl Drop for NontrivialDrop {
 
 fn main() {
     let _ = NontrivialDrop; //~WARNING non-binding let on a type that implements `Drop`
+
+    let (_, _) = (NontrivialDrop, NontrivialDrop); // This should be ignored.
 }

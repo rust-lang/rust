@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zunpretty=thir-tree
+//@ check-pass
+//@ compile-flags: -Zunpretty=thir-tree
 
 enum Bar {
     First,

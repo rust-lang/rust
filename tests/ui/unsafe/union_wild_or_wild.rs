@@ -1,7 +1,4 @@
-// check-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
-
+//@ check-pass
 union X { a: i8 }
 
 fn main() {

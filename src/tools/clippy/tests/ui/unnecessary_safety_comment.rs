@@ -73,4 +73,25 @@ mod issue_10084 {
     }
 }
 
+mod issue_12048 {
+    pub const X: u8 = 0;
+
+    /// Returns a pointer to five.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use foo::point_to_five;
+    ///
+    /// let five_pointer = point_to_five();
+    /// // Safety: this pointer always points to a valid five.
+    /// let five = unsafe { *five_pointer };
+    /// assert_eq!(five, 5);
+    /// ```
+    pub fn point_to_five() -> *const u8 {
+        static FIVE: u8 = 5;
+        &FIVE
+    }
+}
+
 fn main() {}

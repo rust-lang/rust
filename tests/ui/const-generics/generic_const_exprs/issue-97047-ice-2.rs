@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(adt_const_params, generic_const_exprs)]
 //~^ WARN the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]

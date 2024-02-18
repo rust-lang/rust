@@ -125,7 +125,7 @@ pub struct GenericParamCount {
 /// Information about the formal type/lifetime parameters associated
 /// with an item or method. Analogous to `hir::Generics`.
 ///
-/// The ordering of parameters is the same as in `Subst` (excluding child generics):
+/// The ordering of parameters is the same as in [`ty::GenericArg`] (excluding child generics):
 /// `Self` (optionally), `Lifetime` params..., `Type` params...
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct Generics {
@@ -140,7 +140,7 @@ pub struct Generics {
     pub has_self: bool,
     pub has_late_bound_regions: Option<Span>,
 
-    // The index of the host effect when substituted. (i.e. might be index to parent args)
+    // The index of the host effect when instantiated. (i.e. might be index to parent args)
     pub host_effect_index: Option<usize>,
 }
 
@@ -326,7 +326,7 @@ impl<'tcx> Generics {
             own_params.start = 1;
         }
 
-        let verbose = tcx.sess.verbose();
+        let verbose = tcx.sess.verbose_internals();
 
         // Filter the default arguments.
         //
@@ -342,7 +342,7 @@ impl<'tcx> Generics {
                 param.default_value(tcx).is_some_and(|default| {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
-                // filter out trailing effect params, if we're not in `-Zverbose`.
+                // filter out trailing effect params, if we're not in `-Zverbose-internals`.
                 || (!verbose && matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. }))
             })
             .count();

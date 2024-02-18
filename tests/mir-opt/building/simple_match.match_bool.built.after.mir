@@ -6,24 +6,29 @@ fn match_bool(_1: bool) -> usize {
 
     bb0: {
         PlaceMention(_1);
-        switchInt(_1) -> [0: bb2, otherwise: bb1];
+        switchInt(_1) -> [0: bb2, otherwise: bb3];
     }
 
     bb1: {
-        falseEdge -> [real: bb3, imaginary: bb2];
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
     }
 
     bb2: {
         _0 = const 20_usize;
-        goto -> bb4;
+        goto -> bb5;
     }
 
     bb3: {
-        _0 = const 10_usize;
-        goto -> bb4;
+        falseEdge -> [real: bb4, imaginary: bb2];
     }
 
     bb4: {
+        _0 = const 10_usize;
+        goto -> bb5;
+    }
+
+    bb5: {
         return;
     }
 }

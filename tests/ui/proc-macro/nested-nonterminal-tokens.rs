@@ -1,7 +1,7 @@
-// check-pass
-// edition:2018
-// compile-flags: -Z span-debug
-// aux-build:test-macros.rs
+//@ check-pass
+//@ edition:2018
+//@ compile-flags: -Z span-debug
+//@ aux-build:test-macros.rs
 
 // Tests that we properly pass tokens to proc-macro when nested
 // nonterminals are involved.

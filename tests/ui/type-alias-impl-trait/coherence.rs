@@ -1,4 +1,4 @@
-// aux-build:foreign-crate.rs
+//@ aux-build:foreign-crate.rs
 #![feature(type_alias_impl_trait)]
 
 extern crate foreign_crate;

@@ -30,7 +30,7 @@ impl<'tcx, T> IntoDiagnosticArg for Highlighted<'tcx, T>
 where
     T: for<'a> Print<'tcx, FmtPrinter<'a, 'tcx>>,
 {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
         rustc_errors::DiagnosticArgValue::Str(self.to_string().into())
     }
 }
@@ -331,7 +331,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             leading_ellipsis,
         );
 
-        self.tcx().sess.create_err(TraitPlaceholderMismatch {
+        self.tcx().dcx().create_err(TraitPlaceholderMismatch {
             span,
             satisfy_span,
             where_span,

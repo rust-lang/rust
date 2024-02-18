@@ -246,7 +246,7 @@ LL |     type A = Ty;
 note: struct defined here, with 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:24:12
    |
-LL |     struct Ty<A, B>;
+LL |     struct Ty<A, B>(A, B);
    |            ^^ -  -
 help: add missing generic arguments
    |
@@ -264,7 +264,7 @@ LL |     type B = Ty<usize>;
 note: struct defined here, with 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:24:12
    |
-LL |     struct Ty<A, B>;
+LL |     struct Ty<A, B>(A, B);
    |            ^^ -  -
 help: add missing generic argument
    |
@@ -282,7 +282,7 @@ LL |     type D = Ty<usize, String, char>;
 note: struct defined here, with 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:24:12
    |
-LL |     struct Ty<A, B>;
+LL |     struct Ty<A, B>(A, B);
    |            ^^ -  -
 
 error[E0107]: struct takes 2 generic arguments but 0 generic arguments were supplied
@@ -294,7 +294,7 @@ LL |     type E = Ty<>;
 note: struct defined here, with 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:24:12
    |
-LL |     struct Ty<A, B>;
+LL |     struct Ty<A, B>(A, B);
    |            ^^ -  -
 help: add missing generic arguments
    |
@@ -310,7 +310,7 @@ LL |     type A = Ty;
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/wrong-number-of-args.rs:46:12
    |
-LL |     struct Ty<'a, T>;
+LL |     struct Ty<'a, T>(&'a T);
    |            ^^     -
 help: add missing generic argument
    |
@@ -326,7 +326,7 @@ LL |     type B = Ty<'static>;
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/wrong-number-of-args.rs:46:12
    |
-LL |     struct Ty<'a, T>;
+LL |     struct Ty<'a, T>(&'a T);
    |            ^^     -
 help: add missing generic argument
    |
@@ -342,7 +342,7 @@ LL |     type E = Ty<>;
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/wrong-number-of-args.rs:46:12
    |
-LL |     struct Ty<'a, T>;
+LL |     struct Ty<'a, T>(&'a T);
    |            ^^     -
 help: add missing generic argument
    |
@@ -360,7 +360,7 @@ LL |     type F = Ty<'static, usize, 'static, usize>;
 note: struct defined here, with 1 lifetime parameter: `'a`
   --> $DIR/wrong-number-of-args.rs:46:12
    |
-LL |     struct Ty<'a, T>;
+LL |     struct Ty<'a, T>(&'a T);
    |            ^^ --
 
 error[E0107]: struct takes 1 generic argument but 2 generic arguments were supplied
@@ -374,7 +374,7 @@ LL |     type F = Ty<'static, usize, 'static, usize>;
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/wrong-number-of-args.rs:46:12
    |
-LL |     struct Ty<'a, T>;
+LL |     struct Ty<'a, T>(&'a T);
    |            ^^     -
 
 error[E0107]: missing generics for struct `type_and_type_and_type::Ty`
@@ -386,7 +386,7 @@ LL |     type A = Ty;
 note: struct defined here, with at least 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:78:12
    |
-LL |     struct Ty<A, B, C = &'static str>;
+LL |     struct Ty<A, B, C = &'static str>(A, B, C);
    |            ^^ -  -
 help: add missing generic arguments
    |
@@ -404,7 +404,7 @@ LL |     type B = Ty<usize>;
 note: struct defined here, with at least 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:78:12
    |
-LL |     struct Ty<A, B, C = &'static str>;
+LL |     struct Ty<A, B, C = &'static str>(A, B, C);
    |            ^^ -  -
 help: add missing generic argument
    |
@@ -422,7 +422,7 @@ LL |     type E = Ty<usize, String, char, f64>;
 note: struct defined here, with at most 3 generic parameters: `A`, `B`, `C`
   --> $DIR/wrong-number-of-args.rs:78:12
    |
-LL |     struct Ty<A, B, C = &'static str>;
+LL |     struct Ty<A, B, C = &'static str>(A, B, C);
    |            ^^ -  -  ----------------
 
 error[E0107]: struct takes at least 2 generic arguments but 0 generic arguments were supplied
@@ -434,7 +434,7 @@ LL |     type F = Ty<>;
 note: struct defined here, with at least 2 generic parameters: `A`, `B`
   --> $DIR/wrong-number-of-args.rs:78:12
    |
-LL |     struct Ty<A, B, C = &'static str>;
+LL |     struct Ty<A, B, C = &'static str>(A, B, C);
    |            ^^ -  -
 help: add missing generic arguments
    |

@@ -1,5 +1,5 @@
-// edition:2021
-// build-pass
+//@ edition:2021
+//@ build-pass
 
 struct A;
 impl Drop for A { fn drop(&mut self) {} }

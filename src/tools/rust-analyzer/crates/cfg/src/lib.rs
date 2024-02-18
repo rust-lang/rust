@@ -131,11 +131,9 @@ impl CfgDiff {
     /// of both.
     pub fn new(enable: Vec<CfgAtom>, disable: Vec<CfgAtom>) -> Option<CfgDiff> {
         let mut occupied = FxHashSet::default();
-        for item in enable.iter().chain(disable.iter()) {
-            if !occupied.insert(item) {
-                // was present
-                return None;
-            }
+        if enable.iter().chain(disable.iter()).any(|item| !occupied.insert(item)) {
+            // was present
+            return None;
         }
 
         Some(CfgDiff { enable, disable })

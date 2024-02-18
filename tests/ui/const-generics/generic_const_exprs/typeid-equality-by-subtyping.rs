@@ -1,5 +1,5 @@
-// known-bug: #110395
-// known-bug: #97156
+//@ known-bug: #110395
+//@ known-bug: #97156
 
 #![feature(const_type_id, const_trait_impl, generic_const_exprs)]
 #![allow(incomplete_features)]

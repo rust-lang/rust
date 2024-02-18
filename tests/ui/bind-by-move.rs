@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 use std::sync::Arc;
 fn dispose(_x: Arc<bool>) { }

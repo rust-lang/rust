@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::collections::HashSet;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

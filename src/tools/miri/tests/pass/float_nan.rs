@@ -1,7 +1,15 @@
+#![feature(float_gamma, portable_simd, core_intrinsics, platform_intrinsics)]
 use std::collections::HashSet;
 use std::fmt;
 use std::hash::Hash;
 use std::hint::black_box;
+
+fn ldexp(a: f64, b: i32) -> f64 {
+    extern "C" {
+        fn ldexp(x: f64, n: i32) -> f64;
+    }
+    unsafe { ldexp(a, b) }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Sign {
@@ -249,6 +257,62 @@ fn test_f32() {
     check_all_outcomes(HashSet::from_iter([F32::nan(Neg, Signaling, all1_payload)]), || {
         F32::from(-all1_snan)
     });
+
+    // Intrinsics
+    let nan = F32::nan(Neg, Quiet, 0).as_f32();
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(f32::min(nan, nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.floor()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.sin()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            F32::nan(Pos, Quiet, 1),
+            F32::nan(Neg, Quiet, 1),
+            F32::nan(Pos, Quiet, 2),
+            F32::nan(Neg, Quiet, 2),
+            F32::nan(Pos, Quiet, all1_payload),
+            F32::nan(Neg, Quiet, all1_payload),
+            F32::nan(Pos, Signaling, all1_payload),
+            F32::nan(Neg, Signaling, all1_payload),
+        ]),
+        || F32::from(just1.mul_add(F32::nan(Neg, Quiet, 2).as_f32(), all1_snan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.powf(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([1.0f32.into()]),
+        || F32::from(1.0f32.powf(nan)), // special `pow` rule
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.powi(1)),
+    );
+
+    // libm functions
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.sinh()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.atan2(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.ln_gamma().0),
+    );
 }
 
 fn test_f64() {
@@ -308,6 +372,66 @@ fn test_f64() {
             F64::nan(Neg, Signaling, all1_payload),
         ]),
         || F64::from(just1 % all1_snan),
+    );
+
+    // Intrinsics
+    let nan = F64::nan(Neg, Quiet, 0).as_f64();
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(f64::min(nan, nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.floor()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.sin()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F64::nan(Pos, Quiet, 0),
+            F64::nan(Neg, Quiet, 0),
+            F64::nan(Pos, Quiet, 1),
+            F64::nan(Neg, Quiet, 1),
+            F64::nan(Pos, Quiet, 2),
+            F64::nan(Neg, Quiet, 2),
+            F64::nan(Pos, Quiet, all1_payload),
+            F64::nan(Neg, Quiet, all1_payload),
+            F64::nan(Pos, Signaling, all1_payload),
+            F64::nan(Neg, Signaling, all1_payload),
+        ]),
+        || F64::from(just1.mul_add(F64::nan(Neg, Quiet, 2).as_f64(), all1_snan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.powf(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([1.0f64.into()]),
+        || F64::from(1.0f64.powf(nan)), // special `pow` rule
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.powi(1)),
+    );
+
+    // libm functions
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.sinh()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.atan2(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(ldexp(nan, 1)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.ln_gamma().0),
     );
 }
 
@@ -397,6 +521,61 @@ fn test_casts() {
     );
 }
 
+fn test_simd() {
+    use std::intrinsics::simd::*;
+    use std::simd::*;
+
+    extern "platform-intrinsic" {
+        fn simd_fsqrt<T>(x: T) -> T;
+        fn simd_ceil<T>(x: T) -> T;
+        fn simd_fma<T>(x: T, y: T, z: T) -> T;
+    }
+
+    let nan = F32::nan(Neg, Quiet, 0).as_f32();
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_div(f32x4::splat(0.0), f32x4::splat(0.0)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_fmin(f32x4::splat(nan), f32x4::splat(nan)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_fmax(f32x4::splat(nan), f32x4::splat(nan)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || {
+            F32::from(
+                unsafe { simd_fma(f32x4::splat(nan), f32x4::splat(nan), f32x4::splat(nan)) }[0],
+            )
+        },
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_reduce_add_ordered::<_, f32>(f32x4::splat(nan), nan) }),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_reduce_max::<_, f32>(f32x4::splat(nan)) }),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_fsqrt(f32x4::splat(nan)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_ceil(f32x4::splat(nan)) }[0]),
+    );
+
+    // Casts
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(unsafe { simd_cast::<f32x4, f64x4>(f32x4::splat(nan)) }[0]),
+    );
+}
+
 fn main() {
     // Check our constants against std, just to be sure.
     // We add 1 since our numbers are the number of bits stored
@@ -408,4 +587,5 @@ fn main() {
     test_f32();
     test_f64();
     test_casts();
+    test_simd();
 }

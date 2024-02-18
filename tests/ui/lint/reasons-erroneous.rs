@@ -1,4 +1,4 @@
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![feature(lint_reasons)]
 

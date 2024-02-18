@@ -14,5 +14,7 @@ mod foo {
 }
 
 fn main() {
-    let _: foo::Foo = std::mem::transmute(0u8);
+    unsafe {
+        let _: foo::Foo = std::mem::transmute(0u8);
+    }
 }

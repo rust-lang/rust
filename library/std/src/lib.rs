@@ -262,6 +262,11 @@
 )]
 #![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
 #![cfg_attr(target_os = "xous", feature(slice_ptr_len))]
+#![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
+#![cfg_attr(
+    all(any(target_arch = "x86_64", target_arch = "x86"), target_os = "uefi"),
+    feature(stdarch_x86_has_cpuid)
+)]
 //
 // Language features:
 // tidy-alphabetical-start
@@ -270,6 +275,7 @@
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(c_unwind)]
+#![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(concat_idents)]
@@ -322,14 +328,14 @@
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(float_next_up_down)]
+#![feature(generic_nonzero)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
+#![feature(hint_assert_unchecked)]
 #![feature(ip)]
-#![feature(ip_in_core)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
-#![feature(offset_of)]
 #![feature(panic_can_unwind)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
@@ -337,14 +343,14 @@
 #![feature(portable_simd)]
 #![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
-#![feature(raw_os_nonzero)]
-#![feature(round_ties_even)]
+#![feature(ptr_mask)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
+#![feature(strict_provenance_atomic_ptr)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
@@ -365,6 +371,11 @@
 #![feature(panic_unwind)]
 // tidy-alphabetical-end
 //
+// Library features (std_detect):
+// tidy-alphabetical-start
+#![feature(stdarch_internal)]
+// tidy-alphabetical-end
+//
 // Only for re-exporting:
 // tidy-alphabetical-start
 #![feature(assert_matches)]
@@ -374,14 +385,12 @@
 #![feature(cfg_eval)]
 #![feature(concat_bytes)]
 #![feature(const_format_args)]
-#![feature(core_panic)]
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
 #![feature(get_many_mut)]
 #![feature(lazy_cell)]
 #![feature(log_syntax)]
-#![feature(stdsimd)]
 #![feature(test)]
 #![feature(trace_macros)]
 // tidy-alphabetical-end
@@ -620,13 +629,16 @@ pub mod arch {
 
     #[stable(feature = "simd_aarch64", since = "1.60.0")]
     pub use std_detect::is_aarch64_feature_detected;
+    #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
+    pub use std_detect::is_arm_feature_detected;
+    #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
+    pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
-    #[unstable(feature = "stdsimd", issue = "48556")]
-    pub use std_detect::{
-        is_arm_feature_detected, is_mips64_feature_detected, is_mips_feature_detected,
-        is_powerpc64_feature_detected, is_powerpc_feature_detected, is_riscv_feature_detected,
-    };
+    #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
+    pub use std_detect::{is_mips64_feature_detected, is_mips_feature_detected};
+    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
+    pub use std_detect::{is_powerpc64_feature_detected, is_powerpc_feature_detected};
 }
 
 // This was stabilized in the crate root so we have to keep it there.

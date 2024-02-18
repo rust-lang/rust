@@ -8,7 +8,7 @@ use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceLock};
+use rustc_data_structures::sync::{Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -26,12 +26,11 @@ use rustc_serialize::{Decodable, Decoder};
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
 use rustc_span::symbol::kw;
-use rustc_span::{BytePos, Pos, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
 use std::path::Path;
-use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -88,8 +87,6 @@ pub(crate) struct CrateMetadata {
     alloc_decoding_state: AllocDecodingState,
     /// Caches decoded `DefKey`s.
     def_key_cache: Lock<FxHashMap<DefIndex, DefKey>>,
-    /// Caches decoded `DefPathHash`es.
-    def_path_hash_cache: Lock<FxHashMap<DefIndex, DefPathHash>>,
 
     // --- Other significant crate properties ---
     /// ID of this crate, from the current compilation session's point of view.
@@ -98,17 +95,19 @@ pub(crate) struct CrateMetadata {
     /// IDs as they are seen from the current compilation session.
     cnum_map: CrateNumMap,
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    dependencies: AppendOnlyVec<CrateNum>,
+    dependencies: Vec<CrateNum>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    dep_kind: Lock<CrateDepKind>,
+    dep_kind: CrateDepKind,
     /// Filesystem location of this crate.
     source: Lrc<CrateSource>,
     /// Whether or not this crate should be consider a private dependency.
     /// Used by the 'exported_private_dependencies' lint, and for determining
     /// whether to emit suggestions that reference this crate.
-    private_dep: AtomicBool,
+    private_dep: bool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
+    /// The crate was used non-speculatively.
+    used: bool,
 
     /// Additional data used for decoding `HygieneData` (e.g. `SyntaxContext`
     /// and `ExpnId`).
@@ -120,7 +119,7 @@ pub(crate) struct CrateMetadata {
     // --- Data used only for improving diagnostics ---
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
     /// If this is `None`, then the crate was injected (e.g., by the allocator).
-    extern_crate: Lock<Option<ExternCrate>>,
+    extern_crate: Option<ExternCrate>,
 }
 
 /// Holds information about a rustc_span::SourceFile imported from another crate.
@@ -328,7 +327,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZeroUsize) -> T) -> T {
+    fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZero<usize>) -> T) -> T {
         let distance = self.read_usize();
         let position = match self.lazy_state {
             LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
@@ -339,7 +338,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
             }
             LazyState::Previous(last_pos) => last_pos.get() + distance,
         };
-        let position = NonZeroUsize::new(position).unwrap();
+        let position = NonZero::new(position).unwrap();
         self.lazy_state = LazyState::Previous(position);
         f(position)
     }
@@ -411,21 +410,6 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {
-    #[inline]
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> CrateNum {
-        let cnum = CrateNum::from_u32(d.read_u32());
-        d.map_encoded_cnum_to_current(cnum)
-    }
-}
-
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
-    #[inline]
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefIndex {
-        DefIndex::from_u32(d.read_u32())
-    }
-}
-
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
     #[inline]
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ExpnIndex {
@@ -433,19 +417,29 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ast::AttrId {
-    #[inline]
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ast::AttrId {
-        let sess = d.sess.expect("can't decode AttrId without Session");
+impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
+    fn decode_attr_id(&mut self) -> rustc_span::AttrId {
+        let sess = self.sess.expect("can't decode AttrId without Session");
         sess.parse_sess.attr_id_generator.mk_attr_id()
     }
-}
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SyntaxContext {
-        let cdata = decoder.cdata();
+    fn decode_crate_num(&mut self) -> CrateNum {
+        let cnum = CrateNum::from_u32(self.read_u32());
+        self.map_encoded_cnum_to_current(cnum)
+    }
 
-        let Some(sess) = decoder.sess else {
+    fn decode_def_index(&mut self) -> DefIndex {
+        DefIndex::from_u32(self.read_u32())
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        let cdata = self.cdata();
+
+        let Some(sess) = self.sess else {
             bug!(
                 "Cannot decode SyntaxContext without Session.\
                 You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
@@ -453,7 +447,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
         };
 
         let cname = cdata.root.name();
-        rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
+        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
             cdata
                 .root
@@ -463,21 +457,19 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
                 .decode((cdata, sess))
         })
     }
-}
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> ExpnId {
-        let local_cdata = decoder.cdata();
+    fn decode_expn_id(&mut self) -> ExpnId {
+        let local_cdata = self.cdata();
 
-        let Some(sess) = decoder.sess else {
+        let Some(sess) = self.sess else {
             bug!(
                 "Cannot decode ExpnId without Session. \
                 You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
             );
         };
 
-        let cnum = CrateNum::decode(decoder);
-        let index = u32::decode(decoder);
+        let cnum = CrateNum::decode(self);
+        let index = u32::decode(self);
 
         let expn_id = rustc_span::hygiene::decode_expn_id(cnum, index, |expn_id| {
             let ExpnId { krate: cnum, local_id: index } = expn_id;
@@ -505,36 +497,66 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
         });
         expn_id
     }
-}
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Span {
-        let mode = SpanEncodingMode::decode(decoder);
-        let data = match mode {
-            SpanEncodingMode::Direct => SpanData::decode(decoder),
-            SpanEncodingMode::Shorthand(position) => decoder.with_position(position, |decoder| {
-                let mode = SpanEncodingMode::decode(decoder);
-                debug_assert!(matches!(mode, SpanEncodingMode::Direct));
-                SpanData::decode(decoder)
-            }),
+    fn decode_span(&mut self) -> Span {
+        let start = self.position();
+        let tag = SpanTag(self.peek_byte());
+        let data = if tag.kind() == SpanKind::Indirect {
+            // Skip past the tag we just peek'd.
+            self.read_u8();
+            let offset_or_position = self.read_usize();
+            let position = if tag.is_relative_offset() {
+                start - offset_or_position
+            } else {
+                offset_or_position
+            };
+            self.with_position(position, SpanData::decode)
+        } else {
+            SpanData::decode(self)
         };
         Span::new(data.lo, data.hi, data.ctxt, data.parent)
+    }
+
+    fn decode_symbol(&mut self) -> Symbol {
+        let tag = self.read_u8();
+
+        match tag {
+            SYMBOL_STR => {
+                let s = self.read_str();
+                Symbol::intern(s)
+            }
+            SYMBOL_OFFSET => {
+                // read str offset
+                let pos = self.read_usize();
+
+                // move to str offset and read
+                self.opaque.with_position(pos, |d| {
+                    let s = d.read_str();
+                    Symbol::intern(s)
+                })
+            }
+            SYMBOL_PREINTERNED => {
+                let symbol_index = self.read_u32();
+                Symbol::new_from_decoded(symbol_index)
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SpanData {
-        let ctxt = SyntaxContext::decode(decoder);
-        let tag = u8::decode(decoder);
+        let tag = SpanTag::decode(decoder);
+        let ctxt = tag.context().unwrap_or_else(|| SyntaxContext::decode(decoder));
 
-        if tag == TAG_PARTIAL_SPAN {
+        if tag.kind() == SpanKind::Partial {
             return DUMMY_SP.with_ctxt(ctxt).data();
         }
 
-        debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
+        debug_assert!(tag.kind() == SpanKind::Local || tag.kind() == SpanKind::Foreign);
 
         let lo = BytePos::decode(decoder);
-        let len = BytePos::decode(decoder);
+        let len = tag.length().unwrap_or_else(|| BytePos::decode(decoder));
         let hi = lo + len;
 
         let Some(sess) = decoder.sess else {
@@ -575,7 +597,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
         // treat the 'local' and 'foreign' cases almost identically during deserialization:
         // we can call `imported_source_file` for the proper crate, and binary search
         // through the returned slice using our span.
-        let source_file = if tag == TAG_VALID_SPAN_LOCAL {
+        let source_file = if tag.kind() == SpanKind::Local {
             decoder.cdata().imported_source_file(metadata_index, sess)
         } else {
             // When we encode a proc-macro crate, all `Span`s should be encoded
@@ -627,34 +649,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Symbol {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
-        let tag = d.read_u8();
-
-        match tag {
-            SYMBOL_STR => {
-                let s = d.read_str();
-                Symbol::intern(s)
-            }
-            SYMBOL_OFFSET => {
-                // read str offset
-                let pos = d.read_usize();
-
-                // move to str offset and read
-                d.opaque.with_position(pos, |d| {
-                    let s = d.read_str();
-                    Symbol::intern(s)
-                })
-            }
-            SYMBOL_PREINTERNED => {
-                let symbol_index = d.read_u32();
-                Symbol::new_from_decoded(symbol_index)
-            }
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)
@@ -691,15 +685,15 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 8).unwrap())
+        LazyValue::<String>::from_position(NonZero::new(METADATA_HEADER.len() + 8).unwrap())
             .decode(self)
     }
 
-    fn root_pos(&self) -> NonZeroUsize {
+    fn root_pos(&self) -> NonZero<usize> {
         let offset = METADATA_HEADER.len();
         let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
         let pos = u64::from_le_bytes(pos_bytes);
-        NonZeroUsize::new(pos as usize).unwrap()
+        NonZero::new(pos as usize).unwrap()
     }
 
     pub(crate) fn get_header(&self) -> CrateHeader {
@@ -1035,6 +1029,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             self.root.edition,
             Symbol::intern(name),
             &attrs,
+            false,
         )
     }
 
@@ -1089,6 +1084,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 parent_did,
                 false,
                 data.is_non_exhaustive,
+                // FIXME: unnamed fields in crate metadata is unimplemented yet.
+                false,
             ),
         )
     }
@@ -1131,6 +1128,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             adt_kind,
             variants.into_iter().map(|(_, variant)| variant).collect(),
             repr,
+            false,
         )
     }
 
@@ -1485,27 +1483,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         DefPath::make(self.cnum, id, |parent| self.def_key(parent))
     }
 
-    fn def_path_hash_unlocked(
-        self,
-        index: DefIndex,
-        def_path_hashes: &mut FxHashMap<DefIndex, DefPathHash>,
-    ) -> DefPathHash {
-        *def_path_hashes.entry(index).or_insert_with(|| {
-            // This is a hack to workaround the fact that we can't easily encode/decode a Hash64
-            // into the FixedSizeEncoding, as Hash64 lacks a Default impl. A future refactor to
-            // relax the Default restriction will likely fix this.
-            let fingerprint = Fingerprint::new(
-                self.root.stable_crate_id.as_u64(),
-                self.root.tables.def_path_hashes.get(self, index),
-            );
-            DefPathHash::new(self.root.stable_crate_id, fingerprint.split().1)
-        })
-    }
-
     #[inline]
     fn def_path_hash(self, index: DefIndex) -> DefPathHash {
-        let mut def_path_hashes = self.def_path_hash_cache.lock();
-        self.def_path_hash_unlocked(index, &mut def_path_hashes)
+        // This is a hack to workaround the fact that we can't easily encode/decode a Hash64
+        // into the FixedSizeEncoding, as Hash64 lacks a Default impl. A future refactor to
+        // relax the Default restriction will likely fix this.
+        let fingerprint = Fingerprint::new(
+            self.root.stable_crate_id.as_u64(),
+            self.root.tables.def_path_hashes.get(self, index),
+        );
+        DefPathHash::new(self.root.stable_crate_id, fingerprint.split().1)
     }
 
     #[inline]
@@ -1684,7 +1671,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     multibyte_chars,
                     non_narrow_chars,
                     normalized_pos,
-                    name_hash,
+                    stable_id,
                     ..
                 } = source_file_to_import;
 
@@ -1729,7 +1716,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 let local_version = sess.source_map().new_imported_source_file(
                     name,
                     src_hash,
-                    name_hash,
+                    stable_id,
                     source_len.to_u32(),
                     self.cnum,
                     lines,
@@ -1762,8 +1749,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.attr_flags.get(self, index)
     }
 
-    fn get_is_intrinsic(self, index: DefIndex) -> bool {
-        self.root.tables.is_intrinsic.get(self, index)
+    fn get_intrinsic(self, index: DefIndex) -> Option<Symbol> {
+        self.root.tables.intrinsic.get(self, index).map(|d| d.decode(self))
     }
 
     fn get_doc_link_resolutions(self, index: DefIndex) -> DocLinkResMap {
@@ -1825,14 +1812,14 @@ impl CrateMetadata {
             cnum,
             cnum_map,
             dependencies,
-            dep_kind: Lock::new(dep_kind),
+            dep_kind,
             source: Lrc::new(source),
-            private_dep: AtomicBool::new(private_dep),
+            private_dep,
             host_hash,
-            extern_crate: Lock::new(None),
+            used: false,
+            extern_crate: None,
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
-            def_path_hash_cache: Default::default(),
         };
 
         // Need `CrateMetadataRef` to decode `DefId`s in simplified types.
@@ -1847,18 +1834,18 @@ impl CrateMetadata {
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> + '_ {
-        self.dependencies.iter()
+        self.dependencies.iter().copied()
     }
 
-    pub(crate) fn add_dependency(&self, cnum: CrateNum) {
+    pub(crate) fn add_dependency(&mut self, cnum: CrateNum) {
         self.dependencies.push(cnum);
     }
 
-    pub(crate) fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
-        let mut extern_crate = self.extern_crate.borrow_mut();
-        let update = Some(new_extern_crate.rank()) > extern_crate.as_ref().map(ExternCrate::rank);
+    pub(crate) fn update_extern_crate(&mut self, new_extern_crate: ExternCrate) -> bool {
+        let update =
+            Some(new_extern_crate.rank()) > self.extern_crate.as_ref().map(ExternCrate::rank);
         if update {
-            *extern_crate = Some(new_extern_crate);
+            self.extern_crate = Some(new_extern_crate);
         }
         update
     }
@@ -1868,15 +1855,19 @@ impl CrateMetadata {
     }
 
     pub(crate) fn dep_kind(&self) -> CrateDepKind {
-        *self.dep_kind.lock()
+        self.dep_kind
     }
 
-    pub(crate) fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
-        self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
+    pub(crate) fn set_dep_kind(&mut self, dep_kind: CrateDepKind) {
+        self.dep_kind = dep_kind;
     }
 
-    pub(crate) fn update_and_private_dep(&self, private_dep: bool) {
-        self.private_dep.fetch_and(private_dep, Ordering::SeqCst);
+    pub(crate) fn update_and_private_dep(&mut self, private_dep: bool) {
+        self.private_dep &= private_dep;
+    }
+
+    pub(crate) fn used(&self) -> bool {
+        self.used
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {

@@ -1,6 +1,6 @@
-// compile-flags: --test
-// run-pass
-// needs-unwind
+//@ compile-flags: --test
+//@ run-pass
+//@ needs-unwind
 
 
 #![feature(test)]

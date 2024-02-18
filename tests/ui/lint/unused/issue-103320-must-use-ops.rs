@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![warn(unused_must_use)]
 #![feature(never_type)]

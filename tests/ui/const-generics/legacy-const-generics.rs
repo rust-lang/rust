@@ -1,5 +1,5 @@
-// aux-build:legacy-const-generics.rs
-// run-pass
+//@ aux-build:legacy-const-generics.rs
+//@ run-pass
 
 #![feature(rustc_attrs)]
 

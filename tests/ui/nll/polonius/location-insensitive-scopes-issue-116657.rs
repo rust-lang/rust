@@ -1,8 +1,8 @@
 // This is a non-regression test for issue #116657, where NLL and `-Zpolonius=next` computed
 // different loan scopes when a member constraint was not ultimately applied.
 
-// revisions: nll polonius
-// [polonius] compile-flags: -Zpolonius=next
+//@ revisions: nll polonius
+//@ [polonius] compile-flags: -Zpolonius=next
 
 #![feature(impl_trait_in_assoc_type)]
 

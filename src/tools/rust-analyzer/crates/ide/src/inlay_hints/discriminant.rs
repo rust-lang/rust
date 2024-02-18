@@ -74,7 +74,7 @@ fn variant_hints(
         },
         Some(InlayTooltip::String(match &d {
             Ok(_) => "enum variant discriminant".into(),
-            Err(e) => format!("{e:?}").into(),
+            Err(e) => format!("{e:?}"),
         })),
         None,
     );

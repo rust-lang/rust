@@ -1,6 +1,6 @@
-// aux-build:nested-dollar-crate.rs
-// edition:2018
-// run-pass
+//@ aux-build:nested-dollar-crate.rs
+//@ edition:2018
+//@ run-pass
 
 extern crate nested_dollar_crate;
 

@@ -1,5 +1,3 @@
-// stderr-per-bitwidth
-
 const fn foo() -> ! {
     unsafe { std::mem::transmute(()) }
     //~^ ERROR evaluation of constant value failed

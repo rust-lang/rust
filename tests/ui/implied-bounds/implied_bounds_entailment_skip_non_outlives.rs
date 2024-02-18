@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // See issue #109356. We don't want a false positive to the `implied_bounds_entailment` lint.
 
 use std::borrow::Cow;

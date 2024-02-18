@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_braces)]
 #![allow(dead_code)]
 #![allow(unused_unsafe)]

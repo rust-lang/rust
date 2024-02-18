@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: --cfg foo
+//@ run-pass
+//@ compile-flags: --cfg foo
 
 // check that cfg correctly chooses between the macro impls (see also
 // cfg-macros-notfoo.rs)

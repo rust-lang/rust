@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn a() {
     let x = [1, 2, 3];

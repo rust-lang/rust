@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(incomplete_features)]
 #![feature(explicit_tail_calls)]
 

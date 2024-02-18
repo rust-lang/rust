@@ -6,7 +6,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::symbol::Symbol;
 use rustc_type_ir::Mutability;
 
-use crate::const_eval::{mk_eval_cx, CanAccessStatics, CompileTimeEvalContext};
+use crate::const_eval::{mk_eval_cx, CanAccessMutGlobal, CompileTimeEvalContext};
 use crate::interpret::*;
 
 /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
@@ -27,6 +27,7 @@ fn alloc_caller_location<'mir, 'tcx>(
         // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
         ecx.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not).unwrap()
     };
+    let file = file.map_provenance(CtfeProvenance::as_immutable);
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
     let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
 
@@ -56,7 +57,7 @@ pub(crate) fn const_caller_location_provider(
     col: u32,
 ) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
-    let mut ecx = mk_eval_cx(tcx.tcx, tcx.span, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
+    let mut ecx = mk_eval_cx(tcx.tcx, tcx.span, ty::ParamEnv::reveal_all(), CanAccessMutGlobal::No);
 
     let loc_place = alloc_caller_location(&mut ecx, file, line, col);
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {

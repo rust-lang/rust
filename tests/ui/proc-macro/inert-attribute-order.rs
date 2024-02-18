@@ -1,8 +1,8 @@
 // Order of inert attributes, both built-in and custom is preserved during expansion.
 
-// check-pass
-// compile-flags: -Z span-debug
-// aux-build:test-macros.rs
+//@ check-pass
+//@ compile-flags: -Z span-debug
+//@ aux-build:test-macros.rs
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

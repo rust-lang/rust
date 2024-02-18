@@ -52,7 +52,7 @@ fn hash_substructure(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let [state_expr] = substr.nonselflike_args else {
-        cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
+        cx.dcx().span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
     let call_hash = |span, expr| {
         let hash_path = {
@@ -75,7 +75,7 @@ fn hash_substructure(
             let stmts = thin_vec![call_hash(tag_field.span, tag_field.self_expr.clone())];
             (stmts, match_expr.clone())
         }
-        _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`"),
+        _ => cx.dcx().span_bug(trait_span, "impossible substructure in `derive(Hash)`"),
     };
 
     BlockOrExpr::new_mixed(stmts, match_expr)

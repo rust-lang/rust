@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 async fn foo () { }
 fn bar() -> impl std::future::Future { async {} }

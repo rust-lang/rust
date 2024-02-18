@@ -1,6 +1,6 @@
-// only-x86_64
-// build-fail
-// compile-flags: -Ccodegen-units=1
+//@ only-x86_64
+//@ build-fail
+//@ compile-flags: -Ccodegen-units=1
 
 use std::arch::asm;
 

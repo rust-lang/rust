@@ -51,7 +51,7 @@ pub(crate) fn text_range(
     let start = offset(line_index, range.start)?;
     let end = offset(line_index, range.end)?;
     match end < start {
-        true => Err(format_err!("Invalid Range").into()),
+        true => Err(format_err!("Invalid Range")),
         false => Ok(TextRange::new(start, end)),
     }
 }
@@ -108,7 +108,7 @@ pub(crate) fn annotation(
     code_lens: lsp_types::CodeLens,
 ) -> anyhow::Result<Option<Annotation>> {
     let data =
-        code_lens.data.ok_or_else(|| invalid_params_error("code lens without data".to_string()))?;
+        code_lens.data.ok_or_else(|| invalid_params_error("code lens without data".to_owned()))?;
     let resolve = from_json::<lsp_ext::CodeLensResolveData>("CodeLensResolveData", &data)?;
 
     match resolve.kind {

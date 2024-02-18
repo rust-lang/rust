@@ -120,7 +120,7 @@ pub enum ConstVariableOriginKind {
 #[derive(Copy, Clone, Debug)]
 pub enum ConstVariableValue<'tcx> {
     Known { value: ty::Const<'tcx> },
-    Unknown { universe: ty::UniverseIndex },
+    Unknown { origin: ConstVariableOrigin, universe: ty::UniverseIndex },
 }
 
 impl<'tcx> ConstVariableValue<'tcx> {
@@ -132,12 +132,6 @@ impl<'tcx> ConstVariableValue<'tcx> {
             ConstVariableValue::Known { value } => Some(value),
         }
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct ConstVarValue<'tcx> {
-    pub origin: ConstVariableOrigin,
-    pub val: ConstVariableValue<'tcx>,
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -153,7 +147,7 @@ impl<'tcx> From<ty::ConstVid> for ConstVidKey<'tcx> {
 }
 
 impl<'tcx> UnifyKey for ConstVidKey<'tcx> {
-    type Value = ConstVarValue<'tcx>;
+    type Value = ConstVariableValue<'tcx>;
     #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()
@@ -167,23 +161,23 @@ impl<'tcx> UnifyKey for ConstVidKey<'tcx> {
     }
 }
 
-impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
+impl<'tcx> UnifyValue for ConstVariableValue<'tcx> {
     type Error = NoError;
 
     fn unify_values(&value1: &Self, &value2: &Self) -> Result<Self, Self::Error> {
-        Ok(match (value1.val, value2.val) {
+        match (value1, value2) {
             (ConstVariableValue::Known { .. }, ConstVariableValue::Known { .. }) => {
                 bug!("equating two const variables, both of which have known values")
             }
 
             // If one side is known, prefer that one.
-            (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => value1,
-            (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => value2,
+            (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => Ok(value1),
+            (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => Ok(value2),
 
             // If both sides are *unknown*, it hardly matters, does it?
             (
-                ConstVariableValue::Unknown { universe: universe1 },
-                ConstVariableValue::Unknown { universe: universe2 },
+                ConstVariableValue::Unknown { origin, universe: universe1 },
+                ConstVariableValue::Unknown { origin: _, universe: universe2 },
             ) => {
                 // If we unify two unbound variables, ?T and ?U, then whatever
                 // value they wind up taking (which must be the same value) must
@@ -191,45 +185,46 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
                 // universe is the minimum of the two universes, because that is
                 // the one which contains the fewest names in scope.
                 let universe = cmp::min(universe1, universe2);
-                ConstVarValue {
-                    val: ConstVariableValue::Unknown { universe },
-                    origin: value1.origin,
-                }
+                Ok(ConstVariableValue::Unknown { origin, universe })
             }
-        })
+        }
     }
 }
 
 /// values for the effect inference variable
 #[derive(Clone, Copy, Debug)]
 pub enum EffectVarValue<'tcx> {
-    /// The host effect is on, enabling access to syscalls, filesystem access, etc.
-    Host,
-    /// The host effect is off. Execution is restricted to const operations only.
-    NoHost,
-    Const(ty::Const<'tcx>),
+    Unknown,
+    Known(ty::Const<'tcx>),
 }
 
 impl<'tcx> EffectVarValue<'tcx> {
-    pub fn as_const(self, tcx: TyCtxt<'tcx>) -> ty::Const<'tcx> {
+    pub fn known(self) -> Option<ty::Const<'tcx>> {
         match self {
-            EffectVarValue::Host => tcx.consts.true_,
-            EffectVarValue::NoHost => tcx.consts.false_,
-            EffectVarValue::Const(c) => c,
+            EffectVarValue::Unknown => None,
+            EffectVarValue::Known(value) => Some(value),
+        }
+    }
+
+    pub fn is_unknown(self) -> bool {
+        match self {
+            EffectVarValue::Unknown => true,
+            EffectVarValue::Known(_) => false,
         }
     }
 }
 
 impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
-    type Error = (EffectVarValue<'tcx>, EffectVarValue<'tcx>);
+    type Error = NoError;
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
-        match (value1, value2) {
-            (EffectVarValue::Host, EffectVarValue::Host) => Ok(EffectVarValue::Host),
-            (EffectVarValue::NoHost, EffectVarValue::NoHost) => Ok(EffectVarValue::NoHost),
-            (EffectVarValue::NoHost | EffectVarValue::Host, _)
-            | (_, EffectVarValue::NoHost | EffectVarValue::Host) => Err((*value1, *value2)),
-            (EffectVarValue::Const(_), EffectVarValue::Const(_)) => {
-                bug!("equating two const variables, both of which have known values")
+        match (*value1, *value2) {
+            (EffectVarValue::Unknown, EffectVarValue::Unknown) => Ok(EffectVarValue::Unknown),
+            (EffectVarValue::Unknown, EffectVarValue::Known(val))
+            | (EffectVarValue::Known(val), EffectVarValue::Unknown) => {
+                Ok(EffectVarValue::Known(val))
+            }
+            (EffectVarValue::Known(_), EffectVarValue::Known(_)) => {
+                bug!("equating known inference variables: {value1:?} {value2:?}")
             }
         }
     }
@@ -238,7 +233,7 @@ impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct EffectVidKey<'tcx> {
     pub vid: ty::EffectVid,
-    pub phantom: PhantomData<EffectVarValue<'tcx>>,
+    pub phantom: PhantomData<ty::Const<'tcx>>,
 }
 
 impl<'tcx> From<ty::EffectVid> for EffectVidKey<'tcx> {
@@ -248,7 +243,7 @@ impl<'tcx> From<ty::EffectVid> for EffectVidKey<'tcx> {
 }
 
 impl<'tcx> UnifyKey for EffectVidKey<'tcx> {
-    type Value = Option<EffectVarValue<'tcx>>;
+    type Value = EffectVarValue<'tcx>;
     #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()

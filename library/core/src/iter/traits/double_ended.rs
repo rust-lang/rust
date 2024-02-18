@@ -1,4 +1,4 @@
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
@@ -119,8 +119,8 @@ pub trait DoubleEndedIterator: Iterator {
     ///
     /// ```
     /// #![feature(iter_advance_by)]
-    ///
     /// use std::num::NonZeroUsize;
+    ///
     /// let a = [3, 4, 5, 6];
     /// let mut iter = a.iter();
     ///
@@ -134,11 +134,11 @@ pub trait DoubleEndedIterator: Iterator {
     /// [`Err(k)`]: Err
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         for i in 0..n {
             if self.next_back().is_none() {
                 // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZeroUsize::new_unchecked(n - i) });
+                return Err(unsafe { NonZero::new_unchecked(n - i) });
             }
         }
         Ok(())
@@ -373,7 +373,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
     fn next_back(&mut self) -> Option<I::Item> {
         (**self).next_back()
     }
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         (**self).advance_back_by(n)
     }
     fn nth_back(&mut self, n: usize) -> Option<I::Item> {

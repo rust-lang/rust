@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::sync::atomic::{Ordering, AtomicUsize};
 
 use std::mem;

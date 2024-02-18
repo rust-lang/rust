@@ -58,7 +58,7 @@ use crate::mem::transmute;
 #[unstable(feature = "ascii_char", issue = "110998")]
 #[repr(u8)]
 pub enum AsciiChar {
-    /// U+0000
+    /// U+0000 (The default variant)
     #[unstable(feature = "ascii_char_variants", issue = "110998")]
     Null = 0,
     /// U+0001
@@ -536,6 +536,22 @@ impl AsciiChar {
         crate::slice::from_ref(self).as_str()
     }
 }
+
+macro_rules! into_int_impl {
+    ($($ty:ty)*) => {
+        $(
+            #[unstable(feature = "ascii_char", issue = "110998")]
+            impl From<AsciiChar> for $ty {
+                #[inline]
+                fn from(chr: AsciiChar) -> $ty {
+                    chr as u8 as $ty
+                }
+            }
+        )*
+    }
+}
+
+into_int_impl!(u8 u16 u32 u64 u128 char);
 
 impl [AsciiChar] {
     /// Views this slice of ASCII characters as a UTF-8 `str`.

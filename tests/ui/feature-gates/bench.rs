@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 #[bench] //~ ERROR use of unstable library feature 'test'
          //~| WARN this was previously accepted

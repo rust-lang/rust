@@ -1,6 +1,6 @@
 // All constant items (associated or otherwise) may syntactically use `_` as a name.
 
-// check-pass
+//@ check-pass
 
 fn main() {}
 

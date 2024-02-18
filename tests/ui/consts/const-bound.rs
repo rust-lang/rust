@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Make sure const bounds work on things, and test that a few types
 // are const.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn foo<T: Sync>(x: T) -> T { x }
 

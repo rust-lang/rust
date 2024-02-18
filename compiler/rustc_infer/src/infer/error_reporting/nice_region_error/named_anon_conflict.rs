@@ -88,6 +88,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             },
             None => ExplicitLifetimeRequired::WithParamType { span, named, new_ty_span, new_ty },
         };
-        Some(self.tcx().sess.parse_sess.create_err(err))
+        Some(self.tcx().sess.dcx().create_err(err))
     }
 }

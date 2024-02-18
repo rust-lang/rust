@@ -1,5 +1,5 @@
-// revisions: good bad
-//[good] check-pass
+//@ revisions: good bad
+//@[good] check-pass
 
 trait Mirror {
     type Image;

@@ -41,6 +41,9 @@
 //!
 //! {"jsonrpc": "2.0", "method": "exit", "params": null}
 //! ```
+
+#![allow(clippy::print_stderr)]
+
 use std::error::Error;
 
 use lsp_types::OneOf;
@@ -64,7 +67,15 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
         ..Default::default()
     })
     .unwrap();
-    let initialization_params = connection.initialize(server_capabilities)?;
+    let initialization_params = match connection.initialize(server_capabilities) {
+        Ok(it) => it,
+        Err(e) => {
+            if e.channel_is_disconnected() {
+                io_threads.join()?;
+            }
+            return Err(e.into());
+        }
+    };
     main_loop(connection, initialization_params)?;
     io_threads.join()?;
 

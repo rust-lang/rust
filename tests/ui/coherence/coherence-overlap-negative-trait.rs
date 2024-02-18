@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:error_lib.rs
+//@ check-pass
+//@ aux-build:error_lib.rs
 //
 // Check that if we promise to not impl what would overlap it doesn't actually overlap
 

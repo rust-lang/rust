@@ -1,6 +1,6 @@
-// force-host
-// edition:2021
-// no-prefer-dynamic
+//@ force-host
+//@ edition:2021
+//@ no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
 

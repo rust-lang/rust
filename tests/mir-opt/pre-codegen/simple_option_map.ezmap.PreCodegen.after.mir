@@ -24,7 +24,7 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
     }
 
     bb1: {
-        _0 = Option::<i32>::None;
+        _0 = const Option::<i32>::None;
         goto -> bb3;
     }
 
@@ -45,4 +45,8 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
     bb4: {
         unreachable;
     }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

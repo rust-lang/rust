@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub const STATIC_TRAIT: &dyn Test = &();
 

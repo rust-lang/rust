@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:edition-lint-paths.rs
-// run-rustfix
+//@ run-pass
+//@ aux-build:edition-lint-paths.rs
+//@ run-rustfix
 
 // Oddball: `edition_lint_paths` is accessed via this `self` path
 // rather than being accessed directly. Unless we rewrite that path,

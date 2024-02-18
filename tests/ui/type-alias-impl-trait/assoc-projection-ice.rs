@@ -1,6 +1,6 @@
 #![feature(type_alias_impl_trait)]
 
-// build-pass
+//@ build-pass
 
 trait T { type Item; }
 

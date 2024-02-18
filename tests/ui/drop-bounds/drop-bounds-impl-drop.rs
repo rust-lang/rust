@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![deny(drop_bounds)]
 // As a special exemption, `impl Drop` in the return position raises no error.
 // This allows a convenient way to return an unnamed drop guard.

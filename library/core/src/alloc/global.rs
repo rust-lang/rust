@@ -110,7 +110,7 @@ use crate::ptr;
 ///   ```rust,ignore (unsound and has placeholders)
 ///   drop(Box::new(42));
 ///   let number_of_heap_allocs = /* call private allocator API */;
-///   unsafe { std::intrinsics::assume(number_of_heap_allocs > 0); }
+///   unsafe { std::hint::assert_unchecked(number_of_heap_allocs > 0); }
 ///   ```
 ///
 ///   Note that the optimizations mentioned above are not the only

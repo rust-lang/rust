@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn with_closure<F>(f: F) -> u32
     where F: FnOnce(&u32, &u32) -> u32
 {

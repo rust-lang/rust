@@ -1,4 +1,4 @@
-// aux-build:consts.rs
+//@ aux-build:consts.rs
 
 #![warn(indirect_structural_match)]
 
@@ -11,14 +11,14 @@ fn main() {
     let _ = Defaulted;
     match None {
         consts::SOME => panic!(),
-        //~^ must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ must be annotated with `#[derive(PartialEq)]`
 
         _ => {}
     }
 
     match None {
         <Defaulted as consts::AssocConst>::SOME  => panic!(),
-        //~^ must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ must be annotated with `#[derive(PartialEq)]`
 
         _ => {}
     }

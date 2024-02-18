@@ -1,4 +1,4 @@
-// aux-build: alias.rs
+//@ aux-build: alias.rs
 // regression test for 108160
 
 extern crate alias;

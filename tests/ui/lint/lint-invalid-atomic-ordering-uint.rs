@@ -1,4 +1,4 @@
-// only-x86_64
+//@ only-x86_64
 use std::sync::atomic::{AtomicU16, AtomicU32, AtomicU64, AtomicU8, AtomicUsize, Ordering};
 
 fn main() {

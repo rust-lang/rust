@@ -5,7 +5,7 @@
 //
 // See discussion on rust-lang/rust#62307 and rust-lang/rust#62339
 
-struct NoDerive(#[allow(unused_tuple_struct_fields)] i32);
+struct NoDerive(#[allow(dead_code)] i32);
 
 // This impl makes NoDerive irreflexive.
 impl PartialEq for NoDerive { fn eq(&self, _: &Self) -> bool { false } }
@@ -20,7 +20,7 @@ const WRAP_DIRECT_INLINE: WrapInline = WrapInline(NoDerive(0));
 fn main() {
     match WRAP_DIRECT_INLINE {
         WRAP_DIRECT_INLINE => { panic!("WRAP_DIRECT_INLINE matched itself"); }
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
         _ => { println!("WRAP_DIRECT_INLINE did not match itself"); }
     }
 }

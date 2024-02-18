@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait ConstChunksExactTrait<T> {
     fn const_chunks_exact<const N: usize>(&self) -> ConstChunksExact<'_, T, {N}>;

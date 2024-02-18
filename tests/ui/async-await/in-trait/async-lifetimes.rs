@@ -1,5 +1,5 @@
-// check-pass
-// edition: 2021
+//@ check-pass
+//@ edition: 2021
 
 trait MyTrait<'a, 'b, T> {
     #[allow(async_fn_in_trait)]

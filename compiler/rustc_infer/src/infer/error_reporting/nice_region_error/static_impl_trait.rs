@@ -67,7 +67,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         AssocItemContainer::ImplContainer => (false, String::new()),
                     };
 
-                    let mut err = self.tcx().sess.create_err(ButCallingIntroduces {
+                    let mut err = self.tcx().dcx().create_err(ButCallingIntroduces {
                         param_ty_span: param.param_ty_span,
                         cause_span: cause.span,
                         has_param_name: simple_ident.is_some(),
@@ -195,7 +195,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             bound,
         };
 
-        let mut err = self.tcx().sess.create_err(diag);
+        let mut err = self.tcx().dcx().create_err(diag);
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
 
@@ -443,7 +443,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 if let hir::OwnerNode::Item(Item {
                     kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
                     ..
-                }) = tcx.hir().owner(impl_did)
+                }) = tcx.hir_owner_node(impl_did)
                 {
                     Some((impl_item.ident, self_ty))
                 } else {

@@ -1,5 +1,5 @@
-// edition:2018
-// compile-flags: --crate-type lib
+//@ edition:2018
+//@ compile-flags: --crate-type lib
 
 async fn no_non_guaranteed_initialization(x: usize) -> usize {
     let y;

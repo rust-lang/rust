@@ -1,5 +1,5 @@
-// run-pass
-// run-rustfix
+//@ run-pass
+//@ run-rustfix
 
 #![allow(dead_code)]
 #![warn(unused_parens)]

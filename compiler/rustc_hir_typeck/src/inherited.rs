@@ -55,8 +55,7 @@ pub struct Inherited<'tcx> {
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, hir::HirId)>>,
 
-    pub(super) deferred_coroutine_interiors:
-        RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>, hir::CoroutineKind)>>,
+    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>)>>,
 
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform

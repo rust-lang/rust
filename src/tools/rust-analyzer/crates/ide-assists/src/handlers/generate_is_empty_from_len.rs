@@ -79,7 +79,7 @@ pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext<
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }"#
-            .to_string();
+            .to_owned();
             builder.insert(range.end(), code)
         },
     )
@@ -95,7 +95,7 @@ fn get_impl_method(
 
     let scope = ctx.sema.scope(impl_.syntax())?;
     let ty = impl_def.self_ty(db);
-    ty.iterate_method_candidates(db, &scope, None, Some(fn_name), |func| Some(func))
+    ty.iterate_method_candidates(db, &scope, None, Some(fn_name), Some)
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
-// run-fail
-// error-pattern:index out of bounds: the len is 1 but the index is 2
-// ignore-emscripten no processes
+//@ run-fail
+//@ error-pattern:index out of bounds: the len is 1 but the index is 2
+//@ ignore-emscripten no processes
 
 fn main() {
     let v: Vec<isize> = vec![10];

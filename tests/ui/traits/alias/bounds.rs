@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 #![feature(trait_alias)]
 
 use std::marker::PhantomData;
 
-trait Empty {}
+trait Empty {} //~ WARN trait `Empty` is never used
 trait EmptyAlias = Empty;
 trait CloneDefault = Clone + Default;
 trait SendSyncAlias = Send + Sync;

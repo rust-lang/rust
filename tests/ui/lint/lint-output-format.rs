@@ -1,5 +1,5 @@
-// compile-flags: -F unused_features
-// aux-build:lint_output_format.rs
+//@ compile-flags: -F unused_features
+//@ aux-build:lint_output_format.rs
 
 #![allow(deprecated)]
 

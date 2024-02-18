@@ -1,5 +1,5 @@
-// compile-flags: -Z print-type-sizes
-// build-pass
+//@ compile-flags: -Z print-type-sizes
+//@ build-pass
 
 // All of the types that occur in this function are uninteresting, in
 // that one cannot control the sizes of these types with the same sort

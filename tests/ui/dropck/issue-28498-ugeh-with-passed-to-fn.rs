@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Demonstrate the use of the unguarded escape hatch with a type param in negative position
 // to assert that destructor will not access any dead data.
@@ -21,7 +21,7 @@ impl Drop for ScribbleOnDrop {
     }
 }
 
-struct Foo<T>(u32, T, #[allow(unused_tuple_struct_fields)] Box<for <'r> fn(&'r T) -> String>);
+struct Foo<T>(u32, T, #[allow(dead_code)] Box<for <'r> fn(&'r T) -> String>);
 
 unsafe impl<#[may_dangle] T> Drop for Foo<T> {
     fn drop(&mut self) {

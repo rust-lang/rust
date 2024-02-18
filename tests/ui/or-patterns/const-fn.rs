@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const fn foo((Ok(a) | Err(a)): Result<i32, i32>) {
     let x = Ok(3);

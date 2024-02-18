@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 #![allow(keyword_idents)]
 
@@ -25,4 +25,9 @@ macro_rules! consumes_async_raw {
 #[macro_export]
 macro_rules! passes_ident {
     ($i: ident) => ($i)
+}
+
+#[macro_export]
+macro_rules! passes_tt {
+    ($i: tt) => ($i)
 }

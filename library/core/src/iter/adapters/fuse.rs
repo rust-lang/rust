@@ -24,6 +24,10 @@ impl<I> Fuse<I> {
     pub(in crate::iter) fn new(iter: I) -> Fuse<I> {
         Fuse { iter: Some(iter) }
     }
+
+    pub(crate) fn into_inner(self) -> Option<I> {
+        self.iter
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]

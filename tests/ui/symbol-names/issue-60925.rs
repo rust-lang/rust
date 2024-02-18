@@ -1,7 +1,7 @@
-// build-fail
-// revisions: legacy v0
-//[legacy]compile-flags: -Z unstable-options -C symbol-mangling-version=legacy
-    //[v0]compile-flags: -C symbol-mangling-version=v0
+//@ build-fail
+//@ revisions: legacy v0
+//@[legacy]compile-flags: -Z unstable-options -C symbol-mangling-version=legacy
+    //@[v0]compile-flags: -C symbol-mangling-version=v0
 
 #![feature(rustc_attrs)]
 

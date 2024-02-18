@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // With the current compiler logic, we cannot have both the `112225-1` case,
 // and this `112225-2` case working, as the type inference depends on the evaluation

@@ -22,20 +22,8 @@ use super::NoSolution;
 
 pub use rustc_middle::traits::query::NormalizationResult;
 
-pub trait QueryNormalizeExt<'tcx> {
-    /// Normalize a value using the `QueryNormalizer`.
-    ///
-    /// This normalization should *only* be used when the projection does not
-    /// have possible ambiguity or may not be well-formed.
-    ///
-    /// After codegen, when lifetimes do not matter, it is preferable to instead
-    /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
-    fn query_normalize<T>(self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
-    where
-        T: TypeFoldable<TyCtxt<'tcx>>;
-}
-
-impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
+#[extension(pub trait QueryNormalizeExt<'tcx>)]
+impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -49,6 +37,12 @@ impl<'cx, 'tcx> QueryNormalizeExt<'tcx> for At<'cx, 'tcx> {
     /// normalizing, but for now should be used only when we actually
     /// know that normalization will succeed, since error reporting
     /// and other details are still "under development".
+    ///
+    /// This normalization should *only* be used when the projection does not
+    /// have possible ambiguity or may not be well-formed.
+    ///
+    /// After codegen, when lifetimes do not matter, it is preferable to instead
+    /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
     fn query_normalize<T>(self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -239,16 +233,13 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                         }
 
                         let generic_ty = self.interner().type_of(data.def_id);
-                        let concrete_ty = generic_ty.instantiate(self.interner(), args);
+                        let mut concrete_ty = generic_ty.instantiate(self.interner(), args);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
-                            bug!(
-                                "infinite recursion generic_ty: {:#?}, args: {:#?}, \
-                                 concrete_ty: {:#?}, ty: {:#?}",
-                                generic_ty,
-                                args,
-                                concrete_ty,
-                                ty
+                            concrete_ty = Ty::new_error_with_message(
+                                self.interner(),
+                                DUMMY_SP,
+                                "recursive opaque type",
                             );
                         }
                         let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
@@ -275,10 +266,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 let data = data.try_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
-                // HACK(matthewjasper) `'static` is special-cased in selection,
-                // so we cannot canonicalize it.
-                let c_data = infcx
-                    .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
+                let c_data = infcx.canonicalize_query(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 let result = match kind {
@@ -292,10 +280,8 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     // Rustdoc normalizes possibly not well-formed types, so only
                     // treat this as a bug if we're not in rustdoc.
                     if !tcx.sess.opts.actually_rustdoc {
-                        tcx.sess.span_delayed_bug(
-                            DUMMY_SP,
-                            format!("unexpected ambiguity: {c_data:?} {result:?}"),
-                        );
+                        tcx.dcx()
+                            .delayed_bug(format!("unexpected ambiguity: {c_data:?} {result:?}"));
                     }
                     return Err(NoSolution);
                 }

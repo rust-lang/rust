@@ -1,7 +1,7 @@
 // Regression tests for issue #55414, expansion happens in the value of a key-value attribute,
 // and the expanded expression is more complex than simply a macro call.
 
-// aux-build:key-value-expansion.rs
+//@ aux-build:key-value-expansion.rs
 
 #![feature(rustc_attrs)]
 

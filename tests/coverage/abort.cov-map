@@ -1,5 +1,5 @@
 Function name: abort::main
-Raw bytes (105): 0x[01, 01, 12, 01, 47, 05, 09, 03, 0d, 42, 11, 03, 0d, 11, 3e, 42, 11, 03, 0d, 3b, 15, 11, 3e, 42, 11, 03, 0d, 15, 36, 3b, 15, 11, 3e, 42, 11, 03, 0d, 05, 09, 0d, 01, 0d, 01, 01, 1b, 03, 02, 0b, 00, 18, 42, 01, 0c, 00, 19, 11, 00, 1a, 02, 0a, 3e, 02, 0a, 00, 0b, 3b, 02, 0c, 00, 19, 15, 00, 1a, 00, 31, 36, 00, 31, 00, 32, 33, 04, 0c, 00, 19, 05, 00, 1a, 00, 31, 09, 00, 31, 00, 32, 47, 01, 09, 00, 17, 0d, 02, 05, 01, 02]
+Raw bytes (105): 0x[01, 01, 12, 01, 47, 05, 09, 03, 0d, 42, 11, 03, 0d, 11, 3e, 42, 11, 03, 0d, 3b, 15, 11, 3e, 42, 11, 03, 0d, 15, 36, 3b, 15, 11, 3e, 42, 11, 03, 0d, 05, 09, 0d, 01, 0e, 01, 01, 1b, 03, 02, 0b, 00, 18, 42, 01, 0c, 00, 19, 11, 00, 1a, 02, 0a, 3e, 02, 0a, 00, 0b, 3b, 02, 0c, 00, 19, 15, 00, 1a, 00, 31, 36, 00, 31, 00, 32, 33, 04, 0c, 00, 19, 05, 00, 1a, 00, 31, 09, 00, 31, 00, 32, 47, 01, 09, 00, 17, 0d, 02, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 18
@@ -22,7 +22,7 @@ Number of expressions: 18
 - expression 16 operands: lhs = Expression(0, Add), rhs = Counter(3)
 - expression 17 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 13
-- Code(Counter(0)) at (prev + 13, 1) to (start + 1, 27)
+- Code(Counter(0)) at (prev + 14, 1) to (start + 1, 27)
 - Code(Expression(0, Add)) at (prev + 2, 11) to (start + 0, 24)
     = (c0 + (c1 + c2))
 - Code(Expression(16, Sub)) at (prev + 1, 12) to (start + 0, 25)

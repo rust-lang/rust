@@ -1,7 +1,7 @@
 // Check that borrowck knows that moves in the pattern for if-let guards
 // only happen when the pattern is matched.
 
-// build-pass
+//@ build-pass
 
 #![feature(if_let_guard)]
 #![allow(irrefutable_let_patterns)]

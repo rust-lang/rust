@@ -1,4 +1,4 @@
-// aux-build:lifetimes.rs
+//@ aux-build:lifetimes.rs
 
 extern crate lifetimes;
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Original issue: #49650
 
 #[derive(PartialOrd, PartialEq)]

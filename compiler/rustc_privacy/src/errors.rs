@@ -1,9 +1,9 @@
-use rustc_errors::DiagnosticArgFromDisplay;
+use rustc_errors::{codes::*, DiagnosticArgFromDisplay};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
-#[diag(privacy_field_is_private, code = "E0451")]
+#[diag(privacy_field_is_private, code = E0451)]
 pub struct FieldIsPrivate {
     #[primary_span]
     pub span: Span,
@@ -48,7 +48,7 @@ pub struct UnnamedItemIsPrivate {
 }
 
 #[derive(Diagnostic)]
-#[diag(privacy_in_public_interface, code = "E0446")]
+#[diag(privacy_in_public_interface, code = E0446)]
 pub struct InPublicInterface<'a> {
     #[primary_span]
     #[label]

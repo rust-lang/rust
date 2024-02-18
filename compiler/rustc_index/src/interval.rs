@@ -236,6 +236,12 @@ impl<I: Idx> IntervalSet<I> {
         I: Step,
     {
         assert_eq!(self.domain, other.domain);
+        if self.map.len() < other.map.len() {
+            let backup = self.clone();
+            self.map.clone_from(&other.map);
+            return self.union(&backup);
+        }
+
         let mut did_insert = false;
         for range in other.iter_intervals() {
             did_insert |= self.insert_range(range);

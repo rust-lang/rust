@@ -135,7 +135,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Monomorphizes a type from the AST by first applying the
-    /// in-scope substitutions and then normalizing any associated
+    /// in-scope instantiations and then normalizing any associated
     /// types.
     /// Panics if normalization fails. In case normalization might fail
     /// use `try_instantiate_and_normalize_erasing_regions` instead.
@@ -149,12 +149,12 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let substituted = value.instantiate(self, param_args);
-        self.normalize_erasing_regions(param_env, substituted)
+        let instantiated = value.instantiate(self, param_args);
+        self.normalize_erasing_regions(param_env, instantiated)
     }
 
     /// Monomorphizes a type from the AST by first applying the
-    /// in-scope substitutions and then trying to normalize any associated
+    /// in-scope instantiations and then trying to normalize any associated
     /// types. Contrary to `instantiate_and_normalize_erasing_regions` this does
     /// not assume that normalization succeeds.
     #[instrument(level = "debug", skip(self))]
@@ -167,8 +167,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let substituted = value.instantiate(self, param_args);
-        self.try_normalize_erasing_regions(param_env, substituted)
+        let instantiated = value.instantiate(self, param_args);
+        self.try_normalize_erasing_regions(param_env, instantiated)
     }
 }
 

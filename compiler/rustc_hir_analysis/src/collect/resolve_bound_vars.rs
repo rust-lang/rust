@@ -8,12 +8,13 @@
 
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::struct_span_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, HirIdMap, LifetimeName, Node};
+use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
@@ -22,22 +23,13 @@ use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use std::fmt;
 
 use crate::errors;
 
-trait RegionExt {
-    fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg);
-
-    fn late(index: u32, param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg);
-
-    fn id(&self) -> Option<DefId>;
-
-    fn shifted(self, amount: u32) -> ResolvedArg;
-}
-
-impl RegionExt for ResolvedArg {
+#[extension(trait RegionExt)]
+impl ResolvedArg {
     fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
         debug!("ResolvedArg::early: def_id={:?}", param.def_id);
         (param.def_id, ResolvedArg::EarlyBound(param.def_id.to_def_id()))
@@ -254,7 +246,7 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
         map: &mut named_variable_map,
         scope: &Scope::Root { opt_parent_item: None },
     };
-    match tcx.hir().owner(local_def_id) {
+    match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
         hir::OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
         hir::OwnerNode::TraitItem(item) => {
@@ -335,13 +327,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // though this may happen when we call `poly_trait_ref_binder_info` with
                     // an (erroneous, #113423) associated return type bound in an impl header.
                     if !supertrait_bound_vars.is_empty() {
-                        self.tcx.sess.span_delayed_bug(
-                            DUMMY_SP,
-                            format!(
-                                "found supertrait lifetimes without a binder to append \
+                        self.tcx.dcx().delayed_bug(format!(
+                            "found supertrait lifetimes without a binder to append \
                                 them to: {supertrait_bound_vars:?}"
-                            ),
-                        );
+                        ));
                     }
                     break (vec![], BinderScopeType::Normal);
                 }
@@ -461,7 +450,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
                 if !infer_spans.is_empty() {
                     self.tcx
-                        .sess
+                        .dcx()
                         .emit_err(errors::ClosureImplicitHrtb { spans: infer_spans, for_sp });
                 }
             }
@@ -735,10 +724,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     let Some(def_id) = def_id.as_local() else { continue };
                     let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
-                    let parent_id = self.tcx.hir().parent_id(hir_id);
+                    let parent_id = self.tcx.parent_hir_id(hir_id);
                     if !parent_id.is_owner() {
-                        struct_span_err!(
-                            self.tcx.sess,
+                        struct_span_code_err!(
+                            self.tcx.dcx(),
                             lifetime.ident.span,
                             E0657,
                             "`impl Trait` can only capture lifetimes bound at the fn or impl level"
@@ -750,12 +739,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         kind: hir::ItemKind::OpaqueTy { .. }, ..
                     }) = self.tcx.hir_node(parent_id)
                     {
-                        let mut err = self.tcx.sess.struct_span_err(
+                        self.tcx.dcx().struct_span_err(
                             lifetime.ident.span,
                             "higher kinded lifetime bounds on nested opaque types are not supported yet",
-                        );
-                        err.span_note(self.tcx.def_span(def_id), "lifetime declared here");
-                        err.emit();
+                        )
+                        .with_span_note(self.tcx.def_span(def_id), "lifetime declared here")
+                        .emit();
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                     }
                 }
@@ -915,7 +904,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             continue;
                         }
                         self.insert_lifetime(lt, ResolvedArg::StaticLifetime);
-                        self.tcx.struct_span_lint_hir(
+                        self.tcx.node_span_lint(
                             lint::builtin::UNUSED_LIFETIMES,
                             lifetime.hir_id,
                             lifetime.ident.span,
@@ -1192,12 +1181,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {
-                        let mut diag = rustc_session::parse::feature_err(
-                            &self.tcx.sess.parse_sess,
-                            sym::anonymous_lifetime_in_impl_trait,
-                            lifetime_ref.ident.span,
-                            "anonymous lifetimes in `impl Trait` are unstable",
-                        );
+                        let mut diag: rustc_errors::DiagnosticBuilder<'_> =
+                            rustc_session::parse::feature_err(
+                                &self.tcx.sess,
+                                sym::anonymous_lifetime_in_impl_trait,
+                                lifetime_ref.ident.span,
+                                "anonymous lifetimes in `impl Trait` are unstable",
+                            );
 
                         if let Some(generics) =
                             self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id)
@@ -1268,7 +1258,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::LifetimeParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Lifetime {
+                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Lifetime {
                             use_span,
                             def_span,
                             what,
@@ -1323,7 +1313,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    self.tcx.sess.emit_err(errors::LateBoundInApit::Lifetime {
+                    self.tcx.dcx().emit_err(errors::LateBoundInApit::Lifetime {
                         span: lifetime_ref.ident.span,
                         param_span: self.tcx.def_span(region_def_id),
                     });
@@ -1341,7 +1331,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.span_delayed_bug(
+        self.tcx.dcx().span_delayed_bug(
             lifetime_ref.ident.span,
             format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
         );
@@ -1406,14 +1396,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Const {
+                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Const {
                             use_span,
                             def_span,
                             what,
                         })
                     }
                     DefKind::TyParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Type {
+                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Type {
                             use_span,
                             def_span,
                             what,
@@ -1447,7 +1437,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    let guar = self.tcx.sess.emit_err(match self.tcx.def_kind(param_def_id) {
+                    let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
                         DefKind::TyParam => errors::LateBoundInApit::Type {
                             span: self.tcx.hir().span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
@@ -1475,7 +1465,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.span_delayed_bug(
+        self.tcx.dcx().span_delayed_bug(
             self.tcx.hir().span(hir_id),
             format!("could not resolve {param_def_id:?}"),
         );
@@ -1705,7 +1695,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     bound_vars
                 } else {
                     self.tcx
-                        .sess
+                        .dcx()
                         .span_delayed_bug(binding.ident.span, "bad return type notation here");
                     vec![]
                 };
@@ -1788,7 +1778,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
                     ty::ClauseKind::Trait(data) => {
-                        // The order here needs to match what we would get from `subst_supertrait`
+                        // The order here needs to match what we would get from
+                        // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
                         let pred_bound_vars = bound_predicate.bound_vars();
                         let mut all_bound_vars = bound_vars.clone();
                         all_bound_vars.extend(pred_bound_vars.iter());
@@ -1874,7 +1865,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         lifetime_ref: &'tcx hir::Lifetime,
         bad_def: ResolvedArg,
     ) {
-        let old_value = self.map.defs.remove(&lifetime_ref.hir_id);
+        // FIXME(#120456) - is `swap_remove` correct?
+        let old_value = self.map.defs.swap_remove(&lifetime_ref.hir_id);
         assert_eq!(old_value, Some(bad_def));
     }
 }
@@ -2039,7 +2031,7 @@ fn is_late_bound_map(
                                         Some(true) => Some(arg),
                                         Some(false) => None,
                                         None => {
-                                            tcx.sess.span_delayed_bug(
+                                            tcx.dcx().span_delayed_bug(
                                                 *span,
                                                 format!(
                                                     "Incorrect generic arg count for alias {alias_def:?}"
@@ -2114,7 +2106,7 @@ pub fn deny_non_region_late_bound(
             hir::GenericParamKind::Lifetime { .. } => continue,
         };
 
-        let mut diag = tcx.sess.struct_span_err(
+        let diag = tcx.dcx().struct_span_err(
             param.span,
             format!("late-bound {what} parameter not allowed on {where_}"),
         );

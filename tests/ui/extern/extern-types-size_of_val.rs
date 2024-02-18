@@ -1,8 +1,8 @@
-// run-fail
-// check-run-results
-// exec-env:RUST_BACKTRACE=0
-// normalize-stderr-test: "(core/src/panicking\.rs):[0-9]+:[0-9]+" -> "$1:$$LINE:$$COL"
-// revisions: size align
+//@ run-fail
+//@ check-run-results
+//@ exec-env:RUST_BACKTRACE=0
+//@ normalize-stderr-test: "(core/src/panicking\.rs):[0-9]+:[0-9]+" -> "$1:$$LINE:$$COL"
+//@ revisions: size align
 #![feature(extern_types)]
 
 use std::mem::{align_of_val, size_of_val};

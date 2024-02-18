@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // As dst-struct.rs, but the unsized field is the only field in the struct.
 
 

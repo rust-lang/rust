@@ -1,5 +1,5 @@
-// edition:2018
-// aux-build:cross-crate.rs
+//@ edition:2018
+//@ aux-build:cross-crate.rs
 
 extern crate cross_crate;
 use cross_crate::*;

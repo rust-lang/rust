@@ -1,6 +1,6 @@
-// aux-build:rmeta-meta.rs
-// no-prefer-dynamic
-// build-fail
+//@ aux-build:rmeta-meta.rs
+//@ no-prefer-dynamic
+//@ build-fail
 
 // Check that we do not ICE when we need optimized MIR but it is missing.
 

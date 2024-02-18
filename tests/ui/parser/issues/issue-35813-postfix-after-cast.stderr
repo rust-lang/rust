@@ -235,13 +235,13 @@ LL | static bar: &[i32] = &((&[1,2,3] as &[i32])[0..1]);
    |                        +                  +
 
 error: expected one of `)`, `,`, `.`, `?`, or an operator, found `:`
-  --> $DIR/issue-35813-postfix-after-cast.rs:133:36
+  --> $DIR/issue-35813-postfix-after-cast.rs:134:36
    |
 LL | static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
    |                                    ^ expected one of `)`, `,`, `.`, `?`, or an operator
 
 error: cast cannot be followed by `?`
-  --> $DIR/issue-35813-postfix-after-cast.rs:138:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:139:5
    |
 LL |     Err(0u64) as Result<u64,u64>?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -252,13 +252,13 @@ LL |     (Err(0u64) as Result<u64,u64>)?;
    |     +                            +
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
-  --> $DIR/issue-35813-postfix-after-cast.rs:140:14
+  --> $DIR/issue-35813-postfix-after-cast.rs:141:14
    |
 LL |     Err(0u64): Result<u64,u64>?;
    |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error: expected identifier, found `:`
-  --> $DIR/issue-35813-postfix-after-cast.rs:152:13
+  --> $DIR/issue-35813-postfix-after-cast.rs:153:13
    |
 LL |     drop_ptr: F();
    |             ^ expected identifier
@@ -266,13 +266,13 @@ LL |     drop_ptr: F();
    = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `:`
-  --> $DIR/issue-35813-postfix-after-cast.rs:159:13
+  --> $DIR/issue-35813-postfix-after-cast.rs:160:13
    |
 LL |     drop_ptr: fn(u8);
    |             ^ expected one of 8 possible tokens
 
 error: cast cannot be followed by a function call
-  --> $DIR/issue-35813-postfix-after-cast.rs:165:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:166:5
    |
 LL |     drop as fn(u8)(0);
    |     ^^^^^^^^^^^^^^
@@ -283,13 +283,13 @@ LL |     (drop as fn(u8))(0);
    |     +              +
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `:`
-  --> $DIR/issue-35813-postfix-after-cast.rs:167:13
+  --> $DIR/issue-35813-postfix-after-cast.rs:168:13
    |
 LL |     drop_ptr: fn(u8)(0);
    |             ^ expected one of 8 possible tokens
 
 error: cast cannot be followed by `.await`
-  --> $DIR/issue-35813-postfix-after-cast.rs:172:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:173:5
    |
 LL |     Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>.await;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -300,13 +300,13 @@ LL |     (Box::pin(noop()) as Pin<Box<dyn Future<Output = ()>>>).await;
    |     +                                                     +
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
-  --> $DIR/issue-35813-postfix-after-cast.rs:175:21
+  --> $DIR/issue-35813-postfix-after-cast.rs:176:21
    |
 LL |     Box::pin(noop()): Pin<Box<_>>.await;
    |                     ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error: cast cannot be followed by a field access
-  --> $DIR/issue-35813-postfix-after-cast.rs:187:5
+  --> $DIR/issue-35813-postfix-after-cast.rs:188:5
    |
 LL |     Foo::default() as Foo.bar;
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -317,7 +317,7 @@ LL |     (Foo::default() as Foo).bar;
    |     +                     +
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
-  --> $DIR/issue-35813-postfix-after-cast.rs:189:19
+  --> $DIR/issue-35813-postfix-after-cast.rs:190:19
    |
 LL |     Foo::default(): Foo.bar;
    |                   ^ expected one of `.`, `;`, `?`, `}`, or an operator
@@ -340,11 +340,22 @@ LL |         if true { 33 } else { 44 }: i32.max(0)
    |                                   ^ expected one of `,`, `.`, `?`, or an operator
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
-  --> $DIR/issue-35813-postfix-after-cast.rs:150:13
+  --> $DIR/issue-35813-postfix-after-cast.rs:151:13
    |
 LL |     drop as F();
    |             ^^^ only `Fn` traits may use parentheses
 
-error: aborting due to 39 previous errors
+error[E0015]: cannot call non-const operator in statics
+  --> $DIR/issue-35813-postfix-after-cast.rs:130:42
+   |
+LL | static bar: &[i32] = &(&[1,2,3] as &[i32][0..1]);
+   |                                          ^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
 
-For more information about this error, try `rustc --explain E0214`.
+error: aborting due to 40 previous errors
+
+Some errors have detailed explanations: E0015, E0214.
+For more information about an error, try `rustc --explain E0015`.

@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Regression test for #95307.
 // The ICE occurred on all the editions, specifying edition:2018 to reduce diagnostics.

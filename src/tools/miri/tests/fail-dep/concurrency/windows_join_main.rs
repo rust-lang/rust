@@ -1,0 +1,25 @@
+//@only-target-windows: Uses win32 api functions
+// We are making scheduler assumptions here.
+//@compile-flags: -Zmiri-preemption-rate=0
+
+// On windows, joining main is not UB, but it will block a thread forever.
+
+use std::thread;
+
+use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
+use windows_sys::Win32::System::Threading::{WaitForSingleObject, INFINITE};
+
+// XXX HACK: This is how miri represents the handle for thread 0.
+// This value can be "legitimately" obtained by using `GetCurrentThread` with `DuplicateHandle`
+// but miri does not implement `DuplicateHandle` yet.
+const MAIN_THREAD: HANDLE = (2i32 << 30) as HANDLE;
+
+fn main() {
+    thread::spawn(|| {
+        unsafe {
+            assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock: the evaluated program deadlocked
+        }
+    })
+    .join()
+    .unwrap();
+}

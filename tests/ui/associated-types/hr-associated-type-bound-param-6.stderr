@@ -9,6 +9,22 @@ help: consider restricting type parameter `T`
 LL | impl<S, T: for<'b> X<'b, T>> X<'_, T> for (S,) {
    |          ++++++++++++++++++
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-6.rs:18:5
+   |
+LL |     <(i32,) as X<i32>>::f("abc");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'b> X<'b, i32>` is not implemented for `i32`
+   |
+   = help: the trait `X<'_, T>` is implemented for `(S,)`
+
+error[E0277]: the trait bound `i32: X<'_, i32>` is not satisfied
+  --> $DIR/hr-associated-type-bound-param-6.rs:18:27
+   |
+LL |     <(i32,) as X<i32>>::f("abc");
+   |                           ^^^^^ the trait `X<'_, i32>` is not implemented for `i32`
+   |
+   = help: the trait `X<'_, T>` is implemented for `(S,)`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

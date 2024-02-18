@@ -15,4 +15,5 @@ impl X<'_> for i32 {
 
 fn main() {
     1i32.f("abc");
+    //~^ ERROR the trait bound `str: Clone`
 }

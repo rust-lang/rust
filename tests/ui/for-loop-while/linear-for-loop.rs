@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub fn main() {
     let x = vec![1, 2, 3];
     let mut y = 0;

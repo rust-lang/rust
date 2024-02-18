@@ -13,7 +13,14 @@ fn main() {
     let _y = 1; // this is fine
     let _z = ((), 1); // this as well
     if true {
+        // do not lint this, since () is explicit
         let _a = ();
+        let () = dummy();
+        let () = ();
+        () = dummy();
+        () = ();
+        let _a: () = ();
+        let _a: () = dummy();
     }
 
     consume_units_with_for_loop(); // should be fine as well
@@ -22,6 +29,8 @@ fn main() {
 
     let_and_return!(()) // should be fine
 }
+
+fn dummy() {}
 
 // Related to issue #1964
 fn consume_units_with_for_loop() {
@@ -74,41 +83,30 @@ fn _returns_generic() {
         x.then(|| T::default())
     }
 
-    let _: () = f(); // Ok
-    let x: () = f(); // Lint.
+    let _: () = f();
+    let x: () = f();
 
-    let _: () = f2(0i32); // Ok
-    let x: () = f2(0i32); // Lint.
+    let _: () = f2(0i32);
+    let x: () = f2(0i32);
 
-    let _: () = f3(()); // Lint
-    let x: () = f3(()); // Lint
+    let _: () = f3(());
+    let x: () = f3(());
 
-    // Should lint:
-    // fn f4<T>(mut x: Vec<T>) -> T {
-    //    x.pop().unwrap()
-    // }
-    // let _: () = f4(vec![()]);
-    // let x: () = f4(vec![()]);
+    fn f4<T>(mut x: Vec<T>) -> T {
+        x.pop().unwrap()
+    }
+    let _: () = f4(vec![()]);
+    let x: () = f4(vec![()]);
 
-    // Ok
     let _: () = {
         let x = 5;
         f2(x)
     };
 
-    let _: () = if true { f() } else { f2(0) }; // Ok
-    let x: () = if true { f() } else { f2(0) }; // Lint
+    let _: () = if true { f() } else { f2(0) };
+    let x: () = if true { f() } else { f2(0) };
 
-    // Ok
-    let _: () = match Some(0) {
-        None => f2(1),
-        Some(0) => f(),
-        Some(1) => f2(3),
-        Some(_) => f2('x'),
-    };
-
-    // Lint
-    let _: () = match Some(0) {
+    let x = match Some(0) {
         None => f2(1),
         Some(0) => f(),
         Some(1) => f2(3),

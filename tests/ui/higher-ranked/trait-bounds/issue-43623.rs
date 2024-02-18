@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub trait Trait<'a> {
     type Assoc;

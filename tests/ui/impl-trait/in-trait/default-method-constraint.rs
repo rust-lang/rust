@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This didn't work in the previous default RPITIT method hack attempt
 

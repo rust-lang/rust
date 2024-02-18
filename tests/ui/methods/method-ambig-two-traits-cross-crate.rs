@@ -1,7 +1,7 @@
 // Test an ambiguity scenario where one copy of the method is available
 // from a trait imported from another crate.
 
-// aux-build:ambig_impl_2_lib.rs
+//@ aux-build:ambig_impl_2_lib.rs
 extern crate ambig_impl_2_lib;
 use ambig_impl_2_lib::Me;
 trait Me2 {

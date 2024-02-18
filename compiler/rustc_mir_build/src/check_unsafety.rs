@@ -14,7 +14,7 @@ use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 use std::mem;
 use std::ops::Bound;
@@ -33,7 +33,7 @@ struct UnsafetyVisitor<'a, 'tcx> {
     body_target_features: &'tcx [Symbol],
     /// When inside the LHS of an assignment to a field, this is the type
     /// of the LHS and the span of the assignment expression.
-    assignment_info: Option<(Ty<'tcx>, Span)>,
+    assignment_info: Option<Ty<'tcx>>,
     in_union_destructure: bool,
     param_env: ParamEnv<'tcx>,
     inside_adt: bool,
@@ -144,11 +144,17 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             let hir_context = self.tcx.local_def_id_to_hir_id(def);
             let safety_context = mem::replace(&mut self.safety_context, SafetyContext::Safe);
             let mut inner_visitor = UnsafetyVisitor {
+                tcx: self.tcx,
                 thir: inner_thir,
                 hir_context,
                 safety_context,
+                body_target_features: self.body_target_features,
+                assignment_info: self.assignment_info,
+                in_union_destructure: false,
+                param_env: self.param_env,
+                inside_adt: false,
                 warnings: self.warnings,
-                ..*self
+                suggest_unsafe_block: self.suggest_unsafe_block,
             };
             inner_visitor.visit_expr(&inner_thir[expr]);
             // Unsafe blocks can be used in the inner body, make sure to take it into account
@@ -175,7 +181,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for LayoutConstrainedPlaceVisitor<'a, 'tcx> {
         self.thir
     }
 
-    fn visit_expr(&mut self, expr: &Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
         match expr.kind {
             ExprKind::Field { lhs, .. } => {
                 if let ty::Adt(adt_def, _) = self.thir[lhs].ty.kind() {
@@ -206,7 +212,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
         self.thir
     }
 
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_block(&mut self, block: &'a Block) {
         match block.safety_mode {
             // compiler-generated unsafe code should not count towards the usefulness of
             // an outer unsafe block
@@ -234,7 +240,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_pat(&mut self, pat: &Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'a Pat<'tcx>) {
         if self.in_union_destructure {
             match pat.kind {
                 // binding to a variable allows getting stuff out of variable
@@ -319,7 +325,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_expr(&mut self, expr: &Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
         // could we be in the LHS of an assignment to a field?
         match expr.kind {
             ExprKind::Field { .. }
@@ -467,10 +473,15 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if let ty::Adt(adt_def, _) = lhs.ty.kind()
                     && adt_def.is_union()
                 {
-                    if let Some((assigned_ty, assignment_span)) = self.assignment_info {
+                    if let Some(assigned_ty) = self.assignment_info {
                         if assigned_ty.needs_drop(self.tcx, self.param_env) {
-                            // This would be unsafe, but should be outright impossible since we reject such unions.
-                            self.tcx.sess.span_delayed_bug(assignment_span, format!("union fields that need dropping should be impossible: {assigned_ty}"));
+                            // This would be unsafe, but should be outright impossible since we
+                            // reject such unions.
+                            assert!(
+                                self.tcx.dcx().has_errors().is_some(),
+                                "union fields that need dropping should be impossible: \
+                                {assigned_ty}"
+                            );
                         }
                     } else {
                         self.requires_unsafe(expr.span, AccessToUnionField);
@@ -486,14 +497,15 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.requires_unsafe(expr.span, MutationOfLayoutConstrainedField);
                 }
 
-                // Second, check for accesses to union fields
-                // don't have any special handling for AssignOp since it causes a read *and* write to lhs
+                // Second, check for accesses to union fields. Don't have any
+                // special handling for AssignOp since it causes a read *and*
+                // write to lhs.
                 if matches!(expr.kind, ExprKind::Assign { .. }) {
-                    self.assignment_info = Some((lhs.ty, expr.span));
+                    self.assignment_info = Some(lhs.ty);
                     visit::walk_expr(self, lhs);
                     self.assignment_info = None;
                     visit::walk_expr(self, &self.thir()[rhs]);
-                    return; // we have already visited everything by now
+                    return; // We have already visited everything by now.
                 }
             }
             ExprKind::Borrow { borrow_kind, arg } => {
@@ -577,7 +589,7 @@ impl UnsafeOpKind {
         suggest_unsafe_block: bool,
     ) {
         let parent_id = tcx.hir().get_parent_item(hir_id);
-        let parent_owner = tcx.hir().owner(parent_id);
+        let parent_owner = tcx.hir_owner_node(parent_id);
         let should_suggest = parent_owner.fn_sig().is_some_and(|sig| sig.header.is_unsafe());
         let unsafe_not_inherited_note = if should_suggest {
             suggest_unsafe_block.then(|| {
@@ -593,17 +605,17 @@ impl UnsafeOpKind {
         // FIXME: ideally we would want to trim the def paths, but this is not
         // feasible with the current lint emission API (see issue #106126).
         match self {
-            CallToUnsafeFunction(Some(did)) => tcx.emit_spanned_lint(
+            CallToUnsafeFunction(Some(did)) => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
                 UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
                     span,
-                    function: &with_no_trimmed_paths!(tcx.def_path_str(*did)),
+                    function: with_no_trimmed_paths!(tcx.def_path_str(*did)),
                     unsafe_not_inherited_note,
                 },
             ),
-            CallToUnsafeFunction(None) => tcx.emit_spanned_lint(
+            CallToUnsafeFunction(None) => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -612,7 +624,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            UseOfInlineAssembly => tcx.emit_spanned_lint(
+            UseOfInlineAssembly => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -621,7 +633,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            InitializingTypeWith => tcx.emit_spanned_lint(
+            InitializingTypeWith => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -630,7 +642,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            UseOfMutableStatic => tcx.emit_spanned_lint(
+            UseOfMutableStatic => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -639,7 +651,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            UseOfExternStatic => tcx.emit_spanned_lint(
+            UseOfExternStatic => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -648,7 +660,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            DerefOfRawPointer => tcx.emit_spanned_lint(
+            DerefOfRawPointer => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -657,7 +669,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            AccessToUnionField => tcx.emit_spanned_lint(
+            AccessToUnionField => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -666,7 +678,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            MutationOfLayoutConstrainedField => tcx.emit_spanned_lint(
+            MutationOfLayoutConstrainedField => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -675,7 +687,7 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            BorrowOfLayoutConstrainedField => tcx.emit_spanned_lint(
+            BorrowOfLayoutConstrainedField => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -684,20 +696,23 @@ impl UnsafeOpKind {
                     unsafe_not_inherited_note,
                 },
             ),
-            CallToFunctionWith { function, missing, build_enabled } => tcx.emit_spanned_lint(
+            CallToFunctionWith { function, missing, build_enabled } => tcx.emit_node_span_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
                 UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
                     span,
-                    function: &with_no_trimmed_paths!(tcx.def_path_str(*function)),
+                    function: with_no_trimmed_paths!(tcx.def_path_str(*function)),
                     missing_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
                     build_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        build_enabled.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        build_enabled
+                            .iter()
+                            .map(|feature| Cow::from(feature.to_string()))
+                            .collect(),
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,
@@ -735,101 +750,93 @@ impl UnsafeOpKind {
             None
         };
 
+        let dcx = tcx.dcx();
         match self {
             CallToUnsafeFunction(Some(did)) if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*did),
+                    function: tcx.def_path_str(*did),
                 });
             }
             CallToUnsafeFunction(Some(did)) => {
-                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafe {
+                dcx.emit_err(CallToUnsafeFunctionRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*did),
+                    function: tcx.def_path_str(*did),
                 });
             }
             CallToUnsafeFunction(None) if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(
-                    CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed {
-                        span,
-                        unsafe_not_inherited_note,
-                    },
-                );
+                dcx.emit_err(CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed {
+                    span,
+                    unsafe_not_inherited_note,
+                });
             }
             CallToUnsafeFunction(None) => {
-                tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeNameless {
+                dcx.emit_err(CallToUnsafeFunctionRequiresUnsafeNameless {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             UseOfInlineAssembly if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(UseOfInlineAssemblyRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             UseOfInlineAssembly => {
-                tcx.sess.emit_err(UseOfInlineAssemblyRequiresUnsafe {
-                    span,
-                    unsafe_not_inherited_note,
-                });
+                dcx.emit_err(UseOfInlineAssemblyRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             InitializingTypeWith if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(InitializingTypeWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             InitializingTypeWith => {
-                tcx.sess.emit_err(InitializingTypeWithRequiresUnsafe {
+                dcx.emit_err(InitializingTypeWithRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             UseOfMutableStatic if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(UseOfMutableStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             UseOfMutableStatic => {
-                tcx.sess
-                    .emit_err(UseOfMutableStaticRequiresUnsafe { span, unsafe_not_inherited_note });
+                dcx.emit_err(UseOfMutableStaticRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             UseOfExternStatic if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(UseOfExternStaticRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             UseOfExternStatic => {
-                tcx.sess
-                    .emit_err(UseOfExternStaticRequiresUnsafe { span, unsafe_not_inherited_note });
+                dcx.emit_err(UseOfExternStaticRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             DerefOfRawPointer if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(DerefOfRawPointerRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             DerefOfRawPointer => {
-                tcx.sess
-                    .emit_err(DerefOfRawPointerRequiresUnsafe { span, unsafe_not_inherited_note });
+                dcx.emit_err(DerefOfRawPointerRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             AccessToUnionField if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(AccessToUnionFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             AccessToUnionField => {
-                tcx.sess
-                    .emit_err(AccessToUnionFieldRequiresUnsafe { span, unsafe_not_inherited_note });
+                dcx.emit_err(AccessToUnionFieldRequiresUnsafe { span, unsafe_not_inherited_note });
             }
             MutationOfLayoutConstrainedField if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(
+                dcx.emit_err(
                     MutationOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                         span,
                         unsafe_not_inherited_note,
@@ -837,13 +844,13 @@ impl UnsafeOpKind {
                 );
             }
             MutationOfLayoutConstrainedField => {
-                tcx.sess.emit_err(MutationOfLayoutConstrainedFieldRequiresUnsafe {
+                dcx.emit_err(MutationOfLayoutConstrainedFieldRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 });
             }
             BorrowOfLayoutConstrainedField if unsafe_op_in_unsafe_fn_allowed => {
-                tcx.sess.emit_err(
+                dcx.emit_err(
                     BorrowOfLayoutConstrainedFieldRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                         span,
                         unsafe_not_inherited_note,
@@ -851,7 +858,7 @@ impl UnsafeOpKind {
                 );
             }
             BorrowOfLayoutConstrainedField => {
-                tcx.sess.emit_err(BorrowOfLayoutConstrainedFieldRequiresUnsafe {
+                dcx.emit_err(BorrowOfLayoutConstrainedFieldRequiresUnsafe {
                     span,
                     unsafe_not_inherited_note,
                 });
@@ -859,49 +866,56 @@ impl UnsafeOpKind {
             CallToFunctionWith { function, missing, build_enabled }
                 if unsafe_op_in_unsafe_fn_allowed =>
             {
-                tcx.sess.emit_err(CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
+                dcx.emit_err(CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
                     missing_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
                     build_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        build_enabled.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        build_enabled
+                            .iter()
+                            .map(|feature| Cow::from(feature.to_string()))
+                            .collect(),
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*function),
+                    function: tcx.def_path_str(*function),
                 });
             }
             CallToFunctionWith { function, missing, build_enabled } => {
-                tcx.sess.emit_err(CallToFunctionWithRequiresUnsafe {
+                dcx.emit_err(CallToFunctionWithRequiresUnsafe {
                     span,
                     missing_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        missing.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
                     build_target_features: DiagnosticArgValue::StrListSepByAnd(
-                        build_enabled.iter().map(|feature| Cow::from(feature.as_str())).collect(),
+                        build_enabled
+                            .iter()
+                            .map(|feature| Cow::from(feature.to_string()))
+                            .collect(),
                     ),
                     build_target_features_count: build_enabled.len(),
                     unsafe_not_inherited_note,
-                    function: &tcx.def_path_str(*function),
+                    function: tcx.def_path_str(*function),
                 });
             }
         }
     }
 }
 
-pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
-    // THIR unsafeck is gated under `-Z thir-unsafeck`
+pub fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
+    // THIR unsafeck can be disabled with `-Z thir-unsafeck=off`
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
         return;
     }
 
     // Closures and inline consts are handled by their owner, if it has a body
-    if tcx.is_typeck_child(def.to_def_id()) {
+    // Also, don't safety check custom MIR
+    if tcx.is_typeck_child(def.to_def_id()) || tcx.has_attr(def, sym::custom_mir) {
         return;
     }
 
@@ -942,7 +956,7 @@ pub fn thir_check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     warnings.sort_by_key(|w| w.block_span);
     for UnusedUnsafeWarning { hir_id, block_span, enclosing_unsafe } in warnings {
         let block_span = tcx.sess.source_map().guess_head_span(block_span);
-        tcx.emit_spanned_lint(
+        tcx.emit_node_span_lint(
             UNUSED_UNSAFE,
             hir_id,
             block_span,

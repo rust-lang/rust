@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ops::Add;
 fn show(z: i32) {
     println!("{}", z)

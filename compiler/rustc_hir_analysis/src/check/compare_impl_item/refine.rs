@@ -7,7 +7,8 @@ use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
+use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{
     elaborate, normalize_param_env_or_error, outlives_bounds::InferCtxtExt, ObligationCtxt,
 };
@@ -32,7 +33,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     }
 
-    // If a type in the trait ref is private, then there's also no reason to to do this check.
+    // If a type in the trait ref is private, then there's also no reason to do this check.
     let impl_def_id = impl_m.container_id(tcx);
     for arg in impl_trait_ref.args {
         if let Some(ty) = arg.as_type()
@@ -153,30 +154,21 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         trait_m_sig.inputs_and_output,
     ));
     if !ocx.select_all_or_error().is_empty() {
-        tcx.sess.span_delayed_bug(
-            DUMMY_SP,
-            "encountered errors when checking RPITIT refinement (selection)",
-        );
+        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (selection)");
         return;
     }
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys(param_env, impl_m.def_id.expect_local(), implied_wf_types),
+        infcx.implied_bounds_tys(param_env, impl_m.def_id.expect_local(), &implied_wf_types),
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        tcx.sess.span_delayed_bug(
-            DUMMY_SP,
-            "encountered errors when checking RPITIT refinement (regions)",
-        );
+        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (regions)");
         return;
     }
     // Resolve any lifetime variables that may have been introduced during normalization.
     let Ok((trait_bounds, impl_bounds)) = infcx.fully_resolve((trait_bounds, impl_bounds)) else {
-        tcx.sess.span_delayed_bug(
-            DUMMY_SP,
-            "encountered errors when checking RPITIT refinement (resolution)",
-        );
+        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (resolution)");
         return;
     };
 
@@ -292,7 +284,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         });
 
     let span = unmatched_bound.unwrap_or(span);
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         REFINING_IMPL_TRAIT,
         tcx.local_def_id_to_hir_id(impl_m_def_id.expect_local()),
         span,

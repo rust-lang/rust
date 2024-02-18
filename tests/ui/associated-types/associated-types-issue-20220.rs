@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 // Test references to `Self::Item` in the trait. Issue #20220.
 
 
 use std::vec;
 
-trait IntoIteratorX {
+trait IntoIteratorX { //~ WARN trait `IntoIteratorX` is never used
     type Item;
     type IntoIter: Iterator<Item=Self::Item>;
 

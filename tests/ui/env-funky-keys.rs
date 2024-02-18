@@ -1,13 +1,13 @@
-// run-pass
+//@ run-pass
 // Ignore this test on Android, because it segfaults there.
 
-// ignore-android
-// ignore-windows
-// ignore-emscripten no execve
-// ignore-sgx no execve
-// ignore-vxworks no execve
-// ignore-fuchsia no 'execve'
-// no-prefer-dynamic
+//@ ignore-android
+//@ ignore-windows
+//@ ignore-emscripten no execve
+//@ ignore-sgx no execve
+//@ ignore-vxworks no execve
+//@ ignore-fuchsia no 'execve'
+//@ no-prefer-dynamic
 
 #![feature(rustc_private)]
 

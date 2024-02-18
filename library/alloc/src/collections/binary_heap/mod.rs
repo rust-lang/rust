@@ -147,7 +147,7 @@ use core::alloc::Allocator;
 use core::fmt;
 use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 use core::ops::{Deref, DerefMut};
 use core::ptr;
 
@@ -296,7 +296,7 @@ pub struct PeekMut<
     heap: &'a mut BinaryHeap<T, A>,
     // If a set_len + sift_down are required, this is Some. If a &mut T has not
     // yet been exposed to peek_mut()'s caller, it's None.
-    original_len: Option<NonZeroUsize>,
+    original_len: Option<NonZero<usize>>,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -350,7 +350,7 @@ impl<T: Ord, A: Allocator> DerefMut for PeekMut<'_, T, A> {
             // the standard library as "leak amplification".
             unsafe {
                 // SAFETY: len > 1 so len != 0.
-                self.original_len = Some(NonZeroUsize::new_unchecked(len));
+                self.original_len = Some(NonZero::new_unchecked(len));
                 // SAFETY: len > 1 so all this does for now is leak elements,
                 // which is safe.
                 self.heap.data.set_len(1);
@@ -1576,8 +1576,8 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
 unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {
-    const EXPAND_BY: Option<NonZeroUsize> = NonZeroUsize::new(1);
-    const MERGE_BY: Option<NonZeroUsize> = NonZeroUsize::new(1);
+    const EXPAND_BY: Option<NonZero<usize>> = NonZero::new(1);
+    const MERGE_BY: Option<NonZero<usize>> = NonZero::new(1);
 }
 
 unsafe impl<I> AsVecIntoIter for IntoIter<I> {

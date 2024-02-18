@@ -5,7 +5,7 @@
 //
 // (For non-crate-level cases, see issue-43106-gating-of-builtin-attrs.rs)
 
-// check-pass
+//@ check-pass
 
 #![deprecated]
 

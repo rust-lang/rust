@@ -1,4 +1,4 @@
-// aux-build:trait_safety_lib.rs
+//@ aux-build:trait_safety_lib.rs
 
 // Check that unsafe traits require unsafe impls and that inherent
 // impls cannot be unsafe.

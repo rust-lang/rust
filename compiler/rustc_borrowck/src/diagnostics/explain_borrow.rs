@@ -1,5 +1,8 @@
 //! Print diagnostics to explain why values are borrowed.
 
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -87,7 +90,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     if let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind
                         && let [hir::PathSegment { ident, args: None, .. }] = p.segments
                         && let hir::def::Res::Local(hir_id) = p.res
-                        && let Some(hir::Node::Pat(pat)) = tcx.opt_hir_node(hir_id)
+                        && let hir::Node::Pat(pat) = tcx.hir_node(hir_id)
                     {
                         err.span_label(pat.span, format!("binding `{ident}` declared here"));
                     }
@@ -315,7 +318,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
             let mut failed = false;
 
             let elaborated_args = std::iter::zip(*args, &generics.params).map(|(arg, param)| {
-                if let Some(ty::Dynamic(obj, _, ty::DynKind::Dyn)) = arg.as_type().map(Ty::kind) {
+                if let Some(ty::Dynamic(obj, _, ty::Dyn)) = arg.as_type().map(Ty::kind) {
                     let default = tcx.object_lifetime_default(param.def_id);
 
                     let re_static = tcx.lifetimes.re_static;
@@ -339,7 +342,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                     has_dyn = true;
 
-                    Ty::new_dynamic(tcx, obj, implied_region, ty::DynKind::Dyn).into()
+                    Ty::new_dynamic(tcx, obj, implied_region, ty::Dyn).into()
                 } else {
                     arg
                 }
@@ -691,7 +694,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                         // Check if one of the arguments to this function is the target place.
                         let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(place) = arg {
+                            if let Operand::Move(place) = arg.node {
                                 if let Some(potential) = place.as_local() {
                                     potential == target
                                 } else {

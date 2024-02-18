@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! NOTE: This test documents a known-bug in the implementation of the
 //! transmutability trait. Once fixed, the above "check-pass" header should be
 //! removed, and an "ERROR cannot be safely transmuted" annotation should be added at the end

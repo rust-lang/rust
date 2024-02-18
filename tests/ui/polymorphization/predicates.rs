@@ -1,5 +1,5 @@
-// build-fail
-// compile-flags: -Copt-level=0 -Zpolymorphize=on
+//@ build-fail
+//@ compile-flags: -Copt-level=0 -Zpolymorphize=on
 
 #![feature(rustc_attrs)]
 

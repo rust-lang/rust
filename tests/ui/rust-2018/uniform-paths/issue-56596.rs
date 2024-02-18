@@ -1,6 +1,6 @@
-// edition:2018
-// compile-flags: --extern issue_56596
-// aux-build:issue-56596.rs
+//@ edition:2018
+//@ compile-flags: --extern issue_56596
+//@ aux-build:issue-56596.rs
 
 mod m {
     pub mod issue_56596 {}

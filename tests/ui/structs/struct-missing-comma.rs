@@ -1,5 +1,5 @@
 // Issue #50636
-// run-rustfix
+//@ run-rustfix
 
 pub struct S {
     pub foo: u32 //~ expected `,`, or `}`, found keyword `pub`

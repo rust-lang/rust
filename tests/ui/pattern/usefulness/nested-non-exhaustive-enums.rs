@@ -1,4 +1,4 @@
-// aux-build:non-exhaustive.rs
+//@ aux-build:non-exhaustive.rs
 
 extern crate non_exhaustive;
 

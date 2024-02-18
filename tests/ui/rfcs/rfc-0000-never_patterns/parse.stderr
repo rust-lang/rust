@@ -22,6 +22,12 @@ error: top-level or-patterns are not allowed in `let` bindings
 LL |     let Ok(_) | Err(!) = &res; // Disallowed; see #82048.
    |         ^^^^^^^^^^^^^^ help: wrap the pattern in parentheses: `(Ok(_) | Err(!))`
 
+error: never patterns cannot contain variable bindings
+  --> $DIR/parse.rs:73:9
+   |
+LL |     let y @ ! = x;
+   |         ^ help: use a wildcard `_` instead
+
 error: a guard on a never pattern will never be run
   --> $DIR/parse.rs:31:20
    |
@@ -40,5 +46,5 @@ error: a guard on a never pattern will never be run
 LL |         never!() if true,
    |                     ^^^^ help: remove this guard
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 

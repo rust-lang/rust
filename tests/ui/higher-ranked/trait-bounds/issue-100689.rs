@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 struct Foo<'a> {
     foo: &'a mut usize,

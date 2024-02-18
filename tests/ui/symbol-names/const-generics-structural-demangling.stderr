@@ -124,7 +124,7 @@ error: demangling-alt(<c::Foo_<{c::Foo { s: "abc", ch: 'x', slice: &[1, 2, 3] }}
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMsf_CsCRATE_HASH_1cINtB<REF>_4Bar_KVNtB<REF>_3BarS1xh7b_s_1xt1000_EE)
+error: symbol-name(_RMsd_CsCRATE_HASH_1cINtB<REF>_4Bar_KVNtB<REF>_3BarS1xh7b_s_1xt1000_EE)
   --> $DIR/const-generics-structural-demangling.rs:93:5
    |
 LL |     #[rustc_symbol_name]

@@ -1,6 +1,6 @@
 // Test that NLL generates proper error spans for trait HRTB errors
 //
-// compile-flags:-Zno-leak-check
+//@ compile-flags:-Zno-leak-check
 
 trait Foo<'a> {}
 

@@ -47,7 +47,7 @@
 /// assert_eq!(nucleotide_count[Nucleotide::T], 12);
 /// ```
 #[lang = "index"]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "the type `{Self}` cannot be indexed by `{Idx}`",
     label = "`{Self}` cannot be indexed by `{Idx}`"
 )]

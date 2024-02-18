@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests for RFC 1268: we allow overlapping impls of marker traits,
 // that is, traits without items. In this case, a type `T` is
 // `MyMarker` if it is either `Debug` or `Display`.

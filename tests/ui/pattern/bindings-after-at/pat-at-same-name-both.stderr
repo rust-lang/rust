@@ -58,7 +58,27 @@ error[E0416]: identifier `a` is bound more than once in the same pattern
 LL |     let a @ (Ok(a) | Err(a)) = Ok(());
    |                          ^ used in a pattern more than once
 
-error: aborting due to 10 previous errors
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/pat-at-same-name-both.rs:23:9
+   |
+LL |     let ref mut a @ ref mut a = ();
+   |         ^^^^^^^^^   --------- value is mutably borrowed by `a` here
+   |         |
+   |         value is mutably borrowed by `a` here
 
-Some errors have detailed explanations: E0415, E0416.
-For more information about an error, try `rustc --explain E0415`.
+error[E0384]: cannot assign twice to immutable variable `a`
+  --> $DIR/pat-at-same-name-both.rs:13:15
+   |
+LL |         Ok(a @ b @ a)
+   |                    -
+   |                    |
+   |                    first assignment to `a`
+   |                    help: consider making this binding mutable: `mut a`
+LL |
+LL |         | Err(a @ b @ a)
+   |               ^ cannot assign twice to immutable variable
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0384, E0415, E0416.
+For more information about an error, try `rustc --explain E0384`.

@@ -94,7 +94,7 @@ impl<'tcx> SpanMapVisitor<'tcx> {
 
     /// Used to generate links on items' definition to go to their documentation page.
     pub(crate) fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
-        if let Some(Node::Item(item)) = self.tcx.opt_hir_node(hir_id) {
+        if let Node::Item(item) = self.tcx.hir_node(hir_id) {
             if let Some(span) = self.tcx.def_ident_span(item.owner_id) {
                 let cspan = clean::Span::new(span);
                 // If the span isn't from the current crate, we ignore it.
@@ -154,6 +154,28 @@ impl<'tcx> SpanMapVisitor<'tcx> {
         self.matches.insert(new_span, link_from_src);
         true
     }
+
+    fn handle_call(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
+        let hir = self.tcx.hir();
+        let body_id = hir.enclosing_body_owner(hir_id);
+        // FIXME: this is showing error messages for parts of the code that are not
+        // compiled (because of cfg)!
+        //
+        // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
+        let typeck_results = self
+            .tcx
+            .typeck_body(hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"));
+        // Interestingly enough, for method calls, we need the whole expression whereas for static
+        // method/function calls, we need the call expression specifically.
+        if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {
+            let link = if def_id.as_local().is_some() {
+                LinkFromSrc::Local(rustc_span(def_id, self.tcx))
+            } else {
+                LinkFromSrc::External(def_id)
+            };
+            self.matches.insert(span, link);
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
@@ -177,7 +199,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         if !span.overlaps(m.spans.inner_span) {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
-            if let Some(Node::Item(item)) = self.tcx.opt_hir_node(id) {
+            if let Node::Item(item) = self.tcx.hir_node(id) {
                 self.matches.insert(
                     item.ident.span,
                     LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
@@ -191,27 +213,17 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        if let ExprKind::MethodCall(segment, ..) = expr.kind {
-            let hir = self.tcx.hir();
-            let body_id = hir.enclosing_body_owner(segment.hir_id);
-            // FIXME: this is showing error messages for parts of the code that are not
-            // compiled (because of cfg)!
-            //
-            // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-            let typeck_results = self
-                .tcx
-                .typeck_body(hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"));
-            if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                let link = if def_id.as_local().is_some() {
-                    LinkFromSrc::Local(rustc_span(def_id, self.tcx))
-                } else {
-                    LinkFromSrc::External(def_id)
-                };
-                self.matches.insert(segment.ident.span, link);
+        match expr.kind {
+            ExprKind::MethodCall(segment, ..) => {
+                self.handle_call(segment.hir_id, Some(expr.hir_id), segment.ident.span)
             }
-        } else if self.handle_macro(expr.span) {
-            // We don't want to go deeper into the macro.
-            return;
+            ExprKind::Call(call, ..) => self.handle_call(call.hir_id, None, call.span),
+            _ => {
+                if self.handle_macro(expr.span) {
+                    // We don't want to go deeper into the macro.
+                    return;
+                }
+            }
         }
         intravisit::walk_expr(self, expr);
     }

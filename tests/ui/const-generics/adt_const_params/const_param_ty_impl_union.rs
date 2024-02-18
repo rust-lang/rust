@@ -1,5 +1,5 @@
 #![allow(incomplete_features)]
-#![feature(adt_const_params, structural_match)]
+#![feature(adt_const_params)]
 
 union Union {
     a: u8,
@@ -11,7 +11,6 @@ impl PartialEq for Union {
     }
 }
 impl Eq for Union {}
-impl std::marker::StructuralEq for Union {}
 
 impl std::marker::ConstParamTy for Union {}
 //~^ ERROR the type `Union` does not `#[derive(PartialEq)]`
@@ -28,7 +27,6 @@ impl PartialEq for UnionDerive {
     }
 }
 impl Eq for UnionDerive {}
-impl std::marker::StructuralEq for UnionDerive {}
 
 
 fn main() {}

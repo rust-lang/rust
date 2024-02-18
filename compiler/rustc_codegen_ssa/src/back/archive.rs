@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_session::cstore::DllImport;
 use rustc_session::Session;
@@ -41,7 +41,7 @@ pub trait ArchiveBuilderBuilder {
         &'a self,
         rlib: &'a Path,
         outdir: &Path,
-        bundled_lib_file_names: &FxHashSet<Symbol>,
+        bundled_lib_file_names: &FxIndexSet<Symbol>,
     ) -> Result<(), ExtractBundledLibsError<'_>> {
         let archive_map = unsafe {
             Mmap::map(
@@ -220,7 +220,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         let sess = self.sess;
         match self.build_inner(output) {
             Ok(any_members) => any_members,
-            Err(e) => sess.emit_fatal(ArchiveBuildFailure { error: e }),
+            Err(e) => sess.dcx().emit_fatal(ArchiveBuildFailure { error: e }),
         }
     }
 }
@@ -234,7 +234,7 @@ impl<'a> ArArchiveBuilder<'a> {
             "coff" => ArchiveKind::Coff,
             "aix_big" => ArchiveKind::AixBig,
             kind => {
-                self.sess.emit_fatal(UnknownArchiveKind { kind });
+                self.sess.dcx().emit_fatal(UnknownArchiveKind { kind });
             }
         };
 

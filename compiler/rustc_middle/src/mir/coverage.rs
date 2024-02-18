@@ -160,16 +160,34 @@ pub struct Expression {
 
 #[derive(Clone, Debug)]
 #[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub struct Mapping {
-    pub code_region: CodeRegion,
+pub enum MappingKind {
+    /// Associates a normal region of code with a counter/expression/zero.
+    Code(CovTerm),
+}
 
-    /// Indicates whether this mapping uses a counter value, expression value,
-    /// or zero value.
-    ///
-    /// FIXME: When we add support for mapping kinds other than `Code`
-    /// (e.g. branch regions, expansion regions), replace this with a dedicated
-    /// mapping-kind enum.
-    pub term: CovTerm,
+impl MappingKind {
+    /// Iterator over all coverage terms in this mapping kind.
+    pub fn terms(&self) -> impl Iterator<Item = CovTerm> {
+        let one = |a| std::iter::once(a);
+        match *self {
+            Self::Code(term) => one(term),
+        }
+    }
+
+    /// Returns a copy of this mapping kind, in which all coverage terms have
+    /// been replaced with ones returned by the given function.
+    pub fn map_terms(&self, map_fn: impl Fn(CovTerm) -> CovTerm) -> Self {
+        match *self {
+            Self::Code(term) => Self::Code(map_fn(term)),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct Mapping {
+    pub kind: MappingKind,
+    pub code_region: CodeRegion,
 }
 
 /// Stores per-function coverage information attached to a `mir::Body`,

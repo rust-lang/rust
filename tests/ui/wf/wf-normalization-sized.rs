@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #100041
+//@ check-pass
+//@ known-bug: #100041
 
 // Should fail. Normalization can bypass well-formedness checking.
 // `[[[[[[u8]]]]]]` is not a well-formed type since size of type `[u8]` cannot

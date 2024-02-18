@@ -1,14 +1,13 @@
+#![allow(clippy::print_stderr)]
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
 
-use expect_test::Expect;
 use ide_db::{
-    assists::AssistResolveStrategy,
-    base_db::{fixture::WithFixture, SourceDatabaseExt},
-    LineIndexDatabase, RootDatabase,
+    assists::AssistResolveStrategy, base_db::SourceDatabaseExt, LineIndexDatabase, RootDatabase,
 };
 use itertools::Itertools;
 use stdx::trim_indent;
+use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, extract_annotations, MiniCore};
 
 use crate::{DiagnosticsConfig, ExprFillDefaultMode, Severity};
@@ -35,17 +34,40 @@ pub(crate) fn check_fixes(ra_fixture_before: &str, ra_fixtures_after: Vec<&str>)
 
 #[track_caller]
 fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.expr_fill_default = ExprFillDefaultMode::Default;
+    check_nth_fix_with_config(config, nth, ra_fixture_before, ra_fixture_after)
+}
+
+#[track_caller]
+pub(crate) fn check_fix_with_disabled(
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+    disabled: impl Iterator<Item = String>,
+) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.expr_fill_default = ExprFillDefaultMode::Default;
+    config.disabled.extend(disabled);
+    check_nth_fix_with_config(config, 0, ra_fixture_before, ra_fixture_after)
+}
+
+#[track_caller]
+fn check_nth_fix_with_config(
+    config: DiagnosticsConfig,
+    nth: usize,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+) {
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let mut conf = DiagnosticsConfig::test_sample();
-    conf.expr_fill_default = ExprFillDefaultMode::Default;
     let diagnostic =
-        super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+        super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_position.file_id)
             .pop()
             .expect("no diagnostics");
-    let fix =
-        &diagnostic.fixes.expect(&format!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
+    let fix = &diagnostic
+        .fixes
+        .unwrap_or_else(|| panic!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
@@ -83,21 +105,20 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
     assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {diagnostic:?}");
 }
 
-pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {
-    let (db, file_id) = RootDatabase::with_single_file(ra_fixture);
-    let diagnostics = super::diagnostics(
-        &db,
-        &DiagnosticsConfig::test_sample(),
-        &AssistResolveStrategy::All,
-        file_id,
-    );
-    expect.assert_debug_eq(&diagnostics)
-}
-
 #[track_caller]
 pub(crate) fn check_diagnostics(ra_fixture: &str) {
     let mut config = DiagnosticsConfig::test_sample();
-    config.disabled.insert("inactive-code".to_string());
+    config.disabled.insert("inactive-code".to_owned());
+    check_diagnostics_with_config(config, ra_fixture)
+}
+
+#[track_caller]
+pub(crate) fn check_diagnostics_with_disabled(
+    ra_fixture: &str,
+    disabled: impl Iterator<Item = String>,
+) {
+    let mut config = DiagnosticsConfig::test_sample();
+    config.disabled.extend(disabled);
     check_diagnostics_with_config(config, ra_fixture)
 }
 
@@ -185,8 +206,9 @@ fn minicore_smoke_test() {
     fn check(minicore: MiniCore) {
         let source = minicore.source_code();
         let mut config = DiagnosticsConfig::test_sample();
-        // This should be ignored since we conditionaly remove code which creates single item use with braces
-        config.disabled.insert("unused_braces".to_string());
+        // This should be ignored since we conditionally remove code which creates single item use with braces
+        config.disabled.insert("unused_braces".to_owned());
+        config.disabled.insert("unused_variables".to_owned());
         check_diagnostics_with_config(config, &source);
     }
 

@@ -27,7 +27,6 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
-use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -62,9 +61,8 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub(crate) fn simplify_cfg(body: &mut Body<'_>) {
     CfgSimplifier::new(body).simplify();
-    remove_duplicate_unreachable_blocks(tcx, body);
     remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
@@ -76,9 +74,9 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         self.name()
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
-        simplify_cfg(tcx, body);
+        simplify_cfg(body);
     }
 }
 
@@ -289,55 +287,25 @@ pub fn simplify_duplicate_switch_targets(terminator: &mut Terminator<'_>) {
     }
 }
 
-pub fn remove_duplicate_unreachable_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    struct OptApplier<'tcx> {
-        tcx: TyCtxt<'tcx>,
-        duplicates: FxIndexSet<BasicBlock>,
-    }
+pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
+    let should_deduplicate_unreachable = |bbdata: &BasicBlockData<'_>| {
+        // CfgSimplifier::simplify leaves behind some unreachable basic blocks without a
+        // terminator. Those blocks will be deleted by remove_dead_blocks, but we run just
+        // before then so we need to handle missing terminators.
+        // We also need to prevent confusing cleanup and non-cleanup blocks. In practice we
+        // don't emit empty unreachable cleanup blocks, so this simple check suffices.
+        bbdata.terminator.is_some() && bbdata.is_empty_unreachable() && !bbdata.is_cleanup
+    };
 
-    impl<'tcx> MutVisitor<'tcx> for OptApplier<'tcx> {
-        fn tcx(&self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-            for target in terminator.successors_mut() {
-                // We don't have to check whether `target` is a cleanup block, because have
-                // entirely excluded cleanup blocks in building the set of duplicates.
-                if self.duplicates.contains(target) {
-                    *target = self.duplicates[0];
-                }
-            }
-
-            simplify_duplicate_switch_targets(terminator);
-
-            self.super_terminator(terminator, location);
-        }
-    }
-
-    let unreachable_blocks = body
+    let reachable = traversal::reachable_as_bitset(body);
+    let empty_unreachable_blocks = body
         .basic_blocks
         .iter_enumerated()
-        .filter(|(_, bb)| {
-            // CfgSimplifier::simplify leaves behind some unreachable basic blocks without a
-            // terminator. Those blocks will be deleted by remove_dead_blocks, but we run just
-            // before then so we need to handle missing terminators.
-            // We also need to prevent confusing cleanup and non-cleanup blocks. In practice we
-            // don't emit empty unreachable cleanup blocks, so this simple check suffices.
-            bb.terminator.is_some() && bb.is_empty_unreachable() && !bb.is_cleanup
-        })
-        .map(|(block, _)| block)
-        .collect::<FxIndexSet<_>>();
+        .filter(|(bb, bbdata)| should_deduplicate_unreachable(bbdata) && reachable.contains(*bb))
+        .count();
 
-    if unreachable_blocks.len() > 1 {
-        OptApplier { tcx, duplicates: unreachable_blocks }.visit_body(body);
-    }
-}
-
-pub fn remove_dead_blocks(body: &mut Body<'_>) {
-    let reachable = traversal::reachable_as_bitset(body);
     let num_blocks = body.basic_blocks.len();
-    if num_blocks == reachable.count() {
+    if num_blocks == reachable.count() && empty_unreachable_blocks <= 1 {
         return;
     }
 
@@ -346,14 +314,28 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
     let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
     let mut orig_index = 0;
     let mut used_index = 0;
-    basic_blocks.raw.retain(|_| {
-        let keep = reachable.contains(BasicBlock::new(orig_index));
-        if keep {
-            replacements[orig_index] = BasicBlock::new(used_index);
-            used_index += 1;
+    let mut kept_unreachable = None;
+    basic_blocks.raw.retain(|bbdata| {
+        let orig_bb = BasicBlock::new(orig_index);
+        if !reachable.contains(orig_bb) {
+            orig_index += 1;
+            return false;
         }
+
+        let used_bb = BasicBlock::new(used_index);
+        if should_deduplicate_unreachable(bbdata) {
+            let kept_unreachable = *kept_unreachable.get_or_insert(used_bb);
+            if kept_unreachable != used_bb {
+                replacements[orig_index] = kept_unreachable;
+                orig_index += 1;
+                return false;
+            }
+        }
+
+        replacements[orig_index] = used_bb;
+        used_index += 1;
         orig_index += 1;
-        keep
+        true
     });
 
     for block in basic_blocks {

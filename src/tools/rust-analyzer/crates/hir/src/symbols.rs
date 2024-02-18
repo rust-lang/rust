@@ -2,13 +2,14 @@
 
 use base_db::FileRange;
 use hir_def::{
+    db::DefDatabase,
     item_scope::ItemInNs,
     src::{HasChildSource, HasSource},
     AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId, ModuleDefId, ModuleId,
     TraitId,
 };
 use hir_expand::{HirFileId, InFile};
-use hir_ty::db::HirDatabase;
+use hir_ty::{db::HirDatabase, display::HirDisplay};
 use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr};
 
 use crate::{Module, ModuleDef, Semantics};
@@ -17,11 +18,11 @@ use crate::{Module, ModuleDef, Semantics};
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
-    // even though name can be derived from the def, we store it for efficiency
     pub name: SmolStr,
     pub def: ModuleDef,
     pub loc: DeclarationLocation,
     pub container_name: Option<SmolStr>,
+    /// Whether this symbol is a doc alias for the original symbol.
     pub is_alias: bool,
     pub is_assoc: bool,
 }
@@ -162,11 +163,10 @@ impl<'a> SymbolCollector<'a> {
         }
 
         // Record renamed imports.
-        // In case it imports multiple items under different namespaces we just pick one arbitrarily
+        // FIXME: In case it imports multiple items under different namespaces we just pick one arbitrarily
         // for now.
+        // FIXME: This parses!
         for id in scope.imports() {
-            let loc = id.import.lookup(self.db.upcast());
-            loc.id.item_tree(self.db.upcast());
             let source = id.import.child_source(self.db.upcast());
             let Some(use_tree_src) = source.value.get(id.idx) else { continue };
             let Some(rename) = use_tree_src.rename() else { continue };
@@ -196,7 +196,7 @@ impl<'a> SymbolCollector<'a> {
             });
         }
 
-        for const_id in scope.unnamed_consts() {
+        for const_id in scope.unnamed_consts(self.db.upcast()) {
             self.collect_from_body(const_id);
         }
 
@@ -230,9 +230,12 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_impl(&mut self, impl_id: ImplId) {
         let impl_data = self.db.impl_data(impl_id);
-        for &assoc_item_id in &impl_data.items {
-            self.push_assoc_item(assoc_item_id)
-        }
+        let impl_name = Some(SmolStr::new(impl_data.self_ty.display(self.db).to_string()));
+        self.with_container_name(impl_name, |s| {
+            for &assoc_item_id in &impl_data.items {
+                s.push_assoc_item(assoc_item_id)
+            }
+        })
     }
 
     fn collect_from_trait(&mut self, trait_id: TraitId) {
@@ -259,9 +262,7 @@ impl<'a> SymbolCollector<'a> {
             DefWithBodyId::FunctionId(id) => Some(self.db.function_data(id).name.to_smol_str()),
             DefWithBodyId::StaticId(id) => Some(self.db.static_data(id).name.to_smol_str()),
             DefWithBodyId::ConstId(id) => Some(self.db.const_data(id).name.as_ref()?.to_smol_str()),
-            DefWithBodyId::VariantId(id) => {
-                Some(self.db.enum_data(id.parent).variants[id.local_id].name.to_smol_str())
-            }
+            DefWithBodyId::VariantId(id) => Some(self.db.enum_variant_data(id).name.to_smol_str()),
             DefWithBodyId::InTypeConstId(_) => Some("in type const".into()),
         }
     }
@@ -274,9 +275,9 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
-    fn push_decl<L>(&mut self, id: L, is_assoc: bool)
+    fn push_decl<'db, L>(&mut self, id: L, is_assoc: bool)
     where
-        L: Lookup + Into<ModuleDefId>,
+        L: Lookup<Database<'db> = dyn DefDatabase + 'db> + Into<ModuleDefId>,
         <L as Lookup>::Data: HasSource,
         <<L as Lookup>::Data as HasSource>::Value: HasName,
     {

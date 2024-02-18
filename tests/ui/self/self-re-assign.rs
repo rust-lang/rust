@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Ensure assigning an owned or managed variable to itself works. In particular,
 // that we do not glue_drop before we glue_take (#3290).
 

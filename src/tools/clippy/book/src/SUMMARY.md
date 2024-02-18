@@ -9,6 +9,7 @@
 - [Clippy's Lints](lints.md)
 - [Continuous Integration](continuous_integration/README.md)
     - [GitHub Actions](continuous_integration/github_actions.md)
+    - [GitLab CI](continuous_integration/gitlab.md)
     - [Travis CI](continuous_integration/travis.md)
 - [Development](development/README.md)
     - [Basics](development/basics.md)

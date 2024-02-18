@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 // Regression test related to #56288. Check that a supertrait projection (of
 // `Output`) that references `Self` can be ok if it is referencing a projection (of

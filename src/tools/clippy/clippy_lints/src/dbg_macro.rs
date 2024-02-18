@@ -63,7 +63,7 @@ impl LateLintPass<'_> for DbgMacro {
                 ExprKind::Block(..) => {
                     // If the `dbg!` macro is a "free" statement and not contained within other expressions,
                     // remove the whole statement.
-                    if let Some(Node::Stmt(_)) = cx.tcx.hir().find_parent(expr.hir_id)
+                    if let Node::Stmt(_) = cx.tcx.parent_hir_node(expr.hir_id)
                         && let Some(semi_span) = cx.sess().source_map().mac_call_stmt_semi_span(macro_call.span)
                     {
                         (macro_call.span.to(semi_span), String::new())

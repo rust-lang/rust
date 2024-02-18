@@ -17,7 +17,7 @@ error: this `match` arm has a differing case than its expression
 LL |         "~!@#$%^&*()-_=+Foo" => {},
    |         ^^^^^^^^^^^^^^^^^^^^
    |
-help: consider changing the case of this arm to respect `to_ascii_lowercase`
+help: consider changing the case of this arm to respect `to_ascii_lowercase` (notice the capitalization difference)
    |
 LL |         "~!@#$%^&*()-_=+foo" => {},
    |         ~~~~~~~~~~~~~~~~~~~~

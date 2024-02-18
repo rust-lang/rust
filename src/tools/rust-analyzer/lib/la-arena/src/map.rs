@@ -73,17 +73,17 @@ impl<T, V> ArenaMap<Idx<T>, V> {
     }
 
     /// Returns an iterator over the values in the map.
-    pub fn values(&self) -> impl Iterator<Item = &V> + DoubleEndedIterator {
+    pub fn values(&self) -> impl DoubleEndedIterator<Item = &V> {
         self.v.iter().filter_map(|o| o.as_ref())
     }
 
     /// Returns an iterator over mutable references to the values in the map.
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> + DoubleEndedIterator {
+    pub fn values_mut(&mut self) -> impl DoubleEndedIterator<Item = &mut V> {
         self.v.iter_mut().filter_map(|o| o.as_mut())
     }
 
     /// Returns an iterator over the arena indexes and values in the map.
-    pub fn iter(&self) -> impl Iterator<Item = (Idx<T>, &V)> + DoubleEndedIterator {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = (Idx<T>, &V)> {
         self.v.iter().enumerate().filter_map(|(idx, o)| Some((Self::from_idx(idx), o.as_ref()?)))
     }
 
@@ -252,6 +252,8 @@ where
 {
     /// Ensures a value is in the entry by inserting the default value if empty, and returns a mutable reference
     /// to the value in the entry.
+    // BUG this clippy lint is a false positive
+    #[allow(clippy::unwrap_or_default)]
     pub fn or_default(self) -> &'a mut V {
         self.or_insert_with(Default::default)
     }

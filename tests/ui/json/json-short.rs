@@ -1,1 +1,1 @@
-// compile-flags: --json=diagnostic-short --error-format=json
+//@ compile-flags: --json=diagnostic-short --error-format=json

@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver
-// check-pass
+//@ compile-flags: -Znext-solver
+//@ check-pass
 
 // Verify that we can assemble inherent impl candidates on a possibly
 // unnormalized self type.

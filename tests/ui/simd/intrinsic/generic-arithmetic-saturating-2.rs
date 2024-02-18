@@ -1,5 +1,5 @@
-// build-fail
-// ignore-emscripten
+//@ build-fail
+//@ ignore-emscripten
 #![feature(repr_simd, platform_intrinsics)]
 #![allow(non_camel_case_types)]
 #[repr(simd)]

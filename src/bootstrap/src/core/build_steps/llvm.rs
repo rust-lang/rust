@@ -98,7 +98,7 @@ pub fn prebuilt_llvm_config(
     let out_dir = builder.llvm_out(target);
 
     let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    if !builder.config.build.is_msvc() || builder.ninja() {
+    if (!builder.config.build.is_msvc() || builder.ninja()) && !builder.config.llvm_from_ci {
         llvm_config_ret_dir.push("build");
     }
     llvm_config_ret_dir.push("bin");
@@ -412,9 +412,7 @@ impl Step for Llvm {
         }
 
         if target.is_msvc() {
-            cfg.define("LLVM_USE_CRT_DEBUG", "MT");
-            cfg.define("LLVM_USE_CRT_RELEASE", "MT");
-            cfg.define("LLVM_USE_CRT_RELWITHDEBINFO", "MT");
+            cfg.define("CMAKE_MSVC_RUNTIME_LIBRARY", "MultiThreaded");
             cfg.static_crt(true);
         }
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
 fn main() {
     if false { test(); }
@@ -153,7 +153,7 @@ mod stream {
     }
 
     enum Slot<T> {
-        Next(#[allow(unused_tuple_struct_fields)] usize),
+        Next(#[allow(dead_code)] usize),
         _Data { _a: T },
     }
 

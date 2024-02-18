@@ -1,4 +1,4 @@
-// aux-build: foreign-generic-mismatch.rs
+//@ aux-build: foreign-generic-mismatch.rs
 
 extern crate foreign_generic_mismatch;
 

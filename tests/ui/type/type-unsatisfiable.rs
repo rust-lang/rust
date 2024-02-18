@@ -1,6 +1,6 @@
-// revisions: lib usage
-//[lib] compile-flags: --crate-type=lib
-//[lib] build-pass
+//@ revisions: lib usage
+//@[lib] compile-flags: --crate-type=lib
+//@[lib] build-pass
 
 use std::ops::Sub;
 trait Vector2 {

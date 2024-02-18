@@ -1,5 +1,5 @@
-// run-pass
-// check-run-results
+//@ run-pass
+//@ check-run-results
 
 #![feature(dyn_star)]
 //~^ WARN the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes

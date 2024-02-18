@@ -1,7 +1,6 @@
    LL|       |// Shows that rust-lang/rust/83601 is resolved
    LL|       |
-   LL|      3|#[derive(Debug, PartialEq, Eq)]
-                              ^2
+   LL|       |#[derive(Debug, PartialEq, Eq)]
    LL|       |struct Foo(u32);
    LL|       |
    LL|      1|fn main() {

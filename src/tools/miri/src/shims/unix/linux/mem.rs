@@ -15,14 +15,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let old_address = this.read_target_usize(old_address)?;
+        let old_address = this.read_pointer(old_address)?;
         let old_size = this.read_target_usize(old_size)?;
         let new_size = this.read_target_usize(new_size)?;
         let flags = this.read_scalar(flags)?.to_i32()?;
 
         // old_address must be a multiple of the page size
         #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
-        if old_address % this.machine.page_size != 0 || new_size == 0 {
+        if old_address.addr().bytes() % this.machine.page_size != 0 || new_size == 0 {
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
             return Ok(this.eval_libc("MAP_FAILED"));
         }
@@ -41,7 +41,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(this.eval_libc("MAP_FAILED"));
         }
 
-        let old_address = Machine::ptr_from_addr_cast(this, old_address)?;
         let align = this.machine.page_align();
         let ptr = this.reallocate_ptr(
             old_address,
@@ -59,8 +58,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             )
             .unwrap();
         }
-        // Memory mappings are always exposed
-        Machine::expose_ptr(this, ptr)?;
 
         Ok(Scalar::from_pointer(ptr, this))
     }

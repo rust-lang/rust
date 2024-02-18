@@ -12,7 +12,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{intravisit, BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::query::Key;
 use rustc_session::impl_lint_pass;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
@@ -512,7 +511,8 @@ fn scan_block_for_eq<'tcx>(
                 for stmt in &stmts[stmts.len() - init..=stmts.len() - offset] {
                     if let StmtKind::Local(l) = stmt.kind {
                         l.pat.each_binding_or_first(&mut |_, id, _, _| {
-                            eq.locals.remove(&id);
+                            // FIXME(rust/#120456) - is `swap_remove` correct?
+                            eq.locals.swap_remove(&id);
                         });
                     }
                 }
@@ -574,7 +574,7 @@ fn method_caller_is_mutable(cx: &LateContext<'_>, caller_expr: &Expr<'_>, ignore
     let caller_ty = cx.typeck_results().expr_ty(caller_expr);
     // Check if given type has inner mutability and was not set to ignored by the configuration
     let is_inner_mut_ty = is_interior_mut_ty(cx, caller_ty)
-        && !matches!(caller_ty.ty_adt_id(), Some(adt_id) if ignored_ty_ids.contains(&adt_id));
+        && !matches!(caller_ty.ty_adt_def(), Some(adt) if ignored_ty_ids.contains(&adt.did()));
 
     is_inner_mut_ty
         || caller_ty.is_mutable_ptr()

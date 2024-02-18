@@ -86,7 +86,8 @@ rustc_index::newtype_index! {
     pub struct CoroutineSavedLocal {}
 }
 
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoroutineSavedTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Source info corresponding to the local in the original MIR body.
@@ -96,7 +97,8 @@ pub struct CoroutineSavedTy<'tcx> {
 }
 
 /// The layout of coroutine state.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Clone, PartialEq, Eq)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoroutineLayout<'tcx> {
     /// The type of every local stored inside the coroutine.
     pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,
@@ -189,7 +191,7 @@ pub struct BorrowCheckResult<'tcx> {
 
 /// The result of the `mir_const_qualif` query.
 ///
-/// Each field (except `error_occurred`) corresponds to an implementer of the `Qualif` trait in
+/// Each field (except `tainted_by_errors`) corresponds to an implementer of the `Qualif` trait in
 /// `rustc_const_eval/src/transform/check_consts/qualifs.rs`. See that file for more information on each
 /// `Qualif`.
 #[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
@@ -197,7 +199,6 @@ pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
     pub needs_non_const_drop: bool,
-    pub custom_eq: bool,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 

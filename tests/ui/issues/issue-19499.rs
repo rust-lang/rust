@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(path_statements)]
 #![allow(unused_variables)]
 // Regression test for issue #19499. Due to incorrect caching of trait
@@ -7,7 +7,7 @@
 // reasonable examples) let to ambiguity errors about not being able
 // to infer sufficient type information.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn main() {
     let n = 0;

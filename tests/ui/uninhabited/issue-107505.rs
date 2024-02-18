@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib
-// check-pass
+//@ compile-flags: --crate-type=lib
+//@ check-pass
 
 // Make sure we don't pass inference variables to uninhabitedness checks in borrowck
 

@@ -1,6 +1,6 @@
 // Regression test for the ICE described in #87496.
 
-// check-pass
+//@ check-pass
 
 #[repr(transparent)]
 struct TransparentCustomZst(());

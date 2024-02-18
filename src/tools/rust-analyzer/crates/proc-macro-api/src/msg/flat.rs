@@ -35,15 +35,49 @@
 //! as we don't have bincode in Cargo.toml yet, lets stick with serde_json for
 //! the time being.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
-use base_db::span::SpanData;
 use indexmap::IndexSet;
+use la_arena::RawIdx;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
+use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use text_size::TextRange;
 
 use crate::msg::ENCODE_CLOSE_SPAN_VERSION;
 
-type SpanDataIndexMap = IndexSet<SpanData>;
+pub type SpanDataIndexMap = IndexSet<Span>;
+
+pub fn serialize_span_data_index_map(map: &SpanDataIndexMap) -> Vec<u32> {
+    map.iter()
+        .flat_map(|span| {
+            [
+                span.anchor.file_id.index(),
+                span.anchor.ast_id.into_raw().into_u32(),
+                span.range.start().into(),
+                span.range.end().into(),
+                span.ctx.into_u32(),
+            ]
+        })
+        .collect()
+}
+
+pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
+    debug_assert!(map.len() % 5 == 0);
+    map.chunks_exact(5)
+        .map(|span| {
+            let &[file_id, ast_id, start, end, e] = span else { unreachable!() };
+            Span {
+                anchor: SpanAnchor {
+                    file_id: FileId::from_raw(file_id),
+                    ast_id: ErasedFileAstId::from_raw(RawIdx::from_u32(ast_id)),
+                },
+                range: TextRange::new(start.into(), end.into()),
+                ctx: SyntaxContextId::from_u32(e),
+            }
+        })
+        .collect()
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TokenId(pub u32);
@@ -54,9 +88,7 @@ impl std::fmt::Debug for TokenId {
     }
 }
 
-impl tt::Span for TokenId {
-    const DUMMY: Self = TokenId(!0);
-}
+impl tt::Span for TokenId {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FlatTree {
@@ -93,12 +125,12 @@ struct IdentRepr {
 
 impl FlatTree {
     pub fn new(
-        subtree: &tt::Subtree<SpanData>,
+        subtree: &tt::Subtree<Span>,
         version: u32,
         span_data_table: &mut SpanDataIndexMap,
     ) -> FlatTree {
         let mut w = Writer {
-            string_table: HashMap::new(),
+            string_table: FxHashMap::default(),
             work: VecDeque::new(),
             span_data_table,
 
@@ -127,7 +159,7 @@ impl FlatTree {
 
     pub fn new_raw(subtree: &tt::Subtree<TokenId>, version: u32) -> FlatTree {
         let mut w = Writer {
-            string_table: HashMap::new(),
+            string_table: FxHashMap::default(),
             work: VecDeque::new(),
             span_data_table: &mut (),
 
@@ -158,7 +190,7 @@ impl FlatTree {
         self,
         version: u32,
         span_data_table: &SpanDataIndexMap,
-    ) -> tt::Subtree<SpanData> {
+    ) -> tt::Subtree<Span> {
         Reader {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 read_vec(self.subtree, SubtreeRepr::read_with_close_span)
@@ -281,13 +313,13 @@ impl IdentRepr {
     }
 }
 
-trait Span: Copy {
+trait InternableSpan: Copy {
     type Table;
     fn token_id_of(table: &mut Self::Table, s: Self) -> TokenId;
     fn span_for_token_id(table: &Self::Table, id: TokenId) -> Self;
 }
 
-impl Span for TokenId {
+impl InternableSpan for TokenId {
     type Table = ();
     fn token_id_of((): &mut Self::Table, token_id: Self) -> TokenId {
         token_id
@@ -297,8 +329,8 @@ impl Span for TokenId {
         id
     }
 }
-impl Span for SpanData {
-    type Table = IndexSet<SpanData>;
+impl InternableSpan for Span {
+    type Table = IndexSet<Span>;
     fn token_id_of(table: &mut Self::Table, span: Self) -> TokenId {
         TokenId(table.insert_full(span).0 as u32)
     }
@@ -307,9 +339,9 @@ impl Span for SpanData {
     }
 }
 
-struct Writer<'a, 'span, S: Span> {
+struct Writer<'a, 'span, S: InternableSpan> {
     work: VecDeque<(usize, &'a tt::Subtree<S>)>,
-    string_table: HashMap<&'a str, u32>,
+    string_table: FxHashMap<&'a str, u32>,
     span_data_table: &'span mut S::Table,
 
     subtree: Vec<SubtreeRepr>,
@@ -320,7 +352,7 @@ struct Writer<'a, 'span, S: Span> {
     text: Vec<String>,
 }
 
-impl<'a, 'span, S: Span> Writer<'a, 'span, S> {
+impl<'a, 'span, S: InternableSpan> Writer<'a, 'span, S> {
     fn write(&mut self, root: &'a tt::Subtree<S>) {
         self.enqueue(root);
         while let Some((idx, subtree)) = self.work.pop_front() {
@@ -339,7 +371,7 @@ impl<'a, 'span, S: Span> Writer<'a, 'span, S> {
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
 
-        for child in &subtree.token_trees {
+        for child in subtree.token_trees.iter() {
             let idx_tag = match child {
                 tt::TokenTree::Subtree(it) => {
                     let idx = self.enqueue(it);
@@ -387,13 +419,13 @@ impl<'a, 'span, S: Span> Writer<'a, 'span, S> {
         let table = &mut self.text;
         *self.string_table.entry(text).or_insert_with(|| {
             let idx = table.len();
-            table.push(text.to_string());
+            table.push(text.to_owned());
             idx as u32
         })
     }
 }
 
-struct Reader<'span, S: Span> {
+struct Reader<'span, S: InternableSpan> {
     subtree: Vec<SubtreeRepr>,
     literal: Vec<LiteralRepr>,
     punct: Vec<PunctRepr>,
@@ -403,7 +435,7 @@ struct Reader<'span, S: Span> {
     span_data_table: &'span S::Table,
 }
 
-impl<'span, S: Span> Reader<'span, S> {
+impl<'span, S: InternableSpan> Reader<'span, S> {
     pub(crate) fn read(self) -> tt::Subtree<S> {
         let mut res: Vec<Option<tt::Subtree<S>>> = vec![None; self.subtree.len()];
         let read_span = |id| S::span_for_token_id(self.span_data_table, id);

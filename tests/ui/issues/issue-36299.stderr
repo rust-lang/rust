@@ -1,19 +1,19 @@
-error[E0392]: parameter `'a` is never used
+error[E0392]: lifetime parameter `'a` is never used
   --> $DIR/issue-36299.rs:1:12
    |
 LL | struct Foo<'a, A> {}
-   |            ^^ unused parameter
+   |            ^^ unused lifetime parameter
    |
    = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 
-error[E0392]: parameter `A` is never used
+error[E0392]: type parameter `A` is never used
   --> $DIR/issue-36299.rs:1:16
    |
 LL | struct Foo<'a, A> {}
-   |                ^ unused parameter
+   |                ^ unused type parameter
    |
    = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
-   = help: if you intended `A` to be a const parameter, use `const A: usize` instead
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
 
 error: aborting due to 2 previous errors
 

@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #[derive(Copy, Clone)]
 pub struct ChildStdin {

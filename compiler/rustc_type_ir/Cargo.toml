@@ -5,12 +5,13 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "1.2.1"
+bitflags = "2.4.1"
 derivative = "2.2.0"
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_serialize = { path = "../rustc_serialize", optional = true }
+rustc_span = { path = "../rustc_span", optional = true }
 smallvec = { version = "1.8.1" }
 # tidy-alphabetical-end
 
@@ -21,6 +22,7 @@ nightly = [
     "smallvec/union",
     "rustc_index/nightly",
     "rustc_serialize",
+    "rustc_span",
     "rustc_data_structures",
     "rustc_macros",
 ]

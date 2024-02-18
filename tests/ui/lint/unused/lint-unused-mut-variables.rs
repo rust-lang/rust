@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Exercise the unused_mut attribute in some positive and negative cases
 

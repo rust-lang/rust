@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Check that opaques capturing early and late-bound vars correctly mark
 // regions required to be live using the item bounds.

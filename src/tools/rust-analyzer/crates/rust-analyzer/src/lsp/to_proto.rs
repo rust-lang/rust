@@ -92,6 +92,7 @@ pub(crate) fn document_highlight_kind(
         ReferenceCategory::Read => Some(lsp_types::DocumentHighlightKind::READ),
         ReferenceCategory::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
         ReferenceCategory::Import => None,
+        ReferenceCategory::Test => None,
     }
 }
 
@@ -244,7 +245,7 @@ fn completion_item(
 ) {
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let ref_match = item.ref_match();
-    let lookup = item.lookup().to_string();
+    let lookup = item.lookup().to_owned();
 
     let mut additional_text_edits = Vec::new();
 
@@ -310,22 +311,18 @@ fn completion_item(
 
     set_score(&mut lsp_item, max_relevance, item.relevance);
 
-    if config.completion().enable_imports_on_the_fly {
-        if !item.import_to_add.is_empty() {
-            let imports: Vec<_> = item
-                .import_to_add
-                .into_iter()
-                .filter_map(|(import_path, import_name)| {
-                    Some(lsp_ext::CompletionImport {
-                        full_import_path: import_path,
-                        imported_name: import_name,
-                    })
-                })
-                .collect();
-            if !imports.is_empty() {
-                let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
-                lsp_item.data = Some(to_value(data).unwrap());
-            }
+    if config.completion().enable_imports_on_the_fly && !item.import_to_add.is_empty() {
+        let imports = item
+            .import_to_add
+            .into_iter()
+            .map(|(import_path, import_name)| lsp_ext::CompletionImport {
+                full_import_path: import_path,
+                imported_name: import_name,
+            })
+            .collect::<Vec<_>>();
+        if !imports.is_empty() {
+            let data = lsp_ext::CompletionResolveData { position: tdpp.clone(), imports };
+            lsp_item.data = Some(to_value(data).unwrap());
         }
     }
 
@@ -370,7 +367,7 @@ pub(crate) fn signature_help(
             let params = call_info
                 .parameter_labels()
                 .map(|label| lsp_types::ParameterInformation {
-                    label: lsp_types::ParameterLabel::Simple(label.to_string()),
+                    label: lsp_types::ParameterLabel::Simple(label.to_owned()),
                     documentation: None,
                 })
                 .collect::<Vec<_>>();
@@ -857,7 +854,7 @@ pub(crate) fn location_from_nav(
 ) -> Cancellable<lsp_types::Location> {
     let url = url(snap, nav.file_id);
     let line_index = snap.file_line_index(nav.file_id)?;
-    let range = range(&line_index, nav.full_range);
+    let range = range(&line_index, nav.focus_or_full_range());
     let loc = lsp_types::Location::new(url, range);
     Ok(loc)
 }
@@ -931,9 +928,9 @@ fn merge_text_and_snippet_edits(
 ) -> Vec<SnippetTextEdit> {
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
-    let mut text_edits = edit.into_iter();
+    let text_edits = edit.into_iter();
 
-    while let Some(current_indel) = text_edits.next() {
+    for current_indel in text_edits {
         let new_range = {
             let insert_len =
                 TextSize::try_from(current_indel.insert.len()).unwrap_or(TextSize::from(u32::MAX));
@@ -956,7 +953,7 @@ fn merge_text_and_snippet_edits(
                 snippet_range
             };
 
-            let range = range(&line_index, snippet_range);
+            let range = range(line_index, snippet_range);
             let new_text = format!("${snippet_index}");
 
             edits.push(SnippetTextEdit {
@@ -1026,7 +1023,7 @@ fn merge_text_and_snippet_edits(
             snippet_range
         };
 
-        let range = range(&line_index, snippet_range);
+        let range = range(line_index, snippet_range);
         let new_text = format!("${snippet_index}");
 
         SnippetTextEdit {
@@ -1501,7 +1498,7 @@ pub(crate) mod command {
 
     pub(crate) fn run_single(runnable: &lsp_ext::Runnable, title: &str) -> lsp_types::Command {
         lsp_types::Command {
-            title: title.to_string(),
+            title: title.to_owned(),
             command: "rust-analyzer.runSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
@@ -1611,7 +1608,7 @@ fn main() {
     }
 }"#;
 
-        let (analysis, file_id) = Analysis::from_single_file(text.to_string());
+        let (analysis, file_id) = Analysis::from_single_file(text.to_owned());
         let folds = analysis.folding_ranges(file_id).unwrap();
         assert_eq!(folds.len(), 4);
 

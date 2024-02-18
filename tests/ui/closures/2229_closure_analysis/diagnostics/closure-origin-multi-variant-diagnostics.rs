@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Check that precise paths are being reported back in the error message.
 

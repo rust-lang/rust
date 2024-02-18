@@ -1,4 +1,4 @@
-// compile-flags: -Wrust-2021-incompatible-closure-captures
+//@ compile-flags: -Wrust-2021-incompatible-closure-captures
 
 pub struct A {}
 

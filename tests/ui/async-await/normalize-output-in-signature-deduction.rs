@@ -1,7 +1,7 @@
-// edition:2021
-// revisions: current next
-//[next] compile-flags: -Znext-solver
-// check-pass
+//@ edition:2021
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 

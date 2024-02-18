@@ -2,7 +2,7 @@
 // and that if a feature gate is supplied, it permits the type to be
 // used in a match.
 
-// revisions: with_gate no_gate
+//@ revisions: with_gate no_gate
 
 // gate-test-structural_match
 
@@ -27,8 +27,6 @@ fn main() { //[with_gate]~ ERROR fatal error triggered by #[rustc_error]
 }
 
 impl std::marker::StructuralPartialEq for Foo { }
-//[no_gate]~^ ERROR use of unstable library feature 'structural_match'
-impl std::marker::StructuralEq for Foo { }
 //[no_gate]~^ ERROR use of unstable library feature 'structural_match'
 
 impl PartialEq<Foo> for Foo {

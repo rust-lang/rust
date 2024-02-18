@@ -1,6 +1,6 @@
 // Type resolution: the phase that finds all the types in the AST with
 // unresolved type variables and replaces "ty_var" types with their
-// substitutions.
+// generic parameters.
 
 use crate::FnCtxt;
 use rustc_data_structures::unord::ExtendUnord;
@@ -221,8 +221,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             if base_ty.is_none() {
                 // When encountering `return [0][0]` outside of a `fn` body we can encounter a base
                 // that isn't in the type table. We assume more relevant errors have already been
-                // emitted, so we delay an ICE if none have. (#64638)
-                self.tcx().sess.span_delayed_bug(e.span, format!("bad base: `{base:?}`"));
+                // emitted. (#64638)
+                assert!(self.tcx().dcx().has_errors().is_some(), "bad base: `{base:?}`");
             }
             if let Some(base_ty) = base_ty
                 && let ty::Ref(_, base_ty_inner, _) = *base_ty.kind()
@@ -316,7 +316,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             }
             hir::GenericParamKind::Type { .. } | hir::GenericParamKind::Const { .. } => {
                 self.tcx()
-                    .sess
+                    .dcx()
                     .span_delayed_bug(p.span, format!("unexpected generic param: {p:?}"));
             }
         }
@@ -473,7 +473,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
         let fcx_coercion_casts = fcx_typeck_results.coercion_casts().to_sorted_stable_ord();
-        for local_id in fcx_coercion_casts {
+        for &local_id in fcx_coercion_casts {
             self.typeck_results.set_coercion_cast(local_id);
         }
     }
@@ -497,15 +497,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // We need to buffer the errors in order to guarantee a consistent
                     // order when emitting them.
                     let err =
-                        self.tcx().sess.struct_span_err(span, format!("user args: {user_args:?}"));
-                    err.buffer(&mut errors_buffer);
+                        self.tcx().dcx().struct_span_err(span, format!("user args: {user_args:?}"));
+                    errors_buffer.push(err);
                 }
             }
 
             if !errors_buffer.is_empty() {
                 errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-                for diag in errors_buffer {
-                    self.tcx().sess.dcx().emit_diagnostic(diag);
+                for err in errors_buffer {
+                    err.emit();
                 }
             }
         }
@@ -562,7 +562,15 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
-        let opaque_types = self.fcx.infcx.take_opaque_types();
+        // We clone the opaques instead of stealing them here as they are still used for
+        // normalization in the next generation trait solver.
+        //
+        // FIXME(-Znext-solver): Opaque types defined after this would simply get dropped
+        // at the end of typeck. While this seems unlikely to happen in practice this
+        // should still get fixed. Either by preventing writeback from defining new opaque
+        // types or by using this function at the end of writeback and running it as a
+        // fixpoint.
+        let opaque_types = self.fcx.infcx.clone_opaque_types();
         for (opaque_type_key, decl) in opaque_types {
             let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
@@ -596,6 +604,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         {
             self.typeck_results.field_indices_mut().insert(hir_id, index);
         }
+        if let Some(nested_fields) =
+            self.fcx.typeck_results.borrow_mut().nested_fields_mut().remove(hir_id)
+        {
+            self.typeck_results.nested_fields_mut().insert(hir_id, nested_fields);
+        }
     }
 
     #[instrument(skip(self, span), level = "debug")]
@@ -616,7 +629,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.write_ty_to_typeck_results(hir_id, n_ty);
         debug!(?n_ty);
 
-        // Resolve any substitutions
+        // Resolve any generic parameters
         if let Some(args) = self.fcx.typeck_results.borrow().node_args_opt(hir_id) {
             let args = self.resolve(args, &span);
             debug!("write_args_to_tcx({:?}, {:?})", hir_id, args);
@@ -753,10 +766,14 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
-        match self.fcx.tcx.sess.has_errors() {
-            Some(e) => e,
-            None => self
-                .fcx
+        if let Some(guar) = self.fcx.dcx().has_errors() {
+            guar
+        } else if self.fcx.dcx().stashed_err_count() > 0 {
+            // Without this case we sometimes get uninteresting and extraneous
+            // "type annotations needed" errors.
+            self.fcx.dcx().delayed_bug("error in Resolver")
+        } else {
+            self.fcx
                 .err_ctxt()
                 .emit_inference_failure_err(
                     self.fcx.tcx.hir().body_owner_def_id(self.body.id()),
@@ -765,7 +782,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     E0282,
                     false,
                 )
-                .emit(),
+                .emit()
         }
     }
 

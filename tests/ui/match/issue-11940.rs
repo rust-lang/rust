@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const TEST_STR: &'static str = "abcd";
 

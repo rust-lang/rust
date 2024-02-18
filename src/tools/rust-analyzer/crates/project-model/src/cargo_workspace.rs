@@ -82,6 +82,8 @@ pub struct CargoConfig {
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustLibSource>,
+    /// Whether to invoke `cargo metadata` on the sysroot crate.
+    pub sysroot_query_metadata: bool,
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,
@@ -274,7 +276,7 @@ impl CargoWorkspace {
             other_options.append(
                 &mut targets
                     .into_iter()
-                    .flat_map(|target| ["--filter-platform".to_owned().to_string(), target])
+                    .flat_map(|target| ["--filter-platform".to_owned(), target])
                     .collect(),
             );
         }
@@ -283,7 +285,7 @@ impl CargoWorkspace {
         // FIXME: Fetching metadata is a slow process, as it might require
         // calling crates.io. We should be reporting progress here, but it's
         // unclear whether cargo itself supports it.
-        progress("metadata".to_string());
+        progress("metadata".to_owned());
 
         (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
             let mut command = meta.cargo_command();
@@ -330,6 +332,7 @@ impl CargoWorkspace {
                 cargo_metadata::Edition::E2015 => Edition::Edition2015,
                 cargo_metadata::Edition::E2018 => Edition::Edition2018,
                 cargo_metadata::Edition::E2021 => Edition::Edition2021,
+                cargo_metadata::Edition::_E2024 => Edition::Edition2024,
                 _ => {
                     tracing::error!("Unsupported edition `{:?}`", edition);
                     Edition::CURRENT
@@ -365,7 +368,7 @@ impl CargoWorkspace {
                     name,
                     root: AbsPathBuf::assert(src_path.into()),
                     kind: TargetKind::new(&kind),
-                    is_proc_macro: &*kind == ["proc-macro"],
+                    is_proc_macro: *kind == ["proc-macro"],
                     required_features,
                 });
                 pkg_data.targets.push(tgt);
@@ -396,7 +399,7 @@ impl CargoWorkspace {
         CargoWorkspace { packages, targets, workspace_root, target_directory }
     }
 
-    pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
+    pub fn packages(&self) -> impl ExactSizeIterator<Item = Package> + '_ {
         self.packages.iter().map(|(id, _pkg)| id)
     }
 
@@ -438,7 +441,7 @@ impl CargoWorkspace {
             .collect::<Vec<ManifestPath>>();
 
         // some packages has this pkg as dep. return their manifests
-        if parent_manifests.len() > 0 {
+        if !parent_manifests.is_empty() {
             return Some(parent_manifests);
         }
 
@@ -499,7 +502,7 @@ fn rustc_discover_host_triple(
             let field = "host: ";
             let target = stdout.lines().find_map(|l| l.strip_prefix(field));
             if let Some(target) = target {
-                Some(target.to_string())
+                Some(target.to_owned())
             } else {
                 // If we fail to resolve the host platform, it's not the end of the world.
                 tracing::info!("rustc -vV did not report host platform, got:\n{}", stdout);
@@ -533,7 +536,7 @@ fn parse_output_cargo_config_build_target(stdout: String) -> Vec<String> {
     let trimmed = stdout.trim_start_matches("build.target = ").trim_matches('"');
 
     if !trimmed.starts_with('[') {
-        return [trimmed.to_string()].to_vec();
+        return [trimmed.to_owned()].to_vec();
     }
 
     let res = serde_json::from_str(trimmed);

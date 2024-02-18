@@ -1,8 +1,9 @@
 use std::mem;
 
 use rustc_data_structures::sso::SsoHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::MaxUniverse;
@@ -55,8 +56,6 @@ pub fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Rela
 /// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
 /// in the generalizer code.
 pub trait GeneralizerDelegate<'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-
     fn forbid_inference_vars() -> bool;
 
     fn span(&self) -> Span;
@@ -66,15 +65,10 @@ pub trait GeneralizerDelegate<'tcx> {
 
 pub struct CombineDelegate<'cx, 'tcx> {
     pub infcx: &'cx InferCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
     pub span: Span,
 }
 
 impl<'tcx> GeneralizerDelegate<'tcx> for CombineDelegate<'_, 'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
-    }
-
     fn forbid_inference_vars() -> bool {
         false
     }
@@ -95,10 +89,6 @@ impl<'tcx, T> GeneralizerDelegate<'tcx> for T
 where
     T: TypeRelatingDelegate<'tcx>,
 {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        <Self as TypeRelatingDelegate<'tcx>>::param_env(self)
-    }
-
     fn forbid_inference_vars() -> bool {
         <Self as TypeRelatingDelegate<'tcx>>::forbid_inference_vars()
     }
@@ -193,14 +183,14 @@ where
     fn relate_item_args(
         &mut self,
         item_def_id: DefId,
-        a_subst: ty::GenericArgsRef<'tcx>,
-        b_subst: ty::GenericArgsRef<'tcx>,
+        a_arg: ty::GenericArgsRef<'tcx>,
+        b_arg: ty::GenericArgsRef<'tcx>,
     ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_args_invariantly(self, a_subst, b_subst)
+            relate::relate_args_invariantly(self, a_arg, b_arg)
         } else {
             let tcx = self.tcx();
             let opt_variances = tcx.variances_of(item_def_id);
@@ -208,8 +198,8 @@ where
                 self,
                 item_def_id,
                 opt_variances,
-                a_subst,
-                b_subst,
+                a_arg,
+                b_arg,
                 false,
             )
         }
@@ -226,7 +216,9 @@ where
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
         debug!(?self.ambient_variance, "new ambient variance");
-        let r = self.relate(a, b)?;
+        // Recursive calls to `relate` can overflow the stack. For example a deeper version of
+        // `ui/associated-consts/issue-93775.rs`.
+        let r = ensure_sufficient_stack(|| self.relate(a, b))?;
         self.ambient_variance = old_ambient_variance;
         Ok(r)
     }
@@ -439,22 +431,19 @@ where
 
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
-                let var_value = variable_table.probe_value(vid);
-                match var_value.val {
+                match variable_table.probe_value(vid) {
                     ConstVariableValue::Known { value: u } => {
                         drop(inner);
                         self.relate(u, u)
                     }
-                    ConstVariableValue::Unknown { universe } => {
+                    ConstVariableValue::Unknown { origin, universe } => {
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
                             let new_var_id = variable_table
-                                .new_key(ConstVarValue {
-                                    origin: var_value.origin,
-                                    val: ConstVariableValue::Unknown {
-                                        universe: self.for_universe,
-                                    },
+                                .new_key(ConstVariableValue::Unknown {
+                                    origin,
+                                    universe: self.for_universe,
                                 })
                                 .vid;
                             Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))

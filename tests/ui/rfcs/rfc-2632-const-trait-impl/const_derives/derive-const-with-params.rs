@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(derive_const)]
 #![feature(const_trait_impl, effects)]

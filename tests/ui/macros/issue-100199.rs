@@ -5,7 +5,7 @@ struct Foo {}
 // an unexpected dummy span (lo == 0 == hi) while attempting to print a
 // suggestion.
 
-// aux-build: issue-100199.rs
+//@ aux-build: issue-100199.rs
 
 extern crate issue_100199;
 

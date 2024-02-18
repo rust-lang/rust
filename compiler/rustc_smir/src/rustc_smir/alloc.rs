@@ -27,7 +27,8 @@ pub fn new_allocation<'tcx>(
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
 ) -> Allocation {
-    try_new_allocation(ty, const_value, tables).unwrap()
+    try_new_allocation(ty, const_value, tables)
+        .expect(&format!("Failed to convert: {const_value:?} to {ty:?}"))
 }
 
 #[allow(rustc::usage_of_qualified_ty)]

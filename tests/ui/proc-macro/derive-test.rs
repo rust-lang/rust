@@ -1,6 +1,6 @@
-// run-pass
-// no-prefer-dynamic
-// compile-flags: --test
+//@ run-pass
+//@ no-prefer-dynamic
+//@ compile-flags: --test
 
 #![crate_type = "proc-macro"]
 

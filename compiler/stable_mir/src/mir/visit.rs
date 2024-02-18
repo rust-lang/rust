@@ -37,7 +37,7 @@
 
 use crate::mir::*;
 use crate::ty::{Const, GenericArgs, Region, Ty};
-use crate::{Opaque, Span};
+use crate::{Error, Opaque, Span};
 
 pub trait MirVisitor {
     fn visit_body(&mut self, body: &Body) {
@@ -76,12 +76,14 @@ pub trait MirVisitor {
         self.super_place(place, ptx, location)
     }
 
-    fn visit_projection_elem(
+    fn visit_projection_elem<'a>(
         &mut self,
+        place_ref: PlaceRef<'a>,
         elem: &ProjectionElem,
         ptx: PlaceContext,
         location: Location,
     ) {
+        let _ = place_ref;
         self.super_projection_elem(elem, ptx, location);
     }
 
@@ -284,8 +286,9 @@ pub trait MirVisitor {
         let _ = ptx;
         self.visit_local(&place.local, ptx, location);
 
-        for elem in &place.projection {
-            self.visit_projection_elem(elem, ptx, location);
+        for (idx, elem) in place.projection.iter().enumerate() {
+            let place_ref = PlaceRef { local: place.local, projection: &place.projection[..idx] };
+            self.visit_projection_elem(place_ref, elem, ptx, location);
         }
     }
 
@@ -450,6 +453,19 @@ pub struct Location(Span);
 impl Location {
     pub fn span(&self) -> Span {
         self.0
+    }
+}
+
+/// Reference to a place used to represent a partial projection.
+pub struct PlaceRef<'a> {
+    pub local: Local,
+    pub projection: &'a [ProjectionElem],
+}
+
+impl<'a> PlaceRef<'a> {
+    /// Get the type of this place.
+    pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
+        self.projection.iter().fold(Ok(locals[self.local].ty), |place_ty, elem| elem.ty(place_ty?))
     }
 }
 

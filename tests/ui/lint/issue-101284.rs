@@ -1,5 +1,5 @@
-// check-pass
-// edition:2021
+//@ check-pass
+//@ edition:2021
 #![deny(rust_2021_compatibility)]
 
 pub struct Warns {

@@ -1,8 +1,8 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: ConstProp
+// unit-test: GVN
 // compile-flags: -C overflow-checks=on
 
-// EMIT_MIR indirect.main.ConstProp.diff
+// EMIT_MIR indirect.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => [[x:_.*]];

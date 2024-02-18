@@ -4,13 +4,16 @@
 #![allow(
     clippy::must_use_candidate,
     clippy::missing_panics_doc,
-    rustc::untranslatable_diagnostic_trivial
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic,
+    rustc::untranslatable_diagnostic_trivial,
 )]
 
 extern crate rustc_ast;
 extern crate rustc_data_structures;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
+extern crate rustc_errors;
 extern crate rustc_session;
 extern crate rustc_span;
 

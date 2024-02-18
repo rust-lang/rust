@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![stable(feature = "core", since = "1.6.0")]
 #![feature(staged_api)]

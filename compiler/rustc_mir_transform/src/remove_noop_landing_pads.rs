@@ -15,7 +15,8 @@ impl<'tcx> MirPass<'tcx> for RemoveNoopLandingPads {
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        debug!("remove_noop_landing_pads({:?})", body);
+        let def_id = body.source.def_id();
+        debug!(?def_id);
         self.remove_nop_landing_pads(body)
     }
 }
@@ -81,8 +82,6 @@ impl RemoveNoopLandingPads {
     }
 
     fn remove_nop_landing_pads(&self, body: &mut Body<'_>) {
-        debug!("body: {:#?}", body);
-
         // Skip the pass if there are no blocks with a resume terminator.
         let has_resume = body
             .basic_blocks

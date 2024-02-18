@@ -1,6 +1,5 @@
-// check-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@ check-pass
+
 #![warn(unused_unsafe)]
 #![feature(inline_const)]
 const unsafe fn require_unsafe() -> usize { 1 }

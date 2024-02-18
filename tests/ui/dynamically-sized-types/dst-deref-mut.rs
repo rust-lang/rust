@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that a custom deref with a fat pointer return type does not ICE
 
 

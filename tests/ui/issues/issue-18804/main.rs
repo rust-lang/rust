@@ -1,15 +1,15 @@
-// run-pass
+//@ run-pass
 // Test for issue #18804, #[linkage] does not propagate through generic
 // functions. Failure results in a linker error.
 
-// ignore-emscripten no weak symbol support
-// ignore-windows no extern_weak linkage
-// ignore-macos no extern_weak linkage
+//@ ignore-emscripten no weak symbol support
+//@ ignore-windows no extern_weak linkage
+//@ ignore-macos no extern_weak linkage
 
-// aux-build:lib.rs
+//@ aux-build:lib.rs
 
 // rust-lang/rust#56772: nikic says we need this to be proper test.
-// compile-flags: -C no-prepopulate-passes -C passes=name-anon-globals
+//@ compile-flags: -C no-prepopulate-passes -C passes=name-anon-globals
 
 extern crate lib;
 

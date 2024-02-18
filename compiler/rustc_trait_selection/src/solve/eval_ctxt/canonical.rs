@@ -192,11 +192,14 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
     ) -> Result<(Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
-        let substitution =
-            Self::compute_query_response_substitution(self.infcx, &original_values, &response);
+        let instantiation = Self::compute_query_response_instantiation_values(
+            self.infcx,
+            &original_values,
+            &response,
+        );
 
         let Response { var_values, external_constraints, certainty } =
-            response.substitute(self.tcx(), &substitution);
+            response.instantiate(self.tcx(), &instantiation);
 
         let nested_goals =
             Self::unify_query_var_values(self.infcx, param_env, &original_values, var_values)?;
@@ -209,10 +212,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         Ok((certainty, nested_goals))
     }
 
-    /// This returns the substitutions to instantiate the bound variables of
+    /// This returns the canoncial variable values to instantiate the bound variables of
     /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
-    fn compute_query_response_substitution<T: ResponseT<'tcx>>(
+    fn compute_query_response_instantiation_values<T: ResponseT<'tcx>>(
         infcx: &InferCtxt<'tcx>,
         original_values: &[ty::GenericArg<'tcx>],
         response: &Canonical<'tcx, T>,
@@ -369,10 +372,10 @@ impl<'tcx> inspect::ProofTreeBuilder<'tcx> {
         original_values: &[ty::GenericArg<'tcx>],
         state: inspect::CanonicalState<'tcx, T>,
     ) -> Result<(Vec<Goal<'tcx, ty::Predicate<'tcx>>>, T), NoSolution> {
-        let substitution =
-            EvalCtxt::compute_query_response_substitution(infcx, original_values, &state);
+        let instantiation =
+            EvalCtxt::compute_query_response_instantiation_values(infcx, original_values, &state);
 
-        let inspect::State { var_values, data } = state.substitute(infcx.tcx, &substitution);
+        let inspect::State { var_values, data } = state.instantiate(infcx.tcx, &instantiation);
 
         let nested_goals =
             EvalCtxt::unify_query_var_values(infcx, param_env, original_values, var_values)?;

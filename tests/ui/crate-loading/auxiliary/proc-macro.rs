@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 #![crate_name = "reproduction"]
 #![crate_type = "proc-macro"]
 

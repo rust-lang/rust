@@ -15,7 +15,7 @@ fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
     x.next().unwrap()
 }
 
-fn projection_with_named_trait_is_disallowed(x: impl Iterator)
+fn projection_with_named_trait_is_disallowed(mut x: impl Iterator)
     -> <impl Iterator as Iterator>::Item
 //~^ ERROR `impl Trait` is not allowed in path parameters
 {
@@ -25,7 +25,9 @@ fn projection_with_named_trait_is_disallowed(x: impl Iterator)
 fn projection_with_named_trait_inside_path_is_disallowed()
     -> <::std::ops::Range<impl Debug> as Iterator>::Item
 //~^ ERROR `impl Trait` is not allowed in path parameters
+//~| ERROR `impl Debug: Step` is not satisfied
 {
+    //~^ ERROR `impl Debug: Step` is not satisfied
     (1i32..100).next().unwrap()
 }
 

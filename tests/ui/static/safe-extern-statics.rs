@@ -1,6 +1,4 @@
-// aux-build:extern-statics.rs
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
+//@ aux-build:extern-statics.rs
 
 extern crate extern_statics;
 use extern_statics::*;

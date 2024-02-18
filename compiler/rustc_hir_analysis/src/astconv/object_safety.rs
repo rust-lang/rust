@@ -2,7 +2,7 @@ use crate::astconv::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBou
 use crate::bounds::Bounds;
 use crate::errors::TraitObjectDeclaredWithNoTraits;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::struct_span_err;
+use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -22,7 +22,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[hir::PolyTraitRef<'_>],
+        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
         lifetime: &hir::Lifetime,
         borrowed: bool,
         representation: DynKind,
@@ -89,8 +89,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if regular_traits.len() > 1 {
             let first_trait = &regular_traits[0];
             let additional_trait = &regular_traits[1];
-            let mut err = struct_span_err!(
-                tcx.sess,
+            let mut err = struct_span_code_err!(
+                tcx.dcx(),
                 additional_trait.bottom().1,
                 E0225,
                 "only auto traits can be used as additional traits in a trait object"
@@ -116,7 +116,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
              for more information on them, visit \
              <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>",
             );
-            err.emit();
+            self.set_tainted_by_errors(err.emit());
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
@@ -126,7 +126,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
                 .map(|trait_ref| tcx.def_span(trait_ref));
             let reported =
-                tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+                tcx.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+            self.set_tainted_by_errors(reported);
             return Ty::new_error(tcx, reported);
         }
 
@@ -140,6 +141,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let reported = report_object_safety_error(
                     tcx,
                     span,
+                    Some(hir_id),
                     item.trait_ref().def_id(),
                     &object_safety_violations,
                 )
@@ -173,7 +175,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                         let pred = bound_predicate.rebind(pred);
-                        // A `Self` within the original bound will be substituted with a
+                        // A `Self` within the original bound will be instantiated with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self = match pred.skip_binder().term.unpack() {
                             ty::TermKind::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
@@ -216,9 +218,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         for def_ids in associated_types.values_mut() {
             for (projection_bound, span) in &projection_bounds {
                 let def_id = projection_bound.projection_def_id();
-                def_ids.remove(&def_id);
+                // FIXME(#120456) - is `swap_remove` correct?
+                def_ids.swap_remove(&def_id);
                 if tcx.generics_require_sized_self(def_id) {
-                    tcx.emit_spanned_lint(
+                    tcx.emit_node_span_lint(
                         UNUSED_ASSOCIATED_TYPE_BOUNDS,
                         hir_id,
                         *span,
@@ -289,19 +292,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 if references_self {
                     let def_id = i.bottom().0.def_id();
-                    let mut err = struct_span_err!(
-                        tcx.sess,
+                    let reported = struct_span_code_err!(
+                        tcx.dcx(),
                         i.bottom().1,
                         E0038,
                         "the {} `{}` cannot be made into an object",
                         tcx.def_descr(def_id),
                         tcx.item_name(def_id),
-                    );
-                    err.note(
+                    )
+                    .with_note(
                         rustc_middle::traits::ObjectSafetyViolation::SupertraitSelf(smallvec![])
                             .error_msg(),
-                    );
-                    err.emit();
+                    )
+                    .emit();
+                    self.set_tainted_by_errors(reported);
                 }
 
                 ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }
@@ -326,7 +330,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         false
                     });
                     if references_self {
-                        let guar = tcx.sess.span_delayed_bug(
+                        let guar = tcx.dcx().span_delayed_bug(
                             span,
                             "trait object projection bounds reference `Self`",
                         );
@@ -374,8 +378,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
-                        let mut err = struct_span_err!(
-                            tcx.sess,
+                        let err = struct_span_code_err!(
+                            tcx.dcx(),
                             span,
                             E0228,
                             "the lifetime bound for this object type cannot be deduced \
@@ -388,6 +392,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         } else {
                             err.emit()
                         };
+                        self.set_tainted_by_errors(e);
                         ty::Region::new_error(tcx, e)
                     })
                 }

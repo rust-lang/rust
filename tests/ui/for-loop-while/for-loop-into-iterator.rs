@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that for loops can do what RFC #235 claims
 
 

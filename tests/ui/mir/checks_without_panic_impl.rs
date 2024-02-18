@@ -2,8 +2,8 @@
 // does not prevent crates without a panic_impl from compiling.
 // See rust-lang/rust#109996
 
-// build-pass
-// compile-flags: -Cdebug-assertions=yes
+//@ build-pass
+//@ compile-flags: -Cdebug-assertions=yes
 
 #![crate_type = "lib"]
 

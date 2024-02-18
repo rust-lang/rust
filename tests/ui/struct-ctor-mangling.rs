@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 fn size_of_val<T>(_: &T) -> usize {
     std::mem::size_of::<T>()
 }
 
-struct Foo(#[allow(unused_tuple_struct_fields)] i64);
+struct Foo(#[allow(dead_code)] i64);
 
 // Test that the (symbol) mangling of `Foo` (the `struct` type) and that of
 // `typeof Foo` (the function type of the `struct` constructor) don't collide.

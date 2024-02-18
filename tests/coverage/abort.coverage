@@ -10,6 +10,7 @@
    LL|     12|    }
    LL|     12|}
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn main() -> Result<(), u8> {
    LL|      1|    let mut countdown = 10;
    LL|     11|    while countdown > 0 {

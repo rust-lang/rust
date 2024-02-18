@@ -31,6 +31,7 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # FIXME add needs-unwind to these tests
 rm -r tests/run-make/libtest-junit
 rm tests/ui/asm/may_unwind.rs
+rm tests/ui/stable-mir-print/basic_function.rs
 
 # extra warning about -Cpanic=abort for proc macros
 rm tests/ui/proc-macro/crt-static.rs
@@ -44,7 +45,6 @@ rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
 # vendor intrinsics
 rm tests/ui/sse2.rs # CodegenBackend::target_features not yet implemented
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
-rm tests/ui/simd/masked-load-store.rs
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
@@ -80,6 +80,7 @@ rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/issue-109934-lto-debuginfo
+rm -r tests/run-make/no-builtins-lto
 
 # optimization tests
 # ==================

@@ -1,5 +1,6 @@
    LL|       |#![allow(unused_assignments, unused_variables)]
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
    LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
    LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from

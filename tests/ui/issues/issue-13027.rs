@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Tests that match expression handles overlapped literal and range
 // properly in the presence of guard function.
@@ -164,7 +164,7 @@ fn range_shadow_multi_pats() {
 
 fn misc() {
     enum Foo {
-        Bar(#[allow(unused_tuple_struct_fields)] usize, bool)
+        Bar(#[allow(dead_code)] usize, bool)
     }
     // This test basically mimics how trace_macros! macro is implemented,
     // which is a rare combination of vector patterns, multiple wild-card

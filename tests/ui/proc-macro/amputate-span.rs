@@ -1,7 +1,7 @@
-// aux-build:amputate-span.rs
-// run-rustfix
-// edition:2018
-// compile-flags: --extern amputate_span
+//@ aux-build:amputate-span.rs
+//@ run-rustfix
+//@ edition:2018
+//@ compile-flags: --extern amputate_span
 
 // This test has been crafted to ensure the following things:
 //

@@ -10,5 +10,24 @@ note: lifetime declared here
 LL | fn test() -> impl for<'a> MyFn<&'a A, Output=impl Iterator + 'a> {
    |                       ^^
 
-error: aborting due to 1 previous error
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-67830.rs:23:5
+   |
+LL |     Wrap(|a| Some(a).into_iter())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 A) -> std::option::IntoIter<&A>` must implement `FnOnce<(&'1 A,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 A,)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-67830.rs:23:5
+   |
+LL |     Wrap(|a| Some(a).into_iter())
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 A) -> std::option::IntoIter<&A>` must implement `FnOnce<(&'1 A,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 A,)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
 

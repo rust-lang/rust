@@ -1,6 +1,6 @@
 // Regression test for #72819: ICE due to failure in resolving the const generic in `Arr`'s type
 // bounds.
-// revisions: full min
+//@ revisions: full min
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![cfg_attr(full, allow(incomplete_features))]
 

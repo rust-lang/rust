@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -119,7 +119,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
             ExprKind::Match(e, arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
-                    if let Some(Guard::If(if_expr)) = arm.guard {
+                    if let Some(if_expr) = arm.guard {
                         self.visit_expr(if_expr);
                     }
                     // make sure top level arm expressions aren't linted
@@ -206,18 +206,14 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 ///
 /// When such a read is found, the lint is triggered.
 fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
-    let map = &vis.cx.tcx.hir();
     let mut cur_id = vis.write_expr.hir_id;
     loop {
-        let parent_id = map.parent_id(cur_id);
+        let parent_id = vis.cx.tcx.parent_hir_id(cur_id);
         if parent_id == cur_id {
             break;
         }
-        let Some(parent_node) = vis.cx.tcx.opt_hir_node(parent_id) else {
-            break;
-        };
 
-        let stop_early = match parent_node {
+        let stop_early = match vis.cx.tcx.hir_node(parent_id) {
             Node::Expr(expr) => check_expr(vis, expr),
             Node::Stmt(stmt) => check_stmt(vis, stmt),
             Node::Item(_) => {

@@ -27,10 +27,10 @@ LL |     call_mut(foo);
    = note: wrap the `fn() {foo}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_mut`
-  --> $DIR/fn-traits.rs:15:21
+  --> $DIR/fn-traits.rs:15:25
    |
-LL | fn call_mut(f: impl FnMut()) {
-   |                     ^^^^^^^ required by this bound in `call_mut`
+LL | fn call_mut(mut f: impl FnMut()) {
+   |                         ^^^^^^^ required by this bound in `call_mut`
 
 error[E0277]: expected a `FnOnce()` closure, found `fn() {foo}`
   --> $DIR/fn-traits.rs:26:15
@@ -80,10 +80,10 @@ LL |     call_mut(foo_unsafe);
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_mut`
-  --> $DIR/fn-traits.rs:15:21
+  --> $DIR/fn-traits.rs:15:25
    |
-LL | fn call_mut(f: impl FnMut()) {
-   |                     ^^^^^^^ required by this bound in `call_mut`
+LL | fn call_mut(mut f: impl FnMut()) {
+   |                         ^^^^^^^ required by this bound in `call_mut`
 
 error[E0277]: expected a `FnOnce()` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:32:15

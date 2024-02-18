@@ -24,6 +24,9 @@ session_feature_diagnostic_for_issue =
 session_feature_diagnostic_help =
     add `#![feature({$feature})]` to the crate attributes to enable
 
+session_feature_suggest_upgrade_compiler =
+    this compiler was built on {$date}; consider upgrading it if it is out of date
+
 session_file_is_not_writeable = output file {$file} is not writeable -- check its permissions
 
 session_file_write_fail = failed to write `{$path}` due to error `{$err}`
@@ -71,8 +74,6 @@ session_linker_plugin_lto_windows_not_supported = linker plugin based LTO is not
 session_not_circumvent_feature = `-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine
 
 session_not_supported = not supported
-
-session_nul_in_c_str = null characters in C string literals are not supported
 
 session_octal_float_literal_not_supported = octal float literal is not supported
 

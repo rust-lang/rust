@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 fn let_underscore(string: &Option<&str>, mut num: Option<i32>) {
     let _ = if let Some(s) = *string { s.len() } else { 0 };

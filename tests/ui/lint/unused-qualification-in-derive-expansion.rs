@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:add-impl.rs
+//@ run-pass
+//@ aux-build:add-impl.rs
 
 #![forbid(unused_qualifications)]
 

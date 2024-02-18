@@ -4,15 +4,15 @@ use super::{
     with, DefId, Error, Symbol,
 };
 use crate::abi::Layout;
-use crate::crate_def::CrateDef;
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::target::MachineInfo;
+use crate::{crate_def::CrateDef, mir::mono::StaticDef};
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Ty(pub usize);
+pub struct Ty(usize);
 
 impl Debug for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -138,7 +138,7 @@ impl Const {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ConstId(pub usize);
+pub struct ConstId(usize);
 
 type Ident = Opaque;
 
@@ -460,6 +460,7 @@ pub enum RigidTy {
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
@@ -539,8 +540,42 @@ pub enum Movability {
 }
 
 crate_def! {
+    pub ForeignModuleDef;
+}
+
+impl ForeignModuleDef {
+    pub fn module(&self) -> ForeignModule {
+        with(|cx| cx.foreign_module(*self))
+    }
+}
+
+pub struct ForeignModule {
+    pub def_id: ForeignModuleDef,
+    pub abi: Abi,
+}
+
+impl ForeignModule {
+    pub fn items(&self) -> Vec<ForeignDef> {
+        with(|cx| cx.foreign_items(self.def_id))
+    }
+}
+
+crate_def! {
     /// Hold information about a ForeignItem in a crate.
     pub ForeignDef;
+}
+
+impl ForeignDef {
+    pub fn kind(&self) -> ForeignItemKind {
+        with(|cx| cx.foreign_item_kind(*self))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum ForeignItemKind {
+    Fn(FnDef),
+    Static(StaticDef),
+    Type(Ty),
 }
 
 crate_def! {
@@ -713,7 +748,14 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait's definition.
     pub TraitDef;
+}
+
+impl TraitDef {
+    pub fn declaration(trait_def: &TraitDef) -> TraitDecl {
+        with(|cx| cx.trait_decl(trait_def))
+    }
 }
 
 crate_def! {
@@ -725,7 +767,15 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait impl definition.
     pub ImplDef;
+}
+
+impl ImplDef {
+    /// Retrieve information about this implementation.
+    pub fn trait_impl(&self) -> ImplTrait {
+        with(|cx| cx.trait_impl(self))
+    }
 }
 
 crate_def! {
@@ -848,7 +898,6 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
-    AmdGpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,

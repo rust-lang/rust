@@ -1,4 +1,4 @@
-// aux-build:two_macros.rs
+//@ aux-build:two_macros.rs
 
 extern crate two_macros;
 

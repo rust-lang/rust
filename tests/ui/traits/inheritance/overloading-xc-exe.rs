@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:overloading_xc.rs
+//@ run-pass
+//@ aux-build:overloading_xc.rs
 
 
 extern crate overloading_xc;

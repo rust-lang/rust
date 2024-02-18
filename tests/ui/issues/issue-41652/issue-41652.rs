@@ -1,4 +1,4 @@
-// aux-build:issue-41652-b.rs
+//@ aux-build:issue-41652-b.rs
 
 extern crate issue_41652_b;
 

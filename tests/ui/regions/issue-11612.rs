@@ -1,10 +1,10 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 // #11612
 // We weren't updating the auto adjustments with all the resolved
 // type information after type check.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait A { fn dummy(&self) { } }
 

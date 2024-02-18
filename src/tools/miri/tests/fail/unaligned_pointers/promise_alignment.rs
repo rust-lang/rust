@@ -7,7 +7,7 @@ mod utils;
 
 #[repr(align(8))]
 #[derive(Copy, Clone)]
-struct Align8(u64);
+struct Align8(#[allow(dead_code)] u64);
 
 fn main() {
     let buffer = [0u32; 128]; // get some 4-aligned memory
@@ -35,7 +35,7 @@ fn main() {
     if cfg!(read_unaligned_ptr) {
         #[repr(align(16))]
         #[derive(Copy, Clone)]
-        struct Align16(u128);
+        struct Align16(#[allow(dead_code)] u128);
 
         let align16 = if align8.addr() % 16 == 0 { align8 } else { align8.wrapping_add(2) };
         assert!(align16.addr() % 16 == 0);

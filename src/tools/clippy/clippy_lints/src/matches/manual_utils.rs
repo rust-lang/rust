@@ -63,9 +63,7 @@ where
         return None;
     }
 
-    let Some(some_expr) = get_some_expr_fn(cx, some_pat, some_expr, expr_ctxt) else {
-        return None;
-    };
+    let some_expr = get_some_expr_fn(cx, some_pat, some_expr, expr_ctxt)?;
 
     // These two lints will go back and forth with each other.
     if cx.typeck_results().expr_ty(some_expr.expr) == cx.tcx.types.unit

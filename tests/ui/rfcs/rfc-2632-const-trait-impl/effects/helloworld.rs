@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // gate-test-effects
 // ^ effects doesn't have a gate so we will trick tidy into thinking this is a gate test

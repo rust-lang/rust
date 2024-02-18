@@ -14,7 +14,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr)
+    if let Some(higher::WhileLet { if_then, let_pat, let_expr, .. }) = higher::WhileLet::hir(expr)
         // check for `Some(..)` pattern
         && let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind
         && is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome)

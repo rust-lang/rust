@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 pub trait Number: NumConv {
     fn from<T:Number>(n: T) -> Self;

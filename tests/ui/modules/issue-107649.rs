@@ -1,4 +1,4 @@
-// compile-flags: -Z ui-testing=no
+//@ compile-flags: -Z ui-testing=no
 #[path = "auxiliary/dummy_lib.rs"]
 mod lib;
 

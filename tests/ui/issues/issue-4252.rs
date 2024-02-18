@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait X {
     fn call<T: std::fmt::Debug>(&self, x: &T);
     fn default_method<T: std::fmt::Debug>(&self, x: &T) {
@@ -7,7 +7,7 @@ trait X {
 }
 
 #[derive(Debug)]
-struct Y(#[allow(unused_tuple_struct_fields)] isize);
+struct Y(#[allow(dead_code)] isize);
 
 #[derive(Debug)]
 struct Z<T: X+std::fmt::Debug> {

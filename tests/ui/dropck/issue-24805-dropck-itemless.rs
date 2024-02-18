@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that item-less traits do not cause dropck to inject extra
 // region constraints.
@@ -19,7 +19,7 @@ impl<'a, T> UserDefined for &'a T { }
 //   ```
 macro_rules! impl_drop {
     ($Bound:ident, $Id:ident) => {
-        struct $Id<T: $Bound>(#[allow(unused_tuple_struct_fields)] T);
+        struct $Id<T: $Bound>(#[allow(dead_code)] T);
         unsafe impl <#[may_dangle] T: $Bound> Drop for $Id<T> {
             fn drop(&mut self) { }
         }

@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 //
 #![allow(dead_code)]
-// compile-flags: -O
+//@ compile-flags: -O
 
 use std::collections::HashSet;
 

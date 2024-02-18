@@ -84,7 +84,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | M68k         | `reg_data`                      | None           | `i8`, `i16`, `i32`                      |
 | CSKY         | `reg`                           | None           | `i8`, `i16`, `i32`                      |
 | CSKY         | `freg`                          | None           | `f32`,                                  |
-| s390x        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64`               |
+| s390x        | `reg`, `reg_addr`               | None           | `i8`, `i16`, `i32`, `i64`               |
 | s390x        | `freg`                          | None           | `f32`, `f64`                            |
 
 ## Register aliases
@@ -158,9 +158,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | NVPTX        | `reg64`        | None     | `rd0`          | None          |
 | Hexagon      | `reg`          | None     | `r0`           | None          |
 | PowerPC      | `reg`          | None     | `0`            | None          |
-| PowerPC      | `reg_nonzero`  | None     | `3`            | `b`           |
+| PowerPC      | `reg_nonzero`  | None     | `3`            | None          |
 | PowerPC      | `freg`         | None     | `0`            | None          |
 | s390x        | `reg`          | None     | `%r0`          | None          |
+| s390x        | `reg_addr`     | None     | `%r1`          | None          |
 | s390x        | `freg`         | None     | `%f0`          | None          |
 | CSKY         | `reg`          | None     | `r0`           | None          |
 | CSKY         | `freg`         | None     | `f0`           | None          |

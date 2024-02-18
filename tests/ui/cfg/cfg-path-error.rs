@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #[cfg(any(foo, foo::bar))]
 //~^ERROR `cfg` predicate key must be an identifier

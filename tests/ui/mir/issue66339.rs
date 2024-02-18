@@ -1,5 +1,5 @@
-// compile-flags: -Z mir-opt-level=3
-// build-pass
+//@ compile-flags: -Z mir-opt-level=3
+//@ build-pass
 
 // This used to ICE in const-prop
 

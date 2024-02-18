@@ -1,4 +1,4 @@
-#![deny(unused_tuple_struct_fields)]
+#![deny(dead_code)]
 //~^ NOTE: the lint level is defined here
 
 use std::marker::PhantomData;

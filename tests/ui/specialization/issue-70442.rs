@@ -1,6 +1,6 @@
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
-// check-pass
+//@ check-pass
 
 trait Trait {
     type Assoc;

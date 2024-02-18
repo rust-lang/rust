@@ -1,4 +1,4 @@
-// aux-build:stability-attribute-implies.rs
+//@ aux-build:stability-attribute-implies.rs
 #![deny(stable_features)]
 #![feature(foo)]
 //~^ ERROR the feature `foo` has been partially stabilized since 1.62.0 and is succeeded by the feature `foobar`

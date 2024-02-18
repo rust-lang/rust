@@ -13,21 +13,23 @@ use rustc_span::Symbol;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for imports that do not rename the item as specified
-    /// in the `enforce-import-renames` config option.
+    /// in the `enforced-import-renames` config option.
     ///
     /// Note: Even though this lint is warn-by-default, it will only trigger if
-    /// import renames are defined in the clippy.toml file.
+    /// import renames are defined in the `clippy.toml` file.
     ///
     /// ### Why is this bad?
-    /// Consistency is important, if a project has defined import
-    /// renames they should be followed. More practically, some item names are too
-    /// vague outside of their defining scope this can enforce a more meaningful naming.
+    /// Consistency is important; if a project has defined import renames, then they should be
+    /// followed. More practically, some item names are too vague outside of their defining scope,
+    /// in which case this can enforce a more meaningful naming.
     ///
     /// ### Example
     /// An example clippy.toml configuration:
     /// ```toml
     /// # clippy.toml
-    /// enforced-import-renames = [ { path = "serde_json::Value", rename = "JsonValue" }]
+    /// enforced-import-renames = [
+    ///     { path = "serde_json::Value", rename = "JsonValue" },
+    /// ]
     /// ```
     ///
     /// ```rust,ignore

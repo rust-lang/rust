@@ -93,13 +93,13 @@ impl From<GenericParam> for GenericParamId {
 
 impl From<EnumVariantId> for Variant {
     fn from(id: EnumVariantId) -> Self {
-        Variant { parent: id.parent.into(), id: id.local_id }
+        Variant { id }
     }
 }
 
 impl From<Variant> for EnumVariantId {
     fn from(def: Variant) -> Self {
-        EnumVariantId { parent: def.parent.id, local_id: def.id }
+        def.id
     }
 }
 

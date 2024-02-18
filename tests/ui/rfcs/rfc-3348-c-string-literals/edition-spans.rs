@@ -3,10 +3,10 @@
 //
 // adapted from tests/ui/rust-2021/reserved-prefixes-via-macro.rs
 
-// edition: 2021
-// check-pass
+//@ edition: 2021
+//@ check-pass
 
-// aux-build: count.rs
+//@ aux-build: count.rs
 extern crate count;
 
 const _: () = {

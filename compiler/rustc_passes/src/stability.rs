@@ -6,7 +6,8 @@ use rustc_attr::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     Unstable, UnstableReason, VERSION_PLACEHOLDER,
 };
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, LocalModDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -26,7 +27,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use std::mem::replace;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 #[derive(PartialEq)]
 enum AnnotationKind {
@@ -121,7 +122,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             if matches!(kind, AnnotationKind::Prohibited | AnnotationKind::DeprecationProhibited) {
                 let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-                self.tcx.emit_spanned_lint(
+                self.tcx.emit_node_span_lint(
                     USELESS_DEPRECATED,
                     hir_id,
                     *span,
@@ -180,7 +181,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                     || (self.in_trait_impl && !self.tcx.is_const_fn_raw(def_id.to_def_id()))
                 {
                     self.tcx
-                        .sess
+                        .dcx()
                         .emit_err(errors::MissingConstErr { fn_sig_span: fn_sig.span, const_span });
                 }
             }
@@ -201,7 +202,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             && depr.is_since_rustc_version()
             && stab.is_none()
         {
-            self.tcx.sess.emit_err(errors::DeprecatedAttribute { span: *span });
+            self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span: *span });
         }
 
         if let Some((body_stab, _span)) = body_stab {
@@ -216,7 +217,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             if kind == AnnotationKind::Prohibited
                 || (kind == AnnotationKind::Container && stab.level.is_stable() && is_deprecated)
             {
-                self.tcx.sess.emit_err(errors::UselessStability { span, item_sp });
+                self.tcx.dcx().emit_err(errors::UselessStability { span, item_sp });
             }
 
             debug!("annotate: found {:?}", stab);
@@ -230,12 +231,14 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             {
                 match stab_since {
                     StableSince::Current => {
-                        self.tcx.sess.emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
+                        self.tcx
+                            .dcx()
+                            .emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
                     }
                     StableSince::Version(stab_since) => {
                         if dep_since < stab_since {
                             self.tcx
-                                .sess
+                                .dcx()
                                 .emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
                         }
                     }
@@ -520,7 +523,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && self.effective_visibilities.is_reachable(def_id)
         {
             let descr = self.tcx.def_descr(def_id.to_def_id());
-            self.tcx.sess.emit_err(errors::MissingStabilityAttr { span, descr });
+            self.tcx.dcx().emit_err(errors::MissingStabilityAttr { span, descr });
         }
     }
 
@@ -546,7 +549,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 
         if is_const && is_stable && missing_const_stability_attribute && is_reachable {
             let descr = self.tcx.def_descr(def_id.to_def_id());
-            self.tcx.sess.emit_err(errors::MissingConstStabAttr { span, descr });
+            self.tcx.dcx().emit_err(errors::MissingConstStabAttr { span, descr });
         }
     }
 }
@@ -642,7 +645,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             let stability = Stability {
                 level: attr::StabilityLevel::Unstable {
                     reason: UnstableReason::Default,
-                    issue: NonZeroU32::new(27812),
+                    issue: NonZero::new(27812),
                     is_soft: false,
                     implied_by: None,
                 },
@@ -736,7 +739,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         // do not lint when the trait isn't resolved, since resolution error should
                         // be fixed first
                         if t.path.res != Res::Err && c.fully_stable {
-                            self.tcx.emit_spanned_lint(
+                            self.tcx.emit_node_span_lint(
                                 INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
                                 item.hir_id(),
                                 span,
@@ -751,7 +754,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         && self.tcx.is_const_trait_impl_raw(item.owner_id.to_def_id())
                         && const_stab.is_some_and(|(stab, _)| stab.is_const_stable())
                     {
-                        self.tcx.sess.emit_err(errors::TraitImplConstStable { span: item.span });
+                        self.tcx.dcx().emit_err(errors::TraitImplConstStable { span: item.span });
                     }
                 }
 
@@ -921,7 +924,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     let declared_lang_features = &tcx.features().declared_lang_features;
-    let mut lang_features = FxHashSet::default();
+    let mut lang_features = UnordSet::default();
     for &(feature, span, since) in declared_lang_features {
         if let Some(since) = since {
             // Warn if the user has enabled an already-stable lang feature.
@@ -929,7 +932,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         }
         if !lang_features.insert(feature) {
             // Warn if the user enables a lang feature multiple times.
-            tcx.sess.emit_err(errors::DuplicateFeatureErr { span, feature });
+            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span, feature });
         }
     }
 
@@ -937,14 +940,14 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let mut remaining_lib_features = FxIndexMap::default();
     for (feature, span) in declared_lib_features {
         if !tcx.sess.opts.unstable_features.is_nightly_build() {
-            tcx.sess.emit_err(errors::FeatureOnlyOnNightly {
+            tcx.dcx().emit_err(errors::FeatureOnlyOnNightly {
                 span: *span,
                 release_channel: env!("CFG_RELEASE_CHANNEL"),
             });
         }
         if remaining_lib_features.contains_key(&feature) {
             // Warn if the user enables a lib feature multiple times.
-            tcx.sess.emit_err(errors::DuplicateFeatureErr { span: *span, feature: *feature });
+            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *span, feature: *feature });
         }
         remaining_lib_features.insert(feature, *span);
     }
@@ -954,8 +957,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // available as we'd like it to be.
     // FIXME: only remove `libc` when `stdbuild` is active.
     // FIXME: remove special casing for `test`.
-    remaining_lib_features.remove(&sym::libc);
-    remaining_lib_features.remove(&sym::test);
+    // FIXME(#120456) - is `swap_remove` correct?
+    remaining_lib_features.swap_remove(&sym::libc);
+    remaining_lib_features.swap_remove(&sym::test);
 
     /// For each feature in `defined_features`..
     ///
@@ -978,11 +982,11 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     fn check_features<'tcx>(
         tcx: TyCtxt<'tcx>,
         remaining_lib_features: &mut FxIndexMap<&Symbol, Span>,
-        remaining_implications: &mut FxHashMap<Symbol, Symbol>,
+        remaining_implications: &mut UnordMap<Symbol, Symbol>,
         defined_features: &LibFeatures,
-        all_implications: &FxHashMap<Symbol, Symbol>,
+        all_implications: &UnordMap<Symbol, Symbol>,
     ) {
-        for (feature, since) in defined_features.to_vec() {
+        for (feature, since) in defined_features.to_sorted_vec() {
             if let FeatureStability::AcceptedSince(since) = since
                 && let Some(span) = remaining_lib_features.get(&feature)
             {
@@ -993,7 +997,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                     unnecessary_stable_feature_lint(tcx, *span, feature, since);
                 }
             }
-            remaining_lib_features.remove(&feature);
+            // FIXME(#120456) - is `swap_remove` correct?
+            remaining_lib_features.swap_remove(&feature);
 
             // `feature` is the feature doing the implying, but `implied_by` is the feature with
             // the attribute that establishes this relationship. `implied_by` is guaranteed to be a
@@ -1019,7 +1024,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         // `remaining_lib_features`.
         let mut all_implications = remaining_implications.clone();
         for &cnum in tcx.crates(()) {
-            all_implications.extend(tcx.stability_implications(cnum));
+            all_implications
+                .extend_unord(tcx.stability_implications(cnum).items().map(|(k, v)| (*k, *v)));
         }
 
         check_features(
@@ -1045,20 +1051,17 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     for (feature, span) in remaining_lib_features {
-        tcx.sess.emit_err(errors::UnknownFeature { span, feature: *feature });
+        tcx.dcx().emit_err(errors::UnknownFeature { span, feature: *feature });
     }
 
-    // We only use the hash map contents to emit errors, and the order of
-    // emitted errors do not affect query stability.
-    #[allow(rustc::potential_query_instability)]
-    for (implied_by, feature) in remaining_implications {
+    for (&implied_by, &feature) in remaining_implications.to_sorted_stable_ord() {
         let local_defined_features = tcx.lib_features(LOCAL_CRATE);
         let span = local_defined_features
             .stability
             .get(&feature)
             .expect("feature that implied another does not exist")
             .1;
-        tcx.sess.emit_err(errors::ImpliedFeatureNotExist { span, feature, implied_by });
+        tcx.dcx().emit_err(errors::ImpliedFeatureNotExist { span, feature, implied_by });
     }
 
     // FIXME(#44232): the `used_features` table no longer exists, so we
@@ -1072,7 +1075,7 @@ fn unnecessary_partially_stable_feature_lint(
     implies: Symbol,
     since: Symbol,
 ) {
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,
@@ -1095,7 +1098,7 @@ fn unnecessary_stable_feature_lint(
     if since.as_str() == VERSION_PLACEHOLDER {
         since = sym::env_CFG_RELEASE;
     }
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         lint::builtin::STABLE_FEATURES,
         hir::CRATE_HIR_ID,
         span,

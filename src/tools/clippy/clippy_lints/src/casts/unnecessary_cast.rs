@@ -65,7 +65,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Path(qpath) = inner.kind
         && let QPath::Resolved(None, Path { res, .. }) = qpath
         && let Res::Local(hir_id) = res
-        && let parent = cx.tcx.hir().get_parent(*hir_id)
+        && let parent = cx.tcx.parent_hir_node(*hir_id)
         && let Node::Local(local) = parent
     {
         if let Some(ty) = local.ty
@@ -107,7 +107,7 @@ pub(super) fn check<'tcx>(
             && let Some(src) = snippet_opt(cx, cast_expr.span)
             && cast_to.is_floating_point()
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
-            && let from_nbits = 128 - n.leading_zeros()
+            && let from_nbits = 128 - n.get().leading_zeros()
             && let to_nbits = fp_ty_mantissa_nbits(cast_to)
             && from_nbits != 0
             && to_nbits != 0
@@ -144,8 +144,7 @@ pub(super) fn check<'tcx>(
 
     if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
         if let Some(id) = path_to_local(cast_expr)
-            && let Some(span) = cx.tcx.hir().opt_span(id)
-            && span.ctxt() != cast_expr.span.ctxt()
+            && !cx.tcx.hir().span(id).eq_ctxt(cast_expr.span)
         {
             // Binding context is different than the identifiers context.
             // Weird macro wizardry could be involved here.

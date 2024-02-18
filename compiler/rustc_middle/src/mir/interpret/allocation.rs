@@ -14,7 +14,6 @@ use either::{Left, Right};
 
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
@@ -314,9 +313,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     /// available to the compiler to do so.
     pub fn try_uninit<'tcx>(size: Size, align: Align) -> InterpResult<'tcx, Self> {
         Self::uninit_inner(size, align, || {
-            ty::tls::with(|tcx| {
-                tcx.sess.span_delayed_bug(DUMMY_SP, "exhausted memory during interpretation")
-            });
+            ty::tls::with(|tcx| tcx.dcx().delayed_bug("exhausted memory during interpretation"));
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted).into()
         })
     }

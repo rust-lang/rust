@@ -12,9 +12,12 @@ use std::vec;
 use crate::{Idx, IndexSlice};
 
 /// An owned contiguous collection of `T`s, indexed by `I` rather than by `usize`.
+/// Its purpose is to avoid mixing indexes.
 ///
 /// While it's possible to use `u32` or `usize` directly for `I`,
 /// you almost certainly want to use a [`newtype_index!`]-generated type instead.
+///
+/// This allows to index the IndexVec with the new index type.
 ///
 /// [`newtype_index!`]: ../macro.newtype_index.html
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -25,11 +28,13 @@ pub struct IndexVec<I: Idx, T> {
 }
 
 impl<I: Idx, T> IndexVec<I, T> {
+    /// Constructs a new, empty `IndexVec<I, T>`.
     #[inline]
     pub const fn new() -> Self {
         IndexVec::from_raw(Vec::new())
     }
 
+    /// Constructs a new `IndexVec<I, T>` from a `Vec<T>`.
     #[inline]
     pub const fn from_raw(raw: Vec<T>) -> Self {
         IndexVec { raw, _marker: PhantomData }
@@ -59,6 +64,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         IndexVec::from_raw(vec![elem; universe.len()])
     }
 
+    /// Creates a new IndexVec with n copies of the `elem`.
     #[inline]
     pub fn from_elem_n(elem: T, n: usize) -> Self
     where
@@ -85,6 +91,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         IndexSlice::from_raw_mut(&mut self.raw)
     }
 
+    /// Pushes an element to the array returning the index where it was pushed to.
     #[inline]
     pub fn push(&mut self, d: T) -> I {
         let idx = self.next_index();

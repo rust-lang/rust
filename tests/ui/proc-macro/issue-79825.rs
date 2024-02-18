@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:issue-79825.rs
+//@ check-pass
+//@ aux-build:issue-79825.rs
 #![feature(trait_alias)]
 
 extern crate issue_79825;

@@ -1,5 +1,5 @@
-// run-rustfix
-// edition:2018
+//@ run-rustfix
+//@ edition:2018
 #![allow(unused_imports)]
 
 fn main() {}

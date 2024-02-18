@@ -1,7 +1,7 @@
-// aux-build:attr-stmt-expr.rs
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug
-// check-pass
+//@ aux-build:attr-stmt-expr.rs
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug
+//@ check-pass
 
 #![feature(proc_macro_hygiene)]
 #![feature(stmt_expr_attributes)]

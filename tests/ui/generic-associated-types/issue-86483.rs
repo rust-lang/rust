@@ -2,7 +2,7 @@
 //
 // Made to pass as part of fixing #98095.
 //
-// check-pass
+//@ check-pass
 
 pub trait IceIce<T>
 where

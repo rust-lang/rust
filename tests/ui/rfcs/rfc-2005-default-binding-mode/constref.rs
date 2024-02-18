@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 const CONST_REF: &[u8; 3] = b"foo";
 
 trait Foo {

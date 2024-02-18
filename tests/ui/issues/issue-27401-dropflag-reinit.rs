@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Check that when a `let`-binding occurs in a loop, its associated
 // drop-flag is reinitialized (to indicate "needs-drop" at the end of

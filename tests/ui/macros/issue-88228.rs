@@ -1,5 +1,5 @@
-// compile-flags: -Z deduplicate-diagnostics=yes
-// edition:2018
+//@ compile-flags: -Z deduplicate-diagnostics=yes
+//@ edition:2018
 
 mod hey { //~ HELP consider importing this derive macro
     //~^ HELP consider importing this macro

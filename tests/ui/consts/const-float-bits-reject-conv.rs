@@ -1,5 +1,5 @@
-// compile-flags: -Zmir-opt-level=0
-// error-pattern: cannot use f32::to_bits on a NaN
+//@ compile-flags: -Zmir-opt-level=0
+//@ error-pattern: cannot use f32::to_bits on a NaN
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 

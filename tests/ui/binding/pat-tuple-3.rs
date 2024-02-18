@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn tuple() {
     let x = (1, 2, 3);
     let branch = match x {

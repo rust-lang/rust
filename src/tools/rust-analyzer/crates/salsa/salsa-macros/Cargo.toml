@@ -1,0 +1,23 @@
+[package]
+name = "salsa-macros"
+version = "0.0.0"
+authors = ["Salsa developers"]
+edition = "2021"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/salsa-rs/salsa"
+description = "Procedural macros for the salsa crate"
+
+rust-version.workspace = true
+
+[lib]
+proc-macro = true
+name = "salsa_macros"
+
+[dependencies]
+heck = "0.4"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
+
+[lints]
+workspace = true

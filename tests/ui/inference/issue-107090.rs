@@ -19,7 +19,7 @@ impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
 
 fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
     //~^ ERROR use of undeclared lifetime name
-    sadness.cast()
+    sadness.cast() //~ ERROR: mismatched types
 }
 
 fn main() {}

@@ -31,8 +31,8 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         if sess.opts.incremental.is_none() {
             return;
         }
-        // This is going to be deleted in finalize_session_directory, so let's not create it
-        if let Some(_) = sess.has_errors_or_span_delayed_bugs() {
+        // This is going to be deleted in finalize_session_directory, so let's not create it.
+        if sess.dcx().has_errors_or_lint_errors_or_delayed_bugs().is_some() {
             return;
         }
 
@@ -51,7 +51,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
                     if let Err(err) = fs::rename(&staging_dep_graph_path, &dep_graph_path) {
-                        sess.emit_err(errors::MoveDepGraph {
+                        sess.dcx().emit_err(errors::MoveDepGraph {
                             from: &staging_dep_graph_path,
                             to: &dep_graph_path,
                             err,
@@ -87,7 +87,7 @@ pub fn save_work_product_index(
         return;
     }
     // This is going to be deleted in finalize_session_directory, so let's not create it
-    if let Some(_) = sess.has_errors_or_span_delayed_bugs() {
+    if sess.dcx().has_errors_or_lint_errors().is_some() {
         return;
     }
 
@@ -103,7 +103,7 @@ pub fn save_work_product_index(
     // deleted during invalidation. Some object files don't change their
     // content, they are just not needed anymore.
     let previous_work_products = dep_graph.previous_work_products();
-    for (id, wp) in previous_work_products.to_sorted_stable_ord().iter() {
+    for (id, wp) in previous_work_products.to_sorted_stable_ord() {
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
             debug_assert!(
@@ -161,7 +161,7 @@ pub(crate) fn build_dep_graph(
     let mut encoder = match FileEncoder::new(&path_buf) {
         Ok(encoder) => encoder,
         Err(err) => {
-            sess.emit_err(errors::CreateDepGraph { path: &path_buf, err });
+            sess.dcx().emit_err(errors::CreateDepGraph { path: &path_buf, err });
             return None;
         }
     };

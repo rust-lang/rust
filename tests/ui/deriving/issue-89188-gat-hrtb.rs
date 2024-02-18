@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait CallWithShim: Sized {
     type Shim<'s>

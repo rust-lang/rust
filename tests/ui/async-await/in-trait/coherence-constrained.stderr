@@ -1,17 +1,5 @@
-error[E0284]: type annotations needed: cannot satisfy `<Bar as Foo>::T == ()`
-  --> $DIR/coherence-constrained.rs:14:5
-   |
-LL |     async fn foo(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^ cannot satisfy `<Bar as Foo>::T == ()`
-
-error[E0284]: type annotations needed: cannot satisfy `<Bar as Foo>::T == ()`
-  --> $DIR/coherence-constrained.rs:22:5
-   |
-LL |     async fn foo(&self) {}
-   |     ^^^^^^^^^^^^^^^^^^^ cannot satisfy `<Bar as Foo>::T == ()`
-
 error[E0119]: conflicting implementations of trait `Foo` for type `Bar`
-  --> $DIR/coherence-constrained.rs:18:1
+  --> $DIR/coherence-constrained.rs:17:1
    |
 LL | impl Foo for Bar {
    | ---------------- first implementation here
@@ -19,7 +7,6 @@ LL | impl Foo for Bar {
 LL | impl Foo for Bar {
    | ^^^^^^^^^^^^^^^^ conflicting implementation for `Bar`
 
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 
-Some errors have detailed explanations: E0119, E0284.
-For more information about an error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0119`.

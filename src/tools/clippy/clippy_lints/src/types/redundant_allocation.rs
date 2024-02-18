@@ -11,7 +11,7 @@ use rustc_span::symbol::sym;
 
 use super::{utils, REDUNDANT_ALLOCATION};
 
-pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, qpath: &QPath<'tcx>, def_id: DefId) -> bool {
     let mut applicability = Applicability::MaybeIncorrect;
     let outer_sym = if Some(def_id) == cx.tcx.lang_items().owned_box() {
         "Box"

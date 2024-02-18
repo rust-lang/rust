@@ -16,6 +16,14 @@ note: erroneous constant encountered
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: erroneous constant encountered
+  --> $DIR/issue-44578.rs:25:20
+   |
+LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
    = note: this note originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered

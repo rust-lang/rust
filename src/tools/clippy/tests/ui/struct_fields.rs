@@ -39,14 +39,14 @@ struct DataStruct {
 struct DoublePrefix {
     //~^ ERROR: all fields have the same prefix: `some_data`
     some_data_a: bool,
-    some_data_b: bool,
+    some_data_b: i8,
     some_data_c: bool,
 }
 
 struct DoublePostfix {
     //~^ ERROR: all fields have the same postfix: `some_data`
     a_some_data: bool,
-    b_some_data: bool,
+    b_some_data: i8,
     c_some_data: bool,
 }
 
@@ -54,18 +54,18 @@ struct DoublePostfix {
 struct NotSnakeCase {
     //~^ ERROR: all fields have the same postfix: `someData`
     a_someData: bool,
-    b_someData: bool,
+    b_someData: i8,
     c_someData: bool,
 }
 #[allow(non_snake_case)]
 struct NotSnakeCase2 {
     //~^ ERROR: all fields have the same prefix: `someData`
     someData_c: bool,
-    someData_b: bool,
+    someData_b: i8,
     someData_a_b: bool,
 }
 
-// no error, threshold is 3 fiels by default
+// no error, threshold is 3 fields by default
 struct Fooo {
     foo: u8,
     bar: u8,
@@ -326,6 +326,20 @@ external! {
         invisible_data: u8,
     }
 
+}
+
+// Should not warn
+struct Config {
+    use_foo: bool,
+    use_bar: bool,
+    use_baz: bool,
+}
+
+struct Use {
+    use_foo: bool,
+    //~^ ERROR: field name starts with the struct's name
+    use_bar: bool,
+    use_baz: bool,
 }
 
 fn main() {}

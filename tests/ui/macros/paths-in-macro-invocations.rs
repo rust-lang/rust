@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// aux-build:two_macros-rpass.rs
+//@ aux-build:two_macros-rpass.rs
 
 extern crate two_macros_rpass as two_macros;
 

@@ -2,7 +2,7 @@
 /* global srcIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, onEachLazy, removeClass, browserSupportsHistoryApi */
+/* global addClass, onEachLazy, removeClass, browserSupportsHistoryApi */
 /* global updateLocalStorage, getVar */
 
 "use strict";
@@ -71,68 +71,34 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     return hasFoundFile;
 }
 
-let toggleLabel;
-
-function getToggleLabel() {
-    toggleLabel = toggleLabel || document.querySelector("#src-sidebar-toggle button");
-    return toggleLabel;
-}
-
 window.rustdocCloseSourceSidebar = () => {
     removeClass(document.documentElement, "src-sidebar-expanded");
-    getToggleLabel().innerText = ">";
     updateLocalStorage("source-sidebar-show", "false");
 };
 
 window.rustdocShowSourceSidebar = () => {
     addClass(document.documentElement, "src-sidebar-expanded");
-    getToggleLabel().innerText = "<";
     updateLocalStorage("source-sidebar-show", "true");
 };
 
-function toggleSidebar() {
-    const child = this.parentNode.children[0];
-    if (child.innerText === ">") {
-        window.rustdocShowSourceSidebar();
-    } else {
+window.rustdocToggleSrcSidebar = () => {
+    if (document.documentElement.classList.contains("src-sidebar-expanded")) {
         window.rustdocCloseSourceSidebar();
-    }
-}
-
-function createSidebarToggle() {
-    const sidebarToggle = document.createElement("div");
-    sidebarToggle.id = "src-sidebar-toggle";
-
-    const inner = document.createElement("button");
-
-    if (getCurrentValue("source-sidebar-show") === "true") {
-        inner.innerText = "<";
     } else {
-        inner.innerText = ">";
+        window.rustdocShowSourceSidebar();
     }
-    inner.onclick = toggleSidebar;
-
-    sidebarToggle.appendChild(inner);
-    return sidebarToggle;
-}
+};
 
 // This function is called from "src-files.js", generated in `html/render/write_shared.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSrcSidebar() {
     const container = document.querySelector("nav.sidebar");
 
-    const sidebarToggle = createSidebarToggle();
-    container.insertBefore(sidebarToggle, container.firstChild);
-
     const sidebar = document.createElement("div");
     sidebar.id = "src-sidebar";
 
     let hasFoundFile = false;
 
-    const title = document.createElement("div");
-    title.className = "title";
-    title.innerText = "Files";
-    sidebar.appendChild(title);
     for (const [key, source] of srcIndex) {
         source[NAME_OFFSET] = key;
         hasFoundFile = createDirEntry(source, sidebar, "", hasFoundFile);

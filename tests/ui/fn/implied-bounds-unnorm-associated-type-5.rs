@@ -18,6 +18,6 @@ where
 fn main() {
     let x = String::from("Hello World!");
     let y = f(&x, ());
-    drop(x);
+    drop(x); //~ ERROR cannot move out of `x`
     println!("{}", y);
 }

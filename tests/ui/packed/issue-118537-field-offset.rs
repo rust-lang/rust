@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(layout_for_ptr)]
 use std::mem;
 

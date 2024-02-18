@@ -1,4 +1,4 @@
-// aux-build:intercrate.rs
+//@ aux-build:intercrate.rs
 
 #![feature(decl_macro)]
 

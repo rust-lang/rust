@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![feature(layout_for_ptr)]
 use std::mem;
 
 #[repr(packed(4))]
-struct Slice([u32]);
+struct Slice(#[allow(dead_code)] [u32]);
 
 #[repr(packed(2), C)]
 struct PackedSized {

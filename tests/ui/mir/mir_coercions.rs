@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(coerce_unsized, unsize)]
 
 use std::ops::CoerceUnsized;

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn foo<T>(t: T) -> usize
 where

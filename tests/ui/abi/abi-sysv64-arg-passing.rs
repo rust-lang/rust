@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Checks if the "sysv64" calling convention behaves the same as the
 // "C" calling convention on platforms where both should be the same
 
@@ -24,10 +24,10 @@
 // issue-62350-sysv-neg-reg-counts
 // struct-return
 
-// ignore-android
-// ignore-arm
-// ignore-aarch64
-// ignore-windows
+//@ ignore-android
+//@ ignore-arm
+//@ ignore-aarch64
+//@ ignore-windows
 
 // note: windows is ignored as rust_test_helpers does not have the sysv64 abi on windows
 

@@ -383,8 +383,6 @@ impl<T: ?Sized> Mutex<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mutex_unpoison)]
-    ///
     /// use std::sync::{Arc, Mutex};
     /// use std::thread;
     ///
@@ -406,7 +404,7 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(*x, 1);
     /// ```
     #[inline]
-    #[unstable(feature = "mutex_unpoison", issue = "96469")]
+    #[stable(feature = "mutex_unpoison", since = "1.77.0")]
     pub fn clear_poison(&self) {
         self.poison.clear();
     }

@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 // Test that the simd_bitmask intrinsic produces ok-ish error
 // messages when misused.

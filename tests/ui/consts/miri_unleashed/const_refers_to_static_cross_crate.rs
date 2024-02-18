@@ -1,32 +1,38 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
-// aux-build:static_cross_crate.rs
-// stderr-per-bitwidth
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
+//@ aux-build:static_cross_crate.rs
+//@ normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 #![feature(exclusive_range_pattern, half_open_range_patterns_in_slices)]
+#![allow(static_mut_refs)]
 
 extern crate static_cross_crate;
 
 // Sneaky: reference to a mutable static.
 // Allowing this would be a disaster for pattern matching, we could violate exhaustiveness checking!
-const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior to use this value
-//~| encountered a reference pointing to a static variable
+const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior
+    //~| encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO }
 };
 
-const U8_MUT: &u8 = { //~ ERROR undefined behavior to use this value
-//~| encountered a reference pointing to a static variable
+const U8_MUT: &u8 = { //~ ERROR undefined behavior
+    //~| encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO[0] }
 };
 
 // Also test indirection that reads from other static.
-const U8_MUT2: &u8 = {
+const U8_MUT2: &u8 = { //~ ERROR undefined behavior
+    //~| encountered reference to mutable memory
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
-    //~^ ERROR evaluation of constant value failed
-    //~| constant accesses static
 };
 const U8_MUT3: &u8 = {
-    unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
-    //~^ ERROR evaluation of constant value failed
-    //~| constant accesses static
+    unsafe {
+        match static_cross_crate::OPT_ZERO {
+            //~^ ERROR evaluation of constant value failed
+            //~| constant accesses mutable global memory
+            Some(ref u) => u,
+            None => panic!(),
+        }
+    }
 };
 
 pub fn test(x: &[u8; 1]) -> bool {

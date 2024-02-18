@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Issue #3656
 // Issue Name: pub method preceded by attribute can't be parsed
 // Abstract: Visibility parsing failed when compiler parsing

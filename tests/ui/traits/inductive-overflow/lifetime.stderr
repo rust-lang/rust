@@ -2,7 +2,7 @@ error[E0275]: overflow evaluating the requirement `Box<X<C<'static>>>: NotAuto`
   --> $DIR/lifetime.rs:29:5
    |
 LL |     is_send::<X<C<'static>>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required for `X<C<'static>>` to implement `NotAuto`
   --> $DIR/lifetime.rs:19:12

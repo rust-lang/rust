@@ -1,9 +1,10 @@
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
-use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
+use rustc_index::IndexVec;
+use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 
 use std::cmp::Ordering;
 use std::collections::VecDeque;
@@ -30,23 +31,16 @@ impl CoverageGraph {
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        let mut seen = IndexVec::from_elem(false, &bcbs);
         let successors = IndexVec::from_fn_n(
             |bcb| {
-                for b in seen.iter_mut() {
-                    *b = false;
-                }
-                let bcb_data = &bcbs[bcb];
-                let mut bcb_successors = Vec::new();
-                for successor in bcb_filtered_successors(mir_body, bcb_data.last_bb())
+                let mut seen_bcbs = FxHashSet::default();
+                let terminator = mir_body[bcbs[bcb].last_bb()].terminator();
+                bcb_filtered_successors(terminator)
+                    .into_iter()
                     .filter_map(|successor_bb| bb_to_bcb[successor_bb])
-                {
-                    if !seen[successor] {
-                        seen[successor] = true;
-                        bcb_successors.push(successor);
-                    }
-                }
-                bcb_successors
+                    // Remove duplicate successor BCBs, keeping only the first.
+                    .filter(|&successor_bcb| seen_bcbs.insert(successor_bcb))
+                    .collect::<Vec<_>>()
             },
             bcbs.len(),
         );
@@ -80,8 +74,22 @@ impl CoverageGraph {
         IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     ) {
         let num_basic_blocks = mir_body.basic_blocks.len();
-        let mut bcbs = IndexVec::with_capacity(num_basic_blocks);
+        let mut bcbs = IndexVec::<BasicCoverageBlock, _>::with_capacity(num_basic_blocks);
         let mut bb_to_bcb = IndexVec::from_elem_n(None, num_basic_blocks);
+
+        let mut add_basic_coverage_block = |basic_blocks: &mut Vec<BasicBlock>| {
+            // Take the accumulated list of blocks, leaving the vector empty
+            // to be used by subsequent BCBs.
+            let basic_blocks = std::mem::take(basic_blocks);
+
+            let bcb = bcbs.next_index();
+            for &bb in basic_blocks.iter() {
+                bb_to_bcb[bb] = Some(bcb);
+            }
+            let bcb_data = BasicCoverageBlockData::from(basic_blocks);
+            debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
+            bcbs.push(bcb_data);
+        };
 
         // Walk the MIR CFG using a Preorder traversal, which starts from `START_BLOCK` and follows
         // each block terminator's `successors()`. Coverage spans must map to actual source code,
@@ -90,100 +98,40 @@ impl CoverageGraph {
         // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
         // `catch_unwind()` handlers.
 
+        // Accumulates a chain of blocks that will be combined into one BCB.
         let mut basic_blocks = Vec::new();
-        for bb in short_circuit_preorder(mir_body, bcb_filtered_successors) {
-            if let Some(last) = basic_blocks.last() {
-                let predecessors = &mir_body.basic_blocks.predecessors()[bb];
-                if predecessors.len() > 1 || !predecessors.contains(last) {
-                    // The `bb` has more than one _incoming_ edge, and should start its own
-                    // `BasicCoverageBlockData`. (Note, the `basic_blocks` vector does not yet
-                    // include `bb`; it contains a sequence of one or more sequential basic_blocks
-                    // with no intermediate branches in or out. Save these as a new
-                    // `BasicCoverageBlockData` before starting the new one.)
-                    Self::add_basic_coverage_block(
-                        &mut bcbs,
-                        &mut bb_to_bcb,
-                        basic_blocks.split_off(0),
-                    );
-                    debug!(
-                        "  because {}",
-                        if predecessors.len() > 1 {
-                            "predecessors.len() > 1".to_owned()
-                        } else {
-                            format!("bb {} is not in predecessors: {:?}", bb.index(), predecessors)
-                        }
-                    );
-                }
+
+        let filtered_successors = |bb| bcb_filtered_successors(mir_body[bb].terminator());
+        for bb in short_circuit_preorder(mir_body, filtered_successors)
+            .filter(|&bb| mir_body[bb].terminator().kind != TerminatorKind::Unreachable)
+        {
+            // If the previous block can't be chained into `bb`, flush the accumulated
+            // blocks into a new BCB, then start building the next chain.
+            if let Some(&prev) = basic_blocks.last()
+                && (!filtered_successors(prev).is_chainable() || {
+                    // If `bb` has multiple predecessor blocks, or `prev` isn't
+                    // one of its predecessors, we can't chain and must flush.
+                    let predecessors = &mir_body.basic_blocks.predecessors()[bb];
+                    predecessors.len() > 1 || !predecessors.contains(&prev)
+                })
+            {
+                debug!(
+                    terminator_kind = ?mir_body[prev].terminator().kind,
+                    predecessors = ?&mir_body.basic_blocks.predecessors()[bb],
+                    "can't chain from {prev:?} to {bb:?}"
+                );
+                add_basic_coverage_block(&mut basic_blocks);
             }
+
             basic_blocks.push(bb);
-
-            let term = mir_body[bb].terminator();
-
-            match term.kind {
-                TerminatorKind::Return { .. }
-                | TerminatorKind::UnwindTerminate(_)
-                | TerminatorKind::Yield { .. }
-                | TerminatorKind::SwitchInt { .. } => {
-                    // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
-                    // current sequence of `basic_blocks` gathered to this point, as a new
-                    // `BasicCoverageBlockData`.
-                    Self::add_basic_coverage_block(
-                        &mut bcbs,
-                        &mut bb_to_bcb,
-                        basic_blocks.split_off(0),
-                    );
-                    debug!("  because term.kind = {:?}", term.kind);
-                    // Note that this condition is based on `TerminatorKind`, even though it
-                    // theoretically boils down to `successors().len() != 1`; that is, either zero
-                    // (e.g., `Return`, `Terminate`) or multiple successors (e.g., `SwitchInt`), but
-                    // since the BCB CFG ignores things like unwind branches (which exist in the
-                    // `Terminator`s `successors()` list) checking the number of successors won't
-                    // work.
-                }
-
-                // The following `TerminatorKind`s are either not expected outside an unwind branch,
-                // or they should not (under normal circumstances) branch. Coverage graphs are
-                // simplified by assuring coverage results are accurate for program executions that
-                // don't panic.
-                //
-                // Programs that panic and unwind may record slightly inaccurate coverage results
-                // for a coverage region containing the `Terminator` that began the panic. This
-                // is as intended. (See Issue #78544 for a possible future option to support
-                // coverage in test programs that panic.)
-                TerminatorKind::Goto { .. }
-                | TerminatorKind::UnwindResume
-                | TerminatorKind::Unreachable
-                | TerminatorKind::Drop { .. }
-                | TerminatorKind::Call { .. }
-                | TerminatorKind::CoroutineDrop
-                | TerminatorKind::Assert { .. }
-                | TerminatorKind::FalseEdge { .. }
-                | TerminatorKind::FalseUnwind { .. }
-                | TerminatorKind::InlineAsm { .. } => {}
-            }
         }
 
         if !basic_blocks.is_empty() {
-            // process any remaining basic_blocks into a final `BasicCoverageBlockData`
-            Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
-            debug!("  because the end of the MIR CFG was reached while traversing");
+            debug!("flushing accumulated blocks into one last BCB");
+            add_basic_coverage_block(&mut basic_blocks);
         }
 
         (bcbs, bb_to_bcb)
-    }
-
-    fn add_basic_coverage_block(
-        bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
-        bb_to_bcb: &mut IndexSlice<BasicBlock, Option<BasicCoverageBlock>>,
-        basic_blocks: Vec<BasicBlock>,
-    ) {
-        let bcb = bcbs.next_index();
-        for &bb in basic_blocks.iter() {
-            bb_to_bcb[bb] = Some(bcb);
-        }
-        let bcb_data = BasicCoverageBlockData::from(basic_blocks);
-        debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
-        bcbs.push(bcb_data);
     }
 
     #[inline(always)]
@@ -346,28 +294,76 @@ impl BasicCoverageBlockData {
     }
 }
 
+/// Holds the coverage-relevant successors of a basic block's terminator, and
+/// indicates whether that block can potentially be combined into the same BCB
+/// as its sole successor.
+#[derive(Clone, Copy, Debug)]
+enum CoverageSuccessors<'a> {
+    /// The terminator has exactly one straight-line successor, so its block can
+    /// potentially be combined into the same BCB as that successor.
+    Chainable(BasicBlock),
+    /// The block cannot be combined into the same BCB as its successor(s).
+    NotChainable(&'a [BasicBlock]),
+}
+
+impl CoverageSuccessors<'_> {
+    fn is_chainable(&self) -> bool {
+        match self {
+            Self::Chainable(_) => true,
+            Self::NotChainable(_) => false,
+        }
+    }
+}
+
+impl IntoIterator for CoverageSuccessors<'_> {
+    type Item = BasicBlock;
+    type IntoIter = impl DoubleEndedIterator<Item = Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Self::Chainable(bb) => Some(bb).into_iter().chain((&[]).iter().copied()),
+            Self::NotChainable(bbs) => None.into_iter().chain(bbs.iter().copied()),
+        }
+    }
+}
+
 // Returns the subset of a block's successors that are relevant to the coverage
-// graph, i.e. those that do not represent unwinds or unreachable branches.
+// graph, i.e. those that do not represent unwinds or false edges.
 // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
 // `catch_unwind()` handlers.
-fn bcb_filtered_successors<'a, 'tcx>(
-    body: &'a mir::Body<'tcx>,
-    bb: BasicBlock,
-) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx> {
-    let terminator = body[bb].terminator();
+fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> CoverageSuccessors<'a> {
+    use TerminatorKind::*;
+    match terminator.kind {
+        // A switch terminator can have many coverage-relevant successors.
+        // (If there is exactly one successor, we still treat it as not chainable.)
+        SwitchInt { ref targets, .. } => CoverageSuccessors::NotChainable(targets.all_targets()),
 
-    let take_n_successors = match terminator.kind {
-        // SwitchInt successors are never unwinds, so all of them should be traversed.
-        TerminatorKind::SwitchInt { .. } => usize::MAX,
-        // For all other kinds, return only the first successor (if any), ignoring any
-        // unwind successors.
-        _ => 1,
-    };
+        // A yield terminator has exactly 1 successor, but should not be chained,
+        // because its resume edge has a different execution count.
+        Yield { ref resume, .. } => CoverageSuccessors::NotChainable(std::slice::from_ref(resume)),
 
-    terminator
-        .successors()
-        .take(take_n_successors)
-        .filter(move |&successor| body[successor].terminator().kind != TerminatorKind::Unreachable)
+        // These terminators have exactly one coverage-relevant successor,
+        // and can be chained into it.
+        Assert { target, .. }
+        | Drop { target, .. }
+        | FalseEdge { real_target: target, .. }
+        | FalseUnwind { real_target: target, .. }
+        | Goto { target } => CoverageSuccessors::Chainable(target),
+
+        // These terminators can normally be chained, except when they have no
+        // successor because they are known to diverge.
+        Call { target: maybe_target, .. } | InlineAsm { destination: maybe_target, .. } => {
+            match maybe_target {
+                Some(target) => CoverageSuccessors::Chainable(target),
+                None => CoverageSuccessors::NotChainable(&[]),
+            }
+        }
+
+        // These terminators have no coverage-relevant successors.
+        CoroutineDrop | Return | Unreachable | UnwindResume | UnwindTerminate(_) => {
+            CoverageSuccessors::NotChainable(&[])
+        }
+    }
 }
 
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
@@ -544,8 +540,8 @@ fn short_circuit_preorder<'a, 'tcx, F, Iter>(
     filtered_successors: F,
 ) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx>
 where
-    F: Fn(&'a mir::Body<'tcx>, BasicBlock) -> Iter,
-    Iter: Iterator<Item = BasicBlock>,
+    F: Fn(BasicBlock) -> Iter,
+    Iter: IntoIterator<Item = BasicBlock>,
 {
     let mut visited = BitSet::new_empty(body.basic_blocks.len());
     let mut worklist = vec![mir::START_BLOCK];
@@ -556,7 +552,7 @@ where
                 continue;
             }
 
-            worklist.extend(filtered_successors(body, bb));
+            worklist.extend(filtered_successors(bb));
 
             return Some(bb);
         }

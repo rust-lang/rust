@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! An array must have the correct length.
 
 #![crate_type = "lib"]

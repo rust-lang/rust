@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 
 struct Wrap<T>(T);
 unsafe impl<T> Send for Wrap<T> {}

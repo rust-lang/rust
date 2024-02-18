@@ -3,6 +3,7 @@
 use super::*;
 
 use std::marker::PhantomData;
+use std::sync::atomic::AtomicU32;
 
 macro_rules! define_handles {
     (
@@ -12,8 +13,8 @@ macro_rules! define_handles {
         #[repr(C)]
         #[allow(non_snake_case)]
         pub struct HandleCounters {
-            $($oty: AtomicUsize,)*
-            $($ity: AtomicUsize,)*
+            $($oty: AtomicU32,)*
+            $($ity: AtomicU32,)*
         }
 
         impl HandleCounters {
@@ -21,8 +22,8 @@ macro_rules! define_handles {
             // a wrapper `fn` pointer, once `const fn` can reference `static`s.
             extern "C" fn get() -> &'static Self {
                 static COUNTERS: HandleCounters = HandleCounters {
-                    $($oty: AtomicUsize::new(1),)*
-                    $($ity: AtomicUsize::new(1),)*
+                    $($oty: AtomicU32::new(1),)*
+                    $($ity: AtomicU32::new(1),)*
                 };
                 &COUNTERS
             }

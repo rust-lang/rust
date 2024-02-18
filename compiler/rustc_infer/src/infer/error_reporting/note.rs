@@ -134,7 +134,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::ContentValidFor,
                     note_and_explain::SuffixKind::Empty,
                 );
-                self.tcx.sess.dcx().create_err(OutlivesContent {
+                self.dcx().create_err(OutlivesContent {
                     span,
                     notes: reference_valid.into_iter().chain(content_valid).collect(),
                 })
@@ -154,7 +154,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::SourcePointerValidFor,
                     note_and_explain::SuffixKind::Empty,
                 );
-                self.tcx.sess.dcx().create_err(OutlivesBound {
+                self.dcx().create_err(OutlivesBound {
                     span,
                     notes: object_valid.into_iter().chain(pointer_valid).collect(),
                 })
@@ -172,7 +172,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let note = note_and_explain::RegionExplanation::new(
                     self.tcx, sub, opt_span, prefix, suffix,
                 );
-                self.tcx.sess.dcx().create_err(FulfillReqLifetime {
+                self.dcx().create_err(FulfillReqLifetime {
                     span,
                     ty: self.resolve_vars_if_possible(ty),
                     note,
@@ -193,7 +193,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::LfParamMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
-                self.tcx.sess.dcx().create_err(LfBoundNotSatisfied {
+                self.dcx().create_err(LfBoundNotSatisfied {
                     span,
                     notes: param_instantiated.into_iter().chain(param_must_outlive).collect(),
                 })
@@ -213,7 +213,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::DataValidFor,
                     note_and_explain::SuffixKind::Empty,
                 );
-                self.tcx.sess.dcx().create_err(RefLongerThanData {
+                self.dcx().create_err(RefLongerThanData {
                     span,
                     ty: self.resolve_vars_if_possible(ty),
                     notes: pointer_valid.into_iter().chain(data_valid).collect(),
@@ -274,14 +274,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::LfMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
-                self.tcx.sess.dcx().create_err(LfBoundNotSatisfied {
+                self.dcx().create_err(LfBoundNotSatisfied {
                     span,
                     notes: instantiated.into_iter().chain(must_outlive).collect(),
                 })
             }
         };
         if sub.is_error() || sup.is_error() {
-            err.delay_as_bug();
+            err.downgrade_to_delayed_bug();
         }
         err
     }
@@ -342,7 +342,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 trait_predicates: trait_predicates.join(", "),
             }
         };
-        err.subdiagnostic(suggestion);
+        err.subdiagnostic(self.dcx(), suggestion);
     }
 
     pub(super) fn report_placeholder_failure(
@@ -367,9 +367,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &trace.cause.code().peel_derives()
                 {
                     let span = *span;
-                    let mut err = self.report_concrete_failure(placeholder_origin, sub, sup);
-                    err.span_note(span, "the lifetime requirement is introduced here");
-                    err
+                    self.report_concrete_failure(placeholder_origin, sub, sup)
+                        .with_span_note(span, "the lifetime requirement is introduced here")
                 } else {
                     unreachable!(
                         "control flow ensures we have a `BindingObligation` or `ExprBindingObligation` here..."

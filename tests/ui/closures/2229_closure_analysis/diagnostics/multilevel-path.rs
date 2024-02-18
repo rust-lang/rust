@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that when a borrow checker diagnostics are emitted, it's as precise
 // as the capture by the closure.

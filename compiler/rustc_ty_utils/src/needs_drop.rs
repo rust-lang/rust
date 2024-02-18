@@ -116,7 +116,7 @@ where
             if !self.recursion_limit.value_within_limit(level) {
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
-                tcx.sess.emit_err(NeedsDropOverflow { query_ty: self.query_ty });
+                tcx.dcx().emit_err(NeedsDropOverflow { query_ty: self.query_ty });
                 return Some(Err(AlwaysRequiresDrop));
             }
 
@@ -145,7 +145,7 @@ where
                     // for the coroutine witness and check whether any of the contained types
                     // need to be dropped, and only require the captured types to be live
                     // if they do.
-                    ty::Coroutine(_, args, _) => {
+                    ty::Coroutine(_, args) => {
                         if self.reveal_coroutine_witnesses {
                             queue_type(self, args.as_coroutine().witness());
                         } else {
@@ -168,6 +168,12 @@ where
 
                     ty::Closure(_, args) => {
                         for upvar in args.as_closure().upvar_tys() {
+                            queue_type(self, upvar);
+                        }
+                    }
+
+                    ty::CoroutineClosure(_, args) => {
+                        for upvar in args.as_coroutine_closure().upvar_tys() {
                             queue_type(self, upvar);
                         }
                     }
@@ -258,9 +264,9 @@ fn drop_tys_helper<'tcx>(
     ) -> NeedsDropResult<Vec<Ty<'tcx>>> {
         iter.into_iter().try_fold(Vec::new(), |mut vec, subty| {
             match subty.kind() {
-                ty::Adt(adt_id, subst) => {
+                ty::Adt(adt_id, args) => {
                     for subty in tcx.adt_drop_tys(adt_id.did())? {
-                        vec.push(EarlyBinder::bind(subty).instantiate(tcx, subst));
+                        vec.push(EarlyBinder::bind(subty).instantiate(tcx, args));
                     }
                 }
                 _ => vec.push(subty),
@@ -294,7 +300,10 @@ fn drop_tys_helper<'tcx>(
         } else {
             let field_tys = adt_def.all_fields().map(|field| {
                 let r = tcx.type_of(field.did).instantiate(tcx, args);
-                debug!("drop_tys_helper: Subst into {:?} with {:?} getting {:?}", field, args, r);
+                debug!(
+                    "drop_tys_helper: Instantiate into {:?} with {:?} getting {:?}",
+                    field, args, r
+                );
                 r
             });
             if only_significant {
@@ -357,7 +366,7 @@ fn adt_drop_tys<'tcx>(
     .map(|components| tcx.mk_type_list(&components))
 }
 // If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
-// a `tcx.make_ty(def, identity_args)` and as such it is legal to substitute the generic parameters
+// a `tcx.make_ty(def, identity_args)` and as such it is legal to instantiate the generic parameters
 // of the ADT into the outputted `ty`s.
 fn adt_significant_drop_tys(
     tcx: TyCtxt<'_>,

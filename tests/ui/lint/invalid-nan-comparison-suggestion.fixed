@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@ check-pass
+//@ run-rustfix
 
 fn main() {
     let x = 5f32;

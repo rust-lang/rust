@@ -1,5 +1,5 @@
-// aux-build: issue_24843.rs
-// check-pass
+//@ aux-build: issue_24843.rs
+//@ check-pass
 
 extern crate issue_24843;
 

@@ -131,22 +131,12 @@ pub enum GenerateProofTree {
     Never,
 }
 
-pub trait InferCtxtEvalExt<'tcx> {
+#[extension(pub trait InferCtxtEvalExt<'tcx>)]
+impl<'tcx> InferCtxt<'tcx> {
     /// Evaluates a goal from **outside** of the trait solver.
     ///
     /// Using this while inside of the solver is wrong as it uses a new
     /// search graph which would break cycle detection.
-    fn evaluate_root_goal(
-        &self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-        generate_proof_tree: GenerateProofTree,
-    ) -> (
-        Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution>,
-        Option<inspect::GoalEvaluation<'tcx>>,
-    );
-}
-
-impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn evaluate_root_goal(
         &self,
@@ -477,10 +467,11 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 }
             }
         } else {
-            let kind = self.infcx.instantiate_binder_with_placeholders(kind);
-            let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
-            self.add_goal(GoalSource::Misc, goal);
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            self.infcx.enter_forall(kind, |kind| {
+                let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
+                self.add_goal(GoalSource::Misc, goal);
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            })
         }
     }
 
@@ -801,13 +792,13 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         )
     }
 
-    pub(super) fn instantiate_binder_with_placeholders<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
+    pub(super) fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>> + Copy, U>(
         &self,
         value: ty::Binder<'tcx, T>,
-    ) -> T {
-        self.infcx.instantiate_binder_with_placeholders(value)
+        f: impl FnOnce(T) -> U,
+    ) -> U {
+        self.infcx.enter_forall(value, f)
     }
-
     pub(super) fn resolve_vars_if_possible<T>(&self, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

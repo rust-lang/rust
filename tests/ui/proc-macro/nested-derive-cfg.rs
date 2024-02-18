@@ -1,6 +1,6 @@
-// compile-flags: -Z span-debug --error-format human
-// aux-build:test-macros.rs
-// check-pass
+//@ compile-flags: -Z span-debug --error-format human
+//@ aux-build:test-macros.rs
+//@ check-pass
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

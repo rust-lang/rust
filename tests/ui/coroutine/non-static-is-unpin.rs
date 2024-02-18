@@ -1,6 +1,6 @@
-// revisions: current next
-//[next] compile-flags: -Znext-solver
-// run-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ run-pass
 
 #![feature(coroutines, coroutine_trait)]
 #![allow(dropping_copy_types)]

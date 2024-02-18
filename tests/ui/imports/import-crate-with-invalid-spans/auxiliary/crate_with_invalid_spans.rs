@@ -1,7 +1,7 @@
 #![crate_type = "rlib"]
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 
-// compile-flags: -g
+//@ compile-flags: -g
 
 #[macro_use]
 mod crate_with_invalid_spans_macros;

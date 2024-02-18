@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 fn generic<T: Copy>(t: T) {
     let s: [T; 1518600000] = [t; 1518600000];

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This intends to use the unsizing coercion from array to slice, but it only
 // works if we resolve `<&[u8]>::from` as the reflexive `From<T> for T`. In

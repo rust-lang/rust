@@ -10,7 +10,10 @@ use std::{
     iter,
 };
 
-use base_db::{salsa::Cycle, CrateId};
+use base_db::{
+    salsa::{impl_intern_value_trivial, Cycle},
+    CrateId,
+};
 use chalk_ir::{
     cast::Cast, fold::Shift, fold::TypeFoldable, interner::HasInterner, Mutability, Safety,
 };
@@ -58,7 +61,7 @@ use crate::{
         InTypeConstIdMetadata,
     },
     AliasEq, AliasTy, Binders, BoundVar, CallableSig, Const, ConstScalar, DebruijnIndex, DynTy,
-    FnPointer, FnSig, FnSubst, ImplTraitId, Interner, ParamKind, PolyFnSig, ProjectionTy,
+    FnAbi, FnPointer, FnSig, FnSubst, ImplTraitId, Interner, ParamKind, PolyFnSig, ProjectionTy,
     QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits,
     Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
@@ -279,14 +282,14 @@ impl<'a> TyLoweringContext<'a> {
                     .intern(Interner)
             }
             TypeRef::Placeholder => TyKind::Error.intern(Interner),
-            &TypeRef::Fn(ref params, variadic, is_unsafe) => {
+            &TypeRef::Fn(ref params, variadic, is_unsafe, ref abi) => {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                     Substitution::from_iter(Interner, params.iter().map(|(_, tr)| ctx.lower_ty(tr)))
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly
                     sig: FnSig {
-                        abi: (),
+                        abi: abi.as_deref().map_or(FnAbi::Rust, FnAbi::from_str),
                         safety: if is_unsafe { Safety::Unsafe } else { Safety::Safe },
                         variadic,
                     },
@@ -762,7 +765,7 @@ impl<'a> TyLoweringContext<'a> {
                     Some(segment) if segment.args_and_bindings.is_some() => Some(segment),
                     _ => last,
                 };
-                (segment, Some(var.parent.into()))
+                (segment, Some(var.lookup(self.db.upcast()).parent.into()))
             }
         };
         if let Some(segment) = segment {
@@ -1192,11 +1195,7 @@ impl<'a> TyLoweringContext<'a> {
                 return None;
             }
 
-            if bounds.first().and_then(|b| b.trait_id()).is_none() {
-                // When there's no trait bound, that's an error. This happens when the trait refs
-                // are unresolved.
-                return None;
-            }
+            bounds.first().and_then(|b| b.trait_id())?;
 
             // As multiple occurrences of the same auto traits *are* permitted, we deduplicate the
             // bounds. We shouldn't have repeated elements besides auto traits at this point.
@@ -1229,7 +1228,7 @@ impl<'a> TyLoweringContext<'a> {
                 .collect();
 
             if !ctx.unsized_types.borrow().contains(&self_ty) {
-                let krate = func.lookup(ctx.db.upcast()).module(ctx.db.upcast()).krate();
+                let krate = func.krate(ctx.db.upcast());
                 let sized_trait = ctx
                     .db
                     .lang_item(krate, LangItem::Sized)
@@ -1241,7 +1240,7 @@ impl<'a> TyLoweringContext<'a> {
                     });
                     crate::wrap_empty_binders(clause)
                 });
-                predicates.extend(sized_clause.into_iter());
+                predicates.extend(sized_clause);
                 predicates.shrink_to_fit();
             }
             predicates
@@ -1339,7 +1338,7 @@ fn named_associated_type_shorthand_candidates<R>(
                 ),
                 _ => None,
             });
-            if let Some(_) = res {
+            if res.is_some() {
                 return res;
             }
             // Handle `Self::Type` referring to own associated type in trait definitions
@@ -1375,11 +1374,13 @@ pub(crate) fn field_types_query(
     let (resolver, def): (_, GenericDefId) = match variant_id {
         VariantId::StructId(it) => (it.resolver(db.upcast()), it.into()),
         VariantId::UnionId(it) => (it.resolver(db.upcast()), it.into()),
-        VariantId::EnumVariantId(it) => (it.parent.resolver(db.upcast()), it.parent.into()),
+        VariantId::EnumVariantId(it) => {
+            (it.resolver(db.upcast()), it.lookup(db.upcast()).parent.into())
+        }
     };
     let generics = generics(db.upcast(), def);
     let mut res = ArenaMap::default();
-    let ctx = TyLoweringContext::new(db, &resolver, GenericDefId::from(variant_id.adt_id()).into())
+    let ctx = TyLoweringContext::new(db, &resolver, def.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
     for (field_id, field_data) in var_data.fields().iter() {
         res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(&field_data.type_ref)));
@@ -1601,7 +1602,7 @@ fn implicitly_sized_clauses<'a>(
 pub(crate) fn generic_defaults_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
-) -> Arc<[Binders<chalk_ir::GenericArg<Interner>>]> {
+) -> Arc<[Binders<crate::GenericArg>]> {
     let resolver = def.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, def.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
@@ -1677,6 +1678,7 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
         ret,
         data.is_varargs(),
         if data.has_unsafe_kw() { Safety::Unsafe } else { Safety::Safe },
+        data.abi.as_deref().map_or(FnAbi::Rust, FnAbi::from_str),
     );
     make_binders(db, &generics, sig)
 }
@@ -1721,50 +1723,65 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
         .with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
     let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
-    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false, Safety::Safe))
+    Binders::new(
+        binders,
+        CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
+    )
 }
 
 /// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<Ty> {
+fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Binders<Ty>> {
     let struct_data = db.struct_data(def);
-    if let StructKind::Unit = struct_data.variant_data.kind() {
-        return type_for_adt(db, def.into());
+    match struct_data.variant_data.kind() {
+        StructKind::Record => None,
+        StructKind::Unit => Some(type_for_adt(db, def.into())),
+        StructKind::Tuple => {
+            let generics = generics(db.upcast(), AdtId::from(def).into());
+            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
+            Some(make_binders(
+                db,
+                &generics,
+                TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
+            ))
+        }
     }
-    let generics = generics(db.upcast(), AdtId::from(def).into());
-    let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    make_binders(
-        db,
-        &generics,
-        TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
-    )
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
-    let enum_data = db.enum_data(def.parent);
-    let var_data = &enum_data.variants[def.local_id];
+    let var_data = db.enum_variant_data(def);
     let fields = var_data.variant_data.fields();
-    let resolver = def.parent.resolver(db.upcast());
+    let resolver = def.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, DefWithBodyId::VariantId(def).into())
         .with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
-    let (ret, binders) = type_for_adt(db, def.parent.into()).into_value_and_skipped_binders();
-    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false, Safety::Safe))
+    let (ret, binders) =
+        type_for_adt(db, def.lookup(db.upcast()).parent.into()).into_value_and_skipped_binders();
+    Binders::new(
+        binders,
+        CallableSig::from_params_and_return(params, ret, false, Safety::Safe, FnAbi::RustCall),
+    )
 }
 
 /// Build the type of a tuple enum variant constructor.
-fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> Binders<Ty> {
-    let enum_data = db.enum_data(def.parent);
-    let var_data = &enum_data.variants[def.local_id].variant_data;
-    if let StructKind::Unit = var_data.kind() {
-        return type_for_adt(db, def.parent.into());
+fn type_for_enum_variant_constructor(
+    db: &dyn HirDatabase,
+    def: EnumVariantId,
+) -> Option<Binders<Ty>> {
+    let e = def.lookup(db.upcast()).parent;
+    match db.enum_variant_data(def).variant_data.kind() {
+        StructKind::Record => None,
+        StructKind::Unit => Some(type_for_adt(db, e.into())),
+        StructKind::Tuple => {
+            let generics = generics(db.upcast(), e.into());
+            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
+            Some(make_binders(
+                db,
+                &generics,
+                TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs)
+                    .intern(Interner),
+            ))
+        }
     }
-    let generics = generics(db.upcast(), def.parent.into());
-    let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    make_binders(
-        db,
-        &generics,
-        TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(Interner),
-    )
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
@@ -1795,6 +1812,7 @@ pub enum CallableDefId {
     StructId(StructId),
     EnumVariantId(EnumVariantId),
 }
+impl_intern_value_trivial!(CallableDefId);
 impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
 impl From<CallableDefId> for ModuleDefId {
     fn from(def: CallableDefId) -> ModuleDefId {
@@ -1810,11 +1828,10 @@ impl CallableDefId {
     pub fn krate(self, db: &dyn HirDatabase) -> CrateId {
         let db = db.upcast();
         match self {
-            CallableDefId::FunctionId(f) => f.lookup(db).module(db),
-            CallableDefId::StructId(s) => s.lookup(db).container,
-            CallableDefId::EnumVariantId(e) => e.parent.lookup(db).container,
+            CallableDefId::FunctionId(f) => f.krate(db),
+            CallableDefId::StructId(s) => s.krate(db),
+            CallableDefId::EnumVariantId(e) => e.krate(db),
         }
-        .krate()
     }
 }
 
@@ -1881,24 +1898,20 @@ pub(crate) fn ty_recover(db: &dyn HirDatabase, _cycle: &Cycle, def: &TyDefId) ->
     make_binders(db, &generics, TyKind::Error.intern(Interner))
 }
 
-pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Binders<Ty> {
+pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Option<Binders<Ty>> {
     match def {
-        ValueTyDefId::FunctionId(it) => type_for_fn(db, it),
+        ValueTyDefId::FunctionId(it) => Some(type_for_fn(db, it)),
         ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
-        ValueTyDefId::UnionId(it) => type_for_adt(db, it.into()),
+        ValueTyDefId::UnionId(it) => Some(type_for_adt(db, it.into())),
         ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
-        ValueTyDefId::ConstId(it) => type_for_const(db, it),
-        ValueTyDefId::StaticId(it) => type_for_static(db, it),
+        ValueTyDefId::ConstId(it) => Some(type_for_const(db, it)),
+        ValueTyDefId::StaticId(it) => Some(type_for_static(db, it)),
     }
 }
 
 pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binders<Ty> {
-    let impl_loc = impl_id.lookup(db.upcast());
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db.upcast());
-    let _cx = stdx::panic_context::enter(format!(
-        "impl_self_ty_query({impl_id:?} -> {impl_loc:?} -> {impl_data:?})"
-    ));
     let generics = generics(db.upcast(), impl_id.into());
     let ctx = TyLoweringContext::new(db, &resolver, impl_id.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
@@ -1930,12 +1943,8 @@ pub(crate) fn impl_self_ty_recover(
 }
 
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
-    let impl_loc = impl_id.lookup(db.upcast());
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db.upcast());
-    let _cx = stdx::panic_context::enter(format!(
-        "impl_trait_query({impl_id:?} -> {impl_loc:?} -> {impl_data:?})"
-    ));
     let ctx = TyLoweringContext::new(db, &resolver, impl_id.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
     let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();

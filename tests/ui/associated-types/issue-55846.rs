@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Regression test for #55846, which once caused an ICE.
 

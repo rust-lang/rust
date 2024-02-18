@@ -1,4 +1,4 @@
-// aux-build: issue-91800-macro.rs
+//@ aux-build: issue-91800-macro.rs
 
 #[macro_use]
 extern crate issue_91800_macro;

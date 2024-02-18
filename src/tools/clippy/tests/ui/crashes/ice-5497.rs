@@ -1,4 +1,6 @@
 // reduced from rustc issue-69020-assoc-const-arith-overflow.rs
+#![allow(clippy::out_of_bounds_indexing)]
+
 pub fn main() {}
 
 pub trait Foo {

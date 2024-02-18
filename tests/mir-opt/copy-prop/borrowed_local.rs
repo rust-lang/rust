@@ -22,11 +22,11 @@ fn f() -> bool {
             let b = a;
             // We cannot propagate the place `a`.
             let r2 = &b;
-            Call(RET = cmp_ref(r1, r2), next, UnwindContinue())
+            Call(RET = cmp_ref(r1, r2), ReturnTo(next), UnwindContinue())
         }
         next = {
             // But we can propagate the value `a`.
-            Call(RET = opaque(b), ret, UnwindContinue())
+            Call(RET = opaque(b), ReturnTo(ret), UnwindContinue())
         }
         ret = {
             Return()

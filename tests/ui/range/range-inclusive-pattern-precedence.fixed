@@ -2,7 +2,7 @@
 // `(box a)..=(b)`. In a pattern, however, `&a..=b` means `&(a..=b)`. This may
 // lead to confusion.
 
-// run-rustfix
+//@ run-rustfix
 
 #![warn(ellipsis_inclusive_range_patterns)]
 

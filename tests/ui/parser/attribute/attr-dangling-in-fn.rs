@@ -1,4 +1,4 @@
-// error-pattern:expected statement
+//@ error-pattern:expected statement
 
 fn f() {
   #[foo = "bar"]

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(never_type)]
 #![allow(dead_code)]

@@ -3,7 +3,7 @@
 // 2. get targeted by `return` and not the parent function.
 // 3. get targeted by `?` and not the parent function.
 //
-// edition:2018
+//@ edition:2018
 
 fn main() {}
 

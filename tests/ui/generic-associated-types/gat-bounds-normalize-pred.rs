@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Foo {
     type Assoc<T>: PartialEq<Self::Assoc<i32>>;

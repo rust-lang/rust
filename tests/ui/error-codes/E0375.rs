@@ -3,7 +3,7 @@ use std::ops::CoerceUnsized;
 
 struct Foo<T: ?Sized, U: ?Sized> {
     a: i32,
-    b: T,
+    b: T, //~ ERROR E0277
     c: U,
 }
 

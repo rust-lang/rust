@@ -4,10 +4,10 @@
 use std::mem;
 
 // Strip out raw byte dumps to make comparison platform-independent:
-// normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
-// normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
-// normalize-stderr-test "offset \d+" -> "offset N"
-// normalize-stderr-test "size \d+" -> "size N"
+//@ normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ normalize-stderr-test "offset \d+" -> "offset N"
+//@ normalize-stderr-test "size \d+" -> "size N"
 
 
 /// A newtype wrapper to prevent MIR generation from inserting reborrows that would affect the error

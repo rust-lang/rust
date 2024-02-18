@@ -19,8 +19,8 @@ use hir_ty::{
 use crate::{
     Adt, AsAssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl, Field,
     Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module, SelfParam,
-    Static, Struct, Trait, TraitAlias, TyBuilder, Type, TypeAlias, TypeOrConstParam, TypeParam,
-    Union, Variant,
+    Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias, TypeOrConstParam,
+    TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -158,7 +158,8 @@ impl HirDisplay for Adt {
 
 impl HirDisplay for Struct {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
+        let module_id = self.module(f.db).id;
+        write_visibility(module_id, self.visibility(f.db), f)?;
         f.write_str("struct ")?;
         write!(f, "{}", self.name(f.db).display(f.db.upcast()))?;
         let def_id = GenericDefId::AdtId(AdtId::StructId(self.id));
@@ -171,6 +172,7 @@ impl HirDisplay for Struct {
 
             while let Some((id, _)) = it.next() {
                 let field = Field { parent: (*self).into(), id };
+                write_visibility(module_id, field.visibility(f.db), f)?;
                 field.ty(f.db).hir_fmt(f)?;
                 if it.peek().is_some() {
                     f.write_str(", ")?;
@@ -253,6 +255,13 @@ impl HirDisplay for Field {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_visibility(self.parent.module(f.db).id, self.visibility(f.db), f)?;
         write!(f, "{}: ", self.name(f.db).display(f.db.upcast()))?;
+        self.ty(f.db).hir_fmt(f)
+    }
+}
+
+impl HirDisplay for TupleField {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        write!(f, "pub {}: ", self.name().display(f.db.upcast()))?;
         self.ty(f.db).hir_fmt(f)
     }
 }

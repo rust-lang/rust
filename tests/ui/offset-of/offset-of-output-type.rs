@@ -1,5 +1,3 @@
-#![feature(offset_of)]
-
 use std::mem::offset_of;
 
 struct S {

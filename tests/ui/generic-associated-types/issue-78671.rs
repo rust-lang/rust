@@ -1,4 +1,4 @@
-// revisions: base extended
+//@ revisions: base extended
 
 #![cfg_attr(extended, feature(generic_associated_types_extended))]
 #![cfg_attr(extended, allow(incomplete_features))]

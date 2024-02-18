@@ -1,5 +1,5 @@
-// compile-flags: -Z unpretty=thir-flat
-// check-pass
+//@ compile-flags: -Z unpretty=thir-flat
+//@ check-pass
 
 // Previously, the constants with `Self::Bar(())` would be `Call`s instead of
 // `Adt`s in THIR.

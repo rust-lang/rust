@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
-use clippy_utils::{is_lint_allowed, match_def_path, paths};
+use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
@@ -386,7 +386,8 @@ fn check_unsafe_derive_deserialize<'tcx>(
         && cx
             .tcx
             .inherent_impls(def.did())
-            .iter()
+            .into_iter()
+            .flatten()
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {
@@ -449,13 +450,14 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         && let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq)
         && let Some(def_id) = trait_ref.trait_def_id()
         && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
+        && !has_non_exhaustive_attr(cx.tcx, *adt)
         && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
-        && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, adt.did(),&[])
+        && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[])
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, adt.did(), &[]))
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, None, &[]))
     {
         span_lint_and_sugg(
             cx,

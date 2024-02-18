@@ -4,9 +4,18 @@ error: unconstrained opaque type
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+error: internal compiler error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-86800.rs:39:5
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                        --- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     f
+   |     ^
+
 error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
-#0 [type_of_opaque] computing type of opaque `TransactionFuture::{opaque#0}`
-#1 [type_of] computing type of `TransactionFuture::{opaque#0}`
+#0 [mir_borrowck] borrow-checking `execute_transaction_fut`
+#1 [type_of_opaque] computing type of opaque `execute_transaction_fut::{opaque#0}`
 end of query stack

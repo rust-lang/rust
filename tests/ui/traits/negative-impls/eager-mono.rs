@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags:-C link-dead-code=y
+//@ build-pass
+//@ compile-flags:-C link-dead-code=y
 
 #![feature(negative_impls)]
 

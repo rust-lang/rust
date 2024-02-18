@@ -3,6 +3,7 @@ use std::fmt::Debug;
 
 use super::FulfillmentContext;
 use super::TraitEngine;
+use crate::regions::InferCtxtRegionExt;
 use crate::solve::FulfillmentCtxt as NextFulfillmentCtxt;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::NormalizeExt;
@@ -26,11 +27,8 @@ use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub trait TraitEngineExt<'tcx> {
-    fn new(infcx: &InferCtxt<'tcx>) -> Box<Self>;
-}
-
-impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
+#[extension(pub trait TraitEngineExt<'tcx>)]
+impl<'tcx> dyn TraitEngine<'tcx> {
     fn new(infcx: &InferCtxt<'tcx>) -> Box<Self> {
         if infcx.next_trait_solver() {
             Box::new(NextFulfillmentCtxt::new(infcx))

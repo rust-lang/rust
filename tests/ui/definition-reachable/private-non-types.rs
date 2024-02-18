@@ -1,7 +1,7 @@
 // Check that we don't require stability annotations for private modules,
 // imports and fields that are accessible to opaque macros.
 
-// check-pass
+//@ check-pass
 
 #![feature(decl_macro, staged_api)]
 #![stable(feature = "test", since = "1.0.0")]

@@ -1,5 +1,5 @@
-// edition:2021
-// check-pass
+//@ edition:2021
+//@ check-pass
 
 #![feature(return_type_notation)]
 //~^ WARN the feature `return_type_notation` is incomplete

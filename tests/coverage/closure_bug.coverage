@@ -3,6 +3,7 @@
    LL|       |// the coverage report. However, an unstable sort was causing them to be treated
    LL|       |// inconsistently when preparing coverage spans.
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
    LL|      1|    let truthy = std::env::args().len() == 1;
    LL|      1|

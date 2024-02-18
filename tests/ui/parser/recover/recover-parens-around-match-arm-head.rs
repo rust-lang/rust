@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main() {
     let val = 42;
     let x = match val {

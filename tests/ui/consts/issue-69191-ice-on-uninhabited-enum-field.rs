@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 //
 // (this is deliberately *not* check-pass; I have confirmed that the bug in
 // question does not replicate when one uses `cargo check` alone.)

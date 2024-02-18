@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             } else {
                 None
             };
-            cx.emit_spanned_lint(
+            cx.emit_span_lint(
                 ARRAY_INTO_ITER,
                 call.ident.span,
                 ArrayIntoIterDiag { target, suggestion: call.ident.span, sub },

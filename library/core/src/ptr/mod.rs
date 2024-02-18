@@ -376,6 +376,8 @@
 //! [Stacked Borrows]: https://plv.mpi-sws.org/rustbelt/stacked-borrows/
 
 #![stable(feature = "rust1", since = "1.0.0")]
+// There are many unsafe functions taking pointers that don't dereference them.
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::cmp::Ordering;
 use crate::fmt;
@@ -385,7 +387,7 @@ use crate::intrinsics::{
 };
 use crate::marker::FnPtr;
 
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, align_of, size_of, MaybeUninit};
 
 mod alignment;
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
@@ -649,7 +651,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// address makes sense in the address space that this pointer will be used with.
 ///
 /// Using this function means that code is *not* following [Strict
-/// Provenance][../index.html#strict-provenance] rules. "Guessing" a
+/// Provenance][self#strict-provenance] rules. "Guessing" a
 /// suitable provenance complicates specification and reasoning and may not be supported by
 /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
 /// use [`with_addr`][pointer::with_addr] wherever possible.
@@ -660,7 +662,7 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// pointer has to pick up.
 ///
 /// It is unclear whether this function can be given a satisfying unambiguous specification. This
-/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+/// API and its claimed semantics are part of [Exposed Provenance][self#exposed-provenance].
 #[must_use]
 #[inline(always)]
 #[unstable(feature = "exposed_provenance", issue = "95228")]
@@ -689,7 +691,7 @@ where
 /// address makes sense in the address space that this pointer will be used with.
 ///
 /// Using this function means that code is *not* following [Strict
-/// Provenance][../index.html#strict-provenance] rules. "Guessing" a
+/// Provenance][self#strict-provenance] rules. "Guessing" a
 /// suitable provenance complicates specification and reasoning and may not be supported by
 /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
 /// use [`with_addr`][pointer::with_addr] wherever possible.
@@ -700,7 +702,7 @@ where
 /// pointer has to pick up.
 ///
 /// It is unclear whether this function can be given a satisfying unambiguous specification. This
-/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
+/// API and its claimed semantics are part of [Exposed Provenance][self#exposed-provenance].
 #[must_use]
 #[inline(always)]
 #[unstable(feature = "exposed_provenance", issue = "95228")]
@@ -967,10 +969,16 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         assert_unsafe_precondition!(
             "ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null \
             and the specified memory ranges do not overlap",
-            [T](x: *mut T, y: *mut T, count: usize) =>
-            is_aligned_and_not_null(x)
-                && is_aligned_and_not_null(y)
-                && is_nonoverlapping(x, y, count)
+            (
+                x: *mut () = x as *mut (),
+                y: *mut () = y as *mut (),
+                size: usize = size_of::<T>(),
+                align: usize = align_of::<T>(),
+                count: usize = count,
+            ) =>
+            is_aligned_and_not_null(x, align)
+                && is_aligned_and_not_null(y, align)
+                && is_nonoverlapping(x, y, size, count)
         );
     }
 
@@ -1061,7 +1069,10 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     unsafe {
         assert_unsafe_precondition!(
             "ptr::replace requires that the pointer argument is aligned and non-null",
-            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+            (
+                addr: *const () = dst as *const (),
+                align: usize = align_of::<T>(),
+            ) => is_aligned_and_not_null(addr, align)
         );
         mem::swap(&mut *dst, &mut src); // cannot overlap
     }
@@ -1176,7 +1187,6 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-#[rustc_allow_const_fn_unstable(const_mut_refs, const_maybe_uninit_as_mut_ptr)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_read"]
 pub const unsafe fn read<T>(src: *const T) -> T {
@@ -1208,9 +1218,13 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 
     // SAFETY: the caller must guarantee that `src` is valid for reads.
     unsafe {
+        #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
         assert_unsafe_precondition!(
             "ptr::read requires that the pointer argument is aligned and non-null",
-            [T](src: *const T) => is_aligned_and_not_null(src)
+            (
+                addr: *const () = src as *const (),
+                align: usize = align_of::<T>(),
+            ) => is_aligned_and_not_null(addr, align)
         );
         crate::intrinsics::read_via_copy(src)
     }
@@ -1294,7 +1308,11 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "ptr_unaligned", since = "1.17.0")]
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
-#[rustc_allow_const_fn_unstable(const_mut_refs, const_maybe_uninit_as_mut_ptr)]
+#[rustc_allow_const_fn_unstable(
+    const_mut_refs,
+    const_maybe_uninit_as_mut_ptr,
+    const_intrinsic_copy
+)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
@@ -1408,9 +1426,13 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
     // `dst` cannot overlap `src` because the caller has mutable access
     // to `dst` while `src` is owned by this function.
     unsafe {
+        #[cfg(debug_assertions)] // Too expensive to always enable (for now?)
         assert_unsafe_precondition!(
             "ptr::write requires that the pointer argument is aligned and non-null",
-            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+            (
+                addr: *mut () = dst as *mut (),
+                align: usize = align_of::<T>(),
+            ) => is_aligned_and_not_null(addr, align)
         );
         intrinsics::write_via_move(dst, src)
     }
@@ -1578,7 +1600,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
     unsafe {
         assert_unsafe_precondition!(
             "ptr::read_volatile requires that the pointer argument is aligned and non-null",
-            [T](src: *const T) => is_aligned_and_not_null(src)
+            (
+                addr: *const () = src as *const (),
+                align: usize = align_of::<T>(),
+            ) => is_aligned_and_not_null(addr, align)
         );
         intrinsics::volatile_load(src)
     }
@@ -1653,7 +1678,10 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     unsafe {
         assert_unsafe_precondition!(
             "ptr::write_volatile requires that the pointer argument is aligned and non-null",
-            [T](dst: *mut T) => is_aligned_and_not_null(dst)
+            (
+                addr: *mut () = dst as *mut (),
+                align: usize = align_of::<T>(),
+            ) => is_aligned_and_not_null(addr, align)
         );
         intrinsics::volatile_store(dst, src);
     }

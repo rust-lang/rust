@@ -1,6 +1,6 @@
-// run-pass
-// edition:2021
-// check-run-results
+//@ run-pass
+//@ edition:2021
+//@ check-run-results
 
 #![feature(dyn_star)]
 //~^ WARN the feature `dyn_star` is incomplete and may not be safe to use and/or cause compiler crashes
@@ -19,15 +19,14 @@ async fn async_main() {
 // ------------------------------------------------------------------------- //
 // Implementation Details Below...
 
-use std::task::*;
 use std::pin::pin;
+use std::task::*;
 
 fn main() {
     let mut fut = pin!(async_main());
 
     // Poll loop, just to test the future...
-    let waker = Waker::noop();
-    let ctx = &mut Context::from_waker(&waker);
+    let ctx = &mut Context::from_waker(Waker::noop());
 
     loop {
         match fut.as_mut().poll(ctx) {

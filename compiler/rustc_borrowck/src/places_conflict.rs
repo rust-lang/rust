@@ -50,8 +50,6 @@
 //!    and either equal or disjoint.
 //!  - If we did run out of access, the borrow can access a part of it.
 
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::ArtificialField;
 use crate::Overlap;
 use crate::{AccessDepth, Deep, Shallow};

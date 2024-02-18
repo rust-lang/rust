@@ -1,7 +1,7 @@
-// run-pass
-// aux-build:namespaced_enums.rs
+//@ run-pass
+//@ aux-build:namespaced_enums.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate namespaced_enums;
 

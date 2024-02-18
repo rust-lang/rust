@@ -93,7 +93,7 @@ use crate::env;
 use crate::ffi::c_void;
 use crate::fmt;
 use crate::panic::UnwindSafe;
-use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use crate::sync::atomic::{AtomicU8, Ordering::Relaxed};
 use crate::sync::LazyLock;
 use crate::sys_common::backtrace::{lock, output_filename, set_image_base};
 
@@ -254,7 +254,7 @@ impl Backtrace {
         // Cache the result of reading the environment variables to make
         // backtrace captures speedy, because otherwise reading environment
         // variables every time can be somewhat slow.
-        static ENABLED: AtomicUsize = AtomicUsize::new(0);
+        static ENABLED: AtomicU8 = AtomicU8::new(0);
         match ENABLED.load(Relaxed) {
             0 => {}
             1 => return false,
@@ -267,7 +267,7 @@ impl Backtrace {
                 Err(_) => false,
             },
         };
-        ENABLED.store(enabled as usize + 1, Relaxed);
+        ENABLED.store(enabled as u8 + 1, Relaxed);
         enabled
     }
 

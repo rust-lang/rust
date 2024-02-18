@@ -8,7 +8,9 @@ use crate::io::prelude::*;
 use crate::cell::{Cell, RefCell};
 use crate::fmt;
 use crate::fs::File;
-use crate::io::{self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
+use crate::io::{
+    self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines, SpecReadByte,
+};
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantMutex, ReentrantMutexGuard};
 use crate::sys::stdio;
@@ -480,6 +482,13 @@ impl Read for StdinLock<'_> {
 
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         self.inner.read_exact(buf)
+    }
+}
+
+impl SpecReadByte for StdinLock<'_> {
+    #[inline]
+    fn spec_read_byte(&mut self) -> Option<io::Result<u8>> {
+        BufReader::spec_read_byte(&mut *self.inner)
     }
 }
 

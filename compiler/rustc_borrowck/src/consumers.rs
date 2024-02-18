@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! This file provides API for compiler consumers.
 
 use rustc_hir::def_id::LocalDefId;

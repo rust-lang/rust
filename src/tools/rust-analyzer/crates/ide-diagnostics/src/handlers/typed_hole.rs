@@ -13,7 +13,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered when an underscore expression is used in an invalid position.
 pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Diagnostic {
-    let display_range = ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into()));
+    let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
     let (message, fixes) = if d.expected.is_unknown() {
         ("`_` expressions may only appear on the left-hand side of an assignment".to_owned(), None)
     } else {

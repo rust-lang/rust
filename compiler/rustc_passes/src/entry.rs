@@ -1,6 +1,6 @@
 use rustc_ast::attr;
 use rustc_ast::entry::EntryPointType;
-use rustc_errors::error_code;
+use rustc_errors::codes::*;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ItemId, Node, CRATE_HIR_ID};
@@ -69,20 +69,20 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
     match entry_point_type {
         EntryPointType::None => {
             if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
-                ctxt.tcx.sess.emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
+                ctxt.tcx.dcx().emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
             }
         }
         _ if !matches!(ctxt.tcx.def_kind(id.owner_id), DefKind::Fn) => {
             for attr in [sym::start, sym::rustc_main] {
                 if let Some(span) = attr_span_by_symbol(ctxt, id, attr) {
-                    ctxt.tcx.sess.emit_err(AttrOnlyInFunctions { span, attr });
+                    ctxt.tcx.dcx().emit_err(AttrOnlyInFunctions { span, attr });
                 }
             }
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
             if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
-                ctxt.tcx.sess.emit_err(AttrOnlyOnRootMain { span, attr: sym::unix_sigpipe });
+                ctxt.tcx.dcx().emit_err(AttrOnlyOnRootMain { span, attr: sym::unix_sigpipe });
             }
             ctxt.non_main_fns.push(ctxt.tcx.def_span(id.owner_id));
         }
@@ -90,7 +90,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
             if ctxt.attr_main_fn.is_none() {
                 ctxt.attr_main_fn = Some((id.owner_id.def_id, ctxt.tcx.def_span(id.owner_id)));
             } else {
-                ctxt.tcx.sess.emit_err(MultipleRustcMain {
+                ctxt.tcx.dcx().emit_err(MultipleRustcMain {
                     span: ctxt.tcx.def_span(id.owner_id.to_def_id()),
                     first: ctxt.attr_main_fn.unwrap().1,
                     additional: ctxt.tcx.def_span(id.owner_id.to_def_id()),
@@ -99,12 +99,12 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
         }
         EntryPointType::Start => {
             if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
-                ctxt.tcx.sess.emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
+                ctxt.tcx.dcx().emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
             }
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((id.owner_id.def_id, ctxt.tcx.def_span(id.owner_id)));
             } else {
-                ctxt.tcx.sess.emit_err(MultipleStartFunctions {
+                ctxt.tcx.dcx().emit_err(MultipleStartFunctions {
                     span: ctxt.tcx.def_span(id.owner_id),
                     labeled: ctxt.tcx.def_span(id.owner_id.to_def_id()),
                     previous: ctxt.start_fn.unwrap().1,
@@ -128,14 +128,14 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
             if let Some(def_id) = def_id.as_local()
                 && matches!(tcx.opt_hir_node_by_def_id(def_id), Some(Node::ForeignItem(_)))
             {
-                tcx.sess.emit_err(ExternMain { span: tcx.def_span(def_id) });
+                tcx.dcx().emit_err(ExternMain { span: tcx.def_span(def_id) });
                 return None;
             }
 
             if main_def.is_import && !tcx.features().imported_main {
                 let span = main_def.span;
                 feature_err(
-                    &tcx.sess.parse_sess,
+                    &tcx.sess,
                     sym::imported_main,
                     span,
                     "using an imported function as entry point `main` is experimental",
@@ -161,7 +161,7 @@ fn sigpipe(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
                 sigpipe::DEFAULT
             }
             _ => {
-                tcx.sess.emit_err(UnixSigpipeValues { span: attr.span });
+                tcx.dcx().emit_err(UnixSigpipeValues { span: attr.span });
                 sigpipe::DEFAULT
             }
         }
@@ -180,14 +180,14 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
         Default::default()
     });
     let main_def_opt = tcx.resolutions(()).main_def;
-    let diagnostic_id = error_code!(E0601);
-    let add_teach_note = tcx.sess.teach(&diagnostic_id);
+    let code = E0601;
+    let add_teach_note = tcx.sess.teach(code);
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.
     let file_empty = tcx.sess.source_map().lookup_line(sp.hi()).is_err();
 
-    tcx.sess.emit_err(NoMainErr {
+    tcx.dcx().emit_err(NoMainErr {
         sp,
         crate_name: tcx.crate_name(LOCAL_CRATE),
         has_filename,

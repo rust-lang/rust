@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(macro_metavar_expr)]
 

@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 pub fn works() {
     let array/*: [_; _]*/ = default_array();

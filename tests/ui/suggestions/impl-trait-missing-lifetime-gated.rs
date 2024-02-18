@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 // gate-test-anonymous_lifetime_in_impl_trait
 // Verify the behaviour of `feature(anonymous_lifetime_in_impl_trait)`.
 
@@ -18,6 +18,7 @@ mod elided {
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
     //~^ ERROR missing lifetime specifier
+    //~| ERROR lifetime may not live long enough
 }
 
 mod underscore {
@@ -36,6 +37,7 @@ mod underscore {
     // But that lifetime does not participate in resolution.
     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
     //~^ ERROR missing lifetime specifier
+    //~| ERROR lifetime may not live long enough
 }
 
 mod alone_in_path {
@@ -61,8 +63,8 @@ mod in_path {
 }
 
 // This must not err, as the `&` actually resolves to `'a`.
-fn resolved_anonymous<'a, T>(f: impl Fn(&'a str) -> &T) {
-    f("f")
+fn resolved_anonymous<'a, T: 'a>(f: impl Fn(&'a str) -> &T) {
+    f("f");
 }
 
 fn main() {}

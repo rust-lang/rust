@@ -1,5 +1,5 @@
-// run-pass
-// revisions: full min
+//@ run-pass
+//@ revisions: full min
 #![cfg_attr(full, feature(generic_const_exprs))]
 #![allow(incomplete_features)]
 

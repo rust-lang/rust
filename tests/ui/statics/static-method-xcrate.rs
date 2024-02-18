@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:static-methods-crate.rs
+//@ run-pass
+//@ aux-build:static-methods-crate.rs
 
 extern crate static_methods_crate;
 

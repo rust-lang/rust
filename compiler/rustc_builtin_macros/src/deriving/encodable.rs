@@ -296,6 +296,6 @@ fn encodable_substructure(
             BlockOrExpr::new_mixed(thin_vec![me], Some(expr))
         }
 
-        _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)"),
+        _ => cx.dcx().bug("expected Struct or EnumMatching in derive(Encodable)"),
     }
 }

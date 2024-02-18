@@ -1,7 +1,7 @@
 #![allow(unused, clippy::manual_async_fn)]
 #![warn(clippy::redundant_async_block)]
 
-use std::future::Future;
+use std::future::{Future, IntoFuture};
 
 async fn func1(n: usize) -> usize {
     n + 1
@@ -188,4 +188,10 @@ fn await_from_macro_deep() -> impl Future<Output = u32> {
     // Do not lint: the macro may change in the future
     // or return different things depending on its argument
     async { mac!(async { 42 }) }
+}
+
+// Issue 11959
+fn from_into_future(a: impl IntoFuture<Output = u32>) -> impl Future<Output = u32> {
+    // Do not lint: `a` is not equivalent to this expression
+    async { a.await }
 }

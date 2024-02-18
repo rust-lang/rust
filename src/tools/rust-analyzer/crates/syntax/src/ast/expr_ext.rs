@@ -13,6 +13,8 @@ use crate::{
     SyntaxNode, SyntaxToken, T,
 };
 
+use super::RangeItem;
+
 impl ast::HasAttrs for ast::Expr {}
 
 impl ast::Expr {
@@ -227,16 +229,12 @@ impl ast::RangeExpr {
             Some((ix, token, bin_op))
         })
     }
+}
 
-    pub fn op_kind(&self) -> Option<RangeOp> {
-        self.op_details().map(|t| t.2)
-    }
+impl RangeItem for ast::RangeExpr {
+    type Bound = ast::Expr;
 
-    pub fn op_token(&self) -> Option<SyntaxToken> {
-        self.op_details().map(|t| t.1)
-    }
-
-    pub fn start(&self) -> Option<ast::Expr> {
+    fn start(&self) -> Option<ast::Expr> {
         let op_ix = self.op_details()?.0;
         self.syntax()
             .children_with_tokens()
@@ -244,12 +242,20 @@ impl ast::RangeExpr {
             .find_map(|it| ast::Expr::cast(it.into_node()?))
     }
 
-    pub fn end(&self) -> Option<ast::Expr> {
+    fn end(&self) -> Option<ast::Expr> {
         let op_ix = self.op_details()?.0;
         self.syntax()
             .children_with_tokens()
             .skip(op_ix + 1)
             .find_map(|it| ast::Expr::cast(it.into_node()?))
+    }
+
+    fn op_token(&self) -> Option<SyntaxToken> {
+        self.op_details().map(|t| t.1)
+    }
+
+    fn op_kind(&self) -> Option<RangeOp> {
+        self.op_details().map(|t| t.2)
     }
 }
 

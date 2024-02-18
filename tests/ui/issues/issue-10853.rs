@@ -1,5 +1,5 @@
-// check-pass
-// pretty-expanded FIXME #23616
+//@ check-pass
+//@ pretty-expanded FIXME #23616
 
 #![deny(missing_docs)]
 #![doc="module"]

@@ -72,7 +72,7 @@ fn main() {
 }
 "#]],
     );
-    // FIXME we should ahev testing infra for multi level expansion tests
+    // FIXME we should have testing infra for multi level expansion tests
     check(
         r#"
 macro_rules! __rust_force_expr {
@@ -544,11 +544,11 @@ fn test_proptest_arbitrary() {
     check(
         r#"
 macro_rules! arbitrary {
-    ([$($bounds : tt)*] $typ: ty, $strat: ty, $params: ty;
+    ([$($bounds : tt)*] $typ: ty, $strategy: ty, $params: ty;
         $args: ident => $logic: expr) => {
         impl<$($bounds)*> $crate::arbitrary::Arbitrary for $typ {
             type Parameters = $params;
-            type Strategy = $strat;
+            type Strategy = $strategy;
             fn arbitrary_with($args: Self::Parameters) -> Self::Strategy {
                 $logic
             }
@@ -569,11 +569,11 @@ arbitrary!(
 "#,
         expect![[r#"
 macro_rules! arbitrary {
-    ([$($bounds : tt)*] $typ: ty, $strat: ty, $params: ty;
+    ([$($bounds : tt)*] $typ: ty, $strategy: ty, $params: ty;
         $args: ident => $logic: expr) => {
         impl<$($bounds)*> $crate::arbitrary::Arbitrary for $typ {
             type Parameters = $params;
-            type Strategy = $strat;
+            type Strategy = $strategy;
             fn arbitrary_with($args: Self::Parameters) -> Self::Strategy {
                 $logic
             }

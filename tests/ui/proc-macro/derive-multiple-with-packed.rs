@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[derive(Clone, Copy)]
 #[derive(Debug)] // OK, even if `Copy` is in the different `#[derive]`

@@ -1,5 +1,5 @@
-// check-fail
-// known-bug: #87803
+//@ check-fail
+//@ known-bug: #87803
 
 // This should pass, but using a type alias vs a reference directly
 // changes late-bound -> early-bound.

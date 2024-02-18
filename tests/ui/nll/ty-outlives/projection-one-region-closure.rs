@@ -12,7 +12,7 @@
 //
 // Ensuring that both `T: 'a` and `'b: 'a` holds does work (`elements_outlive`).
 
-// compile-flags:-Zverbose
+//@ compile-flags:-Zverbose-internals
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

@@ -1,0 +1,44 @@
+error: unreachable pattern
+  --> $DIR/unreachable.rs:17:9
+   |
+LL |         Err(!),
+   |         ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unreachable.rs:7:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:20:19
+   |
+LL |     let (Ok(_x) | Err(!)) = res_void;
+   |                   ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:22:12
+   |
+LL |     if let Err(!) = res_void {}
+   |            ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:24:24
+   |
+LL |     if let (Ok(true) | Err(!)) = res_void {}
+   |                        ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:26:23
+   |
+LL |     for (Ok(mut _x) | Err(!)) in [res_void] {}
+   |                       ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/unreachable.rs:30:18
+   |
+LL | fn foo((Ok(_x) | Err(!)): Result<bool, Void>) {}
+   |                  ^^^^^^
+
+error: aborting due to 6 previous errors
+

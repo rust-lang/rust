@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 extern crate proc_macro;
 
-// aux-build:is-available.rs
+//@ aux-build:is-available.rs
 extern crate is_available;
 
 fn main() {

@@ -111,7 +111,7 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
 
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
-                if let Operand::Move(place) = *arg {
+                if let Operand::Move(place) = arg.node {
                     let local = place.local;
                     if place.is_indirect()
                         || local == RETURN_PLACE
@@ -205,8 +205,8 @@ pub fn deduced_param_attrs<'tcx>(
             |(arg_index, local_decl)| DeducedParamAttrs {
                 read_only: !deduce_read_only.mutable_args.contains(arg_index)
                     // We must normalize here to reveal opaques and normalize
-                    // their substs, otherwise we'll see exponential blow-up in
-                    // compile times: #113372
+                    // their generic parameters, otherwise we'll see exponential
+                    // blow-up in compile times: #113372
                     && tcx
                         .normalize_erasing_regions(param_env, local_decl.ty)
                         .is_freeze(tcx, param_env),

@@ -1,4 +1,4 @@
-#![feature(offset_of)]
+#![feature(offset_of_nested)]
 
 use std::mem::offset_of;
 
@@ -17,9 +17,8 @@ impl S {
         offset_of!(Self, v)
     }
     fn v_offs_wrong_syntax() {
-        offset_of!(Self, Self::v); //~ ERROR no rules expected the token `::`
-        offset_of!(S, Self); //~ ERROR expected identifier, found keyword `Self`
-        //~| no field `Self` on type `S`
+        offset_of!(Self, Self::v); //~ offset_of expects dot-separated field and variant names
+        offset_of!(S, Self); //~ no field `Self` on type `S`
     }
     fn offs_in_c() -> usize {
         offset_of!(C<Self>, w)
@@ -51,8 +50,6 @@ fn main() {
     offset_of!(self::S, v);
     offset_of!(Self, v); //~ ERROR cannot find type `Self` in this scope
 
-    offset_of!(S, self); //~ ERROR expected identifier, found keyword `self`
-    //~| no field `self` on type `S`
-    offset_of!(S, v.self); //~ ERROR expected identifier, found keyword `self`
-    //~| no field `self` on type `u8`
+    offset_of!(S, self); //~ no field `self` on type `S`
+    offset_of!(S, v.self); //~ no field `self` on type `u8`
 }

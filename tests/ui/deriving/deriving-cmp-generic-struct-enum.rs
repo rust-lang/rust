@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum ES<T> {
     ES1 { x: T },

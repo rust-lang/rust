@@ -18,7 +18,7 @@ fn lookup_env<'cx>(cx: &'cx ExtCtxt<'_>, var: Symbol) -> Option<Symbol> {
     if let Some(value) = cx.sess.opts.logical_env.get(var) {
         return Some(Symbol::intern(value));
     }
-    // If the environment variable was not defined with the `--env` option, we try to retrieve it
+    // If the environment variable was not defined with the `--env-set` option, we try to retrieve it
     // from rustc's environment.
     env::var(var).ok().as_deref().map(Symbol::intern)
 }
@@ -66,7 +66,7 @@ pub fn expand_env<'cx>(
 ) -> Box<dyn base::MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, tts) {
         Some(exprs) if exprs.is_empty() || exprs.len() > 2 => {
-            cx.emit_err(errors::EnvTakesArgs { span: sp });
+            cx.dcx().emit_err(errors::EnvTakesArgs { span: sp });
             return DummyResult::any(sp);
         }
         None => return DummyResult::any(sp),
@@ -101,15 +101,15 @@ pub fn expand_env<'cx>(
             };
 
             if let Some(msg_from_user) = custom_msg {
-                cx.emit_err(errors::EnvNotDefinedWithUserMessage { span, msg_from_user });
+                cx.dcx().emit_err(errors::EnvNotDefinedWithUserMessage { span, msg_from_user });
             } else if is_cargo_env_var(var.as_str()) {
-                cx.emit_err(errors::EnvNotDefined::CargoEnvVar {
+                cx.dcx().emit_err(errors::EnvNotDefined::CargoEnvVar {
                     span,
                     var: *symbol,
                     var_expr: var_expr.ast_deref(),
                 });
             } else {
-                cx.emit_err(errors::EnvNotDefined::CustomEnvVar {
+                cx.dcx().emit_err(errors::EnvNotDefined::CustomEnvVar {
                     span,
                     var: *symbol,
                     var_expr: var_expr.ast_deref(),

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// aux-build:xcrate.rs
+//@ aux-build:xcrate.rs
 
 #![feature(coroutines, coroutine_trait)]
 

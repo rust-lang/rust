@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![allow(non_camel_case_types)]
 #![deny(keyword_idents)]

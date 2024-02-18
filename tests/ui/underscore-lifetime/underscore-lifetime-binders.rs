@@ -14,6 +14,7 @@ fn meh() -> Box<dyn for<'_> Meh<'_>> //~ ERROR cannot be used here
 }
 
 fn foo2(_: &'_ u8, y: &'_ u8) -> &'_ u8 { y } //~ ERROR missing lifetime specifier
+//~^ ERROR lifetime may not live long enough
 
 fn main() {
     let x = 5;

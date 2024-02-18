@@ -1,5 +1,5 @@
-// revisions: explicit implicit
-//[implicit] check-pass
+//@ revisions: explicit implicit
+//@[implicit] check-pass
 
 #![forbid(coherence_leak_check)]
 #![feature(negative_impls, with_negative_coherence)]

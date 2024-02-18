@@ -134,10 +134,13 @@ fn with_macro_expr_var() {
     macro_rules! mac2 {
         ($e1:expr, $e2:expr) => {
             let $e1..$e2;
+            //~^ ERROR refutable pattern in local binding
             let $e1...$e2;
             //~^ ERROR `...` range patterns are deprecated
             //~| WARN this is accepted in the current edition
+            //~| ERROR refutable pattern in local binding
             let $e1..=$e2;
+            //~^ ERROR refutable pattern in local binding
         }
     }
 
@@ -146,12 +149,18 @@ fn with_macro_expr_var() {
     macro_rules! mac {
         ($e:expr) => {
             let ..$e;
+            //~^ ERROR refutable pattern in local binding
             let ...$e;
             //~^ ERROR range-to patterns with `...` are not allowed
+            //~| ERROR refutable pattern in local binding
             let ..=$e;
+            //~^ ERROR refutable pattern in local binding
             let $e..;
+            //~^ ERROR refutable pattern in local binding
             let $e...; //~ ERROR inclusive range with no end
+            //~^ ERROR refutable pattern in local binding
             let $e..=; //~ ERROR inclusive range with no end
+            //~^ ERROR refutable pattern in local binding
         }
     }
 

@@ -1,7 +1,7 @@
 // Ensure that we don't get a mismatch error when inserting the host param
 // at the end of generic args when the generics have defaulted params.
 //
-// check-pass
+//@ check-pass
 
 #![feature(const_trait_impl, effects)]
 

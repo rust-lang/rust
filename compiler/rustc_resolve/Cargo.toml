@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "1.2.1"
-pulldown-cmark = { version = "0.9.3", default-features = false }
+bitflags = "2.4.1"
+pulldown-cmark = { version = "0.9.6", default-features = false }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }

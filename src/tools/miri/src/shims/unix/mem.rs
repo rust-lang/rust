@@ -6,8 +6,15 @@
 //! mmap/munmap behave a lot like alloc/dealloc, and for simple use they are exactly
 //! equivalent. That is the only part we support: no MAP_FIXED or MAP_SHARED or anything
 //! else that goes beyond a basic allocation API.
+//!
+//! Note that in addition to only supporting malloc-like calls to mmap, we only support free-like
+//! calls to munmap, but for a very different reason. In principle, according to the man pages, it
+//! is possible to unmap arbitrary regions of address space. But in a high-level language like Rust
+//! this amounts to partial deallocation, which LLVM does not support. So any attempt to call our
+//! munmap shim which would partily unmap a region of address space previously mapped by mmap will
+//! report UB.
 
-use crate::{helpers::round_to_next_multiple_of, *};
+use crate::*;
 use rustc_target::abi::Size;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -19,7 +26,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         prot: &OpTy<'tcx, Provenance>,
         flags: &OpTy<'tcx, Provenance>,
         fd: &OpTy<'tcx, Provenance>,
-        offset: &OpTy<'tcx, Provenance>,
+        offset: i128,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
@@ -29,7 +36,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let prot = this.read_scalar(prot)?.to_i32()?;
         let flags = this.read_scalar(flags)?.to_i32()?;
         let fd = this.read_scalar(fd)?.to_i32()?;
-        let offset = this.read_target_usize(offset)?;
 
         let map_private = this.eval_libc_i32("MAP_PRIVATE");
         let map_anonymous = this.eval_libc_i32("MAP_ANONYMOUS");
@@ -89,7 +95,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         let align = this.machine.page_align();
-        let map_length = round_to_next_multiple_of(length, this.machine.page_size);
+        let Some(map_length) = length.checked_next_multiple_of(this.machine.page_size) else {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(this.eval_libc("MAP_FAILED"));
+        };
+        if map_length > this.target_usize_max() {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(this.eval_libc("MAP_FAILED"));
+        }
 
         let ptr =
             this.allocate_ptr(Size::from_bytes(map_length), align, MiriMemoryKind::Mmap.into())?;
@@ -100,8 +113,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             std::iter::repeat(0u8).take(usize::try_from(map_length).unwrap()),
         )
         .unwrap();
-        // Memory mappings don't use provenance, and are always exposed.
-        Machine::expose_ptr(this, ptr)?;
 
         Ok(Scalar::from_pointer(ptr, this))
     }
@@ -113,43 +124,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
 
-        let addr = this.read_target_usize(addr)?;
+        let addr = this.read_pointer(addr)?;
         let length = this.read_target_usize(length)?;
 
-        // addr must be a multiple of the page size
+        // addr must be a multiple of the page size, but apart from that munmap is just implemented
+        // as a dealloc.
         #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
-        if addr % this.machine.page_size != 0 {
+        if addr.addr().bytes() % this.machine.page_size != 0 {
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
             return Ok(Scalar::from_i32(-1));
         }
 
-        let length = round_to_next_multiple_of(length, this.machine.page_size);
-
-        let ptr = Machine::ptr_from_addr_cast(this, addr)?;
-
-        let Ok(ptr) = ptr.into_pointer_or_addr() else {
-            throw_unsup_format!("Miri only supports munmap on memory allocated directly by mmap");
+        let Some(length) = length.checked_next_multiple_of(this.machine.page_size) else {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(Scalar::from_i32(-1));
         };
-        let Some((alloc_id, offset, _prov)) = Machine::ptr_get_alloc(this, ptr) else {
-            throw_unsup_format!("Miri only supports munmap on memory allocated directly by mmap");
-        };
-
-        // Elsewhere in this function we are careful to check what we can and throw an unsupported
-        // error instead of Undefined Behavior when use of this function falls outside of the
-        // narrow scope we support. We deliberately do not check the MemoryKind of this allocation,
-        // because we want to report UB on attempting to unmap memory that Rust "understands", such
-        // the stack, heap, or statics.
-        let (_kind, alloc) = this.memory.alloc_map().get(alloc_id).unwrap();
-        if offset != Size::ZERO || alloc.len() as u64 != length {
-            throw_unsup_format!(
-                "Miri only supports munmap calls that exactly unmap a region previously returned by mmap"
-            );
+        if length > this.target_usize_max() {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(this.eval_libc("MAP_FAILED"));
         }
 
-        let len = Size::from_bytes(alloc.len() as u64);
+        let length = Size::from_bytes(length);
         this.deallocate_ptr(
-            ptr.into(),
-            Some((len, this.machine.page_align())),
+            addr,
+            Some((length, this.machine.page_align())),
             MemoryKind::Machine(MiriMemoryKind::Mmap),
         )?;
 

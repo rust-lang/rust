@@ -154,6 +154,7 @@ LL |         () if let 0 = 1 => {}
    |
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
@@ -164,6 +165,7 @@ LL |         () if true && let 0 = 1 => {}
    |
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
@@ -174,6 +176,7 @@ LL |         () if let 0 = 1 && true => {}
    |
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
@@ -184,6 +187,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    |
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
@@ -194,6 +198,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    |
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
@@ -204,6 +209,7 @@ LL |         () if let 0 = 1 => {}
    |
    = note: see issue #51114 <https://github.com/rust-lang/rust/issues/51114> for more information
    = help: add `#![feature(if_let_guard)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `let` expressions in this position are unstable
@@ -214,6 +220,7 @@ LL |         () if true && let 0 = 1 => {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:20:15
@@ -223,6 +230,7 @@ LL |         () if let 0 = 1 && true => {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:34:15
@@ -232,6 +240,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:34:28
@@ -241,6 +250,7 @@ LL |         () if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:43:15
@@ -250,6 +260,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 23 previous errors
 

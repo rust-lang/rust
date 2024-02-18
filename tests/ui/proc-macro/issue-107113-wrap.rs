@@ -1,5 +1,5 @@
-// edition:2021
-// aux-build:issue-107113.rs
+//@ edition:2021
+//@ aux-build:issue-107113.rs
 
 #[macro_use]
 extern crate issue_107113;

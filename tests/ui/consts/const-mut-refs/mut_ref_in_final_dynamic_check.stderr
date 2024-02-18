@@ -1,0 +1,70 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:20:1
+   |
+LL | const MUT: Option<&mut i32> = helper();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Some)>.0: encountered mutable reference in a `const` or `static`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:22:1
+   |
+LL | static MUT_STATIC: Option<&mut i32> = helper();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Some)>.0: encountered mutable reference in a `const` or `static`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:29:1
+   |
+LL | const INT2PTR: Option<&mut i32> = helper_int2ptr();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (0x2a[noalloc] has no provenance)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:31:1
+   |
+LL | static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-variant(Some)>.0: encountered a dangling reference (0x2a[noalloc] has no provenance)
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: encountered dangling pointer in final value of constant
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:38:1
+   |
+LL | const DANGLING: Option<&mut i32> = helper_dangling();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: encountered dangling pointer in final value of static
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:39:1
+   |
+LL | static DANGLING_STATIC: Option<&mut i32> = helper_dangling();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/mut_ref_in_final_dynamic_check.rs:45:1
+   |
+LL | static MUTEX: Mutex<&mut [u8]> = Mutex::new(unsafe { &mut *MUT_ARRAY });
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .data.value: encountered mutable reference in a `const` or `static`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

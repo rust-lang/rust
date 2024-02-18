@@ -1,6 +1,6 @@
 // Tests that we still detect defining usages when
 // lifetimes are used in an associated opaque type
-// check-pass
+//@ check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 

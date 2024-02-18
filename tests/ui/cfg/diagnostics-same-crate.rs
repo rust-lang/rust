@@ -4,7 +4,7 @@ pub mod inner {
     //~^ NOTE found an item that was configured out
 
     #[cfg(FALSE)]
-    pub mod doesnt_exist {
+    pub mod doesnt_exist { //~ NOTE found an item that was configured out
         pub fn hello() {}
     }
 
@@ -34,7 +34,6 @@ fn main() {
 
     // The module isn't found - we would like to get a diagnostic, but currently don't due to
     // the awkward way the resolver diagnostics are currently implemented.
-    // FIXME(Nilstrieb): Also add a note to the cfg diagnostic here
     inner::doesnt_exist::hello(); //~ ERROR failed to resolve
     //~| NOTE could not find `doesnt_exist` in `inner`
 

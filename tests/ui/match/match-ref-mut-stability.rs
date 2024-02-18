@@ -1,7 +1,7 @@
 // Check that `ref mut` variables don't change address between the match guard
 // and the arm expression.
 
-// run-pass
+//@ run-pass
 
 // Test that z always point to the same temporary.
 fn referent_stability() {

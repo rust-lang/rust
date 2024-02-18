@@ -1,5 +1,5 @@
 // Checks that we do not ICE when comparing `Self` to `Pin`
-// edition:2021
+//@ edition:2021
 
 struct S;
 

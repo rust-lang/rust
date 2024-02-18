@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Tests that automatic coercions from &mut T to *mut T
 // allow borrows of T to expire immediately - essentially, that

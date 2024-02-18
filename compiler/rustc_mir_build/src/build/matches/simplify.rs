@@ -15,7 +15,9 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
 use crate::build::Builder;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::thir::{self, *};
+use rustc_middle::ty;
 
 use std::mem;
 
@@ -38,43 +40,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
-        // repeatedly simplify match pairs until fixed point is reached
         debug!("{candidate:#?}");
-
-        // existing_bindings and new_bindings exists to keep the semantics in order.
-        // Reversing the binding order for bindings after `@` changes the binding order in places
-        // it shouldn't be changed, for example `let (Some(a), Some(b)) = (x, y)`
+        // In order to please the borrow checker, in a pattern like `x @ pat` we must lower the
+        // bindings in `pat` before `x`. E.g. (#69971):
         //
-        // To avoid this, the binding occurs in the following manner:
-        // * the bindings for one iteration of the following loop occurs in order (i.e. left to
-        // right)
-        // * the bindings from the previous iteration of the loop is prepended to the bindings from
-        // the current iteration (in the implementation this is done by mem::swap and extend)
-        // * after all iterations, these new bindings are then appended to the bindings that were
-        // preexisting (i.e. `candidate.binding` when the function was called).
+        // struct NonCopyStruct {
+        //     copy_field: u32,
+        // }
+        //
+        // fn foo1(x: NonCopyStruct) {
+        //     let y @ NonCopyStruct { copy_field: z } = x;
+        //     // the above should turn into
+        //     let z = x.copy_field;
+        //     let y = x;
+        // }
+        //
+        // We can't just reverse the binding order, because we must preserve pattern-order
+        // otherwise, e.g. in `let (Some(a), Some(b)) = (x, y)`. Our rule then is: deepest-first,
+        // and bindings at the same depth stay in source order.
+        //
+        // To do this, every time around the loop we prepend the newly found bindings to the
+        // bindings we already had.
         //
         // example:
         // candidate.bindings = [1, 2, 3]
-        // binding in iter 1: [4, 5]
-        // binding in iter 2: [6, 7]
+        // bindings in iter 1: [4, 5]
+        // bindings in iter 2: [6, 7]
         //
-        // final binding: [1, 2, 3, 6, 7, 4, 5]
-        let mut existing_bindings = mem::take(&mut candidate.bindings);
-        let mut new_bindings = Vec::new();
+        // final bindings: [6, 7, 4, 5, 1, 2, 3]
+        let mut accumulated_bindings = mem::take(&mut candidate.bindings);
+        // Repeatedly simplify match pairs until fixed point is reached
         loop {
-            let match_pairs = mem::take(&mut candidate.match_pairs);
-
-            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
-                &*match_pairs
-            {
-                existing_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
-                return true;
-            }
-
             let mut changed = false;
-            for match_pair in match_pairs {
+            for match_pair in mem::take(&mut candidate.match_pairs) {
                 match self.simplify_match_pair(match_pair, candidate) {
                     Ok(()) => {
                         changed = true;
@@ -84,36 +82,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
-            // Avoid issue #69971: the binding order should be right to left if there are more
-            // bindings after `@` to please the borrow checker
-            // Ex
-            // struct NonCopyStruct {
-            //     copy_field: u32,
-            // }
-            //
-            // fn foo1(x: NonCopyStruct) {
-            //     let y @ NonCopyStruct { copy_field: z } = x;
-            //     // the above should turn into
-            //     let z = x.copy_field;
-            //     let y = x;
-            // }
-            candidate.bindings.extend_from_slice(&new_bindings);
-            mem::swap(&mut candidate.bindings, &mut new_bindings);
+
+            // This does: accumulated_bindings = candidate.bindings.take() ++ accumulated_bindings
+            candidate.bindings.extend_from_slice(&accumulated_bindings);
+            mem::swap(&mut candidate.bindings, &mut accumulated_bindings);
             candidate.bindings.clear();
 
             if !changed {
-                existing_bindings.extend_from_slice(&new_bindings);
-                mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                // Move or-patterns to the end, because they can result in us
-                // creating additional candidates, so we want to test them as
-                // late as possible.
-                candidate
-                    .match_pairs
-                    .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
-                debug!(simplified = ?candidate, "simplify_candidate");
-                return false; // if we were not able to simplify any, done.
+                // If we were not able to simplify anymore, done.
+                break;
             }
         }
+
+        // Store computed bindings back in `candidate`.
+        mem::swap(&mut candidate.bindings, &mut accumulated_bindings);
+
+        let did_expand_or =
+            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
+                &*candidate.match_pairs
+            {
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
+                candidate.match_pairs.clear();
+                true
+            } else {
+                false
+            };
+
+        // Move or-patterns to the end, because they can result in us
+        // creating additional candidates, so we want to test them as
+        // late as possible.
+        candidate.match_pairs.sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
+        debug!(simplified = ?candidate, "simplify_candidate");
+
+        did_expand_or
     }
 
     /// Given `candidate` that has a single or-pattern for its match-pairs,
@@ -149,7 +150,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref subpattern,
                 ascription: thir::Ascription { ref annotation, variance },
             } => {
-                // Apply the type ascription to the value at `match_pair.place`, which is the
+                // Apply the type ascription to the value at `match_pair.place`
                 if let Some(source) = match_pair.place.try_to_place(self) {
                     candidate.ascriptions.push(Ascription {
                         annotation: annotation.clone(),
@@ -205,7 +206,38 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatKind::InlineConstant { subpattern: ref pattern, def: _ } => {
+            PatKind::InlineConstant { subpattern: ref pattern, def } => {
+                // Apply a type ascription for the inline constant to the value at `match_pair.place`
+                if let Some(source) = match_pair.place.try_to_place(self) {
+                    let span = match_pair.pattern.span;
+                    let parent_id = self.tcx.typeck_root_def_id(self.def_id.to_def_id());
+                    let args = ty::InlineConstArgs::new(
+                        self.tcx,
+                        ty::InlineConstArgsParts {
+                            parent_args: ty::GenericArgs::identity_for_item(self.tcx, parent_id),
+                            ty: self.infcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            }),
+                        },
+                    )
+                    .args;
+                    let user_ty =
+                        self.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
+                            def.to_def_id(),
+                            ty::UserArgs { args, user_self_ty: None },
+                        ));
+                    let annotation = ty::CanonicalUserTypeAnnotation {
+                        inferred_ty: pattern.ty,
+                        span,
+                        user_ty: Box::new(user_ty),
+                    };
+                    candidate.ascriptions.push(Ascription {
+                        annotation,
+                        source,
+                        variance: ty::Contravariant,
+                    });
+                }
                 candidate.match_pairs.push(MatchPair::new(match_pair.place, pattern, self));
 
                 Ok(())
@@ -238,7 +270,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Variant { adt_def, args, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.tcx.features().exhaustive_patterns
+                        (self.tcx.features().exhaustive_patterns
+                            || self.tcx.features().min_exhaustive_patterns)
                             && !v
                                 .inhabited_predicate(self.tcx, adt_def)
                                 .instantiate(self.tcx, args)

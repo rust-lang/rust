@@ -25,23 +25,18 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
+#![feature(generic_nonzero)]
 #![feature(if_let_guard)]
-#![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
-#![feature(never_type)]
+#![feature(trait_upcasting)]
 #![feature(rustc_attrs)]
-#![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
 #[macro_use]
@@ -329,6 +324,8 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("disjoint_capture_migration", "rust_2021_incompatible_closure_captures");
     store.register_renamed("or_patterns_back_compat", "rust_2021_incompatible_or_patterns");
     store.register_renamed("non_fmt_panic", "non_fmt_panics");
+    store.register_renamed("unused_tuple_struct_fields", "dead_code");
+    store.register_renamed("static_mut_ref", "static_mut_refs");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -512,6 +509,20 @@ fn register_builtins(store: &mut LintStore) {
         "implied_bounds_entailment",
         "converted into hard error, see PR #117984 \
         <https://github.com/rust-lang/rust/pull/117984> for more information",
+    );
+    store.register_removed(
+        "coinductive_overlap_in_coherence",
+        "converted into hard error, see PR #118649 \
+         <https://github.com/rust-lang/rust/pull/118649> for more information",
+    );
+    store.register_removed(
+        "illegal_floating_point_literal_pattern",
+        "no longer a warning, float patterns behave the same as `==`",
+    );
+    store.register_removed(
+        "nontrivial_structural_match",
+        "no longer needed, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
     );
 }
 

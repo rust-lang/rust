@@ -1,4 +1,4 @@
-// aux-build:default_body.rs
+//@ aux-build:default_body.rs
 #![crate_type = "lib"]
 
 extern crate default_body;

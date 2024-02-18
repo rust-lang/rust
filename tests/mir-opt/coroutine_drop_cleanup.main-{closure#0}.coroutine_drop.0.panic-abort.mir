@@ -1,25 +1,4 @@
 // MIR for `main::{closure#0}` 0 coroutine_drop
-/* coroutine_layout = CoroutineLayout {
-    field_tys: {
-        _0: CoroutineSavedTy {
-            ty: std::string::String,
-            source_info: SourceInfo {
-                span: $DIR/coroutine_drop_cleanup.rs:12:13: 12:15 (#0),
-                scope: scope[0],
-            },
-            ignore_for_traits: false,
-        },
-    },
-    variant_fields: {
-        Unresumed(0): [],
-        Returned (1): [],
-        Panicked (2): [],
-        Suspend0 (3): [_0],
-    },
-    storage_conflicts: BitMatrix(1x1) {
-        (_0, _0),
-    },
-} */
 
 fn main::{closure#0}(_1: *mut {coroutine@$DIR/coroutine_drop_cleanup.rs:11:15: 11:17}) -> () {
     let mut _0: ();

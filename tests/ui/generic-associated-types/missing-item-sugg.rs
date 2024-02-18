@@ -1,4 +1,4 @@
-// aux-build:missing-item-sugg.rs
+//@ aux-build:missing-item-sugg.rs
 
 extern crate missing_item_sugg;
 

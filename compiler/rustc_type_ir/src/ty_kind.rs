@@ -143,7 +143,7 @@ pub enum TyKind<I: Interner> {
     /// For example, the type `List<i32>` would be represented using the `AdtDef`
     /// for `struct List<T>` and the args `[i32]`.
     ///
-    /// Note that generic parameters in fields only get lazily substituted
+    /// Note that generic parameters in fields only get lazily instantiated
     /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, args))`.
     Adt(I::AdtDef, I::GenericArgs),
 
@@ -197,17 +197,24 @@ pub enum TyKind<I: Interner> {
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
-    /// Closure args contain both the - potentially substituted - generic parameters
+    /// Closure args contain both the - potentially instantiated - generic parameters
     /// of its parent and some synthetic parameters. See the documentation for
     /// `ClosureArgs` for more details.
     Closure(I::DefId, I::GenericArgs),
+
+    /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
+    ///
+    /// Coroutine-closure args contain both the - potentially instantiated - generic
+    /// parameters of its parent and some synthetic parameters. See the documentation
+    /// for `CoroutineClosureArgs` for more details.
+    CoroutineClosure(I::DefId, I::GenericArgs),
 
     /// The anonymous type of a coroutine. Used to represent the type of
     /// `|a| yield a`.
     ///
     /// For more info about coroutine args, visit the documentation for
     /// `CoroutineArgs`.
-    Coroutine(I::DefId, I::GenericArgs, Movability),
+    Coroutine(I::DefId, I::GenericArgs),
 
     /// A type representing the types stored inside a coroutine.
     /// This should only appear as part of the `CoroutineArgs`.
@@ -317,16 +324,17 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         FnPtr(_) => 13,
         Dynamic(..) => 14,
         Closure(_, _) => 15,
-        Coroutine(_, _, _) => 16,
-        CoroutineWitness(_, _) => 17,
-        Never => 18,
-        Tuple(_) => 19,
-        Alias(_, _) => 20,
-        Param(_) => 21,
-        Bound(_, _) => 22,
-        Placeholder(_) => 23,
-        Infer(_) => 24,
-        Error(_) => 25,
+        CoroutineClosure(_, _) => 16,
+        Coroutine(_, _) => 17,
+        CoroutineWitness(_, _) => 18,
+        Never => 19,
+        Tuple(_) => 20,
+        Alias(_, _) => 21,
+        Param(_) => 22,
+        Bound(_, _) => 23,
+        Placeholder(_) => 24,
+        Infer(_) => 25,
+        Error(_) => 26,
     }
 }
 
@@ -356,9 +364,8 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_p == b_p && a_r == b_r && a_repr == b_repr
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
-                a_d == b_d && a_s == b_s && a_m == b_m
-            }
+            (CoroutineClosure(a_d, a_s), CoroutineClosure(b_d, b_s)) => a_d == b_d && a_s == b_s,
+            (Coroutine(a_d, a_s), Coroutine(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
             (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
@@ -432,9 +439,10 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
             },
             Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
-            Coroutine(d, s, m) => {
-                f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).field(m).finish()
+            CoroutineClosure(d, s) => {
+                f.debug_tuple("CoroutineClosure").field(d).field(&this.wrap(s)).finish()
             }
+            Coroutine(d, s) => f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).finish(),
             CoroutineWitness(d, s) => {
                 f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()
             }

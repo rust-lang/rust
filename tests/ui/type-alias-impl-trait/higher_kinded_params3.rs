@@ -1,7 +1,7 @@
 //! This test checks that we can't actually have an opaque type behind
 //! a binder that references variables from that binder.
 
-// edition: 2021
+//@ edition: 2021
 
 #![feature(type_alias_impl_trait)]
 

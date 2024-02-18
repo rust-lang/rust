@@ -11,7 +11,7 @@ pub(crate) fn missing_match_arms(
         ctx,
         DiagnosticCode::RustcHardError("E0004"),
         format!("missing match arm: {}", d.uncovered_patterns),
-        d.scrutinee_expr.clone().map(Into::into),
+        d.scrutinee_expr.map(Into::into),
     )
 }
 
@@ -31,7 +31,7 @@ mod tests {
     #[test]
     fn empty_body() {
         let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("syntax-error".to_string());
+        config.disabled.insert("syntax-error".to_owned());
         check_diagnostics_with_config(
             config,
             r#"

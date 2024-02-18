@@ -1,5 +1,5 @@
-// edition: 2021
-// run-pass
+//@ edition: 2021
+//@ run-pass
 
 async fn test(_arg: [u8; 16]) {}
 

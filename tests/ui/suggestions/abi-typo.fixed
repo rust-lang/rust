@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 extern "cdecl" fn cdedl() {} //~ ERROR invalid ABI
 
 fn main() {

@@ -1,5 +1,5 @@
-// compile-flags: --edition 2024 -Zunstable-options
-// check-pass
+//@ compile-flags: --edition 2024 -Zunstable-options
+//@ check-pass
 
 #![feature(async_iterator, gen_blocks, noop_waker)]
 
@@ -11,7 +11,6 @@ async gen fn gen_fn() -> &'static str {
 
 pub fn main() {
     let async_iterator = pin!(gen_fn());
-    let waker = Waker::noop();
-    let ctx = &mut Context::from_waker(&waker);
+    let ctx = &mut Context::from_waker(Waker::noop());
     async_iterator.poll_next(ctx);
 }

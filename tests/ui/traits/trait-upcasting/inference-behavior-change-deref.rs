@@ -1,4 +1,5 @@
 #![deny(deref_into_dyn_supertrait)]
+#![feature(trait_upcasting)] // remove this and the test compiles
 
 use std::ops::Deref;
 

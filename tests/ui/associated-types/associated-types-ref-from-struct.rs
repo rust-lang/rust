@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Test associated type references in structure fields.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait Test {
     type V;

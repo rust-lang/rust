@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 async fn f(_: &()) {}
 //~^ NOTE function defined here

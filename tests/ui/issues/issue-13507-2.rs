@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(unused_imports)]
-// aux-build:issue-13507.rs
+//@ aux-build:issue-13507.rs
 
 extern crate issue_13507;
 use issue_13507::testtypes;

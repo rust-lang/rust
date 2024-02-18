@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::{is_from_proc_macro, is_in_test_function};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
@@ -88,16 +88,18 @@ impl<'tcx> LateLintPass<'tcx> for SingleCallFn {
         };
         cx.tcx.hir().visit_all_item_likes_in_crate(&mut v);
 
-        for usage in self.def_id_to_usage.values() {
+        for (&def_id, usage) in &self.def_id_to_usage {
             let single_call_fn_span = usage.0;
             if let [caller_span] = *usage.1 {
-                span_lint_and_help(
+                span_lint_hir_and_then(
                     cx,
                     SINGLE_CALL_FN,
+                    cx.tcx.local_def_id_to_hir_id(def_id),
                     single_call_fn_span,
                     "this function is only used once",
-                    Some(caller_span),
-                    "used here",
+                    |diag| {
+                        diag.span_help(caller_span, "used here");
+                    },
                 );
             }
         }

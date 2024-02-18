@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // Test that we are able to infer that the type of `x` is `isize` based
 // on the expected type from the object.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub trait ToPrimitive {
     fn to_int(&self) {}

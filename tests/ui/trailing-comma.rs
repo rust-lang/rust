@@ -1,9 +1,9 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 
 fn f<T,>(_: T,) {}
 
-struct Foo<T,>(#[allow(unused_tuple_struct_fields)] T);
+struct Foo<T,>(#[allow(dead_code)] T);
 
 struct Bar;
 
@@ -14,7 +14,7 @@ impl Bar {
 }
 
 enum Baz {
-    Qux(#[allow(unused_tuple_struct_fields)] isize,),
+    Qux(#[allow(dead_code)] isize,),
 }
 
 #[allow(unused,)]

@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 // Makes sure we don't spew a bunch of unrelated opaque errors when the reason
 // for this error is just a missing struct field in `foo`.

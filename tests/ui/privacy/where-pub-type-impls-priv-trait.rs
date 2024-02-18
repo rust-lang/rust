@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // priv-in-pub lint tests where the private trait bounds a public type
 

@@ -15,7 +15,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
-use rustc_middle::query::Key;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -188,7 +187,7 @@ impl NonCopyConst {
     }
 
     fn is_ty_ignored(&self, ty: Ty<'_>) -> bool {
-        matches!(ty.ty_adt_id(), Some(adt_id) if self.ignore_mut_def_ids.contains(&adt_id))
+        matches!(ty.ty_adt_def(), Some(adt) if self.ignore_mut_def_ids.contains(&adt.did()))
     }
 
     fn is_unfrozen<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -450,11 +449,11 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             let mut dereferenced_expr = expr;
             let mut needs_check_adjustment = true;
             loop {
-                let parent_id = cx.tcx.hir().parent_id(cur_expr.hir_id);
+                let parent_id = cx.tcx.parent_hir_id(cur_expr.hir_id);
                 if parent_id == cur_expr.hir_id {
                     break;
                 }
-                if let Some(Node::Expr(parent_expr)) = cx.tcx.opt_hir_node(parent_id) {
+                if let Node::Expr(parent_expr) = cx.tcx.hir_node(parent_id) {
                     match &parent_expr.kind {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced.

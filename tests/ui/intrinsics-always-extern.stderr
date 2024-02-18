@@ -4,6 +4,12 @@ error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
 LL |     extern "rust-intrinsic" fn foo(&self);
    |                                ^^^
 
+error[E0093]: unrecognized intrinsic function: `hello`
+  --> $DIR/intrinsics-always-extern.rs:12:28
+   |
+LL | extern "rust-intrinsic" fn hello() {
+   |                            ^^^^^ unrecognized intrinsic
+
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
   --> $DIR/intrinsics-always-extern.rs:8:43
    |
@@ -17,8 +23,10 @@ error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
    |
 LL |   extern "rust-intrinsic" fn hello() {
    |  ____________________________________^
+LL | |
 LL | | }
    | |_^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0093`.

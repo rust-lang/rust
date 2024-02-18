@@ -5,19 +5,20 @@
 //! Run with `RUST_LOG=lsp_server=debug` to see all the messages.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::print_stdout, clippy::disallowed_types)]
 
-mod msg;
-mod stdio;
 mod error;
-mod socket;
+mod msg;
 mod req_queue;
+mod socket;
+mod stdio;
 
 use std::{
     io,
     net::{TcpListener, TcpStream, ToSocketAddrs},
 };
 
-use crossbeam_channel::{Receiver, RecvTimeoutError, Sender};
+use crossbeam_channel::{Receiver, RecvError, RecvTimeoutError, Sender};
 
 pub use crate::{
     error::{ExtractError, ProtocolError},
@@ -158,11 +159,7 @@ impl Connection {
                 Err(RecvTimeoutError::Timeout) => {
                     continue;
                 }
-                Err(e) => {
-                    return Err(ProtocolError(format!(
-                        "expected initialize request, got error: {e}"
-                    )))
-                }
+                Err(RecvTimeoutError::Disconnected) => return Err(ProtocolError::disconnected()),
             };
 
             match msg {
@@ -181,14 +178,16 @@ impl Connection {
                     continue;
                 }
                 msg => {
-                    return Err(ProtocolError(format!("expected initialize request, got {msg:?}")));
+                    return Err(ProtocolError::new(format!(
+                        "expected initialize request, got {msg:?}"
+                    )));
                 }
             };
         }
 
-        return Err(ProtocolError(String::from(
+        Err(ProtocolError::new(String::from(
             "Initialization has been aborted during initialization",
-        )));
+        )))
     }
 
     /// Finishes the initialization process by sending an `InitializeResult` to the client
@@ -201,12 +200,10 @@ impl Connection {
         self.sender.send(resp.into()).unwrap();
         match &self.receiver.recv() {
             Ok(Message::Notification(n)) if n.is_initialized() => Ok(()),
-            Ok(msg) => {
-                Err(ProtocolError(format!(r#"expected initialized notification, got: {msg:?}"#)))
-            }
-            Err(e) => {
-                Err(ProtocolError(format!("expected initialized notification, got error: {e}",)))
-            }
+            Ok(msg) => Err(ProtocolError::new(format!(
+                r#"expected initialized notification, got: {msg:?}"#
+            ))),
+            Err(RecvError) => Err(ProtocolError::disconnected()),
         }
     }
 
@@ -231,10 +228,8 @@ impl Connection {
                 Err(RecvTimeoutError::Timeout) => {
                     continue;
                 }
-                Err(e) => {
-                    return Err(ProtocolError(format!(
-                        "expected initialized notification, got error: {e}",
-                    )));
+                Err(RecvTimeoutError::Disconnected) => {
+                    return Err(ProtocolError::disconnected());
                 }
             };
 
@@ -243,16 +238,16 @@ impl Connection {
                     return Ok(());
                 }
                 msg => {
-                    return Err(ProtocolError(format!(
+                    return Err(ProtocolError::new(format!(
                         r#"expected initialized notification, got: {msg:?}"#
                     )));
                 }
             }
         }
 
-        return Err(ProtocolError(String::from(
+        Err(ProtocolError::new(String::from(
             "Initialization has been aborted during initialization",
-        )));
+        )))
     }
 
     /// Initialize the connection. Sends the server capabilities
@@ -359,9 +354,20 @@ impl Connection {
         match &self.receiver.recv_timeout(std::time::Duration::from_secs(30)) {
             Ok(Message::Notification(n)) if n.is_exit() => (),
             Ok(msg) => {
-                return Err(ProtocolError(format!("unexpected message during shutdown: {msg:?}")))
+                return Err(ProtocolError::new(format!(
+                    "unexpected message during shutdown: {msg:?}"
+                )))
             }
-            Err(e) => return Err(ProtocolError(format!("unexpected error during shutdown: {e}"))),
+            Err(RecvTimeoutError::Timeout) => {
+                return Err(ProtocolError::new(
+                    "timed out waiting for exit notification".to_owned(),
+                ))
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                return Err(ProtocolError::new(
+                    "channel disconnected waiting for exit notification".to_owned(),
+                ))
+            }
         }
         Ok(true)
     }
@@ -400,7 +406,7 @@ mod tests {
     #[test]
     fn not_exit_notification() {
         let notification = crate::Notification {
-            method: Initialized::METHOD.to_string(),
+            method: Initialized::METHOD.to_owned(),
             params: to_value(InitializedParams {}).unwrap(),
         };
 
@@ -408,7 +414,7 @@ mod tests {
         let req_id = RequestId::from(234);
         let request = crate::Request {
             id: req_id.clone(),
-            method: Initialize::METHOD.to_string(),
+            method: Initialize::METHOD.to_owned(),
             params: params_as_value.clone(),
         };
 
@@ -421,12 +427,12 @@ mod tests {
     #[test]
     fn exit_notification() {
         let notification =
-            crate::Notification { method: Exit::METHOD.to_string(), params: to_value(()).unwrap() };
+            crate::Notification { method: Exit::METHOD.to_owned(), params: to_value(()).unwrap() };
         let notification_msg = Message::from(notification);
 
         initialize_start_test(TestCase {
             test_messages: vec![notification_msg.clone()],
-            expected_resp: Err(ProtocolError(format!(
+            expected_resp: Err(ProtocolError::new(format!(
                 "expected initialize request, got {:?}",
                 notification_msg
             ))),

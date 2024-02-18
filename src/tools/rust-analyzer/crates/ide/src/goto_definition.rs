@@ -4,7 +4,7 @@ use crate::{
     doc_links::token_as_doc_comment, navigation_target::ToNav, FilePosition, NavigationTarget,
     RangeInfo, TryToNav,
 };
-use hir::{AsAssocItem, AssocItem, DescendPreference, Semantics};
+use hir::{AsAssocItem, AssocItem, DescendPreference, ModuleDef, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
     defs::{Definition, IdentClass},
@@ -73,8 +73,13 @@ pub(crate) fn goto_definition(
         .into_iter()
         .filter_map(|token| {
             let parent = token.parent()?;
+
             if let Some(tt) = ast::TokenTree::cast(parent.clone()) {
                 if let Some(x) = try_lookup_include_path(sema, tt, token.clone(), file_id) {
+                    return Some(vec![x]);
+                }
+
+                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token) {
                     return Some(vec![x]);
                 }
             }
@@ -140,6 +145,27 @@ fn try_lookup_include_path(
     })
 }
 
+fn try_lookup_macro_def_in_macro_use(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+) -> Option<NavigationTarget> {
+    let extern_crate = token.parent()?.ancestors().find_map(ast::ExternCrate::cast)?;
+    let extern_crate = sema.to_def(&extern_crate)?;
+    let krate = extern_crate.resolved_crate(sema.db)?;
+
+    for mod_def in krate.root_module().declarations(sema.db) {
+        if let ModuleDef::Macro(mac) = mod_def {
+            if mac.name(sema.db).as_str() == Some(token.text()) {
+                if let Some(nav) = mac.try_to_nav(sema.db) {
+                    return Some(nav.call_site);
+                }
+            }
+        }
+    }
+
+    None
+}
+
 /// finds the trait definition of an impl'd item, except function
 /// e.g.
 /// ```rust
@@ -156,11 +182,7 @@ fn try_filter_trait_item_definition(
     match assoc {
         AssocItem::Function(..) => None,
         AssocItem::Const(..) | AssocItem::TypeAlias(..) => {
-            let imp = match assoc.container(db) {
-                hir::AssocItemContainer::Impl(imp) => imp,
-                _ => return None,
-            };
-            let trait_ = imp.trait_(db)?;
+            let trait_ = assoc.implemented_trait(db)?;
             let name = def.name(db)?;
             let discri_value = discriminant(&assoc);
             trait_
@@ -200,6 +222,7 @@ mod tests {
             .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
             .sorted_by_key(cmp)
             .collect::<Vec<_>>();
+
         assert_eq!(expected, navs);
     }
 
@@ -208,6 +231,60 @@ mod tests {
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
+    }
+
+    #[test]
+    fn goto_def_in_included_file() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+
+include!("a.rs");
+
+fn main() {
+    foo();
+}
+
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_def_in_included_file_nested() {
+        check(
+            r#"
+//- minicore:include
+//- /main.rs
+
+macro_rules! passthrough {
+    ($($tt:tt)*) => { $($tt)* }
+}
+
+passthrough!(include!("a.rs"));
+
+fn main() {
+    foo();
+}
+
+//- /a.rs
+fn func_in_include() {
+ //^^^^^^^^^^^^^^^
+}
+
+fn foo() {
+    func_in_include$0();
+}
+"#,
+        );
     }
 
     #[test]
@@ -2079,6 +2156,49 @@ fn test() {
     format_args!("hello {a$0}");
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn goto_macro_def_from_macro_use() {
+        check(
+            r#"
+//- /main.rs crate:main deps:mac
+#[macro_use(foo$0)]
+extern crate mac;
+
+//- /mac.rs crate:mac
+#[macro_export]
+macro_rules! foo {
+           //^^^
+    () => {};
+}
+            "#,
+        );
+
+        check(
+            r#"
+//- /main.rs crate:main deps:mac
+#[macro_use(foo, bar$0, baz)]
+extern crate mac;
+
+//- /mac.rs crate:mac
+#[macro_export]
+macro_rules! foo {
+    () => {};
+}
+
+#[macro_export]
+macro_rules! bar {
+           //^^^
+    () => {};
+}
+
+#[macro_export]
+macro_rules! baz {
+    () => {};
+}
+            "#,
         );
     }
 }

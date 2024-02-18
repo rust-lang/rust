@@ -52,7 +52,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             live.seek_to_block_end(bb);
             let mut state = live.get().clone();
 
-            for (index, arg) in args.iter().enumerate().rev() {
+            for (index, arg) in args.iter().map(|a| &a.node).enumerate().rev() {
                 if let Operand::Copy(place) = *arg
                     && !place.is_indirect()
                     // Do not skip the transformation if the local is in debuginfo, as we do
@@ -119,17 +119,25 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let TerminatorKind::Call { ref mut args, .. } = bbs[block].terminator_mut().kind else {
             bug!()
         };
-        let arg = &mut args[argument_index];
+        let arg = &mut args[argument_index].node;
         let Operand::Copy(place) = *arg else { bug!() };
         *arg = Operand::Move(place);
     }
-
-    crate::simplify::simplify_locals(body, tcx)
 }
 
-pub struct DeadStoreElimination;
+pub enum DeadStoreElimination {
+    Initial,
+    Final,
+}
 
 impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
+    fn name(&self) -> &'static str {
+        match self {
+            DeadStoreElimination::Initial => "DeadStoreElimination-initial",
+            DeadStoreElimination::Final => "DeadStoreElimination-final",
+        }
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }

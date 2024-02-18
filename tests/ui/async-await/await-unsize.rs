@@ -1,7 +1,7 @@
 // Regression test for #62312
 
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 async fn make_boxed_object() -> Box<dyn Send> {
     Box::new(()) as _

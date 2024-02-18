@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::BorrowckInferCtxt;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;

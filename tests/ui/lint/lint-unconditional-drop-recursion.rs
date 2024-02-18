@@ -1,6 +1,6 @@
 // Because drop recursion can only be detected after drop elaboration which
 // happens for codegen:
-// build-fail
+//@ build-fail
 
 #![deny(unconditional_recursion)]
 #![allow(dead_code)]

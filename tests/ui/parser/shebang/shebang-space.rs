@@ -1,5 +1,5 @@
 #!    
 
-// check-pass
+//@ check-pass
 // ignore-tidy-end-whitespace
 fn main() {}

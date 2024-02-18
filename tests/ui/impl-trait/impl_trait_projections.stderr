@@ -17,7 +17,7 @@ LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
    |                           ^^^^^^^^^^
 
 error[E0667]: `impl Trait` is not allowed in path parameters
-  --> $DIR/impl_trait_projections.rs:33:29
+  --> $DIR/impl_trait_projections.rs:35:29
    |
 LL |     -> <dyn Iterator<Item = impl Debug> as Iterator>::Item
    |                             ^^^^^^^^^^
@@ -28,6 +28,46 @@ error[E0667]: `impl Trait` is not allowed in path parameters
 LL | fn projection_is_disallowed(x: impl Iterator) -> <impl Iterator>::Item {
    |                                                   ^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error[E0277]: the trait bound `impl Debug: Step` is not satisfied
+  --> $DIR/impl_trait_projections.rs:26:8
+   |
+LL |     -> <::std::ops::Range<impl Debug> as Iterator>::Item
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
+   |
+   = help: the following other types implement trait `Step`:
+             char
+             isize
+             i8
+             i16
+             i32
+             i64
+             i128
+             usize
+           and 8 others
+   = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
 
-For more information about this error, try `rustc --explain E0667`.
+error[E0277]: the trait bound `impl Debug: Step` is not satisfied
+  --> $DIR/impl_trait_projections.rs:29:1
+   |
+LL | / {
+LL | |
+LL | |     (1i32..100).next().unwrap()
+LL | | }
+   | |_^ the trait `Step` is not implemented for `impl Debug`, which is required by `std::ops::Range<impl Debug>: Iterator`
+   |
+   = help: the following other types implement trait `Step`:
+             char
+             isize
+             i8
+             i16
+             i32
+             i64
+             i128
+             usize
+           and 8 others
+   = note: required for `std::ops::Range<impl Debug>` to implement `Iterator`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0277, E0667.
+For more information about an error, try `rustc --explain E0277`.

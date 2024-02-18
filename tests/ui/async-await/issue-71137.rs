@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 #![feature(must_not_suspend)]
 #![allow(must_not_suspend)]
 

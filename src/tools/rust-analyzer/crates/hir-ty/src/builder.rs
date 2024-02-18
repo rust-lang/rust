@@ -125,6 +125,7 @@ impl<D> TyBuilder<D> {
         this
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable<'_>) -> Self {
         self.fill(|x| match x {
             ParamKind::Type => table.new_type_var().cast(Interner),
@@ -208,6 +209,7 @@ impl TyBuilder<()> {
         )
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn subst_for_def(
         db: &dyn HirDatabase,
         def: impl Into<GenericDefId>,
@@ -227,21 +229,21 @@ impl TyBuilder<()> {
         TyBuilder::new((), params, parent_subst)
     }
 
-    /// Creates a `TyBuilder` to build `Substitution` for a generator defined in `parent`.
+    /// Creates a `TyBuilder` to build `Substitution` for a coroutine defined in `parent`.
     ///
-    /// A generator's substitution consists of:
-    /// - resume type of generator
-    /// - yield type of generator ([`Generator::Yield`](std::ops::Generator::Yield))
-    /// - return type of generator ([`Generator::Return`](std::ops::Generator::Return))
+    /// A coroutine's substitution consists of:
+    /// - resume type of coroutine
+    /// - yield type of coroutine ([`Coroutine::Yield`](std::ops::Coroutine::Yield))
+    /// - return type of coroutine ([`Coroutine::Return`](std::ops::Coroutine::Return))
     /// - generic parameters in scope on `parent`
     /// in this order.
     ///
     /// This method prepopulates the builder with placeholder substitution of `parent`, so you
     /// should only push exactly 3 `GenericArg`s before building.
-    pub fn subst_for_generator(db: &dyn HirDatabase, parent: DefWithBodyId) -> TyBuilder<()> {
+    pub fn subst_for_coroutine(db: &dyn HirDatabase, parent: DefWithBodyId) -> TyBuilder<()> {
         let parent_subst =
             parent.as_generic_def_id().map(|p| generics(db.upcast(), p).placeholder_subst(db));
-        // These represent resume type, yield type, and return type of generator.
+        // These represent resume type, yield type, and return type of coroutine.
         let params = std::iter::repeat(ParamKind::Type).take(3).collect();
         TyBuilder::new((), params, parent_subst)
     }

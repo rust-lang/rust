@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn foo() -> i32 {
     0

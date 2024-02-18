@@ -1,4 +1,4 @@
-// revisions: angle paren ok elision
+//@ revisions: angle paren ok elision
 
 #![allow(dead_code)]
 #![feature(rustc_attrs)]

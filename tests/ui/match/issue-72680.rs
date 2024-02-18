@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main() {
     assert!(f("", 0));

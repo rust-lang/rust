@@ -14,9 +14,9 @@ use super::util;
 use super::util::closure_trait_ref_and_return_type;
 use super::wf;
 use super::{
-    ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation,
-    ObligationCause, ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation,
-    Selection, SelectionError, SelectionResult, TraitQueryMode,
+    ImplDerivedObligation, ImplDerivedObligationCause, Normalized, Obligation, ObligationCause,
+    ObligationCauseCode, Overflow, PolyTraitObligation, PredicateObligation, Selection,
+    SelectionError, SelectionResult, TraitQueryMode,
 };
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
@@ -52,6 +52,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
+use std::ops::ControlFlow;
 
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -239,20 +240,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    // Sets the `TreatInductiveCycleAs` mode temporarily in the selection context
-    pub fn with_treat_inductive_cycle_as<T>(
-        &mut self,
-        treat_inductive_cycle: TreatInductiveCycleAs,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub fn with_treat_inductive_cycle_as_ambig(
+        infcx: &'cx InferCtxt<'tcx>,
+    ) -> SelectionContext<'cx, 'tcx> {
         // Should be executed in a context where caching is disabled,
         // otherwise the cache is poisoned with the temporary result.
-        assert!(self.is_intercrate());
-        let treat_inductive_cycle =
-            std::mem::replace(&mut self.treat_inductive_cycle, treat_inductive_cycle);
-        let value = f(self);
-        self.treat_inductive_cycle = treat_inductive_cycle;
-        value
+        assert!(infcx.intercrate);
+        SelectionContext {
+            treat_inductive_cycle: TreatInductiveCycleAs::Ambig,
+            ..SelectionContext::new(infcx)
+        }
     }
 
     pub fn with_query_mode(
@@ -487,7 +484,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Instead, we select the right impl now but report "`Bar` does
         // not implement `Clone`".
         if candidates.len() == 1 {
-            return self.filter_reservation_impls(candidates.pop().unwrap(), stack.obligation);
+            return self.filter_reservation_impls(candidates.pop().unwrap());
         }
 
         // Winnow, but record the exact outcome of evaluation, which
@@ -500,7 +497,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 Ok(_) => Ok(None),
                 Err(OverflowError::Canonical) => Err(Overflow(OverflowError::Canonical)),
-                Err(OverflowError::ErrorReporting) => Err(ErrorReporting),
                 Err(OverflowError::Error(e)) => Err(Overflow(OverflowError::Error(e))),
             })
             .flat_map(Result::transpose)
@@ -562,7 +558,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        self.filter_reservation_impls(candidates.pop().unwrap().candidate, stack.obligation)
+        self.filter_reservation_impls(candidates.pop().unwrap().candidate)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1237,7 +1233,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Ok(None) => Ok(EvaluatedToAmbig),
             Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
-            Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
     }
@@ -1442,7 +1437,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn filter_reservation_impls(
         &mut self,
         candidate: SelectionCandidate<'tcx>,
-        obligation: &PolyTraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         let tcx = self.tcx();
         // Treat reservation impls as ambiguity.
@@ -1599,71 +1593,57 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.selection_cache.insert((param_env, pred), dep_node, candidate);
     }
 
-    /// Matches a predicate against the bounds of its self type.
-    ///
-    /// Given an obligation like `<T as Foo>::Bar: Baz` where the self type is
-    /// a projection, look at the bounds of `T::Bar`, see if we can find a
-    /// `Baz` bound. We return indexes into the list returned by
-    /// `tcx.item_bounds` for any applicable bounds.
-    #[instrument(level = "debug", skip(self), ret)]
-    fn match_projection_obligation_against_definition_bounds(
+    /// Looks at the item bounds of the projection or opaque type.
+    /// If this is a nested rigid projection, such as
+    /// `<<T as Tr1>::Assoc as Tr2>::Assoc`, consider the item bounds
+    /// on both `Tr1::Assoc` and `Tr2::Assoc`, since we may encounter
+    /// relative bounds on both via the `associated_type_bounds` feature.
+    pub(super) fn for_each_item_bound<T>(
         &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-    ) -> smallvec::SmallVec<[usize; 2]> {
-        let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-        let placeholder_trait_predicate =
-            self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
-        debug!(?placeholder_trait_predicate);
+        mut self_ty: Ty<'tcx>,
+        mut for_each: impl FnMut(&mut Self, ty::Clause<'tcx>, usize) -> ControlFlow<T, ()>,
+        on_ambiguity: impl FnOnce(),
+    ) -> ControlFlow<T, ()> {
+        let mut idx = 0;
+        let mut in_parent_alias_type = false;
 
-        let tcx = self.infcx.tcx;
-        let (def_id, args) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
-            ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
-                (def_id, args)
-            }
-            _ => {
-                span_bug!(
-                    obligation.cause.span,
-                    "match_projection_obligation_against_definition_bounds() called \
-                     but self-ty is not a projection: {:?}",
-                    placeholder_trait_predicate.trait_ref.self_ty()
-                );
-            }
-        };
-        let bounds = tcx.item_bounds(def_id).instantiate(tcx, args);
+        loop {
+            let (kind, alias_ty) = match *self_ty.kind() {
+                ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
+                ty::Infer(ty::TyVar(_)) => {
+                    on_ambiguity();
+                    return ControlFlow::Continue(());
+                }
+                _ => return ControlFlow::Continue(()),
+            };
 
-        // The bounds returned by `item_bounds` may contain duplicates after
-        // normalization, so try to deduplicate when possible to avoid
-        // unnecessary ambiguity.
-        let mut distinct_normalized_bounds = FxHashSet::default();
-
-        bounds
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, bound)| {
-                let bound_predicate = bound.kind();
-                if let ty::ClauseKind::Trait(pred) = bound_predicate.skip_binder() {
-                    let bound = bound_predicate.rebind(pred.trait_ref);
-                    if self.infcx.probe(|_| {
-                        match self.match_normalize_trait_ref(
-                            obligation,
-                            bound,
-                            placeholder_trait_predicate.trait_ref,
-                        ) {
-                            Ok(None) => true,
-                            Ok(Some(normalized_trait))
-                                if distinct_normalized_bounds.insert(normalized_trait) =>
-                            {
-                                true
-                            }
-                            _ => false,
-                        }
-                    }) {
-                        return Some(idx);
+            for bound in
+                self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
+            {
+                // HACK: On subsequent recursions, we only care about bounds that don't
+                // share the same type as `self_ty`. This is because for truly rigid
+                // projections, we will never be able to equate, e.g. `<T as Tr>::A`
+                // with `<<T as Tr>::A as Tr>::A`.
+                if in_parent_alias_type {
+                    match bound.kind().skip_binder() {
+                        ty::ClauseKind::Trait(tr) if tr.self_ty() == self_ty => continue,
+                        ty::ClauseKind::Projection(p) if p.self_ty() == self_ty => continue,
+                        _ => {}
                     }
                 }
-                None
-            })
-            .collect()
+
+                for_each(self, bound, idx)?;
+                idx += 1;
+            }
+
+            if kind == ty::Projection {
+                self_ty = alias_ty.self_ty();
+            } else {
+                return ControlFlow::Continue(());
+            }
+
+            in_parent_alias_type = true;
+        }
     }
 
     /// Equates the trait in `obligation` with trait bound. If the two traits
@@ -1720,7 +1700,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Return `Yes` if the obligation's predicate type applies to the env_predicate, and
     /// `No` if it does not. Return `Ambiguous` in the case that the projection type is a GAT,
-    /// and applying this env_predicate constrains any of the obligation's GAT substitutions.
+    /// and applying this env_predicate constrains any of the obligation's GAT parameters.
     ///
     /// This behavior is a somewhat of a hack to prevent over-constraining inference variables
     /// in cases like #91762.
@@ -1870,6 +1850,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1900,6 +1882,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(_)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1936,6 +1920,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -1952,6 +1938,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ImplCandidate(..)
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2060,6 +2048,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2072,6 +2062,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitAliasCandidate,
                 ImplCandidate(_)
                 | ClosureCandidate { .. }
+                | AsyncClosureCandidate
+                | AsyncFnKindHelperCandidate
                 | CoroutineCandidate
                 | FutureCandidate
                 | IteratorCandidate
@@ -2112,6 +2104,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Array(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
@@ -2176,7 +2169,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Str
             | ty::Slice(..)
-            | ty::Coroutine(_, _, hir::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
 
@@ -2185,26 +2177,31 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(obligation.predicate.rebind(tys.iter().collect()))
             }
 
-            ty::Coroutine(_, args, hir::Movability::Movable) => {
-                if self.tcx().features().coroutine_clone {
-                    let resolved_upvars =
-                        self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                    let resolved_witness =
-                        self.infcx.shallow_resolve(args.as_coroutine().witness());
-                    if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
-                        // Not yet resolved.
-                        Ambiguous
-                    } else {
-                        let all = args
-                            .as_coroutine()
-                            .upvar_tys()
-                            .iter()
-                            .chain([args.as_coroutine().witness()])
-                            .collect::<Vec<_>>();
-                        Where(obligation.predicate.rebind(all))
+            ty::Coroutine(coroutine_def_id, args) => {
+                match self.tcx().coroutine_movability(coroutine_def_id) {
+                    hir::Movability::Static => None,
+                    hir::Movability::Movable => {
+                        if self.tcx().features().coroutine_clone {
+                            let resolved_upvars =
+                                self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
+                            let resolved_witness =
+                                self.infcx.shallow_resolve(args.as_coroutine().witness());
+                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
+                                // Not yet resolved.
+                                Ambiguous
+                            } else {
+                                let all = args
+                                    .as_coroutine()
+                                    .upvar_tys()
+                                    .iter()
+                                    .chain([args.as_coroutine().witness()])
+                                    .collect::<Vec<_>>();
+                                Where(obligation.predicate.rebind(all))
+                            }
+                        } else {
+                            None
+                        }
                     }
-                } else {
-                    None
                 }
             }
 
@@ -2227,6 +2224,17 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 } else {
                     Where(obligation.predicate.rebind(args.as_closure().upvar_tys().to_vec()))
                 }
+            }
+
+            // FIXME(async_closures): These are never clone, for now.
+            ty::CoroutineClosure(_, _) => None,
+            // `Copy` and `Clone` are automatically implemented for an anonymous adt
+            // if all of its fields are `Copy` and `Clone`
+            ty::Adt(adt, args) if adt.is_anonymous() => {
+                // (*) binder moved here
+                Where(obligation.predicate.rebind(
+                    adt.non_enum_variant().fields.iter().map(|f| f.ty(self.tcx(), args)).collect(),
+                ))
             }
 
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {
@@ -2307,7 +2315,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind(vec![ty])
             }
 
-            ty::Coroutine(_, args, _) => {
+            ty::CoroutineClosure(_, args) => {
+                let ty = self.infcx.shallow_resolve(args.as_coroutine_closure().tupled_upvars_ty());
+                t.rebind(vec![ty])
+            }
+
+            ty::Coroutine(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
@@ -2367,7 +2380,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             .flat_map(|ty| {
                 let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(*ty); // <----/
 
-                let placeholder_ty = self.infcx.instantiate_binder_with_placeholders(ty);
+                let placeholder_ty = self.infcx.enter_forall_and_leak_universe(ty);
                 let Normalized { value: normalized_ty, mut obligations } =
                     ensure_sufficient_stack(|| {
                         project::normalize_with_depth(
@@ -2415,8 +2428,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         impl_def_id: DefId,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Normalized<'tcx, GenericArgsRef<'tcx>> {
-        let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
-        match self.match_impl(impl_def_id, impl_trait_ref, obligation) {
+        let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
+        match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
             Err(()) => {
                 // FIXME: A rematch may fail when a candidate cache hit occurs
@@ -2426,7 +2439,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // the placeholder trait ref may fail due the Generalizer relation
                 // raising a CyclicalTy error due to a sub_root_var relation
                 // for a variable being generalized...
-                let guar = self.infcx.tcx.sess.span_delayed_bug(
+                let guar = self.infcx.dcx().span_delayed_bug(
                     obligation.cause.span,
                     format!(
                         "Impl {impl_def_id:?} was matchable against {obligation:?} but now is not"
@@ -2449,21 +2462,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn match_impl(
         &mut self,
         impl_def_id: DefId,
-        impl_trait_ref: EarlyBinder<ty::TraitRef<'tcx>>,
+        impl_trait_header: EarlyBinder<ty::ImplTraitHeader<'tcx>>,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Normalized<'tcx, GenericArgsRef<'tcx>>, ()> {
         let placeholder_obligation =
-            self.infcx.instantiate_binder_with_placeholders(obligation.predicate);
+            self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let placeholder_obligation_trait_ref = placeholder_obligation.trait_ref;
 
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
 
-        let impl_trait_ref = impl_trait_ref.instantiate(self.tcx(), impl_args);
-        if impl_trait_ref.references_error() {
+        let impl_trait_header = impl_trait_header.instantiate(self.tcx(), impl_args);
+        if impl_trait_header.references_error() {
             return Err(());
         }
 
-        debug!(?impl_trait_ref);
+        debug!(?impl_trait_header);
 
         let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
             ensure_sufficient_stack(|| {
@@ -2472,7 +2485,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    impl_trait_ref,
+                    impl_trait_header.trait_ref,
                 )
             });
 
@@ -2493,9 +2506,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             })?;
         nested_obligations.extend(obligations);
 
-        if !self.is_intercrate()
-            && self.tcx().impl_polarity(impl_def_id) == ty::ImplPolarity::Reservation
-        {
+        if !self.is_intercrate() && impl_trait_header.polarity == ty::ImplPolarity::Reservation {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());
         }
@@ -2514,6 +2525,17 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     ) -> SelectionResult<'tcx, Vec<PredicateObligation<'tcx>>> {
         let tcx = self.tcx();
         let mut nested = vec![];
+
+        // We may upcast to auto traits that are either explicitly listed in
+        // the object type's bounds, or implied by the principal trait ref's
+        // supertraits.
+        let a_auto_traits: FxIndexSet<DefId> = a_data
+            .auto_traits()
+            .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
+                util::supertrait_def_ids(tcx, principal_def_id)
+                    .filter(|def_id| tcx.trait_is_auto(*def_id))
+            }))
+            .collect();
 
         let upcast_principal = normalize_with_depth_to(
             self,
@@ -2577,7 +2599,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
                 // Check that b_ty's auto traits are present in a_ty's bounds.
                 ty::ExistentialPredicate::AutoTrait(def_id) => {
-                    if !a_data.auto_traits().any(|source_def_id| source_def_id == def_id) {
+                    if !a_auto_traits.contains(&def_id) {
                         return Err(SelectionError::Unimplemented);
                     }
                 }
@@ -2684,7 +2706,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     }
 
     /// Returns the obligations that are implied by instantiating an
-    /// impl or trait. The obligations are substituted and fully
+    /// impl or trait. The obligations are instantiated and fully
     /// normalized. This is used when confirming an impl or default
     /// impl.
     #[instrument(level = "debug", skip(self, cause, param_env))]
@@ -2709,7 +2731,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         //    U: Iterator, U: Sized,
         //    V: Iterator, V: Sized,
         //    <U as Iterator>::Item: Copy
-        // When we substitute, say, `V => IntoIter<u32>, U => $0`, the last
+        // When we instantiate, say, `V => IntoIter<u32>, U => $0`, the last
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.

@@ -1,4 +1,4 @@
-// aux-build:format-string-proc-macro.rs
+//@ aux-build:format-string-proc-macro.rs
 
 extern crate format_string_proc_macro;
 

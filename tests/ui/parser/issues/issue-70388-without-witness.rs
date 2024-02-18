@@ -1,7 +1,7 @@
-// run-rustfix
+//@ run-rustfix
 // This is for checking if we can apply suggestions as-is.
 
-pub struct Foo(#[allow(unused_tuple_struct_fields)] i32);
+pub struct Foo(#[allow(dead_code)] i32);
 
 fn main() {
     let Foo(...) = Foo(0); //~ ERROR unexpected `...`

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that you can use an early-bound lifetime parameter as
 // on of the generic parameters in a trait.
 

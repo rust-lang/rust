@@ -1,11 +1,11 @@
-// run-pass
-// aux-build:default_type_params_xc.rs
+//@ run-pass
+//@ aux-build:default_type_params_xc.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate default_type_params_xc;
 
-struct Vec<T, A = default_type_params_xc::Heap>(#[allow(unused_tuple_struct_fields)] Option<(T,A)>);
+struct Vec<T, A = default_type_params_xc::Heap>(#[allow(dead_code)] Option<(T,A)>);
 
 struct Foo;
 

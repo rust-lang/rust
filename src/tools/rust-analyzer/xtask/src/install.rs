@@ -50,7 +50,7 @@ fn fix_path_for_mac(sh: &Shell) -> anyhow::Result<()> {
 
         [ROOT_DIR, &home_dir]
             .into_iter()
-            .map(|dir| dir.to_string() + COMMON_APP_PATH)
+            .map(|dir| dir.to_owned() + COMMON_APP_PATH)
             .map(PathBuf::from)
             .filter(|path| path.exists())
             .collect()

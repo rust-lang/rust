@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Issue #109429
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;

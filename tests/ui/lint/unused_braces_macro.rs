@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 pub fn foo<const BAR: bool> () {}
 
 fn main() {

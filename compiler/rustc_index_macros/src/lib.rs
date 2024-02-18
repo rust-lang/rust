@@ -34,7 +34,13 @@ mod newtype;
 #[proc_macro]
 #[cfg_attr(
     feature = "nightly",
-    allow_internal_unstable(step_trait, rustc_attrs, trusted_step, spec_option_partial_eq)
+    allow_internal_unstable(
+        step_trait,
+        rustc_attrs,
+        trusted_step,
+        spec_option_partial_eq,
+        min_specialization
+    )
 )]
 pub fn newtype_index(input: TokenStream) -> TokenStream {
     newtype::newtype(input)

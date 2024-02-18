@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:duplicate.rs
+//@ check-pass
+//@ aux-build:duplicate.rs
 
 extern crate duplicate;
 

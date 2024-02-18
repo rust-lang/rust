@@ -1,4 +1,4 @@
-// aux-build:declarations-for-tuple-field-count-errors.rs
+//@ aux-build:declarations-for-tuple-field-count-errors.rs
 
 extern crate declarations_for_tuple_field_count_errors;
 

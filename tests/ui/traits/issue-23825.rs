@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Stringify {
     fn to_string(&self) -> String;
 }

@@ -2,7 +2,9 @@
 #![allow(
     clippy::explicit_auto_deref,
     clippy::uninlined_format_args,
-    clippy::needless_pass_by_ref_mut
+    clippy::map_clone,
+    clippy::needless_pass_by_ref_mut,
+    clippy::redundant_closure
 )]
 
 use std::fmt::Debug;
@@ -130,6 +132,52 @@ fn generic_not_ok<T: AsMut<T> + AsRef<T> + Debug + ?Sized>(mrt: &mut T) {
 fn generic_ok<U: AsMut<T> + AsRef<T> + ?Sized, T: Debug + ?Sized>(mru: &mut U) {
     foo_mrt(mru.as_mut());
     foo_rt(mru.as_ref());
+}
+
+fn foo() {
+    let x = Some(String::new());
+    let z = x.as_ref().map(String::clone);
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
+    let z = x.as_ref().map(|z| z.clone());
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
+    let z = x.as_ref().map(|z| String::clone(z));
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
+}
+
+mod issue12135 {
+    pub struct Struct {
+        field: Option<InnerStruct>,
+    }
+
+    #[derive(Clone)]
+    pub struct Foo;
+
+    #[derive(Clone)]
+    struct InnerStruct {
+        x: Foo,
+    }
+
+    impl InnerStruct {
+        fn method(&self) -> &Foo {
+            &self.x
+        }
+    }
+
+    pub fn f(x: &Struct) -> Option<Foo> {
+        x.field.as_ref().map(|v| v.clone());
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+        x.field.as_ref().map(Clone::clone);
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+        x.field.as_ref().map(|v| Clone::clone(v));
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+
+        // https://github.com/rust-lang/rust-clippy/pull/12136#discussion_r1451565223
+        #[allow(clippy::clone_on_copy)]
+        Some(1).as_ref().map(|&x| x.clone());
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+
+        x.field.as_ref().map(|v| v.method().clone())
+    }
 }
 
 fn main() {

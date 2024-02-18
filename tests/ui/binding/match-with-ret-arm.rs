@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub fn main() {
     // sometimes we have had trouble finding
     // the right type for f, as we unified

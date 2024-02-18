@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn mk() -> isize { return 1; }
 

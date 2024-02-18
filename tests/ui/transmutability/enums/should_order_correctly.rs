@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! The payloads of an enum variant should be ordered after its tag.
 
 #![crate_type = "lib"]

@@ -1,0 +1,6 @@
+error: internal compiler error: error performing ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: UserFacing }, value: ImpliedOutlivesBounds { ty: &'?2 mut StateContext<'?3, usize> } }
+   |
+   = query stack during panic:
+end of query stack
+error: aborting due to 1 previous error
+

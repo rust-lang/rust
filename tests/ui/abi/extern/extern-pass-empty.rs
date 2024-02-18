@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 #![allow(improper_ctypes)] // FIXME: this test is inherently not FFI-safe.
 
 // Test a foreign function that accepts empty struct.
 
-// pretty-expanded FIXME #23616
-// ignore-msvc
-// ignore-emscripten emcc asserts on an empty struct as an argument
+//@ pretty-expanded FIXME #23616
+//@ ignore-msvc
+//@ ignore-emscripten emcc asserts on an empty struct as an argument
 
 #[repr(C)]
 struct TwoU8s {

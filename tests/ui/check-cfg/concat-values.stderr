@@ -1,5 +1,5 @@
 warning: unexpected `cfg` condition value: (none)
-  --> $DIR/concat-values.rs:5:7
+  --> $DIR/concat-values.rs:6:7
    |
 LL | #[cfg(my_cfg)]
    |       ^^^^^^
@@ -10,7 +10,7 @@ LL | #[cfg(my_cfg)]
    = note: `#[warn(unexpected_cfgs)]` on by default
 
 warning: unexpected `cfg` condition value: `unk`
-  --> $DIR/concat-values.rs:9:7
+  --> $DIR/concat-values.rs:10:7
    |
 LL | #[cfg(my_cfg = "unk")]
    |       ^^^^^^^^^^^^^^

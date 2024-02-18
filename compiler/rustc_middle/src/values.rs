@@ -1,20 +1,22 @@
 use crate::dep_graph::dep_kinds;
 use crate::query::plumbing::CyclePlaceholder;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::Representability;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_query_system::query::QueryInfo;
+use rustc_query_system::query::{report_cycle, CycleError};
 use rustc_query_system::Value;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 
+use std::collections::VecDeque;
 use std::fmt::Write;
+use std::ops::ControlFlow;
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
         unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(Ty::new_error(tcx, guar)) }
@@ -22,13 +24,13 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Result<ty::EarlyBinder<Ty<'_>>, CyclePlaceholder> {
-    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
         Err(CyclePlaceholder(guar))
     }
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo], _guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, _guar: ErrorGuaranteed) -> Self {
         // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
         unsafe {
@@ -40,10 +42,14 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, stack: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> Self {
         let err = Ty::new_error(tcx, guar);
 
-        let arity = if let Some(frame) = stack.get(0)
+        let arity = if let Some(frame) = cycle_error.cycle.get(0)
             && frame.query.dep_kind == dep_kinds::fn_sig
             && let Some(def_id) = frame.query.def_id
             && let Some(node) = tcx.hir().get_if_local(def_id)
@@ -51,7 +57,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         {
             sig.decl.inputs.len() + sig.decl.implicit_self.has_implicit_self() as usize
         } else {
-            tcx.sess.abort_if_errors();
+            tcx.dcx().abort_if_errors();
             unreachable!()
         };
 
@@ -70,10 +76,14 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo], _guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> Self {
         let mut item_and_field_ids = Vec::new();
         let mut representable_ids = FxHashSet::default();
-        for info in cycle {
+        for info in &cycle_error.cycle {
             if info.query.dep_kind == dep_kinds::representability
                 && let Some(field_id) = info.query.def_id
                 && let Some(field_id) = field_id.as_local()
@@ -87,9 +97,9 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
                 item_and_field_ids.push((item_id.expect_local(), field_id));
             }
         }
-        for info in cycle {
+        for info in &cycle_error.cycle {
             if info.query.dep_kind == dep_kinds::representability_adt_ty
-                && let Some(def_id) = info.query.ty_adt_id
+                && let Some(def_id) = info.query.ty_def_id
                 && let Some(def_id) = def_id.as_local()
                 && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
             {
@@ -102,19 +112,128 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<Ty<'_>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
-        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle, guar))
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> Self {
+        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle_error, guar))
     }
 }
 
 impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
-        ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle, guar))
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> Self {
+        ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle_error, guar))
     }
 }
 
+// Take a cycle of `Q` and try `try_cycle` on every permutation, falling back to `otherwise`.
+fn search_for_cycle_permutation<Q, T>(
+    cycle: &[Q],
+    try_cycle: impl Fn(&mut VecDeque<&Q>) -> ControlFlow<T, ()>,
+    otherwise: impl FnOnce() -> T,
+) -> T {
+    let mut cycle: VecDeque<_> = cycle.iter().collect();
+    for _ in 0..cycle.len() {
+        match try_cycle(&mut cycle) {
+            ControlFlow::Continue(_) => {
+                cycle.rotate_left(1);
+            }
+            ControlFlow::Break(t) => return t,
+        }
+    }
+
+    otherwise()
+}
+
 impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>> {
-    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> Self {
+        let diag = search_for_cycle_permutation(
+            &cycle_error.cycle,
+            |cycle| {
+                if cycle[0].query.dep_kind == dep_kinds::layout_of
+                    && let Some(def_id) = cycle[0].query.ty_def_id
+                    && let Some(def_id) = def_id.as_local()
+                    && let def_kind = tcx.def_kind(def_id)
+                    && matches!(def_kind, DefKind::Closure)
+                    && let Some(coroutine_kind) = tcx.coroutine_kind(def_id)
+                {
+                    // FIXME: `def_span` for an fn-like coroutine will point to the fn's body
+                    // due to interactions between the desugaring into a closure expr and the
+                    // def_span code. I'm not motivated to fix it, because I tried and it was
+                    // not working, so just hack around it by grabbing the parent fn's span.
+                    let span = if coroutine_kind.is_fn_like() {
+                        tcx.def_span(tcx.local_parent(def_id))
+                    } else {
+                        tcx.def_span(def_id)
+                    };
+                    let mut diag = struct_span_code_err!(
+                        tcx.sess.dcx(),
+                        span,
+                        E0733,
+                        "recursion in {} {} requires boxing",
+                        tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
+                        tcx.def_kind_descr(def_kind, def_id.to_def_id()),
+                    );
+                    for (i, frame) in cycle.iter().enumerate() {
+                        if frame.query.dep_kind != dep_kinds::layout_of {
+                            continue;
+                        }
+                        let Some(frame_def_id) = frame.query.ty_def_id else {
+                            continue;
+                        };
+                        let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {
+                            continue;
+                        };
+                        let frame_span =
+                            frame.query.default_span(cycle[(i + 1) % cycle.len()].span);
+                        if frame_span.is_dummy() {
+                            continue;
+                        }
+                        if i == 0 {
+                            diag.span_label(frame_span, "recursive call here");
+                        } else {
+                            let coroutine_span: Span = if frame_coroutine_kind.is_fn_like() {
+                                tcx.def_span(tcx.parent(frame_def_id))
+                            } else {
+                                tcx.def_span(frame_def_id)
+                            };
+                            let mut multispan = MultiSpan::from_span(coroutine_span);
+                            multispan
+                                .push_span_label(frame_span, "...leading to this recursive call");
+                            diag.span_note(
+                                multispan,
+                                format!("which leads to this {}", tcx.def_descr(frame_def_id)),
+                            );
+                        }
+                    }
+                    // FIXME: We could report a structured suggestion if we had
+                    // enough info here... Maybe we can use a hacky HIR walker.
+                    if matches!(
+                        coroutine_kind,
+                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                    ) {
+                        diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
+                    }
+
+                    ControlFlow::Break(diag)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+            || report_cycle(tcx.sess, cycle_error),
+        );
+
+        let guar = diag.emit();
+
         // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
         // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
         // tcx.arena.alloc is pretty much equal to leaking).
@@ -190,21 +309,21 @@ pub fn recursive_type_error(
         }
         s
     };
-    let mut err = struct_span_err!(
-        tcx.sess,
+    struct_span_code_err!(
+        tcx.dcx(),
         err_span,
         E0072,
         "recursive type{} {} {} infinite size",
         pluralize!(cycle_len),
         items_list,
         pluralize!("has", cycle_len),
-    );
-    err.multipart_suggestion(
+    )
+    .with_multipart_suggestion(
         "insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle",
         suggestion,
         Applicability::HasPlaceholders,
-    );
-    err.emit();
+    )
+    .emit();
 }
 
 fn find_item_ty_spans(

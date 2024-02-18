@@ -420,7 +420,7 @@ pub fn find_format_args(cx: &LateContext<'_>, start: &Expr<'_>, expn_id: ExpnId)
         ast_format_args
             .get()?
             .get(&format_args_expr.span.with_parent(None))
-            .map(Rc::clone)
+            .cloned()
     })
 }
 

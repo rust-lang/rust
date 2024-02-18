@@ -1,5 +1,5 @@
-// compile-flags: -Zmir-opt-level=3 -Copt-level=0
-// run-pass
+//@ compile-flags: -Zmir-opt-level=3 -Copt-level=0
+//@ run-pass
 
 type M = [i64; 2];
 

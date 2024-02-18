@@ -13,7 +13,7 @@ use crate::sync::Once;
 ///
 /// # Examples
 ///
-/// Using `OnceCell` to store a function’s previously computed value (a.k.a.
+/// Using `OnceLock` to store a function’s previously computed value (a.k.a.
 /// ‘lazy static’ or ‘memoizing’):
 ///
 /// ```

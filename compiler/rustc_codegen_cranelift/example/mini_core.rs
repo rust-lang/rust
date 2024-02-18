@@ -104,9 +104,6 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {}
 
-#[lang = "structural_teq"]
-pub trait StructuralEq {}
-
 #[lang = "not"]
 pub trait Not {
     type Output;

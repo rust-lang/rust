@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 #![allow(non_camel_case_types)]
 
 enum t { foo(Box<isize>), }

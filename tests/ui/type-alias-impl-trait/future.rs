@@ -1,7 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
-// edition:2021
-// compile-flags: --crate-type=lib
+//@ edition:2021
+//@ compile-flags: --crate-type=lib
 
 use std::future::Future;
 

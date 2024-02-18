@@ -11,7 +11,7 @@ use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdMapEntry, HirIdSet, P
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::Symbol;
+use rustc_span::{ErrorGuaranteed, Symbol};
 
 use super::MATCH_SAME_ARMS;
 
@@ -167,6 +167,8 @@ enum NormalizedPat<'a> {
     /// contains everything afterwards. Note that either side, or both sides, may contain zero
     /// patterns.
     Slice(&'a [Self], Option<&'a [Self]>),
+    /// A placeholder for a pattern that wasn't well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 #[derive(Clone, Copy)]
@@ -291,9 +293,10 @@ impl<'a> NormalizedPat<'a> {
                     LitKind::ByteStr(ref bytes, _) | LitKind::CStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),
                     LitKind::Char(val) => Self::LitInt(val.into()),
-                    LitKind::Int(val, _) => Self::LitInt(val),
+                    LitKind::Int(val, _) => Self::LitInt(val.get()),
                     LitKind::Bool(val) => Self::LitBool(val),
-                    LitKind::Float(..) | LitKind::Err => Self::Wild,
+                    LitKind::Float(..) => Self::Wild,
+                    LitKind::Err(guar) => Self::Err(guar),
                 },
                 _ => Self::Wild,
             },
@@ -303,7 +306,7 @@ impl<'a> NormalizedPat<'a> {
                     None => 0,
                     Some(e) => match &e.kind {
                         ExprKind::Lit(lit) => match lit.node {
-                            LitKind::Int(val, _) => val,
+                            LitKind::Int(val, _) => val.get(),
                             LitKind::Char(val) => val.into(),
                             LitKind::Byte(val) => val.into(),
                             _ => return Self::Wild,
@@ -315,7 +318,7 @@ impl<'a> NormalizedPat<'a> {
                     None => (u128::MAX, RangeEnd::Included),
                     Some(e) => match &e.kind {
                         ExprKind::Lit(lit) => match lit.node {
-                            LitKind::Int(val, _) => (val, bounds),
+                            LitKind::Int(val, _) => (val.get(), bounds),
                             LitKind::Char(val) => (val.into(), bounds),
                             LitKind::Byte(val) => (val.into(), bounds),
                             _ => return Self::Wild,
@@ -329,6 +332,7 @@ impl<'a> NormalizedPat<'a> {
                 arena.alloc_from_iter(front.iter().map(|pat| Self::from_pat(cx, arena, pat))),
                 wild_pat.map(|_| &*arena.alloc_from_iter(back.iter().map(|pat| Self::from_pat(cx, arena, pat)))),
             ),
+            PatKind::Err(guar) => Self::Err(guar),
         }
     }
 
@@ -412,6 +416,7 @@ fn pat_contains_local(pat: &Pat<'_>, id: HirId) -> bool {
 /// Returns true if all the bindings in the `Pat` are in `ids` and vice versa
 fn bindings_eq(pat: &Pat<'_>, mut ids: HirIdSet) -> bool {
     let mut result = true;
-    pat.each_binding_or_first(&mut |_, id, _, _| result &= ids.remove(&id));
+    // FIXME(rust/#120456) - is `swap_remove` correct?
+    pat.each_binding_or_first(&mut |_, id, _, _| result &= ids.swap_remove(&id));
     result && ids.is_empty()
 }

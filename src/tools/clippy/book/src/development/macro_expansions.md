@@ -102,7 +102,7 @@ let x: Option<u32> = Some(42);
 m!(x, x.unwrap());
 ```
 
-If the `m!(x, x.unwrapp());` line is expanded, we would get two expanded
+If the `m!(x, x.unwrap());` line is expanded, we would get two expanded
 expressions:
 
 - `x.is_some()` (from the `$a.is_some()` line in the `m` macro)

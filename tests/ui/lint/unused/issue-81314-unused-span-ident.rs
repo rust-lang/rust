@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Regression test for #81314: Unused variable lint should
 // span only the identifier and not the rest of the pattern
 

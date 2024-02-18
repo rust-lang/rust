@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::config::OptLevel;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{source_map::Spanned, sym, Span, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
@@ -742,7 +742,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[Spanned<mir::Operand<'tcx>>],
         destination: mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -787,13 +787,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Handle intrinsics old codegen wants Expr's for, ourselves.
         let intrinsic = match def {
-            Some(ty::InstanceDef::Intrinsic(def_id)) => Some(bx.tcx().item_name(def_id)),
+            Some(ty::InstanceDef::Intrinsic(def_id)) => Some(bx.tcx().intrinsic(def_id).unwrap()),
             _ => None,
         };
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
-            let op_ty = op_arg.ty(self.mir, bx.tcx());
+            let op_ty = op_arg.node.ty(self.mir, bx.tcx());
             self.monomorphize(op_ty)
         }));
 
@@ -817,21 +817,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // The arguments we'll be passing. Plus one to account for outptr, if used.
         let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
-        let mut llargs = Vec::with_capacity(arg_count);
-
-        // Prepare the return value destination
-        let ret_dest = if target.is_some() {
-            let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
-        } else {
-            ReturnDest::Nothing
-        };
 
         if intrinsic == Some(sym::caller_location) {
             return if let Some(target) = target {
                 let location =
                     self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
 
+                let mut llargs = Vec::with_capacity(arg_count);
+                let ret_dest =
+                    self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, true, true);
+                assert_eq!(llargs, []);
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(bx, tmp);
                 }
@@ -842,9 +837,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             };
         }
 
-        match intrinsic {
-            None | Some(sym::drop_in_place) => {}
+        let instance = match intrinsic {
+            None | Some(sym::drop_in_place) => instance,
             Some(intrinsic) => {
+                let mut llargs = Vec::with_capacity(1);
+                let ret_dest = self.make_return_dest(
+                    bx,
+                    destination,
+                    &fn_abi.ret,
+                    &mut llargs,
+                    true,
+                    target.is_some(),
+                );
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
                     ReturnDest::Nothing => bx.const_undef(bx.type_ptr()),
@@ -863,7 +867,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // checked by const-qualification, which also
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic == sym::simd_shuffle {
-                            if let mir::Operand::Constant(constant) = arg {
+                            if let mir::Operand::Constant(constant) = &arg.node {
                                 let (llval, ty) = self.simd_shuffle_indices(bx, constant);
                                 return OperandRef {
                                     val: Immediate(llval),
@@ -874,31 +878,33 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
 
-                        self.codegen_operand(bx, arg)
+                        self.codegen_operand(bx, &arg.node)
                     })
                     .collect();
 
-                Self::codegen_intrinsic_call(
-                    bx,
-                    *instance.as_ref().unwrap(),
-                    fn_abi,
-                    &args,
-                    dest,
-                    span,
-                );
+                let instance = *instance.as_ref().unwrap();
+                match Self::codegen_intrinsic_call(bx, instance, fn_abi, &args, dest, span) {
+                    Ok(()) => {
+                        if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
+                            self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
+                        }
 
-                if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                    self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
+                        return if let Some(target) = target {
+                            helper.funclet_br(self, bx, target, mergeable_succ)
+                        } else {
+                            bx.unreachable();
+                            MergingSucc::False
+                        };
+                    }
+                    Err(instance) => Some(instance),
                 }
-
-                return if let Some(target) = target {
-                    helper.funclet_br(self, bx, target, mergeable_succ)
-                } else {
-                    bx.unreachable();
-                    MergingSucc::False
-                };
             }
-        }
+        };
+
+        let mut llargs = Vec::with_capacity(arg_count);
+        let destination = target.as_ref().map(|&target| {
+            (self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, false, true), target)
+        });
 
         // Split the rust-call tupled arguments off.
         let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
@@ -910,7 +916,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut copied_constant_arguments = vec![];
         'make_args: for (i, arg) in first_args.iter().enumerate() {
-            let mut op = self.codegen_operand(bx, arg);
+            let mut op = self.codegen_operand(bx, &arg.node);
 
             if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                 match op.val {
@@ -988,7 +994,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             // The callee needs to own the argument memory if we pass it
             // by-ref, so make a local copy of non-immediate constants.
-            match (arg, op.val) {
+            match (&arg.node, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _))
                 | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
                     let tmp = PlaceRef::alloca(bx, op.layout);
@@ -1003,7 +1009,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_argument(bx, op, &mut llargs, &fn_abi.args[i]);
         }
         let num_untupled = untuple.map(|tup| {
-            self.codegen_arguments_untupled(bx, tup, &mut llargs, &fn_abi.args[first_args.len()..])
+            self.codegen_arguments_untupled(
+                bx,
+                &tup.node,
+                &mut llargs,
+                &fn_abi.args[first_args.len()..],
+            )
         });
 
         let needs_location =
@@ -1035,14 +1046,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (_, Some(llfn)) => llfn,
             _ => span_bug!(span, "no instance or llfn for call"),
         };
-
         helper.do_call(
             self,
             bx,
             fn_abi,
             fn_ptr,
             &llargs,
-            target.as_ref().map(|&target| (ret_dest, target)),
+            destination,
             unwind,
             &copied_constant_arguments,
             mergeable_succ,
@@ -1627,7 +1637,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
         is_intrinsic: bool,
+        has_target: bool,
     ) -> ReturnDest<'tcx, Bx::Value> {
+        if !has_target {
+            return ReturnDest::Nothing;
+        }
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;

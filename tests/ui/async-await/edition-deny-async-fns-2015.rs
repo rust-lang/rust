@@ -1,4 +1,4 @@
-// edition:2015
+//@ edition:2015
 
 async fn foo() {} //~ ERROR `async fn` is not permitted in Rust 2015
 

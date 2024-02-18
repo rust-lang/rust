@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 use std::iter::{Fuse, Cloned};
 use std::slice::Iter;
 
-struct Foo<'a, T: 'a>(#[allow(unused_tuple_struct_fields)] &'a T);
+struct Foo<'a, T: 'a>(#[allow(dead_code)] &'a T);
 impl<'a, T: 'a> Copy for Foo<'a, T> {}
 impl<'a, T: 'a> Clone for Foo<'a, T> {
     fn clone(&self) -> Self { *self }

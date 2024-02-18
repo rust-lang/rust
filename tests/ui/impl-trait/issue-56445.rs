@@ -1,5 +1,5 @@
 // Regression test for https://github.com/rust-lang/rust/issues/56445#issuecomment-629426939
-// check-pass
+//@ check-pass
 
 #![crate_type = "lib"]
 

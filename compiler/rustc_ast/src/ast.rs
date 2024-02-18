@@ -20,17 +20,18 @@
 
 pub use crate::format::*;
 pub use crate::util::parser::ExprPrecedence;
+pub use rustc_span::AttrId;
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
 
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
@@ -290,12 +291,16 @@ pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
 pub struct TraitBoundModifiers {
     pub constness: BoundConstness,
+    pub asyncness: BoundAsyncness,
     pub polarity: BoundPolarity,
 }
 
 impl TraitBoundModifiers {
-    pub const NONE: Self =
-        Self { constness: BoundConstness::Never, polarity: BoundPolarity::Positive };
+    pub const NONE: Self = Self {
+        constness: BoundConstness::Never,
+        asyncness: BoundAsyncness::Normal,
+        polarity: BoundPolarity::Positive,
+    };
 }
 
 /// The AST represents all type param bounds as types.
@@ -625,7 +630,8 @@ impl Pat {
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::MacCall(_) => {}
+            | PatKind::MacCall(_)
+            | PatKind::Err(_) => {}
         }
     }
 
@@ -809,6 +815,9 @@ pub enum PatKind {
 
     /// A macro pattern; pre-expansion.
     MacCall(P<MacCall>),
+
+    /// Placeholder for a pattern that wasn't syntactically well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 /// Whether the `..` is present in a struct fields pattern.
@@ -1829,7 +1838,7 @@ pub enum LitKind {
     /// A character literal (`'a'`).
     Char(char),
     /// An integer literal (`1`).
-    Int(u128, LitIntType),
+    Int(Pu128, LitIntType),
     /// A float literal (`1.0`, `1f64` or `1E10f64`). The pre-suffix part is
     /// stored as a symbol rather than `f64` so that `LitKind` can impl `Eq`
     /// and `Hash`.
@@ -1837,7 +1846,7 @@ pub enum LitKind {
     /// A boolean literal (`true`, `false`).
     Bool(bool),
     /// Placeholder for a literal that wasn't well-formed in some way.
-    Err,
+    Err(ErrorGuaranteed),
 }
 
 impl LitKind {
@@ -1884,7 +1893,7 @@ impl LitKind {
             | LitKind::Int(_, LitIntType::Unsuffixed)
             | LitKind::Float(_, LitFloatType::Unsuffixed)
             | LitKind::Bool(..)
-            | LitKind::Err => false,
+            | LitKind::Err(_) => false,
         }
     }
 }
@@ -2098,9 +2107,9 @@ pub enum TyKind {
     /// A tuple (`(A, B, C, D,...)`).
     Tup(ThinVec<P<Ty>>),
     /// An anonymous struct type i.e. `struct { foo: Type }`
-    AnonStruct(ThinVec<FieldDef>),
+    AnonStruct(NodeId, ThinVec<FieldDef>),
     /// An anonymous union type i.e. `union { bar: Type }`
-    AnonUnion(ThinVec<FieldDef>),
+    AnonUnion(NodeId, ThinVec<FieldDef>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///
@@ -2127,10 +2136,12 @@ pub enum TyKind {
     ImplicitSelf,
     /// A macro in the type position.
     MacCall(P<MacCall>),
-    /// Placeholder for a kind that has failed to be defined.
-    Err,
     /// Placeholder for a `va_list`.
     CVarArgs,
+    /// Sometimes we need a dummy value when no error has occurred.
+    Dummy,
+    /// Placeholder for a kind that has failed to be defined.
+    Err(ErrorGuaranteed),
 }
 
 impl TyKind {
@@ -2152,6 +2163,10 @@ impl TyKind {
             None
         }
     }
+
+    pub fn is_anon_adt(&self) -> bool {
+        matches!(self, TyKind::AnonStruct(..) | TyKind::AnonUnion(..))
+    }
 }
 
 /// Syntax used to declare a trait object.
@@ -2171,9 +2186,10 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub struct InlineAsmOptions(u16);
 bitflags::bitflags! {
-    #[derive(Encodable, Decodable, HashStable_Generic)]
-    pub struct InlineAsmOptions: u16 {
+    impl InlineAsmOptions: u16 {
         const PURE            = 1 << 0;
         const NOMEM           = 1 << 1;
         const READONLY        = 1 << 2;
@@ -2183,6 +2199,12 @@ bitflags::bitflags! {
         const ATT_SYNTAX      = 1 << 6;
         const RAW             = 1 << 7;
         const MAY_UNWIND      = 1 << 8;
+    }
+}
+
+impl std::fmt::Debug for InlineAsmOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
     }
 }
 
@@ -2481,15 +2503,6 @@ pub enum Const {
     No,
 }
 
-impl From<BoundConstness> for Const {
-    fn from(constness: BoundConstness) -> Self {
-        match constness {
-            BoundConstness::Maybe(span) => Self::Yes(span),
-            BoundConstness::Never => Self::No,
-        }
-    }
-}
-
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -2543,6 +2556,8 @@ impl BoundPolarity {
 pub enum BoundConstness {
     /// `Type: Trait`
     Never,
+    /// `Type: const Trait`
+    Always(Span),
     /// `Type: ~const Trait`
     Maybe(Span),
 }
@@ -2551,7 +2566,27 @@ impl BoundConstness {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Never => "",
+            Self::Always(_) => "const",
             Self::Maybe(_) => "~const",
+        }
+    }
+}
+
+/// The asyncness of a trait bound.
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
+#[derive(HashStable_Generic)]
+pub enum BoundAsyncness {
+    /// `Type: Trait`
+    Normal,
+    /// `Type: async Trait`
+    Async(Span),
+}
+
+impl BoundAsyncness {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Normal => "",
+            Self::Async(_) => "async",
         }
     }
 }
@@ -2679,22 +2714,6 @@ impl UseTree {
 pub enum AttrStyle {
     Outer,
     Inner,
-}
-
-rustc_index::newtype_index! {
-    #[orderable]
-    #[debug_format = "AttrId({})"]
-    pub struct AttrId {}
-}
-
-impl<S: Encoder> Encodable<S> for AttrId {
-    fn encode(&self, _s: &mut S) {}
-}
-
-impl<D: Decoder> Decodable<D> for AttrId {
-    default fn decode(_: &mut D) -> AttrId {
-        panic!("cannot decode `AttrId` with `{}`", std::any::type_name::<D>());
-    }
 }
 
 /// A list of attributes.
@@ -2888,6 +2907,7 @@ impl Item {
             | ItemKind::ForeignMod(_)
             | ItemKind::GlobalAsm(_)
             | ItemKind::MacCall(_)
+            | ItemKind::Delegation(_)
             | ItemKind::MacroDef(_) => None,
             ItemKind::Static(_) => None,
             ItemKind::Const(i) => Some(&i.generics),
@@ -3035,6 +3055,15 @@ pub struct Fn {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Delegation {
+    /// Path resolution id.
+    pub id: NodeId,
+    pub qself: Option<P<QSelf>>,
+    pub path: Path,
+    pub body: Option<P<Block>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct StaticItem {
     pub ty: P<Ty>,
     pub mutability: Mutability,
@@ -3119,6 +3148,11 @@ pub enum ItemKind {
 
     /// A macro definition.
     MacroDef(MacroDef),
+
+    /// A delegation item (`reuse`).
+    ///
+    /// E.g. `reuse <Type as Trait>::name { target_expr_template }`.
+    Delegation(Box<Delegation>),
 }
 
 impl ItemKind {
@@ -3126,7 +3160,8 @@ impl ItemKind {
         use ItemKind::*;
         match self {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
-            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..) => "a",
+            | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
+            | Delegation(..) => "a",
             ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
         }
     }
@@ -3150,6 +3185,7 @@ impl ItemKind {
             ItemKind::MacCall(..) => "item macro invocation",
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
+            ItemKind::Delegation(..) => "delegated function",
         }
     }
 
@@ -3191,6 +3227,8 @@ pub enum AssocItemKind {
     Type(Box<TyAlias>),
     /// A macro expanding to associated items.
     MacCall(P<MacCall>),
+    /// An associated delegation item.
+    Delegation(Box<Delegation>),
 }
 
 impl AssocItemKind {
@@ -3199,7 +3237,7 @@ impl AssocItemKind {
             Self::Const(box ConstItem { defaultness, .. })
             | Self::Fn(box Fn { defaultness, .. })
             | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
-            Self::MacCall(..) => Defaultness::Final,
+            Self::MacCall(..) | Self::Delegation(..) => Defaultness::Final,
         }
     }
 }
@@ -3211,6 +3249,7 @@ impl From<AssocItemKind> for ItemKind {
             AssocItemKind::Fn(fn_kind) => ItemKind::Fn(fn_kind),
             AssocItemKind::Type(ty_alias_kind) => ItemKind::TyAlias(ty_alias_kind),
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
+            AssocItemKind::Delegation(delegation) => ItemKind::Delegation(delegation),
         }
     }
 }
@@ -3224,6 +3263,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
             ItemKind::Fn(fn_kind) => AssocItemKind::Fn(fn_kind),
             ItemKind::TyAlias(ty_kind) => AssocItemKind::Type(ty_kind),
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
+            ItemKind::Delegation(d) => AssocItemKind::Delegation(d),
             _ => return Err(item_kind),
         })
     }
@@ -3289,7 +3329,7 @@ mod size_asserts {
     static_assert_size!(ForeignItem, 96);
     static_assert_size!(ForeignItemKind, 24);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 72);
+    static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 136);
     static_assert_size!(Item, 136);

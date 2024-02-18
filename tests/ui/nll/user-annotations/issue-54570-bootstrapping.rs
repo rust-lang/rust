@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This test is reduced from a scenario pnkfelix encountered while
 // bootstrapping the compiler.

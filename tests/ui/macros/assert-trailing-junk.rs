@@ -1,5 +1,5 @@
-// revisions: with-generic-asset without-generic-asset
-// [with-generic-asset] compile-flags: --cfg feature="generic_assert"
+//@ revisions: with-generic-asset without-generic-asset
+//@ [with-generic-asset] compile-flags: --cfg feature="generic_assert"
 
 // Ensure assert macro does not ignore trailing garbage.
 //

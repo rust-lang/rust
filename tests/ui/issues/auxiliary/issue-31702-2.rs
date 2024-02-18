@@ -1,4 +1,4 @@
-// compile-flags: -g
+//@ compile-flags: -g
 
 extern crate issue_31702_1;
 

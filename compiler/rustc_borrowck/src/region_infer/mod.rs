@@ -18,7 +18,8 @@ use rustc_middle::mir::{
 };
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::ObligationCauseCode;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 
 use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
@@ -30,8 +31,7 @@ use crate::{
     nll::PoloniusOutput,
     region_infer::reverse_sccs::ReverseSccGraph,
     region_infer::values::{
-        LivenessValues, PlaceholderIndices, RegionElement, RegionValueElements, RegionValues,
-        ToElementIndex,
+        LivenessValues, PlaceholderIndices, RegionElement, RegionValues, ToElementIndex,
     },
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
     universal_regions::UniversalRegions,
@@ -330,7 +330,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
         liveness_constraints: LivenessValues,
-        elements: &Rc<RegionValueElements>,
+        elements: &Rc<DenseLocationMap>,
     ) -> Self {
         debug!("universal_regions: {:#?}", universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
@@ -658,12 +658,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(super) fn solve(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
-        self.propagate_constraints(body);
+        self.propagate_constraints();
 
         let mut errors_buffer = RegionErrors::new(infcx.tcx);
 
@@ -674,7 +673,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // eagerly.
         let mut outlives_requirements = infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
-        self.check_type_tests(infcx, body, outlives_requirements.as_mut(), &mut errors_buffer);
+        self.check_type_tests(infcx, outlives_requirements.as_mut(), &mut errors_buffer);
 
         debug!(?errors_buffer);
         debug!(?outlives_requirements);
@@ -717,8 +716,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    #[instrument(skip(self, _body), level = "debug")]
-    fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
+    #[instrument(skip(self), level = "debug")]
+    fn propagate_constraints(&mut self) {
         debug!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.outlives_constraints().collect();
             constraints.sort_by_key(|c| (c.sup, c.sub));
@@ -932,7 +931,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_type_tests(
         &self,
         infcx: &InferCtxt<'tcx>,
-        body: &Body<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
@@ -957,12 +955,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
-                if self.try_promote_type_test(
-                    infcx,
-                    body,
-                    type_test,
-                    propagated_outlives_requirements,
-                ) {
+                if self.try_promote_type_test(infcx, type_test, propagated_outlives_requirements) {
                     continue;
                 }
             }
@@ -1016,7 +1009,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'tcx>,
-        body: &Body<'tcx>,
         type_test: &TypeTest<'tcx>,
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
     ) -> bool {
@@ -1145,6 +1137,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let ty = ty.fold_with(&mut OpaqueFolder { tcx });
+        let mut failed = false;
 
         let ty = tcx.fold_regions(ty, |r, _depth| {
             let r_vid = self.to_region_vid(r);
@@ -1160,48 +1153,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .filter(|&u_r| !self.universal_regions.is_local_free_region(u_r))
                 .find(|&u_r| self.eval_equal(u_r, r_vid))
                 .map(|u_r| ty::Region::new_var(tcx, u_r))
-                // In the case of a failure, use `ReErased`. We will eventually
-                // return `None` in this case.
-                .unwrap_or(tcx.lifetimes.re_erased)
+                // In case we could not find a named region to map to,
+                // we will return `None` below.
+                .unwrap_or_else(|| {
+                    failed = true;
+                    r
+                })
         });
 
         debug!("try_promote_type_test_subject: folded ty = {:?}", ty);
 
         // This will be true if we failed to promote some region.
-        if ty.has_erased_regions() {
+        if failed {
             return None;
         }
 
         Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(tcx, ty)))
-    }
-
-    /// Returns a universally quantified region that outlives the
-    /// value of `r` (`r` may be existentially or universally
-    /// quantified).
-    ///
-    /// Since `r` is (potentially) an existential region, it has some
-    /// value which may include (a) any number of points in the CFG
-    /// and (b) any number of `end('x)` elements of universally
-    /// quantified regions. To convert this into a single universal
-    /// region we do as follows:
-    ///
-    /// - Ignore the CFG points in `'r`. All universally quantified regions
-    ///   include the CFG anyhow.
-    /// - For each `end('x)` element in `'r`, compute the mutual LUB, yielding
-    ///   a result `'y`.
-    #[instrument(skip(self), level = "debug", ret)]
-    pub(crate) fn universal_upper_bound(&self, r: RegionVid) -> RegionVid {
-        debug!(r = %self.region_value_str(r));
-
-        // Find the smallest universal region that contains all other
-        // universal regions within `region`.
-        let mut lub = self.universal_regions.fr_fn_body;
-        let r_scc = self.constraint_sccs.scc(r);
-        for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
-            lub = self.universal_region_relations.postdom_upper_bound(lub, ur);
-        }
-
-        lub
     }
 
     /// Like `universal_upper_bound`, but returns an approximation more suitable

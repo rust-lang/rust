@@ -3,7 +3,7 @@
 // that appears in the parent function iff `'a` is early-bound.
 // This made the following tests pass borrowck.
 
-// check-fail
+//@ check-fail
 
 // The bound `'a: 'a` ensures that `'a` is early-bound.
 fn test_early_early<'a: 'a, 'b: 'b>() {

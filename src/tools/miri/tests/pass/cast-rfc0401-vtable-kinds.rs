@@ -9,6 +9,7 @@ trait Foo<T> {
     }
 }
 
+#[allow(dead_code)]
 trait Bar {
     fn bar(&self) {
         println!("Bar!");

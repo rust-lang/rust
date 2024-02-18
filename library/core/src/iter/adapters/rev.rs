@@ -1,5 +1,5 @@
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::Try;
 
 /// A double-ended iterator with the direction inverted.
@@ -39,7 +39,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.iter.advance_back_by(n)
     }
 
@@ -84,7 +84,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.iter.advance_by(n)
     }
 

@@ -1,6 +1,6 @@
 #![deny(indirect_structural_match)]
 
-// check-pass
+//@ check-pass
 
 #[derive(PartialEq, Eq)]
 enum O<T> {

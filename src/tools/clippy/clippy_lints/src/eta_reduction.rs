@@ -3,15 +3,14 @@ use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
-use clippy_utils::{higher, is_adjusted, path_to_local, path_to_local_id};
+use clippy_utils::{get_path_from_caller_to_method_type, higher, is_adjusted, path_to_local, path_to_local_id};
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
-    self, Binder, ClosureArgs, ClosureKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    ImplPolarity, List, Region, RegionKind, Ty, TypeVisitableExt, TypeckResults,
+    self, Binder, ClosureArgs, ClosureKind, FnSig, GenericArg, GenericArgKind, ImplPolarity, List, Region, RegionKind,
+    Ty, TypeVisitableExt, TypeckResults,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -21,8 +20,8 @@ use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for closures which just call another function where
-    /// the function can be called directly. `unsafe` functions or calls where types
-    /// get adjusted are ignored.
+    /// the function can be called directly. `unsafe` functions, calls where types
+    /// get adjusted or where the callee is marked `#[track_caller]` are ignored.
     ///
     /// ### Why is this bad?
     /// Needlessly creating a closure adds code for no benefit
@@ -136,7 +135,14 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     .map_or(callee_ty, |a| a.target.peel_refs());
 
                 let sig = match callee_ty_adjusted.kind() {
-                    ty::FnDef(def, _) => cx.tcx.fn_sig(def).skip_binder().skip_binder(),
+                    ty::FnDef(def, _) => {
+                        // Rewriting `x(|| f())` to `x(f)` where f is marked `#[track_caller]` moves the `Location`
+                        if cx.tcx.has_attr(*def, sym::track_caller) {
+                            return;
+                        }
+
+                        cx.tcx.fn_sig(def).skip_binder().skip_binder()
+                    },
                     ty::FnPtr(sig) => sig.skip_binder(),
                     ty::Closure(_, subs) => cx
                         .tcx
@@ -186,6 +192,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             },
             ExprKind::MethodCall(path, self_, args, _) if check_inputs(typeck, body.params, Some(self_), args) => {
                 if let Some(method_def_id) = typeck.type_dependent_def_id(body.value.hir_id)
+                    && !cx.tcx.has_attr(method_def_id, sym::track_caller)
                     && check_sig(cx, closure, cx.tcx.fn_sig(method_def_id).skip_binder().skip_binder())
                 {
                     span_lint_and_then(
@@ -195,11 +202,12 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                         "redundant closure",
                         |diag| {
                             let args = typeck.node_args(body.value.hir_id);
-                            let name = get_ufcs_type_name(cx, method_def_id, args);
+                            let caller = self_.hir_id.owner.def_id;
+                            let type_name = get_path_from_caller_to_method_type(cx.tcx, caller, method_def_id, args);
                             diag.span_suggestion(
                                 expr.span,
                                 "replace the closure with the method itself",
-                                format!("{}::{}", name, path.ident.name),
+                                format!("{}::{}", type_name, path.ident.name),
                                 Applicability::MachineApplicable,
                             );
                         },
@@ -300,28 +308,4 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
         .iter()
         .zip(to_sig.inputs_and_output)
         .any(|(from_ty, to_ty)| check_ty(from_ty, to_ty))
-}
-
-fn get_ufcs_type_name<'tcx>(cx: &LateContext<'tcx>, method_def_id: DefId, args: GenericArgsRef<'tcx>) -> String {
-    let assoc_item = cx.tcx.associated_item(method_def_id);
-    let def_id = assoc_item.container_id(cx.tcx);
-    match assoc_item.container {
-        ty::TraitContainer => cx.tcx.def_path_str(def_id),
-        ty::ImplContainer => {
-            let ty = cx.tcx.type_of(def_id).instantiate_identity();
-            match ty.kind() {
-                ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did()),
-                ty::Array(..)
-                | ty::Dynamic(..)
-                | ty::Never
-                | ty::RawPtr(_)
-                | ty::Ref(..)
-                | ty::Slice(_)
-                | ty::Tuple(_) => {
-                    format!("<{}>", EarlyBinder::bind(ty).instantiate(cx.tcx, args))
-                },
-                _ => ty.to_string(),
-            }
-        },
-    }
 }

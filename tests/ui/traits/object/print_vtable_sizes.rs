@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Z print-vtable-sizes
+//@ check-pass
+//@ compile-flags: -Z print-vtable-sizes
 #![crate_type = "lib"]
 
 trait A<T: help::V>: AsRef<[T::V]> + AsMut<[T::V]> {}

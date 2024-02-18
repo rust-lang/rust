@@ -4,6 +4,13 @@ error[E0425]: cannot find value `oops` in this scope
 LL |     oops;
    |     ^^^^ not found in this scope
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/issue-104609.rs:7:5
+   |
+LL |     std::mem::transmute::<_, *mut _>(1_u8);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `Dst` declared on the function `transmute`
 
-For more information about this error, try `rustc --explain E0425`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0282, E0425.
+For more information about an error, try `rustc --explain E0282`.

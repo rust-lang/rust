@@ -1,4 +1,4 @@
-//check-pass
+//@check-pass
 
 use higher_kinded_types::*;
 mod higher_kinded_types {

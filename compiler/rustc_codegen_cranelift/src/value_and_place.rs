@@ -397,7 +397,7 @@ impl<'tcx> CPlace<'tcx> {
 
         if layout.size.bytes() >= u64::from(u32::MAX - 16) {
             fx.tcx
-                .sess
+                .dcx()
                 .fatal(format!("values of type {} are too big to store on the stack", layout.ty));
         }
 
@@ -974,8 +974,8 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (&ty::Coroutine(def_id_a, args_a, mov_a), &ty::Coroutine(def_id_b, args_b, mov_b))
-            if def_id_a == def_id_b && mov_a == mov_b =>
+        (&ty::Coroutine(def_id_a, args_a), &ty::Coroutine(def_id_b, args_b))
+            if def_id_a == def_id_b =>
         {
             let mut types_a = args_a.types();
             let mut types_b = args_b.types();

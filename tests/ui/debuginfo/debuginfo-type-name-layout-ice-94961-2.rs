@@ -3,11 +3,11 @@
 // This version of the test already ICE'd before the commit that introduce the ICE described in
 // https://github.com/rust-lang/rust/issues/94961.
 
-// compile-flags:-C debuginfo=2
-// build-fail
-// error-pattern: too big for the current architecture
-// normalize-stderr-64bit "18446744073709551615" -> "SIZE"
-// normalize-stderr-32bit "4294967295" -> "SIZE"
+//@ compile-flags:-C debuginfo=2
+//@ build-fail
+//@ error-pattern: too big for the current architecture
+//@ normalize-stderr-64bit "18446744073709551615" -> "SIZE"
+//@ normalize-stderr-32bit "4294967295" -> "SIZE"
 
 #![crate_type = "rlib"]
 

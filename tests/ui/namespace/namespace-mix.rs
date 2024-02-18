@@ -1,4 +1,4 @@
-// aux-build:namespace-mix.rs
+//@ aux-build:namespace-mix.rs
 
 extern crate namespace_mix;
 use namespace_mix::*;

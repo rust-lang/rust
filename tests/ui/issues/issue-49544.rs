@@ -1,5 +1,5 @@
-// aux-build:issue-49544.rs
-// check-pass
+//@ aux-build:issue-49544.rs
+//@ check-pass
 
 extern crate issue_49544;
 use issue_49544::foo;

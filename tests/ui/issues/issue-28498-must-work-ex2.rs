@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Example taken from RFC 1238 text
 
 // https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
@@ -6,7 +6,7 @@
 
 use std::cell::Cell;
 
-struct Concrete<'a>(#[allow(unused_tuple_struct_fields)] u32, Cell<Option<&'a Concrete<'a>>>);
+struct Concrete<'a>(#[allow(dead_code)] u32, Cell<Option<&'a Concrete<'a>>>);
 
 struct Foo<T> { data: Vec<T> }
 

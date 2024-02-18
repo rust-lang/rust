@@ -103,7 +103,7 @@ macro without_args {
 include!(concat!("foo/", "foo.rs"));
 
 fn main() {
-    format_args!("Hello, {}!", 92);
+    format_args!("Hello, {}!", (92,).0);
     dont_color_me_braces!();
     noop!(noop!(1));
 }

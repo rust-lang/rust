@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(inline_const)]
 
 fn foo<T>() -> usize {

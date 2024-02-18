@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Check that the HELP suggestion is `l(vec![])` instead of `l($crate::vec::Vec::new())`
 fn l(_a: Vec<u8>) {}
 

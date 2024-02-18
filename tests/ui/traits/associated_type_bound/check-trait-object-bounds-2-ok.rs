@@ -1,6 +1,6 @@
 // Make sure that we're handling bound lifetimes correctly when validating trait
 // bounds.
-// run-pass
+//@ run-pass
 
 trait X<'a> {
     type F: FnOnce(&i32) -> &'a i32;

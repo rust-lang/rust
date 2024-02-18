@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct Example<const N: usize>;
 
 macro_rules! external_macro {

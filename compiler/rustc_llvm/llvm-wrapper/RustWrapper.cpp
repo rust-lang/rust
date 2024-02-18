@@ -250,8 +250,6 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::NonLazyBind;
   case OptimizeNone:
     return Attribute::OptimizeNone;
-  case ReturnsTwice:
-    return Attribute::ReturnsTwice;
   case ReadNone:
     return Attribute::ReadNone;
   case SanitizeHWAddress:
@@ -1803,6 +1801,9 @@ extern "C" LLVMRustResult LLVMRustWriteImportLibrary(
       std::string{},    // ExtName
       std::string{},    // SymbolName
       std::string{},    // AliasTarget
+#if LLVM_VERSION_GE(19, 0)
+      std::string{},    // ExportAs
+#endif
       ordinal,          // Ordinal
       ordinal_present,  // Noname
       false,            // Data

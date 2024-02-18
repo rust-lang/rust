@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Private types and traits are not allowed in public interfaces.
 // This test also ensures that the checks are performed even inside private modules.

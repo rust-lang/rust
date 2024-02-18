@@ -1,8 +1,8 @@
-// revisions: stock gated stocknc gatednc
-// [gated] check-pass
+//@ revisions: stock gated stocknc gatednc
+//@ [gated] check-pass
 #![cfg_attr(any(gated, gatednc), feature(const_trait_impl, effects))]
 
-// aux-build: cross-crate.rs
+//@ aux-build: cross-crate.rs
 extern crate cross_crate;
 
 use cross_crate::*;

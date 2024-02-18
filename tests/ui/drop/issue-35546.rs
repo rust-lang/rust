@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![allow(dead_code)]
 // Regression test for #35546. Check that we are able to codegen
 // this. Before we had problems because of the drop glue signature

@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // Built-in attribute
 use inline as imported_inline;

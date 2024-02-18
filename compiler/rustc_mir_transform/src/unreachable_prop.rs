@@ -54,6 +54,8 @@ impl MirPass<'_> for UnreachablePropagation {
         patch.apply(body);
 
         // We do want do keep some unreachable blocks, but make them empty.
+        // The order in which we clear bb statements does not matter.
+        #[allow(rustc::potential_query_instability)]
         for bb in unreachable_blocks {
             body.basic_blocks_mut()[bb].statements.clear();
         }

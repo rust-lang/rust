@@ -163,10 +163,6 @@ impl Lifetime {
             (LifetimeSuggestionPosition::Normal, self.ident.span)
         }
     }
-
-    pub fn is_static(&self) -> bool {
-        self.res == LifetimeName::Static
-    }
 }
 
 /// A `Path` is essentially Rust's notion of a name; for instance,
@@ -248,7 +244,7 @@ pub struct InferArg {
 }
 
 impl InferArg {
-    pub fn to_ty(&self) -> Ty<'_> {
+    pub fn to_ty(&self) -> Ty<'static> {
         Ty { kind: TyKind::Infer, span: self.span, hir_id: self.hir_id }
     }
 }
@@ -420,9 +416,15 @@ pub enum GenericArgsParentheses {
 /// A modifier on a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum TraitBoundModifier {
+    /// `Type: Trait`
     None,
+    /// `Type: !Trait`
     Negative,
+    /// `Type: ?Trait`
     Maybe,
+    /// `Type: const Trait`
+    Const,
+    /// `Type: ~const Trait`
     MaybeConst,
 }
 
@@ -829,17 +831,16 @@ pub struct OwnerNodes<'tcx> {
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
     // used.
-    pub nodes: IndexVec<ItemLocalId, Option<ParentedNode<'tcx>>>,
+    pub nodes: IndexVec<ItemLocalId, ParentedNode<'tcx>>,
     /// Content of local bodies.
     pub bodies: SortedMap<ItemLocalId, &'tcx Body<'tcx>>,
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
-    fn node(&self) -> OwnerNode<'tcx> {
+    pub fn node(&self) -> OwnerNode<'tcx> {
         use rustc_index::Idx;
-        let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
-        let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
-        node
+        // Indexing must ensure it is an OwnerNode.
+        self.nodes[ItemLocalId::new(0)].node.as_owner().unwrap()
     }
 }
 
@@ -854,9 +855,7 @@ impl fmt::Debug for OwnerNodes<'_> {
                     .nodes
                     .iter_enumerated()
                     .map(|(id, parented_node)| {
-                        let parented_node = parented_node.as_ref().map(|node| node.parent);
-
-                        debug_fn(move |f| write!(f, "({id:?}, {parented_node:?})"))
+                        debug_fn(move |f| write!(f, "({id:?}, {:?})", parented_node.parent))
                     })
                     .collect::<Vec<_>>(),
             )
@@ -888,34 +887,23 @@ impl<'tcx> OwnerInfo<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum MaybeOwner<T> {
-    Owner(T),
+pub enum MaybeOwner<'tcx> {
+    Owner(&'tcx OwnerInfo<'tcx>),
     NonOwner(HirId),
     /// Used as a placeholder for unused LocalDefId.
     Phantom,
 }
 
-impl<T> MaybeOwner<T> {
-    pub fn as_owner(self) -> Option<T> {
+impl<'tcx> MaybeOwner<'tcx> {
+    pub fn as_owner(self) -> Option<&'tcx OwnerInfo<'tcx>> {
         match self {
             MaybeOwner::Owner(i) => Some(i),
             MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => None,
         }
     }
 
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> MaybeOwner<U> {
-        match self {
-            MaybeOwner::Owner(i) => MaybeOwner::Owner(f(i)),
-            MaybeOwner::NonOwner(hir_id) => MaybeOwner::NonOwner(hir_id),
-            MaybeOwner::Phantom => MaybeOwner::Phantom,
-        }
-    }
-
-    pub fn unwrap(self) -> T {
-        match self {
-            MaybeOwner::Owner(i) => i,
-            MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => panic!("Not a HIR owner"),
-        }
+    pub fn unwrap(self) -> &'tcx OwnerInfo<'tcx> {
+        self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
     }
 }
 
@@ -927,7 +915,7 @@ impl<T> MaybeOwner<T> {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 #[derive(Debug)]
 pub struct Crate<'hir> {
-    pub owners: IndexVec<LocalDefId, MaybeOwner<&'hir OwnerInfo<'hir>>>,
+    pub owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
     // Only present when incr. comp. is enabled.
     pub opt_hir_hash: Option<Fingerprint>,
 }
@@ -945,7 +933,23 @@ pub struct Closure<'hir> {
     pub fn_decl_span: Span,
     /// The span of the argument block `|...|`
     pub fn_arg_span: Option<Span>,
-    pub movability: Option<Movability>,
+    pub kind: ClosureKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
+pub enum ClosureKind {
+    /// This is a plain closure expression.
+    Closure,
+    /// This is a coroutine expression -- i.e. a closure expression in which
+    /// we've found a `yield`. These can arise either from "plain" coroutine
+    ///  usage (e.g. `let x = || { yield (); }`) or from a desugared expression
+    /// (e.g. `async` and `gen` blocks).
+    Coroutine(CoroutineKind),
+    /// This is a coroutine-closure, which is a special sugared closure that
+    /// returns one of the sugared coroutine (`async`/`gen`/`async gen`). It
+    /// additionally allows capturing the coroutine's upvars by ref, and therefore
+    /// needs to be specially treated during analysis and borrowck.
+    CoroutineClosure(CoroutineDesugaring),
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the
@@ -998,7 +1002,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) => true,
+            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
@@ -1025,7 +1029,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) => {}
+            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
             Box(s) | Ref(s, _) | Binding(.., Some(s)) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
@@ -1188,6 +1192,9 @@ pub enum PatKind<'hir> {
     /// PatKind::Slice([Binding(a), Binding(b)], Some(Wild), [Binding(c), Binding(d)])
     /// ```
     Slice(&'hir [Pat<'hir>], Option<&'hir Pat<'hir>>, &'hir [Pat<'hir>]),
+
+    /// A placeholder for a pattern that wasn't well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 /// A statement.
@@ -1241,7 +1248,7 @@ pub struct Arm<'hir> {
     /// If this pattern and the optional guard matches, then `body` is evaluated.
     pub pat: &'hir Pat<'hir>,
     /// Optional guard clause.
-    pub guard: Option<Guard<'hir>>,
+    pub guard: Option<&'hir Expr<'hir>>,
     /// The expression the arm evaluates to if this arm matches.
     pub body: &'hir Expr<'hir>,
 }
@@ -1253,7 +1260,6 @@ pub struct Arm<'hir> {
 /// desugaring to if-let. Only let-else supports the type annotation at present.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Let<'hir> {
-    pub hir_id: HirId,
     pub span: Span,
     pub pat: &'hir Pat<'hir>,
     pub ty: Option<&'hir Ty<'hir>>,
@@ -1261,26 +1267,6 @@ pub struct Let<'hir> {
     /// `Some` when this let expressions is not in a syntanctically valid location.
     /// Used to prevent building MIR in such situations.
     pub is_recovered: Option<ErrorGuaranteed>,
-}
-
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub enum Guard<'hir> {
-    If(&'hir Expr<'hir>),
-    IfLet(&'hir Let<'hir>),
-}
-
-impl<'hir> Guard<'hir> {
-    /// Returns the body of the guard
-    ///
-    /// In other words, returns the e in either of the following:
-    ///
-    /// - `if e`
-    /// - `if let x = e`
-    pub fn body(&self) -> &'hir Expr<'hir> {
-        match self {
-            Guard::If(e) | Guard::IfLet(Let { init: e, .. }) => e,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -1305,7 +1291,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct BodyId {
     pub hir_id: HirId,
 }
@@ -1335,16 +1321,11 @@ pub struct BodyId {
 pub struct Body<'hir> {
     pub params: &'hir [Param<'hir>],
     pub value: &'hir Expr<'hir>,
-    pub coroutine_kind: Option<CoroutineKind>,
 }
 
 impl<'hir> Body<'hir> {
     pub fn id(&self) -> BodyId {
         BodyId { hir_id: self.value.hir_id }
-    }
-
-    pub fn coroutine_kind(&self) -> Option<CoroutineKind> {
-        self.coroutine_kind
     }
 }
 
@@ -1355,7 +1336,24 @@ pub enum CoroutineKind {
     Desugared(CoroutineDesugaring, CoroutineSource),
 
     /// A coroutine literal created via a `yield` inside a closure.
-    Coroutine,
+    Coroutine(Movability),
+}
+
+impl CoroutineKind {
+    pub fn movability(self) -> Movability {
+        match self {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+            | CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => Movability::Static,
+            CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => Movability::Movable,
+            CoroutineKind::Coroutine(mov) => mov,
+        }
+    }
+}
+
+impl CoroutineKind {
+    pub fn is_fn_like(self) -> bool {
+        matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
+    }
 }
 
 impl fmt::Display for CoroutineKind {
@@ -1365,7 +1363,7 @@ impl fmt::Display for CoroutineKind {
                 d.fmt(f)?;
                 k.fmt(f)
             }
-            CoroutineKind::Coroutine => f.write_str("coroutine"),
+            CoroutineKind::Coroutine(_) => f.write_str("coroutine"),
         }
     }
 }
@@ -1520,14 +1518,16 @@ pub type Lit = Spanned<LitKind>;
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum ArrayLen {
-    Infer(HirId, Span),
+    Infer(InferArg),
     Body(AnonConst),
 }
 
 impl ArrayLen {
     pub fn hir_id(&self) -> HirId {
         match self {
-            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, .. }) => hir_id,
+            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(AnonConst { hir_id, .. }) => {
+                *hir_id
+            }
         }
     }
 }
@@ -1994,7 +1994,7 @@ pub enum LocalSource {
     AsyncFn,
     /// A desugared `<expr>.await`.
     AwaitDesugar,
-    /// A desugared `expr = expr`, where the LHS is a tuple, struct or array.
+    /// A desugared `expr = expr`, where the LHS is a tuple, struct, array or underscore expression.
     /// The span is that of the `=` sign.
     AssignDesugar(Span),
 }
@@ -2085,12 +2085,6 @@ pub enum YieldSource {
     Await { expr: Option<HirId> },
     /// A plain `yield`.
     Yield,
-}
-
-impl YieldSource {
-    pub fn is_await(&self) -> bool {
-        matches!(self, YieldSource::Await { .. })
-    }
 }
 
 impl fmt::Display for YieldSource {
@@ -2402,6 +2396,39 @@ impl<'hir> Ty<'hir> {
         my_visitor.visit_ty(self);
         my_visitor.0
     }
+
+    /// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
+    /// use inference to provide suggestions for the appropriate type if possible.
+    pub fn is_suggestable_infer_ty(&self) -> bool {
+        fn are_suggestable_generic_args(generic_args: &[GenericArg<'_>]) -> bool {
+            generic_args.iter().any(|arg| match arg {
+                GenericArg::Type(ty) => ty.is_suggestable_infer_ty(),
+                GenericArg::Infer(_) => true,
+                _ => false,
+            })
+        }
+        debug!(?self);
+        match &self.kind {
+            TyKind::Infer => true,
+            TyKind::Slice(ty) => ty.is_suggestable_infer_ty(),
+            TyKind::Array(ty, length) => {
+                ty.is_suggestable_infer_ty() || matches!(length, ArrayLen::Infer(..))
+            }
+            TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
+            TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),
+            TyKind::OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
+            TyKind::Path(QPath::TypeRelative(ty, segment)) => {
+                ty.is_suggestable_infer_ty() || are_suggestable_generic_args(segment.args().args)
+            }
+            TyKind::Path(QPath::Resolved(ty_opt, Path { segments, .. })) => {
+                ty_opt.is_some_and(Self::is_suggestable_infer_ty)
+                    || segments
+                        .iter()
+                        .any(|segment| are_suggestable_generic_args(segment.args().args))
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
@@ -2509,7 +2536,7 @@ pub struct OpaqueTy<'hir> {
     /// lifetimes that are captured from the function signature they originate from.
     ///
     /// This is done by generating a new early-bound lifetime parameter local to the
-    /// opaque which is substituted in the function signature with the late-bound
+    /// opaque which is instantiated in the function signature with the late-bound
     /// lifetime.
     ///
     /// This mapping associated a captured lifetime (first parameter) with the new
@@ -2535,9 +2562,17 @@ pub enum OpaqueTyOrigin {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
+pub enum InferDelegationKind {
+    Input(usize),
+    Output,
+}
+
 /// The various kinds of types recognized by the compiler.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyKind<'hir> {
+    /// Actual type should be inherited from `DefId` signature
+    InferDelegation(DefId, InferDelegationKind),
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
@@ -2552,6 +2587,8 @@ pub enum TyKind<'hir> {
     Never,
     /// A tuple (`(A, B, C, D, ...)`).
     Tup(&'hir [Ty<'hir>]),
+    /// An anonymous struct or union type i.e. `struct { foo: Type }` or `union { foo: Type }`
+    AnonAdt(ItemId),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type (e.g., `<Vec<T> as Trait>::Type` or `<T>::Target`).
     ///
@@ -2732,13 +2769,22 @@ pub enum FnRetTy<'hir> {
     Return(&'hir Ty<'hir>),
 }
 
-impl FnRetTy<'_> {
+impl<'hir> FnRetTy<'hir> {
     #[inline]
     pub fn span(&self) -> Span {
         match *self {
             Self::DefaultReturn(span) => span,
             Self::Return(ref ty) => ty.span,
         }
+    }
+
+    pub fn get_infer_ret_ty(&self) -> Option<&'hir Ty<'hir>> {
+        if let Self::Return(ty) = self {
+            if ty.is_suggestable_infer_ty() {
+                return Some(*ty);
+            }
+        }
+        None
     }
 }
 
@@ -2950,6 +2996,12 @@ impl<'hir> Item<'hir> {
 
     pub fn item_id(&self) -> ItemId {
         ItemId { owner_id: self.owner_id }
+    }
+
+    /// Check if this is an [`ItemKind::Enum`], [`ItemKind::Struct`] or
+    /// [`ItemKind::Union`].
+    pub fn is_adt(&self) -> bool {
+        matches!(self.kind, ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..))
     }
 
     expect_methods_self_kind! {
@@ -3300,13 +3352,15 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
-    pub fn span(&self) -> Span {
+    // Span by reference to pass to `Node::Err`.
+    #[allow(rustc::pass_by_value)]
+    pub fn span(&self) -> &'hir Span {
         match self {
             OwnerNode::Item(Item { span, .. })
             | OwnerNode::ForeignItem(ForeignItem { span, .. })
             | OwnerNode::ImplItem(ImplItem { span, .. })
-            | OwnerNode::TraitItem(TraitItem { span, .. }) => *span,
-            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => *inner_span,
+            | OwnerNode::TraitItem(TraitItem { span, .. }) => span,
+            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => inner_span,
         }
     }
 
@@ -3435,17 +3489,19 @@ pub enum Node<'hir> {
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
     Local(&'hir Local<'hir>),
-
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
     Ctor(&'hir VariantData<'hir>),
-
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam<'hir>),
-
     Crate(&'hir Mod<'hir>),
-
     Infer(&'hir InferArg),
+    WhereBoundPredicate(&'hir WhereBoundPredicate<'hir>),
+    // FIXME: Merge into `Node::Infer`.
+    ArrayLenInfer(&'hir InferArg),
+    // Span by reference to minimize `Node`'s size
+    #[allow(rustc::pass_by_value)]
+    Err(&'hir Span),
 }
 
 impl<'hir> Node<'hir> {
@@ -3460,7 +3516,7 @@ impl<'hir> Node<'hir> {
     /// ```ignore (illustrative)
     /// ctor
     ///     .ctor_hir_id()
-    ///     .and_then(|ctor_id| tcx.hir().find_parent(ctor_id))
+    ///     .map(|ctor_id| tcx.parent_hir_node(ctor_id))
     ///     .and_then(|parent| parent.ident())
     /// ```
     pub fn ident(&self) -> Option<Ident> {
@@ -3490,7 +3546,10 @@ impl<'hir> Node<'hir> {
             | Node::Crate(..)
             | Node::Ty(..)
             | Node::TraitRef(..)
-            | Node::Infer(..) => None,
+            | Node::Infer(..)
+            | Node::WhereBoundPredicate(..)
+            | Node::ArrayLenInfer(..)
+            | Node::Err(..) => None,
         }
     }
 
@@ -3652,6 +3711,7 @@ impl<'hir> Node<'hir> {
         expect_generic_param, &'hir GenericParam<'hir>, Node::GenericParam(n), n;
         expect_crate,         &'hir Mod<'hir>,          Node::Crate(n),        n;
         expect_infer,         &'hir InferArg,           Node::Infer(n),        n;
+        expect_closure,       &'hir Closure<'hir>, Node::Expr(Expr { kind: ExprKind::Closure(n), .. }), n;
     }
 }
 
@@ -3661,7 +3721,7 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
-    static_assert_size!(Body<'_>, 32);
+    static_assert_size!(Body<'_>, 24);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);

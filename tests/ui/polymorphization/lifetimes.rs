@@ -1,5 +1,5 @@
-// build-fail
-// compile-flags:-Zpolymorphize=on
+//@ build-fail
+//@ compile-flags:-Zpolymorphize=on
 #![feature(rustc_attrs)]
 
 // This test checks that the polymorphization analysis doesn't break when the

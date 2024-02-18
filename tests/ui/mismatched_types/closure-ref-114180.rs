@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 fn main() {
     let mut v = vec![(1,)];

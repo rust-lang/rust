@@ -34,7 +34,7 @@ impl flags::Dist {
                 format!("{VERSION_NIGHTLY}.{patch_version}")
             };
             dist_server(sh, &format!("{version}-standalone"), &target)?;
-            let release_tag = if stable { date_iso(sh)? } else { "nightly".to_string() };
+            let release_tag = if stable { date_iso(sh)? } else { "nightly".to_owned() };
             dist_client(sh, &version, &release_tag, &target)?;
         } else {
             dist_server(sh, "0.0.0-standalone", &target)?;
@@ -155,11 +155,11 @@ impl Target {
             Ok(target) => target,
             _ => {
                 if cfg!(target_os = "linux") {
-                    "x86_64-unknown-linux-gnu".to_string()
+                    "x86_64-unknown-linux-gnu".to_owned()
                 } else if cfg!(target_os = "windows") {
-                    "x86_64-pc-windows-msvc".to_string()
+                    "x86_64-pc-windows-msvc".to_owned()
                 } else if cfg!(target_os = "macos") {
-                    "x86_64-apple-darwin".to_string()
+                    "x86_64-apple-darwin".to_owned()
                 } else {
                     panic!("Unsupported OS, maybe try setting RA_TARGET")
                 }

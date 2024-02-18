@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_macros)]
 
 mod mod_dir_simple {

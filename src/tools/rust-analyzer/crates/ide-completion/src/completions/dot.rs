@@ -1,9 +1,13 @@
 //! Completes references after dot (fields and method calls).
 
 use ide_db::FxHashSet;
+use syntax::SmolStr;
 
 use crate::{
-    context::{CompletionContext, DotAccess, DotAccessKind, ExprCtx, PathCompletionCtx, Qualified},
+    context::{
+        CompletionContext, DotAccess, DotAccessExprCtx, DotAccessKind, PathCompletionCtx,
+        PathExprCtx, Qualified,
+    },
     CompletionItem, CompletionItemKind, Completions,
 };
 
@@ -20,13 +24,18 @@ pub(crate) fn complete_dot(
 
     // Suggest .await syntax for types that implement Future trait
     if receiver_ty.impls_into_future(ctx.db) {
-        let mut item =
-            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
+        let mut item = CompletionItem::new(
+            CompletionItemKind::Keyword,
+            ctx.source_range(),
+            SmolStr::new_static("await"),
+        );
         item.detail("expr.await");
         item.add_to(acc, ctx.db);
     }
 
     let is_field_access = matches!(dot_access.kind, DotAccessKind::Field { .. });
+    let is_method_access_with_parens =
+        matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
 
     complete_fields(
         acc,
@@ -35,6 +44,7 @@ pub(crate) fn complete_dot(
         |acc, field, ty| acc.add_field(ctx, dot_access, None, field, &ty),
         |acc, field, ty| acc.add_tuple_field(ctx, None, field, &ty),
         is_field_access,
+        is_method_access_with_parens,
     );
 
     complete_methods(ctx, receiver_ty, |func| acc.add_method(ctx, dot_access, func, None, None));
@@ -44,7 +54,7 @@ pub(crate) fn complete_undotted_self(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     path_ctx: &PathCompletionCtx,
-    expr_ctx: &ExprCtx,
+    expr_ctx: &PathExprCtx,
 ) {
     if !ctx.config.enable_self_on_the_fly {
         return;
@@ -59,7 +69,7 @@ pub(crate) fn complete_undotted_self(
         return;
     }
     let self_param = match expr_ctx {
-        ExprCtx { self_param: Some(self_param), .. } => self_param,
+        PathExprCtx { self_param: Some(self_param), .. } => self_param,
         _ => return,
     };
 
@@ -75,6 +85,10 @@ pub(crate) fn complete_undotted_self(
                     receiver: None,
                     receiver_ty: None,
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
+                    ctx: DotAccessExprCtx {
+                        in_block_expr: expr_ctx.in_block_expr,
+                        in_breakable: expr_ctx.in_breakable,
+                    },
                 },
                 Some(hir::known::SELF_PARAM),
                 field,
@@ -83,6 +97,7 @@ pub(crate) fn complete_undotted_self(
         },
         |acc, field, ty| acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), field, &ty),
         true,
+        false,
     );
     complete_methods(ctx, &ty, |func| {
         acc.add_method(
@@ -91,6 +106,10 @@ pub(crate) fn complete_undotted_self(
                 receiver: None,
                 receiver_ty: None,
                 kind: DotAccessKind::Method { has_parens: false },
+                ctx: DotAccessExprCtx {
+                    in_block_expr: expr_ctx.in_block_expr,
+                    in_breakable: expr_ctx.in_breakable,
+                },
             },
             func,
             Some(hir::known::SELF_PARAM),
@@ -106,12 +125,14 @@ fn complete_fields(
     mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
     mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
     is_field_access: bool,
+    is_method_access_with_parens: bool,
 ) {
     let mut seen_names = FxHashSet::default();
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
             if seen_names.insert(field.name(ctx.db))
-                && (is_field_access || ty.is_fn() || ty.is_closure())
+                && (is_field_access
+                    || (is_method_access_with_parens && (ty.is_fn() || ty.is_closure())))
             {
                 named_field(acc, field, ty);
             }
@@ -120,7 +141,8 @@ fn complete_fields(
             // Tuples are always the last type in a deref chain, so just check if the name is
             // already seen without inserting into the hashset.
             if !seen_names.contains(&hir::Name::new_tuple_field(i))
-                && (is_field_access || ty.is_fn() || ty.is_closure())
+                && (is_field_access
+                    || (is_method_access_with_parens && (ty.is_fn() || ty.is_closure())))
             {
                 // Tuple fields are always public (tuple struct fields are handled above).
                 tuple_index(acc, i, ty);
@@ -1235,5 +1257,25 @@ fn foo() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn test_fn_field_dot_access_method_has_parens_false() {
+        check(
+            r#"
+struct Foo { baz: fn() }
+impl Foo {
+    fn bar<T>(self, t: T): T { t }
+}
+
+fn baz() {
+    let foo = Foo{ baz: || {} };
+    foo.ba$0::<>;
+}
+"#,
+            expect![[r#"
+                me bar(…) fn(self, T)
+            "#]],
+        );
     }
 }

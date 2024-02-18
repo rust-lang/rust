@@ -1,4 +1,4 @@
-// aux-build:repeat.rs
+//@ aux-build:repeat.rs
 
 #![allow(unused)]
 

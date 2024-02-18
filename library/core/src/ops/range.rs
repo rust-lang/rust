@@ -710,7 +710,6 @@ impl<T> Bound<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bound_map)]
     /// use std::ops::Bound::*;
     ///
     /// let bound_string = Included("Hello, World!");
@@ -719,7 +718,6 @@ impl<T> Bound<T> {
     /// ```
     ///
     /// ```
-    /// #![feature(bound_map)]
     /// use std::ops::Bound;
     /// use Bound::*;
     ///
@@ -728,7 +726,7 @@ impl<T> Bound<T> {
     /// assert_eq!(unbounded_string.map(|s| s.len()), Unbounded);
     /// ```
     #[inline]
-    #[unstable(feature = "bound_map", issue = "86026")]
+    #[stable(feature = "bound_map", since = "1.77.0")]
     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Bound<U> {
         match self {
             Unbounded => Unbounded,

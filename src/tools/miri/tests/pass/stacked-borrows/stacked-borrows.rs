@@ -226,7 +226,7 @@ fn not_unpin_not_protected() {
     // the self-referential-coroutine situation, it does not seem worth the potential trouble.)
     use std::marker::PhantomPinned;
 
-    pub struct NotUnpin(i32, PhantomPinned);
+    pub struct NotUnpin(#[allow(dead_code)] i32, PhantomPinned);
 
     fn inner(x: &mut NotUnpin, f: fn(&mut NotUnpin)) {
         // `f` may mutate, but it may not deallocate!

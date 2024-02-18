@@ -1,5 +1,5 @@
-// build-pass
-// edition:2018
+//@ build-pass
+//@ edition:2018
 
 // This test is derived from
 // https://github.com/rust-lang/rust/issues/72651#issuecomment-668720468

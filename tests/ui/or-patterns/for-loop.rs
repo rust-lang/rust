@@ -1,5 +1,5 @@
 // Check that or patterns are lowered correctly in `for` loops.
-// run-pass
+//@ run-pass
 
 fn main() {
     let v = vec![Ok(2), Err(3), Ok(5)];

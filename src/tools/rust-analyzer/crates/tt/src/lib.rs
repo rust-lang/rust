@@ -11,46 +11,10 @@ use stdx::impl_from;
 pub use smol_str::SmolStr;
 pub use text_size::{TextRange, TextSize};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct SpanData<Anchor, Ctx> {
-    /// The text range of this span, relative to the anchor.
-    /// We need the anchor for incrementality, as storing absolute ranges will require
-    /// recomputation on every change in a file at all times.
-    pub range: TextRange,
-    pub anchor: Anchor,
-    /// The syntax context of the span.
-    pub ctx: Ctx,
-}
+pub trait Span: std::fmt::Debug + Copy + Sized + Eq {}
 
-impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
-    #[allow(deprecated)]
-    const DUMMY: Self = SpanData {
-        range: TextRange::empty(TextSize::new(0)),
-        anchor: Anchor::DUMMY,
-        ctx: Ctx::DUMMY,
-    };
-}
-
-pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
-    // FIXME: Should not exist. Dummy spans will always be wrong if they leak somewhere. Instead,
-    // the call site or def site spans should be used in relevant places, its just that we don't
-    // expose those everywhere in the yet.
-    const DUMMY: Self;
-}
-
-// FIXME: Should not exist
-pub trait SpanAnchor:
-    std::fmt::Debug + Copy + Sized + Eq + Copy + fmt::Debug + std::hash::Hash
-{
-    #[deprecated(note = "this should not exist")]
-    const DUMMY: Self;
-}
-
-// FIXME: Should not exist
-pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
-    #[deprecated(note = "this should not exist")]
-    const DUMMY: Self;
-}
+impl<Ctx> Span for span::SpanData<Ctx> where span::SpanData<Ctx>: std::fmt::Debug + Copy + Sized + Eq
+{}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenTree<S> {
@@ -59,28 +23,27 @@ pub enum TokenTree<S> {
 }
 impl_from!(Leaf<S>, Subtree<S> for TokenTree);
 impl<S: Span> TokenTree<S> {
-    pub const fn empty(span: S) -> Self {
+    pub fn empty(span: S) -> Self {
         Self::Subtree(Subtree {
             delimiter: Delimiter::invisible_spanned(span),
-            token_trees: vec![],
+            token_trees: Box::new([]),
         })
     }
 
-    pub fn subtree_or_wrap(self) -> Subtree<S> {
-        match self {
-            TokenTree::Leaf(_) => {
-                Subtree { delimiter: Delimiter::DUMMY_INVISIBLE, token_trees: vec![self] }
-            }
-            TokenTree::Subtree(s) => s,
-        }
-    }
-    pub fn subtree_or_wrap2(self, span: DelimSpan<S>) -> Subtree<S> {
+    pub fn subtree_or_wrap(self, span: DelimSpan<S>) -> Subtree<S> {
         match self {
             TokenTree::Leaf(_) => Subtree {
                 delimiter: Delimiter::invisible_delim_spanned(span),
-                token_trees: vec![self],
+                token_trees: Box::new([self]),
             },
             TokenTree::Subtree(s) => s,
+        }
+    }
+
+    pub fn first_span(&self) -> S {
+        match self {
+            TokenTree::Leaf(l) => *l.span(),
+            TokenTree::Subtree(s) => s.delimiter.open,
         }
     }
 }
@@ -106,25 +69,35 @@ impl_from!(Literal<S>, Punct<S>, Ident<S> for Leaf);
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Subtree<S> {
     pub delimiter: Delimiter<S>,
-    pub token_trees: Vec<TokenTree<S>>,
+    pub token_trees: Box<[TokenTree<S>]>,
 }
 
 impl<S: Span> Subtree<S> {
-    pub const fn empty(span: DelimSpan<S>) -> Self {
-        Subtree { delimiter: Delimiter::invisible_delim_spanned(span), token_trees: vec![] }
+    pub fn empty(span: DelimSpan<S>) -> Self {
+        Subtree { delimiter: Delimiter::invisible_delim_spanned(span), token_trees: Box::new([]) }
     }
 
-    pub fn visit_ids(&mut self, f: &mut impl FnMut(S) -> S) {
-        self.delimiter.open = f(self.delimiter.open);
-        self.delimiter.close = f(self.delimiter.close);
-        self.token_trees.iter_mut().for_each(|tt| match tt {
-            crate::TokenTree::Leaf(leaf) => match leaf {
-                crate::Leaf::Literal(it) => it.span = f(it.span),
-                crate::Leaf::Punct(it) => it.span = f(it.span),
-                crate::Leaf::Ident(it) => it.span = f(it.span),
-            },
-            crate::TokenTree::Subtree(s) => s.visit_ids(f),
-        })
+    /// This is slow, and should be avoided, as it will always reallocate!
+    pub fn push(&mut self, subtree: TokenTree<S>) {
+        let mut mutable_trees = std::mem::take(&mut self.token_trees).into_vec();
+
+        // Reserve exactly space for one element, to avoid `into_boxed_slice` having to reallocate again.
+        mutable_trees.reserve_exact(1);
+        mutable_trees.push(subtree);
+
+        self.token_trees = mutable_trees.into_boxed_slice();
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct SubtreeBuilder<S> {
+    pub delimiter: Delimiter<S>,
+    pub token_trees: Vec<TokenTree<S>>,
+}
+
+impl<S> SubtreeBuilder<S> {
+    pub fn build(self) -> Subtree<S> {
+        Subtree { delimiter: self.delimiter, token_trees: self.token_trees.into_boxed_slice() }
     }
 }
 
@@ -132,11 +105,6 @@ impl<S: Span> Subtree<S> {
 pub struct DelimSpan<S> {
     pub open: S,
     pub close: S,
-}
-
-impl<S: Span> DelimSpan<S> {
-    // FIXME should not exist
-    pub const DUMMY: Self = Self { open: S::DUMMY, close: S::DUMMY };
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -147,15 +115,6 @@ pub struct Delimiter<S> {
 }
 
 impl<S: Span> Delimiter<S> {
-    // FIXME should not exist
-    pub const DUMMY_INVISIBLE: Self =
-        Self { open: S::DUMMY, close: S::DUMMY, kind: DelimiterKind::Invisible };
-
-    // FIXME should not exist
-    pub const fn dummy_invisible() -> Self {
-        Self::DUMMY_INVISIBLE
-    }
-
     pub const fn invisible_spanned(span: S) -> Self {
         Delimiter { open: span, close: span, kind: DelimiterKind::Invisible }
     }
@@ -292,7 +251,7 @@ impl<S> fmt::Display for Subtree<S> {
         };
         f.write_str(l)?;
         let mut needs_space = false;
-        for tt in &self.token_trees {
+        for tt in self.token_trees.iter() {
             if needs_space {
                 f.write_str(" ")?;
             }
@@ -367,7 +326,7 @@ impl<S> Subtree<S> {
         let mut res = String::new();
         res.push_str(delim.0);
         let mut last = None;
-        for child in &self.token_trees {
+        for child in self.token_trees.iter() {
             let s = match child {
                 TokenTree::Leaf(it) => {
                     let s = match it {
@@ -377,11 +336,11 @@ impl<S> Subtree<S> {
                     };
                     match (it, last) {
                         (Leaf::Ident(_), Some(&TokenTree::Leaf(Leaf::Ident(_)))) => {
-                            " ".to_string() + &s
+                            " ".to_owned() + &s
                         }
                         (Leaf::Punct(_), Some(TokenTree::Leaf(Leaf::Punct(punct)))) => {
                             if punct.spacing == Spacing::Alone {
-                                " ".to_string() + &s
+                                " ".to_owned() + &s
                             } else {
                                 s
                             }

@@ -1,6 +1,6 @@
-// run-pass
-// aux-build:arc_wake.rs
-// edition:2018
+//@ run-pass
+//@ aux-build:arc_wake.rs
+//@ edition:2018
 
 extern crate arc_wake;
 

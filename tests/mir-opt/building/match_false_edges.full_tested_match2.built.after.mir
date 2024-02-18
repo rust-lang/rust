@@ -28,18 +28,23 @@ fn full_tested_match2() -> () {
         _2 = Option::<i32>::Some(const 42_i32);
         PlaceMention(_2);
         _3 = discriminant(_2);
-        switchInt(move _3) -> [0: bb1, 1: bb2, otherwise: bb4];
+        switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
     }
 
     bb1: {
-        falseEdge -> [real: bb10, imaginary: bb3];
+        FakeRead(ForMatchedPlace(None), _2);
+        unreachable;
     }
 
     bb2: {
-        falseEdge -> [real: bb5, imaginary: bb1];
+        falseEdge -> [real: bb10, imaginary: bb4];
     }
 
     bb3: {
+        falseEdge -> [real: bb5, imaginary: bb2];
+    }
+
+    bb4: {
         StorageLive(_9);
         _9 = ((_2 as Some).0: i32);
         StorageLive(_10);
@@ -50,17 +55,12 @@ fn full_tested_match2() -> () {
         goto -> bb11;
     }
 
-    bb4: {
-        FakeRead(ForMatchedPlace(None), _2);
-        unreachable;
-    }
-
     bb5: {
         StorageLive(_6);
         _6 = &((_2 as Some).0: i32);
         _4 = &fake _2;
         StorageLive(_7);
-        _7 = guard() -> [return: bb6, unwind: bb12];
+        _7 = guard() -> [return: bb6, unwind: bb13];
     }
 
     bb6: {
@@ -89,7 +89,7 @@ fn full_tested_match2() -> () {
     bb9: {
         StorageDead(_7);
         StorageDead(_6);
-        falseEdge -> [real: bb3, imaginary: bb1];
+        falseEdge -> [real: bb4, imaginary: bb2];
     }
 
     bb10: {
@@ -105,7 +105,12 @@ fn full_tested_match2() -> () {
         return;
     }
 
-    bb12 (cleanup): {
+    bb12: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb13 (cleanup): {
         resume;
     }
 }

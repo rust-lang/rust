@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 pub struct A { pub foo: isize }
 

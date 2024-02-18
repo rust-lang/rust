@@ -36,7 +36,7 @@ impl ManifestPath {
     }
 
     pub fn canonicalize(&self) -> ! {
-        (&**self).canonicalize()
+        (**self).canonicalize()
     }
 }
 

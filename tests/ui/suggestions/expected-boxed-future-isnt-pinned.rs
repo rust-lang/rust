@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 #![allow(dead_code)]
 use std::future::Future;
 use std::pin::Pin;

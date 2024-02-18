@@ -55,7 +55,7 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     }
 
     bb3: {
-        _0 = Option::<u32>::None;
+        _0 = const Option::<u32>::None;
         goto -> bb4;
     }
 
@@ -65,4 +65,8 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
         StorageDead(_4);
         return;
     }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

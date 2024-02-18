@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
 #![allow(deprecated)]
-// ignore-emscripten no threads support
+//@ ignore-emscripten no threads support
 
 use std::sync::mpsc::{TryRecvError, channel};
 use std::thread;

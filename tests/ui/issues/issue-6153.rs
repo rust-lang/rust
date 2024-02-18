@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 
 fn swap<F>(f: F) -> Vec<isize> where F: FnOnce(Vec<isize>) -> Vec<isize> {

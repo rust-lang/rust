@@ -1,7 +1,7 @@
-// run-pass
-// needs-unwind
-// revisions: default mir-opt
-//[mir-opt] compile-flags: -Zmir-opt-level=4
+//@ run-pass
+//@ needs-unwind
+//@ revisions: default mir-opt
+//@[mir-opt] compile-flags: -Zmir-opt-level=4
 
 #![allow(unconditional_panic)]
 

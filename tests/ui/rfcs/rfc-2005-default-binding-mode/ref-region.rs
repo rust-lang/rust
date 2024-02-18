@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn foo<'a, 'b>(x: &'a &'b Option<u32>) -> &'a u32 {
     let x: &'a &'a Option<u32> = x;
     match x {

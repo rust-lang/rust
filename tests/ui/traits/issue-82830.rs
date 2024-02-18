@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait A<Y, N> {
     type B;

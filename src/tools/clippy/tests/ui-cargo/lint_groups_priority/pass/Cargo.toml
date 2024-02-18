@@ -1,0 +1,10 @@
+[package]
+name = "pass"
+version = "0.1.0"
+publish = false
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+style = { level = "warn", priority = 1 }
+similar_names = "allow"
+dbg_macro = { level = "warn", priority = 2 }

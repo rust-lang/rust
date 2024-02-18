@@ -6,8 +6,8 @@ use crate::diagnostics::error::{
 use crate::diagnostics::utils::{
     build_field_mapping, build_suggestion_code, is_doc_comment, new_code_ident,
     report_error_if_not_applied_to_applicability, report_error_if_not_applied_to_span,
-    should_generate_set_arg, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap,
-    HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    should_generate_arg, AllowMultipleAlternatives, FieldInfo, FieldInnerTy, FieldMap, HasFieldMap,
+    SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
@@ -89,10 +89,7 @@ impl SubdiagnosticDeriveBuilder {
             gen impl rustc_errors::AddToDiagnostic for @Self {
                 fn add_to_diagnostic_with<__F>(self, #diag: &mut rustc_errors::Diagnostic, #f: __F)
                 where
-                    __F: core::ops::Fn(
-                        &mut rustc_errors::Diagnostic,
-                        rustc_errors::SubdiagnosticMessage
-                    ) -> rustc_errors::SubdiagnosticMessage,
+                    __F: rustc_errors::SubdiagnosticMessageOp,
                 {
                     #implementation
                 }
@@ -214,7 +211,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     }
 
     /// Generates the code for a field with no attributes.
-    fn generate_field_set_arg(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
+    fn generate_field_arg(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
         let diag = &self.parent.diag;
 
         let field = binding_info.ast();
@@ -225,7 +222,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {
-            #diag.set_arg(
+            #diag.arg(
                 stringify!(#ident),
                 #field_binding
             );
@@ -505,7 +502,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .variant
             .bindings()
             .iter()
-            .filter(|binding| !should_generate_set_arg(binding.ast()))
+            .filter(|binding| !should_generate_arg(binding.ast()))
             .map(|binding| self.generate_field_attr_code(binding, kind_stats))
             .collect();
 
@@ -593,8 +590,8 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .variant
             .bindings()
             .iter()
-            .filter(|binding| should_generate_set_arg(binding.ast()))
-            .map(|binding| self.generate_field_set_arg(binding))
+            .filter(|binding| should_generate_arg(binding.ast()))
+            .map(|binding| self.generate_field_arg(binding))
             .collect();
 
         let formatting_init = &self.formatting_init;

@@ -6,7 +6,7 @@ LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
    = help: unsized fn params are gated as an unstable feature
-help: function arguments must have a statically known size, borrowed types always have a known size
+help: function arguments must have a statically known size, borrowed slices always have a known size
    |
 LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: &[u8]| x }]> {
    |                                                +

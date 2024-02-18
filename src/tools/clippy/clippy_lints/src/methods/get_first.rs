@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::LitKind;
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -20,7 +21,7 @@ pub(super) fn check<'tcx>(
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
         && let identity = cx.tcx.type_of(impl_id).instantiate_identity()
         && let hir::ExprKind::Lit(Spanned {
-            node: LitKind::Int(0, _),
+            node: LitKind::Int(Pu128(0), _),
             ..
         }) = arg.kind
     {

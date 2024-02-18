@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait X {
     fn test(x: u32, (

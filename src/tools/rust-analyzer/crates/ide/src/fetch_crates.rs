@@ -27,7 +27,7 @@ pub(crate) fn fetch_crates(db: &RootDatabase) -> FxIndexSet<CrateInfo> {
         .iter()
         .map(|crate_id| &crate_graph[crate_id])
         .filter(|&data| !matches!(data.origin, CrateOrigin::Local { .. }))
-        .map(|data| crate_info(data))
+        .map(crate_info)
         .collect()
 }
 

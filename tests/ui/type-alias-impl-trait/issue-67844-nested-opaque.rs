@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test for issue #67844
 // Ensures that we properly handle nested TAIT occurrences
 // with generic parameters

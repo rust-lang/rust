@@ -1,5 +1,5 @@
-// run-pass
-// ignore-emscripten no no_std executables
+//@ run-pass
+//@ ignore-emscripten no no_std executables
 
 #![feature(lang_items, start)]
 #![no_std]

@@ -10,6 +10,20 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
 LL |     fn bar();
    |        ^^^ the trait cannot be made into an object because associated function `bar` has no `self` parameter
 
-error: aborting due to 1 previous error
+error[E0277]: the size for values of type `(dyn issue_3907::Foo + 'static)` cannot be known at compilation time
+  --> $DIR/issue-3907-2.rs:11:8
+   |
+LL | fn bar(_x: Foo) {}
+   |        ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn issue_3907::Foo + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn bar(_x: &Foo) {}
+   |            +
 
-For more information about this error, try `rustc --explain E0038`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0277.
+For more information about an error, try `rustc --explain E0038`.

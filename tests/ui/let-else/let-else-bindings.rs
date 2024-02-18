@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // adapted from tests/ui/binding/if-let.rs
 
 #![allow(dead_code)]

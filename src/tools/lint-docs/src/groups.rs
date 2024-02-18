@@ -15,6 +15,7 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
     ("future-incompatible", "Lints that detect code that has future-compatibility problems"),
     ("rust-2018-compatibility", "Lints used to transition code from the 2015 edition to 2018"),
     ("rust-2021-compatibility", "Lints used to transition code from the 2018 edition to 2021"),
+    ("rust-2024-compatibility", "Lints used to transition code from the 2021 edition to 2024"),
 ];
 
 type LintGroups = BTreeMap<String, BTreeSet<String>>;

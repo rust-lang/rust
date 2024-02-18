@@ -1,6 +1,7 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
+use std::hash::Hash;
 
 use crate::ty;
 
@@ -24,8 +25,8 @@ impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVe
     type Value<'tcx> = IndexVec<I, T::Value<'tcx>>;
 }
 
-impl<I: 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for FxHashMap<I, T> {
-    type Value<'tcx> = FxHashMap<I, T::Value<'tcx>>;
+impl<I: Hash + Eq + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for UnordMap<I, T> {
+    type Value<'tcx> = UnordMap<I, T::Value<'tcx>>;
 }
 
 impl<T: ParameterizedOverTcx> ParameterizedOverTcx for ty::Binder<'static, T> {
@@ -125,6 +126,7 @@ parameterized_over_tcx! {
     crate::middle::exported_symbols::ExportedSymbol,
     crate::mir::Body,
     crate::mir::CoroutineLayout,
+    crate::mir::interpret::ConstAllocation,
     ty::Ty,
     ty::FnSig,
     ty::GenericPredicates,
@@ -133,4 +135,5 @@ parameterized_over_tcx! {
     ty::Predicate,
     ty::Clause,
     ty::ClauseKind,
+    ty::ImplTraitHeader
 }

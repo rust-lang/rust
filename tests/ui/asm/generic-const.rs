@@ -1,5 +1,5 @@
-// needs-asm-support
-// build-pass
+//@ needs-asm-support
+//@ build-pass
 
 #![feature(asm_const)]
 

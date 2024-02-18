@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Regression test for https://github.com/rust-lang/rust/issues/114388
 

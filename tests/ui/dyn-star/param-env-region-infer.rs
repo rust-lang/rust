@@ -1,5 +1,5 @@
-// revisions: current
-// incremental
+//@ revisions: current
+//@ incremental
 
 // FIXME(-Znext-solver): THis currently results in unstable query results:
 // `normalizes-to(opaque, opaque)` changes from `Maybe(Ambiguous)` to `Maybe(Overflow)`

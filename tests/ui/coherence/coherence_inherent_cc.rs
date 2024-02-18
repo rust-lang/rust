@@ -1,4 +1,4 @@
-// aux-build:coherence_inherent_cc_lib.rs
+//@ aux-build:coherence_inherent_cc_lib.rs
 
 // Tests that methods that implement a trait cannot be invoked
 // unless the trait is imported.

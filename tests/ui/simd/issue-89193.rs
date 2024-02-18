@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test that simd gather instructions on slice of usize don't cause crash
 // See issue #89183 - https://github.com/rust-lang/rust/issues/89193

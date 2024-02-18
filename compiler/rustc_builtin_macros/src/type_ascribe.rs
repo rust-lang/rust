@@ -12,7 +12,7 @@ pub fn expand_type_ascribe(
 ) -> Box<dyn base::MacResult + 'static> {
     let (expr, ty) = match parse_ascribe(cx, tts) {
         Ok(parsed) => parsed,
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             return DummyResult::any(span);
         }

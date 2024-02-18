@@ -10,7 +10,7 @@ pub(crate) fn undeclared_label(
         ctx,
         DiagnosticCode::RustcHardError("undeclared-label"),
         format!("use of undeclared label `{}`", name.display(ctx.sema.db)),
-        d.node.clone().map(|it| it.into()),
+        d.node.map(|it| it.into()),
     )
 }
 

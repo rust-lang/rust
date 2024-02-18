@@ -2,7 +2,7 @@ use crate::error::{TranslateError, TranslateErrorKind};
 use crate::snippet::Style;
 use crate::{DiagnosticArg, DiagnosticMessage, FluentBundle};
 use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
+pub use rustc_error_messages::FluentArgs;
 use std::borrow::Cow;
 use std::env;
 use std::error::Report;
@@ -12,9 +12,9 @@ use std::error::Report;
 ///
 /// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
 /// passed around as a reference thereafter.
-pub fn to_fluent_args<'iter, 'arg: 'iter>(
-    iter: impl Iterator<Item = DiagnosticArg<'iter, 'arg>>,
-) -> FluentArgs<'arg> {
+pub fn to_fluent_args<'iter>(
+    iter: impl Iterator<Item = DiagnosticArg<'iter>>,
+) -> FluentArgs<'static> {
     let mut args = if let Some(size) = iter.size_hint().1 {
         FluentArgs::with_capacity(size)
     } else {
@@ -61,7 +61,7 @@ pub trait Translate {
     ) -> Result<Cow<'_, str>, TranslateError<'_>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
+            DiagnosticMessage::Str(msg) | DiagnosticMessage::Translated(msg) => {
                 return Ok(Cow::Borrowed(msg));
             }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),

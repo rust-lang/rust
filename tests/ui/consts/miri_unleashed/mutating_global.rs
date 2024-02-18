@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
 
 // Make sure we cannot mutate globals.
 

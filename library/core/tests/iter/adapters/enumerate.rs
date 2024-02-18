@@ -1,5 +1,5 @@
 use core::iter::*;
-use core::num::NonZeroUsize;
+use core::num::NonZero;
 
 #[test]
 fn test_iterator_enumerate() {
@@ -66,7 +66,7 @@ fn test_iterator_enumerate_advance_by() {
     assert_eq!(it.next(), Some((2, &2)));
     assert_eq!(it.advance_by(2), Ok(()));
     assert_eq!(it.next(), Some((5, &5)));
-    assert_eq!(it.advance_by(1), Err(NonZeroUsize::new(1).unwrap()));
+    assert_eq!(it.advance_by(1), Err(NonZero::new(1).unwrap()));
     assert_eq!(it.next(), None);
 }
 

@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 #![feature(cell_update)]
 #![feature(float_gamma)]
+#![feature(generic_nonzero)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
@@ -8,9 +9,9 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(round_ties_even)]
 #![feature(let_chains)]
 #![feature(lint_reasons)]
+#![feature(trait_upcasting)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -33,8 +34,10 @@
     clippy::bool_to_int_with_if,
     clippy::box_default,
     clippy::needless_question_mark,
+    rustc::diagnostic_outside_of_impl,
     // We are not implementing queries here so it's fine
-    rustc::potential_query_instability
+    rustc::potential_query_instability,
+    rustc::untranslatable_diagnostic,
 )]
 #![warn(
     rust_2018_idioms,
@@ -60,6 +63,8 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+#[macro_use]
+extern crate tracing;
 
 // Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
 // files.
@@ -94,7 +99,6 @@ pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as _};
 pub use crate::shims::time::EvalContextExt as _;
 pub use crate::shims::tls::TlsData;
-pub use crate::shims::EvalContextExt as _;
 
 pub use crate::borrow_tracker::stacked_borrows::{
     EvalContextExt as _, Item, Permission, Stack, Stacks,

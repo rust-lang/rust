@@ -13,8 +13,10 @@ const LICENSES: &[&str] = &[
     "0BSD OR MIT OR Apache-2.0",                           // adler license
     "0BSD",
     "Apache-2.0 / MIT",
+    "Apache-2.0 OR ISC OR MIT",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
+    "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
     "ISC",
@@ -132,6 +134,7 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     ("dissimilar", "Apache-2.0"),
     ("notify", "CC0-1.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
+    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
     ("scip", "Apache-2.0"),
     ("snap", "BSD-3-Clause"),
@@ -194,6 +197,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
+    "anstyle",
     "ar_archive_writer",
     "arrayvec",
     "autocfg",
@@ -215,6 +219,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "darling_core",
     "darling_macro",
     "datafrog",
+    "deranged",
     "derivative",
     "derive_more",
     "derive_setters",
@@ -256,7 +261,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "indexmap",
     "intl-memoizer",
     "intl_pluralrules",
-    "is-terminal",
     "itertools",
     "itoa",
     "jemalloc-sys",
@@ -276,6 +280,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "memoffset",
     "miniz_oxide",
     "nu-ansi-term",
+    "num-conv",
     "num_cpus",
     "object",
     "odht",
@@ -288,6 +293,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "pin-project-lite",
     "polonius-engine",
     "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std
+    "powerfmt",
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
@@ -325,6 +331,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sha1",
     "sha2",
     "sharded-slab",
+    "shlex",
     "smallvec",
     "snap",
     "stable_deref_trait",
@@ -338,8 +345,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "termize",
     "thin-vec",
     "thiserror",
-    "thiserror-core",
-    "thiserror-core-impl",
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
@@ -357,7 +362,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tracing-tree",
     "twox-hash",
     "type-map",
-    "typed-arena",
     "typenum",
     "unic-langid",
     "unic-langid-impl",
@@ -390,7 +394,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
     "writeable",
-    "yansi-term", // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
     "yoke",
     "yoke-derive",
     "zerocopy",
@@ -460,13 +463,17 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
+    "proc-macro2",
+    "quote",
     "regalloc2",
     "region",
     "rustc-hash",
     "slice-group-by",
     "smallvec",
     "stable_deref_trait",
+    "syn",
     "target-lexicon",
+    "unicode-ident",
     "version_check",
     "wasmtime-jit-icache-coherence",
     "winapi",
@@ -481,6 +488,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
+    "zerocopy",
+    "zerocopy-derive",
     // tidy-alphabetical-end
 ];
 

@@ -60,11 +60,11 @@ LL | impl<B>A<B>{fn d(){fn d(){Self(1)}}}
    |      |
    |      this type parameter needs to be `Sized`
    |
-note: required by a bound in `A`
+note: required by an implicit `Sized` bound in `A`
   --> $DIR/do-not-ice-on-note_and_explain.rs:1:10
    |
 LL | struct A<B>(B);
-   |          ^ required by this bound in `A`
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `A`
 help: you could relax the implicit `Sized` bound on `B` if it were used through indirection like `&B` or `Box<B>`
   --> $DIR/do-not-ice-on-note_and_explain.rs:1:10
    |

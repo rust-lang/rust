@@ -1,8 +1,8 @@
-// run-pass
-// aux-build:blind-item-mixed-crate-use-item-foo.rs
-// aux-build:blind-item-mixed-crate-use-item-foo2.rs
+//@ run-pass
+//@ aux-build:blind-item-mixed-crate-use-item-foo.rs
+//@ aux-build:blind-item-mixed-crate-use-item-foo2.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 mod m {
     pub fn f<T>(_: T, _: (), _: ()) { }

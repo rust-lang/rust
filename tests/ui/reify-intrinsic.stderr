@@ -16,14 +16,13 @@ LL |     let _ = std::mem::transmute as unsafe extern "rust-intrinsic" fn(isize)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: cannot coerce intrinsics to function pointers
-  --> $DIR/reify-intrinsic.rs:18:9
+  --> $DIR/reify-intrinsic.rs:17:9
    |
-LL |         std::intrinsics::unlikely,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
+LL |         std::intrinsics::likely,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ cannot coerce intrinsics to function pointers
    |
-   = note: expected fn item `extern "rust-intrinsic" fn(_) -> _ {likely}`
-              found fn item `extern "rust-intrinsic" fn(_) -> _ {unlikely}`
-   = note: different fn items have unique types, even if their signatures are the same
+   = note: expected fn pointer `unsafe extern "rust-intrinsic" fn(_) -> _`
+                 found fn item `fn(_) -> _ {likely}`
 
 error: aborting due to 3 previous errors
 

@@ -1,4 +1,4 @@
-// revisions: constant array
+//@ revisions: constant array
 #![allow(incomplete_features)]
 #![feature(explicit_tail_calls)]
 

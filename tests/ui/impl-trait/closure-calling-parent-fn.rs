@@ -5,7 +5,7 @@
 // `foo` and hence is treated opaquely within the closure body.  This
 // resulted in a failed subtype relationship.
 //
-// check-pass
+//@ check-pass
 
 fn foo() -> impl Copy { || foo(); }
 fn bar() -> impl Copy { || bar(); }

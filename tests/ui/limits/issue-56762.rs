@@ -1,4 +1,4 @@
-// only-x86_64
+//@ only-x86_64
 
 const HUGE_SIZE: usize = !0usize / 8;
 

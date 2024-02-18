@@ -1,5 +1,5 @@
-// run-pass
-// edition:2018
+//@ run-pass
+//@ edition:2018
 
 macro_rules! pat_bar {
     ($p:pat | $p2:pat) => {{

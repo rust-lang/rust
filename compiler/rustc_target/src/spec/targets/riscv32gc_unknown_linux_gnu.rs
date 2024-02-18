@@ -1,4 +1,6 @@
-use crate::spec::{base, CodeModel, Target, TargetOptions};
+use std::borrow::Cow;
+
+use crate::spec::{base, CodeModel, SplitDebuginfo, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -12,6 +14,7 @@ pub fn target() -> Target {
             features: "+m,+a,+f,+d,+c".into(),
             llvm_abiname: "ilp32d".into(),
             max_atomic_width: Some(32),
+            supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             ..base::linux_gnu::opts()
         },
     }

@@ -1,6 +1,6 @@
-// aux-build:baz.rs
-// compile-flags:--extern baz
-// edition:2018
+//@ aux-build:baz.rs
+//@ compile-flags:--extern baz
+//@ edition:2018
 
 mod foo {
     pub type Bar = u32;

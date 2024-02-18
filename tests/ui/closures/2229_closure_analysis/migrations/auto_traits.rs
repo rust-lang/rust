@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
 
@@ -51,10 +51,10 @@ fn test_sync_trait() {
 }
 
 /* Test Clone Trait Migration */
-struct S(Foo);
+struct S(#[allow(dead_code)] Foo);
 struct T(i32);
 
-struct U(S, T);
+struct U(#[allow(dead_code)] S, T);
 
 impl Clone for U {
     fn clone(&self) -> Self {

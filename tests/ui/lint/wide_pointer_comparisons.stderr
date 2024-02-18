@@ -421,7 +421,18 @@ LL |         std::ptr::eq(*a, *b)
    |         ~~~~~~~~~~~~~  ~   +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:112:39
+  --> $DIR/wide_pointer_comparisons.rs:112:33
+   |
+LL |             ($a:tt, $b:tt) => { $a == $b }
+   |                                 ^^^^^^^^
+   |
+help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
+   |
+LL |             ($a:tt, $b:tt) => { std::ptr::addr_eq($a, $b) }
+   |                                 ++++++++++++++++++  ~   +
+
+warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
+  --> $DIR/wide_pointer_comparisons.rs:121:39
    |
 LL |             ($a:ident, $b:ident) => { $a == $b }
    |                                       ^^^^^^^^
@@ -436,7 +447,7 @@ LL |             ($a:ident, $b:ident) => { std::ptr::addr_eq($a, $b) }
    |                                       ++++++++++++++++++  ~   +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:122:37
+  --> $DIR/wide_pointer_comparisons.rs:131:37
    |
 LL |             ($a:expr, $b:expr) => { $a == $b }
    |                                     ^^
@@ -448,5 +459,5 @@ LL |         cmp!(&a, &b);
    = help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    = note: this warning originates in the macro `cmp` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 37 warnings emitted
+warning: 38 warnings emitted
 

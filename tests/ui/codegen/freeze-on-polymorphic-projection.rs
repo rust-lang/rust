@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -Copt-level=1 --crate-type=lib
+//@ build-pass
+//@ compile-flags: -Copt-level=1 --crate-type=lib
 
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete

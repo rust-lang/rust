@@ -2,12 +2,13 @@
 //
 // We don't do any drop checking during hir typeck.
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, ErrorGuaranteed};
+use rustc_errors::{codes::*, struct_span_code_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_middle::ty::util::CheckRegions;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 use crate::errors;
@@ -34,12 +35,12 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
-            return Err(tcx.sess.emit_err(errors::DropImplPolarity::Negative {
+            return Err(tcx.dcx().emit_err(errors::DropImplPolarity::Negative {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
         ty::ImplPolarity::Reservation => {
-            return Err(tcx.sess.emit_err(errors::DropImplPolarity::Reservation {
+            return Err(tcx.dcx().emit_err(errors::DropImplPolarity::Reservation {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
@@ -66,7 +67,7 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            let reported = tcx.sess.span_delayed_bug(
+            let reported = tcx.dcx().span_delayed_bug(
                 span,
                 format!("should have been rejected by coherence check: {dtor_self_type}"),
             );
@@ -88,8 +89,12 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     let drop_impl_span = tcx.def_span(drop_impl_did);
     let item_span = tcx.def_span(self_type_did);
     let self_descr = tcx.def_descr(self_type_did);
-    let mut err =
-        struct_span_err!(tcx.sess, drop_impl_span, E0366, "`Drop` impls cannot be specialized");
+    let mut err = struct_span_code_err!(
+        tcx.dcx(),
+        drop_impl_span,
+        E0366,
+        "`Drop` impls cannot be specialized"
+    );
     match arg {
         ty::util::NotUniqueParam::DuplicateParam(arg) => {
             err.note(format!("`{arg}` is mentioned multiple times"))
@@ -119,14 +124,14 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    // Take the param-env of the adt and substitute the args that show up in
+    // Take the param-env of the adt and instantiate the args that show up in
     // the implementation's self type. This gives us the assumptions that the
     // self ty of the implementation is allowed to know just from it being a
     // well-formed adt, since that's all we're allowed to assume while proving
     // the Drop implementation is not specialized.
     //
     // We don't need to normalize this param-env or anything, since we're only
-    // substituting it with free params, so no additional param-env normalization
+    // instantiating it with free params, so no additional param-env normalization
     // can occur on top of what has been done in the param_env query itself.
     let param_env =
         ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);
@@ -154,14 +159,14 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 let item_span = tcx.def_span(adt_def_id);
                 let self_descr = tcx.def_descr(adt_def_id.to_def_id());
                 guar = Some(
-                    struct_span_err!(
-                        tcx.sess,
+                    struct_span_code_err!(
+                        tcx.dcx(),
                         error.root_obligation.cause.span,
                         E0367,
                         "`Drop` impl requires `{root_predicate}` \
                         but the {self_descr} it is implemented for does not",
                     )
-                    .span_note(item_span, "the implementor must specify the same requirement")
+                    .with_span_note(item_span, "the implementor must specify the same requirement")
                     .emit(),
                 );
             }
@@ -184,16 +189,17 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 RegionResolutionError::UpperBoundUniverseConflict(a, _, _, _, b) => {
                     format!("{b}: {a}", a = ty::Region::new_var(tcx, a))
                 }
+                RegionResolutionError::CannotNormalize(..) => unreachable!(),
             };
             guar = Some(
-                struct_span_err!(
-                    tcx.sess,
+                struct_span_code_err!(
+                    tcx.dcx(),
                     error.origin().span(),
                     E0367,
                     "`Drop` impl requires `{outlives}` \
                     but the {self_descr} it is implemented for does not",
                 )
-                .span_note(item_span, "the implementor must specify the same requirement")
+                .with_span_note(item_span, "the implementor must specify the same requirement")
                 .emit(),
             );
         }

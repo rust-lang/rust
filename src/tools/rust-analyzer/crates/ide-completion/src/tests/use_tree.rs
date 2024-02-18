@@ -9,6 +9,33 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
+fn use_tree_completion() {
+    check(
+        r#"
+struct implThing;
+
+use crate::{impl$0};
+"#,
+        expect![[r#"
+            st implThing implThing
+            kw self
+        "#]],
+    );
+
+    check(
+        r#"
+struct implThing;
+
+use crate::{impl$0;
+"#,
+        expect![[r#"
+            st implThing implThing
+            kw self
+        "#]],
+    );
+}
+
+#[test]
 fn use_tree_start() {
     cov_mark::check!(unqualified_path_selected_only);
     check(

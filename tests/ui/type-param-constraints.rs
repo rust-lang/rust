@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn p_foo<T>(_pinned: T) { }
 fn s_foo<T>(_shared: T) { }

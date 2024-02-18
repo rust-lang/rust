@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
     match &[(Box::new(5),Box::new(7))] {

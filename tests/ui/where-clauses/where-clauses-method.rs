@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that a where clause attached to a method allows us to add
 // additional constraints to a parameter out of scope.
 

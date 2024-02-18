@@ -62,7 +62,7 @@ impl LateLintPass<'_> for AbsolutePaths {
         } = self;
 
         if !path.span.from_expansion()
-            && let Some(node) = cx.tcx.opt_hir_node(hir_id)
+            && let node = cx.tcx.hir_node(hir_id)
             && !matches!(node, Node::Item(item) if matches!(item.kind, ItemKind::Use(_, _)))
             && let [first, rest @ ..] = path.segments
             // Handle `::std`

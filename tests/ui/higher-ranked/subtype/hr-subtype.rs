@@ -2,30 +2,30 @@
 
 #![allow(dead_code)]
 
-// revisions: bound_a_vs_bound_a
-// revisions: bound_a_vs_bound_b
-// revisions: bound_inv_a_vs_bound_inv_b
-// revisions: bound_co_a_vs_bound_co_b
-// revisions: bound_a_vs_free_x
-// revisions: free_x_vs_free_x
-// revisions: free_x_vs_free_y
-// revisions: free_inv_x_vs_free_inv_y
-// revisions: bound_a_b_vs_bound_a
-// revisions: bound_co_a_b_vs_bound_co_a
-// revisions: bound_contra_a_contra_b_ret_co_a
-// revisions: bound_co_a_co_b_ret_contra_a
-// revisions: bound_inv_a_b_vs_bound_inv_a
-// revisions: bound_a_b_ret_a_vs_bound_a_ret_a
+//@ revisions: bound_a_vs_bound_a
+//@ revisions: bound_a_vs_bound_b
+//@ revisions: bound_inv_a_vs_bound_inv_b
+//@ revisions: bound_co_a_vs_bound_co_b
+//@ revisions: bound_a_vs_free_x
+//@ revisions: free_x_vs_free_x
+//@ revisions: free_x_vs_free_y
+//@ revisions: free_inv_x_vs_free_inv_y
+//@ revisions: bound_a_b_vs_bound_a
+//@ revisions: bound_co_a_b_vs_bound_co_a
+//@ revisions: bound_contra_a_contra_b_ret_co_a
+//@ revisions: bound_co_a_co_b_ret_contra_a
+//@ revisions: bound_inv_a_b_vs_bound_inv_a
+//@ revisions: bound_a_b_ret_a_vs_bound_a_ret_a
 
-//[bound_a_vs_bound_a] check-pass
-//[bound_a_vs_bound_b] check-pass
-//[bound_inv_a_vs_bound_inv_b] check-pass
-//[bound_co_a_vs_bound_co_b] check-pass
-//[free_x_vs_free_x] check-pass
-//[bound_co_a_b_vs_bound_co_a] check-pass
-//[bound_co_a_co_b_ret_contra_a] check-pass
-//[bound_a_b_vs_bound_a] check-pass
-//[bound_contra_a_contra_b_ret_co_a] check-pass
+//@[bound_a_vs_bound_a] check-pass
+//@[bound_a_vs_bound_b] check-pass
+//@[bound_inv_a_vs_bound_inv_b] check-pass
+//@[bound_co_a_vs_bound_co_b] check-pass
+//@[free_x_vs_free_x] check-pass
+//@[bound_co_a_b_vs_bound_co_a] check-pass
+//@[bound_co_a_co_b_ret_contra_a] check-pass
+//@[bound_a_b_vs_bound_a] check-pass
+//@[bound_contra_a_contra_b_ret_co_a] check-pass
 
 fn gimme<T>(_: Option<T>) {}
 

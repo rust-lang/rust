@@ -16,7 +16,7 @@ use rustc_data_structures::stable_hasher::StableOrd;
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{Decodable_Generic, Encodable_Generic};
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 
@@ -29,10 +29,12 @@ pub use layout::LayoutCalculator;
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext {}
 
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+pub struct ReprFlags(u8);
+
 bitflags! {
-    #[derive(Default)]
-    #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
-    pub struct ReprFlags: u8 {
+    impl ReprFlags: u8 {
         const IS_C               = 1 << 0;
         const IS_SIMD            = 1 << 1;
         const IS_TRANSPARENT     = 1 << 2;
@@ -42,14 +44,22 @@ bitflags! {
         // the seed stored in `ReprOptions.layout_seed`
         const RANDOMIZE_LAYOUT   = 1 << 4;
         // Any of these flags being set prevent field reordering optimisation.
-        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
-                                 | ReprFlags::IS_SIMD.bits
-                                 | ReprFlags::IS_LINEAR.bits;
+        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits()
+                                 | ReprFlags::IS_SIMD.bits()
+                                 | ReprFlags::IS_LINEAR.bits();
+    }
+}
+
+// This is the same as `rustc_data_structures::external_bitflags_debug` but without the
+// `rustc_data_structures` to make it build on stable.
+impl std::fmt::Debug for ReprFlags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
     }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub enum IntegerType {
     /// Pointer-sized integer type, i.e. `isize` and `usize`. The field shows signedness, e.g.
     /// `Pointer(true)` means `isize`.
@@ -70,7 +80,7 @@ impl IntegerType {
 
 /// Represents the repr options provided by the user.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub struct ReprOptions {
     pub int: Option<IntegerType>,
     pub align: Option<Align>,
@@ -409,7 +419,7 @@ impl FromStr for Endian {
 
 /// Size of a type in bytes.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub struct Size {
     raw: u64,
 }
@@ -633,7 +643,7 @@ impl Step for Size {
 
 /// Alignment of a type in bytes (always a power of two).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub struct Align {
     pow2: u8,
 }
@@ -774,7 +784,7 @@ impl AbiAndPrefAlign {
 
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
 pub enum Integer {
     I8,
     I16,

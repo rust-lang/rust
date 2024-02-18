@@ -1,19 +1,19 @@
-#![allow(rustc::untranslatable_diagnostic)]
 #![allow(rustc::diagnostic_outside_of_impl)]
-use std::num::NonZeroU32;
+#![allow(rustc::untranslatable_diagnostic)]
+use std::num::NonZero;
 
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    AddToDiagnostic, Applicability, DecorateLint, DiagnosticMessage, DiagnosticStyledString,
-    SuggestionStyle,
+    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diagnostic, DiagnosticBuilder,
+    DiagnosticMessage, DiagnosticStyledString, SubdiagnosticMessageOp, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{
     inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
 };
-use rustc_session::parse::ParseSess;
+use rustc_session::Session;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
 use crate::{
@@ -135,7 +135,7 @@ pub struct BuiltinMissingDebugImpl<'a> {
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for BuiltinMissingDebugImpl<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("debug", self.tcx.def_path_str(self.def_id));
+        diag.arg("debug", self.tcx.def_path_str(self.def_id));
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -235,15 +235,15 @@ pub struct BuiltinUnstableFeatures;
 // lint_ungated_async_fn_track_caller
 pub struct BuiltinUngatedAsyncFnTrackCaller<'a> {
     pub label: Span,
-    pub parse_sess: &'a ParseSess,
+    pub session: &'a Session,
 }
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
-            self.parse_sess,
+            self.session,
             sym::async_fn_track_caller,
         );
     }
@@ -268,20 +268,14 @@ pub struct SuggestChangingAssocTypes<'a, 'b> {
 }
 
 impl AddToDiagnostic for SuggestChangingAssocTypes<'_, '_> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound. Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc_hir::intravisit::{self, Visitor};
         struct WalkAssocTypes<'a> {
-            err: &'a mut rustc_errors::Diagnostic,
+            err: &'a mut Diagnostic,
         }
         impl Visitor<'_> for WalkAssocTypes<'_> {
             fn visit_qpath(
@@ -326,13 +320,7 @@ pub struct BuiltinTypeAliasGenericBoundsSuggestion {
 }
 
 impl AddToDiagnostic for BuiltinTypeAliasGenericBoundsSuggestion {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         diag.multipart_suggestion(
             fluent::lint_suggestion,
             self.suggestions,
@@ -413,7 +401,7 @@ pub struct BuiltinIncompleteFeaturesHelp;
 #[derive(Subdiagnostic)]
 #[note(lint_note)]
 pub struct BuiltinFeatureIssueNote {
-    pub n: NonZeroU32,
+    pub n: NonZero<u32>,
 }
 
 pub struct BuiltinUnpermittedTypeInit<'a> {
@@ -425,8 +413,8 @@ pub struct BuiltinUnpermittedTypeInit<'a> {
 }
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("ty", self.ty);
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+        diag.arg("ty", self.ty);
         diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
         if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
             // Only suggest late `MaybeUninit::assume_init` initialization if the type is inhabited.
@@ -438,7 +426,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
         self.sub.add_to_diagnostic(diag);
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> DiagnosticMessage {
         self.msg.clone()
     }
 }
@@ -449,13 +437,7 @@ pub struct BuiltinUnpermittedTypeInitSub {
 }
 
 impl AddToDiagnostic for BuiltinUnpermittedTypeInitSub {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         let mut err = self.err;
         loop {
             if let Some(span) = err.span {
@@ -506,13 +488,7 @@ pub struct BuiltinClashingExternSub<'a> {
 }
 
 impl AddToDiagnostic for BuiltinClashingExternSub<'_> {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         let mut expected_str = DiagnosticStyledString::new();
         expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
         let mut found_str = DiagnosticStyledString::new();
@@ -544,7 +520,6 @@ pub enum BuiltinSpecialModuleNameUsed {
 // deref_into_dyn_supertrait.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_supertrait_as_deref_target)]
-#[help]
 pub struct SupertraitAsDerefTarget<'a> {
     pub self_ty: Ty<'a>,
     pub supertrait_principal: PolyExistentialTraitRef<'a>,
@@ -740,7 +715,7 @@ pub enum InvalidFromUtf8Diag {
 
 // reference_casting.rs
 #[derive(LintDiagnostic)]
-pub enum InvalidReferenceCastingDiag {
+pub enum InvalidReferenceCastingDiag<'tcx> {
     #[diag(lint_invalid_reference_casting_borrow_as_mut)]
     #[note(lint_invalid_reference_casting_note_book)]
     BorrowAsMut {
@@ -756,6 +731,18 @@ pub enum InvalidReferenceCastingDiag {
         orig_cast: Option<Span>,
         #[note(lint_invalid_reference_casting_note_ty_has_interior_mutability)]
         ty_has_interior_mutability: Option<()>,
+    },
+    #[diag(lint_invalid_reference_casting_bigger_layout)]
+    #[note(lint_layout)]
+    BiggerLayout {
+        #[label]
+        orig_cast: Option<Span>,
+        #[label(lint_alloc)]
+        alloc: Span,
+        from_ty: Ty<'tcx>,
+        from_size: u64,
+        to_ty: Ty<'tcx>,
+        to_size: u64,
     },
 }
 
@@ -779,13 +766,7 @@ pub struct HiddenUnicodeCodepointsDiagLabels {
 }
 
 impl AddToDiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         for (c, span) in self.spans {
             diag.span_label(span, format!("{c:?}"));
         }
@@ -799,13 +780,7 @@ pub enum HiddenUnicodeCodepointsDiagSub {
 
 // Used because of multiple multipart_suggestion and note
 impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(
@@ -830,7 +805,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
                 // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
                 // should do the same here to provide the same good suggestions as we do for
                 // literals above.
-                diag.set_arg(
+                diag.arg(
                     "escaped",
                     spans
                         .into_iter()
@@ -948,32 +923,37 @@ pub enum NonBindingLet {
 
 pub struct NonBindingLetSub {
     pub suggestion: Span,
-    pub multi_suggestion_start: Span,
-    pub multi_suggestion_end: Span,
+    pub drop_fn_start_end: Option<(Span, Span)>,
+    pub is_assign_desugar: bool,
 }
 
 impl AddToDiagnostic for NonBindingLetSub {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
-        diag.span_suggestion_verbose(
-            self.suggestion,
-            fluent::lint_non_binding_let_suggestion,
-            "_unused",
-            Applicability::MachineApplicable,
-        );
-        diag.multipart_suggestion(
-            fluent::lint_non_binding_let_multi_suggestion,
-            vec![
-                (self.multi_suggestion_start, "drop(".to_string()),
-                (self.multi_suggestion_end, ")".to_string()),
-            ],
-            Applicability::MachineApplicable,
-        );
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+        let can_suggest_binding = self.drop_fn_start_end.is_some() || !self.is_assign_desugar;
+
+        if can_suggest_binding {
+            let prefix = if self.is_assign_desugar { "let " } else { "" };
+            diag.span_suggestion_verbose(
+                self.suggestion,
+                fluent::lint_non_binding_let_suggestion,
+                format!("{prefix}_unused"),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            diag.span_help(self.suggestion, fluent::lint_non_binding_let_suggestion);
+        }
+        if let Some(drop_fn_start_end) = self.drop_fn_start_end {
+            diag.multipart_suggestion(
+                fluent::lint_non_binding_let_multi_suggestion,
+                vec![
+                    (drop_fn_start_end.0, "drop(".to_string()),
+                    (drop_fn_start_end.1, ")".to_string()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        } else {
+            diag.help(fluent::lint_non_binding_let_multi_drop_fn);
+        }
     }
 }
 
@@ -1069,13 +1049,14 @@ pub enum UnknownLintSuggestion {
         #[primary_span]
         suggestion: Span,
         replace: Symbol,
+        from_rustc: bool,
     },
     #[help(lint_help)]
-    WithoutSpan { replace: Symbol },
+    WithoutSpan { replace: Symbol, from_rustc: bool },
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unknown_lint, code = "E0602")]
+#[diag(lint_unknown_lint, code = E0602)]
 pub struct UnknownLintFromCommandLine<'a> {
     pub name: String,
     #[subdiagnostic]
@@ -1117,7 +1098,10 @@ pub struct IdentifierNonAsciiChar;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_identifier_uncommon_codepoints)]
-pub struct IdentifierUncommonCodepoints;
+pub struct IdentifierUncommonCodepoints {
+    pub codepoints: Vec<char>,
+    pub codepoints_len: usize,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_confusable_identifier_pair)]
@@ -1147,8 +1131,8 @@ pub struct NonFmtPanicUnused {
 
 // Used because of two suggestions based on one Option<Span>
 impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("count", self.count);
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+        diag.arg("count", self.count);
         diag.note(fluent::lint_note);
         if let Some(span) = self.suggestion {
             diag.span_suggestion(
@@ -1166,7 +1150,7 @@ impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
         }
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> DiagnosticMessage {
         fluent::lint_non_fmt_panic_unused
     }
 }
@@ -1224,13 +1208,7 @@ pub enum NonSnakeCaseDiagSub {
 }
 
 impl AddToDiagnostic for NonSnakeCaseDiagSub {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, fluent::lint_label);
@@ -1342,12 +1320,12 @@ pub struct DropTraitConstraintsDiag<'a> {
 
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("predicate", self.predicate);
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+        diag.arg("predicate", self.predicate);
+        diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> DiagnosticMessage {
         fluent::lint_drop_trait_constraints
     }
 }
@@ -1359,11 +1337,11 @@ pub struct DropGlue<'a> {
 
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+        diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> DiagnosticMessage {
         fluent::lint_drop_glue
     }
 }
@@ -1423,13 +1401,7 @@ pub enum OverflowingBinHexSign {
 }
 
 impl AddToDiagnostic for OverflowingBinHexSign {
-    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
-    where
-        F: Fn(
-            &mut rustc_errors::Diagnostic,
-            rustc_errors::SubdiagnosticMessage,
-        ) -> rustc_errors::SubdiagnosticMessage,
-    {
+    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
         match self {
             OverflowingBinHexSign::Positive => {
                 diag.note(fluent::lint_positive_note);
@@ -1633,9 +1605,9 @@ pub struct ImproperCTypes<'a> {
 
 // Used because of the complexity of Option<DiagnosticMessage>, DiagnosticMessage, and Option<Span>
 impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("ty", self.ty);
-        diag.set_arg("desc", self.desc);
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+        diag.arg("ty", self.ty);
+        diag.arg("desc", self.desc);
         diag.span_label(self.label, fluent::lint_label);
         if let Some(help) = self.help {
             diag.help(help);
@@ -1646,7 +1618,7 @@ impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
         }
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> DiagnosticMessage {
         fluent::lint_improper_ctypes
     }
 }
@@ -1776,20 +1748,20 @@ pub enum UnusedDefSuggestion {
 
 // Needed because of def_path_str
 impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("pre", self.pre);
-        diag.set_arg("post", self.post);
-        diag.set_arg("def", self.cx.tcx.def_path_str(self.def_id));
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
+        diag.arg("pre", self.pre);
+        diag.arg("post", self.post);
+        diag.arg("def", self.cx.tcx.def_path_str(self.def_id));
         // check for #[must_use = "..."]
         if let Some(note) = self.note {
             diag.note(note.to_string());
         }
         if let Some(sugg) = self.suggestion {
-            diag.subdiagnostic(sugg);
+            diag.subdiagnostic(diag.dcx, sugg);
         }
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> DiagnosticMessage {
         fluent::lint_unused_def
     }
 }
@@ -1859,14 +1831,14 @@ pub struct AsyncFnInTraitDiag {
 }
 
 impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
-    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
         diag.note(fluent::lint_note);
         if let Some(sugg) = self.sugg {
             diag.multipart_suggestion(fluent::lint_suggestion, sugg, Applicability::MaybeIncorrect);
         }
     }
 
-    fn msg(&self) -> rustc_errors::DiagnosticMessage {
+    fn msg(&self) -> DiagnosticMessage {
         fluent::lint_async_fn_in_trait
     }
 }

@@ -1,11 +1,23 @@
 error: usage of wildcard import
-  --> $DIR/wildcard_imports.rs:6:5
+  --> $DIR/wildcard_imports.rs:18:5
    |
-LL | use prelude::*;
-   |     ^^^^^^^^^^ help: try: `prelude::FOO`
+LL | use utils::*;
+   |     ^^^^^^^^ help: try: `utils::{BAR, print}`
    |
    = note: `-D clippy::wildcard-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
 
-error: aborting due to 1 previous error
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:20:5
+   |
+LL | use my_crate::utils::*;
+   |     ^^^^^^^^^^^^^^^^^^ help: try: `my_crate::utils::my_util_fn`
+
+error: usage of wildcard import
+  --> $DIR/wildcard_imports.rs:22:5
+   |
+LL | use prelude::*;
+   |     ^^^^^^^^^^ help: try: `prelude::FOO`
+
+error: aborting due to 3 previous errors
 

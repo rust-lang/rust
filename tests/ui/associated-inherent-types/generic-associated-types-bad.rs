@@ -1,4 +1,4 @@
-// revisions: item local region
+//@ revisions: item local region
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

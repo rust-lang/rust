@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use crate::places_conflict;
 use crate::AccessDepth;
@@ -29,7 +27,6 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
     s: &mut S,
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    _location: Location,
     access_place: (AccessDepth, Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
     is_candidate: I,
@@ -164,7 +161,7 @@ pub(crate) fn is_upvar_field_projection<'tcx>(
     match place_ref.last_projection() {
         Some((place_base, ProjectionElem::Field(field, _ty))) => {
             let base_ty = place_base.ty(body, tcx).ty;
-            if (base_ty.is_closure() || base_ty.is_coroutine())
+            if (base_ty.is_closure() || base_ty.is_coroutine() || base_ty.is_coroutine_closure())
                 && (!by_ref || upvars[field.index()].is_by_ref())
             {
                 Some(field)

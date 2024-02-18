@@ -481,7 +481,12 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
     let Ty { id, kind, span, tokens } = ty.deref_mut();
     vis.visit_id(id);
     match kind {
-        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never | TyKind::CVarArgs => {}
+        TyKind::Infer
+        | TyKind::ImplicitSelf
+        | TyKind::Err(_)
+        | TyKind::Dummy
+        | TyKind::Never
+        | TyKind::CVarArgs => {}
         TyKind::Slice(ty) => vis.visit_ty(ty),
         TyKind::Ptr(mt) => vis.visit_mt(mt),
         TyKind::Ref(lt, mt) => {
@@ -514,7 +519,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
-        TyKind::AnonStruct(fields) | TyKind::AnonUnion(fields) => {
+        TyKind::AnonStruct(id, fields) | TyKind::AnonUnion(id, fields) => {
+            vis.visit_id(id);
             fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
         }
     }
@@ -1117,6 +1123,14 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         }
         ItemKind::MacCall(m) => vis.visit_mac_call(m),
         ItemKind::MacroDef(def) => vis.visit_macro_def(def),
+        ItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+            vis.visit_id(id);
+            vis.visit_qself(qself);
+            vis.visit_path(path);
+            if let Some(body) = body {
+                vis.visit_block(body);
+            }
+        }
     }
 }
 
@@ -1155,6 +1169,14 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
         AssocItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
+        AssocItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+            visitor.visit_id(id);
+            visitor.visit_qself(qself);
+            visitor.visit_path(path);
+            if let Some(body) = body {
+                visitor.visit_block(body);
+            }
+        }
     }
     visitor.visit_span(span);
     visit_lazy_tts(tokens, visitor);
@@ -1251,7 +1273,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
     let Pat { id, kind, span, tokens } = pat.deref_mut();
     vis.visit_id(id);
     match kind {
-        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+        PatKind::Wild | PatKind::Rest | PatKind::Never | PatKind::Err(_) => {}
         PatKind::Ident(_binding_mode, ident, sub) => {
             vis.visit_ident(ident);
             visit_opt(sub, |sub| vis.visit_pat(sub));
@@ -1632,7 +1654,7 @@ impl DummyAstNode for Ty {
     fn dummy() -> Self {
         Ty {
             id: DUMMY_NODE_ID,
-            kind: TyKind::Err,
+            kind: TyKind::Dummy,
             span: Default::default(),
             tokens: Default::default(),
         }

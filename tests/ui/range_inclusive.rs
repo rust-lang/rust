@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test inclusive range syntax.
 #![allow(unused_braces)]
 #![allow(unused_comparisons)]
@@ -11,7 +11,7 @@ fn foo() -> isize { 42 }
 pub fn return_range_to() -> RangeToInclusive<i32> { return ..=1; }
 
 #[derive(Debug)]
-struct P(#[allow(unused_tuple_struct_fields)] u8);
+struct P(#[allow(dead_code)] u8);
 
 pub fn main() {
     let mut count = 0;

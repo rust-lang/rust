@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // this test checks that the `dead_code` lint is *NOT* being emited
 // for `foo` as `foo` is being used by `main`, and so the `#[expect]`

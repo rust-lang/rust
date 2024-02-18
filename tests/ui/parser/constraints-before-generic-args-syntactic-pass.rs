@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[cfg(FALSE)]
 fn syntax() {

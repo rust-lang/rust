@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 mod bar {
     pub(crate) struct Foo;

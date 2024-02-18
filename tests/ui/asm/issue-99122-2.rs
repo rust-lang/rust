@@ -1,6 +1,6 @@
-// check-pass
-// needs-asm-support
-// only-x86_64
+//@ check-pass
+//@ needs-asm-support
+//@ only-x86_64
 
 // This demonstrates why we need to erase regions before sized check in intrinsicck
 

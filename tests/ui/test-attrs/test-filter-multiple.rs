@@ -1,9 +1,9 @@
-// run-pass
-// compile-flags: --test
-// run-flags: --test-threads=1 test1 test2
-// check-run-results
-// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
-// ignore-emscripten no threads support
+//@ run-pass
+//@ compile-flags: --test
+//@ run-flags: --test-threads=1 test1 test2
+//@ check-run-results
+//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ ignore-emscripten no threads support
 
 #[test]
 fn test1() {}

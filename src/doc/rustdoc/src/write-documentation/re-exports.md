@@ -170,3 +170,32 @@ There are a few attributes which are not inlined though:
 
 All other attributes are inherited when inlined, so that the documentation matches the behavior if
 the inlined item was directly defined at the spot where it's shown.
+
+These rules also apply if the item is inlined with a glob re-export:
+
+```rust,ignore (inline)
+mod private_mod {
+    /// First
+    #[cfg(a)]
+    pub struct InPrivate;
+}
+
+#[cfg(c)]
+pub use self::private_mod::*;
+```
+
+Otherwise, the attributes displayed will be from the re-exported item and the attributes on the
+re-export itself will be ignored:
+
+```rust,ignore (inline)
+mod private_mod {
+    /// First
+    #[cfg(a)]
+    pub struct InPrivate;
+}
+
+#[cfg(c)]
+pub use self::private_mod::InPrivate;
+```
+
+In the above case, `cfg(c)` will not be displayed in the docs.

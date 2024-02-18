@@ -1,5 +1,5 @@
-// aux-build:lint_stability.rs
-// aux-build:stability_cfg1.rs
+//@ aux-build:lint_stability.rs
+//@ aux-build:stability_cfg1.rs
 
 #![allow(deprecated)]
 #![allow(dead_code)]

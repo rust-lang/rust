@@ -1,9 +1,9 @@
 // Ensure that trait objects don't include more than one binder. See #83611
 
-// build-fail
-// revisions: v0
-//[v0]compile-flags: -C symbol-mangling-version=v0
-//[v0]normalize-stderr-test: "core\[.*?\]" -> "core[HASH]"
+//@ build-fail
+//@ revisions: v0
+//@[v0]compile-flags: -C symbol-mangling-version=v0
+//@[v0]normalize-stderr-test: "core\[.*?\]" -> "core[HASH]"
 
 #![feature(rustc_attrs)]
 

@@ -771,6 +771,7 @@ declare_clippy_lint! {
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
+    modulo_arithmetic_allow_comparison_to_zero: bool,
 }
 impl_lint_pass!(Operators => [
     ABSURD_EXTREME_COMPARISONS,
@@ -801,10 +802,11 @@ impl_lint_pass!(Operators => [
     SELF_ASSIGNMENT,
 ]);
 impl Operators {
-    pub fn new(verbose_bit_mask_threshold: u64) -> Self {
+    pub fn new(verbose_bit_mask_threshold: u64, modulo_arithmetic_allow_comparison_to_zero: bool) -> Self {
         Self {
             arithmetic_context: numeric_arithmetic::Context::default(),
             verbose_bit_mask_threshold,
+            modulo_arithmetic_allow_comparison_to_zero,
         }
     }
 }
@@ -835,12 +837,19 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                 cmp_owned::check(cx, op.node, lhs, rhs);
                 float_cmp::check(cx, e, op.node, lhs, rhs);
                 modulo_one::check(cx, e, op.node, rhs);
-                modulo_arithmetic::check(cx, e, op.node, lhs, rhs);
+                modulo_arithmetic::check(
+                    cx,
+                    e,
+                    op.node,
+                    lhs,
+                    rhs,
+                    self.modulo_arithmetic_allow_comparison_to_zero,
+                );
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 misrefactored_assign_op::check(cx, e, op.node, lhs, rhs);
-                modulo_arithmetic::check(cx, e, op.node, lhs, rhs);
+                modulo_arithmetic::check(cx, e, op.node, lhs, rhs, false);
             },
             ExprKind::Assign(lhs, rhs, _) => {
                 assign_op_pattern::check(cx, e, lhs, rhs);

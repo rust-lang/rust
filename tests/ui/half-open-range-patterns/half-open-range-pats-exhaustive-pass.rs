@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test various exhaustive matches for `X..`, `..=X` and `..X` ranges.
 

@@ -1,6 +1,6 @@
-// edition:2015
-// aux-build:edition-kw-macro-2015.rs
-// check-pass
+//@ edition:2015
+//@ aux-build:edition-kw-macro-2015.rs
+//@ check-pass
 
 #![allow(keyword_idents)]
 

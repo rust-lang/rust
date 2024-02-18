@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -Zmir-opt-level=3 --crate-type=lib
+//@ build-pass
+//@ compile-flags: -Zmir-opt-level=3 --crate-type=lib
 
 #![feature(trivial_bounds)]
 #![allow(trivial_bounds)]

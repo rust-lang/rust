@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![deny(unused_parens)]
 #![allow(while_true)] // for rustfix

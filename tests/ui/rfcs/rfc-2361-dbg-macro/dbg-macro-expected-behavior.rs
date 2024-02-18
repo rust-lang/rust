@@ -1,5 +1,5 @@
-// run-pass
-// check-run-results
+//@ run-pass
+//@ check-run-results
 
 // Tests ensuring that `dbg!(expr)` has the expected run-time behavior.
 // as well as some compile time properties we expect.

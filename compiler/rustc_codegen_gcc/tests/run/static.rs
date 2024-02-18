@@ -61,9 +61,6 @@ mod libc {
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {}
 
-#[lang = "structural_teq"]
-pub trait StructuralEq {}
-
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {

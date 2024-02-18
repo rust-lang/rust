@@ -1,5 +1,5 @@
-// aux-build:issue-38875-b.rs
-// check-pass
+//@ aux-build:issue-38875-b.rs
+//@ check-pass
 
 extern crate issue_38875_b;
 

@@ -1,6 +1,6 @@
 // Regression test for #92230.
 //
-// check-pass
+//@ check-pass
 
 #![feature(const_trait_impl)]
 

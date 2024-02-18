@@ -88,6 +88,7 @@ impl<'a, 'db> Autoderef<'a, 'db> {
 impl Iterator for Autoderef<'_, '_> {
     type Item = (Ty, usize);
 
+    #[tracing::instrument(skip_all)]
     fn next(&mut self) -> Option<Self::Item> {
         if self.at_start {
             self.at_start = false;
@@ -142,7 +143,7 @@ pub(crate) fn deref_by_trait(
     table @ &mut InferenceTable { db, .. }: &mut InferenceTable<'_>,
     ty: Ty,
 ) -> Option<Ty> {
-    let _p = profile::span("deref_by_trait");
+    let _p = tracing::span!(tracing::Level::INFO, "deref_by_trait").entered();
     if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
         // don't try to deref unknown variables
         return None;

@@ -1,22 +1,22 @@
 // Verifies that when compiling with -Zsanitizer=option,
 // the `#[cfg(sanitize = "option")]` attribute is configured.
 
-// check-pass
-// revisions: address cfi kcfi leak memory thread
-//compile-flags: -Ctarget-feature=-crt-static
-//[address]needs-sanitizer-address
-//[address]compile-flags: -Zsanitizer=address --cfg address
-//[cfi]needs-sanitizer-cfi
-//[cfi]compile-flags:     -Zsanitizer=cfi     --cfg cfi
-//[cfi]compile-flags:     -Clto -Ccodegen-units=1
-//[kcfi]needs-llvm-components: x86
-//[kcfi]compile-flags:    -Zsanitizer=kcfi    --cfg kcfi --target x86_64-unknown-none
-//[leak]needs-sanitizer-leak
-//[leak]compile-flags:    -Zsanitizer=leak    --cfg leak
-//[memory]needs-sanitizer-memory
-//[memory]compile-flags:  -Zsanitizer=memory  --cfg memory
-//[thread]needs-sanitizer-thread
-//[thread]compile-flags:  -Zsanitizer=thread  --cfg thread
+//@ check-pass
+//@ revisions: address cfi kcfi leak memory thread
+//@compile-flags: -Ctarget-feature=-crt-static
+//@[address]needs-sanitizer-address
+//@[address]compile-flags: -Zsanitizer=address --cfg address
+//@[cfi]needs-sanitizer-cfi
+//@[cfi]compile-flags:     -Zsanitizer=cfi     --cfg cfi
+//@[cfi]compile-flags:     -Clto -Ccodegen-units=1
+//@[kcfi]needs-llvm-components: x86
+//@[kcfi]compile-flags:    -Zsanitizer=kcfi    --cfg kcfi --target x86_64-unknown-none
+//@[leak]needs-sanitizer-leak
+//@[leak]compile-flags:    -Zsanitizer=leak    --cfg leak
+//@[memory]needs-sanitizer-memory
+//@[memory]compile-flags:  -Zsanitizer=memory  --cfg memory
+//@[thread]needs-sanitizer-thread
+//@[thread]compile-flags:  -Zsanitizer=thread  --cfg thread
 
 #![feature(cfg_sanitize, no_core, lang_items)]
 #![crate_type="lib"]

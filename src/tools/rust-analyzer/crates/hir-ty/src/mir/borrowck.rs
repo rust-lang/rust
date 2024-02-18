@@ -11,7 +11,10 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, mir::Operand, utils::ClosureSubst, ClosureId, Interner, Ty, TyExt, TypeFlags,
+    db::{HirDatabase, InternedClosure},
+    mir::Operand,
+    utils::ClosureSubst,
+    ClosureId, Interner, Ty, TyExt, TypeFlags,
 };
 
 use super::{
@@ -53,7 +56,7 @@ fn all_mir_bodies(
         match db.mir_body_for_closure(c) {
             Ok(body) => {
                 cb(body.clone());
-                body.closures.iter().map(|&it| for_closure(db, it, cb)).collect()
+                body.closures.iter().try_for_each(|&it| for_closure(db, it, cb))
             }
             Err(e) => Err(e),
         }
@@ -61,7 +64,7 @@ fn all_mir_bodies(
     match db.mir_body(def) {
         Ok(body) => {
             cb(body.clone());
-            body.closures.iter().map(|&it| for_closure(db, it, &mut cb)).collect()
+            body.closures.iter().try_for_each(|&it| for_closure(db, it, &mut cb))
         }
         Err(e) => Err(e),
     }
@@ -71,7 +74,7 @@ pub fn borrowck_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
 ) -> Result<Arc<[BorrowckResult]>, MirLowerError> {
-    let _p = profile::span("borrowck_query");
+    let _p = tracing::span!(tracing::Level::INFO, "borrowck_query").entered();
     let mut res = vec![];
     all_mir_bodies(db, def, |body| {
         res.push(BorrowckResult {
@@ -97,7 +100,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                     ty,
                     db,
                     |c, subst, f| {
-                        let (def, _) = db.lookup_intern_closure(c.into());
+                        let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
                         let infer = db.infer(def);
                         let (captures, _) = infer.closure_info(&c);
                         let parent_subst = ClosureSubst(subst).parent_subst();
@@ -159,7 +162,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                 | TerminatorKind::FalseUnwind { .. }
                 | TerminatorKind::Goto { .. }
                 | TerminatorKind::UnwindResume
-                | TerminatorKind::GeneratorDrop
+                | TerminatorKind::CoroutineDrop
                 | TerminatorKind::Abort
                 | TerminatorKind::Return
                 | TerminatorKind::Unreachable
@@ -205,7 +208,7 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(_)
-            | ProjectionElem::TupleOrClosureField(_)
+            | ProjectionElem::ClosureField(_)
             | ProjectionElem::Index(_) => {
                 is_part_of = true;
             }
@@ -215,7 +218,7 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
             ty,
             db,
             |c, subst, f| {
-                let (def, _) = db.lookup_intern_closure(c.into());
+                let InternedClosure(def, _) = db.lookup_intern_closure(c.into());
                 let infer = db.infer(def);
                 let (captures, _) = infer.closure_info(&c);
                 let parent_subst = ClosureSubst(subst).parent_subst();
@@ -257,7 +260,7 @@ fn ever_initialized_map(
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(p, _) => {
-                    if p.projection.lookup(&body.projection_store).len() == 0 && p.local == l {
+                    if p.projection.lookup(&body.projection_store).is_empty() && p.local == l {
                         is_ever_initialized = true;
                     }
                 }
@@ -295,30 +298,23 @@ fn ever_initialized_map(
             | TerminatorKind::Return
             | TerminatorKind::Unreachable => (),
             TerminatorKind::Call { target, cleanup, destination, .. } => {
-                if destination.projection.lookup(&body.projection_store).len() == 0
+                if destination.projection.lookup(&body.projection_store).is_empty()
                     && destination.local == l
                 {
                     is_ever_initialized = true;
                 }
-                target
-                    .into_iter()
-                    .chain(cleanup.into_iter())
-                    .for_each(|&it| process(it, is_ever_initialized));
+                target.iter().chain(cleanup).for_each(|&it| process(it, is_ever_initialized));
             }
             TerminatorKind::Drop { target, unwind, place: _ } => {
-                iter::once(target)
-                    .into_iter()
-                    .chain(unwind.into_iter())
-                    .for_each(|&it| process(it, is_ever_initialized));
+                iter::once(target).chain(unwind).for_each(|&it| process(it, is_ever_initialized));
             }
             TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Yield { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
                 never!("We don't emit these MIR terminators yet");
-                ()
             }
         }
     }
@@ -346,11 +342,8 @@ fn push_mut_span(local: LocalId, span: MirSpan, result: &mut ArenaMap<LocalId, M
 }
 
 fn record_usage(local: LocalId, result: &mut ArenaMap<LocalId, MutabilityReason>) {
-    match &mut result[local] {
-        it @ MutabilityReason::Unused => {
-            *it = MutabilityReason::Not;
-        }
-        _ => (),
+    if let it @ MutabilityReason::Unused = &mut result[local] {
+        *it = MutabilityReason::Not;
     };
 }
 
@@ -439,7 +432,7 @@ fn mutability_of_locals(
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
@@ -452,9 +445,9 @@ fn mutability_of_locals(
                 for arg in args.iter() {
                     record_usage_for_operand(arg, &mut result);
                 }
-                if destination.projection.lookup(&body.projection_store).len() == 0 {
+                if destination.projection.lookup(&body.projection_store).is_empty() {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
-                        push_mut_span(destination.local, MirSpan::Unknown, &mut result);
+                        push_mut_span(destination.local, terminator.span, &mut result);
                     } else {
                         ever_init_map.insert(destination.local, true);
                     }

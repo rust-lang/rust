@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Tests that the unknown_lints lint doesn't fire for an unknown lint loaded from a separate file.
 // The key part is that the stderr output should be empty.

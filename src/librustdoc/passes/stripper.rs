@@ -56,13 +56,10 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             | clean::TraitItem(..)
             | clean::FunctionItem(..)
             | clean::VariantItem(..)
-            | clean::MethodItem(..)
             | clean::ForeignFunctionItem(..)
             | clean::ForeignStaticItem(..)
             | clean::ConstantItem(..)
             | clean::UnionItem(..)
-            | clean::AssocConstItem(..)
-            | clean::AssocTypeItem(..)
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
             | clean::ForeignTypeItem => {
@@ -74,6 +71,16 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
                         self.effective_visibilities,
                         item_id,
                     )
+                {
+                    debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
+                    return None;
+                }
+            }
+
+            clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
+                let item_id = i.item_id;
+                if item_id.is_local()
+                    && !self.effective_visibilities.is_reachable(self.tcx, item_id.expect_def_id())
                 {
                     debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
                     return None;
@@ -192,16 +199,16 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
                     && imp.items.iter().all(|i| {
                         let item_id = i.item_id;
                         item_id.is_local()
-                            && !is_item_reachable(
-                                self.tcx,
-                                self.is_json_output,
-                                &self.cache.effective_visibilities,
-                                item_id,
-                            )
+                            && !self
+                                .cache
+                                .effective_visibilities
+                                .is_reachable(self.tcx, item_id.expect_def_id())
                     })
                 {
+                    debug!("ImplStripper: no public item; removing {imp:?}");
                     return None;
                 } else if imp.items.is_empty() && i.doc_value().is_empty() {
+                    debug!("ImplStripper: no item and no doc; removing {imp:?}");
                     return None;
                 }
             }
@@ -212,13 +219,13 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
                 && !imp.for_.is_assoc_ty()
                 && !self.should_keep_impl(&i, did)
             {
-                debug!("ImplStripper: impl item for stripped type; removing");
+                debug!("ImplStripper: impl item for stripped type; removing {imp:?}");
                 return None;
             }
             if let Some(did) = imp.trait_.as_ref().map(|t| t.def_id())
                 && !self.should_keep_impl(&i, did)
             {
-                debug!("ImplStripper: impl item for stripped trait; removing");
+                debug!("ImplStripper: impl item for stripped trait; removing {imp:?}");
                 return None;
             }
             if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
@@ -226,7 +233,7 @@ impl<'a> DocFolder for ImplStripper<'a, '_> {
                     if let Some(did) = typaram.def_id(self.cache)
                         && !self.should_keep_impl(&i, did)
                     {
-                        debug!("ImplStripper: stripped item in trait's generics; removing impl");
+                        debug!("ImplStripper: stripped item in trait's generics; removing {imp:?}");
                         return None;
                     }
                 }

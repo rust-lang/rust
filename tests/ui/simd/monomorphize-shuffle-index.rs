@@ -1,6 +1,6 @@
-//[old]run-pass
-//[generic_with_fn]run-pass
-// revisions: old generic generic_with_fn
+//@[old]run-pass
+//@[generic_with_fn]run-pass
+//@ revisions: old generic generic_with_fn
 #![feature(repr_simd, platform_intrinsics, adt_const_params, generic_const_exprs)]
 #![allow(incomplete_features)]
 

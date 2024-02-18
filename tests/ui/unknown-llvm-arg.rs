@@ -1,6 +1,6 @@
-// compile-flags: -Cllvm-args=-not-a-real-llvm-arg
-// normalize-stderr-test "--help" -> "-help"
-// normalize-stderr-test "\n(\n|.)*" -> ""
+//@ compile-flags: -Cllvm-args=-not-a-real-llvm-arg
+//@ normalize-stderr-test "--help" -> "-help"
+//@ normalize-stderr-test "\n(\n|.)*" -> ""
 
 // I'm seeing "--help" locally, but "-help" in CI, so I'm normalizing it to just "-help".
 

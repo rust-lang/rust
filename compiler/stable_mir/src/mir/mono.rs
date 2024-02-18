@@ -57,7 +57,7 @@ impl Instance {
         with(|cx| cx.is_foreign_item(self.def.def_id()))
     }
 
-    /// Get the instance type with generic substitutions applied and lifetimes erased.
+    /// Get the instance type with generic instantiations applied and lifetimes erased.
     pub fn ty(&self) -> Ty {
         with(|context| context.instance_ty(self.def))
     }

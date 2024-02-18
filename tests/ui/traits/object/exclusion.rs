@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Future: 'static {
     // The requirement for Self: Sized must prevent instantiation of
     // Future::forget in vtables, otherwise there's an infinite type
@@ -8,7 +8,7 @@ trait Future: 'static {
     }
 }
 
-struct Map<A>(#[allow(unused_tuple_struct_fields)] A);
+struct Map<A>(#[allow(dead_code)] A);
 impl<A: Future> Future for Map<A> {}
 
 pub struct Promise;

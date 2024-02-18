@@ -1,5 +1,5 @@
-// run-pass
-// ignore-emscripten no threads support
+//@ run-pass
+//@ ignore-emscripten no threads support
 
 use std::thread;
 

@@ -4,7 +4,7 @@
 // Test that line numbers are not replaced with those of the outermost expansion site when the
 // `collapse_debuginfo` feature is active and the attribute is not provided.
 
-// compile-flags:-g
+// compile-flags:-g -Z collapse_macro_debuginfo=no
 
 // === GDB TESTS ===================================================================================
 

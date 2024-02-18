@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 const CURSOR_PARTITION_LABEL: &'static [u8] = b"partition";
 const CURSOR_EVENT_TYPE_LABEL: &'static [u8] = b"event_type";
 const BYTE_PATTERN: &'static [u8; 5] = b"hello";

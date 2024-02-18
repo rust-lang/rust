@@ -17,16 +17,17 @@ fn invalid_type_err(
         ConcatBytesInvalid, ConcatBytesInvalidSuggestion, ConcatBytesNonU8, ConcatBytesOob,
     };
     let snippet = cx.sess.source_map().span_to_snippet(span).ok();
+    let dcx = cx.dcx();
     match ast::LitKind::from_token_lit(token_lit) {
         Ok(ast::LitKind::CStr(_, _)) => {
             // Avoid ambiguity in handling of terminal `NUL` by refusing to
             // concatenate C string literals as bytes.
-            cx.emit_err(errors::ConcatCStrLit { span: span });
+            dcx.emit_err(errors::ConcatCStrLit { span: span });
         }
         Ok(ast::LitKind::Char(_)) => {
             let sugg =
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::CharLit { span, snippet });
-            cx.sess.emit_err(ConcatBytesInvalid { span, lit_kind: "character", sugg });
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "character", sugg });
         }
         Ok(ast::LitKind::Str(_, _)) => {
             // suggestion would be invalid if we are nested
@@ -35,29 +36,29 @@ fn invalid_type_err(
             } else {
                 None
             };
-            cx.emit_err(ConcatBytesInvalid { span, lit_kind: "string", sugg });
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "string", sugg });
         }
         Ok(ast::LitKind::Float(_, _)) => {
-            cx.emit_err(ConcatBytesInvalid { span, lit_kind: "float", sugg: None });
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "float", sugg: None });
         }
         Ok(ast::LitKind::Bool(_)) => {
-            cx.emit_err(ConcatBytesInvalid { span, lit_kind: "boolean", sugg: None });
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "boolean", sugg: None });
         }
-        Ok(ast::LitKind::Err) => {}
+        Ok(ast::LitKind::Err(_)) => {}
         Ok(ast::LitKind::Int(_, _)) if !is_nested => {
             let sugg =
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::IntLit { span: span, snippet });
-            cx.emit_err(ConcatBytesInvalid { span, lit_kind: "numeric", sugg });
+            dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "numeric", sugg });
         }
         Ok(ast::LitKind::Int(
             val,
             ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
         )) => {
-            assert!(val > u8::MAX.into()); // must be an error
-            cx.emit_err(ConcatBytesOob { span });
+            assert!(val.get() > u8::MAX.into()); // must be an error
+            dcx.emit_err(ConcatBytesOob { span });
         }
         Ok(ast::LitKind::Int(_, _)) => {
-            cx.emit_err(ConcatBytesNonU8 { span });
+            dcx.emit_err(ConcatBytesNonU8 { span });
         }
         Ok(ast::LitKind::ByteStr(..) | ast::LitKind::Byte(_)) => unreachable!(),
         Err(err) => {
@@ -72,10 +73,11 @@ fn handle_array_element(
     missing_literals: &mut Vec<rustc_span::Span>,
     expr: &P<rustc_ast::Expr>,
 ) -> Option<u8> {
+    let dcx = cx.dcx();
     match expr.kind {
         ast::ExprKind::Array(_) | ast::ExprKind::Repeat(_, _) => {
             if !*has_errors {
-                cx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: false });
+                dcx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: false });
             }
             *has_errors = true;
             None
@@ -84,12 +86,12 @@ fn handle_array_element(
             Ok(ast::LitKind::Int(
                 val,
                 ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
-            )) if val <= u8::MAX.into() => Some(val as u8),
+            )) if val.get() <= u8::MAX.into() => Some(val.get() as u8),
 
             Ok(ast::LitKind::Byte(val)) => Some(val),
             Ok(ast::LitKind::ByteStr(..)) => {
                 if !*has_errors {
-                    cx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: true });
+                    dcx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: true });
                 }
                 *has_errors = true;
                 None
@@ -104,7 +106,7 @@ fn handle_array_element(
         },
         ast::ExprKind::IncludedBytes(..) => {
             if !*has_errors {
-                cx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: false });
+                dcx.emit_err(errors::ConcatBytesArray { span: expr.span, bytestr: false });
             }
             *has_errors = true;
             None
@@ -146,12 +148,12 @@ pub fn expand_concat_bytes(
                     if let Some(elem) =
                         handle_array_element(cx, &mut has_errors, &mut missing_literals, expr)
                     {
-                        for _ in 0..count_val {
+                        for _ in 0..count_val.get() {
                             accumulator.push(elem);
                         }
                     }
                 } else {
-                    cx.emit_err(errors::ConcatBytesBadRepeat { span: count.value.span });
+                    cx.dcx().emit_err(errors::ConcatBytesBadRepeat { span: count.value.span });
                 }
             }
             &ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
@@ -180,7 +182,7 @@ pub fn expand_concat_bytes(
         }
     }
     if !missing_literals.is_empty() {
-        cx.emit_err(errors::ConcatBytesMissingLiteral { spans: missing_literals });
+        cx.dcx().emit_err(errors::ConcatBytesMissingLiteral { spans: missing_literals });
         return base::MacEager::expr(DummyResult::raw_expr(sp, true));
     } else if has_errors {
         return base::MacEager::expr(DummyResult::raw_expr(sp, true));

@@ -1,5 +1,4 @@
-// run-pass
-#![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
+//@ run-pass
 
 pub fn main() {
     let x = [1, 2, 3];

@@ -1,7 +1,7 @@
 // Test suggesting tuples where bare arguments may have been passed
 // See issue #86481 for details.
 
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let _: Result<(i32, i8), ()> = Ok(1, 2);

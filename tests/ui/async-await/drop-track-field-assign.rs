@@ -1,6 +1,6 @@
 // Derived from an ICE found in tokio-xmpp during a crater run.
-// edition:2021
-// build-pass
+//@ edition:2021
+//@ build-pass
 
 #![allow(dead_code)]
 

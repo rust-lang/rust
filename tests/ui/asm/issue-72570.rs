@@ -1,4 +1,4 @@
-// needs-asm-support
+//@ needs-asm-support
 
 use std::arch::asm;
 

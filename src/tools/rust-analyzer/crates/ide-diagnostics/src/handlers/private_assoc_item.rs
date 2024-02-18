@@ -26,7 +26,7 @@ pub(crate) fn private_assoc_item(
             },
             name,
         ),
-        d.expr_or_pat.clone().map(Into::into),
+        d.expr_or_pat.map(Into::into),
     )
 }
 

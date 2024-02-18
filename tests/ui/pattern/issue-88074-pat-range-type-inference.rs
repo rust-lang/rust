@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Zero {
     const ZERO: Self;

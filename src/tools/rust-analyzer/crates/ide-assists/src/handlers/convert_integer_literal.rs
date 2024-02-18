@@ -20,7 +20,7 @@ pub(crate) fn convert_integer_literal(acc: &mut Assists, ctx: &AssistContext<'_>
         _ => return None,
     };
     let radix = literal.radix();
-    let value = literal.value()?;
+    let value = literal.value().ok()?;
     let suffix = literal.suffix();
 
     let range = literal.syntax().text_range();

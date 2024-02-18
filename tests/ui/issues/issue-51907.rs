@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Foo {
     extern "C" fn borrow(&self);
     extern "C" fn take(self: Box<Self>);

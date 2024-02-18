@@ -5,18 +5,23 @@
 pub struct Foo;
 
 impl Foo {
-    // @has - '//*[@id="examples"]//a' 'Examples'
-    // @has - '//*[@id="panics"]//a' 'Panics'
+    // @has - '//*[@id="examples"]' 'Examples'
+    // @has - '//*[@id="examples"]/a[@href="#examples"]' '§'
+    // @has - '//*[@id="panics"]' 'Panics'
+    // @has - '//*[@id="panics"]/a[@href="#panics"]' '§'
     /// # Examples
     /// # Panics
     pub fn bar() {}
 
-    // @has - '//*[@id="examples-1"]//a' 'Examples'
+    // @has - '//*[@id="examples-1"]' 'Examples'
+    // @has - '//*[@id="examples-1"]/a[@href="#examples-1"]' '§'
     /// # Examples
     pub fn bar_1() {}
 
-    // @has - '//*[@id="examples-2"]//a' 'Examples'
-    // @has - '//*[@id="panics-1"]//a' 'Panics'
+    // @has - '//*[@id="examples-2"]' 'Examples'
+    // @has - '//*[@id="examples-2"]/a[@href="#examples-2"]' '§'
+    // @has - '//*[@id="panics-1"]' 'Panics'
+    // @has - '//*[@id="panics-1"]/a[@href="#panics-1"]' '§'
     /// # Examples
     /// # Panics
     pub fn bar_2() {}

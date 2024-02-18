@@ -6,12 +6,12 @@ LL |   pub struct Example
 LL | / where
 LL | |     (): Sized,
    | |______________^ unexpected where clause
-LL |   (usize);
-   |   ------- the struct body
+LL |   (#[allow(dead_code)] usize);
+   |   --------------------------- the struct body
    |
 help: move the body before the where clause
    |
-LL ~ pub struct Example(usize)
+LL ~ pub struct Example(#[allow(dead_code)] usize)
 LL | where
 LL ~     (): Sized;
    |

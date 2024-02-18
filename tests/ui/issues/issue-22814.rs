@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 trait Test {}
 
 macro_rules! test {

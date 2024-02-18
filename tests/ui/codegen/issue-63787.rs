@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -O
+//@ run-pass
+//@ compile-flags: -O
 
 // Make sure that `Ref` and `RefMut` do not make false promises about aliasing,
 // because once they drop, their reference/pointer can alias other writes.

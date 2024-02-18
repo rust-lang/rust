@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[clippy::diagnostic_item = "mep"]
 struct Mep;

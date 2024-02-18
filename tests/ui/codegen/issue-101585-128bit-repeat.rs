@@ -1,5 +1,5 @@
 // Regression test for issue 101585.
-// run-pass
+//@ run-pass
 
 fn main() {
     fn min_array_ok() -> [i128; 1] {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #[derive(Clone, Copy, Debug)]
 struct Bar;
@@ -6,7 +6,7 @@ struct Bar;
 const BAZ: Bar = Bar;
 
 #[derive(Debug)]
-struct Foo(#[allow(unused_tuple_struct_fields)] [Bar; 1]);
+struct Foo(#[allow(dead_code)] [Bar; 1]);
 
 struct Biz;
 

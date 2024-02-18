@@ -3,10 +3,6 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
-#[cfg(test)]
-#[path = "../../tests/config.rs"]
-mod tests;
-
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
@@ -178,6 +174,8 @@ pub struct Config {
     pub patch_binaries_for_nix: Option<bool>,
     pub stage0_metadata: Stage0Metadata,
     pub android_ndk: Option<PathBuf>,
+    /// Whether to use the `c` feature of the `compiler_builtins` crate.
+    pub optimized_compiler_builtins: bool,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -305,7 +303,7 @@ pub struct Config {
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub print_step_rusage: bool,
-    pub missing_tools: bool,
+    pub missing_tools: bool, // FIXME: Deprecated field. Remove it at 2024.
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -579,6 +577,7 @@ pub struct Target {
     pub wasi_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
     pub no_std: bool,
+    pub codegen_backends: Option<Vec<Interned<String>>>,
 }
 
 impl Target {
@@ -848,6 +847,7 @@ define_config! {
         // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
+        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -1136,6 +1136,7 @@ define_config! {
         wasi_root: Option<String> = "wasi-root",
         qemu_rootfs: Option<String> = "qemu-rootfs",
         no_std: Option<bool> = "no-std",
+        codegen_backends: Option<Vec<String>> = "codegen-backends",
     }
 }
 
@@ -1200,7 +1201,7 @@ impl Config {
         Self::parse_inner(args, get_toml)
     }
 
-    fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
+    pub(crate) fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 
@@ -1396,6 +1397,7 @@ impl Config {
             // This field is only used by bootstrap.py
             metrics: _,
             android_ndk,
+            optimized_compiler_builtins,
         } = toml.build.unwrap_or_default();
 
         if let Some(file_build) = build {
@@ -1630,7 +1632,7 @@ impl Config {
                 );
             }
 
-            set(&mut config.llvm_tools_enabled, llvm_tools);
+            config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;
@@ -1772,7 +1774,6 @@ impl Config {
                 check_ci_llvm!(static_libstdcpp);
                 check_ci_llvm!(targets);
                 check_ci_llvm!(experimental_targets);
-                check_ci_llvm!(link_jobs);
                 check_ci_llvm!(clang_cl);
                 check_ci_llvm!(version_suffix);
                 check_ci_llvm!(cflags);
@@ -1810,7 +1811,13 @@ impl Config {
                     }
                     target.llvm_config = Some(config.src.join(s));
                 }
-                target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
+                if let Some(patches) = cfg.llvm_has_rust_patches {
+                    assert!(
+                        config.submodules == Some(false) || cfg.llvm_config.is_some(),
+                        "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
+                    );
+                    target.llvm_has_rust_patches = Some(patches);
+                }
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
@@ -1834,6 +1841,24 @@ impl Config {
                 target.sanitizers = cfg.sanitizers;
                 target.profiler = cfg.profiler;
                 target.rpath = cfg.rpath;
+
+                if let Some(ref backends) = cfg.codegen_backends {
+                    let available_backends = vec!["llvm", "cranelift", "gcc"];
+
+                    target.codegen_backends = Some(backends.iter().map(|s| {
+                        if let Some(backend) = s.strip_prefix(CODEGEN_BACKEND_PREFIX) {
+                            if available_backends.contains(&backend) {
+                                panic!("Invalid value '{s}' for 'target.{triple}.codegen-backends'. Instead, please use '{backend}'.");
+                            } else {
+                                println!("HELP: '{s}' for 'target.{triple}.codegen-backends' might fail. \
+                                    Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
+                                    In this case, it would be referred to as '{backend}'.");
+                            }
+                        }
+
+                        INTERNER.intern_str(s)
+                    }).collect());
+                }
 
                 config.target_config.insert(TargetSelection::from_user(&triple), target);
             }
@@ -1909,6 +1934,8 @@ impl Config {
         config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
         config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
         config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
+        config.optimized_compiler_builtins =
+            optimized_compiler_builtins.unwrap_or(config.channel != "dev");
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
@@ -2180,8 +2207,15 @@ impl Config {
         self.target_config.get(&target).map(|t| t.sanitizers).flatten().unwrap_or(self.sanitizers)
     }
 
-    pub fn any_sanitizers_enabled(&self) -> bool {
-        self.target_config.values().any(|t| t.sanitizers == Some(true)) || self.sanitizers
+    pub fn needs_sanitizer_runtime_built(&self, target: TargetSelection) -> bool {
+        // MSVC uses the Microsoft-provided sanitizer runtime, but all other runtimes we build.
+        !target.is_msvc() && self.sanitizers_enabled(target)
+    }
+
+    pub fn any_sanitizers_to_build(&self) -> bool {
+        self.target_config
+            .iter()
+            .any(|(ts, t)| !ts.is_msvc() && t.sanitizers.unwrap_or(self.sanitizers))
     }
 
     pub fn profiler_path(&self, target: TargetSelection) -> Option<&str> {
@@ -2208,8 +2242,8 @@ impl Config {
         self.target_config.get(&target).map(|t| t.rpath).flatten().unwrap_or(self.rust_rpath)
     }
 
-    pub fn llvm_enabled(&self) -> bool {
-        self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+    pub fn llvm_enabled(&self, target: TargetSelection) -> bool {
+        self.codegen_backends(target).contains(&INTERNER.intern_str("llvm"))
     }
 
     pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
@@ -2228,8 +2262,15 @@ impl Config {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 
-    pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
-        self.rust_codegen_backends.get(0).cloned()
+    pub fn codegen_backends(&self, target: TargetSelection) -> &[Interned<String>] {
+        self.target_config
+            .get(&target)
+            .and_then(|cfg| cfg.codegen_backends.as_deref())
+            .unwrap_or(&self.rust_codegen_backends)
+    }
+
+    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<Interned<String>> {
+        self.codegen_backends(target).get(0).cloned()
     }
 
     pub fn git_config(&self) -> GitConfig<'_> {

@@ -1,5 +1,5 @@
 // Check that using the parameter name in its type does not ICE.
-// edition:2018
+//@ edition:2018
 
 #![feature(async_closure)]
 

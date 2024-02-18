@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 #![feature(coroutines, coroutine_trait)]
 
 use std::future::Future;

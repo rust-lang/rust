@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 // Regression test for #20797.
 

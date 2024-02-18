@@ -13,10 +13,10 @@ use crate::cli::flags;
 
 impl flags::Diagnostics {
     pub fn run(self) -> anyhow::Result<()> {
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
+        let cargo_config =
+            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
         let with_proc_macro_server = if let Some(p) = &self.proc_macro_srv {
-            let path = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(&p));
+            let path = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(p));
             ProcMacroServerChoice::Explicit(path)
         } else {
             ProcMacroServerChoice::Sysroot
@@ -45,7 +45,7 @@ impl flags::Diagnostics {
             let file_id = module.definition_source_file_id(db).original_file(db);
             if !visited_files.contains(&file_id) {
                 let crate_name =
-                    module.krate().display_name(db).as_deref().unwrap_or("unknown").to_string();
+                    module.krate().display_name(db).as_deref().unwrap_or("unknown").to_owned();
                 println!("processing crate: {crate_name}, module: {}", _vfs.file_path(file_id));
                 for diagnostic in analysis
                     .diagnostics(

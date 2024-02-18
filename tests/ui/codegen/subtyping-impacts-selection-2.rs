@@ -1,7 +1,7 @@
-// run-pass
-// revisions: mir codegen
-//[mir] compile-flags: -Zmir-opt-level=3
-//[codegen] compile-flags: -Zmir-opt-level=0
+//@ run-pass
+//@ revisions: mir codegen
+//@[mir] compile-flags: -Zmir-opt-level=3
+//@[codegen] compile-flags: -Zmir-opt-level=0
 
 // A regression test for #107205
 

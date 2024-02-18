@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 #![feature(rustc_attrs)]
 #![allow(unused)]
@@ -20,6 +20,7 @@ fn foo<'a, 'b>(m: &'a MyStruct<'b>) -> impl FnMut() + 'static {
     let c = #[rustc_capture_analysis] || drop(&m.a.0);
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     //~| ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
     //~| NOTE: Capturing m[Deref,(0, 0),Deref,(0, 0)] -> ImmBorrow

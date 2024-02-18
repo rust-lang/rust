@@ -40,7 +40,7 @@ impl<I> Incoming<I> {
         let _data = self.complete(id.clone())?;
         let error = ResponseError {
             code: ErrorCode::RequestCanceled as i32,
-            message: "canceled by client".to_string(),
+            message: "canceled by client".to_owned(),
             data: None,
         };
         Some(Response { id, result: None, error: Some(error) })

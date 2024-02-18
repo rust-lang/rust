@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 #![allow(non_snake_case)]
 #![feature(arbitrary_self_types)]

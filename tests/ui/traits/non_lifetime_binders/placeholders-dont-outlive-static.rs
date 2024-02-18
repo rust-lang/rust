@@ -1,6 +1,6 @@
-// revisions: good bad
+//@ revisions: good bad
 
-//[good] known-bug: unknown
+//@[good] known-bug: unknown
 // `for<T> T: 'static` doesn't imply itself when processing outlives obligations
 
 #![feature(non_lifetime_binders)]

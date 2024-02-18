@@ -4,9 +4,9 @@
 // This is basically the same test as tests/ui/simd/target-feature-mixup.rs but for floats and
 // without #[repr(simd)]
 
-// run-pass
-// ignore-emscripten
-// ignore-sgx no processes
+//@ run-pass
+//@ ignore-emscripten
+//@ ignore-sgx no processes
 
 #![feature(avx512_target_feature)]
 

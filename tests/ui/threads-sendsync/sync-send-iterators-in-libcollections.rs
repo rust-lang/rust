@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(warnings)]
 #![feature(drain, collections_bound, btree_range)]

@@ -13,6 +13,15 @@ LL | fn test(_: Lexer::Cursor) {}
    |            ^^^^^
    = note: ...does not necessarily outlive the static lifetime
 
-error: aborting due to 1 previous error
+error: lifetime may not live long enough
+  --> $DIR/regionck-2.rs:12:1
+   |
+LL | fn test(_: Lexer::Cursor) {}
+   | ^^^^^^^^-^^^^^^^^^^^^^^^^
+   | |       |
+   | |       has type `Lexer<'1>::Cursor`
+   | requires that `'1` must outlive `'static`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

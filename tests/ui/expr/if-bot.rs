@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 pub fn main() {
     let i: isize = if false { panic!() } else { 5 };

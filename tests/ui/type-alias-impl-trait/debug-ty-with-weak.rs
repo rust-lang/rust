@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib -Cdebuginfo=2
-// build-pass
+//@ compile-flags: --crate-type=lib -Cdebuginfo=2
+//@ build-pass
 
 #![feature(type_alias_impl_trait)]
 

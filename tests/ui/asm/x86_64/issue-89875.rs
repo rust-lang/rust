@@ -1,6 +1,6 @@
-// build-pass
-// needs-asm-support
-// only-x86_64
+//@ build-pass
+//@ needs-asm-support
+//@ only-x86_64
 
 #![feature(target_feature_11)]
 

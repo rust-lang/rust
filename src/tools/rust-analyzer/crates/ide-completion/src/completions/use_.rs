@@ -2,7 +2,7 @@
 
 use hir::ScopeDef;
 use ide_db::{FxHashSet, SymbolKind};
-use syntax::{ast, AstNode};
+use syntax::{ast, format_smolstr, AstNode};
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, Qualified},
@@ -108,7 +108,7 @@ pub(crate) fn complete_use_path(
                             let item = CompletionItem::new(
                                 CompletionItemKind::SymbolKind(SymbolKind::Enum),
                                 ctx.source_range(),
-                                format!("{}::", e.name(ctx.db).display(ctx.db)),
+                                format_smolstr!("{}::", e.name(ctx.db).display(ctx.db)),
                             );
                             acc.add(item.build(ctx.db));
                         }

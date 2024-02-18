@@ -1,9 +1,9 @@
-// unit-test: ConstProp
+// unit-test: GVN
 
 // Verify that we do not propagate the contents of this mutable static.
 static mut STATIC: u32 = 0x42424242;
 
-// EMIT_MIR mutable_variable_no_prop.main.ConstProp.diff
+// EMIT_MIR mutable_variable_no_prop.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => [[x:_.*]];

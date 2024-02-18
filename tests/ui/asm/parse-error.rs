@@ -1,4 +1,4 @@
-// needs-asm-support
+//@ needs-asm-support
 
 #![feature(asm_const)]
 

@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 trait Device {
     type Resources;
 }
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct Foo<D, R>(D, R);
 
 impl<D: Device> Foo<D, D::Resources> {

@@ -1,7 +1,7 @@
 #![feature(coroutines, coroutine_trait, rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 
-// check-pass
+//@ check-pass
 
 mod gen {
     use std::ops::Coroutine;

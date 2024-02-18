@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // This test case exposes conditions where the encoding of a trait object type
 // with projection predicates would differ between this crate and the upstream
@@ -8,7 +8,7 @@
 // the symbol name.
 // The fix was to make the order in which predicates get encoded stable.
 
-// aux-build:issue-34796-aux.rs
+//@ aux-build:issue-34796-aux.rs
 extern crate issue_34796_aux;
 
 fn mk<T>() -> T { loop {} }

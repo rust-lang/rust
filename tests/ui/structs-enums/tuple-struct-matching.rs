@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 struct Foo(isize, isize);
 
 pub fn main() {

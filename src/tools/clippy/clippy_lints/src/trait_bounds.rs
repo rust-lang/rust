@@ -390,6 +390,14 @@ fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'
     }
 }
 
+fn get_ty_res(ty: Ty<'_>) -> Option<Res> {
+    match ty.kind {
+        TyKind::Path(QPath::Resolved(_, path)) => Some(path.res),
+        TyKind::Path(QPath::TypeRelative(ty, _)) => get_ty_res(*ty),
+        _ => None,
+    }
+}
+
 // FIXME: ComparableTraitRef does not support nested bounds needed for associated_type_bounds
 fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
     ComparableTraitRef(
@@ -401,10 +409,8 @@ fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
             .filter_map(|segment| {
                 // get trait bound type arguments
                 Some(segment.args?.args.iter().filter_map(|arg| {
-                    if let GenericArg::Type(ty) = arg
-                        && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
-                    {
-                        return Some(path.res);
+                    if let GenericArg::Type(ty) = arg {
+                        return get_ty_res(**ty);
                     }
                     None
                 }))

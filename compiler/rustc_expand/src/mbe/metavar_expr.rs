@@ -124,7 +124,7 @@ fn parse_depth<'sess>(
     };
     if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
         && let LitKind::Int(n_u128, LitIntType::Unsuffixed) = lit_kind
-        && let Ok(n_usize) = usize::try_from(n_u128)
+        && let Ok(n_usize) = usize::try_from(n_u128.get())
     {
         Ok(n_usize)
     } else {

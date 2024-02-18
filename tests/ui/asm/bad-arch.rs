@@ -1,7 +1,5 @@
-// compile-flags: --target sparc-unknown-linux-gnu
-// needs-llvm-components: sparc
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@ compile-flags: --target sparc-unknown-linux-gnu
+//@ needs-llvm-components: sparc
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]

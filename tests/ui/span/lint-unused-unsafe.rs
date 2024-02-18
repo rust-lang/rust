@@ -1,10 +1,7 @@
 // Exercise the unused_unsafe attribute in some positive and negative cases
 
 
-// edition:2018
-
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
+//@ edition:2018
 
 #![allow(dead_code)]
 #![deny(unused_unsafe)]

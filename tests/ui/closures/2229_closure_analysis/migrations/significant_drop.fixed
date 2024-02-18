@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![deny(rust_2021_incompatible_closure_captures)]
 //~^ NOTE: the lint level is defined here
 
@@ -13,7 +13,7 @@ impl Drop for Foo {
 }
 
 #[derive(Debug)]
-struct ConstainsDropField(Foo, #[allow(unused_tuple_struct_fields)] Foo);
+struct ConstainsDropField(Foo, #[allow(dead_code)] Foo);
 
 // `t` needs Drop because one of its elements needs drop,
 // therefore precise capture might affect drop ordering

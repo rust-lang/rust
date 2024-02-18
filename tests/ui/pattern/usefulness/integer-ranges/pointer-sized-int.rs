@@ -1,4 +1,4 @@
-// revisions: deny
+//@ revisions: deny
 #![feature(exclusive_range_pattern)]
 #![allow(overlapping_range_endpoints)]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Tc {}
 impl Tc for bool {}
 

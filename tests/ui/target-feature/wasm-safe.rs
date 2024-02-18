@@ -1,5 +1,5 @@
-// only-wasm32
-// check-pass
+//@ only-wasm32
+//@ check-pass
 
 #![feature(wasm_target_feature)]
 #![allow(dead_code)]

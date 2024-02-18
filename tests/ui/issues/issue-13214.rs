@@ -1,9 +1,9 @@
-// build-pass
+//@ build-pass
 #![allow(dead_code)]
 // defining static with struct that contains enum
 // with &'static str variant used to cause ICE
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub enum Foo {
     Bar,

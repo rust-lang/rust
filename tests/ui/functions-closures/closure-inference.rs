@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_braces)]
 
 fn foo(i: isize) -> isize { i + 1 }

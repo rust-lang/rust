@@ -1,4 +1,4 @@
-// compile-flags: -Z deduplicate-diagnostics=yes
+//@ compile-flags: -Z deduplicate-diagnostics=yes
 
 #![warn(unused_imports)]
 

@@ -188,7 +188,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     build_pat(
                         ctx.db(),
                         module,
-                        variant.clone(),
+                        variant,
                         ctx.config.prefer_no_std,
                         ctx.config.prefer_prelude,
                     )
@@ -312,7 +312,7 @@ fn cursor_at_trivial_match_arm_list(
     match_arm_list: &MatchArmList,
 ) -> Option<()> {
     // match x { $0 }
-    if match_arm_list.arms().next() == None {
+    if match_arm_list.arms().next().is_none() {
         cov_mark::hit!(add_missing_match_arms_empty_body);
         return Some(());
     }

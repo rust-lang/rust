@@ -1,7 +1,7 @@
 // Test that we don't allow awaiting from an async fn while a local is partially
 // initialized.
 
-// edition:2018
+//@ edition:2018
 
 struct S { x: i32, y: i32 }
 struct T(i32, i32);

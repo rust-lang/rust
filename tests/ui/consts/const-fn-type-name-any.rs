@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(const_type_name)]
 #![allow(dead_code)]

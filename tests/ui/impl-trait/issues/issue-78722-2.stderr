@@ -1,12 +1,3 @@
-error[E0658]: `async` blocks are not allowed in constants
-  --> $DIR/issue-78722-2.rs:15:20
-   |
-LL |         let f: F = async { 1 };
-   |                    ^^^^^^^^^^^
-   |
-   = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
-   = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
-
 error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:13:13: 13:21}` to be a future that resolves to `u8`, but it resolves to `()`
   --> $DIR/issue-78722-2.rs:11:30
    |
@@ -25,6 +16,16 @@ note: this item must mention the opaque type in its signature in order to be abl
    |
 LL |         let f: F = async { 1 };
    |                    ^^^^^^^^^^^
+
+error[E0658]: `async` blocks are not allowed in constants
+  --> $DIR/issue-78722-2.rs:15:20
+   |
+LL |         let f: F = async { 1 };
+   |                    ^^^^^^^^^^^
+   |
+   = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
+   = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 3 previous errors
 

@@ -1,4 +1,4 @@
-// aux-build:issue-81943-lib.rs
+//@ aux-build:issue-81943-lib.rs
 extern crate issue_81943_lib as lib;
 
 fn f<F: Fn(i32)>(f: F) { f(0); }

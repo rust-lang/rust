@@ -71,6 +71,7 @@ enum N<F> where F: Fn() -> _ {
 union O<F> where F: Fn() -> _ {
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for unions
     foo: F,
+    //~^ ERROR must implement `Copy`
 }
 
 trait P<F> where F: Fn() -> _ {

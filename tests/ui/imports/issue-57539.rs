@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 mod core {
     use core; //~ ERROR `core` is ambiguous

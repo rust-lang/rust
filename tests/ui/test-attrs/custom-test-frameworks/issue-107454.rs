@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@ compile-flags: --test
 
 #![feature(custom_test_frameworks)]
 #![deny(unnameable_test_items)]

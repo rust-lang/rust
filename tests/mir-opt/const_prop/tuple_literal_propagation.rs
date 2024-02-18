@@ -1,6 +1,6 @@
-// unit-test: ConstProp
+// unit-test: GVN
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// EMIT_MIR tuple_literal_propagation.main.ConstProp.diff
+// EMIT_MIR tuple_literal_propagation.main.GVN.diff
 
 fn main() {
     // CHECK-LABEL: fn main(

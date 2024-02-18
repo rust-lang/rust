@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn r#fn(r#match: u32) -> u32 {
     r#match
 }

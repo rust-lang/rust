@@ -1,5 +1,5 @@
 // Regression test for #87549.
-// incremental
+//@ incremental
 
 pub struct Table<T, const N: usize>([Option<T>; N]);
 

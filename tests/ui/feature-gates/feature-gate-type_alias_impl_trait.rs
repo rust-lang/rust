@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(type_alias_impl_trait)]
 use std::fmt::Debug;
 

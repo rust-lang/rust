@@ -1,8 +1,8 @@
 // Test that we are able to introduce a negative constraint that
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 
-// aux-build:coherence_copy_like_lib.rs
-// build-pass (FIXME(62277): could be check-pass?)
+//@ aux-build:coherence_copy_like_lib.rs
+//@ build-pass (FIXME(62277): could be check-pass?)
 // skip-codgen
 #![allow(dead_code)]
 

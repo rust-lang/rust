@@ -10,7 +10,7 @@ use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{MultiSpan, PResult};
+use rustc_errors::{ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
@@ -63,7 +63,12 @@ impl FromInternal<token::LitKind> for LitKind {
             token::ByteStrRaw(n) => LitKind::ByteStrRaw(n),
             token::CStr => LitKind::CStr,
             token::CStrRaw(n) => LitKind::CStrRaw(n),
-            token::Err => LitKind::Err,
+            token::Err(_guar) => {
+                // This is the only place a `pm::bridge::LitKind::ErrWithGuar`
+                // is constructed. Note that an `ErrorGuaranteed` is available,
+                // as required. See the comment in `to_internal`.
+                LitKind::ErrWithGuar
+            }
             token::Bool => unreachable!(),
         }
     }
@@ -82,7 +87,16 @@ impl ToInternal<token::LitKind> for LitKind {
             LitKind::ByteStrRaw(n) => token::ByteStrRaw(n),
             LitKind::CStr => token::CStr,
             LitKind::CStrRaw(n) => token::CStrRaw(n),
-            LitKind::Err => token::Err,
+            LitKind::ErrWithGuar => {
+                // This is annoying but valid. `LitKind::ErrWithGuar` would
+                // have an `ErrorGuaranteed` except that type isn't available
+                // in that crate. So we have to fake one. And we don't want to
+                // use a delayed bug because there might be lots of these,
+                // which would be expensive.
+                #[allow(deprecated)]
+                let guar = ErrorGuaranteed::unchecked_error_guaranteed();
+                token::Err(guar)
+            }
         }
     }
 }
@@ -258,7 +272,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     // represented as a delimited group.
                     // FIXME: It needs to be removed, but there are some
                     // compatibility issues (see #73345).
-                    if crate::base::nt_pretty_printing_compatibility_hack(&nt.0, rustc.sess()) {
+                    if crate::base::nt_pretty_printing_compatibility_hack(&nt.0, rustc.ecx.sess) {
                         trees.extend(Self::from_internal((stream, rustc)));
                     } else {
                         trees.push(TokenTree::Group(Group {
@@ -379,8 +393,8 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
 impl ToInternal<rustc_errors::Level> for Level {
     fn to_internal(self) -> rustc_errors::Level {
         match self {
-            Level::Error => rustc_errors::Level::Error { lint: false },
-            Level::Warning => rustc_errors::Level::Warning(None),
+            Level::Error => rustc_errors::Level::Error,
+            Level::Warning => rustc_errors::Level::Warning,
             Level::Note => rustc_errors::Level::Note,
             Level::Help => rustc_errors::Level::Help,
             _ => unreachable!("unknown proc_macro::Level variant: {:?}", self),
@@ -477,7 +491,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 | token::LitKind::ByteStrRaw(_)
                 | token::LitKind::CStr
                 | token::LitKind::CStrRaw(_)
-                | token::LitKind::Err => return Err(()),
+                | token::LitKind::Err(_) => return Err(()),
                 token::LitKind::Integer | token::LitKind::Float => {}
             }
 
@@ -497,7 +511,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let mut diag =
             rustc_errors::Diagnostic::new(diagnostic.level.to_internal(), diagnostic.message);
-        diag.set_span(MultiSpan::from_spans(diagnostic.spans));
+        diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
             diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));
         }
@@ -537,7 +551,7 @@ impl server::TokenStream for Rustc<'_, '_> {
             }
             expr
         };
-        let expr = expr.map_err(|mut err| {
+        let expr = expr.map_err(|err| {
             err.emit();
         })?;
 

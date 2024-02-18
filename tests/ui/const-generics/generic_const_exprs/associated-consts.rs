@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
@@ -16,7 +16,7 @@ impl BlockCipher for BarCipher {
     const BLOCK_SIZE: usize = 32;
 }
 
-pub struct Block<C>(#[allow(unused_tuple_struct_fields)] C);
+pub struct Block<C>(#[allow(dead_code)] C);
 
 pub fn test<C: BlockCipher, const M: usize>()
 where

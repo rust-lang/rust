@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 mod foo {
     struct Priv;
     mod bar {

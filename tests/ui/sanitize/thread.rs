@@ -10,15 +10,15 @@
 // is necessary to make the test robust. Without the barrier data race detection
 // would occasionally fail, making test flaky.
 //
-// needs-sanitizer-support
-// needs-sanitizer-thread
+//@ needs-sanitizer-support
+//@ needs-sanitizer-thread
 //
-// compile-flags: -Z sanitizer=thread -O
+//@ compile-flags: -Z sanitizer=thread -O
 //
-// run-fail
-// error-pattern: WARNING: ThreadSanitizer: data race
-// error-pattern: Location is heap block of size 4
-// error-pattern: allocated by main thread
+//@ run-fail
+//@ error-pattern: WARNING: ThreadSanitizer: data race
+//@ error-pattern: Location is heap block of size 4
+//@ error-pattern: allocated by main thread
 
 #![feature(raw_ref_op)]
 #![feature(rustc_private)]

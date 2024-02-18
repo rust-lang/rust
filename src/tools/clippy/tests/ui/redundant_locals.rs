@@ -1,6 +1,7 @@
 //@aux-build:proc_macros.rs
 #![allow(unused, clippy::no_effect, clippy::needless_pass_by_ref_mut)]
 #![warn(clippy::redundant_locals)]
+#![feature(async_closure, coroutines)]
 
 extern crate proc_macros;
 use proc_macros::{external, with_span};
@@ -162,4 +163,49 @@ fn drop_compose() {
     let a = ComposeDrop { d: WithDrop(1) };
     let b = ComposeDrop { d: WithDrop(1) };
     let a = a;
+}
+
+fn issue12225() {
+    fn assert_static<T: 'static>(_: T) {}
+
+    let v1 = String::new();
+    let v2 = String::new();
+    let v3 = String::new();
+    let v4 = String::new();
+    let v5 = String::new();
+    let v6 = String::new();
+
+    assert_static(|| {
+        let v1 = v1;
+        dbg!(&v1);
+    });
+    assert_static(async {
+        let v2 = v2;
+        dbg!(&v2);
+    });
+    assert_static(|| async {
+        let v3 = v3;
+        dbg!(&v3);
+    });
+    assert_static(async || {
+        let v4 = v4;
+        dbg!(&v4);
+    });
+    assert_static(static || {
+        let v5 = v5;
+        yield;
+    });
+    assert_static(|| {
+        let v6 = v6;
+        yield;
+    });
+
+    fn foo(a: &str, b: &str) {}
+
+    let do_not_move = String::new();
+    let things_to_move = vec!["a".to_string(), "b".to_string()];
+    let futures = things_to_move.into_iter().map(|move_me| async {
+        let move_me = move_me;
+        foo(&do_not_move, &move_me)
+    });
 }

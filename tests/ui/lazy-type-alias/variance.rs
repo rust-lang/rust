@@ -1,7 +1,7 @@
 // This is a regression test for issue #114221.
 // Check that we compute variances for lazy type aliases.
 
-// check-pass
+//@ check-pass
 
 #![feature(lazy_type_alias)]
 #![allow(incomplete_features)]

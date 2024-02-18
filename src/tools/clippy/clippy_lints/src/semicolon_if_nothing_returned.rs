@@ -5,6 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::{ExpnKind, MacroKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -39,6 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if !block.span.from_expansion()
             && let Some(expr) = block.expr
+            && !from_attr_macro(expr.span)
             && let t_expr = cx.typeck_results().expr_ty(expr)
             && t_expr.is_unit()
             && let mut app = Applicability::MachineApplicable
@@ -62,4 +64,8 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
             );
         }
     }
+}
+
+fn from_attr_macro(span: Span) -> bool {
+    matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Attr, _))
 }

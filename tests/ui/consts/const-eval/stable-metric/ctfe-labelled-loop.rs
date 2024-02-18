@@ -1,5 +1,5 @@
-// check-fail
-// compile-flags: -Z tiny-const-eval-limit
+//@ check-fail
+//@ compile-flags: -Z tiny-const-eval-limit
 
 const fn labelled_loop(n: u32) -> u32 {
     let mut i = 0;

@@ -4,8 +4,8 @@
 // We currently do not attempt to detect or fix uses of `dyn` as an
 // identifier under a macro.
 //
-// check-pass
-// edition:2015
+//@ check-pass
+//@ edition:2015
 
 #![allow(non_camel_case_types)]
 #![deny(keyword_idents)]

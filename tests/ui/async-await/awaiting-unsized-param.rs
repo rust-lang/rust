@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 #![feature(unsized_fn_params, unsized_locals)]
 //~^ WARN the feature `unsized_locals` is incomplete

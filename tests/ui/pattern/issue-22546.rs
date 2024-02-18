@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 // Parsing patterns with paths with type parameters (issue #22544)
 
@@ -15,7 +15,7 @@ impl<T: ::std::fmt::Display> Foo<T> {
     }
 }
 
-trait Tr {
+trait Tr { //~ WARN trait `Tr` is never used
     type U;
 }
 

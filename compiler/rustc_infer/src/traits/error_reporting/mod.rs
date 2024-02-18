@@ -2,7 +2,7 @@ use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -19,8 +19,8 @@ impl<'tcx> InferCtxt<'tcx> {
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,
     ) -> DiagnosticBuilder<'tcx> {
-        let mut err = struct_span_err!(
-            self.tcx.sess,
+        let mut err = struct_span_code_err!(
+            self.tcx.dcx(),
             error_span,
             E0276,
             "impl has stricter requirements than trait"
@@ -42,6 +42,7 @@ impl<'tcx> InferCtxt<'tcx> {
 pub fn report_object_safety_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
+    hir_id: Option<hir::HirId>,
     trait_def_id: DefId,
     violations: &[ObjectSafetyViolation],
 ) -> DiagnosticBuilder<'tcx> {
@@ -50,8 +51,8 @@ pub fn report_object_safety_error<'tcx>(
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
-    let mut err = struct_span_err!(
-        tcx.sess,
+    let mut err = struct_span_code_err!(
+        tcx.dcx(),
         span,
         E0038,
         "the trait `{}` cannot be made into an object",
@@ -59,6 +60,24 @@ pub fn report_object_safety_error<'tcx>(
     );
     err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
 
+    if let Some(hir_id) = hir_id
+        && let hir::Node::Ty(ty) = tcx.hir_node(hir_id)
+        && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
+    {
+        let mut hir_id = hir_id;
+        while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {
+            hir_id = ty.hir_id;
+        }
+        if tcx.parent_hir_node(hir_id).fn_sig().is_some() {
+            // Do not suggest `impl Trait` when dealing with things like super-traits.
+            err.span_suggestion_verbose(
+                ty.span.until(trait_ref.span),
+                "consider using an opaque type instead",
+                "impl ",
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
     let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];
     let mut messages = vec![];
@@ -132,7 +151,10 @@ pub fn report_object_safety_error<'tcx>(
     };
     let externally_visible = if !impls.is_empty()
         && let Some(def_id) = trait_def_id.as_local()
-        && tcx.effective_visibilities(()).is_exported(def_id)
+        // We may be executing this during typeck, which would result in cycle
+        // if we used effective_visibilities query, which looks into opaque types
+        // (and therefore calls typeck).
+        && tcx.resolutions(()).effective_visibilities.is_exported(def_id)
     {
         true
     } else {
@@ -155,12 +177,13 @@ pub fn report_object_safety_error<'tcx>(
             )));
         }
         impls => {
-            let types = impls
+            let mut types = impls
                 .iter()
                 .map(|t| {
                     with_no_trimmed_paths!(format!("  {}", tcx.type_of(*t).instantiate_identity(),))
                 })
                 .collect::<Vec<_>>();
+            types.sort();
             err.help(format!(
                 "the following types implement the trait, consider defining an enum where each \
                  variant holds one of these types, implementing `{}` for this new enum and using \

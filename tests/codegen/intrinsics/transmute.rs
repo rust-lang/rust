@@ -190,7 +190,7 @@ pub unsafe fn check_byte_from_bool(x: bool) -> u8 {
 // CHECK-LABEL: @check_to_pair(
 #[no_mangle]
 pub unsafe fn check_to_pair(x: u64) -> Option<i32> {
-    // CHECK: %_0 = alloca { i32, i32 }, align 4
+    // CHECK: %_0 = alloca %"core::option::Option<i32>", align 4
     // CHECK: store i64 %x, ptr %_0, align 4
     transmute(x)
 }
@@ -203,10 +203,10 @@ pub unsafe fn check_from_pair(x: Option<i32>) -> u64 {
     const { assert!(std::mem::align_of::<Option<i32>>() == 4) };
 
     // CHECK: %_0 = alloca i64, align 8
-    // CHECK: store i32 %x.0, ptr %0, align 8
-    // CHECK: store i32 %x.1, ptr %1, align 4
-    // CHECK: %2 = load i64, ptr %_0, align 8
-    // CHECK: ret i64 %2
+    // CHECK: store i32 %x.0, ptr %_0, align 8
+    // CHECK: store i32 %x.1, ptr %0, align 4
+    // CHECK: %[[R:.+]] = load i64, ptr %_0, align 8
+    // CHECK: ret i64 %[[R]]
     transmute(x)
 }
 

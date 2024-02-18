@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // This is an example where the older inference algorithm failed. The
@@ -9,7 +9,7 @@
 // wrong path. The new algorithm avoids this problem and hence this
 // example typechecks correctly.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 enum ScopeChain<'a> {
     Link(Scope<'a>),

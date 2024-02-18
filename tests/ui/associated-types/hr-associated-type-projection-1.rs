@@ -17,4 +17,5 @@ impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
 
 pub fn main() {
     <&'static str>::bug(&"");
+    //~^ type mismatch resolving `<&str as Deref>::Target == &str`
 }

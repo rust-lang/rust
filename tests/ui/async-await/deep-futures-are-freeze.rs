@@ -1,7 +1,7 @@
-// build-pass
-// compile-flags: -Copt-level=s -Clto=fat
-// no-prefer-dynamic
-// edition: 2021
+//@ build-pass
+//@ compile-flags: -Copt-level=s -Clto=fat
+//@ no-prefer-dynamic
+//@ edition: 2021
 
 #![recursion_limit = "256"]
 

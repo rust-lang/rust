@@ -1,4 +1,4 @@
-// compile-flags: --crate-type lib -O -C debug-assertions=yes
+//@ compile-flags: --crate-type lib -O -C debug-assertions=yes
 
 // Regression test for issue 118786
 

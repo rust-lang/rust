@@ -8,7 +8,7 @@
 // follow the same lifetime-elision rules used elsewhere. See
 // rust-lang/rust#56537
 
-// check-pass
+//@ check-pass
 
 fn willy_no_annot<'w>(p: &'w str, q: &str) -> &'w str {
     let free_dumb = |_x| { p }; // no type annotation at all

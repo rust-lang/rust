@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 #![feature(platform_intrinsics)]
 

@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 #![allow(unused_attributes)]
-// aux-build:iss.rs
+//@ aux-build:iss.rs
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 extern crate issue6919_3;
 

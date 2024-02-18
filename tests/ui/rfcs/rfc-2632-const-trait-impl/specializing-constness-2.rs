@@ -1,5 +1,5 @@
 #![feature(const_trait_impl, effects, min_specialization, rustc_attrs)]
-// known-bug: #110395
+//@ known-bug: #110395
 #[rustc_specialization_trait]
 #[const_trait]
 pub trait Sup {}

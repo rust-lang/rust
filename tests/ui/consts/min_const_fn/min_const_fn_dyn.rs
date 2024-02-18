@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 struct HasDyn {
     field: &'static dyn std::fmt::Debug,

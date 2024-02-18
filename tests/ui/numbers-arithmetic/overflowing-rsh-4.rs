@@ -1,5 +1,5 @@
-// build-fail
-// compile-flags: -C debug-assertions
+//@ build-fail
+//@ compile-flags: -C debug-assertions
 
 // This function is checking that our (type-based) automatic
 // truncation does not sidestep the overflow checking.

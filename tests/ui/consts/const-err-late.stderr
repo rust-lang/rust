@@ -30,6 +30,14 @@ LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+note: erroneous constant encountered
+  --> $DIR/const-err-late.rs:19:31
+   |
+LL |     black_box((S::<i32>::FOO, S::<u32>::FOO));
+   |                               ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

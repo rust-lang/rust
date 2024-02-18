@@ -1,4 +1,4 @@
-// error-pattern: evaluation of constant value failed
+//@ error-pattern: evaluation of constant value failed
 
 fn main() {
     use std::ptr;

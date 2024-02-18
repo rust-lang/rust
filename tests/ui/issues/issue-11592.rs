@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! Ensure the private trait Bar isn't complained about.
 
 #![deny(missing_docs)]

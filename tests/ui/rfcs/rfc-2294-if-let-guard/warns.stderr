@@ -1,8 +1,8 @@
 error: irrefutable `if let` guard pattern
-  --> $DIR/warns.rs:6:24
+  --> $DIR/warns.rs:6:20
    |
 LL |         Some(x) if let () = x => {}
-   |                        ^^
+   |                    ^^^^^^^^^^
    |
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we correctly normalize the type of a struct field
 // which has an associated type.
 
@@ -9,7 +9,7 @@ pub trait UnifyKey {
     fn dummy(&self) { }
 }
 
-pub struct Node<K:UnifyKey>(#[allow(unused_tuple_struct_fields)] K, K::Value);
+pub struct Node<K:UnifyKey>(#[allow(dead_code)] K, K::Value);
 
 fn foo<K : UnifyKey<Value=Option<V>>,V : Clone>(node: &Node<K>) -> Option<V> {
     node.1.clone()

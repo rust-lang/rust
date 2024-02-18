@@ -1,5 +1,5 @@
-// edition: 2021
-// compile-flags: -Zunpretty=expanded
+//@ edition: 2021
+//@ compile-flags: -Zunpretty=expanded
 
 trait Trait {
     async fn method() {}

@@ -62,8 +62,8 @@ pub(super) struct MemPlace<Prov: Provenance = CtfeProvenance> {
 
 impl<Prov: Provenance> MemPlace<Prov> {
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Option<Prov>) -> Option<Prov>) -> Self {
-        MemPlace { ptr: self.ptr.map_provenance(f), ..self }
+    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
+        MemPlace { ptr: self.ptr.map_provenance(|p| p.map(f)), ..self }
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
@@ -128,7 +128,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     }
 
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Option<Prov>) -> Option<Prov>) -> Self {
+    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
         MPlaceTy { mplace: self.mplace.map_provenance(f), ..self }
     }
 
@@ -519,11 +519,7 @@ where
         } else {
             // Unsized `Local` isn't okay (we cannot store the metadata).
             match frame_ref.locals[local].access()? {
-                Operand::Immediate(_) => {
-                    // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
-                    // efficiently check whether they are sized. We have to catch that case here.
-                    throw_inval!(ConstPropNonsense);
-                }
+                Operand::Immediate(_) => bug!(),
                 Operand::Indirect(mplace) => Place::Ptr(*mplace),
             }
         };
@@ -546,9 +542,10 @@ where
         trace!("{:?}", self.dump_place(&place));
         // Sanity-check the type we ended up with.
         if cfg!(debug_assertions) {
-            let normalized_place_ty = self.subst_from_current_frame_and_normalize_erasing_regions(
-                mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
-            )?;
+            let normalized_place_ty = self
+                .instantiate_from_current_frame_and_normalize_erasing_regions(
+                    mir_place.ty(&self.frame().body.local_decls, *self.tcx).ty,
+                )?;
             if !mir_assign_valid_types(
                 *self.tcx,
                 self.param_env,
@@ -762,14 +759,57 @@ where
     }
 
     /// Copies the data from an operand to a place.
-    /// `allow_transmute` indicates whether the layouts may disagree.
+    /// The layouts of the `src` and `dest` may disagree.
+    /// Does not perform validation of the destination.
+    /// The only known use case for this function is checking the return
+    /// value of a static during stack frame popping.
     #[inline(always)]
-    #[instrument(skip(self), level = "debug")]
+    pub(super) fn copy_op_no_dest_validation(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ true, /* validate_dest */ false,
+        )
+    }
+
+    /// Copies the data from an operand to a place.
+    /// The layouts of the `src` and `dest` may disagree.
+    #[inline(always)]
+    pub fn copy_op_allow_transmute(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ true, /* validate_dest */ true,
+        )
+    }
+
+    /// Copies the data from an operand to a place.
+    /// `src` and `dest` must have the same layout and the copied value will be validated.
+    #[inline(always)]
     pub fn copy_op(
         &mut self,
         src: &impl Readable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(
+            src, dest, /* allow_transmute */ false, /* validate_dest */ true,
+        )
+    }
+
+    /// Copies the data from an operand to a place.
+    /// `allow_transmute` indicates whether the layouts may disagree.
+    #[inline(always)]
+    #[instrument(skip(self), level = "debug")]
+    fn copy_op_inner(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
+        validate_dest: bool,
     ) -> InterpResult<'tcx> {
         // Generally for transmutation, data must be valid both at the old and new type.
         // But if the types are the same, the 2nd validation below suffices.
@@ -780,7 +820,7 @@ where
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
-        if M::enforce_validity(self, dest.layout()) {
+        if validate_dest && M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
             self.validate_operand(&dest.to_op(self)?)?;
         }
@@ -816,17 +856,8 @@ where
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
             Right(src_val) => {
-                // FIXME(const_prop): Const-prop can possibly evaluate an
-                // unsized copy operation when it thinks that the type is
-                // actually sized, due to a trivially false where-clause
-                // predicate like `where Self: Sized` with `Self = dyn Trait`.
-                // See #102553 for an example of such a predicate.
-                if src.layout().is_unsized() {
-                    throw_inval!(ConstPropNonsense);
-                }
-                if dest.layout().is_unsized() {
-                    throw_inval!(ConstPropNonsense);
-                }
+                assert!(!src.layout().is_unsized());
+                assert!(!dest.layout().is_unsized());
                 assert_eq!(src.layout().size, dest.layout().size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {

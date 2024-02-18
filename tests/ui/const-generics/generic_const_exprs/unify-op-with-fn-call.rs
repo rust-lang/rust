@@ -1,4 +1,4 @@
-// known-bug: #110395
+//@ known-bug: #110395
 
 #![feature(generic_const_exprs, adt_const_params, const_trait_impl)]
 #![allow(incomplete_features)]

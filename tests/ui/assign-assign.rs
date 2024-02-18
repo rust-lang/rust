@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Issue 483 - Assignment expressions result in nil
 
 fn test_assign() {

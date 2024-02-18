@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const FOO: &[u8] = b"foo";
 const BAR: &[u8] = &[1, 2, 3];

@@ -1,6 +1,6 @@
 // regression test for #67609.
 
-// check-pass
+//@ check-pass
 
 static NONE: Option<String> = None;
 

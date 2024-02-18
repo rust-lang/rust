@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f() -> Box<isize> {
     Box::new(100)

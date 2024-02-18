@@ -210,3 +210,10 @@ fn issue11861() {
     // should not lint
     m!(vec![1]);
 }
+
+fn issue_11958() {
+    fn f(_s: &[String]) {}
+
+    // should not lint, `String` is not `Copy`
+    f(&vec!["test".to_owned(); 2]);
+}

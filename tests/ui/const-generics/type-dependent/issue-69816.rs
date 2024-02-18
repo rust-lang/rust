@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait IterExt: Sized + Iterator {
     fn default_for_size<const N: usize>(self) -> [Self::Item; N]
     where

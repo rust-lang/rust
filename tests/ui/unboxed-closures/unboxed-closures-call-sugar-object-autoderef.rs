@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that the call operator autoderefs when calling to an object type.
 
 fn make_adder(x: isize) -> Box<dyn FnMut(isize)->isize + 'static> {

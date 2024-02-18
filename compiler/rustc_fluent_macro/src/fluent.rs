@@ -1,7 +1,4 @@
-use annotate_snippets::{
-    display_list::DisplayList,
-    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
-};
+use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
 use fluent_bundle::{FluentBundle, FluentError, FluentResource};
 use fluent_syntax::{
     ast::{
@@ -179,10 +176,9 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                             range: (pos.start, pos.end - 1),
                         }],
                     }],
-                    opt: Default::default(),
                 };
-                let dl = DisplayList::from(snippet);
-                eprintln!("{dl}\n");
+                let renderer = Renderer::plain();
+                eprintln!("{}\n", renderer.render(snippet));
             }
 
             return failed(&crate_name);

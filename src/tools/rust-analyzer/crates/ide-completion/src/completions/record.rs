@@ -1,9 +1,12 @@
 //! Complete fields in record literals and patterns.
 use ide_db::SymbolKind;
-use syntax::ast::{self, Expr};
+use syntax::{
+    ast::{self, Expr},
+    SmolStr,
+};
 
 use crate::{
-    context::{DotAccess, DotAccessKind, PatternContext},
+    context::{DotAccess, DotAccessExprCtx, DotAccessKind, PatternContext},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
     CompletionRelevancePostfixMatch, Completions,
 };
@@ -66,8 +69,11 @@ pub(crate) fn complete_record_expr_fields(
             }
             if dot_prefix {
                 cov_mark::hit!(functional_update_one_dot);
-                let mut item =
-                    CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), "..");
+                let mut item = CompletionItem::new(
+                    CompletionItemKind::Snippet,
+                    ctx.source_range(),
+                    SmolStr::new_static(".."),
+                );
                 item.insert_text(".");
                 item.add_to(acc, ctx.db);
                 return;
@@ -91,7 +97,11 @@ pub(crate) fn add_default_update(
         // FIXME: This should make use of scope_def like completions so we get all the other goodies
         // that is we should handle this like actually completing the default function
         let completion_text = "..Default::default()";
-        let mut item = CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
+        let mut item = CompletionItem::new(
+            SymbolKind::Field,
+            ctx.source_range(),
+            SmolStr::new_static(completion_text),
+        );
         let completion_text =
             completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
         item.insert_text(completion_text).set_relevance(CompletionRelevance {
@@ -108,12 +118,17 @@ fn complete_fields(
     missing_fields: Vec<(hir::Field, hir::Type)>,
 ) {
     for (field, ty) in missing_fields {
+        // This should call something else, we shouldn't be synthesizing a DotAccess here
         acc.add_field(
             ctx,
             &DotAccess {
                 receiver: None,
                 receiver_ty: None,
                 kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
+                ctx: DotAccessExprCtx {
+                    in_block_expr: false,
+                    in_breakable: crate::context::BreakableKind::None,
+                },
             },
             None,
             field,

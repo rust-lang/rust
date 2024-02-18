@@ -1,6 +1,6 @@
-// build-pass
-// compile-flags:-Copt-level=0
-// edition:2018
+//@ build-pass
+//@ compile-flags:-Copt-level=0
+//@ edition:2018
 
 struct S<T>(std::marker::PhantomData<T>);
 

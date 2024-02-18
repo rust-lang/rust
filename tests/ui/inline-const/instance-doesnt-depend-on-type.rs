@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // issue: 114660
 
 #![feature(inline_const)]

@@ -1,0 +1,268 @@
+- // MIR for `wide_ptr_same_provenance` before GVN
++ // MIR for `wide_ptr_same_provenance` after GVN
+  
+  fn wide_ptr_same_provenance() -> () {
+      let mut _0: ();
+      let _1: &[i32; 2];
+      let _2: [i32; 2];
+      let mut _4: *const dyn std::marker::Send;
+      let _5: &dyn std::marker::Send;
+      let mut _6: &i32;
+      let _7: &i32;
+      let _8: usize;
+      let mut _9: usize;
+      let mut _10: bool;
+      let mut _12: *const dyn std::marker::Send;
+      let _13: &dyn std::marker::Send;
+      let mut _14: &i32;
+      let _15: &i32;
+      let _16: usize;
+      let mut _17: usize;
+      let mut _18: bool;
+      let _19: ();
+      let mut _20: bool;
+      let mut _21: *const dyn std::marker::Send;
+      let mut _22: *const dyn std::marker::Send;
+      let mut _23: *const dyn std::marker::Send;
+      let _24: ();
+      let mut _25: bool;
+      let mut _26: *const dyn std::marker::Send;
+      let mut _27: *const dyn std::marker::Send;
+      let mut _28: *const dyn std::marker::Send;
+      let _29: ();
+      let mut _30: bool;
+      let mut _31: *const dyn std::marker::Send;
+      let mut _32: *const dyn std::marker::Send;
+      let mut _33: *const dyn std::marker::Send;
+      let _34: ();
+      let mut _35: bool;
+      let mut _36: *const dyn std::marker::Send;
+      let mut _37: *const dyn std::marker::Send;
+      let mut _38: *const dyn std::marker::Send;
+      let _39: ();
+      let mut _40: bool;
+      let mut _41: *const dyn std::marker::Send;
+      let mut _42: *const dyn std::marker::Send;
+      let mut _43: *const dyn std::marker::Send;
+      let _44: ();
+      let mut _45: bool;
+      let mut _46: *const dyn std::marker::Send;
+      let mut _47: *const dyn std::marker::Send;
+      let mut _48: *const dyn std::marker::Send;
+      let mut _49: &[i32; 2];
+      scope 1 {
+          debug slice => _1;
+          let _3: *const dyn std::marker::Send;
+          scope 2 {
+              debug a => _3;
+              let _11: *const dyn std::marker::Send;
+              scope 3 {
+                  debug b => _11;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _49 = const _;
+          _1 = &(*_49);
+          StorageLive(_3);
+-         StorageLive(_4);
++         nop;
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = const 0_usize;
+-         _9 = Len((*_1));
+-         _10 = Lt(_8, _9);
+-         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> [success: bb1, unwind continue];
++         _9 = const 2_usize;
++         _10 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 2_usize, const 0_usize) -> [success: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         _7 = &(*_1)[_8];
++         _7 = &(*_1)[0 of 1];
+          _6 = &(*_7);
+          _5 = move _6 as &dyn std::marker::Send (PointerCoercion(Unsize));
+          StorageDead(_6);
+          _4 = &raw const (*_5);
+-         _3 = move _4 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         StorageDead(_4);
++         _3 = _4;
++         nop;
+          StorageDead(_7);
+          StorageDead(_5);
+          StorageLive(_11);
+-         StorageLive(_12);
++         nop;
+          StorageLive(_13);
+          StorageLive(_14);
+          StorageLive(_15);
+          StorageLive(_16);
+          _16 = const 1_usize;
+-         _17 = Len((*_1));
+-         _18 = Lt(_16, _17);
+-         assert(move _18, "index out of bounds: the length is {} but the index is {}", move _17, _16) -> [success: bb2, unwind continue];
++         _17 = const 2_usize;
++         _18 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 2_usize, const 1_usize) -> [success: bb2, unwind continue];
+      }
+  
+      bb2: {
+-         _15 = &(*_1)[_16];
++         _15 = &(*_1)[1 of 2];
+          _14 = &(*_15);
+          _13 = move _14 as &dyn std::marker::Send (PointerCoercion(Unsize));
+          StorageDead(_14);
+          _12 = &raw const (*_13);
+-         _11 = move _12 as *const dyn std::marker::Send (PointerCoercion(Unsize));
+-         StorageDead(_12);
++         _11 = _12;
++         nop;
+          StorageDead(_15);
+          StorageDead(_13);
+          StorageLive(_19);
+          StorageLive(_20);
+          StorageLive(_21);
+-         _21 = _3;
++         _21 = _4;
+          StorageLive(_22);
+          StorageLive(_23);
+-         _23 = _11;
+-         _22 = move _23 as *const dyn std::marker::Send (PointerCoercion(Unsize));
++         _23 = _12;
++         _22 = _12;
+          StorageDead(_23);
+-         _20 = Eq(move _21, move _22);
++         _20 = Eq(_4, _12);
+          StorageDead(_22);
+          StorageDead(_21);
+          _19 = opaque::<bool>(move _20) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_20);
+          StorageDead(_19);
+          StorageLive(_24);
+          StorageLive(_25);
+          StorageLive(_26);
+-         _26 = _3;
++         _26 = _4;
+          StorageLive(_27);
+          StorageLive(_28);
+-         _28 = _11;
+-         _27 = move _28 as *const dyn std::marker::Send (PointerCoercion(Unsize));
++         _28 = _12;
++         _27 = _12;
+          StorageDead(_28);
+-         _25 = Ne(move _26, move _27);
++         _25 = Ne(_4, _12);
+          StorageDead(_27);
+          StorageDead(_26);
+          _24 = opaque::<bool>(move _25) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          StorageDead(_25);
+          StorageDead(_24);
+          StorageLive(_29);
+          StorageLive(_30);
+          StorageLive(_31);
+-         _31 = _3;
++         _31 = _4;
+          StorageLive(_32);
+          StorageLive(_33);
+-         _33 = _11;
+-         _32 = move _33 as *const dyn std::marker::Send (PointerCoercion(Unsize));
++         _33 = _12;
++         _32 = _12;
+          StorageDead(_33);
+-         _30 = Lt(move _31, move _32);
++         _30 = Lt(_4, _12);
+          StorageDead(_32);
+          StorageDead(_31);
+          _29 = opaque::<bool>(move _30) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+          StorageDead(_30);
+          StorageDead(_29);
+          StorageLive(_34);
+          StorageLive(_35);
+          StorageLive(_36);
+-         _36 = _3;
++         _36 = _4;
+          StorageLive(_37);
+          StorageLive(_38);
+-         _38 = _11;
+-         _37 = move _38 as *const dyn std::marker::Send (PointerCoercion(Unsize));
++         _38 = _12;
++         _37 = _12;
+          StorageDead(_38);
+-         _35 = Le(move _36, move _37);
++         _35 = Le(_4, _12);
+          StorageDead(_37);
+          StorageDead(_36);
+          _34 = opaque::<bool>(move _35) -> [return: bb6, unwind continue];
+      }
+  
+      bb6: {
+          StorageDead(_35);
+          StorageDead(_34);
+          StorageLive(_39);
+          StorageLive(_40);
+          StorageLive(_41);
+-         _41 = _3;
++         _41 = _4;
+          StorageLive(_42);
+          StorageLive(_43);
+-         _43 = _11;
+-         _42 = move _43 as *const dyn std::marker::Send (PointerCoercion(Unsize));
++         _43 = _12;
++         _42 = _12;
+          StorageDead(_43);
+-         _40 = Gt(move _41, move _42);
++         _40 = Gt(_4, _12);
+          StorageDead(_42);
+          StorageDead(_41);
+          _39 = opaque::<bool>(move _40) -> [return: bb7, unwind continue];
+      }
+  
+      bb7: {
+          StorageDead(_40);
+          StorageDead(_39);
+          StorageLive(_44);
+          StorageLive(_45);
+          StorageLive(_46);
+-         _46 = _3;
++         _46 = _4;
+          StorageLive(_47);
+          StorageLive(_48);
+-         _48 = _11;
+-         _47 = move _48 as *const dyn std::marker::Send (PointerCoercion(Unsize));
++         _48 = _12;
++         _47 = _12;
+          StorageDead(_48);
+-         _45 = Ge(move _46, move _47);
++         _45 = Ge(_4, _12);
+          StorageDead(_47);
+          StorageDead(_46);
+          _44 = opaque::<bool>(move _45) -> [return: bb8, unwind continue];
+      }
+  
+      bb8: {
+          StorageDead(_45);
+          StorageDead(_44);
+          _0 = const ();
+          StorageDead(_16);
+          StorageDead(_11);
+          StorageDead(_8);
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

@@ -12,8 +12,8 @@
 //!
 //! See also a neighboring `body` module.
 
-pub mod type_ref;
 pub mod format_args;
+pub mod type_ref;
 
 use std::fmt;
 
@@ -265,6 +265,7 @@ pub enum Expr {
     Index {
         base: ExprId,
         index: ExprId,
+        is_assignee_expr: bool,
     },
     Closure {
         args: Box<[PatId]>,
@@ -299,7 +300,7 @@ pub struct InlineAsm {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClosureKind {
     Closure,
-    Generator(Movability),
+    Coroutine(Movability),
     Async,
 }
 
@@ -432,7 +433,7 @@ impl Expr {
                     f(rhs);
                 }
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, .. } => {
                 f(*base);
                 f(*index);
             }

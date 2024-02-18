@@ -1,5 +1,5 @@
 #![feature(async_closure)]
-// edition:2018
+//@ edition:2018
 fn main() {}
 
 async fn an_async_block() -> u32 {

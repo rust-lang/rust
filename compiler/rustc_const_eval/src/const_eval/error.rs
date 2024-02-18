@@ -1,6 +1,8 @@
 use std::mem;
 
-use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDiagnosticArg};
+use rustc_errors::{
+    DiagnosticArgName, DiagnosticArgValue, DiagnosticMessage, IntoDiagnostic, IntoDiagnosticArg,
+};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
@@ -15,8 +17,9 @@ use crate::interpret::{ErrorHandled, InterpError, InterpErrorInfo, MachineStopTy
 /// The CTFE machine has some custom error kinds.
 #[derive(Clone, Debug)]
 pub enum ConstEvalErrKind {
-    ConstAccessesStatic,
+    ConstAccessesMutGlobal,
     ModifiedGlobal,
+    RecursiveStatic,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
 }
@@ -26,19 +29,17 @@ impl MachineStopType for ConstEvalErrKind {
         use crate::fluent_generated::*;
         use ConstEvalErrKind::*;
         match self {
-            ConstAccessesStatic => const_eval_const_accesses_static,
+            ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
             ModifiedGlobal => const_eval_modified_global,
             Panic { .. } => const_eval_panic,
+            RecursiveStatic => const_eval_recursive_static,
             AssertFailure(x) => x.diagnostic_message(),
         }
     }
-    fn add_args(
-        self: Box<Self>,
-        adder: &mut dyn FnMut(std::borrow::Cow<'static, str>, DiagnosticArgValue<'static>),
-    ) {
+    fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagnosticArgName, DiagnosticArgValue)) {
         use ConstEvalErrKind::*;
         match *self {
-            ConstAccessesStatic | ModifiedGlobal => {}
+            RecursiveStatic | ConstAccessesMutGlobal | ModifiedGlobal => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
                 adder("msg".into(), msg.into_diagnostic_arg());
@@ -50,9 +51,7 @@ impl MachineStopType for ConstEvalErrKind {
     }
 }
 
-// The errors become `MachineStop` with plain strings when being raised.
-// `ConstEvalErr` (in `librustc_middle/mir/interpret/error.rs`) knows to
-// handle these.
+/// The errors become [`InterpError::MachineStop`] when being raised.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
         err_machine_stop!(self).into()
@@ -151,10 +150,10 @@ where
             let (our_span, frames) = get_span_and_frames();
             let span = span.unwrap_or(our_span);
             let err = mk(span, frames);
-            let mut err = tcx.sess.create_err(err);
+            let mut err = tcx.dcx().create_err(err);
 
             let msg = error.diagnostic_message();
-            error.add_args(tcx.sess.dcx(), &mut err);
+            error.add_args(&mut err);
 
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);
@@ -175,7 +174,7 @@ pub(super) fn lint<'tcx, 'mir, L>(
 {
     let (span, frames) = get_span_and_frames(tcx, machine);
 
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         lint,
         // We use the root frame for this so the crate that defines the const defines whether the
         // lint is emitted.

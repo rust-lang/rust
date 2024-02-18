@@ -5,7 +5,6 @@
 
 #[allow(unused)]
 //~^ ERROR incompatible with previous forbid
-//~| ERROR incompatible with previous forbid
 fn main() {
     let a: ();
 }

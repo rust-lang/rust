@@ -1,5 +1,5 @@
 // Check that nested impl Trait items work in functions with generic parameters.
-// check-pass
+//@ check-pass
 
 trait Captures<'a> {}
 

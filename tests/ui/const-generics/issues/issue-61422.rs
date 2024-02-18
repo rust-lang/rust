@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 use std::mem;
 
 // Neither of the uninits below are currently accepted as not UB, however,

@@ -8,7 +8,7 @@
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
 
-#[rustc_clean(except = "hir_owner_nodes", cfg = "cfail2")]
+#[rustc_clean(except = "opt_hir_owner_nodes", cfg = "cfail2")]
 pub fn foo() {
     #[cfg(cfail1)]
     pub fn baz() {} // order is different...

@@ -399,6 +399,7 @@ impl Config {
             self.fix_bin_or_dylib(&cargo_clippy.with_file_name(exe("clippy-driver", host)));
         }
 
+        self.create(&clippy_stamp, date);
         cargo_clippy
     }
 
@@ -720,8 +721,10 @@ download-rustc = false
         if !tarball.exists() {
             let help_on_error = "ERROR: failed to download llvm from ci
 
-    HELP: old builds get deleted after a certain time
-    HELP: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
+    HELP: There could be two reasons behind this:
+        1) The host triple is not supported for `download-ci-llvm`.
+        2) Old builds get deleted after a certain time.
+    HELP: In either case, disable `download-ci-llvm` in your config.toml:
 
     [llvm]
     download-ci-llvm = false

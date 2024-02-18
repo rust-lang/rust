@@ -1,4 +1,7 @@
 //! Like `std::time::Instant`, but also measures memory & CPU cycles.
+
+#![allow(clippy::print_stderr)]
+
 use std::{
     fmt,
     time::{Duration, Instant},

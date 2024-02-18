@@ -1,4 +1,5 @@
-// build-pass
+//@ build-pass
+#![feature(trait_upcasting)]
 
 pub trait A {}
 pub trait B {}

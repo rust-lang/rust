@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(ptr_metadata)]
 // Address issue #112737 -- ICE with dyn Pointee
 extern crate core;

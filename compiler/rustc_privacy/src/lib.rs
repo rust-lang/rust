@@ -3,12 +3,8 @@
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![feature(associated_type_defaults)]
-#![feature(rustc_private)]
 #![feature(try_blocks)]
 #![feature(let_chains)]
-#![recursion_limit = "256"]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;
@@ -23,22 +19,21 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, PatKind};
-use rustc_middle::bug;
-use rustc_middle::hir::nested_filter;
+use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, ItemKind, PatKind};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Const, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::ControlFlow;
-use std::{fmt, mem};
 
 use errors::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
@@ -101,9 +96,6 @@ trait DefIdVisitor<'tcx> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<Self::BreakTy> {
-        self.skeleton().visit_projection_ty(projection)
-    }
     fn visit_predicates(
         &mut self,
         predicates: ty::GenericPredicates<'tcx>,
@@ -141,7 +133,7 @@ where
         if V::SHALLOW {
             ControlFlow::Continue(())
         } else {
-            assoc_args.iter().try_for_each(|subst| subst.visit_with(self))
+            assoc_args.iter().try_for_each(|arg| arg.visit_with(self))
         }
     }
 
@@ -176,6 +168,10 @@ where
 {
     type BreakTy = V::BreakTy;
 
+    fn visit_predicate(&mut self, p: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
+        self.visit_clause(p.as_clause().unwrap())
+    }
+
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
         // GenericArgs are not visited here because they are visited below
@@ -185,6 +181,7 @@ where
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
+            | ty::CoroutineClosure(def_id, ..)
             | ty::Coroutine(def_id, ..) => {
                 self.def_id_visitor.visit_def_id(def_id, "type", &ty)?;
                 if V::SHALLOW {
@@ -212,7 +209,7 @@ where
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
                     // as visible/reachable even if `Type` is private.
-                    // Ideally, associated types should be substituted in the same way as
+                    // Ideally, associated types should be instantiated in the same way as
                     // free type aliases, but this isn't done yet.
                     return ControlFlow::Continue(());
                 }
@@ -233,7 +230,7 @@ where
                 } else if kind == ty::Projection {
                     self.visit_projection_ty(data)
                 } else {
-                    data.args.iter().try_for_each(|subst| subst.visit_with(self))
+                    data.args.iter().try_for_each(|arg| arg.visit_with(self))
                 };
             }
             ty::Dynamic(predicates, ..) => {
@@ -881,7 +878,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
             } else {
                 error_msg.push_str("not in the table");
             }
-            self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
+            self.tcx.dcx().emit_err(ReportEffectiveVisibility { span, descr: error_msg });
         }
     }
 }
@@ -935,7 +932,6 @@ impl<'tcx, 'a> Visitor<'tcx> for TestReachabilityVisitor<'tcx, 'a> {
 struct NamePrivacyVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    current_item: LocalDefId,
 }
 
 impl<'tcx> NamePrivacyVisitor<'tcx> {
@@ -951,6 +947,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
     // Checks that a field in a struct constructor (expression or pattern) is accessible.
     fn check_field(
         &mut self,
+        hir_id: hir::HirId,    // ID of the field use
         use_ctxt: Span,        // syntax context of the field name at the use site
         span: Span,            // span of the field pattern, e.g., `x: 0`
         def: ty::AdtDef<'tcx>, // definition of the struct or enum
@@ -963,10 +960,9 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 
         // definition of the field
         let ident = Ident::new(kw::Empty, use_ctxt);
-        let hir_id = self.tcx.local_def_id_to_hir_id(self.current_item);
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
-            self.tcx.sess.emit_err(FieldIsPrivate {
+            self.tcx.dcx().emit_err(FieldIsPrivate {
                 span,
                 field_name: field.name,
                 variant_descr: def.variant_descr(),
@@ -982,31 +978,11 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    /// We want to visit items in the context of their containing
-    /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
-        // Don't visit nested modules, since we run a separate visitor walk
-        // for each module in `effective_visibilities`
-    }
-
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let old_maybe_typeck_results =
-            self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
-        self.visit_body(body);
+            self.maybe_typeck_results.replace(self.tcx.typeck_body(body_id));
+        self.visit_body(self.tcx.hir().body(body_id));
         self.maybe_typeck_results = old_maybe_typeck_results;
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let orig_current_item = mem::replace(&mut self.current_item, item.owner_id.def_id);
-        intravisit::walk_item(self, item);
-        self.current_item = orig_current_item;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
@@ -1022,17 +998,17 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                     let field = fields
                         .iter()
                         .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
-                    let (use_ctxt, span) = match field {
-                        Some(field) => (field.ident.span, field.span),
-                        None => (base.span, base.span),
+                    let (hir_id, use_ctxt, span) = match field {
+                        Some(field) => (field.hir_id, field.ident.span, field.span),
+                        None => (base.hir_id, base.span, base.span),
                     };
-                    self.check_field(use_ctxt, span, adt, variant_field, true);
+                    self.check_field(hir_id, use_ctxt, span, adt, variant_field, true);
                 }
             } else {
                 for field in fields {
-                    let use_ctxt = field.ident.span;
+                    let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                     let index = self.typeck_results().field_index(field.hir_id);
-                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
+                    self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
                 }
             }
         }
@@ -1046,9 +1022,9 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             let adt = self.typeck_results().pat_ty(pat).ty_adt_def().unwrap();
             let variant = adt.variant_of_res(res);
             for field in fields {
-                let use_ctxt = field.ident.span;
+                let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                 let index = self.typeck_results().field_index(field.hir_id);
-                self.check_field(use_ctxt, field.span, adt, &variant.fields[index], false);
+                self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
             }
         }
 
@@ -1064,29 +1040,22 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
 
 struct TypePrivacyVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+    module_def_id: LocalModDefId,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    current_item: LocalDefId,
     span: Span,
 }
 
 impl<'tcx> TypePrivacyVisitor<'tcx> {
-    /// Gets the type-checking results for the current body.
-    /// As this will ICE if called outside bodies, only call when working with
-    /// `Expr` or `Pat` nodes (they are guaranteed to be found only in bodies).
-    #[track_caller]
-    fn typeck_results(&self) -> &'tcx ty::TypeckResults<'tcx> {
-        self.maybe_typeck_results
-            .expect("`TypePrivacyVisitor::typeck_results` called outside of body")
-    }
-
     fn item_is_accessible(&self, did: DefId) -> bool {
-        self.tcx.visibility(did).is_accessible_from(self.current_item, self.tcx)
+        self.tcx.visibility(did).is_accessible_from(self.module_def_id, self.tcx)
     }
 
     // Take node-id of an expression or pattern and check its type for privacy.
     fn check_expr_pat_type(&mut self, id: hir::HirId, span: Span) -> bool {
         self.span = span;
-        let typeck_results = self.typeck_results();
+        let typeck_results = self
+            .maybe_typeck_results
+            .unwrap_or_else(|| span_bug!(span, "`hir::Expr` or `hir::Pat` outside of a body"));
         let result: ControlFlow<()> = try {
             self.visit(typeck_results.node_type(id))?;
             self.visit(typeck_results.node_args(id))?;
@@ -1100,56 +1069,39 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.sess.emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
+            self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
         }
         is_error
     }
 }
 
+impl<'tcx> rustc_ty_utils::sig_types::SpannedTypeVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
+    type BreakTy = ();
+    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<()> {
+        self.span = span;
+        value.visit_with(&mut self.skeleton())
+    }
+}
+
 impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    /// We want to visit items in the context of their containing
-    /// module and so forth, so supply a crate for doing a deep walk.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
-        // Don't visit nested modules, since we run a separate visitor walk
-        // for each module in `effective_visibilities`
-    }
-
-    fn visit_nested_body(&mut self, body: hir::BodyId) {
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let old_maybe_typeck_results =
-            self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
-        self.visit_body(body);
+            self.maybe_typeck_results.replace(self.tcx.typeck_body(body_id));
+        self.visit_body(self.tcx.hir().body(body_id));
         self.maybe_typeck_results = old_maybe_typeck_results;
-    }
-
-    fn visit_generic_arg(&mut self, generic_arg: &'tcx hir::GenericArg<'tcx>) {
-        match generic_arg {
-            hir::GenericArg::Type(t) => self.visit_ty(t),
-            hir::GenericArg::Infer(inf) => self.visit_infer(inf),
-            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
-        }
     }
 
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
         self.span = hir_ty.span;
-        if let Some(typeck_results) = self.maybe_typeck_results {
-            // Types in bodies.
-            if self.visit(typeck_results.node_type(hir_ty.hir_id)).is_break() {
-                return;
-            }
-        } else {
-            // Types in signatures.
-            // FIXME: This is very ineffective. Ideally each HIR type should be converted
-            // into a semantic type only once and the result should be cached somehow.
-            if self.visit(rustc_hir_analysis::hir_ty_to_ty(self.tcx, hir_ty)).is_break() {
-                return;
-            }
+        if self
+            .visit(
+                self.maybe_typeck_results
+                    .unwrap_or_else(|| span_bug!(hir_ty.span, "`hir::Ty` outside of a body"))
+                    .node_type(hir_ty.hir_id),
+            )
+            .is_break()
+        {
+            return;
         }
 
         intravisit::walk_ty(self, hir_ty);
@@ -1157,54 +1109,18 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
         self.span = inf.span;
-        if let Some(typeck_results) = self.maybe_typeck_results {
-            if let Some(ty) = typeck_results.node_type_opt(inf.hir_id) {
-                if self.visit(ty).is_break() {
-                    return;
-                }
-            } else {
-                // We don't do anything for const infers here.
+        if let Some(ty) = self
+            .maybe_typeck_results
+            .unwrap_or_else(|| span_bug!(inf.span, "`hir::InferArg` outside of a body"))
+            .node_type_opt(inf.hir_id)
+        {
+            if self.visit(ty).is_break() {
+                return;
             }
         } else {
-            bug!("visit_infer without typeck_results");
+            // FIXME: check types of const infers here.
         }
         intravisit::walk_inf(self, inf);
-    }
-
-    fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) {
-        self.span = trait_ref.path.span;
-        if self.maybe_typeck_results.is_none() {
-            // Avoid calling `hir_trait_to_predicates` in bodies, it will ICE.
-            // The traits' privacy in bodies is already checked as a part of trait object types.
-            let bounds = rustc_hir_analysis::hir_trait_to_predicates(
-                self.tcx,
-                trait_ref,
-                // NOTE: This isn't really right, but the actual type doesn't matter here. It's
-                // just required by `ty::TraitRef`.
-                self.tcx.types.never,
-            );
-
-            for (clause, _) in bounds.clauses() {
-                match clause.kind().skip_binder() {
-                    ty::ClauseKind::Trait(trait_predicate) => {
-                        if self.visit_trait(trait_predicate.trait_ref).is_break() {
-                            return;
-                        }
-                    }
-                    ty::ClauseKind::Projection(proj_predicate) => {
-                        let term = self.visit(proj_predicate.term);
-                        if term.is_break()
-                            || self.visit_projection_ty(proj_predicate.projection_ty).is_break()
-                        {
-                            return;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        intravisit::walk_trait_ref(self, trait_ref);
     }
 
     // Check types of expressions
@@ -1223,13 +1139,16 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
             hir::ExprKind::MethodCall(segment, ..) => {
                 // Method calls have to be checked specially.
                 self.span = segment.ident.span;
-                if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
+                let typeck_results = self
+                    .maybe_typeck_results
+                    .unwrap_or_else(|| span_bug!(self.span, "`hir::Expr` outside of a body"));
+                if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
                     if self.visit(self.tcx.type_of(def_id).instantiate_identity()).is_break() {
                         return;
                     }
                 } else {
                     self.tcx
-                        .sess
+                        .dcx()
                         .span_delayed_bug(expr.span, "no type-dependent def for method call");
                 }
             }
@@ -1251,9 +1170,13 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 Res::Def(kind, def_id) => Some((kind, def_id)),
                 _ => None,
             },
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
-                .maybe_typeck_results
-                .and_then(|typeck_results| typeck_results.type_dependent_def(id)),
+            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
+                match self.maybe_typeck_results {
+                    Some(typeck_results) => typeck_results.type_dependent_def(id),
+                    // FIXME: Check type-relative associated types in signatures.
+                    None => None,
+                }
+            }
         };
         let def = def.filter(|(kind, _)| {
             matches!(
@@ -1276,9 +1199,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 let sess = self.tcx.sess;
                 let _ = match name {
                     Some(name) => {
-                        sess.emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
+                        sess.dcx().emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
                     }
-                    None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
+                    None => sess.dcx().emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
                 return;
             }
@@ -1306,15 +1229,6 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         }
 
         intravisit::walk_local(self, local);
-    }
-
-    // Check types in item interfaces.
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let orig_current_item = mem::replace(&mut self.current_item, item.owner_id.def_id);
-        let old_maybe_typeck_results = self.maybe_typeck_results.take();
-        intravisit::walk_item(self, item);
-        self.maybe_typeck_results = old_maybe_typeck_results;
-        self.current_item = orig_current_item;
     }
 }
 
@@ -1399,7 +1313,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         if self.leaks_private_dep(def_id) {
-            self.tcx.emit_spanned_lint(
+            self.tcx.emit_node_span_lint(
                 lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
                 self.tcx.local_def_id_to_hir_id(self.item_def_id),
                 self.tcx.def_span(self.item_def_id.to_def_id()),
@@ -1434,7 +1348,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
 
-            self.tcx.sess.emit_err(InPublicInterface {
+            self.tcx.dcx().emit_err(InPublicInterface {
                 span,
                 vis_descr,
                 kind,
@@ -1456,7 +1370,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
             } else {
                 lint::builtin::PRIVATE_BOUNDS
             };
-            self.tcx.emit_spanned_lint(
+            self.tcx.emit_node_span_lint(
                 lint,
                 self.tcx.local_def_id_to_hir_id(self.item_def_id),
                 span,
@@ -1543,7 +1457,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
         if reachable_at_vis.is_public() && reexported_at_vis != reachable_at_vis {
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
             let span = self.tcx.def_span(def_id.to_def_id());
-            self.tcx.emit_spanned_lint(
+            self.tcx.emit_node_span_lint(
                 lint::builtin::UNNAMEABLE_TYPES,
                 hir_id,
                 span,
@@ -1774,24 +1688,33 @@ pub fn provide(providers: &mut Providers) {
 
 fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     // Check privacy of names not checked in previous compilation stages.
-    let mut visitor = NamePrivacyVisitor {
-        tcx,
-        maybe_typeck_results: None,
-        current_item: module_def_id.to_local_def_id(),
-    };
-    let (module, span, hir_id) = tcx.hir().get_module(module_def_id);
-
-    intravisit::walk_mod(&mut visitor, module, hir_id);
+    let mut visitor = NamePrivacyVisitor { tcx, maybe_typeck_results: None };
+    tcx.hir().visit_item_likes_in_module(module_def_id, &mut visitor);
 
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
-    let mut visitor = TypePrivacyVisitor {
-        tcx,
-        maybe_typeck_results: None,
-        current_item: module_def_id.to_local_def_id(),
-        span,
-    };
-    intravisit::walk_mod(&mut visitor, module, hir_id);
+    let span = tcx.def_span(module_def_id);
+    let mut visitor = TypePrivacyVisitor { tcx, module_def_id, maybe_typeck_results: None, span };
+
+    let module = tcx.hir_module_items(module_def_id);
+    for def_id in module.definitions() {
+        rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
+
+        if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id) {
+            visitor.visit_nested_body(body_id);
+        }
+    }
+
+    for id in module.items() {
+        if let ItemKind::Impl(i) = tcx.hir().item(id).kind {
+            if let Some(item) = i.of_trait {
+                let trait_ref = tcx.impl_trait_ref(id.owner_id.def_id).unwrap();
+                let trait_ref = trait_ref.instantiate_identity();
+                visitor.span = item.path.span;
+                visitor.visit_def_id(trait_ref.def_id, "trait", &trait_ref.print_only_trait_path());
+            }
+        }
+    }
 }
 
 fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {

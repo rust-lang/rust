@@ -415,7 +415,7 @@ where
 // Request and its methods
 ///////////////////////////////////////////////////////////////////////////////
 
-/// `Request` supports generic, type-driven access to data. It's use is currently restricted to the
+/// `Request` supports generic, type-driven access to data. Its use is currently restricted to the
 /// standard library in cases where trait authors wish to allow trait implementors to share generic
 /// information across trait boundaries. The motivating and prototypical use case is
 /// `core::error::Error` which would otherwise require a method per concrete type (eg.

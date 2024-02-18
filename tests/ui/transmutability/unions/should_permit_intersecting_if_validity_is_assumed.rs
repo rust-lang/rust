@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! If validity is assumed, there need only be one matching bit-pattern between
 //! the source and destination types.
 

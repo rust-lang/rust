@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(unused_mut)]
 
@@ -6,7 +6,7 @@
 // then that `?` is not interpreted as a separator. In other words, `$(pat)?+` matches `pat +`
 // or `+` but does not match `pat` or `pat ? pat`.
 
-// edition:2018
+//@ edition:2018
 
 macro_rules! foo {
     // Check for `?`.

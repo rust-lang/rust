@@ -9,7 +9,7 @@ LL |         let c1 : () = c;
    |                  expected due to this
    |
    = note: expected unit type `()`
-                found closure `{mod1::f<T>::{closure#0} closure_args=(unavailable) args=[T, ?16t, extern "rust-call" fn(()), ?15t]}`
+                found closure `{mod1::f<T>::{closure#0} closure_kind_ty=?8t closure_sig_as_fn_ptr_ty=extern "rust-call" fn(()) upvar_tys=?7t}`
 help: use parentheses to call this closure
    |
 LL |         let c1 : () = c();

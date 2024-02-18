@@ -1,6 +1,6 @@
-// compile-flags: --emit=metadata
-// aux-build:rmeta-meta.rs
-// no-prefer-dynamic
+//@ compile-flags: --emit=metadata
+//@ aux-build:rmeta-meta.rs
+//@ no-prefer-dynamic
 
 // Check that building a metadata crate finds an error with a dependent,
 // metadata-only crate.

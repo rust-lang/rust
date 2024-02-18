@@ -56,7 +56,7 @@ For more detailed information about error handling check out the [book] or the
 [`panic_any`]: ../std/panic/fn.panic_any.html
 [`Box`]: ../std/boxed/struct.Box.html
 [`Any`]: crate::any::Any
-[`format!` syntax]: ../std/fmt/index.html
+[formatting syntax]: ../std/fmt/index.html
 [book]: ../book/ch09-00-error-handling.html
 [`std::result`]: ../std/result/index.html
 

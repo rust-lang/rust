@@ -1,7 +1,7 @@
-// revisions: nll_target
+//@ revisions: nll_target
 
 // The following revisions are disabled due to missing support for two_phase_beyond_autoref
-//[nll_beyond] compile-flags: -Z two_phase_beyond_autoref
+//@[nll_beyond] compile-flags: -Z two_phase_beyond_autoref
 
 // This is the second counter-example from Niko's blog post
 // smallcultfollowing.com/babysteps/blog/2017/03/01/nested-method-calls-via-two-phase-borrowing/

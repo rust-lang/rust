@@ -1,5 +1,5 @@
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 #![crate_type="lib"]
 
 // Issue 111888: this crate (1.) is imported by a proc-macro crate and (2.)

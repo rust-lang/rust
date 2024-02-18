@@ -11,15 +11,18 @@
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unreachable_pub, internal_features)]
 
 extern crate proc_macro;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
 
 mod dylib;
-mod server;
 mod proc_macros;
+mod server;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -32,36 +35,67 @@ use std::{
 };
 
 use proc_macro_api::{
-    msg::{self, ExpnGlobals, TokenId, CURRENT_API_VERSION},
+    msg::{
+        self, deserialize_span_data_index_map, serialize_span_data_index_map, ExpnGlobals,
+        SpanMode, TokenId, CURRENT_API_VERSION,
+    },
     ProcMacroKind,
 };
+use span::Span;
 
-mod tt {
-    pub use proc_macro_api::msg::TokenId;
-
-    pub use ::tt::*;
-
-    pub type Subtree = ::tt::Subtree<TokenId>;
-    pub type TokenTree = ::tt::TokenTree<TokenId>;
-    pub type Delimiter = ::tt::Delimiter<TokenId>;
-    pub type Leaf = ::tt::Leaf<TokenId>;
-    pub type Literal = ::tt::Literal<TokenId>;
-    pub type Punct = ::tt::Punct<TokenId>;
-    pub type Ident = ::tt::Ident<TokenId>;
-}
+use crate::server::TokenStream;
 
 // see `build.rs`
 include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
 
+trait ProcMacroSrvSpan: tt::Span {
+    type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
+    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
+}
+
+impl ProcMacroSrvSpan for TokenId {
+    type Server = server::token_id::TokenIdServer;
+
+    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
+        Self::Server { interner: &server::SYMBOL_INTERNER, call_site, def_site, mixed_site }
+    }
+}
+impl ProcMacroSrvSpan for Span {
+    type Server = server::rust_analyzer_span::RaSpanServer;
+    fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
+        Self::Server {
+            interner: &server::SYMBOL_INTERNER,
+            call_site,
+            def_site,
+            mixed_site,
+            tracked_env_vars: Default::default(),
+            tracked_paths: Default::default(),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct ProcMacroSrv {
     expanders: HashMap<(PathBuf, SystemTime), dylib::Expander>,
+    span_mode: SpanMode,
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 impl ProcMacroSrv {
-    pub fn expand(&mut self, task: msg::ExpandMacro) -> Result<msg::FlatTree, msg::PanicMessage> {
+    pub fn set_span_mode(&mut self, span_mode: SpanMode) {
+        self.span_mode = span_mode;
+    }
+
+    pub fn span_mode(&self) -> SpanMode {
+        self.span_mode
+    }
+
+    pub fn expand(
+        &mut self,
+        task: msg::ExpandMacro,
+    ) -> Result<(msg::FlatTree, Vec<u32>), msg::PanicMessage> {
+        let span_mode = self.span_mode;
         let expander = self.expander(task.lib.as_ref()).map_err(|err| {
             debug_assert!(false, "should list macros before asking to expand");
             msg::PanicMessage(format!("failed to load macro: {err}"))
@@ -71,10 +105,10 @@ impl ProcMacroSrv {
         for (k, v) in &task.env {
             env::set_var(k, v);
         }
-        let prev_working_dir = match task.current_dir {
+        let prev_working_dir = match &task.current_dir {
             Some(dir) => {
                 let prev_working_dir = std::env::current_dir().ok();
-                if let Err(err) = std::env::set_current_dir(&dir) {
+                if let Err(err) = std::env::set_current_dir(dir) {
                     eprintln!("Failed to set the current working dir to {dir}. Error: {err:?}")
                 }
                 prev_working_dir
@@ -83,38 +117,15 @@ impl ProcMacroSrv {
         };
 
         let ExpnGlobals { def_site, call_site, mixed_site, .. } = task.has_global_spans;
-        let def_site = TokenId(def_site as u32);
-        let call_site = TokenId(call_site as u32);
-        let mixed_site = TokenId(mixed_site as u32);
 
-        let macro_body = task.macro_body.to_subtree_unresolved(CURRENT_API_VERSION);
-        let attributes = task.attributes.map(|it| it.to_subtree_unresolved(CURRENT_API_VERSION));
-        let result = thread::scope(|s| {
-            let thread = thread::Builder::new()
-                .stack_size(EXPANDER_STACK_SIZE)
-                .name(task.macro_name.clone())
-                .spawn_scoped(s, || {
-                    expander
-                        .expand(
-                            &task.macro_name,
-                            &macro_body,
-                            attributes.as_ref(),
-                            def_site,
-                            call_site,
-                            mixed_site,
-                        )
-                        .map(|it| msg::FlatTree::new_raw(&it, CURRENT_API_VERSION))
-                });
-            let res = match thread {
-                Ok(handle) => handle.join(),
-                Err(e) => std::panic::resume_unwind(Box::new(e)),
-            };
-
-            match res {
-                Ok(res) => res,
-                Err(e) => std::panic::resume_unwind(e),
+        let result = match span_mode {
+            SpanMode::Id => {
+                expand_id(task, expander, def_site, call_site, mixed_site).map(|it| (it, vec![]))
             }
-        });
+            SpanMode::RustAnalyzer => {
+                expand_ra_span(task, expander, def_site, call_site, mixed_site)
+            }
+        };
 
         prev_env.rollback();
 
@@ -153,6 +164,98 @@ impl ProcMacroSrv {
             Entry::Occupied(e) => e.into_mut(),
         })
     }
+}
+
+fn expand_id(
+    task: msg::ExpandMacro,
+    expander: &dylib::Expander,
+    def_site: usize,
+    call_site: usize,
+    mixed_site: usize,
+) -> Result<msg::FlatTree, String> {
+    let def_site = TokenId(def_site as u32);
+    let call_site = TokenId(call_site as u32);
+    let mixed_site = TokenId(mixed_site as u32);
+
+    let macro_body = task.macro_body.to_subtree_unresolved(CURRENT_API_VERSION);
+    let attributes = task.attributes.map(|it| it.to_subtree_unresolved(CURRENT_API_VERSION));
+    let result = thread::scope(|s| {
+        let thread = thread::Builder::new()
+            .stack_size(EXPANDER_STACK_SIZE)
+            .name(task.macro_name.clone())
+            .spawn_scoped(s, || {
+                expander
+                    .expand(
+                        &task.macro_name,
+                        macro_body,
+                        attributes,
+                        def_site,
+                        call_site,
+                        mixed_site,
+                    )
+                    .map(|it| msg::FlatTree::new_raw(&it, CURRENT_API_VERSION))
+            });
+        let res = match thread {
+            Ok(handle) => handle.join(),
+            Err(e) => std::panic::resume_unwind(Box::new(e)),
+        };
+
+        match res {
+            Ok(res) => res,
+            Err(e) => std::panic::resume_unwind(e),
+        }
+    });
+    result
+}
+
+fn expand_ra_span(
+    task: msg::ExpandMacro,
+    expander: &dylib::Expander,
+    def_site: usize,
+    call_site: usize,
+    mixed_site: usize,
+) -> Result<(msg::FlatTree, Vec<u32>), String> {
+    let mut span_data_table = deserialize_span_data_index_map(&task.span_data_table);
+
+    let def_site = span_data_table[def_site];
+    let call_site = span_data_table[call_site];
+    let mixed_site = span_data_table[mixed_site];
+
+    let macro_body = task.macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table);
+    let attributes =
+        task.attributes.map(|it| it.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table));
+    let result = thread::scope(|s| {
+        let thread = thread::Builder::new()
+            .stack_size(EXPANDER_STACK_SIZE)
+            .name(task.macro_name.clone())
+            .spawn_scoped(s, || {
+                expander
+                    .expand(
+                        &task.macro_name,
+                        macro_body,
+                        attributes,
+                        def_site,
+                        call_site,
+                        mixed_site,
+                    )
+                    .map(|it| {
+                        (
+                            msg::FlatTree::new(&it, CURRENT_API_VERSION, &mut span_data_table),
+                            serialize_span_data_index_map(&span_data_table),
+                        )
+                    })
+            });
+        let res = match thread {
+            Ok(handle) => handle.join(),
+            Err(e) => std::panic::resume_unwind(Box::new(e)),
+        };
+
+        match res {
+            Ok(res) => res,
+            Err(e) => std::panic::resume_unwind(e),
+        }
+    });
+    result
 }
 
 pub struct PanicMessage {

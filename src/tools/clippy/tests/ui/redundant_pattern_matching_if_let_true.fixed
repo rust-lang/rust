@@ -1,0 +1,38 @@
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(clippy::needless_if, clippy::no_effect, clippy::nonminimal_bool)]
+
+macro_rules! condition {
+    () => {
+        true
+    };
+}
+
+macro_rules! lettrue {
+    (if) => {
+        if let true = true {}
+    };
+    (while) => {
+        while let true = true {}
+    };
+}
+
+fn main() {
+    let mut k = 5;
+
+    if k > 1 {}
+    if !(k > 5) {}
+    if k > 1 {}
+    if let (true, true) = (k > 1, k > 2) {}
+    while k > 1 {
+        k += 1;
+    }
+    while condition!() {
+        k += 1;
+    }
+
+    k > 5;
+    !(k > 5);
+    // Whole loop is from a macro expansion, don't lint:
+    lettrue!(if);
+    lettrue!(while);
+}

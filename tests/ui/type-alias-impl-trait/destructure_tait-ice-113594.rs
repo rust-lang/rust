@@ -1,5 +1,5 @@
-// build-pass
-// edition: 2021
+//@ build-pass
+//@ edition: 2021
 
 #![feature(type_alias_impl_trait)]
 

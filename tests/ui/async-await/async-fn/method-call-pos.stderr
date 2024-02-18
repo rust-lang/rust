@@ -1,0 +1,14 @@
+error: expected identifier, found keyword `async`
+  --> $DIR/method-call-pos.rs:4:11
+   |
+LL |     <_ as async Fn()>(|| async {});
+   |           ^^^^^ expected identifier, found keyword
+
+error: expected one of `(`, `::`, `<`, or `>`, found `Fn`
+  --> $DIR/method-call-pos.rs:4:17
+   |
+LL |     <_ as async Fn()>(|| async {});
+   |                 ^^ expected one of `(`, `::`, `<`, or `>`
+
+error: aborting due to 2 previous errors
+

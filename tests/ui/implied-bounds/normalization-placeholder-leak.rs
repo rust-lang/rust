@@ -2,9 +2,9 @@
 // we incorrectly get `X: placeholder('x)`.
 // Make sure we ignore these bogus bounds and not use them for anything useful.
 //
-// revisions: fail pass
-// [fail] check-fail
-// [pass] check-pass
+//@ revisions: fail pass
+//@ [fail] check-fail
+//@ [pass] check-pass
 
 trait Trait {
     type Ty<'a> where Self: 'a;

@@ -13,10 +13,10 @@ use rustc_span::symbol::sym;
 
 use super::VEC_BOX;
 
-pub(super) fn check(
-    cx: &LateContext<'_>,
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
     hir_ty: &hir::Ty<'_>,
-    qpath: &QPath<'_>,
+    qpath: &QPath<'tcx>,
     def_id: DefId,
     box_size_threshold: u64,
 ) -> bool {

@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 #![allow(non_upper_case_globals)]
 
 // Empty struct defined with braces add names into type namespace
 // Empty struct defined without braces add names into both type and value namespaces
 
-// aux-build:empty-struct.rs
+//@ aux-build:empty-struct.rs
 
 extern crate empty_struct;
 use empty_struct::*;

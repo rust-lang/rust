@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// ignore-wasm32-bare no libc
-// ignore-sgx no libc
+//@ ignore-wasm32-bare no libc
+//@ ignore-sgx no libc
 
 #![feature(rustc_private)]
 

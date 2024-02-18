@@ -1,8 +1,6 @@
-// only-x86_64
-// run-pass
-// needs-asm-support
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@ only-x86_64
+//@ run-pass
+//@ needs-asm-support
 
 #![feature(asm_const)]
 

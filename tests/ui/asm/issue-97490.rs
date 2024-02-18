@@ -1,6 +1,6 @@
-// check-pass
-// only-x86_64
-// needs-asm-support
+//@ check-pass
+//@ only-x86_64
+//@ needs-asm-support
 
 pub type Yes = extern "sysv64" fn(&'static u8) -> !;
 

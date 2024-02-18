@@ -11,8 +11,6 @@
 //!   gets popped *during unwinding*, we take the panic payload and store it according to the extra
 //!   metadata we remembered when pushing said frame.
 
-use log::trace;
-
 use rustc_ast::Mutability;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;

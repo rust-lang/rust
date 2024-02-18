@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Tests that we properly lint at 'paren' expressions
 
 fn foo() -> Result<(), String>  {

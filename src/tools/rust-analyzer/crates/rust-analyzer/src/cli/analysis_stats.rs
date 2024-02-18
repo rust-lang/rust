@@ -58,10 +58,13 @@ impl flags::AnalysisStats {
             Rand32::new(seed)
         };
 
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = match self.no_sysroot {
-            true => None,
-            false => Some(RustLibSource::Discover),
+        let cargo_config = CargoConfig {
+            sysroot: match self.no_sysroot {
+                true => None,
+                false => Some(RustLibSource::Discover),
+            },
+            sysroot_query_metadata: self.query_sysroot_metadata,
+            ..Default::default()
         };
         let no_progress = &|_| ();
 
@@ -276,7 +279,7 @@ impl flags::AnalysisStats {
             }
             all += 1;
             let Err(e) = db.layout_of_adt(
-                hir_def::AdtId::from(a).into(),
+                hir_def::AdtId::from(a),
                 Substitution::empty(Interner),
                 db.trait_environment(a.into()),
             ) else {
@@ -301,13 +304,13 @@ impl flags::AnalysisStats {
         let mut fail = 0;
         for &c in consts {
             all += 1;
-            let Err(e) = c.render_eval(db) else {
+            let Err(error) = c.render_eval(db) else {
                 continue;
             };
             if verbosity.is_spammy() {
                 let full_name =
                     full_name_of_item(db, c.module(db), c.name(db).unwrap_or(Name::missing()));
-                println!("Const eval for {full_name} failed due {e:?}");
+                println!("Const eval for {full_name} failed due {error:?}");
             }
             fail += 1;
         }
@@ -394,7 +397,7 @@ impl flags::AnalysisStats {
                 module
                     .krate()
                     .display_name(db)
-                    .map(|it| it.canonical_name().to_string())
+                    .map(|it| it.canonical_name().to_owned())
                     .into_iter()
                     .chain(
                         module
@@ -685,7 +688,7 @@ impl flags::AnalysisStats {
                 module
                     .krate()
                     .display_name(db)
-                    .map(|it| it.canonical_name().to_string())
+                    .map(|it| it.canonical_name().to_owned())
                     .into_iter()
                     .chain(
                         module
@@ -792,6 +795,7 @@ impl flags::AnalysisStats {
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
+                    range_exclusive_hints: true,
                 },
                 file_id,
                 None,
@@ -829,7 +833,7 @@ impl flags::AnalysisStats {
 fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: ExprId) -> String {
     let src = match sm.expr_syntax(expr_id) {
         Ok(s) => s,
-        Err(SyntheticSyntax) => return "synthetic,,".to_string(),
+        Err(SyntheticSyntax) => return "synthetic,,".to_owned(),
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());
@@ -845,7 +849,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
 fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: PatId) -> String {
     let src = match sm.pat_syntax(pat_id) {
         Ok(s) => s,
-        Err(SyntheticSyntax) => return "synthetic,,".to_string(),
+        Err(SyntheticSyntax) => return "synthetic,,".to_owned(),
     };
     let root = db.parse_or_expand(src.file_id);
     let node = src.map(|e| e.to_node(&root).syntax().clone());

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// compile-flags: -Zmir-opt-level=1
+//@ compile-flags: -Zmir-opt-level=1
 
 use std::mem;
 

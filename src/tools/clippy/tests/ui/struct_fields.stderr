@@ -45,7 +45,7 @@ error: all fields have the same prefix: `some_data`
 LL | / struct DoublePrefix {
 LL | |
 LL | |     some_data_a: bool,
-LL | |     some_data_b: bool,
+LL | |     some_data_b: i8,
 LL | |     some_data_c: bool,
 LL | | }
    | |_^
@@ -58,7 +58,7 @@ error: all fields have the same postfix: `some_data`
 LL | / struct DoublePostfix {
 LL | |
 LL | |     a_some_data: bool,
-LL | |     b_some_data: bool,
+LL | |     b_some_data: i8,
 LL | |     c_some_data: bool,
 LL | | }
    | |_^
@@ -71,7 +71,7 @@ error: all fields have the same postfix: `someData`
 LL | / struct NotSnakeCase {
 LL | |
 LL | |     a_someData: bool,
-LL | |     b_someData: bool,
+LL | |     b_someData: i8,
 LL | |     c_someData: bool,
 LL | | }
    | |_^
@@ -84,7 +84,7 @@ error: all fields have the same prefix: `someData`
 LL | / struct NotSnakeCase2 {
 LL | |
 LL | |     someData_c: bool,
-LL | |     someData_b: bool,
+LL | |     someData_b: i8,
 LL | |     someData_a_b: bool,
 LL | | }
    | |_^
@@ -261,5 +261,23 @@ LL |       mk_struct_full_def!(PrefixData, some_data, some_meta, some_other);
    = help: remove the prefixes
    = note: this error originates in the macro `mk_struct_full_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 21 previous errors
+error: field name starts with the struct's name
+  --> $DIR/struct_fields.rs:339:5
+   |
+LL |     use_foo: bool,
+   |     ^^^^^^^^^^^^^
+
+error: field name starts with the struct's name
+  --> $DIR/struct_fields.rs:341:5
+   |
+LL |     use_bar: bool,
+   |     ^^^^^^^^^^^^^
+
+error: field name starts with the struct's name
+  --> $DIR/struct_fields.rs:342:5
+   |
+LL |     use_baz: bool,
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 24 previous errors
 

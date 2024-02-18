@@ -8,3 +8,6 @@ documentation = "https://docs.rs/la-arena"
 categories = ["data-structures", "memory-management", "rust-patterns"]
 edition = "2021"
 rust-version = "1.56"
+
+[lints]
+workspace = true

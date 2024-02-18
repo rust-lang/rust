@@ -26,6 +26,7 @@ fn main() {
     let _ = p_rw;
 }
 
+#[allow(let_underscore_lock)]
 fn uplifted() {
     // shouldn't lint std locks as they were uplifted as rustc's `let_underscore_lock`
 

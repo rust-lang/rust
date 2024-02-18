@@ -6,6 +6,7 @@ LL | const A: () = { let x = Cell::new(2); &raw const x; };
    |
    = note: see issue #80384 <https://github.com/rust-lang/rust/issues/80384> for more information
    = help: add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: cannot borrow here, since the borrowed element may contain interior mutability
   --> $DIR/const-address-of-interior-mut.rs:7:40
@@ -15,6 +16,7 @@ LL | static B: () = { let x = Cell::new(2); &raw const x; };
    |
    = note: see issue #80384 <https://github.com/rust-lang/rust/issues/80384> for more information
    = help: add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: cannot borrow here, since the borrowed element may contain interior mutability
   --> $DIR/const-address-of-interior-mut.rs:9:44
@@ -24,6 +26,7 @@ LL | static mut C: () = { let x = Cell::new(2); &raw const x; };
    |
    = note: see issue #80384 <https://github.com/rust-lang/rust/issues/80384> for more information
    = help: add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: cannot borrow here, since the borrowed element may contain interior mutability
   --> $DIR/const-address-of-interior-mut.rs:13:13
@@ -33,6 +36,7 @@ LL |     let y = &raw const x;
    |
    = note: see issue #80384 <https://github.com/rust-lang/rust/issues/80384> for more information
    = help: add `#![feature(const_refs_to_cell)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 4 previous errors
 

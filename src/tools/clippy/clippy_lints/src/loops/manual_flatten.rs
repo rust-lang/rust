@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(
     span: Span,
 ) {
     let inner_expr = peel_blocks_with_stmt(body);
-    if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: None })
+    if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: None, .. })
             = higher::IfLet::hir(cx, inner_expr)
         // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
         && let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind

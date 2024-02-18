@@ -1,7 +1,7 @@
-// build-fail
+//@ build-fail
 
 //
-// error-pattern: symbol `fail` is already defined
+//@ error-pattern: symbol `fail` is already defined
 #![crate_type="rlib"]
 #![allow(warnings)]
 

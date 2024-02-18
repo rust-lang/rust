@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 
-// compile-flags: -C codegen-units=8 -O -C lto=thin
-// aux-build:thin-lto-inlines-aux.rs
-// no-prefer-dynamic
-// ignore-emscripten can't inspect instructions on emscripten
+//@ compile-flags: -C codegen-units=8 -O -C lto=thin
+//@ aux-build:thin-lto-inlines-aux.rs
+//@ no-prefer-dynamic
+//@ ignore-emscripten can't inspect instructions on emscripten
 
 // We want to assert here that ThinLTO will inline across codegen units. There's
 // not really a great way to do that in general so we sort of hack around it by

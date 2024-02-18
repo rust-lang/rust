@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Usizer {
     fn m(self) -> usize;

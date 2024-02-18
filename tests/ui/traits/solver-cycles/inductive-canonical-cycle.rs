@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This test checks that we're correctly dealing with inductive cycles
 // with canonical inference variables.

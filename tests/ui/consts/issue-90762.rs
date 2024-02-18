@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unreachable_code)]
 
 use std::sync::atomic::{AtomicBool, Ordering, AtomicUsize};

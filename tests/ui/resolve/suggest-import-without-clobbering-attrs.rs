@@ -1,5 +1,5 @@
-// run-rustfix
-// compile-flags: --cfg=whatever -Aunused
+//@ run-rustfix
+//@ compile-flags: --cfg=whatever -Aunused
 
 #[cfg(whatever)]
 use y::Whatever;

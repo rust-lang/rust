@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 // Ensure we don't error when emitting trait bound not satisfied when self type
 // has late bound var
 

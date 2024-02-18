@@ -9,6 +9,7 @@ struct B;
 
 fn process_without_annot(arc: &Arc<(A, B)>) {
     let (a, b) = **arc; // suggests putting `&**arc` here; with that, fixed!
+    //~^ ERROR: cannot move out of an `Arc`
 }
 
 fn process_with_annot(arc: &Arc<(A, B)>) {

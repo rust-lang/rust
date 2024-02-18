@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![feature(allocator_api)]
 #![allow(unused_must_use)]
 

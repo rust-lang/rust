@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 #![feature(ptr_metadata)]
 #![feature(type_alias_impl_trait)]

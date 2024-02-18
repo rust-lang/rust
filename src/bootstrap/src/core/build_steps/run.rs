@@ -148,9 +148,8 @@ impl Step for Miri {
         let target = self.target;
         let compiler = builder.compiler(stage, host);
 
-        let miri = builder
-            .ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let miri =
+            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
         let miri_sysroot = test::Miri::build_miri_sysroot(builder, compiler, &miri, target);
 
         // # Run miri.
@@ -166,7 +165,7 @@ impl Step for Miri {
             SourceType::InTree,
             &[],
         );
-        miri.add_rustc_lib_path(builder, compiler);
+        miri.add_rustc_lib_path(builder);
         // Forward arguments.
         miri.arg("--").arg("--target").arg(target.rustc_target_arg());
         miri.args(builder.config.args());

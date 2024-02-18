@@ -44,7 +44,7 @@ const PARSED = [
         original: "a,b(c)",
         returned: [],
         userQuery: "a,b(c)",
-        error: "Unexpected `(`",
+        error: "Expected `,`, `:` or `->`, found `(`",
     },
     {
         query: 'aaa,a',

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This test relies on `TryFrom` being blanket impl for all `T: Into`
 // and `TryInto` being blanket impl for all `U: TryFrom`
 

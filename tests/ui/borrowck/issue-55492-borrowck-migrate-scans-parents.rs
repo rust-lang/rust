@@ -8,7 +8,10 @@ mod borrowck_closures_unique {
         static mut Y: isize = 3;
         let mut c1 = |y: &'static mut isize| x = y;
         //~^ ERROR is not declared as mutable
-        unsafe { c1(&mut Y); }
+        unsafe {
+            c1(&mut Y);
+            //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
+        }
     }
 }
 
@@ -17,36 +20,50 @@ mod borrowck_closures_unique_grandparent {
         static mut Z: isize = 3;
         let mut c1 = |z: &'static mut isize| {
             let mut c2 = |y: &'static mut isize| x = y;
-        //~^ ERROR is not declared as mutable
+            //~^ ERROR is not declared as mutable
             c2(z);
         };
-        unsafe { c1(&mut Z); }
+        unsafe {
+            c1(&mut Z);
+            //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
+        }
     }
 }
 
 // adapted from mutability_errors.rs
 mod mutability_errors {
     pub fn capture_assign_whole(x: (i32,)) {
-        || { x = (1,); };
-        //~^ ERROR is not declared as mutable
+        || {
+            x = (1,);
+            //~^ ERROR is not declared as mutable
+        };
     }
     pub fn capture_assign_part(x: (i32,)) {
-        || { x.0 = 1; };
-        //~^ ERROR is not declared as mutable
+        || {
+            x.0 = 1;
+            //~^ ERROR is not declared as mutable
+        };
     }
     pub fn capture_reborrow_whole(x: (i32,)) {
-        || { &mut x; };
-        //~^ ERROR is not declared as mutable
+        || {
+            &mut x;
+            //~^ ERROR is not declared as mutable
+        };
     }
     pub fn capture_reborrow_part(x: (i32,)) {
-        || { &mut x.0; };
-        //~^ ERROR is not declared as mutable
+        || {
+            &mut x.0;
+            //~^ ERROR is not declared as mutable
+        };
     }
 }
 
 fn main() {
     static mut X: isize = 2;
-    unsafe { borrowck_closures_unique::e(&mut X); }
+    unsafe {
+        borrowck_closures_unique::e(&mut X);
+        //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
+    }
 
     mutability_errors::capture_assign_whole((1000,));
     mutability_errors::capture_assign_part((2000,));

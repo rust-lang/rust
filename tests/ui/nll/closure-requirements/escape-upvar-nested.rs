@@ -5,7 +5,7 @@
 //
 // except that the closure does so via a second closure.
 
-// compile-flags:-Zverbose
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

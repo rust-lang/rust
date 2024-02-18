@@ -12,7 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-arrayvec = "0.7.2"
+arrayvec.workspace = true
 bitflags.workspace = true
 cov-mark = "2.0.0-pre.1"
 dashmap.workspace = true
@@ -23,13 +23,14 @@ indexmap.workspace = true
 itertools.workspace = true
 la-arena.workspace = true
 once_cell = "1.17.0"
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 tracing.workspace = true
 smallvec.workspace = true
 hashbrown.workspace = true
 triomphe.workspace = true
 
-rustc-dependencies.workspace = true
+ra-ap-rustc_parse_format.workspace = true
+ra-ap-rustc_abi.workspace = true
 
 # local deps
 stdx.workspace = true
@@ -42,13 +43,18 @@ mbe.workspace = true
 cfg.workspace = true
 tt.workspace = true
 limit.workspace = true
+span.workspace = true
 
 
 [dev-dependencies]
-expect-test = "1.4.0"
+expect-test.workspace = true
 
 # local deps
 test-utils.workspace = true
+test-fixture.workspace = true
 
 [features]
-in-rust-tree = ["rustc-dependencies/in-rust-tree"]
+in-rust-tree = []
+
+[lints]
+workspace = true

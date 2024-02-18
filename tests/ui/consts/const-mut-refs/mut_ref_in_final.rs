@@ -44,6 +44,21 @@ static mut FOO3: NotAMutex<&mut i32> = NotAMutex(UnsafeCell::new(&mut 42));
 // the enclosing scope rule.
 const BAR: NotAMutex<&i32> = NotAMutex(UnsafeCell::new(&42));
 
+struct SyncPtr<T> { x : *const T }
+unsafe impl<T> Sync for SyncPtr<T> {}
+
+// These pass the lifetime checks because of the "tail expression" / "outer scope" rule.
+// (This relies on `SyncPtr` being a curly brace struct.)
+// However, we intern the inner memory as read-only, so this must be rejected.
+static RAW_MUT_CAST_S: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
+//~^ ERROR mutable references are not allowed
+static RAW_MUT_COERCE_S: SyncPtr<i32> = SyncPtr { x: &mut 0 };
+//~^ ERROR mutable references are not allowed
+const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
+//~^ ERROR mutable references are not allowed
+const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
+//~^ ERROR mutable references are not allowed
+
 fn main() {
     println!("{}", unsafe { *A });
     unsafe { *B = 4 } // Bad news

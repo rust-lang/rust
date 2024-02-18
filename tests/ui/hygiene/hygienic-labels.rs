@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unreachable_code)]
 #![allow(unused_labels)]
 // Test that labels injected by macros do not break hygiene.

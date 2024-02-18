@@ -8,8 +8,6 @@ help: consider importing one of these items
    |
 LL + use core::marker::PhantomData;
    |
-LL + use serde::__private::PhantomData;
-   |
 LL + use std::marker::PhantomData;
    |
 

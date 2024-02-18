@@ -319,6 +319,7 @@ impl AsSocket for crate::net::TcpStream {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::TcpStream> for OwnedSocket {
+    /// Takes ownership of a [`TcpStream`](crate::net::TcpStream)'s socket.
     #[inline]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedSocket {
         unsafe { OwnedSocket::from_raw_socket(tcp_stream.into_raw_socket()) }
@@ -343,6 +344,7 @@ impl AsSocket for crate::net::TcpListener {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::TcpListener> for OwnedSocket {
+    /// Takes ownership of a [`TcpListener`](crate::net::TcpListener)'s socket.
     #[inline]
     fn from(tcp_listener: crate::net::TcpListener) -> OwnedSocket {
         unsafe { OwnedSocket::from_raw_socket(tcp_listener.into_raw_socket()) }
@@ -367,6 +369,7 @@ impl AsSocket for crate::net::UdpSocket {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::UdpSocket> for OwnedSocket {
+    /// Takes ownership of a [`UdpSocket`](crate::net::UdpSocket)'s underlying socket.
     #[inline]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedSocket {
         unsafe { OwnedSocket::from_raw_socket(udp_socket.into_raw_socket()) }

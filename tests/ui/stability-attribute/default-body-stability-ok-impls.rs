@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:default_body.rs
+//@ check-pass
+//@ aux-build:default_body.rs
 #![crate_type = "lib"]
 
 extern crate default_body;

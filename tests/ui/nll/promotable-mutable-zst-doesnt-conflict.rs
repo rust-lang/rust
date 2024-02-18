@@ -1,7 +1,7 @@
 // Check that mutable promoted length zero arrays don't check for conflicting
 // access
 
-// check-pass
+//@ check-pass
 
 pub fn main() {
     let mut x: Vec<&[i32; 0]> = Vec::new();

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 pub const FOO: &'static *const i32 = &(&0 as _);
 

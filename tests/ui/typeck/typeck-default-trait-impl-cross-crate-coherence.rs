@@ -1,4 +1,4 @@
-// aux-build:tdticc_coherence_lib.rs
+//@ aux-build:tdticc_coherence_lib.rs
 #![allow(suspicious_auto_trait_impls)]
 
 // Test that we do not consider associated types to be sendable without

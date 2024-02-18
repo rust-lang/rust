@@ -1,5 +1,5 @@
-// build-fail
-// compile-flags: -C overflow-checks=on
+//@ build-fail
+//@ compile-flags: -C overflow-checks=on
 
 #![allow(arithmetic_overflow, unconditional_panic)]
 

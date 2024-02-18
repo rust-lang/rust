@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // https://github.com/rust-lang/rust/issues/53708
 #[derive(PartialEq, Eq)]
 struct S;

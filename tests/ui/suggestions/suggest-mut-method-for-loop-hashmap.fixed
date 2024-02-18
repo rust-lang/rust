@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // https://github.com/rust-lang/rust/issues/82081
 
 use std::collections::HashMap;

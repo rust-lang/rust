@@ -3,22 +3,23 @@
 //! Based on cli flags, either spawns an LSP server, or runs a batch analysis
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::print_stdout, clippy::print_stderr)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
-#[cfg(feature = "in-rust-tree")]
-#[allow(unused_extern_crates)]
-extern crate rustc_driver;
 
-mod logger;
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 mod rustc_wrapper;
 
-use std::{env, fs, path::PathBuf, process};
+use std::{env, fs, path::PathBuf, process, sync::Arc};
 
 use anyhow::Context;
 use lsp_server::Connection;
 use rust_analyzer::{cli::flags, config::Config, from_json};
+use tracing_subscriber::fmt::writer::BoxMakeWriter;
 use vfs::AbsPathBuf;
 
-#[cfg(all(feature = "mimalloc"))]
+#[cfg(feature = "mimalloc")]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -124,25 +125,20 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         None => None,
     };
 
-    logger::LoggerConfig {
-        log_file,
+    let writer = match log_file {
+        Some(file) => BoxMakeWriter::new(Arc::new(file)),
+        None => BoxMakeWriter::new(std::io::stderr),
+    };
+
+    rust_analyzer::tracing::Config {
+        writer,
         // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
         // useful information in there for debugging.
-        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_string()),
-        // The meaning of CHALK_DEBUG I suspected is to tell chalk crates
-        // (i.e. chalk-solve, chalk-ir, chalk-recursive) how to filter tracing
-        // logs. But now we can only have just one filter, which means we have to
-        // merge chalk filter to our main filter (from RA_LOG env).
-        //
-        // The acceptable syntax of CHALK_DEBUG is `target[span{field=value}]=level`.
-        // As the value should only affect chalk crates, we'd better manually
-        // specify the target. And for simplicity, CHALK_DEBUG only accept the value
-        // that specify level.
+        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_owned()),
         chalk_filter: env::var("CHALK_DEBUG").ok(),
+        profile_filter: env::var("RA_PROFILE").ok(),
     }
     .init()?;
-
-    profile::init();
 
     Ok(())
 }
@@ -172,7 +168,15 @@ fn run_server() -> anyhow::Result<()> {
 
     let (connection, io_threads) = Connection::stdio();
 
-    let (initialize_id, initialize_params) = connection.initialize_start()?;
+    let (initialize_id, initialize_params) = match connection.initialize_start() {
+        Ok(it) => it,
+        Err(e) => {
+            if e.channel_is_disconnected() {
+                io_threads.join()?;
+            }
+            return Err(e.into());
+        }
+    };
     tracing::info!("InitializeParams: {}", initialize_params);
     let lsp_types::InitializeParams {
         root_uri,
@@ -220,7 +224,7 @@ fn run_server() -> anyhow::Result<()> {
                 MessageType, ShowMessageParams,
             };
             let not = lsp_server::Notification::new(
-                ShowMessage::METHOD.to_string(),
+                ShowMessage::METHOD.to_owned(),
                 ShowMessageParams { typ: MessageType::WARNING, message: e.to_string() },
             );
             connection.sender.send(lsp_server::Message::Notification(not)).unwrap();
@@ -240,7 +244,12 @@ fn run_server() -> anyhow::Result<()> {
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
 
-    connection.initialize_finish(initialize_id, initialize_result)?;
+    if let Err(e) = connection.initialize_finish(initialize_id, initialize_result) {
+        if e.channel_is_disconnected() {
+            io_threads.join()?;
+        }
+        return Err(e.into());
+    }
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();

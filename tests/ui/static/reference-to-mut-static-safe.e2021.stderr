@@ -1,0 +1,26 @@
+warning: creating a shared reference to mutable static is discouraged
+  --> $DIR/reference-to-mut-static-safe.rs:9:14
+   |
+LL |     let _x = &X;
+   |              ^^ shared reference to mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: this will be a hard error in the 2024 edition
+   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
+   = note: `#[warn(static_mut_refs)]` on by default
+help: use `addr_of!` instead to create a raw pointer
+   |
+LL |     let _x = addr_of!(X);
+   |              ~~~~~~~~~~~
+
+error[E0133]: use of mutable static is unsafe and requires unsafe function or block
+  --> $DIR/reference-to-mut-static-safe.rs:9:15
+   |
+LL |     let _x = &X;
+   |               ^ use of mutable static
+   |
+   = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0133`.

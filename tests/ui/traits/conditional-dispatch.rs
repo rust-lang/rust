@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we are able to resolve conditional dispatch.  Here, the
 // blanket impl for T:Copy coexists with an impl for Box<T>, because
 // Box does not impl Copy.

@@ -1,7 +1,7 @@
 // Test that `dyn Bar<Item = XX>` uses `'static` as the default object
 // lifetime bound for the type `XX`.
 //
-// check-pass
+//@ check-pass
 
 trait Foo {
     type Item: ?Sized;

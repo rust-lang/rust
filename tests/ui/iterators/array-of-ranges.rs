@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn main() {
     for _ in [0..1] {}

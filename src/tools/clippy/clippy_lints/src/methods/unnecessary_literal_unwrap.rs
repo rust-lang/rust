@@ -76,7 +76,7 @@ pub(super) fn check(
                     (expr.span.with_lo(call_args[0].span.hi()), String::new()),
                 ];
                 // try to also remove the unsafe block if present
-                if let hir::Node::Block(block) = cx.tcx.hir().get_parent(expr.hir_id)
+                if let hir::Node::Block(block) = cx.tcx.parent_hir_node(expr.hir_id)
                     && let hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::UserProvided) = block.rules
                 {
                     suggs.extend([

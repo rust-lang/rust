@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This is meant to be a comprehensive test of invocations with/without
 // trailing commas (or other, similar optionally-trailing separators).
 // Every macro is accounted for, even those not tested in this file.
@@ -9,8 +9,8 @@
 // detail.
 
 
-// compile-flags: --test -C debug_assertions=yes
-// revisions: std core
+//@ compile-flags: --test -C debug_assertions=yes
+//@ revisions: std core
 
 #![cfg_attr(core, no_std)]
 

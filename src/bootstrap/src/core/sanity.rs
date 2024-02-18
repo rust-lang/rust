@@ -16,7 +16,6 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use crate::core::config::Target;
-use crate::utils::cache::INTERNER;
 use crate::utils::helpers::output;
 use crate::Build;
 
@@ -62,8 +61,14 @@ impl Finder {
 }
 
 pub fn check(build: &mut Build) {
-    let skip_target_sanity =
+    let mut skip_target_sanity =
         env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some_and(|s| s == "1" || s == "true");
+
+    // Skip target sanity checks when we are doing anything with mir-opt tests or Miri
+    let skipped_paths = [OsStr::new("mir-opt"), OsStr::new("miri")];
+    skip_target_sanity |= build.config.paths.iter().any(|path| {
+        path.components().any(|component| skipped_paths.contains(&component.as_os_str()))
+    });
 
     let path = env::var_os("PATH").unwrap_or_default();
     // On Windows, quotes are invalid characters for filename paths, and if
@@ -82,21 +87,21 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = build.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
-        && build
-            .hosts
-            .iter()
-            .map(|host| {
-                build
+    let building_llvm = build
+        .hosts
+        .iter()
+        .map(|host| {
+            build.config.llvm_enabled(*host)
+                && build
                     .config
                     .target_config
                     .get(host)
                     .map(|config| config.llvm_config.is_none())
                     .unwrap_or(true)
-            })
-            .any(|build_llvm_ourselves| build_llvm_ourselves);
+        })
+        .any(|build_llvm_ourselves| build_llvm_ourselves);
 
-    let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
+    let need_cmake = building_llvm || build.config.any_sanitizers_to_build();
     if need_cmake && cmd_finder.maybe_have("cmake").is_none() {
         eprintln!(
             "
@@ -184,13 +189,16 @@ than building it.
         if !build.config.dry_run() {
             cmd_finder.must_have(build.cxx(*host).unwrap());
         }
-    }
 
-    if build.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
-        // Externally configured LLVM requires FileCheck to exist
-        let filecheck = build.llvm_filecheck(build.build);
-        if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-            panic!("FileCheck executable {filecheck:?} does not exist");
+        if build.config.llvm_enabled(*host) {
+            // Externally configured LLVM requires FileCheck to exist
+            let filecheck = build.llvm_filecheck(build.build);
+            if !filecheck.starts_with(&build.out)
+                && !filecheck.exists()
+                && build.config.codegen_tests
+            {
+                panic!("FileCheck executable {filecheck:?} does not exist");
+            }
         }
     }
 

@@ -3,7 +3,7 @@
 // two free regions outlive each other, without any evidence that this
 // relation holds.
 
-// compile-flags: -Z polonius
+//@ compile-flags: -Z polonius
 
 // returning `y` requires that `'b: 'a`, but it's not known to be true
 fn missing_subset<'a, 'b>(x: &'a u32, y: &'b u32) -> &'a u32 {

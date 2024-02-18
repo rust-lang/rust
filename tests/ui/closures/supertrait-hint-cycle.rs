@@ -1,5 +1,5 @@
-// edition:2021
-// check-pass
+//@ edition:2021
+//@ check-pass
 
 #![feature(type_alias_impl_trait)]
 #![feature(closure_lifetime_binder)]

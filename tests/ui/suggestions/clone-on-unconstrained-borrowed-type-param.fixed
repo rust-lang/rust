@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn wat<T: Clone>(t: &T) -> T {
     t.clone() //~ ERROR E0308
 }

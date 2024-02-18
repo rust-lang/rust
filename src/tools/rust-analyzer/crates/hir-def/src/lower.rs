@@ -3,7 +3,7 @@ use std::cell::OnceCell;
 
 use hir_expand::{
     ast_id_map::{AstIdMap, AstIdNode},
-    span::{SpanMap, SpanMapRef},
+    span_map::{SpanMap, SpanMapRef},
     AstId, HirFileId, InFile,
 };
 use syntax::ast;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Tests for if as expressions returning boxed types
 fn test_box() {

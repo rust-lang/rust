@@ -1,7 +1,7 @@
-// revisions: nll_target
+//@ revisions: nll_target
 
 // The nll_beyond revision is disabled due to missing support from two-phase beyond autorefs
-//[nll_beyond]compile-flags: -Z two-phase-beyond-autoref
+//@[nll_beyond]compile-flags: -Z two-phase-beyond-autoref
 //[nll_beyond]should-fail
 
 // This is a corner case that the current implementation is (probably)

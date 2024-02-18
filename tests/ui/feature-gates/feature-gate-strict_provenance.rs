@@ -1,13 +1,9 @@
-// check-pass
+//@ check-pass
 
 #![deny(fuzzy_provenance_casts)]
 //~^ WARNING unknown lint: `fuzzy_provenance_casts`
-//~| WARNING unknown lint: `fuzzy_provenance_casts`
-//~| WARNING unknown lint: `fuzzy_provenance_casts`
 #![deny(lossy_provenance_casts)]
 //~^ WARNING unknown lint: `lossy_provenance_casts`
-//~| WARNING unknown lint: `lossy_provenance_casts`
-//~| WARNING unknown lint: `lossy_provenance_casts`
 
 fn main() {
     // no warnings emitted since the lints are not activated

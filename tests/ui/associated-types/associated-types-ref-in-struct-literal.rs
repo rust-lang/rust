@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test associated type references in a struct literal. Issue #20535.
 
 

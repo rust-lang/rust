@@ -30,6 +30,12 @@ LL | impl Copy for &'static [NotSync] {}
    |
    = note: define and implement a trait or new type instead
 
+error[E0206]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:21:15
+   |
+LL | impl Copy for &'static mut MyType {}
+   |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-copy.rs:25:1
    |
@@ -41,6 +47,12 @@ LL | impl Copy for (MyType, MyType) {}
    |
    = note: define and implement a trait or new type instead
 
+error[E0206]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/coherence-impls-copy.rs:25:15
+   |
+LL | impl Copy for (MyType, MyType) {}
+   |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-copy.rs:30:1
    |
@@ -51,18 +63,6 @@ LL | impl Copy for [MyType] {}
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
-
-error[E0206]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:21:15
-   |
-LL | impl Copy for &'static mut MyType {}
-   |               ^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
-
-error[E0206]: the trait `Copy` cannot be implemented for this type
-  --> $DIR/coherence-impls-copy.rs:25:15
-   |
-LL | impl Copy for (MyType, MyType) {}
-   |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
 error[E0206]: the trait `Copy` cannot be implemented for this type
   --> $DIR/coherence-impls-copy.rs:30:15

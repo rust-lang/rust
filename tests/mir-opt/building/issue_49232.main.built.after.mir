@@ -17,7 +17,7 @@ fn main() -> () {
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, unwind: bb11];
+        falseUnwind -> [real: bb2, unwind: bb12];
     }
 
     bb2: {
@@ -25,41 +25,46 @@ fn main() -> () {
         StorageLive(_3);
         _3 = const true;
         PlaceMention(_3);
-        switchInt(_3) -> [0: bb3, otherwise: bb4];
+        switchInt(_3) -> [0: bb4, otherwise: bb5];
     }
 
     bb3: {
-        falseEdge -> [real: bb5, imaginary: bb4];
-    }
-
-    bb4: {
-        _0 = const ();
-        goto -> bb10;
-    }
-
-    bb5: {
-        _2 = const 4_i32;
-        goto -> bb8;
-    }
-
-    bb6: {
+        FakeRead(ForMatchedPlace(None), _3);
         unreachable;
     }
 
+    bb4: {
+        falseEdge -> [real: bb6, imaginary: bb5];
+    }
+
+    bb5: {
+        _0 = const ();
+        goto -> bb11;
+    }
+
+    bb6: {
+        _2 = const 4_i32;
+        goto -> bb9;
+    }
+
     bb7: {
-        goto -> bb8;
+        unreachable;
     }
 
     bb8: {
+        goto -> bb9;
+    }
+
+    bb9: {
         FakeRead(ForLet(None), _2);
         StorageDead(_3);
         StorageLive(_5);
         StorageLive(_6);
         _6 = &_2;
-        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb9, unwind: bb11];
+        _5 = std::mem::drop::<&i32>(move _6) -> [return: bb10, unwind: bb12];
     }
 
-    bb9: {
+    bb10: {
         StorageDead(_6);
         StorageDead(_5);
         _1 = const ();
@@ -67,13 +72,13 @@ fn main() -> () {
         goto -> bb1;
     }
 
-    bb10: {
+    bb11: {
         StorageDead(_3);
         StorageDead(_2);
         return;
     }
 
-    bb11 (cleanup): {
+    bb12 (cleanup): {
         resume;
     }
 }

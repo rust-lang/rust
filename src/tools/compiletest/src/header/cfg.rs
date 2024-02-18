@@ -1,4 +1,4 @@
-use crate::common::{CompareMode, Config, Debugger};
+use crate::common::{CompareMode, Config, Debugger, Mode};
 use crate::header::IgnoreDecision;
 use std::collections::HashSet;
 
@@ -207,6 +207,17 @@ pub(super) fn parse_cfg_name_directive<'a>(
             inner: CompareMode::STR_VARIANTS,
         },
         message: "when comparing with {name}",
+    }
+    // Coverage tests run the same test file in multiple modes.
+    // If a particular test should not be run in one of the modes, ignore it
+    // with "ignore-mode-coverage-map" or "ignore-mode-coverage-run".
+    condition! {
+        name: format!("mode-{}", config.mode.to_str()),
+        allowed_names: ContainsPrefixed {
+            prefix: "mode-",
+            inner: Mode::STR_VARIANTS,
+        },
+        message: "when the test mode is {name}",
     }
 
     if prefix == "ignore" && outcome == MatchOutcome::Invalid {

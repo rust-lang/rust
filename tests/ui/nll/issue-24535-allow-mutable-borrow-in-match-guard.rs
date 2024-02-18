@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This test illustrates that under NLL, we can remove our overly
 // conservative approach for disallowing mutations of match inputs.
 

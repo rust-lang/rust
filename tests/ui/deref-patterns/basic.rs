@@ -1,5 +1,5 @@
-// run-pass
-// check-run-results
+//@ run-pass
+//@ check-run-results
 #![feature(string_deref_patterns)]
 
 fn main() {

@@ -177,7 +177,6 @@ cfg_match! {
             [Vec<T, A> where T: DynSync, A: std::alloc::Allocator + DynSync]
             [Box<T, A> where T: ?Sized + DynSync, A: std::alloc::Allocator + DynSync]
             [crate::sync::RwLock<T> where T: DynSend + DynSync]
-            [crate::sync::OneThread<T> where T]
             [crate::sync::WorkerLocal<T> where T: DynSend]
             [crate::intern::Interned<'a, T> where 'a, T: DynSync]
             [crate::tagged_ptr::CopyTaggedPtr<P, T, CP> where P: Sync + crate::tagged_ptr::Pointer, T: Sync + crate::tagged_ptr::Tag, const CP: bool]

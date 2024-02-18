@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-# CG_CLIF_FORCE_GNU_AS will force usage of as instead of the LLVM backend of rustc as we
+# CG_CLIF_FORCE_GNU_AS will force usage of as instead of the LLVM backend of rustc as
 # the LLVM backend isn't compiled in here.
 export CG_CLIF_FORCE_GNU_AS=1
 
@@ -11,20 +11,19 @@ export CG_CLIF_FORCE_GNU_AS=1
 CG_CLIF_STDLIB_REMAP_PATH_PREFIX=/rustc/FAKE_PREFIX ./y.sh build
 
 echo "[SETUP] Rust fork"
-git clone https://github.com/rust-lang/rust.git --filter=tree:0 || true
+git clone --quiet https://github.com/rust-lang/rust.git --filter=tree:0 || true
 pushd rust
 git fetch
-git checkout -- .
-git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
+git checkout --no-progress -- .
+git checkout --no-progress "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
+
+git submodule update --quiet --init src/tools/cargo library/backtrace library/stdarch
 
 git -c user.name=Dummy -c user.email=dummy@example.com -c commit.gpgSign=false \
     am ../patches/*-stdlib-*.patch
 
 cat > config.toml <<EOF
-change-id = 115898
-
-[llvm]
-ninja = false
+change-id = 999999
 
 [build]
 rustc = "$(pwd)/../dist/bin/rustc-clif"

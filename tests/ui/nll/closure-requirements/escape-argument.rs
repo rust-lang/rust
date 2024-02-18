@@ -12,7 +12,7 @@
 // basically checking that the MIR type checker correctly enforces the
 // closure signature.
 
-// compile-flags:-Zverbose
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

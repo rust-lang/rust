@@ -68,4 +68,10 @@ fn parse(x: Void) {
     //~^ ERROR top-level or-patterns are not allowed in `let` bindings
     let (Ok(_) | Err(!)) = &res;
     let (Ok(_) | Err(&!)) = res.as_ref();
+
+    let ! = x;
+    let y @ ! = x;
+    //~^ ERROR: never patterns cannot contain variable bindings
 }
+
+fn foo(!: Void) {}

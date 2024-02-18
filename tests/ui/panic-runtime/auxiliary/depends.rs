@@ -1,4 +1,4 @@
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 
 #![feature(panic_runtime)]
 #![crate_type = "rlib"]

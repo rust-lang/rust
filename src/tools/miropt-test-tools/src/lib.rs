@@ -98,15 +98,21 @@ pub fn files_for_miropt_test(
                 from_file = format!("{}.{}.mir", test_name, first_pass);
                 to_file = Some(second_file);
             } else {
-                let ext_re = regex::Regex::new(r#"(\.(mir|dot|html))$"#).unwrap();
-                let cap = ext_re
-                    .captures_iter(test_name)
-                    .next()
-                    .expect("test_name has an invalid extension");
-                let extension = cap.get(1).unwrap().as_str();
+                // Allow-list for file extensions that can be produced by MIR dumps.
+                // Other extensions can be added here, as needed by new dump flags.
+                static ALLOWED_EXT: &[&str] = &["mir", "dot"];
+                let Some((test_name_wo_ext, test_name_ext)) = test_name.rsplit_once('.') else {
+                    panic!(
+                        "in {testfile:?}:\nEMIT_MIR has an unrecognized extension: {test_name}, expected one of {ALLOWED_EXT:?}"
+                    )
+                };
+                if !ALLOWED_EXT.contains(&test_name_ext) {
+                    panic!(
+                        "in {testfile:?}:\nEMIT_MIR has an unrecognized extension: {test_name}, expected one of {ALLOWED_EXT:?}"
+                    )
+                }
 
-                expected_file =
-                    format!("{}{}{}", test_name.trim_end_matches(extension), suffix, extension,);
+                expected_file = format!("{}{}.{}", test_name_wo_ext, suffix, test_name_ext);
                 from_file = test_name.to_string();
                 assert!(test_names.next().is_none(), "two mir pass names specified for MIR dump");
                 to_file = None;

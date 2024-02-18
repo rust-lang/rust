@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Defaulted assoc. types should normalize properly in impls that don't
 // override them.

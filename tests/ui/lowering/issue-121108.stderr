@@ -1,0 +1,25 @@
+error: `derive` attribute cannot be used at crate level
+  --> $DIR/issue-121108.rs:1:1
+   |
+LL | #![derive(Clone, Copy)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | use std::ptr::addr_of;
+   |               ------- the inner attribute doesn't annotate this `use` import
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![derive(Clone, Copy)]
+LL + #[derive(Clone, Copy)]
+   |
+
+error: cannot determine resolution for the macro `addr_of`
+  --> $DIR/issue-121108.rs:6:14
+   |
+LL |     let v = *addr_of!(data).cast();
+   |              ^^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to 2 previous errors
+

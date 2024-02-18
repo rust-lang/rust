@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(stable_features)]
 #![allow(unused_variables)]
@@ -8,7 +8,7 @@
 #![feature(repr_align)]
 
 #[repr(align(16))]
-pub struct A(#[allow(unused_tuple_struct_fields)] i64);
+pub struct A(#[allow(dead_code)] i64);
 
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn foo(x: A) {}

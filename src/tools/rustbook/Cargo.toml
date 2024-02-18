@@ -9,6 +9,6 @@ clap = "4.0.32"
 env_logger = "0.10"
 
 [dependencies.mdbook]
-version = "0.4.28"
+version = "0.4.37"
 default-features = false
 features = ["search"]

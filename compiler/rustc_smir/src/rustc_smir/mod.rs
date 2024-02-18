@@ -102,11 +102,11 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
 }
 
 /// Trait used to convert between an internal MIR type to a Stable MIR type.
-pub trait Stable<'tcx> {
+pub trait Stable<'cx> {
     /// The stable representation of the type implementing Stable.
     type T;
     /// Converts an object to the equivalent Stable MIR representation.
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T;
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T;
 }
 
 impl<'tcx, T> Stable<'tcx> for &T
@@ -115,7 +115,7 @@ where
 {
     type T = T::T;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         (*self).stable(tables)
     }
 }
@@ -126,7 +126,7 @@ where
 {
     type T = Option<T::T>;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         self.as_ref().map(|value| value.stable(tables))
     }
 }
@@ -138,7 +138,7 @@ where
 {
     type T = Result<T::T, E::T>;
 
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match self {
             Ok(val) => Ok(val.stable(tables)),
             Err(error) => Err(error.stable(tables)),
@@ -151,7 +151,7 @@ where
     T: Stable<'tcx>,
 {
     type T = Vec<T::T>;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         self.iter().map(|e| e.stable(tables)).collect()
     }
 }
@@ -162,7 +162,7 @@ where
     U: Stable<'tcx>,
 {
     type T = (T::T, U::T);
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         (self.0.stable(tables), self.1.stable(tables))
     }
 }
@@ -172,7 +172,7 @@ where
     T: Stable<'tcx>,
 {
     type T = RangeInclusive<T::T>;
-    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         RangeInclusive::new(self.start().stable(tables), self.end().stable(tables))
     }
 }

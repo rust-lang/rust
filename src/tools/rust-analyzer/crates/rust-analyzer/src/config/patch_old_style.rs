@@ -19,7 +19,7 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
                 Some(it) => {
                     let mut last = it;
                     for segment in [$(stringify!($dst)),+].into_iter().rev() {
-                        last = Value::Object(serde_json::Map::from_iter(std::iter::once((segment.to_string(), last))));
+                        last = Value::Object(serde_json::Map::from_iter(std::iter::once((segment.to_owned(), last))));
                     }
 
                     merge(json, last);

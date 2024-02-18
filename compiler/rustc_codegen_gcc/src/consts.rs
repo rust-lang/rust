@@ -24,7 +24,7 @@ fn set_global_alignment<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, gv: LValue<'gcc>
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
-                cx.sess().emit_err(InvalidMinimumAlignment { err: err.to_string() });
+                cx.sess().dcx().emit_err(InvalidMinimumAlignment { err: err.to_string() });
             }
         }
     }

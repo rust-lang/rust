@@ -1,6 +1,7 @@
-use base_db::{fixture::WithFixture, FileId};
+use base_db::FileId;
 use hir_def::db::DefDatabase;
 use syntax::{TextRange, TextSize};
+use test_fixture::WithFixture;
 
 use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
 
@@ -29,10 +30,10 @@ fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalEr
             Substitution::empty(Interner),
             db.trait_environment(func_id.into()),
         )
-        .map_err(|e| MirEvalError::MirLowerError(func_id.into(), e))?;
-    let (result, stdout, stderr) = interpret_mir(db, body, false, None);
+        .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
+    let (result, output) = interpret_mir(db, body, false, None);
     result?;
-    Ok((stdout, stderr))
+    Ok((output.stdout().into_owned(), output.stderr().into_owned()))
 }
 
 fn check_pass(ra_fixture: &str) {
@@ -48,8 +49,8 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
             let mut err = String::new();
             let line_index = |size: TextSize| {
                 let mut size = u32::from(size) as usize;
-                let mut lines = ra_fixture.lines().enumerate();
-                while let Some((i, l)) = lines.next() {
+                let lines = ra_fixture.lines().enumerate();
+                for (i, l) in lines {
                     if let Some(x) = size.checked_sub(l.len()) {
                         size = x;
                     } else {

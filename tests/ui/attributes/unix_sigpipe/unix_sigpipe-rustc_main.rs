@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:sigpipe-utils.rs
+//@ run-pass
+//@ aux-build:sigpipe-utils.rs
 
 #![feature(unix_sigpipe)]
 #![feature(rustc_attrs)]

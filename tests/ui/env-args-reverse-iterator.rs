@@ -1,6 +1,6 @@
-// run-pass
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ run-pass
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
 
 use std::env::args;
 use std::process::Command;

@@ -96,7 +96,7 @@ impl FlagComputation {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
             }
 
-            ty::Coroutine(_, args, _) => {
+            ty::Coroutine(_, args) => {
                 let args = args.as_coroutine();
                 let should_remove_further_specializable =
                     !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
@@ -134,6 +134,22 @@ impl FlagComputation {
                 self.add_ty(args.sig_as_fn_ptr_ty());
                 self.add_ty(args.kind_ty());
                 self.add_ty(args.tupled_upvars_ty());
+            }
+
+            &ty::CoroutineClosure(_, args) => {
+                let args = args.as_coroutine_closure();
+                let should_remove_further_specializable =
+                    !self.flags.contains(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
+                self.add_args(args.parent_args());
+                if should_remove_further_specializable {
+                    self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
+                }
+
+                self.add_ty(args.kind_ty());
+                self.add_ty(args.signature_parts_ty());
+                self.add_ty(args.tupled_upvars_ty());
+                self.add_ty(args.coroutine_captures_by_ref_ty());
+                self.add_ty(args.coroutine_witness_ty());
             }
 
             &ty::Bound(debruijn, _) => {

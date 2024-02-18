@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 
 fn bar(v: &mut [usize]) {

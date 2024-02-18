@@ -9,7 +9,7 @@
 // This test was amended to also serve as a regression test for #92308, where
 // this suggestion would not trigger with async functions.
 //
-// edition:2018
+//@ edition:2018
 
 fn main() {
 }

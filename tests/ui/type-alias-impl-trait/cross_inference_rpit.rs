@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn foo(b: bool) -> impl Copy {
     if b {

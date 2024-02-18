@@ -241,7 +241,7 @@ mod issue11300 {
         foo2::<(), _>([1, 2, 3].into_iter());
 
         // This should lint. Removing the `.into_iter()` means that `I` gets substituted with `[i32; 3]`,
-        // and `i32: Helper2<[i32, 3]>` is true, so this call is indeed unncessary.
+        // and `i32: Helper2<[i32, 3]>` is true, so this call is indeed unnecessary.
         foo3([1, 2, 3]);
     }
 
@@ -253,7 +253,7 @@ mod issue11300 {
 
         S1.foo([1, 2]);
 
-        // ICE that occured in itertools
+        // ICE that occurred in itertools
         trait Itertools {
             fn interleave_shortest<J>(self, other: J)
             where

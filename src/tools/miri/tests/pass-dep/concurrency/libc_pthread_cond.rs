@@ -22,7 +22,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
         let mut now_mu: MaybeUninit<libc::timespec> = MaybeUninit::uninit();
         assert_eq!(libc::clock_gettime(clock_id, now_mu.as_mut_ptr()), 0);
         let now = now_mu.assume_init();
-        // Waiting for a second... mostly because waiting less requires mich more tricky arithmetic.
+        // Waiting for a second... mostly because waiting less requires much more tricky arithmetic.
         // FIXME: wait less.
         let timeout = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: now.tv_nsec };
 

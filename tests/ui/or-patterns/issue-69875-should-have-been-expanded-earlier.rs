@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn main() {
     let (0 | (1 | _)) = 0;

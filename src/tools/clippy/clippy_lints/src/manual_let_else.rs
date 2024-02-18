@@ -61,7 +61,7 @@ impl<'tcx> QuestionMark {
             && let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
         {
             match if_let_or_match {
-                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => {
+                IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else, ..) => {
                     if let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then)
                         && let Some(if_else) = if_else
                         && is_never_expr(cx, if_else).is_some()

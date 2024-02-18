@@ -43,7 +43,7 @@ impl LateLintPass<'_> for DefaultHashTypes {
             Some(sym::HashSet) => "FxHashSet",
             _ => return,
         };
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             DEFAULT_HASH_TYPES,
             path.span,
             DefaultHashTypesDiag { preferred, used: cx.tcx.item_name(def_id) },
@@ -91,7 +91,7 @@ impl LateLintPass<'_> for QueryStability {
         if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, args) {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     POTENTIAL_QUERY_INSTABILITY,
                     span,
                     QueryInstability { query: cx.tcx.item_name(def_id) },
@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         {
             let span =
                 path.span.with_hi(segment.args.map_or(segment.ident.span, |a| a.span_ext).hi());
-            cx.emit_spanned_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind { suggestion: span });
+            cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindKind { suggestion: span });
         }
     }
 
@@ -144,15 +144,14 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
         match &ty.kind {
             TyKind::Path(QPath::Resolved(_, path)) => {
                 if lint_ty_kind_usage(cx, &path.res) {
-                    let hir = cx.tcx.hir();
-                    let span = match hir.find_parent(ty.hir_id) {
-                        Some(Node::Pat(Pat {
+                    let span = match cx.tcx.parent_hir_node(ty.hir_id) {
+                        Node::Pat(Pat {
                             kind:
                                 PatKind::Path(qpath)
                                 | PatKind::TupleStruct(qpath, ..)
                                 | PatKind::Struct(qpath, ..),
                             ..
-                        })) => {
+                        }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -161,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 None
                             }
                         }
-                        Some(Node::Expr(Expr { kind: ExprKind::Path(qpath), .. })) => {
+                        Node::Expr(Expr { kind: ExprKind::Path(qpath), .. }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -172,7 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                         }
                         // Can't unify these two branches because qpath below is `&&` and above is `&`
                         // and `A | B` paths don't play well together with adjustments, apparently.
-                        Some(Node::Expr(Expr { kind: ExprKind::Struct(qpath, ..), .. })) => {
+                        Node::Expr(Expr { kind: ExprKind::Struct(qpath, ..), .. }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -186,19 +185,19 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
 
                     match span {
                         Some(span) => {
-                            cx.emit_spanned_lint(
+                            cx.emit_span_lint(
                                 USAGE_OF_TY_TYKIND,
                                 path.span,
                                 TykindKind { suggestion: span },
                             );
                         }
-                        None => cx.emit_spanned_lint(USAGE_OF_TY_TYKIND, path.span, TykindDiag),
+                        None => cx.emit_span_lint(USAGE_OF_TY_TYKIND, path.span, TykindDiag),
                     }
                 } else if !ty.span.from_expansion()
                     && path.segments.len() > 1
                     && let Some(ty) = is_ty_or_ty_ctxt(cx, path)
                 {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         USAGE_OF_QUALIFIED_TY,
                         path.span,
                         TyQualified { ty, suggestion: path.span },
@@ -285,7 +284,7 @@ impl EarlyLintPass for LintPassImpl {
                         && call_site.ctxt().outer_expn_data().kind
                             != ExpnKind::Macro(MacroKind::Bang, sym::declare_lint_pass)
                     {
-                        cx.emit_spanned_lint(
+                        cx.emit_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,
                             LintPassByHand,
@@ -327,7 +326,7 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                         if is_doc_keyword(keyword) {
                             return;
                         }
-                        cx.emit_spanned_lint(
+                        cx.emit_span_lint(
                             EXISTING_DOC_KEYWORD,
                             attr.span,
                             NonExistentDocKeyword { keyword },
@@ -345,7 +344,7 @@ declare_tool_lint! {
     ///
     /// More details on translatable diagnostics can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/translation.html).
     pub rustc::UNTRANSLATABLE_DIAGNOSTIC,
-    Allow,
+    Deny,
     "prevent creation of diagnostics which cannot be translated",
     report_in_external_macro: true
 }
@@ -357,7 +356,7 @@ declare_tool_lint! {
     ///
     /// More details on diagnostics implementations can be found [here](https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html).
     pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
-    Allow,
+    Deny,
     "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",
     report_in_external_macro: true
 }
@@ -405,7 +404,7 @@ impl LateLintPass<'_> for Diagnostics {
         }
         debug!(?found_impl);
         if !found_parent_with_attr && !found_impl {
-            cx.emit_spanned_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, DiagOutOfImpl);
+            cx.emit_span_lint(DIAGNOSTIC_OUTSIDE_OF_IMPL, span, DiagOutOfImpl);
         }
 
         let mut found_diagnostic_message = false;
@@ -421,7 +420,7 @@ impl LateLintPass<'_> for Diagnostics {
         }
         debug!(?found_diagnostic_message);
         if !found_parent_with_attr && !found_diagnostic_message {
-            cx.emit_spanned_lint(UNTRANSLATABLE_DIAGNOSTIC, span, UntranslatableDiag);
+            cx.emit_span_lint(UNTRANSLATABLE_DIAGNOSTIC, span, UntranslatableDiag);
         }
     }
 }
@@ -490,7 +489,7 @@ impl EarlyLintPass for Diagnostics {
         }) {
             return;
         }
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             UNTRANSLATABLE_DIAGNOSTIC_TRIVIAL,
             stmt.span,
             UntranslatableDiagnosticTrivial,
@@ -528,7 +527,7 @@ impl LateLintPass<'_> for BadOptAccess {
                 && let Some(lit) = item.lit()
                 && let ast::LitKind::Str(val, _) = lit.kind
             {
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     BAD_OPT_ACCESS,
                     expr.span,
                     BadOptAccessDiag { msg: val.as_str() },
@@ -549,9 +548,11 @@ declare_lint_pass!(SpanUseEqCtxt => [SPAN_USE_EQ_CTXT]);
 
 impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-        if let ExprKind::Binary(BinOp { node: BinOpKind::Eq, .. }, lhs, rhs) = expr.kind {
+        if let ExprKind::Binary(BinOp { node: BinOpKind::Eq | BinOpKind::Ne, .. }, lhs, rhs) =
+            expr.kind
+        {
             if is_span_ctxt_call(cx, lhs) && is_span_ctxt_call(cx, rhs) {
-                cx.emit_spanned_lint(SPAN_USE_EQ_CTXT, expr.span, SpanUseEqCtxtDiag);
+                cx.emit_span_lint(SPAN_USE_EQ_CTXT, expr.span, SpanUseEqCtxtDiag);
             }
         }
     }

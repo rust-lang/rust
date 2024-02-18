@@ -52,7 +52,7 @@ pub struct LintGroup {
     generate_lint_descriptor(sh, &mut contents);
     contents.push('\n');
 
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
     let unstable_book = project_root().join("./target/unstable-book-gen");
     cmd!(
         sh,
@@ -241,6 +241,7 @@ fn unescape(s: &str) -> String {
     s.replace(r#"\""#, "").replace(r#"\n"#, "\n").replace(r#"\r"#, "")
 }
 
+#[allow(clippy::print_stderr)]
 fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
     let file_content = std::fs::read_to_string(path).unwrap();
     let mut clippy_lints: Vec<ClippyLint> = Vec::new();
@@ -282,7 +283,7 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
             let line = &line[..up_to];
 
             let clippy_lint = clippy_lints.last_mut().expect("clippy lint must already exist");
-            clippy_lint.help = unescape(line).trim().to_string();
+            clippy_lint.help = unescape(line).trim().to_owned();
         }
     }
     clippy_lints.sort_by(|lint, lint2| lint.id.cmp(&lint2.id));

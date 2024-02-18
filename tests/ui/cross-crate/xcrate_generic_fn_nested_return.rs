@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:xcrate_generic_fn_nested_return.rs
+//@ run-pass
+//@ aux-build:xcrate_generic_fn_nested_return.rs
 
 extern crate xcrate_generic_fn_nested_return as test;
 

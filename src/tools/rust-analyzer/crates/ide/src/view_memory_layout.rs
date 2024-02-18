@@ -69,7 +69,7 @@ impl FieldOrTupleIdx {
                 .as_str()
                 .map(|s| s.to_owned())
                 .unwrap_or_else(|| format!(".{}", f.name(db).as_tuple_index().unwrap())),
-            FieldOrTupleIdx::TupleIdx(i) => format!(".{i}").to_owned(),
+            FieldOrTupleIdx::TupleIdx(i) => format!(".{i}"),
         }
     }
 }
@@ -128,7 +128,7 @@ pub(crate) fn view_memory_layout(
             )
             .collect::<Vec<_>>();
 
-        if fields.len() == 0 {
+        if fields.is_empty() {
             return;
         }
 
@@ -174,7 +174,7 @@ pub(crate) fn view_memory_layout(
 
         for (i, (_, child_ty)) in fields.iter().enumerate() {
             if let Ok(child_layout) = child_ty.layout(db) {
-                read_layout(nodes, db, &child_ty, &child_layout, children_start + i);
+                read_layout(nodes, db, child_ty, &child_layout, children_start + i);
             }
         }
     }
@@ -203,7 +203,7 @@ pub(crate) fn view_memory_layout(
 
             let mut nodes = vec![MemoryLayoutNode {
                 item_name,
-                typename: typename.clone(),
+                typename,
                 size: layout.size(),
                 offset: 0,
                 alignment: layout.align(),

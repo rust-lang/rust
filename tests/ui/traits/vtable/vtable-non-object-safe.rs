@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 #![feature(rustc_attrs)]
 
 // Ensure that non-object-safe methods in Iterator does not generate

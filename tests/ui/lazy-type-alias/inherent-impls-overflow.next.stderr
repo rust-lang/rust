@@ -1,0 +1,38 @@
+error[E0275]: overflow evaluating the requirement `Loop == _`
+  --> $DIR/inherent-impls-overflow.rs:9:6
+   |
+LL | impl Loop {}
+   |      ^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/inherent-impls-overflow.rs:11:12
+   |
+LL | type Poly0<T> = Poly1<(T,)>;
+   |            ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0392]: type parameter `T` is never used
+  --> $DIR/inherent-impls-overflow.rs:14:12
+   |
+LL | type Poly1<T> = Poly0<(T,)>;
+   |            ^ unused type parameter
+   |
+   = help: consider removing `T` or referring to it in the body of the type alias
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0275]: overflow evaluating the requirement `Poly0<()> == _`
+  --> $DIR/inherent-impls-overflow.rs:18:6
+   |
+LL | impl Poly0<()> {}
+   |      ^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0275, E0392.
+For more information about an error, try `rustc --explain E0275`.

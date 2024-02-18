@@ -29,7 +29,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
                     }
                 }
                 if let Some(t) = path_for_pass_by_value(cx, inner_ty) {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         PASS_BY_VALUE,
                         ty.span,
                         PassByValueDiag { ty: t, suggestion: ty.span },

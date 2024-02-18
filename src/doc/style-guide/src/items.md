@@ -9,8 +9,8 @@ an item appears at module level or within another item.
 alphabetically.
 
 `use` statements, and module *declarations* (`mod foo;`, not `mod { ... }`)
-must come before other items. Put imports before module declarations. Sort each
-alphabetically, except that `self` and `super` must come before any other
+must come before other items. Put imports before module declarations.
+Version-sort each, except that `self` and `super` must come before any other
 names.
 
 Don't automatically move module declarations annotated with `#[macro_use]`,
@@ -467,8 +467,10 @@ foo::{
 A *group* of imports is a set of imports on the same or sequential lines. One or
 more blank lines or other items (e.g., a function) separate groups of imports.
 
-Within a group of imports, imports must be sorted ASCIIbetically (uppercase
-before lowercase). Groups of imports must not be merged or re-ordered.
+Within a group of imports, imports must be version-sorted, except that
+non-lowercase characters (characters that can start an `UpperCamelCase`
+identifier) must be sorted before lowercase characters. Groups of imports must
+not be merged or re-ordered.
 
 E.g., input:
 
@@ -495,10 +497,15 @@ re-ordering.
 
 ### Ordering list import
 
-Names in a list import must be sorted ASCIIbetically, but with `self` and
-`super` first, and groups and glob imports last. This applies recursively. For
-example, `a::*` comes before `b::a` but `a::b` comes before `a::*`. E.g.,
-`use foo::bar::{a, b::c, b::d, b::d::{x, y, z}, b::{self, r, s}};`.
+Names in a list import must be version-sorted, except that:
+- `self` and `super` always come first if present,
+- non-lowercase characters (characters that can start an `UpperCamelCase`
+  identifier) must be sorted before lowercase characters, and
+- groups and glob imports always come last if present.
+
+This applies recursively. For example, `a::*` comes before `b::a` but `a::b`
+comes before `a::*`. E.g., `use foo::bar::{a, b::c, b::d, b::d::{x, y, z},
+b::{self, r, s}};`.
 
 ### Normalisation
 

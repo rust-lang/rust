@@ -40,7 +40,7 @@ pub(crate) fn useless_braces(
         acc.push(
             Diagnostic::new(
                 DiagnosticCode::RustcLint("unused_braces"),
-                "Unnecessary braces in use statement".to_string(),
+                "Unnecessary braces in use statement".to_owned(),
                 FileRange { file_id, range: use_range },
             )
             .with_main_node(InFile::new(file_id.into(), node.clone()))
@@ -112,7 +112,7 @@ mod a {
         );
 
         let mut config = DiagnosticsConfig::test_sample();
-        config.disabled.insert("syntax-error".to_string());
+        config.disabled.insert("syntax-error".to_owned());
         check_diagnostics_with_config(
             config,
             r#"

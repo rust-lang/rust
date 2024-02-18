@@ -1,5 +1,5 @@
-// run-pass
-// pretty-expanded FIXME #23616
+//@ run-pass
+//@ pretty-expanded FIXME #23616
 #![allow(non_upper_case_globals)]
 
 #![allow(dead_code)]

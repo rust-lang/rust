@@ -25,7 +25,7 @@ use crate::infer::region_constraints::VerifyIfEq;
 /// * `None` if `some_type` cannot be made equal to `test_ty`,
 ///   no matter the values of the variables in `exists`.
 /// * `Some(r)` with a suitable bound (typically the value of `bound_region`, modulo
-///   any bound existential variables, which will be substituted) for the
+///   any bound existential variables, which will be instantiated) for the
 ///   type under test.
 ///
 /// NB: This function uses a simplistic, syntactic version of type equality.
@@ -59,7 +59,7 @@ pub fn extract_verify_if_eq<'tcx>(
         }
     } else {
         // The region does not contain any bound variables, so we don't need
-        // to do any substitution.
+        // to do any instantiation.
         //
         // Example:
         //

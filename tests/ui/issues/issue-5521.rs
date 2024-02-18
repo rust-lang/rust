@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// aux-build:issue-5521.rs
+//@ aux-build:issue-5521.rs
 
 
 

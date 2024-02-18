@@ -1,4 +1,4 @@
-// known-bug: unknown
+//@ known-bug: unknown
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

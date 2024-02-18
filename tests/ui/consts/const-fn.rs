@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(stable_features)]
 
 // A very basic test of const fn functionality.

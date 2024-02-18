@@ -47,6 +47,18 @@ impl Drop for Issue9427FollowUp {
     }
 }
 
+struct Issue9427Followup2 {
+    ptr: *const (),
+}
+impl Issue9427Followup2 {
+    fn from_owned(ptr: *const ()) -> Option<Self> {
+        (!ptr.is_null()).then(|| Self { ptr })
+    }
+}
+impl Drop for Issue9427Followup2 {
+    fn drop(&mut self) {}
+}
+
 struct Issue10437;
 impl Deref for Issue10437 {
     type Target = u32;
@@ -128,6 +140,7 @@ fn main() {
     // Should not lint - bool
     let _ = (0 == 1).then(|| Issue9427(0)); // Issue9427 has a significant drop
     let _ = false.then(|| Issue9427FollowUp); // Issue9427FollowUp has a significant drop
+    let _ = false.then(|| Issue9427Followup2 { ptr: std::ptr::null() });
 
     // should not lint, bind_instead_of_map takes priority
     let _ = Some(10).and_then(|idx| Some(ext_arr[idx]));

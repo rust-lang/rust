@@ -1,5 +1,5 @@
-// aux-build: no-mangle-associated-fn.rs
-// run-pass
+//@ aux-build: no-mangle-associated-fn.rs
+//@ run-pass
 
 extern crate no_mangle_associated_fn;
 
@@ -12,7 +12,7 @@ impl Foo {
     }
 }
 
-trait Bar {
+trait Bar { //~ WARN trait `Bar` is never used
     fn qux() -> u8;
 }
 

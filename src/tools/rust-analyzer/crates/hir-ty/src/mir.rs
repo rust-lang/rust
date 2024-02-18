@@ -14,17 +14,18 @@ use crate::{
 };
 use base_db::CrateId;
 use chalk_ir::Mutability;
+use either::Either;
 use hir_def::{
     hir::{BindingId, Expr, ExprId, Ordering, PatId},
-    DefWithBodyId, FieldId, StaticId, UnionId, VariantId,
+    DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
+mod borrowck;
 mod eval;
 mod lower;
-mod borrowck;
-mod pretty;
 mod monomorphization;
+mod pretty;
 
 pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
 pub use eval::{
@@ -97,16 +98,16 @@ pub enum Operand {
 }
 
 impl Operand {
-    fn from_concrete_const(data: Vec<u8>, memory_map: MemoryMap, ty: Ty) -> Self {
+    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap, ty: Ty) -> Self {
         Operand::Constant(intern_const_scalar(ConstScalar::Bytes(data, memory_map), ty))
     }
 
-    fn from_bytes(data: Vec<u8>, ty: Ty) -> Self {
+    fn from_bytes(data: Box<[u8]>, ty: Ty) -> Self {
         Operand::from_concrete_const(data, MemoryMap::default(), ty)
     }
 
     fn const_zst(ty: Ty) -> Operand {
-        Self::from_bytes(vec![], ty)
+        Self::from_bytes(Box::default(), ty)
     }
 
     fn from_fn(
@@ -117,16 +118,16 @@ impl Operand {
         let ty =
             chalk_ir::TyKind::FnDef(CallableDefId::FunctionId(func_id).to_chalk(db), generic_args)
                 .intern(Interner);
-        Operand::from_bytes(vec![], ty)
+        Operand::from_bytes(Box::default(), ty)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ProjectionElem<V, T> {
     Deref,
-    Field(FieldId),
+    Field(Either<FieldId, TupleFieldId>),
     // FIXME: get rid of this, and use FieldId for tuples and closures
-    TupleOrClosureField(usize),
+    ClosureField(usize),
     Index(V),
     ConstantIndex { offset: u64, from_end: bool },
     Subslice { from: u64, to: u64 },
@@ -158,32 +159,38 @@ impl<V, T> ProjectionElem<V, T> {
                 }
                 _ => {
                     never!("Overloaded deref on type {} is not a projection", base.display(db));
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
-            ProjectionElem::Field(f) => match &base.kind(Interner) {
+            ProjectionElem::Field(Either::Left(f)) => match &base.kind(Interner) {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
                 ty => {
                     never!("Only adt has field, found {:?}", ty);
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
-            ProjectionElem::TupleOrClosureField(f) => match &base.kind(Interner) {
+            ProjectionElem::Field(Either::Right(f)) => match &base.kind(Interner) {
                 TyKind::Tuple(_, subst) => subst
                     .as_slice(Interner)
-                    .get(*f)
+                    .get(f.index as usize)
                     .map(|x| x.assert_ty_ref(Interner))
                     .cloned()
                     .unwrap_or_else(|| {
                         never!("Out of bound tuple field");
                         TyKind::Error.intern(Interner)
                     }),
+                _ => {
+                    never!("Only tuple has tuple field");
+                    TyKind::Error.intern(Interner)
+                }
+            },
+            ProjectionElem::ClosureField(f) => match &base.kind(Interner) {
                 TyKind::Closure(id, subst) => closure_field(*id, subst, *f),
                 _ => {
-                    never!("Only tuple or closure has tuple or closure field");
-                    return TyKind::Error.intern(Interner);
+                    never!("Only closure has closure field");
+                    TyKind::Error.intern(Interner)
                 }
             },
             ProjectionElem::ConstantIndex { .. } | ProjectionElem::Index(_) => {
@@ -191,7 +198,7 @@ impl<V, T> ProjectionElem<V, T> {
                     TyKind::Array(inner, _) | TyKind::Slice(inner) => inner.clone(),
                     _ => {
                         never!("Overloaded index is not a projection");
-                        return TyKind::Error.intern(Interner);
+                        TyKind::Error.intern(Interner)
                     }
                 }
             }
@@ -210,12 +217,12 @@ impl<V, T> ProjectionElem<V, T> {
                 TyKind::Slice(_) => base.clone(),
                 _ => {
                     never!("Subslice projection should only happen on slice and array");
-                    return TyKind::Error.intern(Interner);
+                    TyKind::Error.intern(Interner)
                 }
             },
             ProjectionElem::OpaqueCast(_) => {
                 never!("We don't emit these yet");
-                return TyKind::Error.intern(Interner);
+                TyKind::Error.intern(Interner)
             }
         }
     }
@@ -292,7 +299,7 @@ pub struct Place {
 impl Place {
     fn is_parent(&self, child: &Place, store: &ProjectionStore) -> bool {
         self.local == child.local
-            && child.projection.lookup(store).starts_with(&self.projection.lookup(store))
+            && child.projection.lookup(store).starts_with(self.projection.lookup(store))
     }
 
     /// The place itself is not included
@@ -326,7 +333,7 @@ pub enum AggregateKind {
     Adt(VariantId, Substitution),
     Union(UnionId, FieldId),
     Closure(Ty),
-    //Generator(LocalDefId, SubstsRef, Movability),
+    //Coroutine(LocalDefId, SubstsRef, Movability),
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -446,8 +453,8 @@ pub enum TerminatorKind {
     /// `dest = move _0`. It might additionally do other things, like have side-effects in the
     /// aliasing model.
     ///
-    /// If the body is a generator body, this has slightly different semantics; it instead causes a
-    /// `GeneratorState::Returned(_0)` to be created (as if by an `Aggregate` rvalue) and assigned
+    /// If the body is a coroutine body, this has slightly different semantics; it instead causes a
+    /// `CoroutineState::Returned(_0)` to be created (as if by an `Aggregate` rvalue) and assigned
     /// to the return place.
     Return,
 
@@ -559,14 +566,14 @@ pub enum TerminatorKind {
 
     /// Marks a suspend point.
     ///
-    /// Like `Return` terminators in generator bodies, this computes `value` and then a
-    /// `GeneratorState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
+    /// Like `Return` terminators in coroutine bodies, this computes `value` and then a
+    /// `CoroutineState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
     /// the return place of the function calling this one, and execution continues in the calling
     /// function. When next invoked with the same first argument, execution of this function
     /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
-    /// place. If the generator is dropped before then, the `drop` basic block is invoked.
+    /// place. If the coroutine is dropped before then, the `drop` basic block is invoked.
     ///
-    /// Not permitted in bodies that are not generator bodies, or after generator lowering.
+    /// Not permitted in bodies that are not coroutine bodies, or after coroutine lowering.
     ///
     /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
     Yield {
@@ -576,21 +583,21 @@ pub enum TerminatorKind {
         resume: BasicBlockId,
         /// The place to store the resume argument in.
         resume_arg: Place,
-        /// Cleanup to be done if the generator is dropped at this suspend point.
+        /// Cleanup to be done if the coroutine is dropped at this suspend point.
         drop: Option<BasicBlockId>,
     },
 
-    /// Indicates the end of dropping a generator.
+    /// Indicates the end of dropping a coroutine.
     ///
-    /// Semantically just a `return` (from the generators drop glue). Only permitted in the same situations
+    /// Semantically just a `return` (from the coroutines drop glue). Only permitted in the same situations
     /// as `yield`.
     ///
-    /// **Needs clarification**: Is that even correct? The generator drop code is always confusing
+    /// **Needs clarification**: Is that even correct? The coroutine drop code is always confusing
     /// to me, because it's not even really in the current body.
     ///
     /// **Needs clarification**: Are there type system constraints on these terminators? Should
     /// there be a "block type" like `cleanup` blocks for them?
-    GeneratorDrop,
+    CoroutineDrop,
 
     /// A block where control flow only ever takes one real path, but borrowck needs to be more
     /// conservative.
@@ -982,8 +989,8 @@ pub enum Rvalue {
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
     ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Generator`. After
-    /// generator lowering, `Generator` aggregate kinds are disallowed too.
+    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
+    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(AggregateKind, Box<[Operand]>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
@@ -1133,7 +1140,7 @@ impl MirBody {
                     | TerminatorKind::FalseUnwind { .. }
                     | TerminatorKind::Goto { .. }
                     | TerminatorKind::UnwindResume
-                    | TerminatorKind::GeneratorDrop
+                    | TerminatorKind::CoroutineDrop
                     | TerminatorKind::Abort
                     | TerminatorKind::Return
                     | TerminatorKind::Unreachable => (),

@@ -1,8 +1,8 @@
-// run-pass
+//@ check-pass
 
 #![allow(unused_imports)]
 
-// aux-build:trait_superkinds_in_metadata.rs
+//@ aux-build:trait_superkinds_in_metadata.rs
 
 // Tests (correct) usage of trait super-builtin-kinds cross-crate.
 
@@ -12,7 +12,7 @@ use trait_superkinds_in_metadata::RequiresCopy;
 use std::marker;
 
 #[derive(Copy, Clone)]
-struct X<T>(#[allow(unused_tuple_struct_fields)] T);
+struct X<T>(#[allow(dead_code)] T);
 
 impl<T:Sync> RequiresShare for X<T> { }
 

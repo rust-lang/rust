@@ -1,7 +1,7 @@
 // Check that we don't have a cycle when we try to normalize `Self::U` in the
 // bound below. Make sure that having a lifetime on the trait object doesn't break things
 
-// check-pass
+//@ check-pass
 
 trait Is {
     type T;

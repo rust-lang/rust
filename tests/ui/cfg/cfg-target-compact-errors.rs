@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #![feature(cfg_target_compact)]
 

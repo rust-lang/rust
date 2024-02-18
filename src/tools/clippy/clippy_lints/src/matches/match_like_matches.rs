@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
 use rustc_ast::{Attribute, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat, PatKind, QPath};
+use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -41,14 +41,8 @@ pub(super) fn check_match<'tcx>(
     find_matches_sugg(
         cx,
         scrutinee,
-        arms.iter().map(|arm| {
-            (
-                cx.tcx.hir().attrs(arm.hir_id),
-                Some(arm.pat),
-                arm.body,
-                arm.guard.as_ref(),
-            )
-        }),
+        arms.iter()
+            .map(|arm| (cx.tcx.hir().attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
         e,
         false,
     )
@@ -67,14 +61,7 @@ where
     I: Clone
         + DoubleEndedIterator
         + ExactSizeIterator
-        + Iterator<
-            Item = (
-                &'a [Attribute],
-                Option<&'a Pat<'b>>,
-                &'a Expr<'b>,
-                Option<&'a Guard<'b>>,
-            ),
-        >,
+        + Iterator<Item = (&'a [Attribute], Option<&'a Pat<'b>>, &'a Expr<'b>, Option<&'a Expr<'b>>)>,
 {
     if !span_contains_comment(cx.sess().source_map(), expr.span)
         && iter.len() >= 2
@@ -115,7 +102,7 @@ where
                 })
                 .join(" | ")
         };
-        let pat_and_guard = if let Some(Guard::If(g)) = first_guard {
+        let pat_and_guard = if let Some(g) = first_guard {
             format!(
                 "{pat} if {}",
                 snippet_with_applicability(cx, g.span, "..", &mut applicability)

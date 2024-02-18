@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that arrays are completely captured by closures by relying on the borrow check diagnostics
 

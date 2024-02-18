@@ -6,7 +6,7 @@
 // - a custom `Drop` is needed somewhere in the type that `accept` returns, to create universes
 //   during liveness and dropck outlives computation
 
-// check-fail
+//@ check-fail
 
 trait Role {
     type Inner;

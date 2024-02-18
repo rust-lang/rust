@@ -1,7 +1,7 @@
 // Test that MIR borrowck and NLL analysis can handle constants of
 // arbitrary types without ICEs.
 
-// check-pass
+//@ check-pass
 
 const HI: &str = "hi";
 

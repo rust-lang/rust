@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 
 struct Foo;
 
 trait Trait {
-    fn bar(&self);
+    fn bar(&self); //~ WARN method `bar` is never used
 }
 
 // Inherent impls should be preferred over trait ones.

@@ -70,7 +70,7 @@ impl<T> Ord for Idx<T> {
 
 impl<T> PartialOrd for Idx<T> {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.raw.partial_cmp(&other.raw)
+        Some(self.cmp(other))
     }
 }
 
@@ -374,7 +374,7 @@ impl<T> Arena<T> {
     /// ```
     pub fn iter(
         &self,
-    ) -> impl Iterator<Item = (Idx<T>, &T)> + ExactSizeIterator + DoubleEndedIterator + Clone {
+    ) -> impl ExactSizeIterator<Item = (Idx<T>, &T)> + DoubleEndedIterator + Clone {
         self.data.iter().enumerate().map(|(idx, value)| (Idx::from_raw(RawIdx(idx as u32)), value))
     }
 
@@ -394,7 +394,7 @@ impl<T> Arena<T> {
     /// ```
     pub fn iter_mut(
         &mut self,
-    ) -> impl Iterator<Item = (Idx<T>, &mut T)> + ExactSizeIterator + DoubleEndedIterator {
+    ) -> impl ExactSizeIterator<Item = (Idx<T>, &mut T)> + DoubleEndedIterator {
         self.data
             .iter_mut()
             .enumerate()
@@ -414,7 +414,7 @@ impl<T> Arena<T> {
     /// assert_eq!(iterator.next(), Some(&40));
     /// assert_eq!(iterator.next(), Some(&60));
     /// ```
-    pub fn values(&self) -> impl Iterator<Item = &T> + ExactSizeIterator + DoubleEndedIterator {
+    pub fn values(&self) -> impl ExactSizeIterator<Item = &T> + DoubleEndedIterator {
         self.data.iter()
     }
 
@@ -432,9 +432,7 @@ impl<T> Arena<T> {
     ///
     /// assert_eq!(arena[idx1], 10);
     /// ```
-    pub fn values_mut(
-        &mut self,
-    ) -> impl Iterator<Item = &mut T> + ExactSizeIterator + DoubleEndedIterator {
+    pub fn values_mut(&mut self) -> impl ExactSizeIterator<Item = &mut T> + DoubleEndedIterator {
         self.data.iter_mut()
     }
 

@@ -196,11 +196,16 @@ fn test_simple_types() {
     let _var: &str = "test";
     //~^ ERROR: redundant type annotation
 
-    let _var: &[u8] = b"test";
+    let _var: &[u8; 4] = b"test";
     //~^ ERROR: redundant type annotation
 
     let _var: bool = false;
     //~^ ERROR: redundant type annotation
+}
+
+fn issue12212() {
+    // This should not be linted
+    let _var: &[u8] = b"test";
 }
 
 fn issue11190() {}

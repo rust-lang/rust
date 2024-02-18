@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(stmt_expr_attributes)]
 
 pub fn main() {

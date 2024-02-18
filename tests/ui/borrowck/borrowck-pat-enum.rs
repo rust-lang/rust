@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 
 fn match_ref(v: Option<isize>) -> isize {

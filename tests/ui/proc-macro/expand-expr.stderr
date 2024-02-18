@@ -11,10 +11,10 @@ LL | expand_expr_fail!($);
    |                   ^ expected expression
 
 error: expected expression, found `$`
-  --> $DIR/expand-expr.rs:40:23
+  --> $DIR/expand-expr.rs:112:29
    |
-LL |     ($($t:tt)*) => { $($t)* };
-   |                       ^^^^ expected expression
+LL | expand_expr_fail!(echo_tts!($));
+   |                             ^ expected expression
 
 error: expected expression, found `$`
   --> $DIR/expand-expr.rs:113:28

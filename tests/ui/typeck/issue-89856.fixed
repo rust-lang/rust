@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn take_str_maybe(_: Option<&str>) { }
 fn main() {

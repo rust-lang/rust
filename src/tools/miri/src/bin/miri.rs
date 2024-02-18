@@ -1,8 +1,11 @@
+#![feature(generic_nonzero)]
 #![feature(rustc_private, stmt_expr_attributes)]
 #![allow(
     clippy::manual_range_contains,
     clippy::useless_format,
-    clippy::field_reassign_with_default
+    clippy::field_reassign_with_default,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic
 )]
 
 extern crate rustc_data_structures;
@@ -13,13 +16,13 @@ extern crate rustc_log;
 extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
+#[macro_use]
+extern crate tracing;
 
 use std::env::{self, VarError};
-use std::num::NonZeroU64;
+use std::num::NonZero;
 use std::path::PathBuf;
 use std::str::FromStr;
-
-use log::debug;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
@@ -66,19 +69,19 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
             if tcx.sess.compile_status().is_err() {
-                tcx.sess.fatal("miri cannot be run on programs that fail compilation");
+                tcx.dcx().fatal("miri cannot be run on programs that fail compilation");
             }
 
             let early_dcx = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
             init_late_loggers(&early_dcx, tcx);
             if !tcx.crate_types().contains(&CrateType::Executable) {
-                tcx.sess.fatal("miri only makes sense on bin crates");
+                tcx.dcx().fatal("miri only makes sense on bin crates");
             }
 
             let (entry_def_id, entry_type) = if let Some(entry_def) = tcx.entry_fn(()) {
                 entry_def
             } else {
-                tcx.sess.fatal("miri can only run programs that have a main function");
+                tcx.dcx().fatal("miri can only run programs that have a main function");
             };
             let mut config = self.miri_config.clone();
 
@@ -91,13 +94,13 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             }
 
             if tcx.sess.opts.optimize != OptLevel::No {
-                tcx.sess.warn("Miri does not support optimizations. If you have enabled optimizations \
+                tcx.dcx().warn("Miri does not support optimizations. If you have enabled optimizations \
                     by selecting a Cargo profile (such as --release) which changes other profile settings \
                     such as whether debug assertions and overflow checks are enabled, those settings are \
                     still applied.");
             }
             if tcx.sess.mir_opt_level() > 0 {
-                tcx.sess.warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
+                tcx.dcx().warn("You have explicitly enabled MIR optimizations, overriding Miri's default \
                     which is to completely disable them. Any optimizations may hide UB that Miri would \
                     otherwise detect, and it is not necessarily possible to predict what kind of UB will \
                     be missed. If you are enabling optimizations to make Miri run faster, we advise using \
@@ -110,7 +113,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     i32::try_from(return_code).expect("Return value was too large!"),
                 );
             }
-            tcx.sess.abort_if_errors();
+            tcx.dcx().abort_if_errors();
         });
 
         Compilation::Stop
@@ -165,7 +168,6 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                                     level: SymbolExportLevel::C,
                                     kind: SymbolExportKind::Text,
                                     used: false,
-                                    used_compiler: false,
                                 },
                             ))
                         }),
@@ -198,7 +200,7 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
             // CTFE-related. Otherwise, we use it verbatim for `RUSTC_LOG`.
             // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
             // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_const_eval::interpret=debug`.
-            if log::Level::from_str(&var).is_ok() {
+            if tracing::Level::from_str(&var).is_ok() {
                 cfg.filter = Ok(format!(
                     "rustc_middle::mir::interpret={var},rustc_const_eval::interpret={var}"
                 ));
@@ -216,10 +218,6 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
 }
 
 fn init_early_loggers(early_dcx: &EarlyDiagCtxt) {
-    // Note that our `extern crate log` is *not* the same as rustc's; as a result, we have to
-    // initialize them both, and we always initialize `miri`'s first.
-    let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
-    env_logger::init_from_env(env);
     // Now for rustc. We only initialize `rustc` if the env var is set (so the user asked for it).
     // If it is not set, we avoid initializing now so that we can initialize later with our custom
     // settings, and *not* log anything for what happens before `miri` gets started.
@@ -293,13 +291,51 @@ fn run_compiler(
 }
 
 /// Parses a comma separated list of `T` from the given string:
-///
 /// `<value1>,<value2>,<value3>,...`
 fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
     input.split(',').map(str::parse::<T>).collect()
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn jemalloc_magic() {
+    // These magic runes are copied from
+    // <https://github.com/rust-lang/rust/blob/e89bd9428f621545c979c0ec686addc6563a394e/compiler/rustc/src/main.rs#L39>.
+    // See there for further comments.
+    use std::os::raw::{c_int, c_void};
+
+    #[used]
+    static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
+    #[used]
+    static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
+        jemalloc_sys::posix_memalign;
+    #[used]
+    static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
+    #[used]
+    static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
+    #[used]
+    static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
+    #[used]
+    static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+
+    // On OSX, jemalloc doesn't directly override malloc/free, but instead
+    // registers itself with the allocator's zone APIs in a ctor. However,
+    // the linker doesn't seem to consider ctors as "used" when statically
+    // linking, so we need to explicitly depend on the function.
+    #[cfg(target_os = "macos")]
+    {
+        extern "C" {
+            fn _rjem_je_zone_register();
+        }
+
+        #[used]
+        static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+    }
+}
+
 fn main() {
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    jemalloc_magic();
+
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Snapshot a copy of the environment before `rustc` starts messing with it.
@@ -489,7 +525,7 @@ fn main() {
                 }
             }
         } else if let Some(param) = arg.strip_prefix("-Zmiri-track-alloc-id=") {
-            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZeroU64>(param) {
+            let ids: Vec<miri::AllocId> = match parse_comma_list::<NonZero<u64>>(param) {
                 Ok(ids) => ids.into_iter().map(miri::AllocId).collect(),
                 Err(err) =>
                     show_error!(

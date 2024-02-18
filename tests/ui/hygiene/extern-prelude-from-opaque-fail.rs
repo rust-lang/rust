@@ -1,4 +1,4 @@
-// edition:2015
+//@ edition:2015
 #![feature(decl_macro)]
 
 macro a() {

@@ -1,6 +1,6 @@
-// aux-build:drop-shim-relates-opaque-aux.rs
-// compile-flags: -Zvalidate-mir --crate-type=lib
-// build-pass
+//@ aux-build:drop-shim-relates-opaque-aux.rs
+//@ compile-flags: -Zvalidate-mir --crate-type=lib
+//@ build-pass
 
 extern crate drop_shim_relates_opaque_aux;
 

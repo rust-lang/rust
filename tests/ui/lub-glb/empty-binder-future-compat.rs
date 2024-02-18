@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 fn lt_in_fn_fn<'a: 'a>() -> fn(fn(&'a ())) {
     |_| ()
 }

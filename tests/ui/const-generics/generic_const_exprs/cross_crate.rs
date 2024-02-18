@@ -1,5 +1,5 @@
-// aux-build:const_evaluatable_lib.rs
-// run-pass
+//@ aux-build:const_evaluatable_lib.rs
+//@ run-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 extern crate const_evaluatable_lib;

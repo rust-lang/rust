@@ -11,7 +11,7 @@ LL | trait Bar: ~const Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/super-traits-fail-2.rs:16:5
+  --> $DIR/super-traits-fail-2.rs:17:5
    |
 LL |     x.a();
    |     ^^^^^ expected `host`, found `true`

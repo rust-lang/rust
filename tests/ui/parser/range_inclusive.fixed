@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Make sure that inclusive ranges with no end point don't parse.
 
 pub fn main() {

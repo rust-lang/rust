@@ -1,4 +1,4 @@
-// known-bug: #109481
+//@ known-bug: #109481
 //
 // While the `T: Copy` is always applicable when checking
 // that the impl `impl<T: Copy> F for T {}` is well formed,

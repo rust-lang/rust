@@ -1,6 +1,6 @@
 // Test that constructors are considered to be const fns
 
-// run-pass
+//@ run-pass
 
 // Ctor(..) is transformed to Ctor { 0: ... } in THIR lowering, so directly
 // calling constructors doesn't require them to be const.

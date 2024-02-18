@@ -1,8 +1,7 @@
 // This is a regression test for issue rust-lang/rust#69841, which exposed an
 // LLVM bug which needed a fix to be backported.
 
-// run-pass
-// no-system-llvm
+//@ run-pass
 
 fn main() {
     let buffer = [49u8, 10];

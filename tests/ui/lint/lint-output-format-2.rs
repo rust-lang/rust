@@ -1,7 +1,7 @@
-// aux-build:lint_output_format.rs
+//@ aux-build:lint_output_format.rs
 
 #![feature(unstable_test_feature)]
-// check-pass
+//@ check-pass
 
 extern crate lint_output_format;
 use lint_output_format::{foo, bar};

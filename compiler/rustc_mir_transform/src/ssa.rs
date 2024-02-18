@@ -94,6 +94,7 @@ impl SsaLocals {
         self.direct_uses[local]
     }
 
+    #[inline]
     pub fn assignment_dominates(
         &self,
         dominators: &Dominators<BasicBlock>,
@@ -169,7 +170,7 @@ impl SsaLocals {
     ///   _c => _a
     ///   _d => _a // transitively through _c
     ///
-    /// Exception: we do not see through the return place, as it cannot be substituted.
+    /// Exception: we do not see through the return place, as it cannot be instantiated.
     pub fn copy_classes(&self) -> &IndexSlice<Local, Local> {
         &self.copy_classes
     }

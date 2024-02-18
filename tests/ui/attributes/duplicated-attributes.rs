@@ -2,8 +2,8 @@
 // emitted.
 // Tests https://github.com/rust-lang/rust/issues/90979
 
-// check-pass
-// compile-flags: --test
+//@ check-pass
+//@ compile-flags: --test
 
 #![feature(test)]
 #![feature(cfg_eval)]

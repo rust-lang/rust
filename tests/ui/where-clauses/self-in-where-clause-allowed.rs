@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 #![feature(auto_traits)]
 #![deny(where_clauses_object_safety)]

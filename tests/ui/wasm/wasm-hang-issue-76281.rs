@@ -1,6 +1,6 @@
-// only-wasm32
-// compile-flags: -C opt-level=2
-// build-pass
+//@ only-wasm32
+//@ compile-flags: -C opt-level=2
+//@ build-pass
 
 // Regression test for #76281.
 // This seems like an issue related to LLVM rather than

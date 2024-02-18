@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 
 #![allow(enum_intrinsics_non_enums)]
 
 use std::mem;
 
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 enum ADT {
     First(u32, u32),
     Second(u64)

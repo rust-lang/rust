@@ -135,3 +135,7 @@ async fn async_deref_ref(s: Option<&String>) -> Option<&str> {
 async fn async_result_bad(s: TR) -> Result<usize, bool> {
     s.magic
 }
+
+async fn async_wrapped<T>(a: Option<T>) -> Option<T> {
+    { a }
+}

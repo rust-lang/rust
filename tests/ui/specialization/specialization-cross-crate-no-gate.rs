@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 // Test that specialization works even if only the upstream crate enables it
 
-// aux-build:specialization_cross_crate.rs
+//@ aux-build:specialization_cross_crate.rs
 
 extern crate specialization_cross_crate;
 

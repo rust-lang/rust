@@ -1,9 +1,9 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
-use std::collections::HashMap;
 
 use flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
 use itertools::Itertools;
+use rustc_hash::FxHashMap;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
@@ -186,7 +186,7 @@ fn map_rust_child_diagnostic(
         return MappedRustChildDiagnostic::MessageLine(rd.message.clone());
     }
 
-    let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
+    let mut edit_map: FxHashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = FxHashMap::default();
     let mut suggested_replacements = Vec::new();
     let mut is_preferred = true;
     for &span in &spans {
@@ -403,16 +403,16 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 related_info_macro_calls.push(lsp_types::DiagnosticRelatedInformation {
                     location: secondary_location.clone(),
                     message: if is_in_macro_call {
-                        "Error originated from macro call here".to_string()
+                        "Error originated from macro call here".to_owned()
                     } else {
-                        "Actual error occurred here".to_string()
+                        "Actual error occurred here".to_owned()
                     },
                 });
                 // For the additional in-macro diagnostic we add the inverse message pointing to the error location in code.
                 let information_for_additional_diagnostic =
                     vec![lsp_types::DiagnosticRelatedInformation {
                         location: primary_location.clone(),
-                        message: "Exact error occurred here".to_string(),
+                        message: "Exact error occurred here".to_owned(),
                     }];
 
                 let diagnostic = lsp_types::Diagnostic {
@@ -467,7 +467,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             // `related_information`, which just produces hard-to-read links, at least in VS Code.
             let back_ref = lsp_types::DiagnosticRelatedInformation {
                 location: primary_location,
-                message: "original diagnostic".to_string(),
+                message: "original diagnostic".to_owned(),
             };
             for sub in &subdiagnostics {
                 diagnostics.push(MappedRustDiagnostic {
@@ -685,7 +685,7 @@ mod tests {
     fn rustc_unused_variable_as_info() {
         check_with_config(
             DiagnosticsMapConfig {
-                warnings_as_info: vec!["unused_variables".to_string()],
+                warnings_as_info: vec!["unused_variables".to_owned()],
                 ..DiagnosticsMapConfig::default()
             },
             r##"{
@@ -769,7 +769,7 @@ mod tests {
     fn rustc_unused_variable_as_hint() {
         check_with_config(
             DiagnosticsMapConfig {
-                warnings_as_hint: vec!["unused_variables".to_string()],
+                warnings_as_hint: vec!["unused_variables".to_owned()],
                 ..DiagnosticsMapConfig::default()
             },
             r##"{

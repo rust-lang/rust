@@ -1,5 +1,4 @@
 PRINT-BANG INPUT (DISPLAY): struct S;
-PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): struct S ;
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Group {
         delimiter: None,
@@ -25,14 +24,14 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 #![no_std /* 0#0 */]
 // Make sure that marks from declarative macros are applied to tokens in nonterminal.
 
-// check-pass
-// compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
-// compile-flags: -Z trim-diagnostic-paths=no
+//@ check-pass
+//@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
+//@ compile-flags: -Z trim-diagnostic-paths=no
 // ignore-tidy-linelength
-// normalize-stdout-test "\d+#" -> "0#"
-// normalize-stdout-test "expn\d{3,}" -> "expnNNN"
-// normalize-stdout-test "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
-// aux-build:test-macros.rs
+//@ normalize-stdout-test "\d+#" -> "0#"
+//@ normalize-stdout-test "expn\d{3,}" -> "expnNNN"
+//@ normalize-stdout-test "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
+//@ aux-build:test-macros.rs
 
 #![feature /* 0#0 */(decl_macro)]
 #![no_std /* 0#0 */]
@@ -73,6 +72,9 @@ crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt:
 crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "outer")
 crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #3, def_site_ctxt: #3, kind: Macro(Bang, "inner")
 crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
+crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
 crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")

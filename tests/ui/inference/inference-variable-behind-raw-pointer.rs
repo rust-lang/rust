@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // tests that the following code compiles, but produces a future-compatibility warning
 

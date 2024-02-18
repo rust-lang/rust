@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 mod test {
     pub const X: i32 = 123;
     //~^ ERROR expected one of `!` or `::`, found keyword `const`

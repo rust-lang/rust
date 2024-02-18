@@ -1,4 +1,4 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+//@ compile-flags: -Zunleash-the-miri-inside-of-you
 
 // During CTFE, we prevent pointer-to-int casts.
 // Pointer comparisons are prevented in the trait system.

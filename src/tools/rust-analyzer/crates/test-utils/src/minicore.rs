@@ -25,13 +25,14 @@
 //!     derive:
 //!     discriminant:
 //!     drop:
+//!     env: option
 //!     eq: sized
 //!     error: fmt
-//!     fmt: result, transmute, coerce_unsized
+//!     fmt: option, result, transmute, coerce_unsized
 //!     fn:
 //!     from: sized
 //!     future: pin
-//!     generator: pin
+//!     coroutine: pin
 //!     hash:
 //!     include:
 //!     index: sized
@@ -327,7 +328,6 @@ pub mod convert {
 }
 
 pub mod mem {
-    // region:drop
     // region:manually_drop
     #[lang = "manually_drop"]
     #[repr(transparent)]
@@ -352,6 +352,7 @@ pub mod mem {
 
     // endregion:manually_drop
 
+    // region:drop
     pub fn drop<T>(_x: T) {}
     pub const fn replace<T>(dest: &mut T, src: T) -> T {
         unsafe {
@@ -797,26 +798,26 @@ pub mod ops {
     // endregion:builtin_impls
     // endregion:add
 
-    // region:generator
-    mod generator {
+    // region:coroutine
+    mod coroutine {
         use crate::pin::Pin;
 
-        #[lang = "generator"]
-        pub trait Generator<R = ()> {
+        #[lang = "coroutine"]
+        pub trait Coroutine<R = ()> {
             type Yield;
-            #[lang = "generator_return"]
+            #[lang = "coroutine_return"]
             type Return;
-            fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
+            fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return>;
         }
 
-        #[lang = "generator_state"]
-        pub enum GeneratorState<Y, R> {
+        #[lang = "coroutine_state"]
+        pub enum CoroutineState<Y, R> {
             Yielded(Y),
             Complete(R),
         }
     }
-    pub use self::generator::{Generator, GeneratorState};
-    // endregion:generator
+    pub use self::coroutine::{Coroutine, CoroutineState};
+    // endregion:coroutine
 }
 
 // region:eq
@@ -984,6 +985,10 @@ pub mod fmt {
     impl<'a> Arguments<'a> {
         pub const fn new_v1(pieces: &'a [&'static str], args: &'a [Argument<'a>]) -> Arguments<'a> {
             Arguments { pieces, fmt: None, args }
+        }
+
+        pub const fn new_const(pieces: &'a [&'static str]) -> Arguments<'a> {
+            Arguments { pieces, fmt: None, args: &[] }
         }
 
         pub fn new_v1_formatted(
@@ -1165,6 +1170,7 @@ pub mod future {
         task::{Context, Poll},
     };
 
+    #[doc(notable_trait)]
     #[lang = "future_trait"]
     pub trait Future {
         type Output;
@@ -1263,6 +1269,7 @@ pub mod iter {
 
     mod traits {
         mod iterator {
+            #[doc(notable_trait)]
             pub trait Iterator {
                 type Item;
                 #[lang = "next"]
@@ -1343,6 +1350,9 @@ pub mod iter {
 // region:panic
 mod panic {
     pub macro panic_2021 {
+        () => (
+            $crate::panicking::panic("explicit panic")
+        ),
         ($($t:tt)+) => (
             $crate::panicking::panic_fmt($crate::const_format_args!($($t)+))
         ),
@@ -1353,6 +1363,11 @@ mod panicking {
     #[lang = "panic_fmt"]
     pub const fn panic_fmt(_fmt: crate::fmt::Arguments<'_>) -> ! {
         loop {}
+    }
+
+    #[lang = "panic"]
+    pub const fn panic(expr: &'static str) -> ! {
+        panic_fmt(crate::fmt::Arguments::new_const(&[expr]))
     }
 }
 // endregion:panic
@@ -1381,6 +1396,7 @@ mod macros {
     // region:assert
     #[macro_export]
     #[rustc_builtin_macro]
+    #[allow_internal_unstable(core_panic, edition_panic, generic_assert_internals)]
     macro_rules! assert {
         ($($arg:tt)*) => {
             /* compiler built-in */
@@ -1389,6 +1405,7 @@ mod macros {
     // endregion:assert
 
     // region:fmt
+    #[allow_internal_unstable(fmt_internals, const_fmt_arguments_new)]
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! const_format_args {
@@ -1396,6 +1413,7 @@ mod macros {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
+    #[allow_internal_unstable(fmt_internals)]
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! format_args {
@@ -1403,6 +1421,7 @@ mod macros {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
+    #[allow_internal_unstable(fmt_internals)]
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! format_args_nl {
@@ -1446,6 +1465,15 @@ mod macros {
     #[macro_export]
     macro_rules! concat {}
     // endregion:concat
+
+    // region:env
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! env {}
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! option_env {}
+    // endregion:env
 }
 
 // region:non_zero

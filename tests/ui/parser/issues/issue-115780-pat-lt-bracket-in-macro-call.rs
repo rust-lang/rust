@@ -3,7 +3,7 @@
 // if we are inside a macro call since it can be valid input for a subsequent macro rule.
 // See also #103534.
 
-// check-pass
+//@ check-pass
 
 macro_rules! mdo {
     ($p: pat =<< $e: expr ; $( $t: tt )*) => {

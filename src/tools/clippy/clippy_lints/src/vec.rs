@@ -11,8 +11,8 @@ use clippy_utils::{get_parent_expr, higher, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::{sym, DesugaringKind, Span};
 
@@ -74,12 +74,11 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         if let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows()) {
             // search for `let foo = vec![_]` expressions where all uses of `foo`
             // adjust to slices or call a method that exist on slices (e.g. len)
-            if let Node::Local(local) = cx.tcx.hir().get_parent(expr.hir_id)
+            if let Node::Local(local) = cx.tcx.parent_hir_node(expr.hir_id)
                 // for now ignore locals with type annotations.
                 // this is to avoid compile errors when doing the suggestion here: let _: Vec<_> = vec![..];
                 && local.ty.is_none()
                 && let PatKind::Binding(_, id, ..) = local.pat.kind
-                && is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(expr.peel_borrows())))
             {
                 let only_slice_uses = for_each_local_use_after_expr(cx, id, expr.hir_id, |expr| {
                     // allow indexing into a vec and some set of allowed method calls that exist on slices, too
@@ -104,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             }
             // if the local pattern has a specified type, do not lint.
             else if let Some(_) = higher::VecArgs::hir(cx, expr)
-                && let Node::Local(local) = cx.tcx.hir().get_parent(expr.hir_id)
+                && let Node::Local(local) = cx.tcx.parent_hir_node(expr.hir_id)
                 && local.ty.is_some()
             {
                 let span = expr.span.ctxt().outer_expn_data().call_site;
@@ -185,6 +184,11 @@ impl UselessVec {
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
                 if let Some(Constant::Int(len_constant)) = constant(cx, cx.typeck_results(), len) {
+                    // vec![ty; N] works when ty is Clone, [ty; N] requires it to be Copy also
+                    if !is_copy(cx, cx.typeck_results().expr_ty(elem)) {
+                        return;
+                    }
+
                     #[expect(clippy::cast_possible_truncation)]
                     if len_constant as u64 * size_of(cx, elem) > self.too_large_for_stack {
                         return;
@@ -240,13 +244,4 @@ impl UselessVec {
 fn size_of(cx: &LateContext<'_>, expr: &Expr<'_>) -> u64 {
     let ty = cx.typeck_results().expr_ty_adjusted(expr);
     cx.layout_of(ty).map_or(0, |l| l.size.bytes())
-}
-
-/// Returns the item type of the vector (i.e., the `T` in `Vec<T>`).
-fn vec_type(ty: Ty<'_>) -> Ty<'_> {
-    if let ty::Adt(_, args) = ty.kind() {
-        args.type_at(0)
-    } else {
-        panic!("The type of `vec!` is a not a struct?");
-    }
 }

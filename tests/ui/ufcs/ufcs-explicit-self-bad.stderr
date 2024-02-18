@@ -1,3 +1,20 @@
+error[E0053]: method `dummy2` has an incompatible type for trait
+  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+   |
+LL |     fn dummy2(self: &Bar<T>) {}
+   |               ------^^^^^^^
+   |               |     |
+   |               |     expected `&'a Bar<T>`, found `Bar<T>`
+   |               help: change the self-receiver type to match the trait: `&self`
+   |
+note: type in trait
+  --> $DIR/ufcs-explicit-self-bad.rs:31:15
+   |
+LL |     fn dummy2(&self);
+   |               ^^^^^
+   = note: expected signature `fn(&&'a Bar<_>)`
+              found signature `fn(&Bar<_>)`
+
 error[E0307]: invalid `self` parameter type: isize
   --> $DIR/ufcs-explicit-self-bad.rs:8:18
    |
@@ -101,24 +118,25 @@ note: ...does not necessarily outlive the anonymous lifetime defined here
 LL |     fn dummy3(self: &&Bar<T>) {}
    |                      ^^^^^^^
 
-error[E0053]: method `dummy2` has an incompatible type for trait
-  --> $DIR/ufcs-explicit-self-bad.rs:37:21
+error[E0610]: `isize` is a primitive type and therefore doesn't have fields
+  --> $DIR/ufcs-explicit-self-bad.rs:10:14
    |
-LL |     fn dummy2(self: &Bar<T>) {}
-   |               ------^^^^^^^
-   |               |     |
-   |               |     expected `&'a Bar<T>`, found `Bar<T>`
-   |               help: change the self-receiver type to match the trait: `&self`
-   |
-note: type in trait
-  --> $DIR/ufcs-explicit-self-bad.rs:31:15
-   |
-LL |     fn dummy2(&self);
-   |               ^^^^^
-   = note: expected signature `fn(&&'a Bar<_>)`
-              found signature `fn(&Bar<_>)`
+LL |         self.f + x
+   |              ^
 
-error: aborting due to 8 previous errors
+error[E0599]: no method named `foo` found for struct `Box<Foo>` in the current scope
+  --> $DIR/ufcs-explicit-self-bad.rs:55:24
+   |
+LL |     println!("{}", foo.foo(2));
+   |                        ^^^ method not found in `Box<Foo>`
 
-Some errors have detailed explanations: E0053, E0307, E0308.
+error[E0599]: no method named `bar` found for struct `Box<Bar<isize>>` in the current scope
+  --> $DIR/ufcs-explicit-self-bad.rs:60:39
+   |
+LL |     println!("{} {}", bar.foo(2), bar.bar(2));
+   |                                       ^^^ method not found in `Box<Bar<isize>>`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0053, E0307, E0308, E0599, E0610.
 For more information about an error, try `rustc --explain E0053`.

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(coroutines)]
 #![feature(coroutine_trait)]
 use std::cell::Cell;
@@ -24,7 +24,7 @@ impl<'a> Drop for Aligned<'a> {
 }
 
 #[repr(transparent)]
-struct NotCopy(#[allow(unused_tuple_struct_fields)] u8);
+struct NotCopy(u8);
 
 #[repr(packed)]
 struct Packed<'a>(NotCopy, Aligned<'a>);

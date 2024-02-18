@@ -1,7 +1,7 @@
 // See https://github.com/rust-lang/rust/issues/88470
-// run-rustfix
-// edition:2018
-// check-pass
+//@ run-rustfix
+//@ edition:2018
+//@ check-pass
 #![warn(rust_2021_prelude_collisions)]
 #![allow(dead_code)]
 #![allow(unused_imports)]

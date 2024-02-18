@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 mod řųśť {
     const IS_GREAT: bool = true;

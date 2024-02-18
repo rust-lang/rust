@@ -1,5 +1,5 @@
-// aux-build:m1.rs
-// aux-build:m2.rs
+//@ aux-build:m1.rs
+//@ aux-build:m2.rs
 
 
 extern crate m1;

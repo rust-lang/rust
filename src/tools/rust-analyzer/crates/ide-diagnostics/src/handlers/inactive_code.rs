@@ -16,7 +16,7 @@ pub(crate) fn inactive_code(
     }
 
     let inactive = DnfExpr::new(d.cfg.clone()).why_inactive(&d.opts);
-    let mut message = "code is inactive due to #[cfg] directives".to_string();
+    let mut message = "code is inactive due to #[cfg] directives".to_owned();
 
     if let Some(inactive) = inactive {
         let inactive_reasons = inactive.to_string();
@@ -31,7 +31,7 @@ pub(crate) fn inactive_code(
     let res = Diagnostic::new(
         DiagnosticCode::Ra("inactive-code", Severity::WeakWarning),
         message,
-        ctx.sema.diagnostics_display_range(d.node.clone()),
+        ctx.sema.diagnostics_display_range(d.node),
     )
     .with_unused(true);
     Some(res)

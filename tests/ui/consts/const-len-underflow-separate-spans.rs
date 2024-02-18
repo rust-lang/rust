@@ -2,8 +2,8 @@
 // spot (where the underflow occurred), while also providing the
 // overall context for what caused the evaluation.
 
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 const ONE: usize = 1;
 const TWO: usize = 2;

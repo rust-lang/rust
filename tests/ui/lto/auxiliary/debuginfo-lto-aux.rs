@@ -1,4 +1,4 @@
-// compile-flags: -g --crate-type=rlib
+//@ compile-flags: -g --crate-type=rlib
 
 pub struct StructWithLifetime<'a>(&'a i32);
 pub fn mk_struct_with_lt<'a>(x: &'a i32) -> StructWithLifetime<'a> {

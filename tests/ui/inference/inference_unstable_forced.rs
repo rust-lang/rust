@@ -1,7 +1,7 @@
 // If the unstable API is the only possible solution,
 // still emit E0658 "use of unstable library feature".
 
-// aux-build:inference_unstable_iterator.rs
+//@ aux-build:inference_unstable_iterator.rs
 
 extern crate inference_unstable_iterator;
 

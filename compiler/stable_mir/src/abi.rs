@@ -275,7 +275,6 @@ pub enum CallConvention {
     X86_64SysV,
     X86_64Win64,
 
-    AmdGpuKernel,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
 

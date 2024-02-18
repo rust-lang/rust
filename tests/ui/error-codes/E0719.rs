@@ -1,6 +1,7 @@
 trait Foo: Iterator<Item = i32, Item = i32> {}
 //~^ ERROR is already specified
 //~| ERROR is already specified
+//~| ERROR is already specified
 
 type Unit = ();
 
@@ -11,5 +12,6 @@ fn test() -> Box<dyn Iterator<Item = (), Item = Unit>> {
 
 fn main() {
     let _: &dyn Iterator<Item = i32, Item = i32>;
+    //~^ ERROR already specified
     test();
 }

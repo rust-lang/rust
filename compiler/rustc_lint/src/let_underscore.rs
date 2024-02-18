@@ -5,7 +5,7 @@ use crate::{
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_middle::ty;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 
 declare_lint! {
     /// The `let_underscore_drop` lint checks for statements which don't bind
@@ -105,46 +105,66 @@ const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
 
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::Local<'_>) {
-        if !matches!(local.pat.kind, hir::PatKind::Wild) {
+        if matches!(local.source, rustc_hir::LocalSource::AsyncFn) {
             return;
         }
-        if let Some(init) = local.init {
-            let init_ty = cx.typeck_results().expr_ty(init);
-            // If the type has a trivial Drop implementation, then it doesn't
-            // matter that we drop the value immediately.
-            if !init_ty.needs_drop(cx.tcx, cx.param_env) {
+
+        let mut top_level = true;
+
+        // We recursively walk through all patterns, so that we can catch cases where the lock is nested in a pattern.
+        // For the basic `let_underscore_drop` lint, we only look at the top level, since there are many legitimate reasons
+        // to bind a sub-pattern to an `_`, if we're only interested in the rest.
+        // But with locks, we prefer having the chance of "false positives" over missing cases, since the effects can be
+        // quite catastrophic.
+        local.pat.walk_always(|pat| {
+            let is_top_level = top_level;
+            top_level = false;
+
+            if !matches!(pat.kind, hir::PatKind::Wild) {
                 return;
             }
-            let is_sync_lock = match init_ty.kind() {
+
+            let ty = cx.typeck_results().pat_ty(pat);
+
+            // If the type has a trivial Drop implementation, then it doesn't
+            // matter that we drop the value immediately.
+            if !ty.needs_drop(cx.tcx, cx.param_env) {
+                return;
+            }
+            // Lint for patterns like `mutex.lock()`, which returns `Result<MutexGuard, _>` as well.
+            let potential_lock_type = match ty.kind() {
+                ty::Adt(adt, args) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => {
+                    args.type_at(0)
+                }
+                _ => ty,
+            };
+            let is_sync_lock = match potential_lock_type.kind() {
                 ty::Adt(adt, _) => SYNC_GUARD_SYMBOLS
                     .iter()
                     .any(|guard_symbol| cx.tcx.is_diagnostic_item(*guard_symbol, adt.did())),
                 _ => false,
             };
 
+            let can_use_init = is_top_level.then_some(local.init).flatten();
+
             let sub = NonBindingLetSub {
-                suggestion: local.pat.span,
-                multi_suggestion_start: local.span.until(init.span),
-                multi_suggestion_end: init.span.shrink_to_hi(),
+                suggestion: pat.span,
+                // We can't suggest `drop()` when we're on the top level.
+                drop_fn_start_end: can_use_init
+                    .map(|init| (local.span.until(init.span), init.span.shrink_to_hi())),
+                is_assign_desugar: matches!(local.source, rustc_hir::LocalSource::AssignDesugar(_)),
             };
             if is_sync_lock {
-                let mut span = MultiSpan::from_spans(vec![local.pat.span, init.span]);
+                let mut span = MultiSpan::from_span(pat.span);
                 span.push_span_label(
-                    local.pat.span,
+                    pat.span,
                     "this lock is not assigned to a binding and is immediately dropped".to_string(),
                 );
-                span.push_span_label(
-                    init.span,
-                    "this binding will immediately drop the value assigned to it".to_string(),
-                );
-                cx.emit_spanned_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
-            } else {
-                cx.emit_spanned_lint(
-                    LET_UNDERSCORE_DROP,
-                    local.span,
-                    NonBindingLet::DropType { sub },
-                );
+                cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
+            // Only emit let_underscore_drop for top-level `_` patterns.
+            } else if can_use_init.is_some() {
+                cx.emit_span_lint(LET_UNDERSCORE_DROP, local.span, NonBindingLet::DropType { sub });
             }
-        }
+        });
     }
 }

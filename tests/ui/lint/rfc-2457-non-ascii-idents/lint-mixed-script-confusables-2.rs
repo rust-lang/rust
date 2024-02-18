@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![deny(mixed_script_confusables)]
 
 struct ΑctuallyNotLatin;

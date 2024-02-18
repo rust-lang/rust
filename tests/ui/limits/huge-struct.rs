@@ -1,7 +1,7 @@
-// build-fail
-// normalize-stderr-test "S32" -> "SXX"
-// normalize-stderr-test "S1M" -> "SXX"
-// error-pattern: too big for the current
+//@ build-fail
+//@ normalize-stderr-test "S32" -> "SXX"
+//@ normalize-stderr-test "S1M" -> "SXX"
+//@ error-pattern: too big for the current
 
 struct S32<T> {
     v0: T,

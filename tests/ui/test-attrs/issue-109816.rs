@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@ compile-flags: --test
 
 fn align_offset_weird_strides() {
     #[test]

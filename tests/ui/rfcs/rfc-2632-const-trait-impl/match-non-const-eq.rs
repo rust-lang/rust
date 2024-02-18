@@ -1,5 +1,5 @@
-// known-bug: #110395
-// revisions: stock gated
+//@ known-bug: #110395
+//@ revisions: stock gated
 #![cfg_attr(gated, feature(const_trait_impl))]
 
 const fn foo(input: &'static str) {

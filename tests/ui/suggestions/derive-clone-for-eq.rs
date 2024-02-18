@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // https://github.com/rust-lang/rust/issues/79076
 
 #[derive(Clone, Eq)] //~ ERROR [E0277]

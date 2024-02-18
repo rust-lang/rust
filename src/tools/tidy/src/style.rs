@@ -55,11 +55,14 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "// CHECK",
     "// EMIT_MIR",
     "// compile-flags",
+    "//@ compile-flags",
     "// error-pattern",
+    "//@ error-pattern",
     "// gdb",
     "// lldb",
     "// cdb",
     "// normalize-stderr-test",
+    "//@ normalize-stderr-test",
 ];
 
 // Intentionally written in decimal rather than hex
@@ -127,8 +130,20 @@ fn should_ignore(line: &str) -> bool {
     // Matches test annotations like `//~ ERROR text`.
     // This mirrors the regex in src/tools/compiletest/src/runtest.rs, please
     // update both if either are changed.
-    let re = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
-    re.is_match(line) || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
+    lazy_static::lazy_static! {
+        static ref ANNOTATION_RE: Regex = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
+    }
+    // For `ui_test`-style UI test directives, also ignore
+    // - `//@[rev] compile-flags`
+    // - `//@[rev] normalize-stderr-test`
+    lazy_static::lazy_static! {
+        static ref UI_TEST_LONG_DIRECTIVES_RE: Regex =
+        Regex::new("\\s*//@(\\[.*\\]) (compile-flags|normalize-stderr-test|error-pattern).*")
+            .unwrap();
+    }
+    ANNOTATION_RE.is_match(line)
+        || ANNOTATIONS_TO_IGNORE.iter().any(|a| line.contains(a))
+        || UI_TEST_LONG_DIRECTIVES_RE.is_match(line)
 }
 
 /// Returns `true` if `line` is allowed to be longer than the normal limit.

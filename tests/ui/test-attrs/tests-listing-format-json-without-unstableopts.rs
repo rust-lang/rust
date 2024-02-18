@@ -1,8 +1,8 @@
-// no-prefer-dynamic
-// compile-flags: --test
-// run-flags: --list --format json
-// run-fail
-// check-run-results
+//@ no-prefer-dynamic
+//@ compile-flags: --test
+//@ run-flags: --list --format json
+//@ run-fail
+//@ check-run-results
 
 // Checks that --format json does not work without -Zunstable-options.
 

@@ -1,6 +1,6 @@
 // `br` and `rb` are easy to confuse; check that we issue a suggestion to help.
 
-// edition:2021
+//@ edition:2021
 
 fn main() {
     rb"abc";

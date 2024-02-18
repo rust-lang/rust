@@ -13,7 +13,7 @@ use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if created structure does not have field provided in record.
 pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
-    let node = d.field.clone().map(Into::into);
+    let node = d.field.map(Into::into);
     if d.private {
         // FIXME: quickfix to add required visibility
         Diagnostic::new_with_syntax_node_ptr(
@@ -127,6 +127,36 @@ fn missing_record_expr_field_fixes(
 #[cfg(test)]
 mod tests {
     use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+
+    #[test]
+    fn dont_work_for_field_with_disabled_cfg() {
+        check_diagnostics(
+            r#"
+struct Test {
+    #[cfg(feature = "hello")]
+    test: u32,
+    other: u32
+}
+
+fn main() {
+    let a = Test {
+        #[cfg(feature = "hello")]
+        test: 1,
+        other: 1
+    };
+
+    let Test {
+        #[cfg(feature = "hello")]
+        test,
+        mut other,
+        ..
+    } = a;
+
+    other += 1;
+}
+"#,
+        );
+    }
 
     #[test]
     fn no_such_field_diagnostics() {

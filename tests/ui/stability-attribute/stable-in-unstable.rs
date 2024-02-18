@@ -5,8 +5,8 @@
 // This is necessary to support moving items from `std` into `core` or `alloc` unstably while still
 // exporting the original stable interface in `std`, such as moving `Error` into `core`.
 //
-// aux-build:stable-in-unstable-core.rs
-// aux-build:stable-in-unstable-std.rs
+//@ aux-build:stable-in-unstable-core.rs
+//@ aux-build:stable-in-unstable-std.rs
 #![crate_type = "lib"]
 
 extern crate stable_in_unstable_core;

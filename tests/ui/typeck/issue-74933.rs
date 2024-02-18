@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // rust-lang/rust#74933: Lifetime error when indexing with borrowed index
 

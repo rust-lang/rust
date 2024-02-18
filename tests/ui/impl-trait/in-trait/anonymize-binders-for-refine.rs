@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib
-// check-pass
+//@ compile-flags: --crate-type=lib
+//@ check-pass
 
 #![deny(refining_impl_trait)]
 

@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main() {
     let msg;
     let binding = Some("Hello".to_string());

@@ -1,7 +1,7 @@
-// needs-asm-support
-// ignore-nvptx64
-// ignore-spirv
-// ignore-wasm32
+//@ needs-asm-support
+//@ ignore-nvptx64
+//@ ignore-spirv
+//@ ignore-wasm32
 
 // Tests that the use of named labels in the `asm!` macro are linted against
 // except for in `#[naked]` fns.
@@ -119,6 +119,27 @@ fn main() {
         asm!(":lo12:FOO"); // this is apparently valid aarch64
         // is there an example that is valid x86 for this test?
         asm!(":bbb nop");
+
+        // non-ascii characters are not allowed in labels, so should not trigger the lint
+        asm!("Ù: nop");
+        asm!("testÙ: nop");
+        asm!("_Ù_: nop");
+
+        // Format arguments should be conservatively assumed to be valid characters in labels
+        // Would emit `test_rax:` or similar
+        #[allow(asm_sub_register)]
+        {
+            asm!("test_{}: nop", in(reg) 10); //~ ERROR avoid using named labels
+        }
+        asm!("test_{}: nop", const 10); //~ ERROR avoid using named labels
+        asm!("test_{}: nop", sym main); //~ ERROR avoid using named labels
+        asm!("{}_test: nop", const 10); //~ ERROR avoid using named labels
+        asm!("test_{}_test: nop", const 10); //~ ERROR avoid using named labels
+        asm!("{}: nop", const 10); //~ ERROR avoid using named labels
+
+        asm!("{uwu}: nop", uwu = const 10); //~ ERROR avoid using named labels
+        asm!("{0}: nop", const 10); //~ ERROR avoid using named labels
+        asm!("{1}: nop", "/* {0} */", const 10, const 20); //~ ERROR avoid using named labels
 
         // Test include_str in asm
         asm!(include_str!("named-asm-labels.s")); //~ ERROR avoid using named labels

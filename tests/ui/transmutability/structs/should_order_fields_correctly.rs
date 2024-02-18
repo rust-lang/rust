@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! The fields of a struct should be laid out in lexical order.
 
 #![crate_type = "lib"]

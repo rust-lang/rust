@@ -1,6 +1,6 @@
 //
-// error-pattern: `main` function not found
-// compile-flags: --cfg foo
+//@ error-pattern: `main` function not found
+//@ compile-flags: --cfg foo
 
 // main is conditionally compiled, but the conditional compilation
 // is conditional too!

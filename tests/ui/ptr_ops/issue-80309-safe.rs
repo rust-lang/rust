@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -O
+//@ run-pass
+//@ compile-flags: -O
 
 // Regression test for issue #80309
 

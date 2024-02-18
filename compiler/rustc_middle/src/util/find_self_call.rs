@@ -2,6 +2,7 @@ use crate::mir::*;
 use crate::ty::GenericArgsRef;
 use crate::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
+use rustc_span::source_map::Spanned;
 
 /// Checks if the specified `local` is used as the `self` parameter of a method call
 /// in the provided `BasicBlock`. If it is, then the `DefId` of the called method is
@@ -23,7 +24,13 @@ pub fn find_self_call<'tcx>(
                     tcx.opt_associated_item(def_id)
                 {
                     debug!("find_self_call: args={:?}", fn_args);
-                    if let [Operand::Move(self_place) | Operand::Copy(self_place), ..] = **args {
+                    if let [
+                        Spanned {
+                            node: Operand::Move(self_place) | Operand::Copy(self_place), ..
+                        },
+                        ..,
+                    ] = **args
+                    {
                         if self_place.as_local() == Some(local) {
                             return Some((def_id, fn_args));
                         }

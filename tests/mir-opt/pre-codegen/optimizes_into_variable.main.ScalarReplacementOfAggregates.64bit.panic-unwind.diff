@@ -61,7 +61,6 @@
 +         StorageDead(_10);
 +         StorageDead(_11);
 +         nop;
-          nop;
           StorageDead(_8);
           StorageDead(_3);
           StorageDead(_1);

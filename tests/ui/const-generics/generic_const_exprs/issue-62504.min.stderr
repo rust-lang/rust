@@ -22,6 +22,18 @@ note: tuple struct defined here
 LL | struct ArrayHolder<const X: usize>([u32; X]);
    |        ^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0282]: type annotations needed for `ArrayHolder<X>`
+  --> $DIR/issue-62504.rs:26:9
+   |
+LL |     let mut array = ArrayHolder::new();
+   |         ^^^^^^^^^
+   |
+help: consider giving `array` an explicit type, where the value of const parameter `X` is specified
+   |
+LL |     let mut array: ArrayHolder<X> = ArrayHolder::new();
+   |                  ++++++++++++++++
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

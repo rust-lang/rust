@@ -16,4 +16,16 @@ struct Foo {
     e: f32,
 }
 
+// Test for https://github.com/rust-lang/rust/issues/117942
+struct Foo {
+    _: union  {
+        #[rustfmt::skip]
+    f: String,
+    },
+    #[rustfmt::skip]
+    _: struct {
+    g: i32,
+    },
+}
+
 fn main() {}

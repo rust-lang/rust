@@ -2,10 +2,8 @@
 #![feature(unnamed_fields)]
 
 struct F {
-    field: union { field: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
-    //~^ ERROR anonymous unions are unimplemented
-    _: union { field: u8 },
-    //~^ ERROR anonymous unions are unimplemented
+    field1: union { field2: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+    _: union { field3: u8 },
 }
 
 struct G {
@@ -13,10 +11,8 @@ struct G {
 }
 
 union H {
-    field: union { field: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
-    //~^ ERROR anonymous unions are unimplemented
-    _: union { field: u8 },
-    //~^ ERROR anonymous unions are unimplemented
+    field1: union { field2: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
+    _: union { field3: u8 },
 }
 
 union I {
@@ -27,7 +23,6 @@ enum K {
     M {
         _ : union { field: u8 }, //~ ERROR anonymous unions are not allowed outside of unnamed struct or union fields
         //~^ ERROR unnamed fields are not allowed outside of structs or unions
-        //~| ERROR anonymous unions are unimplemented
     },
     N {
         _ : u8, //~ ERROR unnamed fields are not allowed outside of structs or unions

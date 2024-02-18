@@ -1,4 +1,3 @@
-// no-system-llvm
 // compile-flags: -O
 // ignore-debug: the debug assertions add extra comparisons
 #![crate_type = "lib"]

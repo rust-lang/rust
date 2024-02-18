@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn takes_two(x: &isize, y: &isize) -> isize { *x + *y }
 

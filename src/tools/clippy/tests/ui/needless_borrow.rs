@@ -131,6 +131,9 @@ fn main() {
             0
         }
     }
+
+    // issue #11786
+    let x: (&str,) = (&"",);
 }
 
 #[allow(clippy::needless_borrowed_reference)]

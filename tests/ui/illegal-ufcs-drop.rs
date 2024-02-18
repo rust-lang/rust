@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![allow(dropping_references)]
 

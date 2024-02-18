@@ -1,3 +1,6 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -288,7 +291,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         place: Place<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'tcx> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -310,7 +313,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'tcx> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
@@ -329,15 +332,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let PlaceRef { local, projection: [] } = deref_base {
             let decl = &self.body.local_decls[local];
             if decl.is_ref_for_guard() {
-                let mut err = self.cannot_move_out_of(
-                    span,
-                    &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
-                );
-                err.note(
-                    "variables bound in patterns cannot be moved from \
-                     until after the end of the pattern guard",
-                );
-                return err;
+                return self
+                    .cannot_move_out_of(
+                        span,
+                        &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
+                    )
+                    .with_note(
+                        "variables bound in patterns cannot be moved from \
+                         until after the end of the pattern guard",
+                    );
             } else if decl.is_ref_to_static() {
                 return self.report_cannot_move_from_static(move_place, span);
             }
@@ -381,15 +384,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     closure_kind_ty, closure_kind, place_description,
                 );
 
-                let mut diag = self.cannot_move_out_of(span, &place_description);
-
-                diag.span_label(upvar_span, "captured outer variable");
-                diag.span_label(
-                    self.infcx.tcx.def_span(def_id),
-                    format!("captured by this `{closure_kind}` closure"),
-                );
-
-                diag
+                self.cannot_move_out_of(span, &place_description)
+                    .with_span_label(upvar_span, "captured outer variable")
+                    .with_span_label(
+                        self.infcx.tcx.def_span(def_id),
+                        format!("captured by this `{closure_kind}` closure"),
+                    )
             }
             _ => {
                 let source = self.borrowed_content_source(deref_base);
@@ -448,12 +448,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         None => "value".to_string(),
                     };
 
-                    err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
-                        is_partial_move: false,
-                        ty: place_ty,
-                        place: &place_desc,
-                        span,
-                    });
+                    err.subdiagnostic(
+                        self.dcx(),
+                        crate::session_diagnostics::TypeNoCopy::Label {
+                            is_partial_move: false,
+                            ty: place_ty,
+                            place: &place_desc,
+                            span,
+                        },
+                    );
                 } else {
                     binds_to.sort();
                     binds_to.dedup();
@@ -475,14 +478,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Some(desc) => format!("`{desc}`"),
                     None => "value".to_string(),
                 };
-                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
-                    is_partial_move: false,
-                    ty: place_ty,
-                    place: &place_desc,
-                    span,
-                });
+                err.subdiagnostic(
+                    self.dcx(),
+                    crate::session_diagnostics::TypeNoCopy::Label {
+                        is_partial_move: false,
+                        ty: place_ty,
+                        place: &place_desc,
+                        span,
+                    },
+                );
 
-                use_spans.args_subdiag(err, |args_span| {
+                use_spans.args_subdiag(self.dcx(), err, |args_span| {
                     crate::session_diagnostics::CaptureArgLabel::MoveOutPlace {
                         place: place_desc,
                         args_span,
@@ -580,12 +586,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             if binds_to.len() == 1 {
                 let place_desc = &format!("`{}`", self.local_names[*local].unwrap());
-                err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
-                    is_partial_move: false,
-                    ty: bind_to.ty,
-                    place: place_desc,
-                    span: binding_span,
-                });
+                err.subdiagnostic(
+                    self.dcx(),
+                    crate::session_diagnostics::TypeNoCopy::Label {
+                        is_partial_move: false,
+                        ty: bind_to.ty,
+                        place: place_desc,
+                        span: binding_span,
+                    },
+                );
             }
         }
 

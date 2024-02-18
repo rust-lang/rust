@@ -1,4 +1,4 @@
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 
 #![crate_type = "rlib"]
 #![feature(thread_local)]

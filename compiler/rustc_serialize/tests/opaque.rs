@@ -1,12 +1,12 @@
 #![allow(rustc::internal)]
 
-use rustc_macros::{Decodable, Encodable};
-use rustc_serialize::opaque::{MemDecoder, FileEncoder};
+use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};
 use std::fmt::Debug;
 use std::fs;
 
-#[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
+#[derive(PartialEq, Clone, Debug, Encodable_Generic, Decodable_Generic)]
 struct Struct {
     a: (),
     b: u8,
@@ -209,7 +209,7 @@ fn test_struct() {
     }]);
 }
 
-#[derive(PartialEq, Clone, Debug, Encodable, Decodable)]
+#[derive(PartialEq, Clone, Debug, Encodable_Generic, Decodable_Generic)]
 enum Enum {
     Variant1,
     Variant2(usize, u32),
@@ -258,7 +258,7 @@ fn test_tuples() {
 
 #[test]
 fn test_unit_like_struct() {
-    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    #[derive(Encodable_Generic, Decodable_Generic, PartialEq, Debug)]
     struct UnitLikeStruct;
 
     check_round_trip(vec![UnitLikeStruct]);
@@ -266,7 +266,7 @@ fn test_unit_like_struct() {
 
 #[test]
 fn test_box() {
-    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    #[derive(Encodable_Generic, Decodable_Generic, PartialEq, Debug)]
     struct A {
         foo: Box<[bool]>,
     }
@@ -279,12 +279,12 @@ fn test_box() {
 fn test_cell() {
     use std::cell::{Cell, RefCell};
 
-    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    #[derive(Encodable_Generic, Decodable_Generic, PartialEq, Debug)]
     struct A {
         baz: isize,
     }
 
-    #[derive(Encodable, Decodable, PartialEq, Debug)]
+    #[derive(Encodable_Generic, Decodable_Generic, PartialEq, Debug)]
     struct B {
         foo: Cell<bool>,
         bar: RefCell<A>,

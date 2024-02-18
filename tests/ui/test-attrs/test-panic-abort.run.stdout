@@ -17,7 +17,7 @@ hello, world
 testing123
 ---- it_fails stderr ----
 testing321
-thread 'main' panicked at $DIR/test-panic-abort.rs:38:5:
+thread 'main' panicked at $DIR/test-panic-abort.rs:39:5:
 assertion `left == right` failed
   left: 2
  right: 5

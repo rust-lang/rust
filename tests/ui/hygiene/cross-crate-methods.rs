@@ -2,8 +2,8 @@
 // names differ only in `SyntaxContext`. This also checks that any name
 // resolution done when monomorphizing is correct.
 
-// run-pass
-// aux-build:methods.rs
+//@ run-pass
+//@ aux-build:methods.rs
 
 extern crate methods;
 

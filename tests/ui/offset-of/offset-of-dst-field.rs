@@ -1,4 +1,4 @@
-#![feature(offset_of, extern_types)]
+#![feature(extern_types)]
 
 use std::mem::offset_of;
 

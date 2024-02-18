@@ -15,14 +15,13 @@
 //! about it on zulip.
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, IsNormalizesToHack,
     QueryResult, Response,
 };
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, UniverseIndex};
+use rustc_middle::ty::{self, AliasRelationDirection, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
 };
@@ -62,11 +61,8 @@ enum GoalEvaluationKind {
     Nested { is_normalizes_to_hack: IsNormalizesToHack },
 }
 
-trait CanonicalResponseExt {
-    fn has_no_inference_or_external_constraints(&self) -> bool;
-}
-
-impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
+#[extension(trait CanonicalResponseExt)]
+impl<'tcx> Canonical<'tcx, Response<'tcx>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
         self.value.external_constraints.region_constraints.is_empty()
             && self.value.var_values.is_identity()
@@ -123,25 +119,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
-    fn compute_closure_kind_goal(
-        &mut self,
-        goal: Goal<'tcx, (DefId, ty::GenericArgsRef<'tcx>, ty::ClosureKind)>,
-    ) -> QueryResult<'tcx> {
-        let (_, args, expected_kind) = goal.predicate;
-        let found_kind = args.as_closure().kind_ty().to_opt_closure_kind();
-
-        let Some(found_kind) = found_kind else {
-            return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-        };
-        if found_kind.extends(expected_kind) {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        } else {
-            Err(NoSolution)
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
     fn compute_object_safe_goal(&mut self, trait_def_id: DefId) -> QueryResult<'tcx> {
         if self.tcx().check_is_object_safe(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -285,67 +262,32 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         Ok(self.make_ambiguous_response_no_constraints(maybe_cause))
     }
 
-    /// Normalize a type when it is structually matched on.
+    /// Normalize a type for when it is structurally matched on.
     ///
-    /// For self types this is generally already handled through
-    /// `assemble_candidates_after_normalizing_self_ty`, so anything happening
-    /// in [`EvalCtxt::assemble_candidates_via_self_ty`] does not have to normalize
-    /// the self type. It is required when structurally matching on any other
-    /// arguments of a trait goal, e.g. when assembling builtin unsize candidates.
-    #[instrument(level = "debug", skip(self), ret)]
-    fn try_normalize_ty(
+    /// This function is necessary in nearly all cases before matching on a type.
+    /// Not doing so is likely to be incomplete and therefore unsound during
+    /// coherence.
+    fn structurally_normalize_ty(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        self.try_normalize_ty_recur(param_env, DefineOpaqueTypes::Yes, 0, ty)
-    }
-
-    fn try_normalize_ty_recur(
-        &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        define_opaque_types: DefineOpaqueTypes,
-        depth: usize,
-        ty: Ty<'tcx>,
-    ) -> Option<Ty<'tcx>> {
-        if !self.tcx().recursion_limit().value_within_limit(depth) {
-            return None;
-        }
-
-        let ty::Alias(kind, alias) = *ty.kind() else {
-            return Some(ty);
-        };
-
-        // We do no always define opaque types eagerly to allow non-defining uses in the defining scope.
-        if let (DefineOpaqueTypes::No, ty::AliasKind::Opaque) = (define_opaque_types, kind) {
-            if let Some(def_id) = alias.def_id.as_local() {
-                if self
-                    .unify_existing_opaque_tys(
-                        param_env,
-                        OpaqueTypeKey { def_id, args: alias.args },
-                        self.next_ty_infer(),
-                    )
-                    .is_empty()
-                {
-                    return Some(ty);
-                }
-            }
-        }
-
-        match self.commit_if_ok(|this| {
-            let normalized_ty = this.next_ty_infer();
-            let normalizes_to_goal = Goal::new(
-                this.tcx(),
+    ) -> Result<Ty<'tcx>, NoSolution> {
+        if let ty::Alias(..) = ty.kind() {
+            let normalized_ty = self.next_ty_infer();
+            let alias_relate_goal = Goal::new(
+                self.tcx(),
                 param_env,
-                ty::NormalizesTo { alias, term: normalized_ty.into() },
+                ty::PredicateKind::AliasRelate(
+                    ty.into(),
+                    normalized_ty.into(),
+                    AliasRelationDirection::Equate,
+                ),
             );
-            this.add_goal(GoalSource::Misc, normalizes_to_goal);
-            this.try_evaluate_added_goals()?;
-            let ty = this.resolve_vars_if_possible(normalized_ty);
-            Ok(this.try_normalize_ty_recur(param_env, define_opaque_types, depth + 1, ty))
-        }) {
-            Ok(ty) => ty,
-            Err(NoSolution) => Some(ty),
+            self.add_goal(GoalSource::Misc, alias_relate_goal);
+            self.try_evaluate_added_goals()?;
+            Ok(self.resolve_vars_if_possible(normalized_ty))
+        } else {
+            Ok(ty)
         }
     }
 }

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:macro_crate_def_only.rs
+//@ run-pass
+//@ aux-build:macro_crate_def_only.rs
 
 
 #[macro_use] #[no_link]

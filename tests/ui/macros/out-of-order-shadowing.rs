@@ -1,4 +1,4 @@
-// aux-build:define-macro.rs
+//@ aux-build:define-macro.rs
 
 macro_rules! bar { () => {} }
 define_macro!(bar);

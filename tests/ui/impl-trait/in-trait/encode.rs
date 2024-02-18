@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: --crate-type=lib
+//@ build-pass
+//@ compile-flags: --crate-type=lib
 
 #![allow(incomplete_features)]
 

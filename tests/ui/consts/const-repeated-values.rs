@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 const FOO: isize = 42;
 
 enum Bar {

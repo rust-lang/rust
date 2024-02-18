@@ -196,11 +196,11 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+            fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 let advance = cmp::min(len!(self), n);
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
                 unsafe { self.post_inc_start(advance) };
-                NonZeroUsize::new(n - advance).map_or(Ok(()), Err)
+                NonZero::new(n - advance).map_or(Ok(()), Err)
             }
 
             #[inline]
@@ -338,7 +338,7 @@ macro_rules! iterator {
                     if predicate(x) {
                         // SAFETY: we are guaranteed to be in bounds by the loop invariant:
                         // when `i >= n`, `self.next()` returns `None` and the loop breaks.
-                        unsafe { assume(i < n) };
+                        unsafe { assert_unchecked(i < n) };
                         return Some(i);
                     }
                     i += 1;
@@ -361,7 +361,7 @@ macro_rules! iterator {
                     if predicate(x) {
                         // SAFETY: `i` must be lower than `n` since it starts at `n`
                         // and is only decreasing.
-                        unsafe { assume(i < n) };
+                        unsafe { assert_unchecked(i < n) };
                         return Some(i);
                     }
                 }
@@ -421,11 +421,11 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn advance_back_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+            fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
                 let advance = cmp::min(len!(self), n);
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
                 unsafe { self.pre_dec_end(advance) };
-                NonZeroUsize::new(n - advance).map_or(Ok(()), Err)
+                NonZero::new(n - advance).map_or(Ok(()), Err)
             }
         }
 

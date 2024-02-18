@@ -8,18 +8,18 @@ use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::{Applicability, PErr};
 use rustc_span::symbol::kw;
 
-pub(super) struct TokenTreesReader<'a> {
-    string_reader: StringReader<'a>,
+pub(super) struct TokenTreesReader<'sess, 'src> {
+    string_reader: StringReader<'sess, 'src>,
     /// The "next" token, which has been obtained from the `StringReader` but
     /// not yet handled by the `TokenTreesReader`.
     token: Token,
     diag_info: TokenTreeDiagInfo,
 }
 
-impl<'a> TokenTreesReader<'a> {
+impl<'sess, 'src> TokenTreesReader<'sess, 'src> {
     pub(super) fn parse_all_token_trees(
-        string_reader: StringReader<'a>,
-    ) -> (TokenStream, Result<(), Vec<PErr<'a>>>, Vec<UnmatchedDelim>) {
+        string_reader: StringReader<'sess, 'src>,
+    ) -> (TokenStream, Result<(), Vec<PErr<'sess>>>, Vec<UnmatchedDelim>) {
         let mut tt_reader = TokenTreesReader {
             string_reader,
             token: Token::dummy(),
@@ -35,7 +35,7 @@ impl<'a> TokenTreesReader<'a> {
     fn parse_token_trees(
         &mut self,
         is_delimited: bool,
-    ) -> (Spacing, TokenStream, Result<(), Vec<PErr<'a>>>) {
+    ) -> (Spacing, TokenStream, Result<(), Vec<PErr<'sess>>>) {
         // Move past the opening delimiter.
         let (_, open_spacing) = self.bump(false);
 
@@ -71,7 +71,7 @@ impl<'a> TokenTreesReader<'a> {
         }
     }
 
-    fn eof_err(&mut self) -> PErr<'a> {
+    fn eof_err(&mut self) -> PErr<'sess> {
         let msg = "this file contains an unclosed delimiter";
         let mut err = self.string_reader.sess.dcx.struct_span_err(self.token.span, msg);
         for &(_, sp) in &self.diag_info.open_braces {
@@ -99,7 +99,7 @@ impl<'a> TokenTreesReader<'a> {
     fn parse_token_tree_open_delim(
         &mut self,
         open_delim: Delimiter,
-    ) -> Result<TokenTree, Vec<PErr<'a>>> {
+    ) -> Result<TokenTree, Vec<PErr<'sess>>> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
@@ -229,7 +229,11 @@ impl<'a> TokenTreesReader<'a> {
         (this_tok, this_spacing)
     }
 
-    fn unclosed_delim_err(&mut self, tts: TokenStream, mut errs: Vec<PErr<'a>>) -> Vec<PErr<'a>> {
+    fn unclosed_delim_err(
+        &mut self,
+        tts: TokenStream,
+        mut errs: Vec<PErr<'sess>>,
+    ) -> Vec<PErr<'sess>> {
         // If there are unclosed delims, see if there are diff markers and if so, point them
         // out instead of complaining about the unclosed delims.
         let mut parser = crate::stream_to_parser(self.string_reader.sess, tts, None);
@@ -257,7 +261,7 @@ impl<'a> TokenTreesReader<'a> {
                     // This might be the beginning of the `if`/`while` body (i.e., the end of the condition)
                     in_cond = false;
                 } else if maybe_andand == token::AndAnd && maybe_let.is_keyword(kw::Let) {
-                    let mut err = parser.struct_span_err(
+                    let mut err = parser.dcx().struct_span_err(
                         parser.token.span,
                         "found a `{` in the middle of a let-chain",
                     );
@@ -277,15 +281,15 @@ impl<'a> TokenTreesReader<'a> {
             parser.bump();
         }
         if !diff_errs.is_empty() {
-            errs.iter_mut().for_each(|err| {
-                err.delay_as_bug();
-            });
+            for err in errs {
+                err.cancel();
+            }
             return diff_errs;
         }
         return errs;
     }
 
-    fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'a> {
+    fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'sess> {
         // An unexpected closing delimiter (i.e., there is no
         // matching opening delimiter).
         let token_str = token_to_string(&self.token);

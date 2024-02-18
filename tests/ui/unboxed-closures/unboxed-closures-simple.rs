@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_mut)]
 #![allow(unused_imports)]
 use std::ops::FnMut;

@@ -12,7 +12,7 @@
 // Note: the use of `Cell` here is to introduce invariance. One less
 // variable.
 
-// compile-flags:-Zverbose
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

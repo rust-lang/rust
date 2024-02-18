@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 //! Regression test for <https://github.com/rust-lang/rust/issues/68538>.
 #![feature(unsized_fn_params)]
 

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(c_variadic)]
 #![warn(function_item_references)]
 use std::fmt::Pointer;

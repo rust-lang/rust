@@ -1,6 +1,6 @@
-// only-x86
-// only-windows
-// compile-flags: --crate-type lib --emit link
+//@ only-x86
+//@ only-windows
+//@ compile-flags: --crate-type lib --emit link
 #![allow(clashing_extern_declarations)]
 #[link(name = "foo", kind = "raw-dylib")]
 extern "C" {

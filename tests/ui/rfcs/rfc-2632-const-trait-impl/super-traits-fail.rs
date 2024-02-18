@@ -1,5 +1,5 @@
-// check-pass
-// known-bug: #110395
+//@ check-pass
+//@ known-bug: #110395
 
 #![feature(const_trait_impl)]
 

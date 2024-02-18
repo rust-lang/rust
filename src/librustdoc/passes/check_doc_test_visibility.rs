@@ -126,7 +126,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
         if should_have_doc_example(cx, item) {
             debug!("reporting error for {item:?} (hir_id={hir_id:?})");
             let sp = item.attr_span(cx.tcx);
-            cx.tcx.struct_span_lint_hir(
+            cx.tcx.node_span_lint(
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
                 sp,
@@ -137,7 +137,7 @@ pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item
     } else if tests.found_tests > 0
         && !cx.cache.effective_visibilities.is_exported(cx.tcx, item.item_id.expect_def_id())
     {
-        cx.tcx.struct_span_lint_hir(
+        cx.tcx.node_span_lint(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),

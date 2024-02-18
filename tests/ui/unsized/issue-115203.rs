@@ -1,4 +1,4 @@
-// compile-flags: --emit link
+//@ compile-flags: --emit link
 
 fn main() {
     let a: [i32; 0] = [];

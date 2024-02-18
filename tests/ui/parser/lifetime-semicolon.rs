@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused)]
 struct Foo<'a, 'b> {
     a: &'a &'b i32

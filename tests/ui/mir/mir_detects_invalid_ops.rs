@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 fn main() {
     divide_by_zero();

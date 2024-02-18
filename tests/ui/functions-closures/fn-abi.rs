@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 // Ensure that declarations and types which use `extern fn` both have the same
 // ABI (#9309).
 
-// pretty-expanded FIXME #23616
-// aux-build:fn-abi.rs
+//@ pretty-expanded FIXME #23616
+//@ aux-build:fn-abi.rs
 
 extern crate fn_abi;
 

@@ -1,4 +1,4 @@
-// revisions: stock gce
+//@ revisions: stock gce
 
 #![feature(associated_const_equality)]
 #![cfg_attr(gce, feature(generic_const_exprs))]

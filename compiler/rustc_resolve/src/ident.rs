@@ -10,9 +10,7 @@ use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
-use crate::late::{
-    ConstantHasGenerics, HasGenericParams, NoConstantGenericsReason, PathSource, Rib, RibKind,
-};
+use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::BindingKey;
 use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
@@ -377,6 +375,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ignore_binding: Option<NameBinding<'a>>,
     ) -> Result<NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
+            #[derive(Clone, Copy)]
             struct Flags: u8 {
                 const MACRO_RULES          = 1 << 0;
                 const MODULE               = 1 << 1;
@@ -1089,7 +1088,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         | RibKind::ForwardGenericParamBan => {
                             // Nothing to do. Continue.
                         }
-                        RibKind::Item(_) | RibKind::AssocItem => {
+                        RibKind::Item(..) | RibKind::AssocItem => {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
@@ -1154,7 +1153,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => {
                 for rib in ribs {
-                    let has_generic_params: HasGenericParams = match rib.kind {
+                    let (has_generic_params, def_kind) = match rib.kind {
                         RibKind::Normal
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
@@ -1201,7 +1200,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             }
                                         };
                                         self.report_error(span, error);
-                                        self.tcx.sess.span_delayed_bug(span, CG_BUG_STR);
+                                        self.dcx().span_delayed_bug(span, CG_BUG_STR);
                                     }
 
                                     return Res::Err;
@@ -1212,7 +1211,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
 
                         // This was an attempt to use a type parameter outside its scope.
-                        RibKind::Item(has_generic_params) => has_generic_params,
+                        RibKind::Item(has_generic_params, def_kind) => {
+                            (has_generic_params, def_kind)
+                        }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
                                 self.report_error(
@@ -1230,7 +1231,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let Some(span) = finalize {
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterItem(res, has_generic_params),
+                            ResolutionError::GenericParamsFromOuterItem(
+                                res,
+                                has_generic_params,
+                                def_kind,
+                            ),
                         );
                     }
                     return Res::Err;
@@ -1238,7 +1243,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Res::Def(DefKind::ConstParam, _) => {
                 for rib in ribs {
-                    let has_generic_params = match rib.kind {
+                    let (has_generic_params, def_kind) = match rib.kind {
                         RibKind::Normal
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
@@ -1275,7 +1280,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             continue;
                         }
 
-                        RibKind::Item(has_generic_params) => has_generic_params,
+                        RibKind::Item(has_generic_params, def_kind) => {
+                            (has_generic_params, def_kind)
+                        }
                         RibKind::ConstParamTy => {
                             if let Some(span) = finalize {
                                 self.report_error(
@@ -1294,7 +1301,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let Some(span) = finalize {
                         self.report_error(
                             span,
-                            ResolutionError::GenericParamsFromOuterItem(res, has_generic_params),
+                            ResolutionError::GenericParamsFromOuterItem(
+                                res,
+                                has_generic_params,
+                                def_kind,
+                            ),
                         );
                     }
                     return Res::Err;
@@ -1380,13 +1391,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             continue;
                         }
                     }
-                    return PathResult::failed(
-                        ident.span,
-                        false,
-                        finalize.is_some(),
-                        module,
-                        || ("there are too many leading `super` keywords".to_string(), None),
-                    );
+                    return PathResult::failed(ident, false, finalize.is_some(), module, || {
+                        ("there are too many leading `super` keywords".to_string(), None)
+                    });
                 }
                 if segment_idx == 0 {
                     if name == kw::SelfLower {
@@ -1418,7 +1425,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && segment_idx != 0 {
-                return PathResult::failed(ident.span, false, finalize.is_some(), module, || {
+                return PathResult::failed(ident, false, finalize.is_some(), module, || {
                     let name_str = if name == kw::PathRoot {
                         "crate root".to_string()
                     } else {
@@ -1496,7 +1503,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         record_segment_res(self, res);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {
-                            self.tcx.sess.emit_err(errors::ToolModuleImported {
+                            self.dcx().emit_err(errors::ToolModuleImported {
                                 span: ident.span,
                                 import: binding.span,
                             });
@@ -1514,7 +1521,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         ));
                     } else {
                         return PathResult::failed(
-                            ident.span,
+                            ident,
                             is_last,
                             finalize.is_some(),
                             module,
@@ -1540,24 +1547,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     }
 
-                    return PathResult::failed(
-                        ident.span,
-                        is_last,
-                        finalize.is_some(),
-                        module,
-                        || {
-                            self.report_path_resolution_error(
-                                path,
-                                opt_ns,
-                                parent_scope,
-                                ribs,
-                                ignore_binding,
-                                module,
-                                segment_idx,
-                                ident,
-                            )
-                        },
-                    );
+                    return PathResult::failed(ident, is_last, finalize.is_some(), module, || {
+                        self.report_path_resolution_error(
+                            path,
+                            opt_ns,
+                            parent_scope,
+                            ribs,
+                            ignore_binding,
+                            module,
+                            segment_idx,
+                            ident,
+                        )
+                    });
                 }
             }
         }

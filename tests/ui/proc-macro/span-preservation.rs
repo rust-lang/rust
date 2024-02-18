@@ -1,7 +1,7 @@
 // For each of these, we should get the appropriate type mismatch error message,
 // and the function should be echoed.
 
-// aux-build:test-macros.rs
+//@ aux-build:test-macros.rs
 
 #[macro_use]
 extern crate test_macros;

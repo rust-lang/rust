@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test that `ref` patterns may be used on both sides
 // of an `@` pattern according to NLL borrowck.

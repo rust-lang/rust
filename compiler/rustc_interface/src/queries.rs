@@ -108,7 +108,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
         self.parse.compute(|| {
-            passes::parse(&self.compiler.sess).map_err(|mut parse_error| parse_error.emit())
+            passes::parse(&self.compiler.sess).map_err(|parse_error| parse_error.emit())
         })
     }
 
@@ -194,28 +194,27 @@ impl<'tcx> Queries<'tcx> {
         let Some((def_id, _)) = tcx.entry_fn(()) else { return };
         for attr in tcx.get_attrs(def_id, sym::rustc_error) {
             match attr.meta_item_list() {
-                // Check if there is a `#[rustc_error(span_delayed_bug_from_inside_query)]`.
+                // Check if there is a `#[rustc_error(delayed_bug_from_inside_query)]`.
                 Some(list)
                     if list.iter().any(|list_item| {
                         matches!(
                             list_item.ident().map(|i| i.name),
-                            Some(sym::span_delayed_bug_from_inside_query)
+                            Some(sym::delayed_bug_from_inside_query)
                         )
                     }) =>
                 {
-                    tcx.ensure().trigger_span_delayed_bug(def_id);
+                    tcx.ensure().trigger_delayed_bug(def_id);
                 }
 
                 // Bare `#[rustc_error]`.
                 None => {
-                    tcx.sess.emit_fatal(RustcErrorFatal { span: tcx.def_span(def_id) });
+                    tcx.dcx().emit_fatal(RustcErrorFatal { span: tcx.def_span(def_id) });
                 }
 
                 // Some other attribute.
                 Some(_) => {
-                    tcx.sess.emit_warning(RustcErrorUnexpectedAnnotation {
-                        span: tcx.def_span(def_id),
-                    });
+                    tcx.dcx()
+                        .emit_warn(RustcErrorUnexpectedAnnotation { span: tcx.def_span(def_id) });
                 }
             }
         }
@@ -260,7 +259,7 @@ pub struct Linker {
 impl Linker {
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
         let (codegen_results, work_products) =
-            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)?;
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames);
 
         sess.compile_status()?;
 
@@ -292,7 +291,9 @@ impl Linker {
                 &codegen_results,
                 &*self.output_filenames,
             )
-            .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
+            .map_err(|error| {
+                sess.dcx().emit_fatal(FailedWritingFile { path: &rlink_file, error })
+            })?;
             return Ok(());
         }
 
@@ -330,7 +331,7 @@ impl Compiler {
         // the global context.
         _timer = Some(self.sess.timer("free_global_ctxt"));
         if let Err((path, error)) = queries.finish() {
-            self.sess.emit_err(errors::FailedWritingFile { path: &path, error });
+            self.sess.dcx().emit_fatal(errors::FailedWritingFile { path: &path, error });
         }
 
         ret

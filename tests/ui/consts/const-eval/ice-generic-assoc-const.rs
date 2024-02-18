@@ -1,4 +1,4 @@
-// build-pass (tests post-monomorphisation failure)
+//@ build-pass (tests post-monomorphisation failure)
 #![crate_type = "lib"]
 
 pub trait Nullable {

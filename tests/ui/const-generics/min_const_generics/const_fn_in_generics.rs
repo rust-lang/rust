@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const fn identity<const T: u32>() -> u32 { T }
 

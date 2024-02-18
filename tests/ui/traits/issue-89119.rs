@@ -5,7 +5,7 @@
 //
 // The auxiliary crate used in the test contains the code minimized from `zvariant-2.8.0`.
 
-// check-pass
-// aux-build: issue_89119_intercrate_caching.rs
+//@ check-pass
+//@ aux-build: issue_89119_intercrate_caching.rs
 
 fn main() {}

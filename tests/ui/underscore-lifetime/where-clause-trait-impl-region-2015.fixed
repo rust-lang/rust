@@ -1,4 +1,5 @@
-// run-rustfix
+//@ run-rustfix
+#![allow(dead_code)]
 
 trait WithType<T> {}
 trait WithRegion<'a> { }

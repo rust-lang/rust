@@ -1,5 +1,5 @@
 // regression test for #108683
-// edition:2021
+//@ edition:2021
 
 enum Refutable {
     A,

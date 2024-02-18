@@ -1,11 +1,11 @@
 // Make sure that attribute used when injecting the prelude are resolved
 // hygienically.
 
-// check-pass
-// aux-build:not-libstd.rs
+//@ check-pass
+//@ aux-build:not-libstd.rs
 
-//revisions: rust2015 rust2018
-//[rust2018] edition:2018
+//@revisions: rust2015 rust2018
+//@[rust2018] edition:2018
 
 // The prelude import shouldn't see these as candidates for when it's trying to
 // use the built-in macros.

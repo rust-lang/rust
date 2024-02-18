@@ -21,16 +21,19 @@ fn same_type<A,B:Eq<A>>(a: A, b: B) { }
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.
     eq::< dyn Foo<(isize,),Output=()>,               dyn Foo(isize)                      >();
+    //~^ ERROR trait takes 1 lifetime argument but 0 lifetime arguments were supplied
 
     // Here we specify 'static explicitly in angle-bracket version.
     // Parenthesized winds up getting inferred.
     eq::< dyn Foo<'static, (isize,),Output=()>,      dyn Foo(isize)                      >();
+    //~^ ERROR trait takes 1 lifetime argument but 0 lifetime arguments were supplied
 }
 
 fn test2(x: &dyn Foo<(isize,),Output=()>, y: &dyn Foo(isize)) {
     //~^ ERROR trait takes 1 lifetime argument but 0 lifetime arguments were supplied
     // Here, the omitted lifetimes are expanded to distinct things.
     same_type(x, y)
+    //~^ ERROR borrowed data escapes outside of function
 }
 
 fn main() { }

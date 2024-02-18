@@ -4,7 +4,7 @@
 // https://smallcultfollowing.com/babysteps/blog/2016/11/03/
 // associated-type-constructors-part-2-family-traits/
 
-// run-pass
+//@ run-pass
 
 trait Collection<T> {
     type Iter<'iter>: Iterator<Item=&'iter T> where T: 'iter, Self: 'iter;

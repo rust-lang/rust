@@ -1,7 +1,7 @@
 // Check that we can statically dispatch methods for object
 // unsafe trait objects, directly and indirectly
 //
-// check-pass
+//@ check-pass
 
 #![feature(object_safe_for_dispatch)]
 

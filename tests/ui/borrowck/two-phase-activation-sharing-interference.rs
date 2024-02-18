@@ -1,7 +1,7 @@
-// revisions: nll_target
+//@ revisions: nll_target
 
 // The following revisions are disabled due to missing support from two-phase beyond autorefs
-//[nll_beyond] compile-flags: -Z two-phase-beyond-autoref
+//@[nll_beyond] compile-flags: -Z two-phase-beyond-autoref
 
 // This is an important corner case pointed out by Niko: one is
 // allowed to initiate a shared borrow during a reservation, but it

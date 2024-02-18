@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test for issue #63677 - ensure that
 // coherence checking can properly handle 'impl trait'
 // in type aliases

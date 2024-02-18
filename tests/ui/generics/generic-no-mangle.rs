@@ -1,5 +1,5 @@
-// run-rustfix
-
+//@ run-rustfix
+#![allow(dead_code)]
 #![deny(no_mangle_generic_items)]
 
 #[no_mangle]
@@ -76,7 +76,7 @@ impl<T> Trait2<T> for Foo {
     fn qux<'a>(x: &'a i32) -> &i32 { x } //~ ERROR functions generic over types or consts must be mangled
 }
 
-pub struct Bar<T>(#[allow(unused_tuple_struct_fields)] T);
+pub struct Bar<T>(#[allow(dead_code)] T);
 
 impl<T> Bar<T> {
     #[no_mangle]
@@ -111,7 +111,7 @@ impl<T> Trait3 for Bar<T> {
     fn baz<U>() {} //~ ERROR functions generic over types or consts must be mangled
 }
 
-pub struct Baz<'a>(#[allow(unused_tuple_struct_fields)] &'a i32);
+pub struct Baz<'a>(#[allow(dead_code)] &'a i32);
 
 impl<'a> Baz<'a> {
     #[no_mangle]

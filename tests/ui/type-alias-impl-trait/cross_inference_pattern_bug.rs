@@ -1,5 +1,5 @@
-// compile-flags: --edition=2021
-// build-pass
+//@ compile-flags: --edition=2021
+//@ build-pass
 #![feature(type_alias_impl_trait)]
 
 fn main() {

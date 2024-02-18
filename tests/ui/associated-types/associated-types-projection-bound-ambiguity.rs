@@ -1,7 +1,7 @@
 // Check that if we have multiple applicable projection bounds we pick one (for
 // backwards compatibility reasons).
 
-// check-pass
+//@ check-pass
 use std::ops::Mul;
 
 trait A {

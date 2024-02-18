@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // See https://github.com/rust-lang/rust/issues/38942
 
 #[repr(u64)]

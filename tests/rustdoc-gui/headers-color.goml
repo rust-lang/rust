@@ -1,4 +1,4 @@
-// This test check for headers text and background colors for the different themes.
+// This test check for headings text and background colors for the different themes.
 
 define-function: (
     "check-colors",
@@ -45,7 +45,7 @@ call-function: (
         "color": "#c5c5c5",
         "code_header_color": "#e6e1cf",
         "focus_background_color": "rgba(255, 236, 164, 0.06)",
-        "headings_color": "#39afd7",
+        "headings_color": "#c5c5c5",
     },
 )
 call-function: (
@@ -55,7 +55,7 @@ call-function: (
         "color": "#ddd",
         "code_header_color": "#ddd",
         "focus_background_color": "#494a3d",
-        "headings_color": "#d2991d",
+        "headings_color": "#ddd",
     },
 )
 call-function: (
@@ -65,6 +65,6 @@ call-function: (
         "color": "black",
         "code_header_color": "black",
         "focus_background_color": "#fdffd3",
-        "headings_color": "#3873ad",
+        "headings_color": "black",
     },
 )

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // ignore-tidy-linelength
 
 #![feature(lint_reasons)]

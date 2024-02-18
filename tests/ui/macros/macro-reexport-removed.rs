@@ -1,4 +1,4 @@
-// aux-build:two_macros.rs
+//@ aux-build:two_macros.rs
 
 #![feature(macro_reexport)] //~ ERROR feature has been removed
 

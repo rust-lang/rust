@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 trait Foo {}
 

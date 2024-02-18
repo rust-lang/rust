@@ -17,10 +17,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_local_operand(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_operand(block, Some(local_scope), expr, LocalInfo::Boring, NeedsTemporary::Maybe)
+        self.as_operand(block, Some(local_scope), expr_id, LocalInfo::Boring, NeedsTemporary::Maybe)
     }
 
     /// Returns an operand suitable for use until the end of the current scope expression and
@@ -76,7 +76,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_local_call_operand(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'tcx>,
+        expr: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
         self.as_call_operand(block, Some(local_scope), expr)
@@ -101,17 +101,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
         local_info: LocalInfo<'tcx>,
         needs_temporary: NeedsTemporary,
     ) -> BlockAnd<Operand<'tcx>> {
         let this = self;
 
+        let expr = &this.thir[expr_id];
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
             return this.in_scope(region_scope, lint_level, |this| {
-                this.as_operand(block, scope, &this.thir[value], local_info, needs_temporary)
+                this.as_operand(block, scope, value, local_info, needs_temporary)
             });
         }
 
@@ -126,7 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Operand::Constant(Box::new(constant)))
             }
             Category::Constant | Category::Place | Category::Rvalue(..) => {
-                let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
+                let operand = unpack!(block = this.as_temp(block, scope, expr_id, Mutability::Mut));
                 // Overwrite temp local info if we have something more interesting to record.
                 if !matches!(local_info, LocalInfo::Boring) {
                     let decl_info =
@@ -144,16 +145,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
+        let expr = &this.thir[expr_id];
+        debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
             return this.in_scope(region_scope, lint_level, |this| {
-                this.as_call_operand(block, scope, &this.thir[value])
+                this.as_call_operand(block, scope, value)
             });
         }
 
@@ -171,9 +173,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // type, and that value is coming from the deref of a box.
                 if let ExprKind::Deref { arg } = expr.kind {
                     // Generate let tmp0 = arg0
-                    let operand = unpack!(
-                        block = this.as_temp(block, scope, &this.thir[arg], Mutability::Mut)
-                    );
+                    let operand = unpack!(block = this.as_temp(block, scope, arg, Mutability::Mut));
 
                     // Return the operand *tmp0 to be used as the call argument
                     let place = Place {
@@ -186,6 +186,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::Maybe)
+        this.as_operand(block, scope, expr_id, LocalInfo::Boring, NeedsTemporary::Maybe)
     }
 }

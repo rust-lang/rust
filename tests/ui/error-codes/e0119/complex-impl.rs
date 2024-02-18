@@ -1,4 +1,4 @@
-// aux-build:complex_impl_support.rs
+//@ aux-build:complex_impl_support.rs
 
 extern crate complex_impl_support;
 

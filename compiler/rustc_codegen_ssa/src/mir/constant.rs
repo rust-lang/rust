@@ -94,7 +94,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.const_struct(&values, false)
             })
             .unwrap_or_else(|| {
-                bx.tcx().sess.emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
+                bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation { span: constant.span });
                 // We've errored, so we don't have to produce working code.
                 let llty = bx.backend_type(bx.layout_of(ty));
                 bx.const_undef(llty)

@@ -1,13 +1,13 @@
-// run-pass
+//@ run-pass
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 use std::fmt;
-struct NoisyDrop<T: fmt::Debug>(#[allow(unused_tuple_struct_fields)] T);
+struct NoisyDrop<T: fmt::Debug>(#[allow(dead_code)] T);
 impl<T: fmt::Debug> Drop for NoisyDrop<T> {
     fn drop(&mut self) {}
 }
 
-struct Bar<T: fmt::Debug>(#[allow(unused_tuple_struct_fields)] [*const NoisyDrop<T>; 2]);
+struct Bar<T: fmt::Debug>(#[allow(dead_code)] [*const NoisyDrop<T>; 2]);
 
 fn fine() {
     let (u,b);
@@ -15,7 +15,7 @@ fn fine() {
     b = Bar([&NoisyDrop(&u), &NoisyDrop(&u)]);
 }
 
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct Bar2<T: fmt::Debug>(*const NoisyDrop<T>, *const NoisyDrop<T>);
 
 fn lolwut() {

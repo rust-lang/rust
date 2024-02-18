@@ -1,4 +1,4 @@
-// compile-flags: --cfg foo
+//@ compile-flags: --cfg foo
 
 #[cfg(all(foo, bar))] // foo AND bar
 fn foo() {}

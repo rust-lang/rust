@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // This test used to be miscompiled by LLVM 17.
 #![allow(dead_code)]

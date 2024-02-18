@@ -1,7 +1,7 @@
 // Check "unused_lifetimes" lint on both async and sync functions
 // Both cases should be diagnosed the same way.
 
-// edition:2018
+//@ edition:2018
 
 #![deny(unused_lifetimes)]
 

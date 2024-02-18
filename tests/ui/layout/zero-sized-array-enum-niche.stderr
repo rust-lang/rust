@@ -232,7 +232,7 @@ error: layout_of(MultipleAlignments) = Layout {
 LL | enum MultipleAlignments {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
-error: layout_of(Result<[u32; 0], Packed<NonZeroU16>>) = Layout {
+error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
            size: Size(4 bytes),
            align: AbiAndPrefAlign {
                abi: Align(4 bytes),

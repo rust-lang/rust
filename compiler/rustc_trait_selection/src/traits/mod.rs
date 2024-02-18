@@ -25,6 +25,7 @@ pub mod wf;
 
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, TyCtxtInferExt};
+use crate::regions::InferCtxtRegionExt;
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_errors::ErrorGuaranteed;
@@ -215,7 +216,7 @@ fn do_normalize_predicates<'tcx>(
     // the normalized predicates.
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        tcx.sess.span_delayed_bug(
+        tcx.dcx().span_delayed_bug(
             span,
             format!("failed region resolution while normalizing {elaborated_env:?}: {errors:?}"),
         );
@@ -279,6 +280,12 @@ pub fn normalize_param_env_or_error<'tcx>(
                 }
 
                 fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+                    // FIXME(return_type_notation): track binders in this normalizer, as
+                    // `ty::Const::normalize` can only work with properly preserved binders.
+
+                    if c.has_escaping_bound_vars() {
+                        return ty::Const::new_misc_error(self.0, c.ty());
+                    }
                     // While it is pretty sus to be evaluating things with an empty param env, it
                     // should actually be okay since without `feature(generic_const_exprs)` the only
                     // const arguments that have a non-empty param env are array repeat counts. These
@@ -436,11 +443,11 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     result
 }
 
-fn subst_and_check_impossible_predicates<'tcx>(
+fn instantiate_and_check_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, GenericArgsRef<'tcx>),
 ) -> bool {
-    debug!("subst_and_check_impossible_predicates(key={:?})", key);
+    debug!("instantiate_and_check_impossible_predicates(key={:?})", key);
 
     let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
 
@@ -454,7 +461,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
     predicates.retain(|predicate| !predicate.has_param());
     let result = impossible_predicates(tcx, predicates);
 
-    debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
+    debug!("instantiate_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -541,7 +548,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
-        subst_and_check_impossible_predicates,
+        instantiate_and_check_impossible_predicates,
         check_tys_might_be_eq: misc::check_tys_might_be_eq,
         is_impossible_associated_item,
         ..*providers

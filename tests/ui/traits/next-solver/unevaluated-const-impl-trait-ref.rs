@@ -1,6 +1,6 @@
-// compile-flags: -Znext-solver
-// revisions: works fails
-//[works] check-pass
+//@ compile-flags: -Znext-solver
+//@ revisions: works fails
+//@[works] check-pass
 
 trait Trait<const N: usize> {}
 

@@ -60,6 +60,7 @@ impl WorkspaceBuildScripts {
     fn build_command(
         config: &CargoConfig,
         allowed_features: &FxHashSet<String>,
+        workspace_root: &AbsPathBuf,
     ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
@@ -72,6 +73,9 @@ impl WorkspaceBuildScripts {
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
+
+                cmd.arg("--manifest-path");
+                cmd.arg(workspace_root.join("Cargo.toml").as_os_str());
 
                 if let Some(target_dir) = &config.target_dir {
                     cmd.arg("--target-dir").arg(target_dir);
@@ -143,7 +147,11 @@ impl WorkspaceBuildScripts {
         let allowed_features = workspace.workspace_features();
 
         match Self::run_per_ws(
-            Self::build_command(config, &allowed_features)?,
+            Self::build_command(
+                config,
+                &allowed_features,
+                &workspace.workspace_root().to_path_buf(),
+            )?,
             workspace,
             current_dir,
             progress,
@@ -153,7 +161,11 @@ impl WorkspaceBuildScripts {
             {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
-                let mut cmd = Self::build_command(config, &allowed_features)?;
+                let mut cmd = Self::build_command(
+                    config,
+                    &allowed_features,
+                    &workspace.workspace_root().to_path_buf(),
+                )?;
                 cmd.args(["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
                 let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
                 res.error = Some(error);
@@ -169,6 +181,7 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspaces: &[&CargoWorkspace],
         progress: &dyn Fn(String),
+        workspace_root: &AbsPathBuf,
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
 
@@ -181,7 +194,7 @@ impl WorkspaceBuildScripts {
                 ))
             }
         };
-        let cmd = Self::build_command(config, &Default::default())?;
+        let cmd = Self::build_command(config, &Default::default(), workspace_root)?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
@@ -309,7 +322,7 @@ impl WorkspaceBuildScripts {
                 let mut deserializer = serde_json::Deserializer::from_str(line);
                 deserializer.disable_recursion_limit();
                 let message = Message::deserialize(&mut deserializer)
-                    .unwrap_or_else(|_| Message::TextLine(line.to_string()));
+                    .unwrap_or_else(|_| Message::TextLine(line.to_owned()));
 
                 match message {
                     Message::BuildScriptExecuted(mut message) => {
@@ -343,7 +356,7 @@ impl WorkspaceBuildScripts {
                                 if let Some(out_dir) =
                                     out_dir.as_os_str().to_str().map(|s| s.to_owned())
                                 {
-                                    data.envs.push(("OUT_DIR".to_string(), out_dir));
+                                    data.envs.push(("OUT_DIR".to_owned(), out_dir));
                                 }
                                 data.out_dir = Some(out_dir);
                                 data.cfgs = cfgs;
@@ -383,7 +396,7 @@ impl WorkspaceBuildScripts {
 
         let errors = if !output.status.success() {
             let errors = errors.into_inner();
-            Some(if errors.is_empty() { "cargo check failed".to_string() } else { errors })
+            Some(if errors.is_empty() { "cargo check failed".to_owned() } else { errors })
         } else {
             None
         };
@@ -477,7 +490,7 @@ impl WorkspaceBuildScripts {
 
 // FIXME: Find a better way to know if it is a dylib.
 fn is_dylib(path: &Utf8Path) -> bool {
-    match path.extension().map(|e| e.to_string().to_lowercase()) {
+    match path.extension().map(|e| e.to_owned().to_lowercase()) {
         None => false,
         Some(ext) => matches!(ext.as_str(), "dll" | "dylib" | "so"),
     }

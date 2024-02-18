@@ -1,5 +1,5 @@
-// run-pass
-// ignore-wasm32-bare seems not important to test here
+//@ run-pass
+//@ ignore-wasm32-bare seems not important to test here
 
 #![feature(intrinsics, rustc_attrs)]
 

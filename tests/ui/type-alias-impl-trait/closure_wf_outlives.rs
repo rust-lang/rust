@@ -4,7 +4,7 @@
 // It's not clear if this is the desired behavior but at least
 // it's consistent and has no back-compat risk.
 
-// check-fail
+//@ check-fail
 
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]

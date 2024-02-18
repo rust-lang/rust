@@ -60,18 +60,18 @@ impl SymbolNamesTest<'_> {
                 tcx.erase_regions(GenericArgs::identity_for_item(tcx, def_id)),
             );
             let mangled = tcx.symbol_name(instance);
-            tcx.sess.emit_err(TestOutput {
+            tcx.dcx().emit_err(TestOutput {
                 span: attr.span,
                 kind: Kind::SymbolName,
                 content: format!("{mangled}"),
             });
             if let Ok(demangling) = rustc_demangle::try_demangle(mangled.name) {
-                tcx.sess.emit_err(TestOutput {
+                tcx.dcx().emit_err(TestOutput {
                     span: attr.span,
                     kind: Kind::Demangling,
                     content: format!("{demangling}"),
                 });
-                tcx.sess.emit_err(TestOutput {
+                tcx.dcx().emit_err(TestOutput {
                     span: attr.span,
                     kind: Kind::DemanglingAlt,
                     content: format!("{demangling:#}"),
@@ -80,7 +80,7 @@ impl SymbolNamesTest<'_> {
         }
 
         for attr in tcx.get_attrs(def_id, DEF_PATH) {
-            tcx.sess.emit_err(TestOutput {
+            tcx.dcx().emit_err(TestOutput {
                 span: attr.span,
                 kind: Kind::DefPath,
                 content: with_no_trimmed_paths!(tcx.def_path_str(def_id)),

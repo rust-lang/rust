@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 // Test equality constraints on associated types inside of an object type
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub trait Foo {
     type A;

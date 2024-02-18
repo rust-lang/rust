@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // A test for something that NLL enables. It sometimes happens that
 // the `while let` pattern makes some borrows from a variable (in this

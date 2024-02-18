@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 enum Foo {
     A = 5,

@@ -3,12 +3,18 @@
 
 fn main() {
     let _ = Some(Some(1)).flatten();
+    //~^ ERROR: `filter` for `Some` followed by `unwrap`
     let _ = Some(Some(1)).flatten();
+    //~^ ERROR: `filter` for `Some` followed by `unwrap`
     let _ = Some(1).map(odds_out).flatten();
+    //~^ ERROR: `filter` for `Some` followed by `unwrap`
     let _ = Some(1).map(odds_out).flatten();
+    //~^ ERROR: `filter` for `Some` followed by `unwrap`
 
     let _ = vec![Some(1)].into_iter().flatten();
+    //~^ ERROR: `filter` for `Some` followed by `unwrap`
     let _ = vec![Some(1)].into_iter().flatten();
+    //~^ ERROR: `filter` for `Some` followed by `unwrap`
     let _ = vec![1]
         .into_iter()
         .map(odds_out)

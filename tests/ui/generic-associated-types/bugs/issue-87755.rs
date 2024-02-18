@@ -1,5 +1,5 @@
-// check-fail
-// known-bug: #87755
+//@ check-fail
+//@ known-bug: #87755
 
 // This should pass.
 

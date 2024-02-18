@@ -96,7 +96,7 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     match str::from_utf8(&contents) {
         Ok(s) => Ok(s.to_string()),
         Err(_) => {
-            dcx.struct_err(format!("error reading `{}`: not UTF-8", file_path.display())).emit();
+            dcx.err(format!("error reading `{}`: not UTF-8", file_path.display()));
             Err(LoadStringError::BadUtf8)
         }
     }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // See Issues #20055 and #21695.
 
 // We are checking here that the temporaries `Box<[i8, k]>`, for `k`
@@ -8,7 +8,7 @@
 // statement surrounding the `match`.
 
 trait Boo {
-    fn dummy(&self) { }
+    fn dummy(&self) { } //~ WARN method `dummy` is never used
 }
 
 impl Boo for [i8; 1] { }

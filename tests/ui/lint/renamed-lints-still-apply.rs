@@ -1,4 +1,4 @@
-// compile-flags: --crate-type lib
+//@ compile-flags: --crate-type lib
 #![deny(single_use_lifetime)]
 //~^ WARNING renamed
 //~| NOTE `#[warn(renamed_and_removed_lints)]` on by default

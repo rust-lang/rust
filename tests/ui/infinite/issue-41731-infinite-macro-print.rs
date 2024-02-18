@@ -1,4 +1,4 @@
-// compile-flags: -Z trace-macros
+//@ compile-flags: -Z trace-macros
 
 #![recursion_limit = "5"]
 

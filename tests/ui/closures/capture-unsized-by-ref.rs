@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: --crate-type=lib
+//@ build-pass
+//@ compile-flags: --crate-type=lib
 
 #![feature(unsized_fn_params)]
 

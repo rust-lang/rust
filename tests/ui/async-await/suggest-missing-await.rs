@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 fn take_u32(_x: u32) {}
 

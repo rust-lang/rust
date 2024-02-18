@@ -3,11 +3,11 @@
 #![feature(non_exhaustive_omitted_patterns_lint, unstable_test_feature)]
 #![deny(unreachable_patterns)]
 
-// aux-build:enums.rs
+//@ aux-build:enums.rs
 extern crate enums;
-// aux-build:unstable.rs
+//@ aux-build:unstable.rs
 extern crate unstable;
-// aux-build:structs.rs
+//@ aux-build:structs.rs
 extern crate structs;
 
 use enums::{

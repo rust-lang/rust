@@ -1,6 +1,6 @@
 // Test for diagnostics when we have mismatched lifetime due to implicit 'static lifetime in GATs
 
-// check-fail
+//@ check-fail
 
 pub trait A {}
 impl A for &dyn A {}

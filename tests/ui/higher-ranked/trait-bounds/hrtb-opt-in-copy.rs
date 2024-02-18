@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we handle binder levels correctly when checking whether a
 // type can implement `Copy`. In particular, we had a bug where we failed to
 // liberate the late-bound regions from the impl, and thus wound up

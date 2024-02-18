@@ -111,14 +111,9 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
             return Ok((result, None, vec![], Certainty::Proven));
         }
 
-        // FIXME(#33684) -- We need to use
-        // `canonicalize_query_keep_static` here because of things
-        // like the subtype query, which go awry around
-        // `'static` otherwise.
         let mut canonical_var_values = OriginalQueryValues::default();
         let old_param_env = query_key.param_env;
-        let canonical_self =
-            infcx.canonicalize_query_keep_static(query_key, &mut canonical_var_values);
+        let canonical_self = infcx.canonicalize_query(query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
 
         let InferOk { value, obligations } = infcx
@@ -146,6 +141,13 @@ where
         infcx: &InferCtxt<'tcx>,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        // In the new trait solver, query type ops are performed locally. This
+        // is because query type ops currently use the old canonicalizer, and
+        // that doesn't preserve things like opaques which have been registered
+        // during MIR typeck. Even after the old canonicalizer is gone, it's
+        // probably worthwhile just keeping this run-locally logic, since we
+        // probably don't gain much from caching here given the new solver does
+        // caching internally.
         if infcx.next_trait_solver() {
             return Ok(scrape_region_constraints(
                 infcx,
@@ -159,7 +161,7 @@ where
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
             Q::fully_perform_into(self, infcx, &mut region_constraints).map_err(|_| {
-                infcx.tcx.sess.span_delayed_bug(span, format!("error performing {self:?}"))
+                infcx.dcx().span_delayed_bug(span, format!("error performing {self:?}"))
             })?;
 
         // Typically, instantiating NLL query results does not
@@ -188,7 +190,7 @@ where
                 }
             }
             if !progress {
-                return Err(infcx.tcx.sess.span_delayed_bug(
+                return Err(infcx.dcx().span_delayed_bug(
                     span,
                     format!("ambiguity processing {obligations:?} from {self:?}"),
                 ));

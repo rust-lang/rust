@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 trait Equal {
     fn equal(&self, other: &Self) -> bool;
     fn equals<T,U>(&self, this: &T, that: &T, x: &U, y: &U) -> bool

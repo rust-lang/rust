@@ -1,7 +1,7 @@
 // Test unreachable_code lint for `try {}` block ok-wrapping. See issues #54165, #63324.
 
-// compile-flags: --edition 2018
-// check-pass
+//@ compile-flags: --edition 2018
+//@ check-pass
 #![feature(try_blocks)]
 #![warn(unreachable_code)]
 

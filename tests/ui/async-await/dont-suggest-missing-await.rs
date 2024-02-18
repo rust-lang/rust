@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // This test ensures we don't make the suggestion in bodies that aren't `async`.
 

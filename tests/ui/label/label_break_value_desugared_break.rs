@@ -1,7 +1,7 @@
-// compile-flags: --edition 2018
+//@ compile-flags: --edition 2018
 #![feature(try_blocks)]
 
-// run-pass
+//@ run-pass
 fn main() {
     let _: Result<(), ()> = try {
         'foo: {

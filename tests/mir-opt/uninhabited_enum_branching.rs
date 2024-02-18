@@ -32,7 +32,7 @@ struct Plop {
 fn simple() {
     // CHECK-LABEL: fn simple(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: bb1, otherwise: [[unreachable]]];
+    // CHECK: switchInt(move [[discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: bb2, otherwise: [[unreachable]]];
     // CHECK: [[unreachable]]: {
     // CHECK-NEXT: unreachable;
     match Test1::C {
@@ -46,7 +46,7 @@ fn simple() {
 fn custom_discriminant() {
     // CHECK-LABEL: fn custom_discriminant(
     // CHECK: [[discr:_.*]] = discriminant(
-    // CHECK: switchInt(move [[discr]]) -> [4: bb3, 5: bb1, otherwise: bb5];
+    // CHECK: switchInt(move [[discr]]) -> [4: bb3, 5: bb2, otherwise: bb5];
     // CHECK: bb5: {
     // CHECK-NEXT: unreachable;
     match Test2::D {
@@ -61,7 +61,7 @@ fn byref() {
     let plop = Plop { xx: 51, test3: Test3::C };
 
     // CHECK: [[ref_discr:_.*]] = discriminant((*
-    // CHECK: switchInt(move [[ref_discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: bb5, 3: bb1, otherwise: [[unreachable]]];
+    // CHECK: switchInt(move [[ref_discr]]) -> [0: [[unreachable:bb.*]], 1: [[unreachable]], 2: bb5, 3: bb2, otherwise: [[unreachable]]];
     match &plop.test3 {
         Test3::A(_) => "A(Empty)",
         Test3::B(_) => "B(Empty)",

@@ -50,17 +50,23 @@ error: bounds on `type`s in this context have no effect
 LL |     type F<_T>: Ord where 'static: 'static = u8;
    |                 ^^^
 
-error[E0091]: type parameter `_T` is unused
+error[E0091]: type parameter `_T` is never used
   --> $DIR/item-free-type-bounds-semantic-fail.rs:14:12
    |
 LL |     type E<_T>: Ord = u8;
    |            ^^ unused type parameter
+   |
+   = help: consider removing `_T` or referring to it in the body of the type alias
+   = help: if you intended `_T` to be a const parameter, use `const _T: /* Type */` instead
 
-error[E0091]: type parameter `_T` is unused
+error[E0091]: type parameter `_T` is never used
   --> $DIR/item-free-type-bounds-semantic-fail.rs:17:12
    |
 LL |     type F<_T>: Ord where 'static: 'static = u8;
    |            ^^ unused type parameter
+   |
+   = help: consider removing `_T` or referring to it in the body of the type alias
+   = help: if you intended `_T` to be a const parameter, use `const _T: /* Type */` instead
 
 error: aborting due to 10 previous errors
 

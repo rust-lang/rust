@@ -2,10 +2,10 @@
 // collision on the symbol generated for the external linkage item in
 // an extern crate.
 
-// build-fail
-// aux-build:def_colliding_external.rs
+//@ build-fail
+//@ aux-build:def_colliding_external.rs
 // FIXME(#83838) codegen-units=1 triggers llvm asserts
-// compile-flags: -Ccodegen-units=16
+//@ compile-flags: -Ccodegen-units=16
 
 extern crate def_colliding_external as dep1;
 

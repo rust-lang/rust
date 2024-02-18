@@ -178,19 +178,19 @@ fn test_or_else() {
     assert_eq!(x.or_else(two), Some(2));
     assert_eq!(x.or_else(none), None);
 
-/* FIXME(#110395)
-    const FOO: Option<isize> = Some(1);
-    const A: Option<isize> = FOO.or_else(two);
-    const B: Option<isize> = FOO.or_else(none);
-    assert_eq!(A, Some(1));
-    assert_eq!(B, Some(1));
+    /* FIXME(#110395)
+        const FOO: Option<isize> = Some(1);
+        const A: Option<isize> = FOO.or_else(two);
+        const B: Option<isize> = FOO.or_else(none);
+        assert_eq!(A, Some(1));
+        assert_eq!(B, Some(1));
 
-    const BAR: Option<isize> = None;
-    const C: Option<isize> = BAR.or_else(two);
-    const D: Option<isize> = BAR.or_else(none);
-    assert_eq!(C, Some(2));
-    assert_eq!(D, None);
-*/
+        const BAR: Option<isize> = None;
+        const C: Option<isize> = BAR.or_else(two);
+        const D: Option<isize> = BAR.or_else(none);
+        assert_eq!(C, Some(2));
+        assert_eq!(D, None);
+    */
 }
 
 #[test]
@@ -486,15 +486,15 @@ const fn option_const_mut() {
             None => unreachable!(),
         }
     }
-/* FIXME(const-hack)
-    {
-        let as_mut: Option<&mut usize> = Option::from(&mut option);
-        match as_mut {
-            Some(v) => *v = 42,
-            None => unreachable!(),
+    /* FIXME(const-hack)
+        {
+            let as_mut: Option<&mut usize> = Option::from(&mut option);
+            match as_mut {
+                Some(v) => *v = 42,
+                None => unreachable!(),
+            }
         }
-    }
-*/
+    */
 }
 
 #[test]

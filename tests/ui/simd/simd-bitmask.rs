@@ -1,5 +1,5 @@
-//run-pass
-//ignore-endian-big behavior of simd_select_bitmask is endian-specific
+//@run-pass
+//@ignore-endian-big behavior of simd_select_bitmask is endian-specific
 #![feature(repr_simd, platform_intrinsics)]
 
 extern "platform-intrinsic" {

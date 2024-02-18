@@ -51,7 +51,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             let name = match mi.ident() {
                 Some(ident) if mi.is_word() => ident.name,
                 Some(ident) => {
-                    sess.emit_err(MalformedFeatureAttribute {
+                    sess.dcx().emit_err(MalformedFeatureAttribute {
                         span: mi.span(),
                         help: MalformedFeatureAttributeHelp::Suggestion {
                             span: mi.span(),
@@ -61,7 +61,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                     continue;
                 }
                 None => {
-                    sess.emit_err(MalformedFeatureAttribute {
+                    sess.dcx().emit_err(MalformedFeatureAttribute {
                         span: mi.span(),
                         help: MalformedFeatureAttributeHelp::Label { span: mi.span() },
                     });
@@ -71,7 +71,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the declared feature has been removed, issue an error.
             if let Some(f) = REMOVED_FEATURES.iter().find(|f| name == f.feature.name) {
-                sess.emit_err(FeatureRemoved {
+                sess.dcx().emit_err(FeatureRemoved {
                     span: mi.span(),
                     reason: f.reason.map(|reason| FeatureRemovedReason { reason }),
                 });
@@ -90,7 +90,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
             // issue an error.
             if let Some(allowed) = sess.opts.unstable_opts.allow_features.as_ref() {
                 if allowed.iter().all(|f| name.as_str() != f) {
-                    sess.emit_err(FeatureNotAllowed { span: mi.span(), name });
+                    sess.dcx().emit_err(FeatureNotAllowed { span: mi.span(), name });
                     continue;
                 }
             }
@@ -256,12 +256,7 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::cfg_matches(
-            &cfg_predicate,
-            &self.sess.parse_sess,
-            self.lint_node_id,
-            self.features,
-        ) {
+        if !attr::cfg_matches(&cfg_predicate, &self.sess, self.lint_node_id, self.features) {
             return vec![];
         }
 
@@ -362,19 +357,14 @@ impl<'a> StripUnconfigured<'a> {
     pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
         let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
             Ok(meta_item) => meta_item,
-            Err(mut err) => {
+            Err(err) => {
                 err.emit();
                 return (true, None);
             }
         };
         (
             parse_cfg(&meta_item, self.sess).map_or(true, |meta_item| {
-                attr::cfg_matches(
-                    meta_item,
-                    &self.sess.parse_sess,
-                    self.lint_node_id,
-                    self.features,
-                )
+                attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
             }),
             Some(meta_item),
         )
@@ -383,9 +373,11 @@ impl<'a> StripUnconfigured<'a> {
     /// If attributes are not allowed on expressions, emit an error for `attr`
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
-        if self.features.is_some_and(|features| !features.stmt_expr_attributes) {
+        if self.features.is_some_and(|features| !features.stmt_expr_attributes)
+            && !attr.span.allows_unstable(sym::stmt_expr_attributes)
+        {
             let mut err = feature_err(
-                &self.sess.parse_sess,
+                &self.sess,
                 sym::stmt_expr_attributes,
                 attr.span,
                 "attributes on expressions are experimental",
@@ -415,7 +407,7 @@ impl<'a> StripUnconfigured<'a> {
         // N.B., this is intentionally not part of the visit_expr() function
         //     in order for filter_map_expr() to be able to avoid this check
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
-            self.sess.emit_err(RemoveExprNotSupported { span: attr.span });
+            self.sess.dcx().emit_err(RemoveExprNotSupported { span: attr.span });
         }
 
         self.process_cfg_attrs(expr);
@@ -427,21 +419,21 @@ pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a Meta
     let span = meta_item.span;
     match meta_item.meta_item_list() {
         None => {
-            sess.emit_err(InvalidCfg::NotFollowedByParens { span });
+            sess.dcx().emit_err(InvalidCfg::NotFollowedByParens { span });
             None
         }
         Some([]) => {
-            sess.emit_err(InvalidCfg::NoPredicate { span });
+            sess.dcx().emit_err(InvalidCfg::NoPredicate { span });
             None
         }
         Some([_, .., l]) => {
-            sess.emit_err(InvalidCfg::MultiplePredicates { span: l.span() });
+            sess.dcx().emit_err(InvalidCfg::MultiplePredicates { span: l.span() });
             None
         }
         Some([single]) => match single.meta_item() {
             Some(meta_item) => Some(meta_item),
             None => {
-                sess.emit_err(InvalidCfg::PredicateLiteral { span: single.span() });
+                sess.dcx().emit_err(InvalidCfg::PredicateLiteral { span: single.span() });
                 None
             }
         },

@@ -1,11 +1,11 @@
-// run-pass
-// check-run-results
-// ignore-windows
-// ignore-emscripten
-// ignore-fuchsia
-// ignore-horizon
-// ignore-android
-// normalize-stderr-test ".rs:\d+:\d+" -> ".rs:LL:CC"
+//@ run-pass
+//@ check-run-results
+//@ ignore-windows
+//@ ignore-emscripten
+//@ ignore-fuchsia
+//@ ignore-horizon
+//@ ignore-android
+//@ normalize-stderr-test ".rs:\d+:\d+" -> ".rs:LL:CC"
 
 // Test what the error message looks like when `println!()` panics because of
 // `std::io::ErrorKind::BrokenPipe`

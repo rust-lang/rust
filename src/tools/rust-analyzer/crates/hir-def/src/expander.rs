@@ -4,15 +4,15 @@ use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
-    attrs::RawAttrs, mod_path::ModPath, span::SpanMap, ExpandError, ExpandResult, HirFileId,
+    attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandResult, HirFileId,
     InFile, MacroCallId,
 };
 use limit::Limit;
-use syntax::{ast, Parse, SyntaxNode};
+use syntax::{ast, Parse};
 
 use crate::{
-    attr::Attrs, db::DefDatabase, lower::LowerCtx, macro_id_to_def_id, path::Path, AsMacroCall,
-    MacroId, ModuleId, UnresolvedMacro,
+    attr::Attrs, db::DefDatabase, lower::LowerCtx, path::Path, AsMacroCall, MacroId, ModuleId,
+    UnresolvedMacro,
 };
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub struct Expander {
     cfg_options: CfgOptions,
     span_map: SpanMap,
     krate: CrateId,
-    pub(crate) current_file_id: HirFileId,
+    current_file_id: HirFileId,
     pub(crate) module: ModuleId,
     /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
     recursion_depth: u32,
@@ -29,12 +29,13 @@ pub struct Expander {
 
 impl Expander {
     pub fn new(db: &dyn DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
-        let recursion_limit = db.recursion_limit(module.krate);
-        #[cfg(not(test))]
-        let recursion_limit = Limit::new(recursion_limit as usize);
-        // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
-        #[cfg(test)]
-        let recursion_limit = Limit::new(std::cmp::min(32, recursion_limit as usize));
+        let recursion_limit = module.def_map(db).recursion_limit() as usize;
+        let recursion_limit = Limit::new(if cfg!(test) {
+            // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
+            std::cmp::min(32, recursion_limit)
+        } else {
+            recursion_limit
+        });
         Expander {
             current_file_id,
             module,
@@ -56,9 +57,9 @@ impl Expander {
         let mut unresolved_macro_err = None;
 
         let result = self.within_limit(db, |this| {
-            let macro_call = InFile::new(this.current_file_id, &macro_call);
+            let macro_call = this.in_file(&macro_call);
             match macro_call.as_call_id_with_errors(db.upcast(), this.module.krate(), |path| {
-                resolver(path).map(|it| macro_id_to_def_id(db, it))
+                resolver(path).map(|it| db.macro_def(it))
             }) {
                 Ok(call_id) => call_id,
                 Err(resolve_err) => {
@@ -83,17 +84,6 @@ impl Expander {
         self.within_limit(db, |_this| ExpandResult::ok(Some(call_id)))
     }
 
-    fn enter_expand_inner(
-        db: &dyn DefDatabase,
-        call_id: MacroCallId,
-        error: Option<ExpandError>,
-    ) -> ExpandResult<Option<InFile<Parse<SyntaxNode>>>> {
-        let macro_file = call_id.as_macro_file();
-        let ExpandResult { value, err } = db.parse_macro_expansion(macro_file);
-
-        ExpandResult { value: Some(InFile::new(macro_file.into(), value.0)), err: error.or(err) }
-    }
-
     pub fn exit(&mut self, mut mark: Mark) {
         self.span_map = mark.span_map;
         self.current_file_id = mark.file_id;
@@ -113,7 +103,7 @@ impl Expander {
         LowerCtx::new(db, self.span_map.clone(), self.current_file_id)
     }
 
-    pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
+    pub(crate) fn in_file<T>(&self, value: T) -> InFile<T> {
         InFile { file_id: self.current_file_id, value }
     }
 
@@ -164,26 +154,34 @@ impl Expander {
             return ExpandResult { value: None, err };
         };
 
-        let res = Self::enter_expand_inner(db, call_id, err);
-        match res.err {
-            // If proc-macro is disabled or unresolved, we want to expand to a missing expression
-            // instead of an empty tree which might end up in an empty block.
-            Some(ExpandError::UnresolvedProcMacro(_)) => res.map(|_| None),
-            _ => res.map(|value| {
-                value.and_then(|InFile { file_id, value }| {
-                    let parse = value.cast::<T>()?;
+        let macro_file = call_id.as_macro_file();
+        let res = db.parse_macro_expansion(macro_file);
+
+        let err = err.or(res.err);
+        ExpandResult {
+            value: match err {
+                // If proc-macro is disabled or unresolved, we want to expand to a missing expression
+                // instead of an empty tree which might end up in an empty block.
+                Some(ExpandError::UnresolvedProcMacro(_)) => None,
+                _ => (|| {
+                    let parse = res.value.0.cast::<T>()?;
 
                     self.recursion_depth += 1;
-                    let old_span_map = std::mem::replace(&mut self.span_map, db.span_map(file_id));
-                    let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
+                    let old_span_map = std::mem::replace(
+                        &mut self.span_map,
+                        SpanMap::ExpansionSpanMap(res.value.1),
+                    );
+                    let old_file_id =
+                        std::mem::replace(&mut self.current_file_id, macro_file.into());
                     let mark = Mark {
                         file_id: old_file_id,
                         span_map: old_span_map,
                         bomb: DropBomb::new("expansion mark dropped"),
                     };
                     Some((mark, parse))
-                })
-            }),
+                })(),
+            },
+            err,
         }
     }
 }

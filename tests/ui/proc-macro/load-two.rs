@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 
 #![allow(path_statements)]
 #![allow(dead_code)]
-// aux-build:derive-atob.rs
-// aux-build:derive-ctod.rs
+//@ aux-build:derive-atob.rs
+//@ aux-build:derive-ctod.rs
 
 #[macro_use]
 extern crate derive_atob;

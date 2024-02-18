@@ -21,7 +21,7 @@
 
 #![allow(dead_code, missing_docs)]
 #![unstable(
-    feature = "core_panic",
+    feature = "panic_internals",
     reason = "internal details of the implementation of the `panic!` and related macros",
     issue = "none"
 )]
@@ -48,7 +48,7 @@ const _: () = assert!(cfg!(panic = "abort"), "panic_immediate_abort requires -C 
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
 #[rustc_do_not_const_check] // hooked by const-eval
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -82,7 +82,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 // and unwinds anyway, we will hit the "unwinding out of nounwind function" guard,
 // which causes a "panic in a function that cannot unwind".
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: bool) -> ! {
     #[inline] // this should always be inlined into `panic_nounwind_fmt`
     #[track_caller]
@@ -132,7 +132,7 @@ pub const fn panic_nounwind_fmt(fmt: fmt::Arguments<'_>, force_no_backtrace: boo
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
 pub const fn panic(expr: &'static str) -> ! {
     // Use Arguments::new_v1 instead of format_args!("{expr}") to potentially
@@ -150,7 +150,7 @@ pub const fn panic(expr: &'static str) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_nounwind(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ false);
 }
@@ -166,7 +166,7 @@ pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
 #[inline]
 #[track_caller]
 #[rustc_diagnostic_item = "panic_str"]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_str(expr: &str) -> ! {
     panic_display(&expr);
 }
@@ -174,7 +174,7 @@ pub const fn panic_str(expr: &str) -> ! {
 #[track_caller]
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_explicit() -> ! {
     panic_display(&"explicit panic");
 }
@@ -191,7 +191,7 @@ pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
 #[rustc_do_not_const_check] // hooked by const-eval
 // enforce a &&str argument in const-check and hook this by const-eval
 #[rustc_const_panic_str]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
@@ -258,7 +258,7 @@ fn panic_in_cleanup() -> ! {
 
 /// This function is used instead of panic_fmt in const eval.
 #[lang = "const_panic_fmt"]
-#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[rustc_const_unstable(feature = "panic_internals", issue = "none")]
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
         // The panic_display function is hooked by const eval.

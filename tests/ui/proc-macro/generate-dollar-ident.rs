@@ -1,8 +1,8 @@
 // Proc macros can generate token sequence `$ IDENT`
 // without it being recognized as an unknown macro variable.
 
-// check-pass
-// aux-build:generate-dollar-ident.rs
+//@ check-pass
+//@ aux-build:generate-dollar-ident.rs
 
 extern crate generate_dollar_ident;
 use generate_dollar_ident::*;

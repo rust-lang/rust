@@ -1,5 +1,5 @@
-// revisions: good bad
-//[good] check-pass
+//@ revisions: good bad
+//@[good] check-pass
 
 use std::marker::PhantomData;
 use std::ops::Drop;

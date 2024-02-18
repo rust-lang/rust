@@ -6,14 +6,14 @@ fn a<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) where 
 
 fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Illegal now because there is no `'b:'a` declaration.
-    *x = *y;
+    *x = *y; //~ ERROR: lifetime may not live long enough
     *z = *y;
 }
 
 fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Here we try to call `foo` but do not know that `'a` and `'b` are
     // related as required.
-    a(x, y, z);
+    a(x, y, z); //~ ERROR: lifetime may not live long enough
 }
 
 fn d() {

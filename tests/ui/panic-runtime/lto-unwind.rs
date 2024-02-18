@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 
-// compile-flags:-C lto -C panic=unwind
-// needs-unwind
-// no-prefer-dynamic
-// ignore-emscripten no processes
-// ignore-sgx no processes
+//@ compile-flags:-C lto -C panic=unwind
+//@ needs-unwind
+//@ no-prefer-dynamic
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
 
 use std::process::Command;
 use std::env;

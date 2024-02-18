@@ -1,8 +1,8 @@
-// aux-build:suggestions-not-always-applicable.rs
-// edition:2015
-// run-rustfix
-// rustfix-only-machine-applicable
-// check-pass
+//@ aux-build:suggestions-not-always-applicable.rs
+//@ edition:2015
+//@ run-rustfix
+//@ rustfix-only-machine-applicable
+//@ check-pass
 
 #![warn(rust_2018_compatibility)]
 

@@ -648,16 +648,35 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     /// Adds a key-value pair to the end of the node, and returns
-    /// the mutable reference of the inserted value.
-    pub fn push(&mut self, key: K, val: V) -> &mut V {
+    /// a handle to the inserted value.
+    ///
+    /// # Safety
+    ///
+    /// The returned handle has an unbound lifetime.
+    pub unsafe fn push_with_handle<'b>(
+        &mut self,
+        key: K,
+        val: V,
+    ) -> Handle<NodeRef<marker::Mut<'b>, K, V, marker::Leaf>, marker::KV> {
         let len = self.len_mut();
         let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
             self.key_area_mut(idx).write(key);
-            self.val_area_mut(idx).write(val)
+            self.val_area_mut(idx).write(val);
+            Handle::new_kv(
+                NodeRef { height: self.height, node: self.node, _marker: PhantomData },
+                idx,
+            )
         }
+    }
+
+    /// Adds a key-value pair to the end of the node, and returns
+    /// the mutable reference of the inserted value.
+    pub fn push(&mut self, key: K, val: V) -> *mut V {
+        // SAFETY: The unbound handle is no longer accessible.
+        unsafe { self.push_with_handle(key, val).into_val_mut() }
     }
 }
 
@@ -1100,10 +1119,10 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() }
     }
 
-    pub fn into_kv_valmut(self) -> (&'a K, &'a mut V) {
+    pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
         debug_assert!(self.idx < self.node.len());
         let leaf = self.node.into_leaf_mut();
-        let k = unsafe { leaf.keys.get_unchecked(self.idx).assume_init_ref() };
+        let k = unsafe { leaf.keys.get_unchecked_mut(self.idx).assume_init_mut() };
         let v = unsafe { leaf.vals.get_unchecked_mut(self.idx).assume_init_mut() };
         (k, v)
     }

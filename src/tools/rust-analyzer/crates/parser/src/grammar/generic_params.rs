@@ -10,16 +10,27 @@ pub(super) fn opt_generic_param_list(p: &mut Parser<'_>) {
 
 // test generic_param_list
 // fn f<T: Clone>() {}
+
+// test_err generic_param_list_recover
+// fn f<T: Clone,, U:, V>() {}
 fn generic_param_list(p: &mut Parser<'_>) {
     assert!(p.at(T![<]));
     let m = p.start();
-    delimited(p, T![<], T![>], T![,], GENERIC_PARAM_FIRST.union(ATTRIBUTE_FIRST), |p| {
-        // test generic_param_attribute
-        // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
-        let m = p.start();
-        attributes::outer_attrs(p);
-        generic_param(p, m)
-    });
+    delimited(
+        p,
+        T![<],
+        T![>],
+        T![,],
+        || "expected generic parameter".into(),
+        GENERIC_PARAM_FIRST.union(ATTRIBUTE_FIRST),
+        |p| {
+            // test generic_param_attribute
+            // fn foo<#[lt_attr] 'a, #[t_attr] T>() {}
+            let m = p.start();
+            attributes::outer_attrs(p);
+            generic_param(p, m)
+        },
+    );
 
     m.complete(p, GENERIC_PARAM_LIST);
 }

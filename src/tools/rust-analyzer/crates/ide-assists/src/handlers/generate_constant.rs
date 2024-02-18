@@ -50,6 +50,10 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         ty.original().display_source_code(ctx.db(), constant_module.into(), false).ok()?;
     let target = statement.syntax().parent()?.text_range();
     let path = constant_token.syntax().ancestors().find_map(ast::Path::cast)?;
+    if path.parent_path().is_some() {
+        cov_mark::hit!(not_last_path_segment);
+        return None;
+    }
 
     let name_refs = path.segments().map(|s| s.name_ref());
     let mut outer_exists = false;
@@ -103,10 +107,10 @@ fn get_text_for_generate_constant(
     type_name: String,
 ) -> Option<String> {
     let constant_token = not_exist_name_ref.pop()?;
-    let vis = if not_exist_name_ref.len() == 0 && !outer_exists { "" } else { "\npub " };
+    let vis = if not_exist_name_ref.is_empty() && !outer_exists { "" } else { "\npub " };
     let mut text = format!("{vis}const {constant_token}: {type_name} = $0;");
     while let Some(name_ref) = not_exist_name_ref.pop() {
-        let vis = if not_exist_name_ref.len() == 0 && !outer_exists { "" } else { "\npub " };
+        let vis = if not_exist_name_ref.is_empty() && !outer_exists { "" } else { "\npub " };
         text = text.replace('\n', "\n    ");
         text = format!("{vis}mod {name_ref} {{{text}\n}}");
     }
@@ -132,8 +136,7 @@ fn target_data_for_generate_constant(
 
             let siblings_has_newline = l_curly_token
                 .siblings_with_tokens(Direction::Next)
-                .find(|it| it.kind() == SyntaxKind::WHITESPACE && it.to_string().contains('\n'))
-                .is_some();
+                .any(|it| it.kind() == SyntaxKind::WHITESPACE && it.to_string().contains('\n'));
             let post_string =
                 if siblings_has_newline { format!("{indent}") } else { format!("\n{indent}") };
             Some((offset, indent + 1, Some(file_id), post_string))
@@ -250,6 +253,18 @@ fn bar() -> i32 {
 }
 fn bar() -> i32 {
     foo::goo::A_CONSTANT
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_wont_apply_when_not_last_path_segment() {
+        cov_mark::check!(not_last_path_segment);
+        check_assist_not_applicable(
+            generate_constant,
+            r#"mod foo {}
+fn bar() -> i32 {
+    foo::A_CON$0STANT::invalid_segment
 }"#,
         );
     }

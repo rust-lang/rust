@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -C opt-level=3
+//@ build-pass
+//@ compile-flags: -C opt-level=3
 
 #![crate_type = "lib"]
 

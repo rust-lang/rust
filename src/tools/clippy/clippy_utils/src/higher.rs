@@ -91,6 +91,9 @@ pub struct IfLet<'hir> {
     pub if_then: &'hir Expr<'hir>,
     /// `if let` else expression
     pub if_else: Option<&'hir Expr<'hir>>,
+    /// `if let PAT = EXPR`
+    ///     ^^^^^^^^^^^^^^
+    pub let_span: Span,
 }
 
 impl<'hir> IfLet<'hir> {
@@ -99,9 +102,10 @@ impl<'hir> IfLet<'hir> {
         if let ExprKind::If(
             Expr {
                 kind:
-                    ExprKind::Let(hir::Let {
+                    ExprKind::Let(&hir::Let {
                         pat: let_pat,
                         init: let_expr,
+                        span: let_span,
                         ..
                     }),
                 ..
@@ -129,6 +133,7 @@ impl<'hir> IfLet<'hir> {
                 let_expr,
                 if_then,
                 if_else,
+                let_span,
             });
         }
         None
@@ -146,6 +151,9 @@ pub enum IfLetOrMatch<'hir> {
         &'hir Pat<'hir>,
         &'hir Expr<'hir>,
         Option<&'hir Expr<'hir>>,
+        /// `if let PAT = EXPR`
+        ///     ^^^^^^^^^^^^^^
+        Span,
     ),
 }
 
@@ -160,7 +168,8 @@ impl<'hir> IfLetOrMatch<'hir> {
                      let_pat,
                      if_then,
                      if_else,
-                 }| { Self::IfLet(let_expr, let_pat, if_then, if_else) },
+                     let_span,
+                 }| { Self::IfLet(let_expr, let_pat, if_then, if_else, let_span) },
             ),
         }
     }
@@ -353,6 +362,9 @@ pub struct WhileLet<'hir> {
     pub let_expr: &'hir Expr<'hir>,
     /// `while let` loop body
     pub if_then: &'hir Expr<'hir>,
+    /// `while let PAT = EXPR`
+    ///        ^^^^^^^^^^^^^^
+    pub let_span: Span,
 }
 
 impl<'hir> WhileLet<'hir> {
@@ -367,9 +379,10 @@ impl<'hir> WhileLet<'hir> {
                             ExprKind::If(
                                 Expr {
                                     kind:
-                                        ExprKind::Let(hir::Let {
+                                        ExprKind::Let(&hir::Let {
                                             pat: let_pat,
                                             init: let_expr,
+                                            span: let_span,
                                             ..
                                         }),
                                     ..
@@ -390,6 +403,7 @@ impl<'hir> WhileLet<'hir> {
                 let_pat,
                 let_expr,
                 if_then,
+                let_span,
             });
         }
         None

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:unstable-macros.rs
+//@ run-pass
+//@ aux-build:unstable-macros.rs
 
 #![unstable(feature = "one_two_three_testing", issue = "none")]
 #![feature(staged_api, unstable_macros, local_unstable)]

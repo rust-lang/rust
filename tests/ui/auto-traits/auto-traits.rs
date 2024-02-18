@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_doc_comments)]
 #![feature(auto_traits)]
 #![feature(negative_impls)]
@@ -9,7 +9,7 @@ unsafe auto trait AutoUnsafe {}
 impl !Auto for bool {}
 impl !AutoUnsafe for bool {}
 
-struct AutoBool(#[allow(unused_tuple_struct_fields)] bool);
+struct AutoBool(#[allow(dead_code)] bool);
 
 impl Auto for AutoBool {}
 unsafe impl AutoUnsafe for AutoBool {}
@@ -19,8 +19,8 @@ fn take_auto_unsafe<T: AutoUnsafe>(_: T) {}
 
 fn main() {
     // Parse inside functions.
-    auto trait AutoInner {}
-    unsafe auto trait AutoUnsafeInner {}
+    auto trait AutoInner {} //~ WARN trait `AutoInner` is never used
+    unsafe auto trait AutoUnsafeInner {} //~ WARN trait `AutoUnsafeInner` is never used
 
     take_auto(0);
     take_auto(AutoBool(true));

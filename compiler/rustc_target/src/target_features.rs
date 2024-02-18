@@ -86,7 +86,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Stability)] = &[
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     // tidy-alphabetical-start
-    // FEAT_AES
+    // FEAT_AES & FEAT_PMULL
     ("aes", Stable),
     // FEAT_BF16
     ("bf16", Stable),
@@ -124,7 +124,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("lor", Stable),
     // FEAT_LSE
     ("lse", Stable),
-    // FEAT_MTE
+    // FEAT_MTE & FEAT_MTE2
     ("mte", Stable),
     // FEAT_AdvSimd & FEAT_FP
     ("neon", Stable),
@@ -138,7 +138,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("pmuv3", Stable),
     // FEAT_RAND
     ("rand", Stable),
-    // FEAT_RAS
+    // FEAT_RAS & FEAT_RASv1p1
     ("ras", Stable),
     // FEAT_RCPC
     ("rcpc", Stable),
@@ -156,7 +156,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("sm4", Stable),
     // FEAT_SPE
     ("spe", Stable),
-    // FEAT_SSBS
+    // FEAT_SSBS & FEAT_SSBS2
     ("ssbs", Stable),
     // FEAT_SVE
     ("sve", Stable),
@@ -201,6 +201,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("avx512dq", Unstable(sym::avx512_target_feature)),
     ("avx512er", Unstable(sym::avx512_target_feature)),
     ("avx512f", Unstable(sym::avx512_target_feature)),
+    ("avx512fp16", Unstable(sym::avx512_target_feature)),
     ("avx512ifma", Unstable(sym::avx512_target_feature)),
     ("avx512pf", Unstable(sym::avx512_target_feature)),
     ("avx512vbmi", Unstable(sym::avx512_target_feature)),
@@ -217,10 +218,12 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("fma", Stable),
     ("fxsr", Stable),
     ("gfni", Unstable(sym::avx512_target_feature)),
+    ("lahfsahf", Unstable(sym::lahfsahf_target_feature)),
     ("lzcnt", Stable),
     ("movbe", Stable),
     ("pclmulqdq", Stable),
     ("popcnt", Stable),
+    ("prfchw", Unstable(sym::prfchw_target_feature)),
     ("rdrand", Stable),
     ("rdseed", Stable),
     ("rtm", Unstable(sym::rtm_target_feature)),

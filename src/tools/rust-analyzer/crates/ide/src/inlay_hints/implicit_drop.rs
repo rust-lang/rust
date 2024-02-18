@@ -1,10 +1,8 @@
 //! Implementation of "implicit drop" inlay hints:
-//! ```no_run
-//! fn main() {
-//!     let x = vec![2];
-//!     if some_condition() {
-//!         /* drop(x) */return;
-//!     }
+//! ```ignore
+//! let x = vec![2];
+//! if some_condition() {
+//!     /* drop(x) */return;
 //! }
 //! ```
 use hir::{
@@ -118,9 +116,8 @@ fn nearest_token_after_node(
     token_type: syntax::SyntaxKind,
 ) -> Option<syntax::SyntaxToken> {
     node.siblings_with_tokens(syntax::Direction::Next)
-        .filter_map(|it| it.as_token().map(|it| it.clone()))
-        .filter(|it| it.kind() == token_type)
-        .next()
+        .filter_map(|it| it.as_token().cloned())
+        .find(|it| it.kind() == token_type)
 }
 
 #[cfg(test)]
@@ -178,7 +175,7 @@ mod tests {
 
     #[test]
     fn try_operator() {
-        // We currently show drop inlay hint for every `?` operator that may potentialy drop something. We probably need to
+        // We currently show drop inlay hint for every `?` operator that may potentially drop something. We probably need to
         // make it configurable as it doesn't seem very useful.
         check_with_config(
             ONLY_DROP_CONFIG,

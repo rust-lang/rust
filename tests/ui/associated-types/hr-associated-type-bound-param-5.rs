@@ -34,4 +34,5 @@ impl<S, T> X<'_, Box<T>> for S {
 
 pub fn main() {
     <i32 as X<Box<i32>>>::f("abc");
+    //~^ ERROR the trait bound `str: Clone` is not satisfied
 }

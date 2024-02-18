@@ -1,7 +1,7 @@
-// only-aarch64
-// only-linux
-// needs-asm-support
-// run-pass
+//@ only-aarch64
+//@ only-linux
+//@ needs-asm-support
+//@ run-pass
 
 #![feature(thread_local)]
 

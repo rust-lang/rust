@@ -1,5 +1,5 @@
-// unit-test: ConstProp
-// EMIT_MIR cast.main.ConstProp.diff
+// unit-test: GVN
+// EMIT_MIR cast.main.GVN.diff
 
 fn main() {
     // CHECK-LABEL: fn main(

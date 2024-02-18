@@ -6,14 +6,14 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
-bitflags = "1.2.1"
+bitflags = "2.4.1"
+either = "1.0"
 elsa = "=1.7.1"
 ena = "0.14.2"
 indexmap = { version = "2.0.0" }
-itertools = "0.11"
-jobserver_crate = { version = "0.1.27", package = "jobserver" }
+jobserver_crate = { version = "0.1.28", package = "jobserver" }
 libc = "0.2"
-measureme = "10.0.0"
+measureme = "11"
 rustc-hash = "1.1.0"
 rustc-rayon = { version = "0.5.0", optional = true }
 rustc-rayon-core = { version = "0.5.0", optional = true }

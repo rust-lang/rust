@@ -314,9 +314,9 @@ impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BO
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(
         &mut self,
-        cx: &LateContext<'_>,
+        cx: &LateContext<'tcx>,
         fn_kind: FnKind<'_>,
-        decl: &FnDecl<'_>,
+        decl: &FnDecl<'tcx>,
         _: &Body<'_>,
         _: Span,
         def_id: LocalDefId,
@@ -346,7 +346,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         );
     }
 
-    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
@@ -363,7 +363,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'tcx>) {
         match item.kind {
             ImplItemKind::Const(ty, _) => {
                 let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx
@@ -391,7 +391,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         }
     }
 
-    fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
+    fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &hir::FieldDef<'tcx>) {
         let is_exported = cx.effective_visibilities.is_exported(field.def_id);
 
         self.check_ty(
@@ -404,7 +404,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         );
     }
 
-    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'_>) {
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'tcx>) {
         let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         let context = CheckTyContext {
@@ -421,7 +421,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         }
     }
 
-    fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &Local<'tcx>) {
         if let Some(ty) = local.ty {
             self.check_ty(
                 cx,
@@ -444,7 +444,7 @@ impl Types {
         }
     }
 
-    fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, context: CheckTyContext) {
+    fn check_fn_decl<'tcx>(&mut self, cx: &LateContext<'tcx>, decl: &FnDecl<'tcx>, context: CheckTyContext) {
         // Ignore functions in trait implementations as they are usually forced by the trait definition.
         //
         // FIXME: ideally we would like to warn *if the complicated type can be simplified*, but it's hard
@@ -466,7 +466,7 @@ impl Types {
     /// lint found.
     ///
     /// The parameter `is_local` distinguishes the context of the type.
-    fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, mut context: CheckTyContext) {
+    fn check_ty<'tcx>(&mut self, cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>, mut context: CheckTyContext) {
         if hir_ty.span.from_expansion() {
             return;
         }

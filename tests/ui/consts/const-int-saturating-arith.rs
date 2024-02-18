@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const INT_U32_NO: u32 = (42 as u32).saturating_add(2);
 const INT_U32: u32 = u32::MAX.saturating_add(1);

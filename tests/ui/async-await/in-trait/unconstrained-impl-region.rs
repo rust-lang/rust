@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 pub(crate) trait Inbox<M> {
     async fn next(self) -> M;

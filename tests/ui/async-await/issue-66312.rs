@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 trait Test<T> {
     fn is_some(self: T); //~ ERROR invalid `self` parameter type

@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 fn main() {}
 #[derive(Clone)]
 pub struct Little;
 #[derive(Clone)]
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 pub struct Big(
     Little,
     Little,

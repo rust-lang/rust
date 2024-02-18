@@ -1,4 +1,4 @@
-// aux-build:unaligned_references_external_crate.rs
+//@ aux-build:unaligned_references_external_crate.rs
 
 extern crate unaligned_references_external_crate;
 

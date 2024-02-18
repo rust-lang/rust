@@ -2,7 +2,7 @@
 
 use core::alloc::LayoutError;
 use core::cmp;
-use core::intrinsics;
+use core::hint;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
@@ -207,11 +207,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             // Allocators currently return a `NonNull<[u8]>` whose length
             // matches the size requested. If that ever changes, the capacity
             // here should change to `ptr.len() / mem::size_of::<T>()`.
-            Self {
-                ptr: unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) },
-                cap: unsafe { Cap(capacity) },
-                alloc,
-            }
+            Self { ptr: Unique::from(ptr.cast()), cap: unsafe { Cap(capacity) }, alloc }
         }
     }
 
@@ -237,6 +233,11 @@ impl<T, A: Allocator> RawVec<T, A> {
     #[inline]
     pub fn ptr(&self) -> *mut T {
         self.ptr.as_ptr()
+    }
+
+    #[inline]
+    pub fn non_null(&self) -> NonNull<T> {
+        NonNull::from(self.ptr)
     }
 
     /// Gets the capacity of the allocation.
@@ -284,7 +285,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Aborts
     ///
@@ -325,7 +326,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+            hint::assert_unchecked(!self.needs_to_grow(len, additional));
         }
         Ok(())
     }
@@ -342,7 +343,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Aborts
     ///
@@ -363,7 +364,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+            hint::assert_unchecked(!self.needs_to_grow(len, additional));
         }
         Ok(())
     }
@@ -398,7 +399,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
         // change to `ptr.len() / mem::size_of::<T>()`.
-        self.ptr = unsafe { Unique::new_unchecked(ptr.cast().as_ptr()) };
+        self.ptr = Unique::from(ptr.cast());
         self.cap = unsafe { Cap(cap) };
     }
 
@@ -514,7 +515,7 @@ where
         debug_assert_eq!(old_layout.align(), new_layout.align());
         unsafe {
             // The allocator checks for alignment equality
-            intrinsics::assume(old_layout.align() == new_layout.align());
+            hint::assert_unchecked(old_layout.align() == new_layout.align());
             alloc.grow(ptr, old_layout, new_layout)
         }
     } else {
@@ -552,7 +553,6 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
 // `> isize::MAX` bytes will surely fail. On 32-bit and 16-bit we need to add
 // an extra guard for this in case we're running on a platform which can use
 // all 4GB in user-space, e.g., PAE or x32.
-
 #[inline]
 fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
     if usize::BITS < 64 && alloc_size > isize::MAX as usize {

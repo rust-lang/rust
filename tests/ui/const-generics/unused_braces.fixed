@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@ check-pass
+//@ run-rustfix
 #![warn(unused_braces)]
 
 macro_rules! make_1 {

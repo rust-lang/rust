@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(fn_traits, unboxed_closures)]
 

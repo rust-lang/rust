@@ -9,6 +9,25 @@ LL | struct Bar(Foo);
    |
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `Foo: Clone` is not satisfied
+  --> $DIR/issue-27340.rs:4:12
+   |
+LL | #[derive(Copy, Clone)]
+   |                ----- in this derive macro expansion
+LL |
+LL | struct Bar(Foo);
+   |            ^^^ the trait `Clone` is not implemented for `Foo`
+   |
+note: required by a bound in `AssertParamIsClone`
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct Foo;
+   |
 
-For more information about this error, try `rustc --explain E0204`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0204, E0277.
+For more information about an error, try `rustc --explain E0204`.

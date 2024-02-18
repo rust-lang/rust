@@ -33,14 +33,14 @@ jobs:
               TARGET_TRIPLE: x86_64-pc-windows-gnu
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: CPU features
       if: matrix.os == 'ubuntu-latest'
       run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: build/cg_clif
         key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}

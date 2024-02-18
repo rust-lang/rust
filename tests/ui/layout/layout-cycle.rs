@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 //~^ ERROR: a cycle occurred during layout computation
 //~| ERROR: cycle detected when computing layout of
 

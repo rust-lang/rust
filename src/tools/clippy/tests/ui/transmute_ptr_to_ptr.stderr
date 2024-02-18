@@ -22,8 +22,8 @@ LL |         let _: &f32 = std::mem::transmute(&1u32);
 error: transmute from a reference to a reference
   --> $DIR/transmute_ptr_to_ptr.rs:38:23
    |
-LL |         let _: &f64 = std::mem::transmute(&1f32);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1f32 as *const f32 as *const f64)`
+LL |         let _: &f32 = std::mem::transmute(&1f64);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1f64 as *const f64 as *const f32)`
 
 error: transmute from a reference to a reference
   --> $DIR/transmute_ptr_to_ptr.rs:42:27
@@ -38,10 +38,10 @@ LL |         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute_ptr_to_ptr.rs:47:38
+  --> $DIR/transmute_ptr_to_ptr.rs:47:36
    |
-LL |         let u64_ref: &u64 = unsafe { std::mem::transmute(u8_ref) };
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(u8_ref as *const u8 as *const u64)`
+LL |         let u8_ref: &u8 = unsafe { std::mem::transmute(u64_ref) };
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(u64_ref as *const u64 as *const u8)`
 
 error: aborting due to 7 previous errors
 

@@ -1,4 +1,4 @@
-// ignore-compare-mode-next-solver (hangs)
+//@ ignore-compare-mode-next-solver (hangs)
 
 #![feature(type_alias_impl_trait)]
 

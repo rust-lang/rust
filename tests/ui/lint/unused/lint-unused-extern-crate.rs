@@ -1,8 +1,8 @@
-// aux-build:lint_unused_extern_crate.rs
-// aux-build:lint_unused_extern_crate2.rs
-// aux-build:lint_unused_extern_crate3.rs
-// aux-build:lint_unused_extern_crate4.rs
-// aux-build:lint_unused_extern_crate5.rs
+//@ aux-build:lint_unused_extern_crate.rs
+//@ aux-build:lint_unused_extern_crate2.rs
+//@ aux-build:lint_unused_extern_crate3.rs
+//@ aux-build:lint_unused_extern_crate4.rs
+//@ aux-build:lint_unused_extern_crate5.rs
 
 #![deny(unused_extern_crates)]
 #![allow(unused_variables)]

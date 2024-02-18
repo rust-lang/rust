@@ -1,0 +1,66 @@
+//@revisions: exported all_pub_fields
+//@[all_pub_fields] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/all_pub_fields
+//@[exported] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/pub_underscore_fields/exported
+
+#![allow(unused)]
+#![warn(clippy::pub_underscore_fields)]
+
+use std::marker::PhantomData;
+
+pub mod inner {
+    use std::marker;
+
+    pub struct PubSuper {
+        pub(super) a: usize,
+        pub _b: u8,
+        _c: i32,
+        pub _mark: marker::PhantomData<u8>,
+    }
+
+    mod inner2 {
+        pub struct PubModVisibility {
+            pub(in crate::inner) e: bool,
+            pub(in crate::inner) _f: Option<()>,
+        }
+
+        struct PrivateStructPubField {
+            pub _g: String,
+        }
+    }
+}
+
+fn main() {
+    pub struct StructWithOneViolation {
+        pub _a: usize,
+    }
+
+    // should handle structs with multiple violations
+    pub struct StructWithMultipleViolations {
+        a: u8,
+        _b: usize,
+        pub _c: i64,
+        #[doc(hidden)]
+        pub d: String,
+        pub _e: Option<u8>,
+    }
+
+    // shouldn't warn on anonymous fields
+    pub struct AnonymousFields(pub usize, i32);
+
+    // don't warn on empty structs
+    pub struct Empty1;
+    pub struct Empty2();
+    pub struct Empty3 {};
+
+    pub struct PubCrate {
+        pub(crate) a: String,
+        pub(crate) _b: Option<String>,
+    }
+
+    // shouldn't warn on fields named pub
+    pub struct NamedPub {
+        r#pub: bool,
+        _pub: String,
+        pub(crate) _mark: PhantomData<u8>,
+    }
+}

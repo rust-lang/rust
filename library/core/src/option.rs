@@ -567,6 +567,7 @@ use crate::{
 #[rustc_diagnostic_item = "Option"]
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::derived_hash_with_manual_eq)] // PartialEq is specialized
 pub enum Option<T> {
     /// No value.
     #[lang = "None"]
@@ -642,7 +643,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.is_none(), true);
     /// ```
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
-                  `.and_then(|_| panic!(\"`Option` had a value when expected `None`\"))` instead"]
+                  wrapping this in an `assert!()` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
@@ -921,14 +922,14 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.unwrap(), "air"); // fails
     /// ```
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
-            None => panic("called `Option::unwrap()` on a `None` value"),
+            None => unwrap_failed(),
         }
     }
 
@@ -1033,7 +1034,6 @@ impl<T> Option<T> {
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
-        debug_assert!(self.is_some());
         match self {
             Some(val) => val,
             // SAFETY: the safety contract must be upheld by the caller.
@@ -1074,18 +1074,23 @@ impl<T> Option<T> {
         }
     }
 
-    /// Calls the provided closure with a reference to the contained value (if [`Some`]).
+    /// Calls a function with a reference to the contained value if [`Some`].
+    ///
+    /// Returns the original option.
     ///
     /// # Examples
     ///
     /// ```
-    /// let v = vec![1, 2, 3, 4, 5];
+    /// let list = vec![1, 2, 3];
     ///
-    /// // prints "got: 4"
-    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {x}"));
+    /// // prints "got: 2"
+    /// let x = list
+    ///     .get(1)
+    ///     .inspect(|x| println!("got: {x}"))
+    ///     .expect("list should be long enough");
     ///
     /// // prints nothing
-    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
+    /// list.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
     #[stable(feature = "result_option_inspect", since = "1.76.0")]
@@ -1968,6 +1973,14 @@ impl<T, E> Option<Result<T, E>> {
             None => Ok(None),
         }
     }
+}
+
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cold]
+#[track_caller]
+const fn unwrap_failed() -> ! {
+    panic("called `Option::unwrap()` on a `None` value")
 }
 
 // This is a separate function to reduce the code size of .expect() itself.

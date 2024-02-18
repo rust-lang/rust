@@ -1,7 +1,7 @@
 // Regression test for #88403, where prefixing with an underscore was
 // erroneously suggested for a nested shorthand struct field binding.
 
-// run-rustfix
+//@ run-rustfix
 #![allow(unused)]
 #![forbid(unused_variables)]
 

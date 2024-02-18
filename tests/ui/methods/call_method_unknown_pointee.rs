@@ -1,4 +1,4 @@
-// edition: 2018
+//@ edition: 2018
 
 // tests that the pointee type of a raw pointer must be known to call methods on it
 // see also: `tests/ui/editions/edition-raw-pointer-method-2018.rs`

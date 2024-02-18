@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![recursion_limit="1024"]
 #![allow(dead_code)]
 

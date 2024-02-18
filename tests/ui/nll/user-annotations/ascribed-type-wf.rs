@@ -1,5 +1,5 @@
 // Regression test for #101350.
-// check-fail
+//@ check-fail
 
 trait Trait {
     type Ty;

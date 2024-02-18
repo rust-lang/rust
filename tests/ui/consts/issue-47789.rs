@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(non_upper_case_globals)]
 
 static mut x: &'static u32 = &0;

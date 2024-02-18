@@ -485,10 +485,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // H := head
         // L := last element (`self.to_physical_idx(self.len - 1)`)
         //
-        //    H           L
-        //   [o o o o o o o . ]
-        //    H           L
-        // A [o o o o o o o . . . . . . . . . ]
+        //    H             L
+        //   [o o o o o o o o ]
+        //    H             L
+        // A [o o o o o o o o . . . . . . . . ]
         //        L H
         //   [o o o o o o o o ]
         //          H             L

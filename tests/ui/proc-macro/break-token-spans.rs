@@ -1,4 +1,4 @@
-// aux-build:test-macros.rs
+//@ aux-build:test-macros.rs
 // Regression test for issues #68489 and #70987
 // Tests that we properly break tokens in `probably_equal_for_proc_macro`
 // See #72306

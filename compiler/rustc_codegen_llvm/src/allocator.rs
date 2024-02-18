@@ -134,7 +134,8 @@ fn create_wrapper_function(
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
         if tcx.sess.must_emit_unwind_tables() {
-            let uwtable = attributes::uwtable_attr(llcx);
+            let uwtable =
+                attributes::uwtable_attr(llcx, tcx.sess.opts.unstable_opts.use_sync_unwind);
             attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
         }
 

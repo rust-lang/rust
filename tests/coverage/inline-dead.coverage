@@ -5,9 +5,8 @@
    LL|      1|    println!("{}", live::<false>());
    LL|      1|
    LL|      1|    let f = |x: bool| {
-   LL|       |        debug_assert!(
-   LL|      0|            x
-   LL|       |        );
+   LL|      1|        debug_assert!(x);
+                                    ^0
    LL|      1|    };
    LL|      1|    f(false);
    LL|      1|}

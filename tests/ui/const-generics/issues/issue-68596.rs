@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 pub struct S(u8);
 
 impl S {

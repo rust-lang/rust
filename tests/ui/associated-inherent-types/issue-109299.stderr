@@ -6,6 +6,15 @@ LL | impl Lexer<'d> {
    |     |
    |     help: consider introducing lifetime `'d` here: `<'d>`
 
-error: aborting due to 1 previous error
+error: lifetime may not live long enough
+  --> $DIR/issue-109299.rs:10:1
+   |
+LL | fn test(_: Lexer::Cursor) {}
+   | ^^^^^^^^-^^^^^^^^^^^^^^^^
+   | |       |
+   | |       has type `Lexer<'1>::Cursor`
+   | requires that `'1` must outlive `'static`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0261`.

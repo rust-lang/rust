@@ -7,7 +7,7 @@ pub(crate) fn malformed_derive(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::MalformedDerive,
 ) -> Diagnostic {
-    let display_range = ctx.sema.diagnostics_display_range(d.node.clone());
+    let display_range = ctx.sema.diagnostics_display_range(d.node);
 
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0777"),

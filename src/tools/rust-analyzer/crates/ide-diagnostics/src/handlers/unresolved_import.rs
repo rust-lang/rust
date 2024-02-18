@@ -12,7 +12,7 @@ pub(crate) fn unresolved_import(
         ctx,
         DiagnosticCode::RustcHardError("E0432"),
         "unresolved import",
-        d.decl.clone().map(|it| it.into()),
+        d.decl.map(|it| it.into()),
     )
     // This currently results in false positives in the following cases:
     // - `cfg_if!`-generated code in libstd (we don't load the sysroot correctly)

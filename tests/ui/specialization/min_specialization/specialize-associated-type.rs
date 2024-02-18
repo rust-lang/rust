@@ -1,6 +1,6 @@
 // Another regression test for #109815.
 
-// check-pass
+//@ check-pass
 
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]

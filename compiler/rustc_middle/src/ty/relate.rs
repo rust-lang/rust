@@ -435,7 +435,10 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(a)
         }
 
-        (ty::Param(a_p), ty::Param(b_p)) if a_p.index == b_p.index => Ok(a),
+        (ty::Param(a_p), ty::Param(b_p)) if a_p.index == b_p.index => {
+            debug_assert_eq!(a_p.name, b_p.name, "param types with same index differ in name");
+            Ok(a)
+        }
 
         (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => Ok(a),
 
@@ -455,14 +458,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
-        (&ty::Coroutine(a_id, a_args, movability), &ty::Coroutine(b_id, b_args, _))
-            if a_id == b_id =>
-        {
+        (&ty::Coroutine(a_id, a_args), &ty::Coroutine(b_id, b_args)) if a_id == b_id => {
             // All Coroutine types with the same id represent
             // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_coroutine(tcx, a_id, args, movability))
+            Ok(Ty::new_coroutine(tcx, a_id, args))
         }
 
         (&ty::CoroutineWitness(a_id, a_args), &ty::CoroutineWitness(b_id, b_args))
@@ -481,6 +482,13 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
             Ok(Ty::new_closure(tcx, a_id, args))
+        }
+
+        (&ty::CoroutineClosure(a_id, a_args), &ty::CoroutineClosure(b_id, b_args))
+            if a_id == b_id =>
+        {
+            let args = relate_args_invariantly(relation, a_args, b_args)?;
+            Ok(Ty::new_coroutine_closure(tcx, a_id, args))
         }
 
         (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
@@ -588,7 +596,10 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         (ty::ConstKind::Error(_), _) => return Ok(a),
         (_, ty::ConstKind::Error(_)) => return Ok(b),
 
-        (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) => a_p.index == b_p.index,
+        (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) if a_p.index == b_p.index => {
+            debug_assert_eq!(a_p.name, b_p.name, "param types with same index differ in name");
+            true
+        }
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
         (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
 

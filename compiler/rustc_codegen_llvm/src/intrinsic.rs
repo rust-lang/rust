@@ -86,7 +86,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
-    ) {
+    ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
@@ -119,6 +119,18 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::likely => {
                 self.call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(true)])
             }
+            sym::is_val_statically_known => {
+                let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
+                match self.type_kind(intrinsic_type) {
+                    TypeKind::Pointer | TypeKind::Integer | TypeKind::Float | TypeKind::Double => {
+                        self.call_intrinsic(
+                            &format!("llvm.is.constant.{:?}", intrinsic_type),
+                            &[args[0].immediate()],
+                        )
+                    }
+                    _ => self.const_bool(false),
+                }
+            }
             sym::unlikely => self
                 .call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(false)]),
             kw::Try => {
@@ -129,7 +141,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     args[2].immediate(),
                     llresult,
                 );
-                return;
+                return Ok(());
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[]),
             sym::va_copy => {
@@ -179,17 +191,20 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
                 }
-                self.to_immediate(load, self.layout_of(tp_ty))
+                if !result.layout.is_zst() {
+                    self.store(load, result.llval, result.align);
+                }
+                return Ok(());
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.volatile_store(self, dst);
-                return;
+                return Ok(());
             }
             sym::unaligned_volatile_store => {
                 let dst = args[0].deref(self.cx());
                 args[1].val.unaligned_volatile_store(self, dst);
-                return;
+                return Ok(());
             }
             sym::prefetch_read_data
             | sym::prefetch_write_data
@@ -285,12 +300,12 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         _ => bug!(),
                     },
                     None => {
-                        tcx.sess.emit_err(InvalidMonomorphization::BasicIntegerType {
+                        tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
                             name,
                             ty,
                         });
-                        return;
+                        return Ok(());
                     }
                 }
             }
@@ -372,7 +387,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 .unwrap_or_else(|| bug!("failed to generate inline asm call for `black_box`"));
 
                 // We have copied the value to `result` already.
-                return;
+                return Ok(());
             }
 
             _ if name.as_str().starts_with("simd_") => {
@@ -380,11 +395,15 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     self, name, callee_ty, fn_args, args, ret_ty, llret_ty, span,
                 ) {
                     Ok(llval) => llval,
-                    Err(()) => return,
+                    Err(()) => return Ok(()),
                 }
             }
 
-            _ => bug!("unknown intrinsic '{}' -- should it have been lowered earlier?", name),
+            _ => {
+                debug!("unknown intrinsic '{}' -- falling back to default body", name);
+                // Call the fallback body instead of generating the intrinsic code
+                return Err(ty::Instance::new(instance.def_id(), instance.args));
+            }
         };
 
         if !fn_abi.ret.is_ignore() {
@@ -396,6 +415,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     .store(self, result);
             }
         }
+        Ok(())
     }
 
     fn abort(&mut self) {
@@ -921,7 +941,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 ) -> Result<&'ll Value, ()> {
     macro_rules! return_error {
         ($diag: expr) => {{
-            bx.sess().emit_err($diag);
+            bx.sess().dcx().emit_err($diag);
             return Err(());
         }};
     }
@@ -1059,7 +1079,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .map(|(arg_idx, val)| {
                 let idx = val.unwrap_leaf().try_to_i32().unwrap();
                 if idx >= i32::try_from(total_len).unwrap() {
-                    bx.sess().emit_err(InvalidMonomorphization::ShuffleIndexOutOfBounds {
+                    bx.sess().dcx().emit_err(InvalidMonomorphization::ShuffleIndexOutOfBounds {
                         span,
                         name,
                         arg_idx: arg_idx as u64,
@@ -1118,20 +1138,24 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let val = bx.const_get_elt(vector, i as u64);
                 match bx.const_to_opt_u128(val, true) {
                     None => {
-                        bx.sess().emit_err(InvalidMonomorphization::ShuffleIndexNotConstant {
-                            span,
-                            name,
-                            arg_idx,
-                        });
+                        bx.sess().dcx().emit_err(
+                            InvalidMonomorphization::ShuffleIndexNotConstant {
+                                span,
+                                name,
+                                arg_idx,
+                            },
+                        );
                         None
                     }
                     Some(idx) if idx >= total_len => {
-                        bx.sess().emit_err(InvalidMonomorphization::ShuffleIndexOutOfBounds {
-                            span,
-                            name,
-                            arg_idx,
-                            total_len,
-                        });
+                        bx.sess().dcx().emit_err(
+                            InvalidMonomorphization::ShuffleIndexOutOfBounds {
+                                span,
+                                name,
+                                arg_idx,
+                                total_len,
+                            },
+                        );
                         None
                     }
                     Some(idx) => Some(bx.const_i32(idx as i32)),
@@ -1276,7 +1300,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     ) -> Result<&'ll Value, ()> {
         macro_rules! return_error {
             ($diag: expr) => {{
-                bx.sess().emit_err($diag);
+                bx.sess().dcx().emit_err($diag);
                 return Err(());
             }};
         }
@@ -1966,10 +1990,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         match in_elem.kind() {
             ty::RawPtr(p) => {
-                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                assert!(!check_sized); // we are in codegen, so we shouldn't see these types
                 require!(
                     metadata.is_unit(),
                     InvalidMonomorphization::CastFatPointer { span, name, ty: in_elem }
@@ -1981,10 +2004,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
         match out_elem.kind() {
             ty::RawPtr(p) => {
-                let (metadata, check_sized) = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
+                let metadata = p.ty.ptr_metadata_ty(bx.tcx, |ty| {
                     bx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty)
                 });
-                assert!(!check_sized); // we are in codegen, so we shouldn't see these types
                 require!(
                     metadata.is_unit(),
                     InvalidMonomorphization::CastFatPointer { span, name, ty: out_elem }

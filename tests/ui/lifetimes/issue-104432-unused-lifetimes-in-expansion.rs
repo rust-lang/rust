@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![deny(unused_lifetimes)]
 trait Trait2 {

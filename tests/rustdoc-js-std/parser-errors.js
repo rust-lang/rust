@@ -24,7 +24,7 @@ const PARSED = [
         original: "-> *",
         returned: [],
         userQuery: "-> *",
-        error: "Unexpected `*`",
+        error: "Unexpected `*` after ` `",
     },
     {
         query: 'a<"P">',
@@ -108,22 +108,13 @@ const PARSED = [
         error: "Unexpected `::`: paths cannot start with `::`",
     },
     {
-        query: "((a))",
-        elems: [],
-        foundElems: 0,
-        original: "((a))",
-        returned: [],
-        userQuery: "((a))",
-        error: "Unexpected `(`",
-    },
-    {
         query: "(p -> p",
         elems: [],
         foundElems: 0,
         original: "(p -> p",
         returned: [],
         userQuery: "(p -> p",
-        error: "Unexpected `(`",
+        error: "Unexpected `-` after `(`",
     },
     {
         query: "::a::b",
@@ -204,7 +195,7 @@ const PARSED = [
         original: "a (b:",
         returned: [],
         userQuery: "a (b:",
-        error: "Unexpected `(`",
+        error: "Expected `,`, `:` or `->`, found `(`",
     },
     {
         query: "_:",
@@ -249,7 +240,7 @@ const PARSED = [
         original: "ab'",
         returned: [],
         userQuery: "ab'",
-        error: "Unexpected `'`",
+        error: "Unexpected `'` after `b`",
     },
     {
         query: "a->",

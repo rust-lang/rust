@@ -3,5 +3,5 @@ extern "C" {
 }
 
 fn main() {
-    foo::<i32>();
+    foo::<i32>(); //~ ERROR requires unsafe
 }

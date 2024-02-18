@@ -1,4 +1,4 @@
-// aux-build:lint_stability_fields.rs
+//@ aux-build:lint_stability_fields.rs
 
 #![deny(deprecated)]
 #![allow(dead_code)]

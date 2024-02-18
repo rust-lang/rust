@@ -1,12 +1,12 @@
-// run-pass
-// check-run-results
+//@ run-pass
+//@ check-run-results
 #![feature(dyn_star)]
 #![allow(incomplete_features)]
 
 use std::fmt::Debug;
 
 #[derive(Debug)]
-struct Foo(usize);
+struct Foo(#[allow(dead_code)] usize);
 
 impl Drop for Foo {
     fn drop(&mut self) {

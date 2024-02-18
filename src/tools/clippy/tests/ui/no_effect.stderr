@@ -152,31 +152,31 @@ LL |     FooString { s: s };
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:175:5
+  --> $DIR/no_effect.rs:175:9
    |
 LL |     let _unused = 1;
-   |     ^^^^^^^^^^^^^^^^
+   |         ^^^^^^^
    |
    = note: `-D clippy::no-effect-underscore-binding` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::no_effect_underscore_binding)]`
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:178:5
+  --> $DIR/no_effect.rs:178:9
    |
 LL |     let _penguin = || println!("Some helpful closure");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:180:5
+  --> $DIR/no_effect.rs:180:9
    |
 LL |     let _duck = Struct { field: 0 };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^
 
 error: binding to `_` prefixed variable with no side-effect
-  --> $DIR/no_effect.rs:182:5
+  --> $DIR/no_effect.rs:182:9
    |
 LL |     let _cat = [2, 4, 6, 8][2];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^
 
 error: aborting due to 29 previous errors
 

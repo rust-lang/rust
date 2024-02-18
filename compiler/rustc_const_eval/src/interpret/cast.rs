@@ -117,8 +117,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             def_id,
                             args,
                             ty::ClosureKind::FnOnce,
-                        )
-                        .ok_or_else(|| err_inval!(TooGeneric))?;
+                        );
                         let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
@@ -154,7 +153,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     );
                 }
 
-                self.copy_op(src, dest, /*allow_transmute*/ true)?;
+                self.copy_op_allow_transmute(src, dest)?;
             }
         }
         Ok(())
@@ -416,7 +415,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    fn unsize_into(
+    pub fn unsize_into(
         &mut self,
         src: &OpTy<'tcx, M::Provenance>,
         cast_ty: TyAndLayout<'tcx>,
@@ -442,7 +441,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if src_field.layout.is_1zst() && cast_ty_field.is_1zst() {
                         // Skip 1-ZST fields.
                     } else if src_field.layout.ty == cast_ty_field.ty {
-                        self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
+                        self.copy_op(&src_field, &dst_field)?;
                     } else {
                         if found_cast_field {
                             span_bug!(self.cur_span(), "unsize_into: more than one field to cast");

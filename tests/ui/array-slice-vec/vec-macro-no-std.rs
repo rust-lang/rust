@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// ignore-emscripten no no_std executables
+//@ ignore-emscripten no no_std executables
 
 #![feature(lang_items, start, rustc_private)]
 #![no_std]

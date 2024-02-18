@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 // All 3 expressions should work in that the argument gets
 // coerced to a trait object
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn main() {
     send::<Box<dyn Foo>>(Box::new(Output(0)));
@@ -19,6 +19,6 @@ impl<T> Test<T> {
     fn send(&self, _: T) {}
 }
 
-trait Foo { fn dummy(&self) { }}
-struct Output(#[allow(unused_tuple_struct_fields)] isize);
+trait Foo { fn dummy(&self) { }} //~ WARN method `dummy` is never used
+struct Output(#[allow(dead_code)] isize);
 impl Foo for Output {}

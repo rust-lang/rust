@@ -1,5 +1,5 @@
-// compile-flags: -Z mir-opt-level=3
-// build-pass
+//@ compile-flags: -Z mir-opt-level=3
+//@ build-pass
 #![crate_type="lib"]
 
 // This used to ICE: const-prop did not account for field reordering of scalar pairs,

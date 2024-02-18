@@ -1,9 +1,9 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 // Test use of const fn from another crate without a feature gate.
 
-// aux-build:const_fn_lib.rs
+//@ aux-build:const_fn_lib.rs
 
 extern crate const_fn_lib;
 

@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 // Test that type IDs correctly account for higher-rank lifetimes
 // Also acts as a regression test for an ICE (issue #19791)
 
 use std::any::{Any, TypeId};
 
-struct Struct<'a>(#[allow(unused_tuple_struct_fields)] &'a ());
+struct Struct<'a>(#[allow(dead_code)] &'a ());
 trait Trait<'a> {}
 
 fn main() {

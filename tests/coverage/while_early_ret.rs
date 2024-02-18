@@ -1,6 +1,7 @@
 #![allow(unused_assignments)]
 // failure-status: 1
 
+#[rustfmt::skip]
 fn main() -> Result<(), u8> {
     let mut countdown = 10;
     while

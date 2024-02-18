@@ -74,9 +74,7 @@ mod nested_local {
 
 mod function_def {
     fn ret_i32() -> i32 {
-        // Even though the output type is specified,
-        // this unsuffixed literal is linted to reduce heuristics and keep codebase simple.
-        1_i32
+        1
     }
 
     fn test() {
@@ -184,6 +182,78 @@ mod in_macro {
 fn check_expect_suppression() {
     #[expect(clippy::default_numeric_fallback)]
     let x = 21;
+}
+
+mod type_already_inferred {
+    // Should NOT lint if bound to return type
+    fn ret_i32() -> i32 {
+        1
+    }
+
+    // Should NOT lint if bound to return type
+    fn ret_if_i32(b: bool) -> i32 {
+        if b { 100 } else { 0 }
+    }
+
+    // Should NOT lint if bound to return type
+    fn ret_i32_tuple() -> (i32, i32) {
+        (0, 1)
+    }
+
+    // Should NOT lint if bound to return type
+    fn ret_stmt(b: bool) -> (i32, i32) {
+        if b {
+            return (0, 1);
+        }
+        (0, 0)
+    }
+
+    #[allow(clippy::useless_vec)]
+    fn vec_macro() {
+        // Should NOT lint in `vec!` call if the type was already stated
+        let data_i32: Vec<i32> = vec![1, 2, 3];
+        let data_i32 = vec![1_i32, 2_i32, 3_i32];
+    }
+}
+
+mod issue12159 {
+    #![allow(non_upper_case_globals, clippy::exhaustive_structs)]
+    pub struct Foo;
+
+    static F: i32 = 1;
+    impl Foo {
+        const LIFE_u8: u8 = 42;
+        const LIFE_i8: i8 = 42;
+        const LIFE_u16: u16 = 42;
+        const LIFE_i16: i16 = 42;
+        const LIFE_u32: u32 = 42;
+        const LIFE_i32: i32 = 42;
+        const LIFE_u64: u64 = 42;
+        const LIFE_i64: i64 = 42;
+        const LIFE_u128: u128 = 42;
+        const LIFE_i128: i128 = 42;
+        const LIFE_usize: usize = 42;
+        const LIFE_isize: isize = 42;
+        const LIFE_f32: f32 = 42.;
+        const LIFE_f64: f64 = 42.;
+
+        const fn consts() {
+            const LIFE_u8: u8 = 42;
+            const LIFE_i8: i8 = 42;
+            const LIFE_u16: u16 = 42;
+            const LIFE_i16: i16 = 42;
+            const LIFE_u32: u32 = 42;
+            const LIFE_i32: i32 = 42;
+            const LIFE_u64: u64 = 42;
+            const LIFE_i64: i64 = 42;
+            const LIFE_u128: u128 = 42;
+            const LIFE_i128: i128 = 42;
+            const LIFE_usize: usize = 42;
+            const LIFE_isize: isize = 42;
+            const LIFE_f32: f32 = 42.;
+            const LIFE_f64: f64 = 42.;
+        }
+    }
 }
 
 fn main() {}

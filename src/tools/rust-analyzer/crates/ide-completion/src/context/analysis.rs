@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{HasSource, Semantics, Type, TypeInfo, Variant};
+use hir::{Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
@@ -11,10 +11,11 @@ use syntax::{
 };
 
 use crate::context::{
-    AttrCtx, CompletionAnalysis, DotAccess, DotAccessKind, ExprCtx, ItemListKind, LifetimeContext,
-    LifetimeKind, NameContext, NameKind, NameRefContext, NameRefKind, ParamContext, ParamKind,
-    PathCompletionCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
-    TypeAscriptionTarget, TypeLocation, COMPLETION_MARKER,
+    AttrCtx, BreakableKind, CompletionAnalysis, DotAccess, DotAccessExprCtx, DotAccessKind,
+    ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext,
+    NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx, PathKind, PatternContext,
+    PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget, TypeLocation,
+    COMPLETION_MARKER,
 };
 
 struct ExpansionResult {
@@ -72,7 +73,7 @@ fn expand(
     mut fake_ident_token: SyntaxToken,
     relative_offset: TextSize,
 ) -> ExpansionResult {
-    let _p = profile::span("CompletionContext::expand");
+    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::expand").entered();
     let mut derive_ctx = None;
 
     'expansion: loop {
@@ -211,7 +212,7 @@ fn analyze(
     original_token: &SyntaxToken,
     self_token: &SyntaxToken,
 ) -> Option<(CompletionAnalysis, (Option<Type>, Option<ast::NameOrNameRef>), QualifierCtx)> {
-    let _p = profile::span("CompletionContext::analyze");
+    let _p = tracing::span!(tracing::Level::INFO, "CompletionContext::analyze").entered();
     let ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx } =
         expansion_result;
 
@@ -254,11 +255,13 @@ fn analyze(
             {
                 let colon_prefix = previous_non_trivia_token(self_token.clone())
                     .map_or(false, |it| T![:] == it.kind());
+
                 CompletionAnalysis::UnexpandedAttrTT {
                     fake_attribute_under_caret: fake_ident_token
                         .parent_ancestors()
                         .find_map(ast::Attr::cast),
                     colon_prefix,
+                    extern_crate: p.ancestors().find_map(ast::ExternCrate::cast),
                 }
             } else {
                 return None;
@@ -359,7 +362,12 @@ fn expected_type_and_name(
                     let ty = it.pat()
                         .and_then(|pat| sema.type_of_pat(&pat))
                         .or_else(|| it.initializer().and_then(|it| sema.type_of_expr(&it)))
-                        .map(TypeInfo::original);
+                        .map(TypeInfo::original)
+                        .filter(|ty| {
+                            // don't infer the let type if the expr is a function,
+                            // preventing parenthesis from vanishing
+                            it.ty().is_some() || !ty.is_fn()
+                        });
                     let name = match it.pat() {
                         Some(ast::Pat::IdentPat(ident)) => ident.name().map(NameOrNameRef::Name),
                         Some(_) | None => None,
@@ -413,20 +421,16 @@ fn expected_type_and_name(
                     })().unwrap_or((None, None))
                 },
                 ast::RecordExprField(it) => {
+                    let field_ty = sema.resolve_record_field(&it).map(|(_, _, ty)| ty);
+                    let field_name = it.field_name().map(NameOrNameRef::NameRef);
                     if let Some(expr) = it.expr() {
                         cov_mark::hit!(expected_type_struct_field_with_leading_char);
-                        (
-                            sema.type_of_expr(&expr).map(TypeInfo::original),
-                            it.field_name().map(NameOrNameRef::NameRef),
-                        )
+                        let ty = field_ty
+                            .or_else(|| sema.type_of_expr(&expr).map(TypeInfo::original));
+                        (ty, field_name)
                     } else {
                         cov_mark::hit!(expected_type_struct_field_followed_by_comma);
-                        let ty = sema.resolve_record_field(&it)
-                            .map(|(_, _, ty)| ty);
-                        (
-                            ty,
-                            it.field_name().map(NameOrNameRef::NameRef),
-                        )
+                        (field_ty, field_name)
                     }
                 },
                 // match foo { $0 }
@@ -620,7 +624,8 @@ fn classify_name_ref(
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal },
-                    receiver
+                    receiver,
+                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(field.syntax()), in_breakable: is_in_breakable(field.syntax()) }
                 });
                 return Some(make_res(kind));
             },
@@ -633,7 +638,8 @@ fn classify_name_ref(
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
-                    receiver
+                    receiver,
+                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(method.syntax()), in_breakable: is_in_breakable(method.syntax()) }
                 });
                 return Some(make_res(kind));
             },
@@ -656,13 +662,6 @@ fn classify_name_ref(
         use_tree_parent: false,
     };
 
-    let is_in_block = |it: &SyntaxNode| {
-        it.parent()
-            .map(|node| {
-                ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind())
-            })
-            .unwrap_or(false)
-    };
     let func_update_record = |syn: &SyntaxNode| {
         if let Some(record_expr) = syn.ancestors().nth(2).and_then(ast::RecordExpr::cast) {
             find_node_in_file_compensated(sema, original_file, &record_expr)
@@ -740,13 +739,13 @@ fn classify_name_ref(
                             match sema.resolve_path(&segment.parent_path().top_path())? {
                                 hir::PathResolution::Def(def) => match def {
                                     hir::ModuleDef::Function(func) => {
-                                        func.source(sema.db)?.value.generic_param_list()
+                                         sema.source(func)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Adt(adt) => {
-                                        adt.source(sema.db)?.value.generic_param_list()
+                                        sema.source(adt)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Variant(variant) => {
-                                        variant.parent_enum(sema.db).source(sema.db)?.value.generic_param_list()
+                                        sema.source(variant.parent_enum(sema.db))?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Trait(trait_) => {
                                         if let ast::GenericArg::AssocTypeArg(arg) = &arg {
@@ -772,14 +771,14 @@ fn classify_name_ref(
                                             return None;
                                         } else {
                                             in_trait = Some(trait_);
-                                            trait_.source(sema.db)?.value.generic_param_list()
+                                            sema.source(trait_)?.value.generic_param_list()
                                         }
                                     }
                                     hir::ModuleDef::TraitAlias(trait_) => {
-                                        trait_.source(sema.db)?.value.generic_param_list()
+                                        sema.source(trait_)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::TypeAlias(ty_) => {
-                                        ty_.source(sema.db)?.value.generic_param_list()
+                                        sema.source(ty_)?.value.generic_param_list()
                                     }
                                     _ => None,
                                 },
@@ -788,13 +787,12 @@ fn classify_name_ref(
                         },
                         ast::MethodCallExpr(call) => {
                             let func = sema.resolve_method_call(&call)?;
-                            func.source(sema.db)?.value.generic_param_list()
+                            sema.source(func)?.value.generic_param_list()
                         },
                         ast::AssocTypeArg(arg) => {
                             let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
                             match sema.resolve_path(&trait_.parent_path().top_path())? {
-                                hir::PathResolution::Def(def) => match def {
-                                    hir::ModuleDef::Trait(trait_) => {
+                                hir::PathResolution::Def(hir::ModuleDef::Trait(trait_)) =>  {
                                         let arg_name = arg.name_ref()?;
                                         let arg_name = arg_name.text();
                                         let trait_items = trait_.items_with_supertraits(sema.db);
@@ -805,10 +803,8 @@ fn classify_name_ref(
                                             },
                                             _ => None,
                                         })?;
-                                        assoc_ty.source(sema.db)?.value.generic_param_list()
+                                        sema.source(*assoc_ty)?.value.generic_param_list()
                                     }
-                                    _ => None,
-                                },
                                 _ => None,
                             }
                         },
@@ -863,9 +859,7 @@ fn classify_name_ref(
                     TypeLocation::TypeAscription(TypeAscriptionTarget::Const(original.body()))
                 },
                 ast::RetType(it) => {
-                    if it.thin_arrow_token().is_none() {
-                        return None;
-                    }
+                    it.thin_arrow_token()?;
                     let parent = match ast::Fn::cast(parent.parent()?) {
                         Some(it) => it.param_list(),
                         None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
@@ -885,15 +879,11 @@ fn classify_name_ref(
                     }))
                 },
                 ast::Param(it) => {
-                    if it.colon_token().is_none() {
-                        return None;
-                    }
+                    it.colon_token()?;
                     TypeLocation::TypeAscription(TypeAscriptionTarget::FnParam(find_opt_node_in_file(original_file, it.pat())))
                 },
                 ast::LetStmt(it) => {
-                    if it.colon_token().is_none() {
-                        return None;
-                    }
+                    it.colon_token()?;
                     TypeLocation::TypeAscription(TypeAscriptionTarget::Let(find_opt_node_in_file(original_file, it.pat())))
                 },
                 ast::Impl(it) => {
@@ -938,7 +928,7 @@ fn classify_name_ref(
     let make_path_kind_expr = |expr: ast::Expr| {
         let it = expr.syntax();
         let in_block_expr = is_in_block(it);
-        let in_loop_body = is_in_loop_body(it);
+        let in_loop_body = is_in_breakable(it);
         let after_if_expr = after_if_expr(it.clone());
         let ref_expr_parent =
             path.as_single_name_ref().and_then(|_| it.parent()).and_then(ast::RefExpr::cast);
@@ -1004,9 +994,9 @@ fn classify_name_ref(
         };
 
         PathKind::Expr {
-            expr_ctx: ExprCtx {
+            expr_ctx: PathExprCtx {
                 in_block_expr,
-                in_loop_body,
+                in_breakable: in_loop_body,
                 after_if_expr,
                 in_condition,
                 ref_expr_parent,
@@ -1208,7 +1198,7 @@ fn classify_name_ref(
     if path_ctx.is_trivial_path() {
         // fetch the full expression that may have qualifiers attached to it
         let top_node = match path_ctx.kind {
-            PathKind::Expr { expr_ctx: ExprCtx { in_block_expr: true, .. } } => {
+            PathKind::Expr { expr_ctx: PathExprCtx { in_block_expr: true, .. } } => {
                 parent.ancestors().find(|it| ast::PathExpr::can_cast(it.kind())).and_then(|p| {
                     let parent = p.parent()?;
                     if ast::StmtList::can_cast(parent.kind()) {
@@ -1273,8 +1263,7 @@ fn pattern_context_for(
     pat
         .syntax()
         .ancestors()
-        .skip_while(|it| ast::Pat::can_cast(it.kind()))
-        .next()
+        .find(|it| !ast::Pat::can_cast(it.kind()))
         .map_or((PatternRefutability::Irrefutable, false), |node| {
             let refutability = match_ast! {
                 match node {
@@ -1309,7 +1298,7 @@ fn pattern_context_for(
                                 .parent()
                                 .and_then(ast::MatchExpr::cast)
                                 .and_then(|match_expr| {
-                                    let expr_opt = find_opt_node_in_file(&original_file, match_expr.expr());
+                                    let expr_opt = find_opt_node_in_file(original_file, match_expr.expr());
 
                                     expr_opt.and_then(|expr| {
                                         sema.type_of_expr(&expr)?
@@ -1318,24 +1307,20 @@ fn pattern_context_for(
                                         .find_map(|ty| match ty.as_adt() {
                                             Some(hir::Adt::Enum(e)) => Some(e),
                                             _ => None,
-                                        }).and_then(|enum_| {
-                                            Some(enum_.variants(sema.db))
-                                        })
+                                        }).map(|enum_| enum_.variants(sema.db))
                                     })
-                                }).and_then(|variants| {
-                                   Some(variants.iter().filter_map(|variant| {
+                                }).map(|variants| variants.iter().filter_map(|variant| {
                                         let variant_name = variant.name(sema.db).display(sema.db).to_string();
 
                                         let variant_already_present = match_arm_list.arms().any(|arm| {
                                             arm.pat().and_then(|pat| {
                                                 let pat_already_present = pat.syntax().to_string().contains(&variant_name);
-                                                pat_already_present.then(|| pat_already_present)
+                                                pat_already_present.then_some(pat_already_present)
                                             }).is_some()
                                         });
 
-                                        (!variant_already_present).then_some(variant.clone())
+                                        (!variant_already_present).then_some(*variant)
                                     }).collect::<Vec<Variant>>())
-                                })
                         });
 
                         if let Some(missing_variants_) = missing_variants_opt {
@@ -1478,21 +1463,30 @@ fn is_in_token_of_for_loop(path: &ast::Path) -> bool {
     .unwrap_or(false)
 }
 
-fn is_in_loop_body(node: &SyntaxNode) -> bool {
+fn is_in_breakable(node: &SyntaxNode) -> BreakableKind {
     node.ancestors()
         .take_while(|it| it.kind() != SyntaxKind::FN && it.kind() != SyntaxKind::CLOSURE_EXPR)
         .find_map(|it| {
-            let loop_body = match_ast! {
+            let (breakable, loop_body) = match_ast! {
                 match it {
-                    ast::ForExpr(it) => it.loop_body(),
-                    ast::WhileExpr(it) => it.loop_body(),
-                    ast::LoopExpr(it) => it.loop_body(),
-                    _ => None,
+                    ast::ForExpr(it) => (BreakableKind::For, it.loop_body()),
+                    ast::WhileExpr(it) => (BreakableKind::While, it.loop_body()),
+                    ast::LoopExpr(it) => (BreakableKind::Loop, it.loop_body()),
+                    ast::BlockExpr(it) => return it.label().map(|_| BreakableKind::Block),
+                    _ => return None,
                 }
             };
-            loop_body.filter(|it| it.syntax().text_range().contains_range(node.text_range()))
+            loop_body
+                .filter(|it| it.syntax().text_range().contains_range(node.text_range()))
+                .map(|_| breakable)
         })
-        .is_some()
+        .unwrap_or(BreakableKind::None)
+}
+
+fn is_in_block(node: &SyntaxNode) -> bool {
+    node.parent()
+        .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
+        .unwrap_or(false)
 }
 
 fn previous_non_trivia_token(e: impl Into<SyntaxElement>) -> Option<SyntaxToken> {

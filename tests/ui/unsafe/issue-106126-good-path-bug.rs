@@ -1,6 +1,6 @@
 // Regression test for #106126.
-// check-pass
-// aux-build:issue-106126.rs
+//@ check-pass
+//@ aux-build:issue-106126.rs
 
 #![deny(unsafe_op_in_unsafe_fn)]
 

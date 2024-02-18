@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -27,7 +25,7 @@ use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -84,7 +82,7 @@ impl<'tcx> RegionErrors<'tcx> {
     #[track_caller]
     pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        self.1.sess.span_delayed_bug(DUMMY_SP, format!("{val:?}"));
+        self.1.sess.dcx().delayed_bug(format!("{val:?}"));
         self.0.push(val);
     }
     pub fn is_empty(&self) -> bool {
@@ -216,7 +214,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(id) = placeholder.bound.kind.get_id()
                     && let Some(placeholder_id) = id.as_local()
                     && let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) = hir.get_parent(gat_hir_id).generics()
+                    && let Some(generics_impl) = self
+                        .infcx
+                        .tcx
+                        .parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id))
+                        .generics()
                 {
                     Some((gat_hir_id, generics_impl))
                 } else {
@@ -327,11 +329,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // to report it; we could probably handle it by
                         // iterating over the universal regions and reporting
                         // an error that multiple bounds are required.
-                        let mut diag =
-                            self.infcx.tcx.sess.create_err(GenericDoesNotLiveLongEnough {
-                                kind: type_test.generic_kind.to_string(),
-                                span: type_test_span,
-                            });
+                        let mut diag = self.dcx().create_err(GenericDoesNotLiveLongEnough {
+                            kind: type_test.generic_kind.to_string(),
+                            span: type_test_span,
+                        });
 
                         // Add notes and suggestions for the case of 'static lifetime
                         // implied but not specified when a generic associated types
@@ -349,7 +350,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
-                    let mut diag = unexpected_hidden_region_diagnostic(
+                    let diag = unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         span,
                         named_ty,
@@ -596,7 +597,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             },
         };
 
-        let mut diag = self.infcx.tcx.sess.create_err(err);
+        let mut diag = self.dcx().create_err(err);
 
         if let ReturnConstraint::ClosureUpvar(upvar_field) = kind {
             let def_id = match self.regioncx.universal_regions().defining_ty {
@@ -615,13 +616,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvars_map = self.infcx.tcx.upvars_mentioned(def_id).unwrap();
                 let upvar_def_span = self.infcx.tcx.hir().span(def_hir);
                 let upvar_span = upvars_map.get(&def_hir).unwrap().span;
-                diag.subdiagnostic(VarHereDenote::Defined { span: upvar_def_span });
-                diag.subdiagnostic(VarHereDenote::Captured { span: upvar_span });
+                diag.subdiagnostic(self.dcx(), VarHereDenote::Defined { span: upvar_def_span });
+                diag.subdiagnostic(self.dcx(), VarHereDenote::Captured { span: upvar_span });
             }
         }
 
         if let Some(fr_span) = self.give_region_a_name(*outlived_fr).unwrap().span() {
-            diag.subdiagnostic(VarHereDenote::FnMutInferred { span: fr_span });
+            diag.subdiagnostic(self.dcx(), VarHereDenote::FnMutInferred { span: fr_span });
         }
 
         self.suggest_move_on_borrowing_closure(&mut diag);
@@ -758,7 +759,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
         let err = LifetimeOutliveErr { span: *span };
-        let mut diag = self.infcx.tcx.sess.create_err(err);
+        let mut diag = self.dcx().create_err(err);
 
         // In certain scenarios, such as the one described in issue #118021,
         // we might encounter a lifetime that cannot be named.
@@ -787,7 +788,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             },
         };
 
-        diag.subdiagnostic(err_category);
+        diag.subdiagnostic(self.dcx(), err_category);
 
         self.add_static_impl_trait_suggestion(&mut diag, *fr, fr_name, *outlived_fr);
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
@@ -978,7 +979,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ident.span,
                     "calling this method introduces the `impl`'s `'static` requirement",
                 );
-                err.subdiagnostic(RequireStaticErr::UsedImpl { multi_span });
+                err.subdiagnostic(self.dcx(), RequireStaticErr::UsedImpl { multi_span });
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
                     "consider relaxing the implicit `'static` requirement",
@@ -1042,13 +1043,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             hir::ExprKind::Closure(hir::Closure {
                 capture_clause: hir::CaptureBy::Ref,
-                body,
+                kind,
                 ..
             }) => {
-                let body = map.body(*body);
                 if !matches!(
-                    body.coroutine_kind,
-                    Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _))
+                    kind,
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        _
+                    ),)
                 ) {
                     closure_span = Some(expr.span.shrink_to_lo());
                 }

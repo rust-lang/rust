@@ -1,5 +1,6 @@
 use rustc_middle::mir;
 use rustc_middle::mir::NonDivergingIntrinsic;
+use rustc_session::config::OptLevel;
 
 use super::FunctionCx;
 use super::LocalRef;
@@ -67,8 +68,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.codegen_coverage(bx, coverage, statement.source_info.scope);
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(ref op)) => {
-                let op_val = self.codegen_operand(bx, op);
-                bx.assume(op_val.immediate());
+                if !matches!(bx.tcx().sess.opts.optimize, OptLevel::No | OptLevel::Less) {
+                    let op_val = self.codegen_operand(bx, op);
+                    bx.assume(op_val.immediate());
+                }
             }
             mir::StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(
                 mir::CopyNonOverlapping { ref count, ref src, ref dst },

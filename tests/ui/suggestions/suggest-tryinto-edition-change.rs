@@ -1,6 +1,6 @@
 // Make sure that trying to access `TryInto`, `TryFrom`, `FromIterator` in pre-2021 mentions
 // Edition 2021 change
-// edition:2018
+//@ edition:2018
 
 fn test() {
     let _i: i16 = 0_i32.try_into().unwrap();

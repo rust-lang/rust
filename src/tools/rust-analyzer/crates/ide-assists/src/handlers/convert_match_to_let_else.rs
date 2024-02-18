@@ -38,7 +38,7 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
     let Some(ast::Expr::MatchExpr(initializer)) = let_stmt.initializer() else { return None };
     let initializer_expr = initializer.expr()?;
 
-    let Some((extracting_arm, diverging_arm)) = find_arms(ctx, &initializer) else { return None };
+    let (extracting_arm, diverging_arm) = find_arms(ctx, &initializer)?;
     if extracting_arm.guard().is_some() {
         cov_mark::hit!(extracting_arm_has_guard);
         return None;
@@ -113,7 +113,7 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
         }
         _ => {
             cov_mark::hit!(extracting_arm_is_not_an_identity_expr);
-            return None;
+            None
         }
     }
 }

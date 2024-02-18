@@ -11,7 +11,7 @@ use core::intrinsics::mir::*;
 pub fn a() {
     mir!(
         {
-            Call(RET = a(), bb1, UnwindUnreachable())
+            Call(RET = a(), ReturnTo(bb1), UnwindUnreachable())
         }
         bb1 = {
             Return()
@@ -26,7 +26,7 @@ pub fn a() {
 pub fn b() {
     mir!(
         {
-            Call(RET = b(), bb1, UnwindContinue())
+            Call(RET = b(), ReturnTo(bb1), UnwindContinue())
         }
         bb1 = {
             Return()
@@ -41,7 +41,7 @@ pub fn b() {
 pub fn c() {
     mir!(
         {
-            Call(RET = c(), bb1, UnwindTerminate(ReasonAbi))
+            Call(RET = c(), ReturnTo(bb1), UnwindTerminate(ReasonAbi))
         }
         bb1 = {
             Return()
@@ -56,7 +56,7 @@ pub fn c() {
 pub fn d() {
     mir!(
         {
-            Call(RET = d(), bb1, UnwindCleanup(bb2))
+            Call(RET = d(), ReturnTo(bb1), UnwindCleanup(bb2))
         }
         bb1 = {
             Return()

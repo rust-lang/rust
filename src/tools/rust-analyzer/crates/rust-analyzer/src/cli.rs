@@ -1,16 +1,18 @@
 //! Various batch processing tasks, intended primarily for debugging.
 
-pub mod flags;
-mod parse;
-mod symbols;
-mod highlight;
+#![allow(clippy::print_stdout, clippy::print_stderr)]
+
 mod analysis_stats;
 mod diagnostics;
-mod ssr;
+pub mod flags;
+mod highlight;
 mod lsif;
-mod scip;
+mod parse;
 mod run_tests;
 mod rustc_tests;
+mod scip;
+mod ssr;
+mod symbols;
 
 mod progress_report;
 

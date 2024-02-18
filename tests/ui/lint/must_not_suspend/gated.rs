@@ -1,10 +1,8 @@
-// check-pass
+//@ check-pass
 
-// edition:2018
+//@ edition:2018
 #![deny(must_not_suspend)]
 //~^ WARNING unknown lint: `must_not_suspend`
-//~| WARNING unknown lint: `must_not_suspend`
-//~| WARNING unknown lint: `must_not_suspend`
 
 async fn other() {}
 

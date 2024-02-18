@@ -1,7 +1,7 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// compile-flags:--extern extern_prelude --extern Vec
-// aux-build:extern-prelude.rs
-// aux-build:extern-prelude-vec.rs
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ compile-flags:--extern extern_prelude --extern Vec
+//@ aux-build:extern-prelude.rs
+//@ aux-build:extern-prelude-vec.rs
 
 fn basic() {
     // It works

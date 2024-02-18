@@ -283,9 +283,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         experimental!(optimize),
     ),
 
-    gated!(
-        ffi_returns_twice, Normal, template!(Word), WarnFollowing, experimental!(ffi_returns_twice)
-    ),
     gated!(ffi_pure, Normal, template!(Word), WarnFollowing, experimental!(ffi_pure)),
     gated!(ffi_const, Normal, template!(Word), WarnFollowing, experimental!(ffi_const)),
     gated!(
@@ -653,7 +650,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
         TEST, rustc_error, Normal,
-        template!(Word, List: "span_delayed_bug_from_inside_query"), WarnFollowingWordOnly
+        template!(Word, List: "delayed_bug_from_inside_query"), WarnFollowingWordOnly
     ),
     rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),

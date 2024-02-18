@@ -1,4 +1,4 @@
-#![allow(clippy::redundant_clone, clippy::unnecessary_operation)]
+#![allow(clippy::redundant_clone, clippy::unnecessary_operation, clippy::incompatible_msrv)]
 #![warn(clippy::manual_non_exhaustive, clippy::borrow_as_ptr, clippy::manual_bits)]
 
 use std::mem::{size_of, size_of_val};

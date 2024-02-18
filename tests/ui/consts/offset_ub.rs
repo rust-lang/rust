@@ -1,7 +1,7 @@
 use std::ptr;
 
 
-// normalize-stderr-test "0x7f+" -> "0x7f..f"
+//@ normalize-stderr-test "0x7f+" -> "0x7f..f"
 
 
 pub const BEFORE_START: *const u8 = unsafe { (&0u8 as *const u8).offset(-1) }; //~NOTE

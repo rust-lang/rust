@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 
 struct Triple { a: isize, b: isize, c: isize }

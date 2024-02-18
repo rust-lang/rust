@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib -Zmir-enable-passes=+InstSimplify
-// build-pass
+//@ compile-flags: --crate-type=lib -Zmir-enable-passes=+InstSimplify
+//@ build-pass
 
 #![feature(core_intrinsics)]
 

@@ -3,7 +3,7 @@
 
 #![feature(more_qualified_paths)]
 
-// check-pass
+//@ check-pass
 fn main() {
     let <Foo as A>::Assoc { br } = <Foo as A>::Assoc { br: 2 };
     assert!(br == 2);

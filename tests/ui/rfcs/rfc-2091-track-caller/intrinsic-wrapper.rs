@@ -1,7 +1,7 @@
-// run-pass
-// revisions: default mir-opt
-//[default] compile-flags: -Zinline-mir=no
-//[mir-opt] compile-flags: -Zmir-opt-level=4
+//@ run-pass
+//@ revisions: default mir-opt
+//@[default] compile-flags: -Zinline-mir=no
+//@[mir-opt] compile-flags: -Zmir-opt-level=4
 
 macro_rules! caller_location_from_macro {
     () => (core::panic::Location::caller());

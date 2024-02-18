@@ -2349,112 +2349,151 @@ fn test_cursor() {
     let map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
 
     let mut cur = map.lower_bound(Bound::Unbounded);
-    assert_eq!(cur.key(), Some(&1));
-    cur.move_next();
-    assert_eq!(cur.key(), Some(&2));
-    assert_eq!(cur.peek_next(), Some((&3, &'c')));
-    cur.move_prev();
-    assert_eq!(cur.key(), Some(&1));
+    assert_eq!(cur.peek_next(), Some((&1, &'a')));
     assert_eq!(cur.peek_prev(), None);
+    assert_eq!(cur.prev(), None);
+    assert_eq!(cur.next(), Some((&1, &'a')));
+
+    assert_eq!(cur.next(), Some((&2, &'b')));
+
+    assert_eq!(cur.peek_next(), Some((&3, &'c')));
+    assert_eq!(cur.prev(), Some((&2, &'b')));
+    assert_eq!(cur.peek_prev(), Some((&1, &'a')));
 
     let mut cur = map.upper_bound(Bound::Excluded(&1));
-    assert_eq!(cur.key(), None);
-    cur.move_next();
-    assert_eq!(cur.key(), Some(&1));
-    cur.move_prev();
-    assert_eq!(cur.key(), None);
-    assert_eq!(cur.peek_prev(), Some((&3, &'c')));
+    assert_eq!(cur.peek_prev(), None);
+    assert_eq!(cur.next(), Some((&1, &'a')));
+    assert_eq!(cur.prev(), Some((&1, &'a')));
 }
 
 #[test]
 fn test_cursor_mut() {
     let mut map = BTreeMap::from([(1, 'a'), (3, 'c'), (5, 'e')]);
     let mut cur = map.lower_bound_mut(Bound::Excluded(&3));
-    assert_eq!(cur.key(), Some(&5));
-    cur.insert_before(4, 'd');
-    assert_eq!(cur.key(), Some(&5));
+    assert_eq!(cur.peek_next(), Some((&5, &mut 'e')));
+    assert_eq!(cur.peek_prev(), Some((&3, &mut 'c')));
+
+    cur.insert_before(4, 'd').unwrap();
+    assert_eq!(cur.peek_next(), Some((&5, &mut 'e')));
     assert_eq!(cur.peek_prev(), Some((&4, &mut 'd')));
-    cur.move_next();
-    assert_eq!(cur.key(), None);
-    cur.insert_before(6, 'f');
-    assert_eq!(cur.key(), None);
-    assert_eq!(cur.remove_current(), None);
-    assert_eq!(cur.key(), None);
-    cur.insert_after(0, '?');
-    assert_eq!(cur.key(), None);
-    assert_eq!(map, BTreeMap::from([(0, '?'), (1, 'a'), (3, 'c'), (4, 'd'), (5, 'e'), (6, 'f')]));
+
+    assert_eq!(cur.next(), Some((&5, &mut 'e')));
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), Some((&5, &mut 'e')));
+    cur.insert_before(6, 'f').unwrap();
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), Some((&6, &mut 'f')));
+    assert_eq!(cur.remove_prev(), Some((6, 'f')));
+    assert_eq!(cur.remove_prev(), Some((5, 'e')));
+    assert_eq!(cur.remove_next(), None);
+    assert_eq!(map, BTreeMap::from([(1, 'a'), (3, 'c'), (4, 'd')]));
 
     let mut cur = map.upper_bound_mut(Bound::Included(&5));
-    assert_eq!(cur.key(), Some(&5));
-    assert_eq!(cur.remove_current(), Some((5, 'e')));
-    assert_eq!(cur.key(), Some(&6));
-    assert_eq!(cur.remove_current_and_move_back(), Some((6, 'f')));
-    assert_eq!(cur.key(), Some(&4));
-    assert_eq!(map, BTreeMap::from([(0, '?'), (1, 'a'), (3, 'c'), (4, 'd')]));
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.prev(), Some((&4, &mut 'd')));
+    assert_eq!(cur.peek_next(), Some((&4, &mut 'd')));
+    assert_eq!(cur.peek_prev(), Some((&3, &mut 'c')));
+    assert_eq!(cur.remove_next(), Some((4, 'd')));
+    assert_eq!(map, BTreeMap::from([(1, 'a'), (3, 'c')]));
 }
 
-#[should_panic(expected = "key must be ordered above the previous element")]
+#[test]
+fn test_cursor_mut_key() {
+    let mut map = BTreeMap::from([(1, 'a'), (3, 'c'), (5, 'e')]);
+    let mut cur = unsafe { map.lower_bound_mut(Bound::Excluded(&3)).with_mutable_key() };
+    assert_eq!(cur.peek_next(), Some((&mut 5, &mut 'e')));
+    assert_eq!(cur.peek_prev(), Some((&mut 3, &mut 'c')));
+
+    cur.insert_before(4, 'd').unwrap();
+    assert_eq!(cur.peek_next(), Some((&mut 5, &mut 'e')));
+    assert_eq!(cur.peek_prev(), Some((&mut 4, &mut 'd')));
+
+    assert_eq!(cur.next(), Some((&mut 5, &mut 'e')));
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), Some((&mut 5, &mut 'e')));
+    cur.insert_before(6, 'f').unwrap();
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), Some((&mut 6, &mut 'f')));
+    assert_eq!(cur.remove_prev(), Some((6, 'f')));
+    assert_eq!(cur.remove_prev(), Some((5, 'e')));
+    assert_eq!(cur.remove_next(), None);
+    assert_eq!(map, BTreeMap::from([(1, 'a'), (3, 'c'), (4, 'd')]));
+
+    let mut cur = unsafe { map.upper_bound_mut(Bound::Included(&5)).with_mutable_key() };
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.prev(), Some((&mut 4, &mut 'd')));
+    assert_eq!(cur.peek_next(), Some((&mut 4, &mut 'd')));
+    assert_eq!(cur.peek_prev(), Some((&mut 3, &mut 'c')));
+    assert_eq!(cur.remove_next(), Some((4, 'd')));
+    assert_eq!(map, BTreeMap::from([(1, 'a'), (3, 'c')]));
+}
+
+#[test]
+fn test_cursor_empty() {
+    let mut map = BTreeMap::new();
+    let mut cur = map.lower_bound_mut(Bound::Excluded(&3));
+    assert_eq!(cur.peek_next(), None);
+    assert_eq!(cur.peek_prev(), None);
+    cur.insert_after(0, 0).unwrap();
+    assert_eq!(cur.peek_next(), Some((&0, &mut 0)));
+    assert_eq!(cur.peek_prev(), None);
+    assert_eq!(map, BTreeMap::from([(0, 0)]));
+}
+
 #[test]
 fn test_cursor_mut_insert_before_1() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_before(0, 'd');
+    cur.insert_before(0, 'd').unwrap_err();
 }
 
-#[should_panic(expected = "key must be ordered above the previous element")]
 #[test]
 fn test_cursor_mut_insert_before_2() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_before(1, 'd');
+    cur.insert_before(1, 'd').unwrap_err();
 }
 
-#[should_panic(expected = "key must be ordered below the current element")]
 #[test]
 fn test_cursor_mut_insert_before_3() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_before(2, 'd');
+    cur.insert_before(2, 'd').unwrap_err();
 }
 
-#[should_panic(expected = "key must be ordered below the current element")]
 #[test]
 fn test_cursor_mut_insert_before_4() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_before(3, 'd');
+    cur.insert_before(3, 'd').unwrap_err();
 }
 
-#[should_panic(expected = "key must be ordered above the current element")]
 #[test]
 fn test_cursor_mut_insert_after_1() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_after(1, 'd');
+    cur.insert_after(1, 'd').unwrap_err();
 }
 
-#[should_panic(expected = "key must be ordered above the current element")]
 #[test]
 fn test_cursor_mut_insert_after_2() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_after(2, 'd');
+    cur.insert_after(2, 'd').unwrap_err();
 }
 
-#[should_panic(expected = "key must be ordered below the next element")]
 #[test]
 fn test_cursor_mut_insert_after_3() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_after(3, 'd');
+    cur.insert_after(3, 'd').unwrap_err();
 }
 
-#[should_panic(expected = "key must be ordered below the next element")]
 #[test]
 fn test_cursor_mut_insert_after_4() {
     let mut map = BTreeMap::from([(1, 'a'), (2, 'b'), (3, 'c')]);
     let mut cur = map.upper_bound_mut(Bound::Included(&2));
-    cur.insert_after(4, 'd');
+    cur.insert_after(4, 'd').unwrap_err();
 }
 
 #[test]
@@ -2462,14 +2501,14 @@ fn cursor_peek_prev_agrees_with_cursor_mut() {
     let mut map = BTreeMap::from([(1, 1), (2, 2), (3, 3)]);
 
     let cursor = map.lower_bound(Bound::Excluded(&3));
-    assert!(cursor.key().is_none());
+    assert!(cursor.peek_next().is_none());
 
     let prev = cursor.peek_prev();
     assert_matches!(prev, Some((&3, _)));
 
     // Shadow names so the two parts of this test match.
     let mut cursor = map.lower_bound_mut(Bound::Excluded(&3));
-    assert!(cursor.key().is_none());
+    assert!(cursor.peek_next().is_none());
 
     let prev = cursor.peek_prev();
     assert_matches!(prev, Some((&3, _)));

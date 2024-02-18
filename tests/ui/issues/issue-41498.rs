@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // regression test for issue #41498.
 
 struct S;

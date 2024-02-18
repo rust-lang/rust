@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused, nonstandard_style)]
 mod m {
     #[macro_export]

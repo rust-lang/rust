@@ -13,7 +13,6 @@ use either::Either;
 use hir_def::{
     hir::Expr,
     lower::LowerCtx,
-    macro_id_to_def_id,
     nameres::MacroSubNs,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
@@ -26,6 +25,7 @@ use hir_expand::{
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
+use span::{Span, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -40,8 +40,8 @@ use crate::{
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
     DeriveHelper, Field, Function, HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local,
-    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, ToolModule, Trait, Type,
-    TypeAlias, TypeParam, VariantDef,
+    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Struct, ToolModule, Trait,
+    TupleField, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 pub enum DescendPreference {
@@ -132,6 +132,7 @@ pub struct SemanticsImpl<'db> {
     /// Rootnode to HirFileId cache
     cache: RefCell<FxHashMap<SyntaxNode, HirFileId>>,
     // These 2 caches are mainly useful for semantic highlighting as nothing else descends a lot of tokens
+    // So we might wanna move them out into something specific for semantic highlighting
     expansion_info_cache: RefCell<FxHashMap<MacroFileId, ExpansionInfo>>,
     /// MacroCall to its expansion's MacroFileId cache
     macro_call_cache: RefCell<FxHashMap<InFile<ast::MacroCall>, MacroFileId>>,
@@ -228,6 +229,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
         self.imp.to_module_def(file)
+    }
+
+    pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
+        self.imp.to_def(s).map(Struct::from)
+    }
+
+    pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
+        self.imp.to_def(i).map(Impl::from)
     }
 }
 
@@ -341,9 +350,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = InFile::new(file_id, actual_macro_call);
         let krate = resolver.krate();
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
-            resolver
-                .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|(it, _)| macro_id_to_def_id(self.db.upcast(), it))
+            resolver.resolve_path_as_macro_def(self.db.upcast(), &path, Some(MacroSubNs::Bang))
         })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -423,12 +430,12 @@ impl<'db> SemanticsImpl<'db> {
         if let Some(original_string) = ast::String::cast(original_token.clone()) {
             if let Some(quote) = original_string.open_quote_text_range() {
                 return self
-                    .descend_into_macros(DescendPreference::SameText, original_token.clone())
+                    .descend_into_macros(DescendPreference::SameText, original_token)
                     .into_iter()
                     .find_map(|token| {
                         self.resolve_offset_in_format_args(
                             ast::String::cast(token)?,
-                            offset - quote.end(),
+                            offset.checked_sub(quote.end())?,
                         )
                     })
                     .map(|(range, res)| (range + quote.end(), res));
@@ -512,8 +519,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Descend the token into its macro call if it is part of one, returning the tokens in the
-    /// expansion that it is associated with. If `offset` points into the token's range, it will
-    /// be considered for the mapping in case of inline format args.
+    /// expansion that it is associated with.
     pub fn descend_into_macros(
         &self,
         mode: DescendPreference,
@@ -603,28 +609,101 @@ impl<'db> SemanticsImpl<'db> {
         res
     }
 
-    fn descend_into_macros_impl(
+    // return:
+    // SourceAnalyzer(file_id that original call include!)
+    // macro file id
+    // token in include! macro mapped from token in params
+    // span for the mapped token
+    fn is_from_include_file(
         &self,
         token: SyntaxToken,
+    ) -> Option<(SourceAnalyzer, HirFileId, SyntaxToken, Span)> {
+        let parent = token.parent()?;
+        let file_id = self.find_file(&parent).file_id.file_id()?;
+
+        let mut cache = self.expansion_info_cache.borrow_mut();
+
+        // iterate related crates and find all include! invocations that include_file_id matches
+        for (invoc, _) in self
+            .db
+            .relevant_crates(file_id)
+            .iter()
+            .flat_map(|krate| self.db.include_macro_invoc(*krate))
+            .filter(|&(_, include_file_id)| include_file_id == file_id)
+        {
+            let macro_file = invoc.as_macro_file();
+            let expansion_info = cache
+                .entry(macro_file)
+                .or_insert_with(|| macro_file.expansion_info(self.db.upcast()));
+
+            // Create the source analyzer for the macro call scope
+            let Some(sa) = self.analyze_no_infer(&self.parse_or_expand(expansion_info.call_file()))
+            else {
+                continue;
+            };
+            {
+                let InMacroFile { file_id: macro_file, value } = expansion_info.expanded();
+                self.cache(value, macro_file.into());
+            }
+
+            // get mapped token in the include! macro file
+            let span = span::SpanData {
+                range: token.text_range(),
+                anchor: span::SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
+                ctx: SyntaxContextId::ROOT,
+            };
+            let Some(InMacroFile { file_id, value: mut mapped_tokens }) =
+                expansion_info.map_range_down(span)
+            else {
+                continue;
+            };
+
+            // if we find one, then return
+            if let Some(t) = mapped_tokens.next() {
+                return Some((sa, file_id.into(), t, span));
+            }
+        }
+
+        None
+    }
+
+    fn descend_into_macros_impl(
+        &self,
+        mut token: SyntaxToken,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
     ) {
-        let _p = profile::span("descend_into_macros");
-        let sa = match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
-            Some(it) => it,
-            None => return,
-        };
-
-        let span = match sa.file_id.file_id() {
-            Some(file_id) => self.db.real_span_map(file_id).span_for_range(token.text_range()),
-            None => {
-                stdx::never!();
-                return;
-            }
-        };
+        let _p = tracing::span!(tracing::Level::INFO, "descend_into_macros");
+        let (sa, span, file_id) =
+            match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
+                Some(sa) => match sa.file_id.file_id() {
+                    Some(file_id) => (
+                        sa,
+                        self.db.real_span_map(file_id).span_for_range(token.text_range()),
+                        file_id.into(),
+                    ),
+                    None => {
+                        stdx::never!();
+                        return;
+                    }
+                },
+                None => {
+                    // if we cannot find a source analyzer for this token, then we try to find out
+                    // whether this file is an included file and treat that as the include input
+                    let Some((it, macro_file_id, mapped_token, s)) =
+                        self.is_from_include_file(token)
+                    else {
+                        return;
+                    };
+                    token = mapped_token;
+                    (it, s, macro_file_id)
+                }
+            };
 
         let mut cache = self.expansion_info_cache.borrow_mut();
         let mut mcache = self.macro_call_cache.borrow_mut();
         let def_map = sa.resolver.def_map();
+
+        let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![(file_id, smallvec![token])];
 
         let mut process_expansion_for_token = |stack: &mut Vec<_>, macro_file| {
             let expansion_info = cache
@@ -647,18 +726,14 @@ impl<'db> SemanticsImpl<'db> {
             res
         };
 
-        let mut stack: Vec<(_, SmallVec<[_; 2]>)> = vec![(sa.file_id, smallvec![token])];
-
         while let Some((file_id, mut tokens)) = stack.pop() {
             while let Some(token) = tokens.pop() {
                 let was_not_remapped = (|| {
                     // First expand into attribute invocations
                     let containing_attribute_macro_call = self.with_ctx(|ctx| {
                         token.parent_ancestors().filter_map(ast::Item::cast).find_map(|item| {
-                            if item.attrs().next().is_none() {
-                                // Don't force populate the dyn cache for items that don't have an attribute anyways
-                                return None;
-                            }
+                            // Don't force populate the dyn cache for items that don't have an attribute anyways
+                            item.attrs().next()?;
                             Some((
                                 ctx.item_to_macro_call(InFile::new(file_id, item.clone()))?,
                                 item,
@@ -674,7 +749,7 @@ impl<'db> SemanticsImpl<'db> {
                             _ => 0,
                         };
                         // FIXME: here, the attribute's text range is used to strip away all
-                        // entries from the start of the attribute "list" up the the invoking
+                        // entries from the start of the attribute "list" up the invoking
                         // attribute. But in
                         // ```
                         // mod foo {
@@ -850,7 +925,7 @@ impl<'db> SemanticsImpl<'db> {
     /// Attempts to map the node out of macro expanded files.
     /// This only work for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(
+        self.wrap_node_infile(node).original_ast_node_rooted(self.db.upcast()).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(value.syntax()), file_id.into());
                 value
@@ -1004,9 +1079,7 @@ impl<'db> SemanticsImpl<'db> {
                     // Update `source_ty` for the next adjustment
                     let source = mem::replace(&mut source_ty, target.clone());
 
-                    let adjustment = Adjustment { source, target, kind };
-
-                    adjustment
+                    Adjustment { source, target, kind }
                 })
                 .collect()
         })
@@ -1081,14 +1154,14 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(call.syntax())?.resolve_method_call_as_callable(self.db, call)
     }
 
-    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Field> {
+    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Either<Field, TupleField>> {
         self.analyze(field.syntax())?.resolve_field(self.db, field)
     }
 
     pub fn resolve_field_fallback(
         &self,
         field: &ast::FieldExpr,
-    ) -> Option<Either<Field, Function>> {
+    ) -> Option<Either<Either<Field, TupleField>, Function>> {
         self.analyze(field.syntax())?.resolve_field_fallback(self.db, field)
     }
 
@@ -1222,7 +1295,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: Option<TextSize>,
         infer_body: bool,
     ) -> Option<SourceAnalyzer> {
-        let _p = profile::span("Semantics::analyze_impl");
+        let _p = tracing::span!(tracing::Level::INFO, "Semantics::analyze_impl");
         let node = self.find_file(node);
 
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;
@@ -1251,7 +1324,7 @@ impl<'db> SemanticsImpl<'db> {
         assert!(root_node.parent().is_none());
         let mut cache = self.cache.borrow_mut();
         let prev = cache.insert(root_node, file_id);
-        assert!(prev == None || prev == Some(file_id))
+        assert!(prev.is_none() || prev == Some(file_id))
     }
 
     pub fn assert_contains_node(&self, node: &SyntaxNode) {

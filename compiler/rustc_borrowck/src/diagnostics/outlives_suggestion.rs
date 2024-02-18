@@ -1,6 +1,9 @@
 //! Contains utilities for generating suggestions for borrowck errors related to unsatisfied
 //! outlives constraints.
 
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
 use rustc_middle::ty::RegionVid;
@@ -206,7 +209,7 @@ impl OutlivesSuggestionBuilder {
         // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
         // list of diagnostics.
         let mut diag = if suggested.len() == 1 {
-            mbcx.infcx.tcx.sess.dcx().struct_help(match suggested.last().unwrap() {
+            mbcx.dcx().struct_help(match suggested.last().unwrap() {
                 SuggestedConstraint::Outlives(a, bs) => {
                     let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
                     format!("add bound `{a}: {}`", bs.join(" + "))
@@ -222,7 +225,6 @@ impl OutlivesSuggestionBuilder {
             let mut diag = mbcx
                 .infcx
                 .tcx
-                .sess
                 .dcx()
                 .struct_help("the following changes may resolve your lifetime errors");
 
@@ -252,6 +254,6 @@ impl OutlivesSuggestionBuilder {
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        mbcx.buffer_non_error_diag(diag);
+        mbcx.buffer_non_error(diag);
     }
 }

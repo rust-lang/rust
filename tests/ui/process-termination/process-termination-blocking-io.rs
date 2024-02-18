@@ -1,8 +1,8 @@
 // program should terminate even if a thread is blocked on I/O.
 // https://github.com/fortanix/rust-sgx/issues/109
 
-// run-pass
-// ignore-emscripten no threads support
+//@ run-pass
+//@ ignore-emscripten no threads support
 
 use std::{net::TcpListener, sync::mpsc, thread};
 

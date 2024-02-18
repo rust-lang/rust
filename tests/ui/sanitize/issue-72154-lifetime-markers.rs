@@ -3,12 +3,12 @@
 // always inliner pass not to insert them.  This eventually lead to a
 // miscompilation which was subsequently detected by AddressSanitizer as UB.
 //
-// needs-sanitizer-support
-// needs-sanitizer-address
-// ignore-cross-compile
+//@ needs-sanitizer-support
+//@ needs-sanitizer-address
+//@ ignore-cross-compile
 //
-// compile-flags: -Copt-level=0 -Zsanitizer=address
-// run-pass
+//@ compile-flags: -Copt-level=0 -Zsanitizer=address
+//@ run-pass
 
 pub struct Wrap {
     pub t: [usize; 1]

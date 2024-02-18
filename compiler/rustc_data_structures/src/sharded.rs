@@ -3,7 +3,7 @@ use crate::fx::{FxHashMap, FxHasher};
 use crate::sync::{is_dyn_thread_safe, CacheAligned};
 use crate::sync::{Lock, LockGuard, Mode};
 #[cfg(parallel_compiler)]
-use itertools::Either;
+use either::Either;
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};

@@ -1,9 +1,9 @@
-// build-fail
-// dont-check-compiler-stderr
-// error-pattern:cannot link together two panic runtimes: panic_runtime_unwind and panic_runtime_unwind2
-// aux-build:panic-runtime-unwind.rs
-// aux-build:panic-runtime-unwind2.rs
-// aux-build:panic-runtime-lang-items.rs
+//@ build-fail
+//@ dont-check-compiler-stderr
+//@ error-pattern:cannot link together two panic runtimes: panic_runtime_unwind and panic_runtime_unwind2
+//@ aux-build:panic-runtime-unwind.rs
+//@ aux-build:panic-runtime-unwind2.rs
+//@ aux-build:panic-runtime-lang-items.rs
 
 #![no_std]
 #![no_main]

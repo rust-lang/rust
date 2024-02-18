@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that an `&mut self` method, when invoked on a place whose
 // type is `&mut [u8]`, passes in a pointer to the place and not a
 // temporary. Issue #19147.

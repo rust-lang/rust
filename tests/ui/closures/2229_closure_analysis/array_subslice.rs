@@ -1,5 +1,5 @@
 // regression test for #109298
-// edition: 2021
+//@ edition: 2021
 
 pub fn subslice_array(x: [u8; 3]) {
     let f = || {

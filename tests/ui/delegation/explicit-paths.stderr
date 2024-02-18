@@ -1,0 +1,38 @@
+warning: the feature `fn_delegation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/explicit-paths.rs:1:12
+   |
+LL | #![feature(fn_delegation)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #118212 <https://github.com/rust-lang/rust/issues/118212> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/explicit-paths.rs:14:25
+   |
+LL |     reuse <F as Trait>::bar;
+   |           --------------^^^
+   |           |             |
+   |           |             expected `&F`, found `&S`
+   |           arguments to this function are incorrect
+   |
+   = note: expected reference `&F`
+              found reference `&S`
+note: method defined here
+  --> $DIR/explicit-paths.rs:5:8
+   |
+LL |     fn bar(&self) -> i32 { 42 }
+   |        ^^^ -----
+
+error[E0308]: mismatched types
+  --> $DIR/explicit-paths.rs:21:32
+   |
+LL |     reuse <S2 as Trait>::bar { &self.0 }
+   |                                ^^^^^^^ expected `&S2`, found `&F`
+   |
+   = note: expected reference `&S2`
+              found reference `&F`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,7 +1,7 @@
 #![warn(unused)]
 #![deny(warnings)]
 
-struct Inv<'a>(&'a mut &'a ());
+struct Inv<'a>(#[allow(dead_code)] &'a mut &'a ());
 
 trait Trait<'a> {}
 impl<'b> Trait<'b> for for<'a> fn(Inv<'a>) {}

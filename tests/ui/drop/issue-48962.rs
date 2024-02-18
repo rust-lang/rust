@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_must_use)]
 // Test that we are able to reinitialize box with moved referent
 static mut ORDER: [usize; 3] = [0, 0, 0];

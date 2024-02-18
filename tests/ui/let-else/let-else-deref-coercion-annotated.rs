@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // Taken from https://github.com/rust-lang/rust/blob/6cc0a764e082d9c0abcf37a768d5889247ba13e2/compiler/rustc_typeck/src/check/_match.rs#L445-L462
 //

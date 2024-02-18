@@ -25,7 +25,7 @@ use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use core::panic;
 use getopts::Options;
 use lazycell::AtomicLazyCell;
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, ErrorKind};
@@ -142,6 +142,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
         .optflag("", "nocapture", "")
+        .optflag("", "profiler-support", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
         .optflag("", "git-hash", "run tests which rely on commit version being compiled into the binaries")
@@ -315,6 +316,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
+
+        profiler_support: matches.opt_present("profiler-support"),
     }
 }
 
@@ -412,7 +415,7 @@ pub fn run_tests(config: Arc<Config>) {
 
     let mut tests = Vec::new();
     for c in configs {
-        let mut found_paths = BTreeSet::new();
+        let mut found_paths = HashSet::new();
         make_tests(c, &mut tests, &mut found_paths);
         check_overlapping_tests(&found_paths);
     }
@@ -547,7 +550,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 pub fn make_tests(
     config: Arc<Config>,
     tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut BTreeSet<PathBuf>,
+    found_paths: &mut HashSet<PathBuf>,
 ) {
     debug!("making tests from {:?}", config.src_base.display());
     let inputs = common_inputs_stamp(&config);
@@ -643,7 +646,7 @@ fn collect_tests_from_dir(
     relative_dir_path: &Path,
     inputs: &Stamp,
     tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut BTreeSet<PathBuf>,
+    found_paths: &mut HashSet<PathBuf>,
     modified_tests: &Vec<PathBuf>,
     poisoned: &mut bool,
 ) -> io::Result<()> {
@@ -672,6 +675,8 @@ fn collect_tests_from_dir(
 
     // Add each `.rs` file as a test, and recurse further on any
     // subdirectories we find, except for `aux` directories.
+    // FIXME: this walks full tests tree, even if we have something to ignore
+    // use walkdir/ignore like in tidy?
     for file in fs::read_dir(dir)? {
         let file = file?;
         let file_path = file.path();
@@ -1125,7 +1130,7 @@ fn not_a_digit(c: char) -> bool {
     !c.is_digit(10)
 }
 
-fn check_overlapping_tests(found_paths: &BTreeSet<PathBuf>) {
+fn check_overlapping_tests(found_paths: &HashSet<PathBuf>) {
     let mut collisions = Vec::new();
     for path in found_paths {
         for ancestor in path.ancestors().skip(1) {
@@ -1135,6 +1140,7 @@ fn check_overlapping_tests(found_paths: &BTreeSet<PathBuf>) {
         }
     }
     if !collisions.is_empty() {
+        collisions.sort();
         let collisions: String = collisions
             .into_iter()
             .map(|(path, check_parent)| format!("test {path:?} clashes with {check_parent:?}\n"))

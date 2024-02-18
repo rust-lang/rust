@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Cyclic assoc. const defaults don't error unless *used*
 trait Tr {

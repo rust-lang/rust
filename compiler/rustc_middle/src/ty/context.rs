@@ -7,7 +7,7 @@ pub mod tls;
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::struct_lint_level;
+use crate::lint::lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
@@ -28,7 +28,7 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
     ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
     PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    Visibility,
+    TypeVisitable, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -44,7 +44,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
-    DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
+    DecorateLint, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -87,7 +87,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type GenericArg = ty::GenericArg<'tcx>;
     type Term = ty::Term<'tcx>;
 
-    type Binder<T> = Binder<'tcx, T>;
+    type Binder<T: TypeVisitable<TyCtxt<'tcx>>> = Binder<'tcx, T>;
+    type BoundVars = &'tcx List<ty::BoundVariableKind>;
+    type BoundVar = ty::BoundVariableKind;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
@@ -150,6 +152,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         ty: Self::Ty,
     ) -> Self::Const {
         Const::new_bound(self, debruijn, var, ty)
+    }
+
+    fn expect_error_or_delayed_bug() {
+        let has_errors = ty::tls::with(|tcx| tcx.dcx().has_errors_or_lint_errors_or_delayed_bugs());
+        assert!(has_errors.is_some());
     }
 }
 
@@ -715,8 +722,16 @@ impl<'tcx> TyCtxt<'tcx> {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
+        is_anonymous: bool,
     ) -> ty::AdtDef<'tcx> {
-        self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
+        self.mk_adt_def_from_data(ty::AdtDefData::new(
+            self,
+            did,
+            kind,
+            variants,
+            repr,
+            is_anonymous,
+        ))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
@@ -745,9 +760,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 ],
             ) = attr.meta_item_list().as_deref()
             {
-                Bound::Included(a)
+                Bound::Included(a.get())
             } else {
-                self.sess.span_delayed_bug(
+                self.dcx().span_delayed_bug(
                     attr.span,
                     "invalid rustc_layout_scalar_valid_range attribute",
                 );
@@ -783,7 +798,7 @@ impl<'tcx> TyCtxt<'tcx> {
         hooks: crate::hooks::Providers,
     ) -> GlobalCtxt<'tcx> {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
-            s.emit_fatal(err);
+            s.dcx().emit_fatal(err);
         });
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners, s, &untracked);
@@ -847,6 +862,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.coroutine_kind(def_id).is_some()
     }
 
+    /// Returns the movability of the coroutine of `def_id`, or panics
+    /// if given a `def_id` that is not a coroutine.
+    pub fn coroutine_movability(self, def_id: DefId) -> hir::Movability {
+        self.coroutine_kind(def_id).expect("expected a coroutine").movability()
+    }
+
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for an async construct.
     pub fn coroutine_is_async(self, def_id: DefId) -> bool {
         matches!(
@@ -858,7 +879,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
     /// This means it is neither an `async` or `gen` construct.
     pub fn is_general_coroutine(self, def_id: DefId) -> bool {
-        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine))
+        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine(_)))
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `gen` construct.
@@ -1018,6 +1039,10 @@ impl<'tcx> TyCtxt<'tcx> {
             self.def_path(def_id).to_string_no_crate_verbose()
         )
     }
+
+    pub fn dcx(self) -> &'tcx DiagCtxt {
+        self.sess.dcx()
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
@@ -1028,12 +1053,22 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Symbol,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        // This function modifies `self.definitions` using a side-effect.
-        // We need to ensure that these side effects are re-run by the incr. comp. engine.
-        // Depending on the forever-red node will tell the graph that the calling query
-        // needs to be re-evaluated.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        let feed = self.tcx.create_def(parent, name, def_kind);
 
+        feed.def_span(self.span);
+        feed
+    }
+}
+
+impl<'tcx> TyCtxt<'tcx> {
+    /// `tcx`-dependent operations performed for every created definition.
+    pub fn create_def(
+        self,
+        parent: LocalDefId,
+        name: Symbol,
+        def_kind: DefKind,
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let data = def_kind.def_path_data(name);
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
@@ -1048,19 +1083,13 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let def_id = self.tcx.create_def(parent, name, def_kind);
-
-        let feed = self.tcx.feed_local_def_id(def_id);
-        feed.def_span(self.span);
-        feed
-    }
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    /// `tcx`-dependent operations performed for every created definition.
-    pub fn create_def(self, parent: LocalDefId, name: Symbol, def_kind: DefKind) -> LocalDefId {
-        let data = def_kind.def_path_data(name);
         let def_id = self.untracked.definitions.write().create_def(parent, data);
+
+        // This function modifies `self.definitions` using a side-effect.
+        // We need to ensure that these side effects are re-run by the incr. comp. engine.
+        // Depending on the forever-red node will tell the graph that the calling query
+        // needs to be re-evaluated.
+        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let feed = self.feed_local_def_id(def_id);
         feed.def_kind(def_kind);
@@ -1073,7 +1102,7 @@ impl<'tcx> TyCtxt<'tcx> {
             feed.visibility(ty::Visibility::Restricted(parent_mod));
         }
 
-        def_id
+        feed
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
@@ -1183,7 +1212,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let (suitable_region_binding_scope, bound_region) = loop {
             let def_id = match region.kind() {
                 ty::ReLateParam(fr) => fr.bound_region.get_id()?.as_local()?,
-                ty::ReEarlyParam(ebr) => ebr.def_id.expect_local(),
+                ty::ReEarlyParam(ebr) => ebr.def_id.as_local()?,
                 _ => return None, // not a free region
             };
             let scope = self.local_parent(def_id);
@@ -1406,6 +1435,7 @@ nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 nop_lift! {predicate; Clause<'a> => Clause<'tcx>}
+nop_lift! {layout; Layout<'a> => Layout<'tcx>}
 
 nop_list_lift! {type_lists; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {poly_existential_predicates; PolyExistentialPredicate<'a> => PolyExistentialPredicate<'tcx>}
@@ -1414,8 +1444,28 @@ nop_list_lift! {bound_variable_kinds; ty::BoundVariableKind => ty::BoundVariable
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! {args; GenericArg<'a> => GenericArg<'tcx>}
 
+macro_rules! nop_slice_lift {
+    ($ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<'tcx> for &'a [$ty] {
+            type Lifted = &'tcx [$lifted];
+            fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+                if self.is_empty() {
+                    return Some(&[]);
+                }
+                tcx.interners
+                    .arena
+                    .dropless
+                    .contains_slice(self)
+                    .then(|| unsafe { mem::transmute(self) })
+            }
+        }
+    };
+}
+
+nop_slice_lift! {ty::ValTree<'a> => ty::ValTree<'tcx>}
+
 TrivialLiftImpls! {
-    ImplPolarity,
+    ImplPolarity, Promoted
 }
 
 macro_rules! sty_debug_print {
@@ -1513,6 +1563,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     CoroutineWitness,
                     Dynamic,
                     Closure,
+                    CoroutineClosure,
                     Tuple,
                     Bound,
                     Param,
@@ -2046,7 +2097,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
     /// typically generated by `#[derive(LintDiagnostic)]`).
     #[track_caller]
-    pub fn emit_spanned_lint(
+    pub fn emit_node_span_lint(
         self,
         lint: &'static Lint,
         hir_id: HirId,
@@ -2055,17 +2106,17 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let msg = decorator.msg();
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
+        lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
             decorator.decorate_lint(diag);
         })
     }
 
     /// Emit a lint at the appropriate level for a hir node, with an associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_span_lint_hir(
+    pub fn node_span_lint(
         self,
         lint: &'static Lint,
         hir_id: HirId,
@@ -2074,29 +2125,29 @@ impl<'tcx> TyCtxt<'tcx> {
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
+        lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
     }
 
     /// Emit a lint from a lint struct (some type that implements `DecorateLint`, typically
     /// generated by `#[derive(LintDiagnostic)]`).
     #[track_caller]
-    pub fn emit_lint(
+    pub fn emit_node_lint(
         self,
         lint: &'static Lint,
         id: HirId,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_lint_node(lint, id, decorator.msg(), |diag| {
+        self.node_lint(lint, id, decorator.msg(), |diag| {
             decorator.decorate_lint(diag);
         })
     }
 
     /// Emit a lint at the appropriate level for a hir node.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_lint_node(
+    pub fn node_lint(
         self,
         lint: &'static Lint,
         id: HirId,
@@ -2104,7 +2155,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
-        struct_lint_level(self.sess, lint, level, src, None, msg, decorate);
+        lint_level(self.sess, lint, level, src, None, msg, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
@@ -2275,6 +2326,20 @@ impl<'tcx> TyCtxt<'tcx> {
     /// (probably due to hashing spans in `ModChild`ren).
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
+    /// Given an `impl_id`, return the trait it implements.
+    /// Return `None` if this is an inherent impl.
+    pub fn impl_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {
+        Some(self.impl_trait_header(def_id)?.map_bound(|h| h.trait_ref))
+    }
+
+    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+        self.impl_trait_header(def_id)
+            .map_or(ty::ImplPolarity::Positive, |h| h.skip_binder().polarity)
     }
 }
 

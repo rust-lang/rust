@@ -1,6 +1,6 @@
 // A regression test for #68653, which was fixed by #68938.
 
-// check-pass
+//@ check-pass
 
 trait Fun {
     type F<'a: 'a>;

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![no_implicit_prelude]
 // the macro should not rely on the prelude being imported

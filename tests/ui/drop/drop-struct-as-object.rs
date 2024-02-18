@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 #![allow(non_upper_case_globals)]
 
@@ -12,7 +12,7 @@ struct Cat {
 }
 
 trait Dummy {
-    fn get(&self) -> usize;
+    fn get(&self) -> usize; //~ WARN method `get` is never used
 }
 
 impl Dummy for Cat {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Repeating a *constant* of non-Copy type (not just a constant expression) is already stable.
 

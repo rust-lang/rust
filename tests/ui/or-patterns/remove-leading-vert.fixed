@@ -1,6 +1,6 @@
 // Test the suggestion to remove a leading, or trailing `|`.
 
-// run-rustfix
+//@ run-rustfix
 
 #![allow(warnings)]
 

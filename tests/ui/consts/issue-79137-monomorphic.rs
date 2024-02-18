@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Verify that variant count intrinsic can still evaluate for types like `Option<T>`.
 

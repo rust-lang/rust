@@ -1,28 +1,28 @@
-error[E0277]: can't compare `impl PartialEq + Destruct + Copy` with `impl PartialEq + Destruct + Copy`
-  --> $DIR/const-impl-trait.rs:28:17
+error[E0277]: can't compare `()` with `()`
+  --> $DIR/const-impl-trait.rs:37:17
    |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `impl PartialEq + Destruct + Copy == impl PartialEq + Destruct + Copy`
+LL |     assert!(cmp(&()));
+   |             --- ^^^ no implementation for `() == ()`
+   |             |
+   |             required by a bound introduced by this call
    |
-   = help: the trait `~const PartialEq` is not implemented for `impl PartialEq + Destruct + Copy`
-note: required by a bound in `Foo::{opaque#0}`
-  --> $DIR/const-impl-trait.rs:24:22
+   = help: the trait `const PartialEq` is not implemented for `()`
+   = help: the trait `PartialEq` is implemented for `()`
+note: required by a bound in `cmp`
+  --> $DIR/const-impl-trait.rs:14:23
    |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                      ^^^^^^^^^^^^^^^^ required by this bound in `Foo::{opaque#0}`
+LL | const fn cmp(a: &impl ~const PartialEq) -> bool {
+   |                       ^^^^^^^^^^^^^^^^ required by this bound in `cmp`
 
-error[E0277]: can't drop `impl PartialEq + Destruct + Copy`
-  --> $DIR/const-impl-trait.rs:28:17
+error[E0369]: binary operation `==` cannot be applied to type `&impl ~const PartialEq`
+  --> $DIR/const-impl-trait.rs:15:7
    |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `impl PartialEq + Destruct + Copy`
-   |
-note: required by a bound in `Foo::{opaque#0}`
-  --> $DIR/const-impl-trait.rs:24:41
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                                         ^^^^^^^^^^^^^^^ required by this bound in `Foo::{opaque#0}`
+LL |     a == a
+   |     - ^^ - &impl ~const PartialEq
+   |     |
+   |     &impl ~const PartialEq
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0277, E0369.
+For more information about an error, try `rustc --explain E0277`.

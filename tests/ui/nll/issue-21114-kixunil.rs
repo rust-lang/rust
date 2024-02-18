@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn from_stdin(min: u64) -> Vec<u64> {
     use std::io::BufRead;

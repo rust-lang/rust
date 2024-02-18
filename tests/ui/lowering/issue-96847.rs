@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Test that this doesn't abort during AST lowering. In #96847 it did abort
 // because the attribute was being lowered twice.

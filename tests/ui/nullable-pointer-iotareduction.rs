@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Iota-reduction is a rule in the Calculus of (Co-)Inductive Constructions,
 // which "says that a destructor applied to an object built from a constructor
@@ -8,7 +8,7 @@
 // trying to get assert failure messages that at least identify which case
 // failed.
 
-enum E<T> { Thing(isize, T), #[allow(unused_tuple_struct_fields)] Nothing((), ((), ()), [i8; 0]) }
+enum E<T> { Thing(isize, T), #[allow(dead_code)] Nothing((), ((), ()), [i8; 0]) }
 impl<T> E<T> {
     fn is_none(&self) -> bool {
         match *self {

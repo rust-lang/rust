@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 struct S<T>(*const T) where T: ?Sized;
 

@@ -2,7 +2,7 @@
 // the first, but actually returns the second. This should fail within
 // the closure.
 
-// compile-flags:-Zverbose
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 

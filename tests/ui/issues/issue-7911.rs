@@ -1,12 +1,12 @@
-// run-pass
+//@ run-pass
 // (Closes #7911) Test that we can use the same self expression
 // with different mutability in macro in two methods
 
 #![allow(unused_variables)] // unused foobar_immut + foobar_mut
 trait FooBar {
-    fn dummy(&self) { }
+    fn dummy(&self) { } //~ WARN method `dummy` is never used
 }
-struct Bar(#[allow(unused_tuple_struct_fields)] i32);
+struct Bar(#[allow(dead_code)] i32);
 struct Foo { bar: Bar }
 
 impl FooBar for Bar {}

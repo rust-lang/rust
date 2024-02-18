@@ -334,7 +334,7 @@ where
                 match br {
                     // We only care about named late bound regions, as we need to add them
                     // to the 'for<>' section
-                    ty::BrNamed(_, name) => Some(GenericParamDef::lifetime(name)),
+                    ty::BrNamed(def_id, name) => Some(GenericParamDef::lifetime(def_id, name)),
                     _ => None,
                 }
             })

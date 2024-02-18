@@ -5,6 +5,7 @@ fn a() -> i32 {
     0
 }
 
+#[clippy::msrv = "1.75"]
 fn main() {
     let val = 1;
     let _p = &val as *const i32;

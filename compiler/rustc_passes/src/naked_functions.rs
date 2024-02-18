@@ -61,7 +61,7 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 fn check_inline(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let attrs = tcx.get_attrs(def_id, sym::inline);
     for attr in attrs {
-        tcx.sess.emit_err(CannotInlineNakedFunction { span: attr.span });
+        tcx.dcx().emit_err(CannotInlineNakedFunction { span: attr.span });
     }
 }
 
@@ -70,7 +70,7 @@ fn check_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, abi: Abi) {
     if abi == Abi::Rust {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         let span = tcx.def_span(def_id);
-        tcx.emit_spanned_lint(
+        tcx.emit_node_span_lint(
             UNDEFINED_NAKED_FUNCTION_ABI,
             hir_id,
             span,
@@ -86,7 +86,7 @@ fn check_no_patterns(tcx: TyCtxt<'_>, params: &[hir::Param<'_>]) {
             hir::PatKind::Wild
             | hir::PatKind::Binding(hir::BindingAnnotation::NONE, _, _, None) => {}
             _ => {
-                tcx.sess.emit_err(NoPatterns { span: param.pat.span });
+                tcx.dcx().emit_err(NoPatterns { span: param.pat.span });
             }
         }
     }
@@ -116,7 +116,7 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
         )) = expr.kind
         {
             if self.params.contains(var_hir_id) {
-                self.tcx.sess.emit_err(ParamsNotAllowed { span: expr.span });
+                self.tcx.dcx().emit_err(ParamsNotAllowed { span: expr.span });
                 return;
             }
         }
@@ -155,7 +155,7 @@ fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &'tcx hir::Body<
         // errors, then don't show an additional error. This allows for appending/prepending
         // `compile_error!("...")` statements and reduces error noise.
         if must_show_error || !has_err {
-            tcx.sess.emit_err(NakedFunctionsAsmBlock {
+            tcx.dcx().emit_err(NakedFunctionsAsmBlock {
                 span: tcx.def_span(def_id),
                 multiple_asms,
                 non_asms,
@@ -241,7 +241,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             })
             .collect();
         if !unsupported_operands.is_empty() {
-            self.tcx.sess.emit_err(NakedFunctionsOperands { unsupported_operands });
+            self.tcx.dcx().emit_err(NakedFunctionsOperands { unsupported_operands });
         }
 
         let unsupported_options: Vec<&'static str> = [
@@ -257,7 +257,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
         .collect();
 
         if !unsupported_options.is_empty() {
-            self.tcx.sess.emit_err(NakedFunctionsAsmOptions {
+            self.tcx.dcx().emit_err(NakedFunctionsAsmOptions {
                 span,
                 unsupported_options: unsupported_options.join(", "),
             });
@@ -270,7 +270,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
                 .map_or_else(|| asm.template_strs.last().unwrap().2, |op| op.1)
                 .shrink_to_hi();
 
-            self.tcx.sess.emit_err(NakedFunctionsMustUseNoreturn { span, last_span });
+            self.tcx.dcx().emit_err(NakedFunctionsMustUseNoreturn { span, last_span });
         }
     }
 }

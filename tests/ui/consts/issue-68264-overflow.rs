@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: --emit=mir,link
+//@ check-pass
+//@ compile-flags: --emit=mir,link
 // Regression test for issue #68264
 // Checks that we don't encounter overflow
 // when running const-prop on functions with

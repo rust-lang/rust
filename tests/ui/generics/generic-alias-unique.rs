@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn id<T:Send>(t: T) -> T { return t; }
 

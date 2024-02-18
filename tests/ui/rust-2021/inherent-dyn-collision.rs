@@ -1,9 +1,9 @@
 // Test case where the method we want is an inherent method on a
 // dyn Trait. In that case, the fix is to insert `*` on the receiver.
 //
-// check-pass
-// run-rustfix
-// edition:2018
+//@ check-pass
+//@ run-rustfix
+//@ edition:2018
 
 #![warn(rust_2021_prelude_collisions)]
 

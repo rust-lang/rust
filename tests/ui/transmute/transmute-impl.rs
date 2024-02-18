@@ -1,4 +1,4 @@
-// normalize-stderr-test "\d+ bits" -> "N bits"
+//@ normalize-stderr-test "\d+ bits" -> "N bits"
 
 // Tests that are conservative around thin/fat pointer mismatches.
 

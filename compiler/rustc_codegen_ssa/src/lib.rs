@@ -2,16 +2,15 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(strict_provenance)]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
 //! The backend-agnostic functions of this crate use functions defined in various traits that
@@ -25,8 +24,10 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -110,6 +111,7 @@ pub enum ModuleKind {
 }
 
 bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct MemFlags: u8 {
         const VOLATILE = 1 << 0;
         const NONTEMPORAL = 1 << 1;
@@ -152,15 +154,16 @@ impl From<&cstore::NativeLib> for NativeLib {
 pub struct CrateInfo {
     pub target_cpu: String,
     pub crate_types: Vec<CrateType>,
-    pub exported_symbols: FxHashMap<CrateType, Vec<String>>,
-    pub linked_symbols: FxHashMap<CrateType, Vec<(String, SymbolExportKind)>>,
+    pub exported_symbols: UnordMap<CrateType, Vec<String>>,
+    pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
-    pub native_libraries: FxHashMap<CrateNum, Vec<NativeLib>>,
-    pub crate_name: FxHashMap<CrateNum, Symbol>,
+    pub is_no_builtins: FxHashSet<CrateNum>,
+    pub native_libraries: FxIndexMap<CrateNum, Vec<NativeLib>>,
+    pub crate_name: UnordMap<CrateNum, Symbol>,
     pub used_libraries: Vec<NativeLib>,
-    pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
+    pub used_crate_source: UnordMap<CrateNum, Lrc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,

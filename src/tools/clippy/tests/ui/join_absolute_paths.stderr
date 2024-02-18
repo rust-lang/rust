@@ -11,7 +11,7 @@ help: if this is unintentional, try removing the starting separator
    |
 LL |     path.join("sh");
    |               ~~~~
-help: if this is intentional, try using `Path::new` instead
+help: if this is intentional, consider using `Path::new`
    |
 LL |     PathBuf::from("/sh");
    |     ~~~~~~~~~~~~~~~~~~~~
@@ -27,7 +27,7 @@ help: if this is unintentional, try removing the starting separator
    |
 LL |     path.join("\user");
    |               ~~~~~~~
-help: if this is intentional, try using `Path::new` instead
+help: if this is intentional, consider using `Path::new`
    |
 LL |     PathBuf::from("\\user");
    |     ~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,7 +43,7 @@ help: if this is unintentional, try removing the starting separator
    |
 LL |     path.join("sh");
    |               ~~~~
-help: if this is intentional, try using `Path::new` instead
+help: if this is intentional, consider using `Path::new`
    |
 LL |     PathBuf::from("/sh");
    |     ~~~~~~~~~~~~~~~~~~~~
@@ -59,7 +59,7 @@ help: if this is unintentional, try removing the starting separator
    |
 LL |     path.join(r#"sh"#);
    |               ~~~~~~~
-help: if this is intentional, try using `Path::new` instead
+help: if this is intentional, consider using `Path::new`
    |
 LL |     PathBuf::from(r#"/sh"#);
    |     ~~~~~~~~~~~~~~~~~~~~~~~

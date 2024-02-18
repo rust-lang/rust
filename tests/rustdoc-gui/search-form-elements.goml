@@ -137,3 +137,12 @@ call-function: (
         "menu_a_color": "#3873ad",
     }
 )
+
+// Check that search input correctly decodes form encoding.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a+b"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
+assert-property: (".search-input", { "value": "a b" })
+// Check that literal + is not treated as space.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a%2Bb"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
+assert-property: (".search-input", { "value": "a+b" })

@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
-// compile-flags: -g
+//@ compile-flags: -g
 
 #[derive(PartialEq, Eq)]
 struct NewBool(bool);

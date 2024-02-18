@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 
 #![feature(const_size_of_val, const_align_of_val)]
 #![feature(const_size_of_val_raw, const_align_of_val_raw, layout_for_ptr)]
 
 use std::{mem, ptr};
 
-struct Foo(#[allow(unused_tuple_struct_fields)] u32);
+struct Foo(#[allow(dead_code)] u32);
 
 #[derive(Clone, Copy)]
 struct Bar {

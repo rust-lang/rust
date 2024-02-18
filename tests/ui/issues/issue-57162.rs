@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 trait Foo {}
 impl Foo for dyn Send {}

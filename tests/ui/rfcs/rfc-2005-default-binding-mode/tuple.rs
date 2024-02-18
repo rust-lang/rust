@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 pub fn main() {
     let foo = (Some(1), (), (), vec![2, 3]);
 

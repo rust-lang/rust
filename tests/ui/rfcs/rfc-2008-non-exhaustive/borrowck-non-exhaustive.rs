@@ -1,7 +1,7 @@
 // Test that the borrow checker considers `#[non_exhaustive]` when checking
 // whether a match contains a discriminant read.
 
-// aux-build:monovariants.rs
+//@ aux-build:monovariants.rs
 extern crate monovariants;
 
 use monovariants::NonExhaustiveMonovariant;

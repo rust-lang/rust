@@ -1,5 +1,4 @@
 #![feature(exclusive_range_pattern)]
-#![allow(illegal_floating_point_literal_pattern)]
 
 macro_rules! m {
     ($s:expr, $($t:tt)+) => {

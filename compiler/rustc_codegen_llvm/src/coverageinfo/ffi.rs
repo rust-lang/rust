@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CounterId, CovTerm, ExpressionId};
+use rustc_middle::mir::coverage::{CodeRegion, CounterId, CovTerm, ExpressionId, MappingKind};
 
 /// Must match the layout of `LLVMRustCounterKind`.
 #[derive(Copy, Clone, Debug)]
@@ -149,6 +149,24 @@ pub struct CounterMappingRegion {
 }
 
 impl CounterMappingRegion {
+    pub(crate) fn from_mapping(
+        mapping_kind: &MappingKind,
+        local_file_id: u32,
+        code_region: &CodeRegion,
+    ) -> Self {
+        let &CodeRegion { file_name: _, start_line, start_col, end_line, end_col } = code_region;
+        match *mapping_kind {
+            MappingKind::Code(term) => Self::code_region(
+                Counter::from_term(term),
+                local_file_id,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+            ),
+        }
+    }
+
     pub(crate) fn code_region(
         counter: Counter,
         file_id: u32,

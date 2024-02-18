@@ -4,10 +4,9 @@ mod arg_matrix;
 mod checks;
 mod suggestions;
 
-use rustc_errors::ErrorGuaranteed;
-
 use crate::coercion::DynamicCoerceMany;
-use crate::{Diverges, EnclosingBreakables, Inherited};
+use crate::{CoroutineTypes, Diverges, EnclosingBreakables, Inherited};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::astconv::AstConv;
@@ -46,14 +45,6 @@ pub struct FnCtxt<'a, 'tcx> {
     /// eventually).
     pub(super) param_env: ty::ParamEnv<'tcx>,
 
-    /// Number of errors that had been reported when we started
-    /// checking this function. On exit, if we find that *more* errors
-    /// have been reported, we will skip regionck and other work that
-    /// expects the types within the function to be consistent.
-    // FIXME(matthewjasper) This should not exist, and it's not correct
-    // if type checking is run in parallel.
-    err_count_on_creation: usize,
-
     /// If `Some`, this stores coercion information for returned
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
@@ -69,7 +60,7 @@ pub struct FnCtxt<'a, 'tcx> {
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,
 
-    pub(super) resume_yield_tys: Option<(Ty<'tcx>, Ty<'tcx>)>,
+    pub(super) coroutine_types: Option<CoroutineTypes<'tcx>>,
 
     /// Whether the last checked node generates a divergence (e.g.,
     /// `return` will set this to `Always`). In general, when entering
@@ -104,6 +95,13 @@ pub struct FnCtxt<'a, 'tcx> {
     /// the diverges flag is set to something other than `Maybe`.
     pub(super) diverges: Cell<Diverges>,
 
+    /// If one of the function arguments is a never pattern, this counts as diverging code. This
+    /// affect typechecking of the function body.
+    pub(super) function_diverges_because_of_empty_arguments: Cell<Diverges>,
+
+    /// Whether the currently checked node is the whole body of the function.
+    pub(super) is_whole_body: Cell<bool>,
+
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     pub(super) inh: &'a Inherited<'tcx>,
@@ -120,11 +118,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
-            err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
-            resume_yield_tys: None,
+            coroutine_types: None,
             diverges: Cell::new(Diverges::Maybe),
+            function_diverges_because_of_empty_arguments: Cell::new(Diverges::Maybe),
+            is_whole_body: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
                 by_id: Default::default(),
@@ -132,6 +131,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             inh,
             fallback_has_occurred: Cell::new(false),
         }
+    }
+
+    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
@@ -182,14 +185,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 steps
             }),
         }
-    }
-
-    pub fn errors_reported_since_creation(&self) -> bool {
-        self.tcx.sess.err_count() > self.err_count_on_creation
-    }
-
-    pub fn next_root_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        Ty::new_var(self.tcx, self.next_ty_var_id_in_universe(origin, ty::UniverseIndex::ROOT))
     }
 }
 
@@ -284,7 +279,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &hir::PathSegment<'_>,
+        item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
@@ -345,14 +340,30 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 }
 
-/// Represents a user-provided type in the raw form (never normalized).
+/// The `ty` representation of a user-provided type. Depending on the use-site
+/// we want to either use the unnormalized or the normalized form of this type.
 ///
 /// This is a bridge between the interface of `AstConv`, which outputs a raw `Ty`,
 /// and the API in this module, which expect `Ty` to be fully normalized.
 #[derive(Clone, Copy, Debug)]
-pub struct RawTy<'tcx> {
+pub struct LoweredTy<'tcx> {
+    /// The unnormalized type provided by the user.
     pub raw: Ty<'tcx>,
 
     /// The normalized form of `raw`, stored here for efficiency.
     pub normalized: Ty<'tcx>,
+}
+
+impl<'tcx> LoweredTy<'tcx> {
+    pub fn from_raw(fcx: &FnCtxt<'_, 'tcx>, span: Span, raw: Ty<'tcx>) -> LoweredTy<'tcx> {
+        // FIXME(-Znext-solver): We're still figuring out how to best handle
+        // normalization and this doesn't feel too great. We should look at this
+        // code again before stabilizing it.
+        let normalized = if fcx.next_trait_solver() {
+            fcx.try_structurally_resolve_type(span, raw)
+        } else {
+            fcx.normalize(span, raw)
+        };
+        LoweredTy { raw, normalized }
+    }
 }

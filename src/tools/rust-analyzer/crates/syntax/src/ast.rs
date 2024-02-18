@@ -1,15 +1,15 @@
 //! Abstract Syntax Tree, layered on top of untyped `SyntaxNode`s
 
-mod generated;
-mod traits;
-mod token_ext;
-mod node_ext;
-mod expr_ext;
-mod operators;
 pub mod edit;
 pub mod edit_in_place;
+mod expr_ext;
+mod generated;
 pub mod make;
+mod node_ext;
+mod operators;
 pub mod prec;
+mod token_ext;
+mod traits;
 
 use std::marker::PhantomData;
 
@@ -134,6 +134,16 @@ where
     L: HasAttrs,
     R: HasAttrs,
 {
+}
+
+/// Trait to describe operations common to both `RangeExpr` and `RangePat`.
+pub trait RangeItem {
+    type Bound;
+
+    fn start(&self) -> Option<Self::Bound>;
+    fn end(&self) -> Option<Self::Bound>;
+    fn op_kind(&self) -> Option<RangeOp>;
+    fn op_token(&self) -> Option<SyntaxToken>;
 }
 
 mod support {

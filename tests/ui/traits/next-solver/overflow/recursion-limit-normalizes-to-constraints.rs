@@ -1,5 +1,5 @@
-// compile-flags: -Znext-solver=coherence
-// check-pass
+//@ compile-flags: -Znext-solver=coherence
+//@ check-pass
 
 // A regression test for trait-system-refactor-initiative#70.
 

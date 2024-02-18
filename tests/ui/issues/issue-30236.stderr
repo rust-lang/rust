@@ -1,8 +1,11 @@
-error[E0091]: type parameter `Unused` is unused
+error[E0091]: type parameter `Unused` is never used
   --> $DIR/issue-30236.rs:2:5
    |
 LL |     Unused
    |     ^^^^^^ unused type parameter
+   |
+   = help: consider removing `Unused` or referring to it in the body of the type alias
+   = help: if you intended `Unused` to be a const parameter, use `const Unused: /* Type */` instead
 
 error: aborting due to 1 previous error
 

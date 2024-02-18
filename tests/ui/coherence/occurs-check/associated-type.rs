@@ -1,5 +1,5 @@
-// revisions: old next
-//[next] compile-flags: -Znext-solver
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 
 // A regression test for #105787
 
@@ -42,4 +42,5 @@ fn foo<T: Overlap<U>, U>(x: T::Assoc) -> T::Assoc {
 
 fn main() {
     foo::<for<'a> fn(&'a (), ()), for<'a> fn(&'a (), ())>(3usize);
+    //[next]~^ ERROR: cannot satisfy
 }

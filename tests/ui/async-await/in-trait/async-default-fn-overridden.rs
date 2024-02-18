@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@ run-pass
+//@ edition:2021
 
 #![feature(noop_waker)]
 
@@ -40,8 +40,7 @@ fn main() {
     let mut fut = pin!(async_main());
 
     // Poll loop, just to test the future...
-    let waker = Waker::noop();
-    let ctx = &mut Context::from_waker(&waker);
+    let ctx = &mut Context::from_waker(Waker::noop());
 
     loop {
         match fut.as_mut().poll(ctx) {

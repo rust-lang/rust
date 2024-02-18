@@ -33,7 +33,7 @@ is_bytewise_comparable!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128,
 // so we can compare them directly.
 is_bytewise_comparable!(bool, char, super::Ordering);
 
-// SAFETY: Similarly, the non-zero types have a niche, but no undef and no pointers,
+// SAFETY: Similarly, the `NonZero` type has a niche, but no undef and no pointers,
 // and they compare like their underlying numeric type.
 is_bytewise_comparable!(
     NonZeroU8,
@@ -50,7 +50,7 @@ is_bytewise_comparable!(
     NonZeroIsize,
 );
 
-// SAFETY: The NonZero types have the "null" optimization guaranteed, and thus
+// SAFETY: The `NonZero` type has the "null" optimization guaranteed, and thus
 // are also safe to equality-compare bitwise inside an `Option`.
 // The way `PartialOrd` is defined for `Option` means that this wouldn't work
 // for `<` or `>` on the signed types, but since we only do `==` it's fine.

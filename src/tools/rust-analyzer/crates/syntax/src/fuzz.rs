@@ -34,7 +34,7 @@ impl CheckReparse {
         let mut lines = data.lines();
         let delete_start = usize::from_str(lines.next()?).ok()? + PREFIX.len();
         let delete_len = usize::from_str(lines.next()?).ok()?;
-        let insert = lines.next()?.to_string();
+        let insert = lines.next()?.to_owned();
         let text = lines.collect::<Vec<_>>().join("\n");
         let text = format!("{PREFIX}{text}{SUFFIX}");
         text.get(delete_start..delete_start.checked_add(delete_len)?)?; // make sure delete is a valid range
@@ -46,6 +46,7 @@ impl CheckReparse {
         Some(CheckReparse { text, edit, edited_text })
     }
 
+    #[allow(clippy::print_stderr)]
     pub fn run(&self) {
         let parse = SourceFile::parse(&self.text);
         let new_parse = parse.reparse(&self.edit);

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Test that traits can be implemented for extern types.
 #![feature(extern_types)]

@@ -1,4 +1,4 @@
-// compile-flags: -Z teach
+//@ compile-flags: -Z teach
 
 fn main() {
     match 5u32 {

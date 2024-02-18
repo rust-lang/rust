@@ -3,6 +3,8 @@
 #![cfg_attr(doc, doc(rust_logo))]
 #![feature(rustc_private)]
 // Note: please avoid adding other feature gates where possible
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -18,7 +20,6 @@ extern crate rustc_fs_util;
 extern crate rustc_hir;
 extern crate rustc_incremental;
 extern crate rustc_index;
-extern crate rustc_interface;
 extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -42,7 +43,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -177,19 +178,30 @@ impl CodegenBackend for CraneliftCodegenBackend {
         use rustc_session::config::Lto;
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
-            Lto::Thin | Lto::Fat => sess.warn("LTO is not supported. You may get a linker error."),
+            Lto::Thin | Lto::Fat => {
+                sess.dcx().warn("LTO is not supported. You may get a linker error.")
+            }
         }
 
         let mut config = self.config.borrow_mut();
         if config.is_none() {
             let new_config = BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.fatal(err));
+                .unwrap_or_else(|err| sess.dcx().fatal(err));
             *config = Some(new_config);
         }
     }
 
-    fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
-        vec![] // FIXME necessary for #[cfg(target_feature]
+    fn target_features(&self, sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
+        // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
+        if sess.target.arch == "x86_64" && sess.target.os != "none" {
+            // x86_64 mandates SSE2 support
+            vec![Symbol::intern("fxsr"), sym::sse, Symbol::intern("sse2")]
+        } else if sess.target.arch == "aarch64" && sess.target.os != "none" {
+            // AArch64 mandates Neon support
+            vec![sym::neon]
+        } else {
+            vec![]
+        }
     }
 
     fn print_version(&self) {
@@ -202,7 +214,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        tcx.sess.abort_if_errors();
+        tcx.dcx().abort_if_errors();
         let config = self.config.borrow().clone().unwrap();
         match config.codegen_mode {
             CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
@@ -211,7 +223,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 driver::jit::run_jit(tcx, config);
 
                 #[cfg(not(feature = "jit"))]
-                tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+                tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
             }
         }
     }
@@ -221,11 +233,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
-        Ok(ongoing_codegen
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+        ongoing_codegen
             .downcast::<driver::aot::OngoingCodegen>()
             .unwrap()
-            .join(sess, self.config.borrow().as_ref().unwrap()))
+            .join(sess, self.config.borrow().as_ref().unwrap())
     }
 
     fn link(
@@ -243,7 +255,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
     match sess.target.llvm_target.parse() {
         Ok(triple) => triple,
-        Err(err) => sess.fatal(format!("target not recognized: {}", err)),
+        Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
 }
 
@@ -303,24 +315,22 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
     let flags = settings::Flags::new(flags_builder);
 
     let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
-        Some("native") => {
-            let builder = cranelift_native::builder_with_options(true).unwrap();
-            builder
-        }
+        Some("native") => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.fatal(format!("can't compile for {}: {}", target_triple, err));
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
-            if let Err(_) = builder.enable(value) {
-                sess.fatal("the specified target cpu isn't currently supported by Cranelift.");
+            if builder.enable(value).is_err() {
+                sess.dcx()
+                    .fatal("the specified target cpu isn't currently supported by Cranelift.");
             }
             builder
         }
         None => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.fatal(format!("can't compile for {}: {}", target_triple, err));
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
             if target_triple.architecture == target_lexicon::Architecture::X86_64 {
                 // Don't use "haswell" as the default, as it implies `has_lzcnt`.
@@ -333,7 +343,7 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
 
     match isa_builder.finish(flags) {
         Ok(target_isa) => target_isa,
-        Err(err) => sess.fatal(format!("failed to build TargetIsa: {}", err)),
+        Err(err) => sess.dcx().fatal(format!("failed to build TargetIsa: {}", err)),
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
-    PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
-    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
+    InvalidTargetFeaturePrefix, PossibleFeature, TargetFeatureDisableOrEnable,
+    UnknownCTargetFeature, UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
 use libc::c_int;
@@ -213,6 +213,7 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
         ("x86", "rdrand") => LLVMFeature::new("rdrnd"),
         ("x86", "bmi1") => LLVMFeature::new("bmi"),
         ("x86", "cmpxchg16b") => LLVMFeature::new("cx16"),
+        ("x86", "lahfsahf") => LLVMFeature::new("sahf"),
         ("aarch64", "rcpc2") => LLVMFeature::new("rcpc-immo"),
         ("aarch64", "dpb") => LLVMFeature::new("ccpp"),
         ("aarch64", "dpb2") => LLVMFeature::new("ccdp"),
@@ -264,6 +265,10 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
         // The unaligned-scalar-mem feature was renamed to fast-unaligned-access.
         ("riscv32" | "riscv64", "fast-unaligned-access") if get_version().0 <= 17 => {
             LLVMFeature::new("unaligned-scalar-mem")
+        }
+        // For LLVM 18, enable the evex512 target feature if a avx512 target feature is enabled.
+        ("x86", s) if get_version().0 >= 18 && s.starts_with("avx512") => {
+            LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512"))
         }
         (_, s) => LLVMFeature::new(s),
     }
@@ -511,7 +516,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         sess.target
             .features
             .split(',')
-            .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
+            .filter(|v| !v.is_empty() && backend_feature_name(sess, v).is_some())
             .map(String::from),
     );
 
@@ -529,13 +534,13 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
-                        sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });
+                        sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
             };
 
-            let feature = backend_feature_name(s)?;
+            let feature = backend_feature_name(sess, s)?;
             // Warn against use of LLVM specific feature names and unstable features on the CLI.
             if diagnostics {
                 let feature_state = supported_features.iter().find(|&&(v, _)| v == feature);
@@ -557,12 +562,12 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                     } else {
                         UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
                     };
-                    sess.emit_warning(unknown_feature);
+                    sess.dcx().emit_warn(unknown_feature);
                 } else if feature_state
                     .is_some_and(|(_name, feature_gate)| !feature_gate.is_stable())
                 {
                     // An unstable feature. Warn about using it.
-                    sess.emit_warning(UnstableCTargetFeature { feature });
+                    sess.dcx().emit_warn(UnstableCTargetFeature { feature });
                 }
             }
 
@@ -598,7 +603,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     features.extend(feats);
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-        sess.emit_err(TargetFeatureDisableOrEnable {
+        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
             features: f,
             span: None,
             missing_features: None,
@@ -611,11 +616,11 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 /// Returns a feature name for the given `+feature` or `-feature` string.
 ///
 /// Only allows features that are backend specific (i.e. not [`RUSTC_SPECIFIC_FEATURES`].)
-fn backend_feature_name(s: &str) -> Option<&str> {
+fn backend_feature_name<'a>(sess: &Session, s: &'a str) -> Option<&'a str> {
     // features must start with a `+` or `-`.
-    let feature = s.strip_prefix(&['+', '-'][..]).unwrap_or_else(|| {
-        bug!("target feature `{}` must begin with a `+` or `-`", s);
-    });
+    let feature = s
+        .strip_prefix(&['+', '-'][..])
+        .unwrap_or_else(|| sess.dcx().emit_fatal(InvalidTargetFeaturePrefix { feature: s }));
     // Rustc-specific feature requests like `+crt-static` or `-crt-static`
     // are not passed down to LLVM.
     if RUSTC_SPECIFIC_FEATURES.contains(&feature) {

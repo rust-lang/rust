@@ -13,12 +13,31 @@ use rustc_middle::ty;
 use super::LET_UNIT_VALUE;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
+    // skip `let () = { ... }`
+    if let PatKind::Tuple(fields, ..) = local.pat.kind
+        && fields.is_empty()
+    {
+        return;
+    }
+
     if let Some(init) = local.init
         && !local.pat.span.from_expansion()
         && !in_external_macro(cx.sess(), local.span)
         && !is_from_async_await(local.span)
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
+        // skip `let awa = ()`
+        if let ExprKind::Tup([]) = init.kind {
+            return;
+        }
+
+        // skip `let _: () = { ... }`
+        if let Some(ty) = local.ty
+            && let TyKind::Tup([]) = ty.kind
+        {
+            return;
+        }
+
         if (local.ty.map_or(false, |ty| !matches!(ty.kind, TyKind::Infer))
             || matches!(local.pat.kind, PatKind::Tuple([], ddpos) if ddpos.as_opt_usize().is_none()))
             && expr_needs_inferred_result(cx, init)
@@ -34,7 +53,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
                     |diag| {
                         diag.span_suggestion(
                             local.pat.span,
-                            "use a wild (`_`) binding",
+                            "use a wildcard binding",
                             "_",
                             Applicability::MaybeIncorrect, // snippet
                         );

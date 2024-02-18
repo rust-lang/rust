@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
-// compile-flags:-Cstrip=none
-// compile-flags:-g -Csplit-debuginfo=unpacked
-// only-macos
+//@ compile-flags:-Cstrip=none
+//@ compile-flags:-g -Csplit-debuginfo=unpacked
+//@ only-macos
 
 use std::process::Command;
 use std::str;

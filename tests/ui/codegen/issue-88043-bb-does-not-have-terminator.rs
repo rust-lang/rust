@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: -Copt-level=0
+//@ build-pass
+//@ compile-flags: -Copt-level=0
 
 // Regression test for #88043: LLVM crash when the RemoveZsts mir-opt pass is enabled.
 // We should not see the error:

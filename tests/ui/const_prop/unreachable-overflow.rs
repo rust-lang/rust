@@ -1,5 +1,5 @@
 // Use `build-pass` to ensure const-prop lint runs.
-// build-pass
+//@ build-pass
 
 fn main() {
     let x = 2u32;

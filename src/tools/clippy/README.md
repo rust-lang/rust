@@ -5,7 +5,7 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 650 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 700 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
@@ -278,7 +278,7 @@ If you want to contribute to Clippy, you can find more information in [CONTRIBUT
 
 <!-- REUSE-IgnoreStart -->
 
-Copyright 2014-2023 The Rust Project Developers
+Copyright 2014-2024 The Rust Project Developers
 
 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)> or the MIT license

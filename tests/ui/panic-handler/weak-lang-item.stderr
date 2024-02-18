@@ -12,10 +12,10 @@ LL | extern crate core as other_core;
 
 error: `#[panic_handler]` function required, but not found
 
-error: language item required, but not found: `eh_personality`
+error: unwinding panics are not supported without std
    |
-   = note: this can occur when a binary crate with `#![no_std]` is compiled for a target where `eh_personality` is defined in the standard library
-   = help: you may be able to compile for a target that doesn't need `eh_personality`, specify a target with `--target` or in `.cargo/config`
+   = help: using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
+   = note: since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
 
 error: aborting due to 3 previous errors
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f() {
     let a: Box<_> = Box::new(1);

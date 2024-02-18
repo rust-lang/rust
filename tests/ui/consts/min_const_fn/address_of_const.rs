@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(raw_ref_op)]
 

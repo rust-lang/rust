@@ -1,5 +1,5 @@
 // Regression test for SimplifyBranchSame miscompilation.
-// run-pass
+//@ run-pass
 
 macro_rules! m {
     ($a:expr, $b:expr, $c:block) => {

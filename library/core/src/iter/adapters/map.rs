@@ -3,7 +3,7 @@ use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, UncheckedIterator};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::Try;
 
 /// An iterator that maps the values of `iter` with `f`.
@@ -68,6 +68,10 @@ pub struct Map<I, F> {
 impl<I, F> Map<I, F> {
     pub(in crate::iter) fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
+    }
+
+    pub(crate) fn into_inner(self) -> I {
+        self.iter
     }
 }
 
@@ -233,6 +237,6 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable, F> InPlaceIterable for Map<I, F> {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }

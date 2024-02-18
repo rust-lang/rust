@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 macro_rules! third {
     ($e:expr) => ({let x = 2; $e[x]})
 }

@@ -69,7 +69,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
     let mut p = ecx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(ecx.create_err(errors::FormatRequiresString { span: sp }));
+        return Err(ecx.dcx().create_err(errors::FormatRequiresString { span: sp }));
     }
 
     let first_token = &p.token;
@@ -99,7 +99,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
             }
 
             match p.expect(&token::Comma) {
-                Err(mut err) => {
+                Err(err) => {
                     match token::TokenKind::Comma.similar_tokens() {
                         Some(tks) if tks.contains(&p.token.kind) => {
                             // If a similar token is found, then it may be a typo. We
@@ -126,7 +126,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                 p.expect(&token::Eq)?;
                 let expr = p.parse_expr()?;
                 if let Some((_, prev)) = args.by_name(ident.name) {
-                    ecx.emit_err(errors::FormatDuplicateArg {
+                    ecx.dcx().emit_err(errors::FormatDuplicateArg {
                         span: ident.span,
                         prev: prev.kind.ident().unwrap().span,
                         duplicate: ident.span,
@@ -139,7 +139,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
             _ => {
                 let expr = p.parse_expr()?;
                 if !args.named_args().is_empty() {
-                    ecx.emit_err(errors::PositionalAfterNamed {
+                    return Err(ecx.dcx().create_err(errors::PositionalAfterNamed {
                         span: expr.span,
                         args: args
                             .named_args()
@@ -147,7 +147,7 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                             .filter_map(|a| a.kind.ident().map(|ident| (a, ident)))
                             .map(|(arg, n)| n.span.to(arg.expr.span))
                             .collect(),
-                    });
+                    }));
                 }
                 args.add(FormatArgument { kind: FormatArgumentKind::Normal, expr });
             }
@@ -293,7 +293,7 @@ fn make_format_args(
                 }
             }
         }
-        ecx.emit_err(e);
+        ecx.dcx().emit_err(e);
         return Err(());
     }
 
@@ -312,6 +312,8 @@ fn make_format_args(
         Name(&'a str, Option<Span>),
     }
     use ArgRef::*;
+
+    let mut unnamed_arg_after_named_arg = false;
 
     let mut lookup_arg = |arg: ArgRef<'_>,
                           span: Option<Span>,
@@ -351,7 +353,8 @@ fn make_format_args(
                     } else {
                         // For the moment capturing variables from format strings expanded from macros is
                         // disabled (see RFC #2795)
-                        ecx.emit_err(errors::FormatNoArgNamed { span, name });
+                        ecx.dcx().emit_err(errors::FormatNoArgNamed { span, name });
+                        unnamed_arg_after_named_arg = true;
                         DummyResult::raw_expr(span, true)
                     };
                     Ok(args.add(FormatArgument { kind: FormatArgumentKind::Captured(ident), expr }))
@@ -510,7 +513,8 @@ fn make_format_args(
         })
         .collect::<Vec<_>>();
 
-    if !unused.is_empty() {
+    let has_unused = !unused.is_empty();
+    if has_unused {
         // If there's a lot of unused arguments,
         // let's check if this format arguments looks like another syntax (printf / shell).
         let detect_foreign_fmt = unused.len() > args.explicit_args().len() / 2;
@@ -529,7 +533,7 @@ fn make_format_args(
 
     // Only check for unused named argument names if there are no other errors to avoid causing
     // too much noise in output errors, such as when a named argument is entirely unused.
-    if invalid_refs.is_empty() && ecx.sess.err_count() == 0 {
+    if invalid_refs.is_empty() && !has_unused && !unnamed_arg_after_named_arg {
         for &(index, span, used_as) in &numeric_refences_to_named_arg {
             let (position_sp_to_replace, position_sp_for_msg) = match used_as {
                 Placeholder(pspan) => (span, pspan),
@@ -585,7 +589,7 @@ fn invalid_placeholder_type_error(
     } else {
         vec![]
     };
-    ecx.emit_err(errors::FormatUnknownTrait { span: sp.unwrap_or(fmt_span), ty, suggs });
+    ecx.dcx().emit_err(errors::FormatUnknownTrait { span: sp.unwrap_or(fmt_span), ty, suggs });
 }
 
 fn report_missing_placeholders(
@@ -600,12 +604,12 @@ fn report_missing_placeholders(
     fmt_span: Span,
 ) {
     let mut diag = if let &[(span, named)] = &unused[..] {
-        ecx.create_err(errors::FormatUnusedArg { span, named })
+        ecx.dcx().create_err(errors::FormatUnusedArg { span, named })
     } else {
         let unused_labels =
             unused.iter().map(|&(span, named)| errors::FormatUnusedArg { span, named }).collect();
         let unused_spans = unused.iter().map(|&(span, _)| span).collect();
-        ecx.create_err(errors::FormatUnusedArgs {
+        ecx.dcx().create_err(errors::FormatUnusedArgs {
             fmt: fmt_span,
             unused: unused_spans,
             unused_labels,
@@ -630,8 +634,7 @@ fn report_missing_placeholders(
         .collect::<Vec<_>>();
 
     if !placeholders.is_empty() {
-        if let Some(mut new_diag) = report_redundant_format_arguments(ecx, args, used, placeholders)
-        {
+        if let Some(new_diag) = report_redundant_format_arguments(ecx, args, used, placeholders) {
             diag.cancel();
             new_diag.emit();
             return;
@@ -776,7 +779,7 @@ fn report_redundant_format_arguments<'a>(
             None
         };
 
-        return Some(ecx.create_err(errors::FormatRedundantArgs {
+        return Some(ecx.dcx().create_err(errors::FormatRedundantArgs {
             n: args_spans.len(),
             span: MultiSpan::from(args_spans),
             note: multispan,
@@ -876,7 +879,7 @@ fn report_invalid_references(
         } else {
             MultiSpan::from_spans(spans)
         };
-        e = ecx.create_err(errors::FormatPositionalMismatch {
+        e = ecx.dcx().create_err(errors::FormatPositionalMismatch {
             span,
             n: num_placeholders,
             desc: num_args_desc,
@@ -942,7 +945,7 @@ fn report_invalid_references(
                 head = indexes.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(", ")
             )
         };
-        e = ecx.struct_span_err(
+        e = ecx.dcx().struct_span_err(
             span,
             format!("invalid reference to positional {arg_list} ({num_args_desc})"),
         );
@@ -976,7 +979,7 @@ fn expand_format_args_impl<'cx>(
                 MacEager::expr(DummyResult::raw_expr(sp, true))
             }
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }

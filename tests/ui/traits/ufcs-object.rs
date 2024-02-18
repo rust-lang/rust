@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that when you use ufcs form to invoke a trait method (on a
 // trait object) everything works fine.
 

@@ -1,7 +1,7 @@
 // Companion test to the similarly-named file in run-pass.
 
-// compile-flags: -C debug_assertions=yes
-// revisions: std core
+//@ compile-flags: -C debug_assertions=yes
+//@ revisions: std core
 
 #![feature(lang_items)]
 #![cfg_attr(core, no_std)]

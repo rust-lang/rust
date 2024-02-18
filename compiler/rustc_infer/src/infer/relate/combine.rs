@@ -30,14 +30,12 @@ use super::sub::Sub;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::infer::canonical::OriginalQueryValues;
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVarValue};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{ConstVariableValue, EffectVarValue};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{AliasRelationDirection, TyVar};
 use rustc_middle::ty::{IntType, UintType};
-use rustc_span::DUMMY_SP;
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {
@@ -167,9 +165,9 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // This probe is probably not strictly necessary but it seems better to be safe and not accidentally find
         // ourselves with a check to find bugs being required for code to compile because it made inference progress.
-        let compatible_types = self.probe(|_| {
+        self.probe(|_| {
             if a.ty() == b.ty() {
-                return Ok(());
+                return;
             }
 
             // We don't have access to trait solving machinery in `rustc_infer` so the logic for determining if the
@@ -179,32 +177,17 @@ impl<'tcx> InferCtxt<'tcx> {
                 relation.param_env().and((a.ty(), b.ty())),
                 &mut OriginalQueryValues::default(),
             );
-            self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
-                self.tcx.sess.span_delayed_bug(
-                    DUMMY_SP,
-                    format!("cannot relate consts of different types (a={a:?}, b={b:?})",),
-                )
-            })
+            self.tcx.check_tys_might_be_eq(canonical).unwrap_or_else(|_| {
+                // The error will only be reported later. If we emit an ErrorGuaranteed
+                // here, then we will never get to the code that actually emits the error.
+                self.tcx.dcx().delayed_bug(format!(
+                    "cannot relate consts of different types (a={a:?}, b={b:?})",
+                ));
+                // We treat these constants as if they were of the same type, so that any
+                // such constants being used in impls make these impls match barring other mismatches.
+                // This helps with diagnostics down the road.
+            });
         });
-
-        // If the consts have differing types, just bail with a const error with
-        // the expected const's type. Specifically, we don't want const infer vars
-        // to do any type shapeshifting before and after resolution.
-        if let Err(guar) = compatible_types {
-            // HACK: equating both sides with `[const error]` eagerly prevents us
-            // from leaving unconstrained inference vars during things like impl
-            // matching in the solver.
-            let a_error = ty::Const::new_error(self.tcx, guar, a.ty());
-            if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
-                return self.unify_const_variable(vid, a_error, relation.param_env());
-            }
-            let b_error = ty::Const::new_error(self.tcx, guar, b.ty());
-            if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
-                return self.unify_const_variable(vid, b_error, relation.param_env());
-            }
-
-            return Ok(if relation.a_is_expected() { a_error } else { b_error });
-        }
 
         match (a.kind(), b.kind()) {
             (
@@ -219,11 +202,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::ConstKind::Infer(InferConst::EffectVar(a_vid)),
                 ty::ConstKind::Infer(InferConst::EffectVar(b_vid)),
             ) => {
-                self.inner
-                    .borrow_mut()
-                    .effect_unification_table()
-                    .unify_var_var(a_vid, b_vid)
-                    .map_err(|a| effect_unification_error(self.tcx, relation.a_is_expected(), a))?;
+                self.inner.borrow_mut().effect_unification_table().union(a_vid, b_vid);
                 return Ok(a);
             }
 
@@ -242,27 +221,19 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
-                return self.unify_const_variable(vid, b, relation.param_env());
+                return self.unify_const_variable(vid, b);
             }
 
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
-                return self.unify_const_variable(vid, a, relation.param_env());
+                return self.unify_const_variable(vid, a);
             }
 
             (ty::ConstKind::Infer(InferConst::EffectVar(vid)), _) => {
-                return self.unify_effect_variable(
-                    relation.a_is_expected(),
-                    vid,
-                    EffectVarValue::Const(b),
-                );
+                return Ok(self.unify_effect_variable(vid, b));
             }
 
             (_, ty::ConstKind::Infer(InferConst::EffectVar(vid))) => {
-                return self.unify_effect_variable(
-                    !relation.a_is_expected(),
-                    vid,
-                    EffectVarValue::Const(a),
-                );
+                return Ok(self.unify_effect_variable(vid, a));
             }
 
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
@@ -327,30 +298,27 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         target_vid: ty::ConstVid,
         ct: ty::Const<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        let span =
-            self.inner.borrow_mut().const_unification_table().probe_value(target_vid).origin.span;
+        let span = match self.inner.borrow_mut().const_unification_table().probe_value(target_vid) {
+            ConstVariableValue::Known { value } => {
+                bug!("instantiating a known const var: {target_vid:?} {value} {ct}")
+            }
+            ConstVariableValue::Unknown { origin, universe: _ } => origin.span,
+        };
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: value, needs_wf: _ } = generalize::generalize(
             self,
-            &mut CombineDelegate { infcx: self, span, param_env },
+            &mut CombineDelegate { infcx: self, span },
             ct,
             target_vid,
             ty::Variance::Invariant,
         )?;
 
-        self.inner.borrow_mut().const_unification_table().union_value(
-            target_vid,
-            ConstVarValue {
-                origin: ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::ConstInference,
-                    span: DUMMY_SP,
-                },
-                val: ConstVariableValue::Known { value },
-            },
-        );
+        self.inner
+            .borrow_mut()
+            .const_unification_table()
+            .union_value(target_vid, ConstVariableValue::Known { value });
         Ok(value)
     }
 
@@ -385,18 +353,12 @@ impl<'tcx> InferCtxt<'tcx> {
         Ok(Ty::new_float(self.tcx, val))
     }
 
-    fn unify_effect_variable(
-        &self,
-        vid_is_expected: bool,
-        vid: ty::EffectVid,
-        val: EffectVarValue<'tcx>,
-    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+    fn unify_effect_variable(&self, vid: ty::EffectVid, val: ty::Const<'tcx>) -> ty::Const<'tcx> {
         self.inner
             .borrow_mut()
             .effect_unification_table()
-            .unify_var_value(vid, Some(val))
-            .map_err(|e| effect_unification_error(self.tcx, vid_is_expected, e))?;
-        Ok(val.as_const(self.tcx))
+            .union_value(vid, EffectVarValue::Known(val));
+        val
     }
 }
 
@@ -454,11 +416,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
         let Generalization { value_may_be_infer: b_ty, needs_wf } = generalize::generalize(
             self.infcx,
-            &mut CombineDelegate {
-                infcx: self.infcx,
-                param_env: self.param_env,
-                span: self.trace.span(),
-            },
+            &mut CombineDelegate { infcx: self.infcx, span: self.trace.span() },
             a_ty,
             b_vid,
             ambient_variance,
@@ -515,7 +473,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                 ));
             } else {
                 match a_ty.kind() {
-                    &ty::Alias(ty::AliasKind::Projection, data) => {
+                    &ty::Alias(ty::Projection, data) => {
                         // FIXME: This does not handle subtyping correctly, we could
                         // instead create a new inference variable for `a_ty`, emitting
                         // `Projection(a_ty, a_infer)` and `a_infer <: b_ty`.
@@ -527,10 +485,9 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                         ))
                     }
                     // The old solver only accepts projection predicates for associated types.
-                    ty::Alias(
-                        ty::AliasKind::Inherent | ty::AliasKind::Weak | ty::AliasKind::Opaque,
-                        _,
-                    ) => return Err(TypeError::CyclicTy(a_ty)),
+                    ty::Alias(ty::Inherent | ty::Weak | ty::Opaque, _) => {
+                        return Err(TypeError::CyclicTy(a_ty));
+                    }
                     _ => bug!("generalizated `{a_ty:?} to infer, not an alias"),
                 }
             }
@@ -602,12 +559,4 @@ fn float_unification_error<'tcx>(
 ) -> TypeError<'tcx> {
     let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
     TypeError::FloatMismatch(ExpectedFound::new(a_is_expected, a, b))
-}
-
-fn effect_unification_error<'tcx>(
-    _tcx: TyCtxt<'tcx>,
-    _a_is_expected: bool,
-    (_a, _b): (EffectVarValue<'tcx>, EffectVarValue<'tcx>),
-) -> TypeError<'tcx> {
-    bug!("unexpected effect unification error")
 }

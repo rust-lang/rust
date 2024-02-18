@@ -29,7 +29,7 @@ pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
             parse_meta(sess, attr)
-                .map_err(|mut err| {
+                .map_err(|err| {
                     err.emit();
                 })
                 .ok();
@@ -70,11 +70,11 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                             }
                         }
                         Err(err) => {
-                            report_lit_error(sess, err, token_lit, expr.span);
+                            let guar = report_lit_error(sess, err, token_lit, expr.span);
                             let lit = ast::MetaItemLit {
                                 symbol: token_lit.symbol,
                                 suffix: token_lit.suffix,
-                                kind: ast::LitKind::Err,
+                                kind: ast::LitKind::Err(guar),
                                 span: expr.span,
                             };
                             MetaItemKind::NameValue(lit)
@@ -105,7 +105,7 @@ pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter)
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.emit_err(errors::MetaBadDelim {
+    sess.dcx.emit_err(errors::MetaBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -115,7 +115,7 @@ pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimi
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.emit_err(errors::CfgAttrBadDelim {
+    sess.dcx.emit_err(errors::CfgAttrBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -139,7 +139,7 @@ pub fn check_builtin_attribute(
 ) {
     match parse_meta(sess, attr) {
         Ok(meta) => check_builtin_meta_item(sess, &meta, attr.style, name, template),
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
         }
     }
@@ -208,7 +208,7 @@ fn emit_malformed_attribute(
     } else {
         sess.dcx
             .struct_span_err(span, error_msg)
-            .span_suggestions(
+            .with_span_suggestions(
                 span,
                 if suggestions.len() == 1 {
                     "must be of the form"

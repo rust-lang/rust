@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // https://github.com/rust-lang/rust/pull/112743#issuecomment-1601986883
 
 macro_rules! m {

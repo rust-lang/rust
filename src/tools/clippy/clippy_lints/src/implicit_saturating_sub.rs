@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{higher, is_integer_literal, peel_blocks_with_stmt, SpanlessEq};
 use rustc_ast::ast::LitKind;
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -86,7 +87,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             match cond_num_val.kind {
                 ExprKind::Lit(cond_lit) => {
                     // Check if the constant is zero
-                    if let LitKind::Int(0, _) = cond_lit.node {
+                    if let LitKind::Int(Pu128(0), _) = cond_lit.node {
                         if cx.typeck_results().expr_ty(cond_left).is_signed() {
                         } else {
                             print_lint_and_sugg(cx, var_name, expr);

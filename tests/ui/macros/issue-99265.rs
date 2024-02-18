@@ -1,5 +1,5 @@
-// check-pass
-// run-rustfix
+//@ check-pass
+//@ run-rustfix
 
 fn main() {
     println!("{b} {}", a=1, b=2);

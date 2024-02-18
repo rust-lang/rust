@@ -1,51 +1,3 @@
-Function name: <partial_eq::Version as core::clone::Clone>::clone (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 04, 0a, 00, 0f]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 4, 10) to (start + 0, 15)
-
-Function name: <partial_eq::Version as core::cmp::Ord>::cmp (unused)
-Raw bytes (14): 0x[01, 01, 00, 02, 00, 04, 33, 00, 34, 00, 00, 35, 00, 36]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 2
-- Code(Zero) at (prev + 4, 51) to (start + 0, 52)
-- Code(Zero) at (prev + 0, 53) to (start + 0, 54)
-
-Function name: <partial_eq::Version as core::cmp::PartialEq>::eq (unused)
-Raw bytes (14): 0x[01, 01, 00, 02, 00, 04, 18, 00, 19, 00, 00, 20, 00, 21]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 2
-- Code(Zero) at (prev + 4, 24) to (start + 0, 25)
-- Code(Zero) at (prev + 0, 32) to (start + 0, 33)
-
-Function name: <partial_eq::Version as core::cmp::PartialOrd>::partial_cmp
-Raw bytes (22): 0x[01, 01, 04, 07, 0b, 05, 09, 0f, 15, 0d, 11, 02, 01, 04, 27, 00, 28, 03, 00, 30, 00, 31]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 4
-- expression 0 operands: lhs = Expression(1, Add), rhs = Expression(2, Add)
-- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
-- expression 2 operands: lhs = Expression(3, Add), rhs = Counter(5)
-- expression 3 operands: lhs = Counter(3), rhs = Counter(4)
-Number of file 0 mappings: 2
-- Code(Counter(0)) at (prev + 4, 39) to (start + 0, 40)
-- Code(Expression(0, Add)) at (prev + 0, 48) to (start + 0, 49)
-    = ((c1 + c2) + ((c3 + c4) + c5))
-
-Function name: <partial_eq::Version as core::fmt::Debug>::fmt
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 04, 11, 00, 16]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 4, 17) to (start + 0, 22)
-
 Function name: <partial_eq::Version>::new
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 0c, 05, 06, 06]
 Number of files: 1
@@ -55,10 +7,10 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 12, 5) to (start + 6, 6)
 
 Function name: partial_eq::main
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 15, 01, 05, 02]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 15, 01, 0a, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 21, 1) to (start + 5, 2)
+- Code(Counter(0)) at (prev + 21, 1) to (start + 10, 2)
 

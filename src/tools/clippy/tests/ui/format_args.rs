@@ -14,6 +14,7 @@ use std::panic::Location;
 
 struct Somewhere;
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for Somewhere {
     fn to_string(&self) -> String {
         String::from("somewhere")

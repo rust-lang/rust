@@ -5,8 +5,8 @@
 // identifier under a macro, including under the declarative `macro`
 // forms from macros 1.2 and macros 2.0.
 //
-// check-pass
-// edition:2015
+//@ check-pass
+//@ edition:2015
 
 #![feature(decl_macro)]
 #![allow(non_camel_case_types)]

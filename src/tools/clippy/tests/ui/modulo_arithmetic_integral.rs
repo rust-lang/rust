@@ -114,4 +114,12 @@ fn main() {
     a_usize % b_usize;
     let mut a_usize: usize = 1;
     a_usize %= 2;
+
+    // No lint when comparing to zero
+    let a = -1;
+    let mut b = 2;
+    let c = a % b == 0;
+    let c = 0 == a % b;
+    let c = a % b != 0;
+    let c = 0 != a % b;
 }

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:derive-no-std.rs
+//@ run-pass
+//@ aux-build:derive-no-std.rs
 
 extern crate derive_no_std;
 use derive_no_std::*;

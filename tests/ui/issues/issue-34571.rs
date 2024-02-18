@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 #[repr(u8)]
 enum Foo {
-    Foo(#[allow(unused_tuple_struct_fields)] u8),
+    Foo(#[allow(dead_code)] u8),
 }
 
 fn main() {

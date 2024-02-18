@@ -57,7 +57,7 @@ pub(super) fn check(
                 SINGLE_CHAR_PATTERN,
                 arg.span,
                 "single-character string constant used as pattern",
-                "try using a `char` instead",
+                "consider using a `char`",
                 hint,
                 applicability,
             );

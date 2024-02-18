@@ -1,6 +1,6 @@
-// run-pass
-// ignore-windows
-// aux-build:thread-local-extern-static.rs
+//@ run-pass
+//@ ignore-windows
+//@ aux-build:thread-local-extern-static.rs
 
 #![feature(cfg_target_thread_local, thread_local)]
 

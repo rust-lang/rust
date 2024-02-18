@@ -1,4 +1,4 @@
-// normalize-stderr-test: "existed:.*\(" -> "existed: $$FILE_NOT_FOUND_MSG ("
+//@ normalize-stderr-test: "existed:.*\(" -> "existed: $$FILE_NOT_FOUND_MSG ("
 
 // test that errors in a (selection) of macros don't kill compilation
 // immediately, so that we get more errors listed at a time.

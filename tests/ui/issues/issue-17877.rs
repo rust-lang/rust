@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main() {
     assert_eq!(match [0u8; 1024] {

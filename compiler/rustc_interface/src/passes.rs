@@ -216,7 +216,7 @@ fn configure_and_expand(
         // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
         // with a large AST
         if ecx.reduced_recursion_limit.is_some() {
-            sess.abort_if_errors();
+            sess.dcx().abort_if_errors();
             unreachable!();
         }
 
@@ -246,15 +246,15 @@ fn configure_and_expand(
 
     if crate_types.len() > 1 {
         if is_executable_crate {
-            sess.emit_err(errors::MixedBinCrate);
+            sess.dcx().emit_err(errors::MixedBinCrate);
         }
         if is_proc_macro_crate {
-            sess.emit_err(errors::MixedProcMacroCrate);
+            sess.dcx().emit_err(errors::MixedProcMacroCrate);
         }
     }
 
     if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
-        sess.emit_warning(errors::ProcMacroCratePanicAbort);
+        sess.dcx().emit_warn(errors::ProcMacroCratePanicAbort);
     }
 
     sess.time("maybe_create_a_macro_crate", || {
@@ -306,17 +306,13 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
 
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
     sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
-        // We will soon sort, so the initial order does not matter.
-        #[allow(rustc::potential_query_instability)]
-        let mut identifiers: Vec<_> = identifiers.drain().collect();
-        identifiers.sort_by_key(|&(key, _)| key);
-        for (ident, mut spans) in identifiers.into_iter() {
+        for (ident, mut spans) in identifiers.drain(..) {
             spans.sort();
             if ident == sym::ferris {
                 let first_span = spans[0];
-                sess.emit_err(errors::FerrisIdentifier { spans, first_span });
+                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span });
             } else {
-                sess.emit_err(errors::EmojiIdentifier { spans, ident });
+                sess.dcx().emit_err(errors::EmojiIdentifier { spans, ident });
             }
         }
     });
@@ -530,7 +526,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
         }
         Err(error) => {
-            sess.emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
+            sess.dcx().emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
         }
     }
 }
@@ -576,10 +572,10 @@ pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
     if let Some(input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                sess.emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
+                sess.dcx().emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
             }
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                sess.emit_fatal(errors::GeneratedFileConflictsWithDirectory {
+                sess.dcx().emit_fatal(errors::GeneratedFileConflictsWithDirectory {
                     input_path,
                     dir_path,
                 });
@@ -589,7 +585,7 @@ pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
 
     if let Some(ref dir) = sess.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            sess.emit_fatal(errors::TempsDirError);
+            sess.dcx().emit_fatal(errors::TempsDirError);
         }
     }
 
@@ -601,7 +597,7 @@ pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
     if !only_dep_info {
         if let Some(ref dir) = sess.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.emit_fatal(errors::OutDirError);
+                sess.dcx().emit_fatal(errors::OutDirError);
             }
         }
     }
@@ -735,9 +731,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
     sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| {
-            // Run THIR unsafety check because it's responsible for stealing
-            // and deallocating THIR when enabled.
-            tcx.ensure().thir_check_unsafety(def_id);
+            // Run unsafety check because it's responsible for stealing and
+            // deallocating THIR.
+            tcx.ensure().check_unsafety(def_id);
             tcx.ensure().mir_borrowck(def_id)
         });
     });
@@ -776,8 +772,12 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // lot of annoying errors in the ui tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
-    if let Some(reported) = sess.has_errors() {
+    if let Some(reported) = sess.dcx().has_errors() {
         return Err(reported);
+    } else if sess.dcx().stashed_err_count() > 0 {
+        // Without this case we sometimes get delayed bug ICEs and I don't
+        // understand why. -nnethercote
+        return Err(sess.dcx().delayed_bug("some stashed error is waiting for use"));
     }
 
     sess.time("misc_checking_3", || {
@@ -937,8 +937,9 @@ pub fn start_codegen<'tcx>(
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
         if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
-            tcx.sess.emit_err(errors::CantEmitMIR { error });
-            tcx.sess.abort_if_errors();
+            let dcx = tcx.dcx();
+            dcx.emit_err(errors::CantEmitMIR { error });
+            dcx.abort_if_errors();
         }
     }
 

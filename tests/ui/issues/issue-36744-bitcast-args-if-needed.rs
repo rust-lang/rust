@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This tests for an ICE (and, if ignored, subsequent LLVM abort) when
 // a lifetime-parametric fn is passed into a context whose expected
 // type has a differing lifetime parameterization.

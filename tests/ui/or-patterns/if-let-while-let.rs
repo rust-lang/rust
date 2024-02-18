@@ -1,5 +1,5 @@
 // Check that or patterns are lowered correctly in `if let` and `while let` expressions.
-// run-pass
+//@ run-pass
 
 fn main() {
     let mut opt = Some(3);

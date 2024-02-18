@@ -131,10 +131,10 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
             Ok(min) => align = align.max(min),
             Err(err) => match err {
                 AlignFromBytesError::NotPowerOfTwo(align) => {
-                    cx.sess().emit_err(InvalidMinimumAlignmentNotPowerOfTwo { align });
+                    cx.sess().dcx().emit_err(InvalidMinimumAlignmentNotPowerOfTwo { align });
                 }
                 AlignFromBytesError::TooLarge(align) => {
-                    cx.sess().emit_err(InvalidMinimumAlignmentTooLarge { align });
+                    cx.sess().dcx().emit_err(InvalidMinimumAlignmentTooLarge { align });
                 }
             },
         }
@@ -169,7 +169,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
-                cx.sess().emit_fatal(SymbolAlreadyDefined {
+                cx.sess().dcx().emit_fatal(SymbolAlreadyDefined {
                     span: cx.tcx.def_span(def_id),
                     symbol_name: sym,
                 })

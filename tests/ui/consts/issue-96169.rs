@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Zmir-opt-level=4 --emit=mir
+//@ check-pass
+//@ compile-flags: -Zmir-opt-level=4 --emit=mir
 #![allow(unused)]
 fn a() -> usize { 0 }
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 
 struct Triple<T> { x: T, y: T, z: T }

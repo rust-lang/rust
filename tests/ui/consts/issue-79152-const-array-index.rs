@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Regression test for issue #79152
 //
 // Tests that we can index an array in a const function

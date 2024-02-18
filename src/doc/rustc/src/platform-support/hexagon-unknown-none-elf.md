@@ -128,7 +128,8 @@ q6_arch=v65
 g0_lib_path=${sdk_libs}/${q6_arch}/G0
 pic_lib_path=${sdk_libs}/${q6_arch}/G0/pic
 
-cargo build --target=hexagon-unknown-none-elf -Zbuild-std
+build_cfg=release
+cargo build --target=hexagon-unknown-none-elf -Zbuild-std --release
 
 # Builds an executable against "hexagon standalone OS" suitable for emulation:
 ${cc} --target=hexagon-unknown-none-elf -o testit \
@@ -142,12 +143,12 @@ ${cc} --target=hexagon-unknown-none-elf -o testit \
     -L${sdk_libs}/${q6_arch}/ \
     -L${sdk_libs}/ \
     testit.c \
-    target/hexagon-unknown-none-elf/debug/libmin_ex_lib_lin.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcore-*.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcompiler_builtins-*.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/libdemo1_hexagon.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcore-*.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcompiler_builtins-*.rlib \
     -Wl,--start-group \
     -Wl,--defsym,_SDA_BASE_=0,--defsym,__sbss_start=0,--defsym,__sbss_end=0 \
-    -lstandalone \
+    ${g0_lib_path}/libstandalone.a \
     ${g0_lib_path}/libc.a \
     -lgcc \
     -lc_eh \
@@ -248,9 +249,9 @@ ${cc} --target=hexagon-unknown-none-elf -o testit.so \
       -Wl,--wrap=memalign \
     -m${q6_arch} \
     testit.c \
-    target/hexagon-unknown-none-elf/debug/libmin_ex_lib_lin.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcore-*.rlib \
-    target/hexagon-unknown-none-elf/debug/deps/libcompiler_builtins-*.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/libdemo2_hexagon.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcore-*.rlib \
+    target/hexagon-unknown-none-elf/${build_cfg}/deps/libcompiler_builtins-*.rlib \
     -Wl,-soname=testit \
     ${pic_lib_path}/libc.so
 

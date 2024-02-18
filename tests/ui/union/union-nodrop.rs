@@ -1,6 +1,4 @@
-// run-pass
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@ run-pass
 
 #![allow(dead_code)]
 
@@ -19,10 +17,14 @@ static X: () = (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1;
 
 const Y: () = (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1;
 
-const fn _f() { (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1 }
+const fn _f() {
+    (NoDrop { inner: ManuallyDrop::new(NeedDrop) }, ()).1
+}
 
 // A union that scrubs the drop glue from its inner type
-union NoDrop<T> { inner: ManuallyDrop<T> }
+union NoDrop<T> {
+    inner: ManuallyDrop<T>,
+}
 
 // Copy currently can't be implemented on drop-containing unions,
 // this may change later
@@ -35,7 +37,7 @@ union NoDrop<T> { inner: ManuallyDrop<T> }
 // // We should be able to implement Copy for things using NoDrop
 // #[derive(Copy, Clone)]
 struct Foo {
-    x: NoDrop<Box<u8>>
+    x: NoDrop<Box<u8>>,
 }
 
 struct Baz {
@@ -43,7 +45,9 @@ struct Baz {
     y: Box<u8>,
 }
 
-union ActuallyDrop<T> { inner: ManuallyDrop<T> }
+union ActuallyDrop<T> {
+    inner: ManuallyDrop<T>,
+}
 
 impl<T> Drop for ActuallyDrop<T> {
     fn drop(&mut self) {}

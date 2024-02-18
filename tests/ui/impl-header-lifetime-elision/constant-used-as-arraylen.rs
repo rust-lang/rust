@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Verify that we do not ICE when anonymous lifetimes appear inside an AnonConst.
 
 pub struct EntriesBuffer(Box<[[u8; HashesEntry::LEN]; 5]>);

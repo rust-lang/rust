@@ -3,7 +3,7 @@
 // The diagnostics don't provide meaningful suggestions for them
 // as we cannot convert them properly.
 
-// check-pass
+//@ check-pass
 
 #![allow(uncommon_codepoints, unused)]
 

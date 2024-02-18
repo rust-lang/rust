@@ -1,6 +1,6 @@
-// run-pass
+//@ run-pass
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn main() {
     let _ = test(Some(0).into_iter());
@@ -15,7 +15,7 @@ trait Parser {
     }
 }
 
-struct Token<T>(#[allow(unused_tuple_struct_fields)] T::Item) where T: Iterator;
+struct Token<T>(#[allow(dead_code)] T::Item) where T: Iterator;
 
 impl<T> Parser for Token<T> where T: Iterator {
     type Input = T;
@@ -25,7 +25,7 @@ impl<T> Parser for Token<T> where T: Iterator {
     }
 }
 
-struct Chain<L, R>(#[allow(unused_tuple_struct_fields)] L, #[allow(unused_tuple_struct_fields)] R);
+struct Chain<L, R>(#[allow(dead_code)] L, #[allow(dead_code)] R);
 
 impl<L, R> Parser for Chain<L, R> where L: Parser, R: Parser<Input = L::Input> {
     type Input = L::Input;

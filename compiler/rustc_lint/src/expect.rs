@@ -16,7 +16,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
     }
 
     let lint_expectations = tcx.lint_expectations(());
-    let fulfilled_expectations = tcx.sess.dcx().steal_fulfilled_expectation_ids();
+    let fulfilled_expectations = tcx.dcx().steal_fulfilled_expectation_ids();
 
     tracing::debug!(?lint_expectations, ?fulfilled_expectations);
 
@@ -29,7 +29,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
             {
                 let rationale = expectation.reason.map(|rationale| ExpectationNote { rationale });
                 let note = expectation.is_unfulfilled_lint_expectations.then_some(());
-                tcx.emit_spanned_lint(
+                tcx.emit_node_span_lint(
                     UNFULFILLED_LINT_EXPECTATIONS,
                     *hir_id,
                     expectation.emission_span,

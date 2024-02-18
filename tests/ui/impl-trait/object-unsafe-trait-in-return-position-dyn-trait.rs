@@ -19,6 +19,7 @@ impl NotObjectSafe for B {
 }
 
 fn car() -> dyn NotObjectSafe { //~ ERROR the trait `NotObjectSafe` cannot be made into an object
+//~^ ERROR return type cannot have an unboxed trait object
     if true {
         return A;
     }
@@ -27,9 +28,9 @@ fn car() -> dyn NotObjectSafe { //~ ERROR the trait `NotObjectSafe` cannot be ma
 
 fn cat() -> Box<dyn NotObjectSafe> { //~ ERROR the trait `NotObjectSafe` cannot be made into an
     if true {
-        return Box::new(A);
+        return Box::new(A); //~ ERROR cannot be made into an object
     }
-    Box::new(B)
+    Box::new(B) //~ ERROR cannot be made into an object
 }
 
 fn main() {}

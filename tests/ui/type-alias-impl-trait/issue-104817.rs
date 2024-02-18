@@ -2,8 +2,8 @@
 #![cfg_attr(specialized, feature(specialization))]
 #![allow(incomplete_features)]
 
-// revisions: stock specialized
-// [specialized]check-pass
+//@ revisions: stock specialized
+//@ [specialized]check-pass
 
 trait OpaqueTrait {}
 impl<T> OpaqueTrait for T {}

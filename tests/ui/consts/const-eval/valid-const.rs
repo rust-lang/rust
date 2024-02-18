@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Some constants that *are* valid
 

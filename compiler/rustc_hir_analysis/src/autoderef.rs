@@ -12,7 +12,9 @@ use rustc_trait_selection::traits::StructurallyNormalizeExt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum AutoderefKind {
+    /// A true pointer type, such as `&T` and `*mut T`.
     Builtin,
+    /// A type which must dispatch to a `Deref` implementation.
     Overloaded,
 }
 
@@ -74,7 +76,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
             // we have some type like `&<Ty as Trait>::Assoc`, since users of
             // autoderef expect this type to have been structurally normalized.
             if self.infcx.next_trait_solver()
-                && let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _) = ty.kind()
+                && let ty::Alias(..) = ty.kind()
             {
                 let (normalized_ty, obligations) = self.structurally_normalize(ty)?;
                 self.state.obligations.extend(obligations);
@@ -83,14 +85,11 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
                 (AutoderefKind::Builtin, ty)
             }
         } else if let Some(ty) = self.overloaded_deref_ty(self.state.cur_ty) {
+            // The overloaded deref check already normalizes the pointee type.
             (AutoderefKind::Overloaded, ty)
         } else {
             return None;
         };
-
-        if new_ty.references_error() {
-            return None;
-        }
 
         self.state.steps.push((self.state.cur_ty, kind));
         debug!(
@@ -133,6 +132,10 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     fn overloaded_deref_ty(&mut self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         debug!("overloaded_deref_ty({:?})", ty);
         let tcx = self.infcx.tcx;
+
+        if ty.references_error() {
+            return None;
+        }
 
         // <ty as Deref>
         let trait_ref = ty::TraitRef::new(tcx, tcx.lang_items().deref_trait()?, [ty]);
@@ -249,7 +252,7 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
-    tcx.sess.emit_err(AutoDerefReachedRecursionLimit {
+    tcx.dcx().emit_err(AutoDerefReachedRecursionLimit {
         span,
         ty,
         suggested_limit,

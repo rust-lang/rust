@@ -8,7 +8,7 @@
 // https://github.com/rust-lang/rust/issues/88065
 // https://github.com/rust-lang/rust/issues/107959
 
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     // Closure with multiple expressions delimited by semicolon.

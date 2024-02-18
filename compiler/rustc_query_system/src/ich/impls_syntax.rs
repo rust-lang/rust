@@ -57,11 +57,13 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
     }
 }
 
+impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {}
+
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let SourceFile {
-            name: _, // We hash the smaller name_hash instead of this
-            name_hash,
+            name: _, // We hash the smaller stable_id instead of this
+            stable_id,
             cnum,
             // Do not hash the source as it is not encoded
             src: _,
@@ -75,7 +77,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             ref normalized_pos,
         } = *self;
 
-        name_hash.hash_stable(hcx, hasher);
+        stable_id.hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 

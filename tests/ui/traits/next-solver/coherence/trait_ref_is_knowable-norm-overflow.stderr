@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait` for type `<LocalTy as Overflow>::Assoc`
-  --> $DIR/trait_ref_is_knowable-norm-overflow.rs:17:1
+  --> $DIR/trait_ref_is_knowable-norm-overflow.rs:18:1
    |
 LL | impl<T: Copy> Trait for T {}
    | ------------------------- first implementation here
@@ -7,6 +7,24 @@ LL | struct LocalTy;
 LL | impl Trait for <LocalTy as Overflow>::Assoc {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<LocalTy as Overflow>::Assoc`
 
-error: aborting due to 1 previous error
+error[E0275]: overflow evaluating the requirement `<T as Overflow>::Assoc: Sized`
+  --> $DIR/trait_ref_is_knowable-norm-overflow.rs:10:18
+   |
+LL |     type Assoc = <T as Overflow>::Assoc;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`trait_ref_is_knowable_norm_overflow`)
+note: required by a bound in `Overflow::Assoc`
+  --> $DIR/trait_ref_is_knowable-norm-overflow.rs:7:5
+   |
+LL |     type Assoc;
+   |     ^^^^^^^^^^^ required by this bound in `Overflow::Assoc`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Assoc: ?Sized;
+   |               ++++++++
 
-For more information about this error, try `rustc --explain E0119`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0275.
+For more information about an error, try `rustc --explain E0119`.

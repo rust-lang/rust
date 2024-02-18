@@ -1,6 +1,6 @@
-// edition:2021
-// revisions: success failure
-//[success] check-pass
+//@ edition:2021
+//@ revisions: success failure
+//@[success] check-pass
 
 #![feature(lint_reasons)]
 

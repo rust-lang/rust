@@ -1,6 +1,6 @@
-// revisions: normal opt
-// check-pass
-//[opt] compile-flags: -Zmir-opt-level=3
+//@ revisions: normal opt
+//@ check-pass
+//@[opt] compile-flags: -Zmir-opt-level=3
 
 #![feature(unboxed_closures, tuple_trait)]
 

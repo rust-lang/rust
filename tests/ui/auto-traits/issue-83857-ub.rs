@@ -21,7 +21,9 @@ impl WithAssoc for Foo<u32, ()> {
 
 fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) {
     //~^ ERROR `Foo<T, U>` cannot be sent between threads safely
+    //~| ERROR `Foo<T, U>` cannot be sent between threads safely
     f(foo(v));
+    //~^ ERROR `Foo<T, U>` cannot be sent between threads safely
 }
 
 fn foo<T: Send>(x: T) -> <T as WithAssoc>::Output {

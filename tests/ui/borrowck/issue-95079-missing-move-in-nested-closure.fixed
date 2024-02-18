@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code, path_statements)]
 fn foo1(s: &str) -> impl Iterator<Item = String> + '_ {
     None.into_iter()

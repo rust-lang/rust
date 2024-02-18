@@ -12,12 +12,12 @@ use std::ops::ControlFlow;
 fn too_complex(x: Result<i32, usize>) -> Option<i32> {
     // CHECK-LABEL: fn too_complex(
     // CHECK: bb0: {
-    // CHECK:     switchInt(move {{_.*}}) -> [0: bb3, 1: bb1, otherwise: bb2];
+    // CHECK:     switchInt(move {{_.*}}) -> [0: bb3, 1: bb2, otherwise: bb1];
     // CHECK: bb1: {
+    // CHECK:     unreachable;
+    // CHECK: bb2: {
     // CHECK:     [[controlflow:_.*]] = ControlFlow::<usize, i32>::Break(
     // CHECK:     goto -> bb8;
-    // CHECK: bb2: {
-    // CHECK:     unreachable;
     // CHECK: bb3: {
     // CHECK:     [[controlflow]] = ControlFlow::<usize, i32>::Continue(
     // CHECK:     goto -> bb4;
@@ -50,13 +50,13 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK-LABEL: fn identity(
     // CHECK: bb0: {
     // CHECK:     [[x:_.*]] = _1;
-    // CHECK:     switchInt(move {{_.*}}) -> [0: bb8, 1: bb6, otherwise: bb7];
+    // CHECK:     switchInt(move {{_.*}}) -> [0: bb7, 1: bb6, otherwise: bb1];
     // CHECK: bb1: {
+    // CHECK:     unreachable;
+    // CHECK: bb2: {
     // CHECK:     {{_.*}} = (([[controlflow:_.*]] as Continue).0: i32);
     // CHECK:     _0 = Result::<i32, i32>::Ok(
     // CHECK:     goto -> bb4;
-    // CHECK: bb2: {
-    // CHECK:     unreachable;
     // CHECK: bb3: {
     // CHECK:     {{_.*}} = (([[controlflow]] as Break).0: std::result::Result<std::convert::Infallible, i32>);
     // CHECK:     _0 = Result::<i32, i32>::Err(
@@ -64,18 +64,16 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb4: {
     // CHECK:     return;
     // CHECK: bb5: {
-    // CHECK:     goto -> bb1;
+    // CHECK:     goto -> bb2;
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
-    // CHECK:     goto -> bb9;
+    // CHECK:     goto -> bb8;
     // CHECK: bb7: {
-    // CHECK:     unreachable;
-    // CHECK: bb8: {
     // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(
     // CHECK:     goto -> bb5;
-    // CHECK: bb9: {
+    // CHECK: bb8: {
     // CHECK:     goto -> bb3;
     Ok(x?)
 }
@@ -95,11 +93,11 @@ fn dfa() {
     // CHECK:     {{_.*}} = DFA::A;
     // CHECK:     goto -> bb1;
     // CHECK: bb1: {
-    // CHECK:     switchInt({{.*}}) -> [0: bb4, 1: bb5, 2: bb6, 3: bb2, otherwise: bb3];
+    // CHECK:     switchInt({{.*}}) -> [0: bb4, 1: bb5, 2: bb6, 3: bb3, otherwise: bb2];
     // CHECK: bb2: {
-    // CHECK:     return;
-    // CHECK: bb3: {
     // CHECK:     unreachable;
+    // CHECK: bb3: {
+    // CHECK:     return;
     // CHECK: bb4: {
     // CHECK:     {{_.*}} = DFA::B;
     // CHECK:     goto -> bb1;
@@ -455,7 +453,69 @@ fn disappearing_bb(x: u8) -> u8 {
     )
 }
 
+/// Verify that we can thread jumps when we assign from an aggregate constant.
+fn aggregate(x: u8) -> u8 {
+    // CHECK-LABEL: fn aggregate(
+    // CHECK-NOT: switchInt(
+
+    const FOO: (u8, u8) = (5, 13);
+
+    let (a, b) = FOO;
+    if a == 7 {
+        b
+    } else {
+        a
+    }
+}
+
+/// Verify that we can leverage the existence of an `Assume` terminator.
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+fn assume(a: u8, b: bool) -> u8 {
+    // CHECK-LABEL: fn assume(
+    mir!(
+        {
+            // CHECK: bb0: {
+            // CHECK-NEXT: switchInt(_1) -> [7: bb1, otherwise: bb2]
+            match a { 7 => bb1, _ => bb2 }
+        }
+        bb1 = {
+            // CHECK: bb1: {
+            // CHECK-NEXT: assume(_2);
+            // CHECK-NEXT: goto -> bb6;
+            Assume(b);
+            Goto(bb3)
+        }
+        bb2 = {
+            // CHECK: bb2: {
+            // CHECK-NEXT: goto -> bb3;
+            Goto(bb3)
+        }
+        bb3 = {
+            // CHECK: bb3: {
+            // CHECK-NEXT: switchInt(_2) -> [0: bb4, otherwise: bb5];
+            match b { false => bb4, _ => bb5 }
+        }
+        bb4 = {
+            // CHECK: bb4: {
+            // CHECK-NEXT: _0 = const 4_u8;
+            // CHECK-NEXT: return;
+            RET = 4;
+            Return()
+        }
+        bb5 = {
+            // CHECK: bb5: {
+            // CHECK-NEXT: _0 = const 5_u8;
+            // CHECK-NEXT: return;
+            RET = 5;
+            Return()
+        }
+        // CHECK: bb6: {
+        // CHECK-NEXT: goto -> bb5;
+    )
+}
+
 fn main() {
+    // CHECK-LABEL: fn main(
     too_complex(Ok(0));
     identity(Ok(0));
     custom_discr(false);
@@ -466,6 +526,8 @@ fn main() {
     mutable_ref();
     renumbered_bb(true);
     disappearing_bb(7);
+    aggregate(7);
+    assume(7, false);
 }
 
 // EMIT_MIR jump_threading.too_complex.JumpThreading.diff
@@ -478,3 +540,5 @@ fn main() {
 // EMIT_MIR jump_threading.mutable_ref.JumpThreading.diff
 // EMIT_MIR jump_threading.renumbered_bb.JumpThreading.diff
 // EMIT_MIR jump_threading.disappearing_bb.JumpThreading.diff
+// EMIT_MIR jump_threading.aggregate.JumpThreading.diff
+// EMIT_MIR jump_threading.assume.JumpThreading.diff

@@ -6,7 +6,7 @@ impl u8 {
 impl str {
 //~^ error: cannot define inherent `impl` for primitive types
     fn foo() {}
-    fn bar(self) {}
+    fn bar(self) {} //~ ERROR: size for values of type `str` cannot be known
 }
 
 impl char {

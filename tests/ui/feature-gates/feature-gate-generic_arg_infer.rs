@@ -1,5 +1,5 @@
-// [feature] run-pass
-// revisions: normal feature
+//@ [feature] run-pass
+//@ revisions: normal feature
 
 #![cfg_attr(feature, feature(generic_arg_infer))]
 

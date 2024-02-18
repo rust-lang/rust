@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 fn works() {
     let array/*: [u8; _]*/ = default_byte_array();

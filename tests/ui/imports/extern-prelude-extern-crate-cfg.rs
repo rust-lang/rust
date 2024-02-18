@@ -1,5 +1,5 @@
-// build-pass (FIXME(62277): could be check-pass?)
-// compile-flags:--cfg my_feature
+//@ build-pass (FIXME(62277): could be check-pass?)
+//@ compile-flags:--cfg my_feature
 
 #![no_std]
 

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 static mut DROPPED: [bool; 2] = [false, false];
 

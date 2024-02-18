@@ -96,7 +96,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let dm_lhs = demorganed.lhs()?;
 
     acc.add_group(
-        &GroupLabel("Apply De Morgan's law".to_string()),
+        &GroupLabel("Apply De Morgan's law".to_owned()),
         AssistId("apply_demorgan", AssistKind::RefactorRewrite),
         "Apply De Morgan's law",
         op_range,
@@ -187,7 +187,7 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
     let op_range = method_call.syntax().text_range();
     let label = format!("Apply De Morgan's law to `Iterator::{}`", name.text().as_str());
     acc.add_group(
-        &GroupLabel("Apply De Morgan's law".to_string()),
+        &GroupLabel("Apply De Morgan's law".to_owned()),
         AssistId("apply_demorgan_iterator", AssistKind::RefactorRewrite),
         label,
         op_range,

@@ -1,7 +1,6 @@
-#![feature(alloc_layout_extra, decl_macro, iterator_try_reduce, never_type)]
+#![feature(alloc_layout_extra)]
+#![feature(never_type)]
 #![allow(dead_code, unused_variables)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]
 extern crate tracing;

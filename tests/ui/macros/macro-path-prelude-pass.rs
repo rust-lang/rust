@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 mod m {
     fn check() {

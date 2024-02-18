@@ -255,6 +255,10 @@ pub enum Subcommand {
     Clippy {
         #[arg(long)]
         fix: bool,
+        #[arg(long, requires = "fix")]
+        allow_dirty: bool,
+        #[arg(long, requires = "fix")]
+        allow_staged: bool,
         /// clippy lints to allow
         #[arg(global(true), short = 'A', action = clap::ArgAction::Append, value_name = "LINT")]
         allow: Vec<String>,

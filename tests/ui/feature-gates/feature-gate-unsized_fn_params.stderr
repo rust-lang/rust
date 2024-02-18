@@ -29,8 +29,8 @@ LL | fn bar(x: impl Foo) {
    |           ++++
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn bar(x: &Foo) {
-   |           +
+LL | fn bar(x: &dyn Foo) {
+   |           ++++
 
 error[E0277]: the size for values of type `[()]` cannot be known at compilation time
   --> $DIR/feature-gate-unsized_fn_params.rs:25:8
@@ -40,7 +40,7 @@ LL | fn qux(_: [()]) {}
    |
    = help: the trait `Sized` is not implemented for `[()]`
    = help: unsized fn params are gated as an unstable feature
-help: function arguments must have a statically known size, borrowed types always have a known size
+help: function arguments must have a statically known size, borrowed slices always have a known size
    |
 LL | fn qux(_: &[()]) {}
    |           +

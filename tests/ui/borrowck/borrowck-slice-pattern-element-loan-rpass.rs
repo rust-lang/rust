@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn mut_head_tail<'a, A>(v: &'a mut [A]) -> Option<(&'a mut A, &'a mut [A])> {
     match *v {

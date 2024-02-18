@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![crate_type = "lib"]
 #![allow(arithmetic_overflow)]
 

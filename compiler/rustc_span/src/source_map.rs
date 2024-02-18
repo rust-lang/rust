@@ -10,10 +10,9 @@
 //! information, source code snippets, etc.
 
 use crate::*;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
+use rustc_data_structures::unhash::UnhashMap;
 use std::fs;
-use std::hash::Hash;
 use std::io::{self, BorrowedBuf, Read};
 use std::path::{self};
 
@@ -24,9 +23,15 @@ mod tests;
 /// otherwise return the call site span up to the `enclosing_sp` by
 /// following the `expn_data` chain.
 pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
-    let expn_data1 = sp.ctxt().outer_expn_data();
-    let expn_data2 = enclosing_sp.ctxt().outer_expn_data();
-    if expn_data1.is_root() || !expn_data2.is_root() && expn_data1.call_site == expn_data2.call_site
+    let ctxt = sp.ctxt();
+    if ctxt.is_root() {
+        return sp;
+    }
+
+    let enclosing_ctxt = enclosing_sp.ctxt();
+    let expn_data1 = ctxt.outer_expn_data();
+    if !enclosing_ctxt.is_root()
+        && expn_data1.call_site == enclosing_ctxt.outer_expn_data().call_site
     {
         sp
     } else {
@@ -65,7 +70,7 @@ mod monotonic {
     impl<T> !DerefMut for MonotonicVec<T> {}
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,
@@ -152,45 +157,6 @@ impl FileLoader for RealFileLoader {
     }
 }
 
-/// This is a [SourceFile] identifier that is used to correlate source files between
-/// subsequent compilation sessions (which is something we need to do during
-/// incremental compilation).
-///
-/// The [StableSourceFileId] also contains the CrateNum of the crate the source
-/// file was originally parsed for. This way we get two separate entries in
-/// the [SourceMap] if the same file is part of both the local and an upstream
-/// crate. Trying to only have one entry for both cases is problematic because
-/// at the point where we discover that there's a local use of the file in
-/// addition to the upstream one, we might already have made decisions based on
-/// the assumption that it's an upstream file. Treating the two files as
-/// different has no real downsides.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
-pub struct StableSourceFileId {
-    /// A hash of the source file's [`FileName`]. This is hash so that it's size
-    /// is more predictable than if we included the actual [`FileName`] value.
-    pub file_name_hash: Hash64,
-
-    /// The [`CrateNum`] of the crate this source file was originally parsed for.
-    /// We cannot include this information in the hash because at the time
-    /// of hashing we don't have the context to map from the [`CrateNum`]'s numeric
-    /// value to a `StableCrateId`.
-    pub cnum: CrateNum,
-}
-
-// FIXME: we need a more globally consistent approach to the problem solved by
-// StableSourceFileId, perhaps built atop source_file.name_hash.
-impl StableSourceFileId {
-    pub fn new(source_file: &SourceFile) -> StableSourceFileId {
-        StableSourceFileId::new_from_name(&source_file.name, source_file.cnum)
-    }
-
-    fn new_from_name(name: &FileName, cnum: CrateNum) -> StableSourceFileId {
-        let mut hasher = StableHasher::new();
-        name.hash(&mut hasher);
-        StableSourceFileId { file_name_hash: hasher.finish(), cnum }
-    }
-}
-
 // _____________________________________________________________________________
 // SourceMap
 //
@@ -198,7 +164,7 @@ impl StableSourceFileId {
 #[derive(Default)]
 struct SourceMapFiles {
     source_files: monotonic::MonotonicVec<Lrc<SourceFile>>,
-    stable_id_to_source_file: FxHashMap<StableSourceFileId, Lrc<SourceFile>>,
+    stable_id_to_source_file: UnhashMap<StableSourceFileId, Lrc<SourceFile>>,
 }
 
 pub struct SourceMap {
@@ -320,17 +286,17 @@ impl SourceMap {
         // be empty, so the working directory will be used.
         let (filename, _) = self.path_mapping.map_filename_prefix(&filename);
 
-        let file_id = StableSourceFileId::new_from_name(&filename, LOCAL_CRATE);
-        match self.source_file_by_stable_id(file_id) {
+        let stable_id = StableSourceFileId::from_filename_in_current_crate(&filename);
+        match self.source_file_by_stable_id(stable_id) {
             Some(lrc_sf) => Ok(lrc_sf),
             None => {
                 let source_file = SourceFile::new(filename, src, self.hash_kind)?;
 
                 // Let's make sure the file_id we generated above actually matches
                 // the ID we generate for the SourceFile we just created.
-                debug_assert_eq!(StableSourceFileId::new(&source_file), file_id);
+                debug_assert_eq!(source_file.stable_id, stable_id);
 
-                self.register_source_file(file_id, source_file)
+                self.register_source_file(stable_id, source_file)
             }
         }
     }
@@ -343,7 +309,7 @@ impl SourceMap {
         &self,
         filename: FileName,
         src_hash: SourceFileHash,
-        name_hash: Hash128,
+        stable_id: StableSourceFileId,
         source_len: u32,
         cnum: CrateNum,
         file_local_lines: FreezeLock<SourceFileLines>,
@@ -368,12 +334,11 @@ impl SourceMap {
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
-            name_hash,
+            stable_id,
             cnum,
         };
 
-        let file_id = StableSourceFileId::new(&source_file);
-        self.register_source_file(file_id, source_file)
+        self.register_source_file(stable_id, source_file)
             .expect("not enough address space for imported source file")
     }
 

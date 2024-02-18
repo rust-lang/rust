@@ -49,11 +49,11 @@ impl CodegenBackend for TheBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
+    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let codegen_results = ongoing_codegen
             .downcast::<CodegenResults>()
             .expect("in join_codegen: ongoing_codegen is not a CodegenResults");
-        Ok((*codegen_results, FxIndexMap::default()))
+        (*codegen_results, FxIndexMap::default())
     }
 
     fn link(
@@ -67,7 +67,7 @@ impl CodegenBackend for TheBackend {
         let crate_name = codegen_results.crate_info.local_crate_name;
         for &crate_type in sess.opts.crate_types.iter() {
             if crate_type != CrateType::Rlib {
-                sess.fatal(format!("Crate type is {:?}", crate_type));
+                sess.dcx().fatal(format!("Crate type is {:?}", crate_type));
             }
             let output_name = out_filename(sess, crate_type, &outputs, crate_name);
             match output_name {

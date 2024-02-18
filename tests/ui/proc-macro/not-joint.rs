@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:not-joint.rs
+//@ run-pass
+//@ aux-build:not-joint.rs
 
 extern crate not_joint as bar;
 use bar::{tokens, nothing};

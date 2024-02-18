@@ -29,8 +29,8 @@ LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
    = help: consider moving `VRefCont` to another trait
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `MapLike` for this new enum and using it instead:
-             std::collections::BTreeMap<K, V>
              Source
+             std::collections::BTreeMap<K, V>
 
 error[E0038]: the trait `MapLike` cannot be made into an object
   --> $DIR/issue-79422.rs:44:13
@@ -47,8 +47,8 @@ LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
    = help: consider moving `VRefCont` to another trait
    = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `MapLike` for this new enum and using it instead:
-             std::collections::BTreeMap<K, V>
              Source
+             std::collections::BTreeMap<K, V>
    = note: required for the cast from `Box<BTreeMap<u8, u8>>` to `Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>`
 
 error: aborting due to 3 previous errors

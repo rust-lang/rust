@@ -28,6 +28,5 @@ fn d<const C: S>() {}
 trait Foo<'a> {}
 struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
 //~^ ERROR the type of const parameters must not depend on other generic parameters
-//~| ERROR `&dyn for<'a> Foo<'a>` is forbidden as the type of a const generic parameter
 
 fn main() {}

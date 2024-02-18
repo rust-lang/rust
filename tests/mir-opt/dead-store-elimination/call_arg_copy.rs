@@ -1,6 +1,5 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: DeadStoreElimination
+// unit-test: DeadStoreElimination-final
 // compile-flags: -Zmir-enable-passes=+CopyProp
 
 #![feature(core_intrinsics)]
@@ -12,8 +11,10 @@ use std::intrinsics::mir::*;
 #[inline(never)]
 fn use_both(_: i32, _: i32) {}
 
-// EMIT_MIR call_arg_copy.move_simple.DeadStoreElimination.diff
+// EMIT_MIR call_arg_copy.move_simple.DeadStoreElimination-final.diff
 fn move_simple(x: i32) {
+    // CHECK-LABEL: fn move_simple(
+    // CHECK: = use_both(_1, move _1)
     use_both(x, x);
 }
 
@@ -23,12 +24,15 @@ struct Packed {
     y: i32,
 }
 
-// EMIT_MIR call_arg_copy.move_packed.DeadStoreElimination.diff
+// EMIT_MIR call_arg_copy.move_packed.DeadStoreElimination-final.diff
 #[custom_mir(dialect = "analysis")]
 fn move_packed(packed: Packed) {
+    // CHECK-LABEL: fn move_packed(
+    // CHECK: = use_both(const 0_i32, (_1.1: i32))
     mir!(
         {
-            Call(RET = use_both(0, packed.y), ret, UnwindContinue())
+            // We have a packed struct, verify that the copy is not turned into a move.
+            Call(RET = use_both(0, packed.y), ReturnTo(ret), UnwindContinue())
         }
         ret = {
             Return()

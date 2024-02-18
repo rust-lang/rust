@@ -1,6 +1,6 @@
-// edition:2018
-// aux-build:edition-lint-infer-outlives-macro.rs
-// run-rustfix
+//@ edition:2018
+//@ aux-build:edition-lint-infer-outlives-macro.rs
+//@ run-rustfix
 
 #![deny(explicit_outlives_requirements)]
 #![allow(dead_code)]

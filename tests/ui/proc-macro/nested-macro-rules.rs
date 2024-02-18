@@ -1,8 +1,8 @@
-// run-pass
-// aux-build:nested-macro-rules.rs
-// aux-build:test-macros.rs
-// compile-flags: -Z span-debug -Z macro-backtrace
-// edition:2018
+//@ run-pass
+//@ aux-build:nested-macro-rules.rs
+//@ aux-build:test-macros.rs
+//@ compile-flags: -Z span-debug -Z macro-backtrace
+//@ edition:2018
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

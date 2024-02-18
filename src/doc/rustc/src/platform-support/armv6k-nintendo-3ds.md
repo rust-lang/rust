@@ -10,6 +10,9 @@ from nor used with any official Nintendo SDK.
 
 ## Target maintainers
 
+This target is maintained by members of the [@rust3ds](https://github.com/rust3ds)
+organization:
+
 - [@Meziu](https://github.com/Meziu)
 - [@AzureMarker](https://github.com/AzureMarker)
 - [@ian-h-chamberlain](https://github.com/ian-h-chamberlain)
@@ -35,8 +38,8 @@ Additionally, some helper crates provide implementations of some `libc` function
 use by `std` that may otherwise be missing. These, or an alternate implementation
 of the relevant functions, are required to use `std`:
 
-- [`pthread-3ds`](https://github.com/Meziu/pthread-3ds) provides pthread APIs for `std::thread`.
-- [`linker-fix-3ds`](https://github.com/Meziu/rust-linker-fix-3ds) fulfills some other missing libc APIs.
+- [`pthread-3ds`](https://github.com/rust3ds/pthread-3ds) provides pthread APIs for `std::thread`.
+- [`shim-3ds`](https://github.com/rust3ds/shim-3ds) fulfills some other missing libc APIs (e.g. `getrandom`).
 
 Binaries built for this target should be compatible with all variants of the
 3DS (and 2DS) hardware and firmware, but testing is limited and some versions may
@@ -74,8 +77,10 @@ export CFLAGS_armv6k_nintendo_3ds="-mfloat-abi=hard -mtune=mpcore -mtp=soft -mar
 Rust does not yet ship pre-compiled artifacts for this target.
 
 The recommended way to build binaries is by using the
-[cargo-3ds](https://github.com/Meziu/cargo-3ds) tool, which uses `build-std`
+[cargo-3ds](https://github.com/rust3ds/cargo-3ds) tool, which uses `build-std`
 and provides commands that work like the usual `cargo run`, `cargo build`, etc.
+The `cargo 3ds new` will automatically set up a new project with the dependencies
+needed to build a simple binary.
 
 You can also build Rust with the target enabled (see
 [Building the target](#building-the-target) above).
@@ -83,23 +88,16 @@ You can also build Rust with the target enabled (see
 As mentioned in [Requirements](#requirements), programs that use `std` must link
 against both the devkitARM toolchain and libraries providing the `libc` APIs used
 in `std`.  There is a general-purpose utility crate for working with nonstandard
-APIs provided by the OS: [`ctru-rs`](https://github.com/Meziu/ctru-rs).
+APIs provided by the OS: [`ctru-rs`](https://github.com/rust3ds/ctru-rs).
 Add it to Cargo.toml to use it in your program:
 
 ```toml
 [dependencies]
-ctru-rs = { git = "https://github.com/Meziu/ctru-rs.git" }
+ctru-rs = { git = "https://github.com/rust3ds/ctru-rs.git" }
 ```
 
-Using this library's `init()` function ensures the symbols needed to link
-against `std` are present (as mentioned in [Requirements](#requirements)
-above), as well as providing a runtime suitable for `std`:
-
-```rust,ignore (requires-3rd-party-library)
-fn main() {
-    ctru::init();
-}
-```
+Depending on `ctru-rs` ensures that all the necessary symbols are available at
+link time.
 
 ## Testing
 

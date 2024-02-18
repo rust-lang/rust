@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that we don't duplicate storage for a variable that is moved to another
 // binding. This used to happen in the presence of unwind and drop edges (see
 // `complex` below.)
@@ -9,16 +9,16 @@
 //
 // See issue #59123 for a full explanation.
 
-// edition:2018
-// ignore-wasm32 issue #62807
-// needs-unwind Size of Closures change on panic=abort
+//@ edition:2018
+//@ ignore-wasm32 issue #62807
+//@ needs-unwind Size of Closures change on panic=abort
 
 #![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 
 const FOO_SIZE: usize = 1024;
-struct Foo(#[allow(unused_tuple_struct_fields)] [u8; FOO_SIZE]);
+struct Foo(#[allow(dead_code)] [u8; FOO_SIZE]);
 
 impl Drop for Foo {
     fn drop(&mut self) {}

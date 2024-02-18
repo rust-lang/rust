@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(Debug)]
 struct MyStruct;
 

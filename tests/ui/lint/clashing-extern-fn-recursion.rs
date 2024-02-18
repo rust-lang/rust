@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //
 // This tests checks that clashing_extern_declarations handles types that are recursive through a
 // pointer or ref argument. See #75512.

@@ -1,6 +1,6 @@
 // Check that a trait with by-value self is considered object-safe.
 
-// build-pass (FIXME(62277): could be check-pass?)
+//@ build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 #![allow(trivial_casts)]
 

@@ -52,4 +52,5 @@ fn create_doc() -> impl Document<Cursor<'_> = DocCursorImpl<'_>> {
 pub fn main() {
     let doc = create_doc();
     let lexer: Lexer<'_, DocCursorImpl<'_>> = Lexer::from(&doc);
+    //~^ ERROR: `doc` does not live long enough
 }

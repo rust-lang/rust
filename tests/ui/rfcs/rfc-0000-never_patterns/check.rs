@@ -15,18 +15,18 @@ fn no_arms_or_guards(x: Void) {
         //~^ ERROR a never pattern is always unreachable
         None => {}
     }
-    match None::<Void> {
+    match None::<Void> { //~ ERROR: `Some(_)` not covered
         Some(!) if true,
         //~^ ERROR guard on a never pattern
         None => {}
     }
-    match None::<Void> {
+    match None::<Void> { //~ ERROR: `Some(_)` not covered
         Some(!) if true => {}
         //~^ ERROR a never pattern is always unreachable
         None => {}
     }
     match None::<Void> {
-        Some(never!()) => {},
+        Some(never!()) => {}
         //~^ ERROR a never pattern is always unreachable
         None => {}
     }

@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, HirFileIdExt, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
@@ -13,33 +14,24 @@ use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticCode, Dia
 // This diagnostic is triggered when the type of an expression or pattern does not match
 // the expected type.
 pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
-    let display_range = match &d.expr_or_pat.value {
-        expr if ast::Expr::can_cast(expr.kind()) => adjusted_display_range::<ast::Expr>(
-            ctx,
-            InFile { file_id: d.expr_or_pat.file_id, value: expr.syntax_node_ptr() },
-            &|expr| {
-                let salient_token_range = match expr {
-                    ast::Expr::IfExpr(it) => it.if_token()?.text_range(),
-                    ast::Expr::LoopExpr(it) => it.loop_token()?.text_range(),
-                    ast::Expr::ForExpr(it) => it.for_token()?.text_range(),
-                    ast::Expr::WhileExpr(it) => it.while_token()?.text_range(),
-                    ast::Expr::BlockExpr(it) => it.stmt_list()?.r_curly_token()?.text_range(),
-                    ast::Expr::MatchExpr(it) => it.match_token()?.text_range(),
-                    ast::Expr::MethodCallExpr(it) => it.name_ref()?.ident_token()?.text_range(),
-                    ast::Expr::FieldExpr(it) => it.name_ref()?.ident_token()?.text_range(),
-                    ast::Expr::AwaitExpr(it) => it.await_token()?.text_range(),
-                    _ => return None,
-                };
+    let display_range = adjusted_display_range(ctx, d.expr_or_pat, &|node| {
+        let Either::Left(expr) = node else { return None };
+        let salient_token_range = match expr {
+            ast::Expr::IfExpr(it) => it.if_token()?.text_range(),
+            ast::Expr::LoopExpr(it) => it.loop_token()?.text_range(),
+            ast::Expr::ForExpr(it) => it.for_token()?.text_range(),
+            ast::Expr::WhileExpr(it) => it.while_token()?.text_range(),
+            ast::Expr::BlockExpr(it) => it.stmt_list()?.r_curly_token()?.text_range(),
+            ast::Expr::MatchExpr(it) => it.match_token()?.text_range(),
+            ast::Expr::MethodCallExpr(it) => it.name_ref()?.ident_token()?.text_range(),
+            ast::Expr::FieldExpr(it) => it.name_ref()?.ident_token()?.text_range(),
+            ast::Expr::AwaitExpr(it) => it.await_token()?.text_range(),
+            _ => return None,
+        };
 
-                cov_mark::hit!(type_mismatch_range_adjustment);
-                Some(salient_token_range)
-            },
-        ),
-        pat => ctx.sema.diagnostics_display_range(InFile {
-            file_id: d.expr_or_pat.file_id,
-            value: pat.syntax_node_ptr(),
-        }),
-    };
+        cov_mark::hit!(type_mismatch_range_adjustment);
+        Some(salient_token_range)
+    });
     let mut diag = Diagnostic::new(
         DiagnosticCode::RustcHardError("E0308"),
         format!(
@@ -59,8 +51,8 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
 
-    if let Some(expr_ptr) = d.expr_or_pat.value.clone().cast::<ast::Expr>() {
-        let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr.clone() };
+    if let Some(expr_ptr) = d.expr_or_pat.value.cast::<ast::Expr>() {
+        let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr };
         add_reference(ctx, d, expr_ptr, &mut fixes);
         add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
         remove_semicolon(ctx, d, expr_ptr, &mut fixes);
@@ -80,7 +72,7 @@ fn add_reference(
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
-    let range = ctx.sema.diagnostics_display_range(expr_ptr.clone().map(|it| it.into()));
+    let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
     let (_, mutability) = d.expected.as_reference()?;
     let actual_with_ref = Type::reference(&d.actual, mutability);
@@ -128,7 +120,7 @@ fn add_missing_ok_or_some(
 
     let mut builder = TextEdit::builder();
     builder.insert(expr.syntax().text_range().start(), format!("{variant_name}("));
-    builder.insert(expr.syntax().text_range().end(), ")".to_string());
+    builder.insert(expr.syntax().text_range().end(), ")".to_owned());
     let source_change =
         SourceChange::from_text_edit(expr_ptr.file_id.original_file(ctx.sema.db), builder.finish());
     let name = format!("Wrap in {variant_name}");
@@ -182,7 +174,7 @@ fn str_ref_to_owned(
     let expr = expr_ptr.value.to_node(&root);
     let expr_range = expr.syntax().text_range();
 
-    let to_owned = format!(".to_owned()");
+    let to_owned = ".to_owned()".to_owned();
 
     let edit = TextEdit::insert(expr.syntax().text_range().end(), to_owned);
     let source_change =
@@ -194,7 +186,9 @@ fn str_ref_to_owned(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+    use crate::tests::{
+        check_diagnostics, check_diagnostics_with_disabled, check_fix, check_no_fix,
+    };
 
     #[test]
     fn missing_reference() {
@@ -726,7 +720,7 @@ struct Bar {
 
     #[test]
     fn return_no_value() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn f() -> i32 {
     return;
@@ -735,6 +729,7 @@ fn f() -> i32 {
 }
 fn g() { return; }
 "#,
+            std::iter::once("needless_return".to_owned()),
         );
     }
 

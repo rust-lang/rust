@@ -122,7 +122,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // corresponding feature gate. This encourages nightly users to use feature gates when
             // possible.
             None if tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you => {
-                tcx.sess.emit_warning(SkippingConstChecks { span });
+                tcx.dcx().emit_warn(SkippingConstChecks { span });
                 return;
             }
 
@@ -147,7 +147,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             [missing_primary, ref missing_secondary @ ..] => {
                 let msg =
                     format!("{} is not allowed in a `{}`", expr.name(), const_kind.keyword_name());
-                let mut err = feature_err(&tcx.sess.parse_sess, *missing_primary, span, msg);
+                let mut err = feature_err(&tcx.sess, *missing_primary, span, msg);
 
                 // If multiple feature gates would be required to enable this expression, include
                 // them as help messages. Don't emit a separate error for each missing feature gate.

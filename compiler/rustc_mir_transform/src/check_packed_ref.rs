@@ -52,7 +52,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                     );
                 } else {
                     self.tcx
-                        .sess
+                        .dcx()
                         .emit_err(errors::UnalignedPackedRef { span: self.source_info.span });
                 }
             }

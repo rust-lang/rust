@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn promote<const N: i32>() {
     let _ = &N;

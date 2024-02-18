@@ -25,6 +25,7 @@ RUN yum upgrade -y && \
       openssl-devel \
       patch \
       perl \
+      perl-core \
       pkgconfig \
       python3 \
       unzip \

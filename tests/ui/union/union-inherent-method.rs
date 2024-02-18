@@ -1,6 +1,4 @@
-// run-pass
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@ run-pass
 
 union U {
     a: u8,

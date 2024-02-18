@@ -1,5 +1,3 @@
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
@@ -60,7 +58,8 @@ impl GatherUsedMutsVisitor<'_, '_, '_> {
         // be those that were never initialized - we will consider those as being used as
         // they will either have been removed by unreachable code optimizations; or linted
         // as unused variables.
-        self.never_initialized_mut_locals.remove(&into.local);
+        // FIXME(#120456) - is `swap_remove` correct?
+        self.never_initialized_mut_locals.swap_remove(&into.local);
     }
 }
 

@@ -1,4 +1,4 @@
-// normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
+//@ normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 

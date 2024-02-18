@@ -1,7 +1,4 @@
-// run-pass
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
+//@ run-pass
 #![allow(dead_code)]
 
 use std::mem::needs_drop;
@@ -28,9 +25,9 @@ union UnionOk3<T: Copy> {
     value: T,
 }
 
-trait Foo { }
+trait Foo {}
 
-trait ImpliesCopy : Copy { }
+trait ImpliesCopy: Copy {}
 
 #[allow(dead_code)]
 union UnionOk4<T: ImpliesCopy> {

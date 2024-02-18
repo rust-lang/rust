@@ -1,5 +1,5 @@
-// run-pass
-// ignore-emscripten
+//@ run-pass
+//@ ignore-emscripten
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 

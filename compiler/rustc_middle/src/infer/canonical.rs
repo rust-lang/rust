@@ -53,7 +53,7 @@ impl<'tcx> ty::TypeFoldable<TyCtxt<'tcx>> for CanonicalVarInfos<'tcx> {
 
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
-/// `canonical_value.substitute` to substitute them into the canonical
+/// `canonical_value.instantiate` to instantiate them into the canonical
 /// value at the right places.
 ///
 /// When you canonicalize a value `V`, you get back one of these

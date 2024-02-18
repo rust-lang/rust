@@ -84,8 +84,8 @@ fn destructure_tuple_edit_impl(
     data: &TupleData,
     in_sub_pattern: bool,
 ) {
-    let assignment_edit = edit_tuple_assignment(ctx, edit, &data, in_sub_pattern);
-    let current_file_usages_edit = edit_tuple_usages(&data, edit, ctx, in_sub_pattern);
+    let assignment_edit = edit_tuple_assignment(ctx, edit, data, in_sub_pattern);
+    let current_file_usages_edit = edit_tuple_usages(data, edit, ctx, in_sub_pattern);
 
     assignment_edit.apply();
     if let Some(usages_edit) = current_file_usages_edit {
@@ -258,7 +258,7 @@ fn edit_tuple_usage(
         Some(index) => Some(edit_tuple_field_usage(ctx, builder, data, index)),
         None if in_sub_pattern => {
             cov_mark::hit!(destructure_tuple_call_with_subpattern);
-            return None;
+            None
         }
         None => Some(EditTupleUsage::NoIndex(usage.range)),
     }
@@ -375,7 +375,7 @@ impl RefData {
             expr = make::expr_paren(expr);
         }
 
-        return expr;
+        expr
     }
 }
 fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> (ast::Expr, RefData) {

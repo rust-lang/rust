@@ -7,7 +7,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
     generic_args: GenericArgsRef<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     target: Option<BasicBlock>,
     span: Span,
@@ -35,6 +35,10 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     }
 
     match intrinsic {
+        "llvm.prefetch" => {
+            // Nothing to do. This is merely a perf hint.
+        }
+
         _ if intrinsic.starts_with("llvm.ctlz.v") => {
             intrinsic_args!(fx, args => (a); intrinsic);
 
@@ -68,7 +72,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
 
         _ => {
             fx.tcx
-                .sess
+                .dcx()
                 .warn(format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
             return;

@@ -1,6 +1,6 @@
-// compile-flags: -Z print-type-sizes --crate-type lib
-// build-pass
-// ignore-pass
+//@ compile-flags: -Z print-type-sizes --crate-type lib
+//@ build-pass
+//@ ignore-pass
 
 // Tests a coroutine that has its discriminant as the *final* field.
 

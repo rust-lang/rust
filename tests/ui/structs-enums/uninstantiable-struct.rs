@@ -1,4 +1,4 @@
-// run-pass
-pub struct Z(#[allow(unused_tuple_struct_fields)] &'static Z);
+//@ run-pass
+pub struct Z(#[allow(dead_code)] &'static Z);
 
 pub fn main() {}

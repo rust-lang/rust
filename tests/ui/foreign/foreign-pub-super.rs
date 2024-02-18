@@ -1,5 +1,5 @@
 // Test for #79487
-// check-pass
+//@ check-pass
 
 #![allow(dead_code)]
 

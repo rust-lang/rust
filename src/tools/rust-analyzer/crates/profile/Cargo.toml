@@ -13,6 +13,7 @@ doctest = false
 
 [dependencies]
 once_cell = "1.17.0"
+tracing.workspace = true
 cfg-if = "1.0.0"
 la-arena.workspace = true
 libc.workspace = true
@@ -31,3 +32,6 @@ jemalloc = ["jemalloc-ctl"]
 
 # Uncomment to enable for the whole crate graph
 # default = [ "cpu_profiler" ]
+
+[lints]
+workspace = true

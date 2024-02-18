@@ -1,5 +1,5 @@
-// check-pass
-// edition: 2021
+//@ check-pass
+//@ edition: 2021
 // https://github.com/rust-lang/rust/issues/112713
 
 pub fn foo() -> u32 {

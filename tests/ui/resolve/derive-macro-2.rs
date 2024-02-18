@@ -1,5 +1,5 @@
-// check-pass
-// aux-build:issue-112831-aux.rs
+//@ check-pass
+//@ aux-build:issue-112831-aux.rs
 
 extern crate issue_112831_aux;
 use issue_112831_aux::Zeroable;

@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:overloaded_autoderef_xc.rs
+//@ run-pass
+//@ aux-build:overloaded_autoderef_xc.rs
 
 
 extern crate overloaded_autoderef_xc;

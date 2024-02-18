@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that the result of type ascription has adjustments applied
 
 #![feature(type_ascription)]

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 // Test that a field can have the same name in different variants

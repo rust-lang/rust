@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Check that taking the address of a place that contains a dereference is
 // allowed.
 #![feature(raw_ref_op, type_ascription)]

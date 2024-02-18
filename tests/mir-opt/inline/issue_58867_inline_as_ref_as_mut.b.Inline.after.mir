@@ -19,7 +19,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
         _4 = &mut (*_1);
         StorageLive(_5);
         StorageLive(_6);
-        _5 = deref_copy (*_4);
+        _5 = (*_4);
         _6 = (((_5.0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: *const T);
         _3 = &mut (*_6);
         StorageDead(_6);

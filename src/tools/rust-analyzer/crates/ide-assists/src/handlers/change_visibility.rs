@@ -96,7 +96,7 @@ fn can_add(node: &SyntaxNode) -> bool {
 
         if p.kind() == ASSOC_ITEM_LIST {
             p.parent()
-                .and_then(|it| ast::Impl::cast(it))
+                .and_then(ast::Impl::cast)
                 // inherent impls i.e 'non-trait impls' have a non-local
                 // effect, thus can have visibility even when nested.
                 // so filter them out

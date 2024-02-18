@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::ptr;
 use std::rc::Rc;
 use std::sync::Arc;

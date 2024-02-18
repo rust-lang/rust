@@ -26,14 +26,14 @@ pub(crate) fn get(
     extra_env: &FxHashMap<String, String>,
     config: RustcCfgConfig<'_>,
 ) -> Vec<CfgFlag> {
-    let _p = profile::span("rustc_cfg::get");
+    let _p = tracing::span!(tracing::Level::INFO, "rustc_cfg::get").entered();
     let mut res = Vec::with_capacity(6 * 2 + 1);
 
     // Some nightly-only cfgs, which are required for stdlib
     res.push(CfgFlag::Atom("target_thread_local".into()));
     for ty in ["8", "16", "32", "64", "cas", "ptr"] {
         for key in ["target_has_atomic", "target_has_atomic_load_store"] {
-            res.push(CfgFlag::KeyValue { key: key.to_string(), value: ty.into() });
+            res.push(CfgFlag::KeyValue { key: key.to_owned(), value: ty.into() });
         }
     }
 

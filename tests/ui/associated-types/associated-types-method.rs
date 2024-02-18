@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 // Test that methods whose impl-trait-ref contains associated types
 // are supported.
 
 trait Device {
     type Resources;
 }
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct Foo<D, R>(D, R);
 
 trait Tr {

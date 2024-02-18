@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/where-clause-method-substituion-rpass.rs:5:19
+   |
+LL | trait Foo<T> { fn dummy(&self, arg: T) { } }
+   |       ---         ^^^^^
+   |       |
+   |       method in this trait
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

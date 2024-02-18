@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![feature(lang_items, start)]
 #![no_std]
 

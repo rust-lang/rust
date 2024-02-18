@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![feature(specialization)]
 #![feature(lint_reasons)]

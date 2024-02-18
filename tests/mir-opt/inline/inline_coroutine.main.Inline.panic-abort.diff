@@ -36,7 +36,7 @@
 -         _4 = g() -> [return: bb1, unwind unreachable];
 +         _4 = {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8 (#0)};
 +         _3 = &mut _4;
-+         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}> { pointer: move _3 };
++         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}> { __pointer: _3 };
 +         StorageDead(_3);
 +         StorageLive(_5);
 +         _5 = const false;

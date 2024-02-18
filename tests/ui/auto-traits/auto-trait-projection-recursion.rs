@@ -11,7 +11,7 @@
 // lowest unified region vid. This means we instead have to prove
 // `Box<X<C<'?1>>>: Send`, which we can because auto traits are coinductive.
 
-// check-pass
+//@ check-pass
 
 // Avoid a really long error message if this regresses.
 #![recursion_limit="20"]

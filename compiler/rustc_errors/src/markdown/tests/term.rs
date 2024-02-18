@@ -5,7 +5,8 @@ use termcolor::{BufferWriter, ColorChoice};
 use super::*;
 
 const INPUT: &str = include_str!("input.md");
-const OUTPUT_PATH: &[&str] = &[env!("CARGO_MANIFEST_DIR"), "src","markdown","tests","output.stdout"];
+const OUTPUT_PATH: &[&str] =
+    &[env!("CARGO_MANIFEST_DIR"), "src", "markdown", "tests", "output.stdout"];
 
 const TEST_WIDTH: usize = 80;
 
@@ -34,7 +35,7 @@ quis dolor non venenatis. Aliquam ut. ";
 fn test_wrapping_write() {
     WIDTH.with(|w| w.set(TEST_WIDTH));
     let mut buf = BufWriter::new(Vec::new());
-    let txt = TXT.replace("-\n","-").replace("_\n","_").replace('\n', " ").replace("    ", "");
+    let txt = TXT.replace("-\n", "-").replace("_\n", "_").replace('\n', " ").replace("    ", "");
     write_wrapping(&mut buf, &txt, 0, None).unwrap();
     write_wrapping(&mut buf, &txt, 4, None).unwrap();
     write_wrapping(

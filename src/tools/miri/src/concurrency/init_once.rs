@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::num::NonZeroU32;
 
 use rustc_index::Idx;
 use rustc_middle::ty::layout::TyAndLayout;

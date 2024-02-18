@@ -19,10 +19,8 @@ fn test_display_literal() {
         "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0",
     );
 
-    assert_eq!(
-        Literal::string("a \t ❤ ' \" \u{1}").to_string(),
-        "\"a \\t ❤ ' \\\" \\u{1}\"",
-    );
+    assert_eq!(Literal::string("a \t ❤ ' \" \u{1}").to_string(), "\"a \\t ❤ ' \\\" \\u{1}\"",);
+    assert_eq!(Literal::c_string(c"\'\"\x7f\u{7fff}").to_string(), r#"c"\'\"\x7f\xe7\xbf\xbf""#);
     assert_eq!(Literal::character('a').to_string(), "'a'");
     assert_eq!(Literal::character('\t').to_string(), "'\\t'");
     assert_eq!(Literal::character('❤').to_string(), "'❤'");
@@ -41,6 +39,7 @@ fn test_parse_literal() {
     assert_eq!("b'a'".parse::<Literal>().unwrap().to_string(), "b'a'");
     assert_eq!("\"\n\"".parse::<Literal>().unwrap().to_string(), "\"\n\"");
     assert_eq!("b\"\"".parse::<Literal>().unwrap().to_string(), "b\"\"");
+    assert_eq!("c\"\"".parse::<Literal>().unwrap().to_string(), "c\"\"");
     assert_eq!("r##\"\"##".parse::<Literal>().unwrap().to_string(), "r##\"\"##");
     assert_eq!("10ulong".parse::<Literal>().unwrap().to_string(), "10ulong");
     assert_eq!("-10ulong".parse::<Literal>().unwrap().to_string(), "-10ulong");

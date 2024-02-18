@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![warn(unused_imports)] // Warning explanation here, it's OK
 

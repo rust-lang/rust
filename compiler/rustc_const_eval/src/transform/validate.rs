@@ -58,7 +58,10 @@ impl<'tcx> MirPass<'tcx> for Validator {
             let body_abi = match body_ty.kind() {
                 ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
                 ty::Closure(..) => Abi::RustCall,
+                ty::CoroutineClosure(..) => Abi::RustCall,
                 ty::Coroutine(..) => Abi::Rust,
+                // No need to do MIR validation on error bodies
+                ty::Error(_) => return,
                 _ => {
                     span_bug!(body.span, "unexpected body ty: {:?} phase {:?}", body_ty, mir_phase)
                 }
@@ -74,7 +77,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
             mir_phase,
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
-            place_cache: FxHashSet::default(),
             value_cache: FxHashSet::default(),
             can_unwind,
         };
@@ -96,6 +98,26 @@ impl<'tcx> MirPass<'tcx> for Validator {
                 }
             }
         }
+
+        // Enforce that coroutine-closure layouts are identical.
+        if let Some(layout) = body.coroutine_layout()
+            && let Some(by_move_body) = body.coroutine_by_move_body()
+            && let Some(by_move_layout) = by_move_body.coroutine_layout()
+        {
+            if layout != by_move_layout {
+                // If this turns out not to be true, please let compiler-errors know.
+                // It is possible to support, but requires some changes to the layout
+                // computation code.
+                cfg_checker.fail(
+                    Location::START,
+                    format!(
+                        "Coroutine layout differs from by-move coroutine layout:\n\
+                        layout: {layout:#?}\n\
+                        by_move_layout: {by_move_layout:#?}",
+                    ),
+                );
+            }
+        }
     }
 }
 
@@ -106,7 +128,6 @@ struct CfgChecker<'a, 'tcx> {
     mir_phase: MirPhase,
     unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
-    place_cache: FxHashSet<PlaceRef<'tcx>>,
     value_cache: FxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
     // `TerminatorKind::Resume`.
@@ -116,18 +137,14 @@ struct CfgChecker<'a, 'tcx> {
 impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
     #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
-        let span = self.body.source_info(location).span;
-        // We use `span_delayed_bug` as we might see broken MIR when other errors have already
-        // occurred.
-        self.tcx.sess.dcx().span_delayed_bug(
-            span,
-            format!(
-                "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance,
-                self.when,
-                location,
-                msg.as_ref()
-            ),
+        // We might see broken MIR when other errors have already occurred.
+        assert!(
+            self.tcx.dcx().has_errors().is_some(),
+            "broken MIR in {:?} ({}) at {:?}:\n{}",
+            self.body.source.instance,
+            self.when,
+            location,
+            msg.as_ref(),
         );
     }
 
@@ -294,19 +311,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
-            StatementKind::Assign(box (dest, rvalue)) => {
-                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether
-                    // the places are identical.
-                    if dest == src {
-                        self.fail(
-                            location,
-                            "encountered `Assign` statement with overlapping memory",
-                        );
-                    }
-                }
-            }
             StatementKind::AscribeUserType(..) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -341,7 +345,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
-            StatementKind::StorageLive(_)
+            StatementKind::Assign(..)
+            | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::Coverage(_)
@@ -404,10 +409,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
 
                 // The call destination place and Operand::Move place used as an argument might be
-                // passed by a reference to the callee. Consequently they must be non-overlapping
-                // and cannot be packed. Currently this simply checks for duplicate places.
-                self.place_cache.clear();
-                self.place_cache.insert(destination.as_ref());
+                // passed by a reference to the callee. Consequently they cannot be packed.
                 if is_within_packed(self.tcx, &self.body.local_decls, *destination).is_some() {
                     // This is bad! The callee will expect the memory to be aligned.
                     self.fail(
@@ -418,10 +420,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                let mut has_duplicates = false;
                 for arg in args {
-                    if let Operand::Move(place) = arg {
-                        has_duplicates |= !self.place_cache.insert(place.as_ref());
+                    if let Operand::Move(place) = &arg.node {
                         if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
                             // This is bad! The callee will expect the memory to be aligned.
                             self.fail(
@@ -433,16 +433,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                             );
                         }
                     }
-                }
-
-                if has_duplicates {
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered overlapping memory in `Move` arguments to `Call` terminator: {:?}",
-                            terminator.kind,
-                        ),
-                    );
                 }
             }
             TerminatorKind::Assert { target, unwind, .. } => {
@@ -527,7 +517,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: SourceScope) {
         if self.body.source_scopes.get(scope).is_none() {
-            self.tcx.sess.dcx().span_delayed_bug(
+            self.tcx.dcx().span_delayed_bug(
                 self.body.span,
                 format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
@@ -694,7 +684,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Coroutine(def_id, args, _) => {
+                    ty::CoroutineClosure(_, args) => {
+                        let args = args.as_coroutine_closure();
+                        let Some(&f_ty) = args.upvar_tys().get(f.as_usize()) else {
+                            fail_out_of_bounds(self, location);
+                            return;
+                        };
+                        check_equal(self, location, f_ty);
+                    }
+                    &ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
                                 self.body
@@ -825,7 +823,86 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) | Rvalue::CopyForDeref(_) | Rvalue::Aggregate(..) => {}
+            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
+            Rvalue::Aggregate(kind, fields) => match **kind {
+                AggregateKind::Tuple => {}
+                AggregateKind::Array(dest) => {
+                    for src in fields {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "array field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::Adt(def_id, idx, args, _, Some(field)) => {
+                    let adt_def = self.tcx.adt_def(def_id);
+                    assert!(adt_def.is_union());
+                    assert_eq!(idx, FIRST_VARIANT);
+                    let dest_ty = self.tcx.normalize_erasing_regions(
+                        self.param_env,
+                        adt_def.non_enum_variant().fields[field].ty(self.tcx, args),
+                    );
+                    if fields.len() == 1 {
+                        let src_ty = fields.raw[0].ty(self.body, self.tcx);
+                        if !self.mir_assign_valid_types(src_ty, dest_ty) {
+                            self.fail(location, "union field has the wrong type");
+                        }
+                    } else {
+                        self.fail(location, "unions should have one initialized field");
+                    }
+                }
+                AggregateKind::Adt(def_id, idx, args, _, None) => {
+                    let adt_def = self.tcx.adt_def(def_id);
+                    assert!(!adt_def.is_union());
+                    let variant = &adt_def.variants()[idx];
+                    if variant.fields.len() != fields.len() {
+                        self.fail(location, "adt has the wrong number of initialized fields");
+                    }
+                    for (src, dest) in std::iter::zip(fields, &variant.fields) {
+                        let dest_ty = self
+                            .tcx
+                            .normalize_erasing_regions(self.param_env, dest.ty(self.tcx, args));
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest_ty) {
+                            self.fail(location, "adt field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::Closure(_, args) => {
+                    let upvars = args.as_closure().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(location, "closure has the wrong number of initialized fields");
+                    }
+                    for (src, dest) in std::iter::zip(fields, upvars) {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "closure field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::Coroutine(_, args) => {
+                    let upvars = args.as_coroutine().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(location, "coroutine has the wrong number of initialized fields");
+                    }
+                    for (src, dest) in std::iter::zip(fields, upvars) {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "coroutine field has the wrong type");
+                        }
+                    }
+                }
+                AggregateKind::CoroutineClosure(_, args) => {
+                    let upvars = args.as_coroutine_closure().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(
+                            location,
+                            "coroutine-closure has the wrong number of initialized fields",
+                        );
+                    }
+                    for (src, dest) in std::iter::zip(fields, upvars) {
+                        if !self.mir_assign_valid_types(src.ty(self.body, self.tcx), dest) {
+                            self.fail(location, "coroutine-closure field has the wrong type");
+                        }
+                    }
+                }
+            },
             Rvalue::Ref(_, BorrowKind::Fake, _) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -1080,7 +1157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::AddressOf(_, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _)
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::DebugAssertions, _)
             | Rvalue::Discriminant(_) => {}
         }
         self.super_rvalue(rvalue, location);
@@ -1110,17 +1187,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             location,
                             "`CopyForDeref` should only be used for dereferenceable types",
                         )
-                    }
-                }
-                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether
-                    // the places are identical.
-                    if dest == src {
-                        self.fail(
-                            location,
-                            "encountered `Assign` statement with overlapping memory",
-                        );
                     }
                 }
             }

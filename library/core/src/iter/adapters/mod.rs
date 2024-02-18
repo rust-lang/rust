@@ -1,5 +1,5 @@
 use crate::iter::InPlaceIterable;
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 mod array_chunks;
@@ -234,6 +234,6 @@ unsafe impl<I, R> InPlaceIterable for GenericShunt<'_, I, R>
 where
     I: InPlaceIterable,
 {
-    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
-    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
+    const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }

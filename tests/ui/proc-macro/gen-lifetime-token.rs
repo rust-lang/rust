@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:gen-lifetime-token.rs
+//@ run-pass
+//@ aux-build:gen-lifetime-token.rs
 
 extern crate gen_lifetime_token as bar;
 

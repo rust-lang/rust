@@ -1,6 +1,6 @@
-// run-pass
-// ignore-emscripten
-// ignore-android
+//@ run-pass
+//@ ignore-emscripten
+//@ ignore-android
 
 // FIXME: this test fails on arm-android because the NDK version 14 is too old.
 // It needs at least version 18. We disable it on all android build bots because

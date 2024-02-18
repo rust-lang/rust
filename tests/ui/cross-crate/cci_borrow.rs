@@ -1,5 +1,5 @@
-// run-pass
-// aux-build:cci_borrow_lib.rs
+//@ run-pass
+//@ aux-build:cci_borrow_lib.rs
 
 extern crate cci_borrow_lib;
 use cci_borrow_lib::foo;

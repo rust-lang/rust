@@ -26,6 +26,7 @@
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
+#![feature(generic_nonzero)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]
@@ -45,6 +46,7 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
+use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -190,8 +192,17 @@ impl ToString for TokenStream {
 /// Prints the token stream as a string that is supposed to be losslessly convertible back
 /// into the same token stream (modulo spans), except for possibly `TokenTree::Group`s
 /// with `Delimiter::None` delimiters and negative numeric literals.
+///
+/// Note: the exact form of the output is subject to change, e.g. there might
+/// be changes in the whitespace used between tokens. Therefore, you should
+/// *not* do any kind of simple substring matching on the output string (as
+/// produced by `to_string`) to implement a proc macro, because that matching
+/// might stop working if such changes happen. Instead, you should work at the
+/// `TokenTree` level, e.g. matching against `TokenTree::Ident`,
+/// `TokenTree::Punct`, or `TokenTree::Literal`.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
+    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
@@ -757,8 +768,17 @@ impl ToString for TokenTree {
 /// Prints the token tree as a string that is supposed to be losslessly convertible back
 /// into the same token tree (modulo spans), except for possibly `TokenTree::Group`s
 /// with `Delimiter::None` delimiters and negative numeric literals.
+///
+/// Note: the exact form of the output is subject to change, e.g. there might
+/// be changes in the whitespace used between tokens. Therefore, you should
+/// *not* do any kind of simple substring matching on the output string (as
+/// produced by `to_string`) to implement a proc macro, because that matching
+/// might stop working if such changes happen. Instead, you should work at the
+/// `TokenTree` level, e.g. matching against `TokenTree::Ident`,
+/// `TokenTree::Punct`, or `TokenTree::Literal`.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for TokenTree {
+    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
@@ -889,6 +909,7 @@ impl ToString for Group {
 /// with `Delimiter::None` delimiters.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Display for Group {
+    #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.to_string())
     }
@@ -1351,6 +1372,13 @@ impl Literal {
         Literal::new(bridge::LitKind::ByteStr, &string, None)
     }
 
+    /// C string literal.
+    #[unstable(feature = "proc_macro_c_str_literals", issue = "119750")]
+    pub fn c_string(string: &CStr) -> Literal {
+        let string = string.to_bytes().escape_ascii().to_string();
+        Literal::new(bridge::LitKind::CStr, &string, None)
+    }
+
     /// Returns the span encompassing this literal.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
@@ -1424,7 +1452,7 @@ impl Literal {
                 f(&["cr", hashes, "\"", symbol, "\"", hashes, suffix])
             }
 
-            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::Err => {
+            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
                 f(&[symbol, suffix])
             }
         })

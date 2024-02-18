@@ -8,7 +8,7 @@ fn main() {
         extern "rust-intrinsic" { //~ ERROR intrinsics are subject to change
             fn atomic_fence();
         }
-        atomic_fence();
+        atomic_fence(); //~ ERROR: is unsafe
         42
     });
 }

@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 // issue: https://github.com/rust-lang/rust/issues/97534
 
 macro_rules! m {

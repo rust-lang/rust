@@ -1,6 +1,6 @@
 // This ensures that ICEs like rust#94953 don't happen
-// check-pass
-// compile-flags: -Z unpretty=expanded
+//@ check-pass
+//@ compile-flags: -Z unpretty=expanded
 
 #![feature(lint_reasons)]
 

@@ -36,7 +36,9 @@ impl <'x> Expr for SExpr<'x> {
 
 fn main() {
     let a: Box<dyn Expr> = Box::new(SExpr::new());
+    //~^ ERROR: `Expr` cannot be made into an object
     let b: Box<dyn Expr> = Box::new(SExpr::new());
+    //~^ ERROR: `Expr` cannot be made into an object
 
     // assert_eq!(a , b);
 }

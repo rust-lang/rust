@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 macro_rules! macro_rules { () => { struct S; } } // OK
 

@@ -44,7 +44,6 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
-    AmdGpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
@@ -70,15 +69,16 @@ impl Abi {
         // * C and Cdecl obviously support varargs.
         // * C can be based on Aapcs, SysV64 or Win64, so they must support varargs.
         // * EfiApi is based on Win64 or C, so it also supports it.
+        // * System falls back to C for functions with varargs.
         //
         // * Stdcall does not, because it would be impossible for the callee to clean
         //   up the arguments. (callee doesn't know how many arguments are there)
         // * Same for Fastcall, Vectorcall and Thiscall.
-        // * System can become Stdcall, so is also a no-no.
         // * Other calling conventions are related to hardware or the compiler itself.
         match self {
             Self::C { .. }
             | Self::Cdecl { .. }
+            | Self::System { .. }
             | Self::Aapcs { .. }
             | Self::Win64 { .. }
             | Self::SysV64 { .. }
@@ -120,7 +120,6 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
     AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
     AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
-    AbiData { abi: Abi::AmdGpuKernel, name: "amdgpu-kernel" },
     AbiData { abi: Abi::EfiApi, name: "efiapi" },
     AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
     AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
@@ -236,10 +235,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::abi_x86_interrupt,
             explain: "x86-interrupt ABI is experimental and subject to change",
         }),
-        "amdgpu-kernel" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_amdgpu_kernel,
-            explain: "amdgpu-kernel ABI is experimental and subject to change",
-        }),
         "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
             feature: sym::abi_avr_interrupt,
             explain: "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
@@ -294,22 +289,21 @@ impl Abi {
             PtxKernel => 19,
             Msp430Interrupt => 20,
             X86Interrupt => 21,
-            AmdGpuKernel => 22,
-            EfiApi => 23,
-            AvrInterrupt => 24,
-            AvrNonBlockingInterrupt => 25,
-            CCmseNonSecureCall => 26,
-            Wasm => 27,
+            EfiApi => 22,
+            AvrInterrupt => 23,
+            AvrNonBlockingInterrupt => 24,
+            CCmseNonSecureCall => 25,
+            Wasm => 26,
             // Cross-platform ABIs
-            System { unwind: false } => 28,
-            System { unwind: true } => 29,
-            RustIntrinsic => 30,
-            RustCall => 31,
-            PlatformIntrinsic => 32,
-            Unadjusted => 33,
-            RustCold => 34,
-            RiscvInterruptM => 35,
-            RiscvInterruptS => 36,
+            System { unwind: false } => 27,
+            System { unwind: true } => 28,
+            RustIntrinsic => 29,
+            RustCall => 30,
+            PlatformIntrinsic => 31,
+            Unadjusted => 32,
+            RustCold => 33,
+            RiscvInterruptM => 34,
+            RiscvInterruptS => 35,
         };
         debug_assert!(
             AbiDatas

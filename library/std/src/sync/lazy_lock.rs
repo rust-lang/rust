@@ -20,6 +20,9 @@ union Data<T, F> {
 /// A value which is initialized on the first access.
 ///
 /// This type is a thread-safe [`LazyCell`], and can be used in statics.
+/// Since initialization may be called from multiple threads, any
+/// dereferencing call will block the calling thread if another
+/// initialization routine is currently running.
 ///
 /// [`LazyCell`]: crate::cell::LazyCell
 ///
@@ -81,8 +84,7 @@ pub struct LazyLock<T, F = fn() -> T> {
 }
 
 impl<T, F: FnOnce() -> T> LazyLock<T, F> {
-    /// Creates a new lazy value with the given initializing
-    /// function.
+    /// Creates a new lazy value with the given initializing function.
     #[inline]
     #[unstable(feature = "lazy_cell", issue = "109736")]
     pub const fn new(f: F) -> LazyLock<T, F> {
@@ -134,9 +136,11 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         }
     }
 
-    /// Forces the evaluation of this lazy value and
-    /// returns a reference to result. This is equivalent
-    /// to the `Deref` impl, but is explicit.
+    /// Forces the evaluation of this lazy value and returns a reference to
+    /// result. This is equivalent to the `Deref` impl, but is explicit.
+    ///
+    /// This method will block the calling thread if another initialization
+    /// routine is currently running.
     ///
     /// # Examples
     ///
@@ -204,6 +208,11 @@ impl<T, F> Drop for LazyLock<T, F> {
 impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     type Target = T;
 
+    /// Dereferences the value.
+    ///
+    /// This method will block the calling thread if another initialization
+    /// routine is currently running.
+    ///
     #[inline]
     fn deref(&self) -> &T {
         LazyLock::force(self)
@@ -232,7 +241,7 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
 }
 
 // We never create a `&F` from a `&LazyLock<T, F>` so it is fine
-// to not impl `Sync` for `F`
+// to not impl `Sync` for `F`.
 #[unstable(feature = "lazy_cell", issue = "109736")]
 unsafe impl<T: Sync + Send, F: Send> Sync for LazyLock<T, F> {}
 // auto-derived `Send` impl is OK.

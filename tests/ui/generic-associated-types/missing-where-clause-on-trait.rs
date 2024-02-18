@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 trait Foo {
     type Assoc<'a, 'b>;

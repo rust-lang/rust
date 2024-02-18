@@ -184,5 +184,41 @@ error: unreachable pattern
 LL |             | (y, x) => {}
    |               ^^^^^^
 
-error: aborting due to 29 previous errors
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:164:30
+   |
+LL | fn unreachable_in_param((_ | (_, _)): (bool, bool)) {}
+   |                              ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:171:14
+   |
+LL |     let (_ | (_, _)) = bool_pair;
+   |              ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:173:14
+   |
+LL |     for (_ | (_, _)) in [bool_pair] {}
+   |              ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:176:20
+   |
+LL |     let (Some(_) | Some(true)) = bool_option else { return };
+   |                    ^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:178:22
+   |
+LL |     if let Some(_) | Some(true) = bool_option {}
+   |                      ^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:180:25
+   |
+LL |     while let Some(_) | Some(true) = bool_option {}
+   |                         ^^^^^^^^^^
+
+error: aborting due to 35 previous errors
 

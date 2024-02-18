@@ -371,7 +371,15 @@ fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLik
                 if p.at(op) {
                     m = p.start();
                     p.bump(op);
-                    if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{'])) {
+
+                    // test closure_range_method_call
+                    // fn foo() {
+                    //     || .. .method();
+                    //     || .. .field;
+                    // }
+                    let has_access_after = p.at(T![.]) && p.nth_at(1, SyntaxKind::IDENT);
+                    let struct_forbidden = r.forbid_structs && p.at(T!['{']);
+                    if p.at_ts(EXPR_FIRST) && !has_access_after && !struct_forbidden {
                         expr_bp(p, None, r, 2);
                     }
                     let cm = m.complete(p, RANGE_EXPR);
@@ -522,6 +530,15 @@ fn method_call_expr<const FLOAT_RECOVERY: bool>(
     generic_args::opt_generic_arg_list(p, true);
     if p.at(T!['(']) {
         arg_list(p);
+    } else {
+        // emit an error when argument list is missing
+
+        // test_err method_call_missing_argument_list
+        // fn func() {
+        //     foo.bar::<>
+        //     foo.bar::<i32>;
+        // }
+        p.error("expected argument list");
     }
     m.complete(p, METHOD_CALL_EXPR)
 }
@@ -594,6 +611,7 @@ fn cast_expr(p: &mut Parser<'_>, lhs: CompletedMarker) -> CompletedMarker {
 //     foo(bar::);
 //     foo(bar:);
 //     foo(bar+);
+//     foo(a, , b);
 // }
 fn arg_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['(']));
@@ -607,8 +625,9 @@ fn arg_list(p: &mut Parser<'_>) {
         T!['('],
         T![')'],
         T![,],
+        || "expected expression".into(),
         EXPR_FIRST.union(ATTRIBUTE_FIRST),
-        |p: &mut Parser<'_>| expr(p).is_some(),
+        |p| expr(p).is_some(),
     );
     m.complete(p, ARG_LIST);
 }

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_camel_case_types)]
 
 // Ensures that class dtors run if the object is inside an enum
@@ -25,7 +25,7 @@ fn close_res(i: closable) -> close_res {
     }
 }
 
-enum option<T> { none, some(#[allow(unused_tuple_struct_fields)] T), }
+enum option<T> { none, some(#[allow(dead_code)] T), }
 
 fn sink(_res: option<close_res>) { }
 

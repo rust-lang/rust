@@ -1,4 +1,4 @@
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
     self, CallReturnPlaces, Local, Location, Place, StatementKind, TerminatorEdges,
@@ -26,14 +26,14 @@ use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 pub struct MaybeLiveLocals;
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
-    type Domain = ChunkedBitSet<Local>;
+    type Domain = BitSet<Local>;
     type Direction = Backward;
 
     const NAME: &'static str = "liveness";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        ChunkedBitSet::new_empty(body.local_decls.len())
+        BitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
@@ -233,14 +233,14 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
 }
 
 impl<'a, 'tcx> AnalysisDomain<'tcx> for MaybeTransitiveLiveLocals<'a> {
-    type Domain = ChunkedBitSet<Local>;
+    type Domain = BitSet<Local>;
     type Direction = Backward;
 
     const NAME: &'static str = "transitive liveness";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = not live
-        ChunkedBitSet::new_empty(body.local_decls.len())
+        BitSet::new_empty(body.local_decls.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {

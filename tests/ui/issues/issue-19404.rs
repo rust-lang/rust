@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 use std::any::TypeId;

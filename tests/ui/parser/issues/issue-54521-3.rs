@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 // This test checks that the following error is emitted and the suggestion works:
 //

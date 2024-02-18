@@ -8,7 +8,6 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use either::Either;
-use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;

@@ -1,4 +1,4 @@
-// compile-flags: -Z teach
+//@ compile-flags: -Z teach
 trait SomeTrait {
     fn foo(&self);
 }

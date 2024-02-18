@@ -37,11 +37,9 @@ use crate::{
 // ```
 pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
-    let mut proposed_imports = import_assets.search_for_relative_paths(
-        &ctx.sema,
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_prelude,
-    );
+    let mut proposed_imports: Vec<_> = import_assets
+        .search_for_relative_paths(&ctx.sema, ctx.config.prefer_no_std, ctx.config.prefer_prelude)
+        .collect();
     if proposed_imports.is_empty() {
         return None;
     }
@@ -82,6 +80,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     };
 
     // we aren't interested in different namespaces
+    proposed_imports.sort_by(|a, b| a.import_path.cmp(&b.import_path));
     proposed_imports.dedup_by(|a, b| a.import_path == b.import_path);
 
     let group_label = group_label(candidate);
@@ -204,7 +203,7 @@ fn item_as_trait(db: &RootDatabase, item: hir::ItemInNs) -> Option<hir::Trait> {
 
     match item_module_def {
         hir::ModuleDef::Trait(trait_) => Some(trait_),
-        _ => item_module_def.as_assoc_item(db)?.containing_trait(db),
+        _ => item_module_def.as_assoc_item(db)?.container_trait(db),
     }
 }
 

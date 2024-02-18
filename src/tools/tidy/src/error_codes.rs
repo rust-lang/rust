@@ -2,7 +2,7 @@
 //!
 //! Overview of check:
 //!
-//! 1. We create a list of error codes used by the compiler. Error codes are extracted from `compiler/rustc_error_codes/src/error_codes.rs`.
+//! 1. We create a list of error codes used by the compiler. Error codes are extracted from `compiler/rustc_error_codes/src/lib.rs`.
 //!
 //! 2. We check that the error code has a long-form explanation in `compiler/rustc_error_codes/src/error_codes/`.
 //!   - The explanation is expected to contain a `doctest` that fails with the correct error code. (`EXEMPT_FROM_DOCTEST` *currently* bypasses this check)
@@ -22,7 +22,7 @@ use regex::Regex;
 
 use crate::walk::{filter_dirs, walk, walk_many};
 
-const ERROR_CODES_PATH: &str = "compiler/rustc_error_codes/src/error_codes.rs";
+const ERROR_CODES_PATH: &str = "compiler/rustc_error_codes/src/lib.rs";
 const ERROR_DOCS_PATH: &str = "compiler/rustc_error_codes/src/error_codes/";
 const ERROR_TESTS_PATH: &str = "tests/ui/error-codes/";
 
@@ -80,13 +80,14 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
         if line.starts_with('E') {
             let split_line = line.split_once(':');
 
-            // Extract the error code from the line, emitting a fatal error if it is not in a correct format.
+            // Extract the error code from the line. Emit a fatal error if it is not in the correct
+            // format.
             let err_code = if let Some(err_code) = split_line {
                 err_code.0.to_owned()
             } else {
                 errors.push(format!(
-                    "Expected a line with the format `Exxxx: include_str!(\"..\")`, but got \"{}\" \
-                    without a `:` delimiter",
+                    "Expected a line with the format `Eabcd: abcd, \
+                    but got \"{}\" without a `:` delimiter",
                     line,
                 ));
                 continue;
@@ -98,12 +99,16 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
                 continue;
             }
 
+            let mut chars = err_code.chars();
+            chars.next();
+            let error_num_as_str = chars.as_str();
+
             // Ensure that the line references the correct markdown file.
-            let expected_filename = format!(" include_str!(\"./error_codes/{}.md\"),", err_code);
+            let expected_filename = format!(" {},", error_num_as_str);
             if expected_filename != split_line.unwrap().1 {
                 errors.push(format!(
-                    "Error code `{}` expected to reference docs with `{}` but instead found `{}` in \
-                    `compiler/rustc_error_codes/src/error_codes.rs`",
+                    "`{}:` should be followed by `{}` but instead found `{}` in \
+                    `compiler/rustc_error_codes/src/lib.rs`",
                     err_code,
                     expected_filename,
                     split_line.unwrap().1,
@@ -311,13 +316,8 @@ fn check_error_codes_used(
     no_longer_emitted: &[String],
     verbose: bool,
 ) {
-    // We want error codes which match the following cases:
-    //
-    // * foo(a, E0111, a)
-    // * foo(a, E0111)
-    // * foo(E0111, a)
-    // * #[error = "E0111"]
-    let regex = Regex::new(r#"[(,"\s](E\d{4})[,)"]"#).unwrap();
+    // Search for error codes in the form `E0123`.
+    let regex = Regex::new(r#"\bE\d{4}\b"#).unwrap();
 
     let mut found_codes = Vec::new();
 
@@ -336,12 +336,12 @@ fn check_error_codes_used(
             }
 
             for cap in regex.captures_iter(line) {
-                if let Some(error_code) = cap.get(1) {
+                if let Some(error_code) = cap.get(0) {
                     let error_code = error_code.as_str().to_owned();
 
                     if !error_codes.contains(&error_code) {
                         // This error code isn't properly defined, we must error.
-                        errors.push(format!("Error code `{}` is used in the compiler but not defined and documented in `compiler/rustc_error_codes/src/error_codes.rs`.", error_code));
+                        errors.push(format!("Error code `{}` is used in the compiler but not defined and documented in `compiler/rustc_error_codes/src/lib.rs`.", error_code));
                         continue;
                     }
 

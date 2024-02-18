@@ -1,8 +1,8 @@
-// run-rustfix
-// edition:2018
-// check-pass
-// aux-build:remove-extern-crate.rs
-// compile-flags:--extern remove_extern_crate
+//@ run-rustfix
+//@ edition:2018
+//@ check-pass
+//@ aux-build:remove-extern-crate.rs
+//@ compile-flags:--extern remove_extern_crate
 
 #![warn(rust_2018_idioms)]
 #![allow(dropping_copy_types)]

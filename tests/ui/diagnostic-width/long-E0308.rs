@@ -1,5 +1,5 @@
-// compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
-// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//@ compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
+//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
 mod a {
     // Force the "short path for unique types" machinery to trip up

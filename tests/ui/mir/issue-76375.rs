@@ -1,9 +1,9 @@
 // Regression test for issue #76375.
 //
-// edition:2018
-// build-pass
-// compile-flags: -Z mir-opt-level=3
-// aux-build:issue_76375_aux.rs
+//@ edition:2018
+//@ build-pass
+//@ compile-flags: -Z mir-opt-level=3
+//@ aux-build:issue_76375_aux.rs
 
 #![crate_type = "lib"]
 

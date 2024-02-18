@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 macro_rules! test_expr {
     ($expr:expr) => {};

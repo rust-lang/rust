@@ -1,8 +1,8 @@
-// run-pass
+//@ run-pass
 
 use std::hint;
 
-struct U16(u16);
+struct U16(#[allow(dead_code)] u16);
 
 impl Drop for U16 {
     fn drop(&mut self) {
@@ -23,7 +23,7 @@ struct Wrapper {
 }
 
 #[repr(packed)]
-struct Misalign(u8, Wrapper);
+struct Misalign(#[allow(dead_code)] u8, Wrapper);
 
 fn main() {
     let m = Misalign(

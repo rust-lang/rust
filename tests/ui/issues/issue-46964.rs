@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 mod my_mod {
     #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
     pub struct Name<'a> {

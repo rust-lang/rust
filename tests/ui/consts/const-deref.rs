@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 const C: &'static isize = &1000;
 static D: isize = *C;

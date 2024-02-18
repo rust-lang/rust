@@ -62,6 +62,27 @@ $ ./test.sh
 
 For more docs on how to build and test see [build_system/usage.txt](build_system/usage.txt) or the help message of `./y.sh`.
 
+## Platform support
+
+|OS \ architecture|x86\_64|AArch64|Riscv64|s390x (System-Z)|
+|---|---|---|---|---|
+|Linux|✅|✅|✅[^no-rustup]|✅[^no-rustup]|
+|FreeBSD|✅[^no-rustup]|❓|❓|❓|
+|AIX|❌[^xcoff]|N/A|N/A|❌[^xcoff]|
+|Other unixes|❓|❓|❓|❓|
+|macOS|✅|❌[^apple-silicon]|N/A|N/A|
+|Windows|✅[^no-rustup]|❌|N/A|N/A|
+
+✅: Fully supported and tested
+❓: Maybe supported, not tested
+❌: Not supported at all
+
+Not all targets are available as rustup component for nightly. See notes in the platform support matrix.
+
+[^xcoff]: XCOFF object file format is not supported.
+[^apple-silicon]: Tracked in [#1248](https://github.com/rust-lang/rustc_codegen_cranelift/issues/1248).
+[^no-rustup]: Not available as rustup component for nightly. You can build it yourself.
+
 ## Usage
 
 rustc_codegen_cranelift can be used as a near-drop-in replacement for `cargo build` or `cargo run` for existing projects.
@@ -99,6 +120,8 @@ You need to do this steps to successfully compile and use the cranelift backend 
   * `rustup run stage2 ./y.sh build`
   * (Optional) run tests: `rustup run stage2 ./y.sh test`
 8. Now you can use your cg_clif build to compile other Rust programs, e.g. you can open any Rust crate and run commands like `$RustCheckoutDir/compiler/rustc_codegen_cranelift/dist/cargo-clif build --release`.
+
+You can also set `rust-analyzer.rustc.source` to your rust workspace to get rust-analyzer to understand your changes.
 
 ## Configuration
 

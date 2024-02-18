@@ -207,7 +207,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) {
         if !hir_ty.span.from_expansion()
             && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check {

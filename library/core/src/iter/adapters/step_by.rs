@@ -1,7 +1,7 @@
 use crate::convert::TryFrom;
 use crate::{
     intrinsics,
-    iter::{from_fn, TrustedLen},
+    iter::{from_fn, TrustedLen, TrustedRandomAccess},
     ops::{Range, Try},
 };
 
@@ -123,6 +123,14 @@ where
 // StepBy can only make the iterator shorter, so the len will still fit.
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 impl<I> ExactSizeIterator for StepBy<I> where I: ExactSizeIterator {}
+
+// SAFETY: This adapter is shortening. TrustedLen requires the upper bound to be calculated correctly.
+// These requirements can only be satisfied when the upper bound of the inner iterator's upper
+// bound is never `None`. I: TrustedRandomAccess happens to provide this guarantee while
+// I: TrustedLen would not.
+// This also covers the Range specializations since the ranges also implement TRA
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<I> TrustedLen for StepBy<I> where I: Iterator + TrustedRandomAccess {}
 
 trait SpecRangeSetup<T> {
     fn setup(inner: T, step: usize) -> T;
@@ -480,12 +488,6 @@ macro_rules! spec_int_ranges {
                 acc
             }
         }
-
-        /// Safety: This macro is only applied to ranges over types <= usize
-        /// which means the inner length is guaranteed to fit into a usize and so
-        /// the outer length calculation won't encounter clamped values
-        #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl TrustedLen for StepBy<Range<$t>> {}
     )*)
 }
 

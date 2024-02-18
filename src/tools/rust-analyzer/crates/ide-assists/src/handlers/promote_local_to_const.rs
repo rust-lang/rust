@@ -11,7 +11,10 @@ use syntax::{
     ted, AstNode, WalkEvent,
 };
 
-use crate::assist_context::{AssistContext, Assists};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    utils,
+};
 
 // Assist: promote_local_to_const
 //
@@ -79,15 +82,13 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
                 let name_ref = make::name_ref(&name);
 
                 for usage in usages {
-                    let Some(usage) = usage.name.as_name_ref().cloned() else { continue };
-                    if let Some(record_field) = ast::RecordExprField::for_name_ref(&usage) {
-                        let record_field = edit.make_mut(record_field);
-                        let name_expr =
-                            make::expr_path(make::path_from_text(&name)).clone_for_update();
-                        record_field.replace_expr(name_expr);
+                    let Some(usage_name) = usage.name.as_name_ref().cloned() else { continue };
+                    if let Some(record_field) = ast::RecordExprField::for_name_ref(&usage_name) {
+                        let name_expr = make::expr_path(make::path_from_text(&name));
+                        utils::replace_record_field_expr(ctx, edit, record_field, name_expr);
                     } else {
-                        let usage = edit.make_mut(usage);
-                        ted::replace(usage.syntax(), name_ref.clone_for_update().syntax());
+                        let usage_range = usage.range;
+                        edit.replace(usage_range, name_ref.syntax().text());
                     }
                 }
             }
@@ -207,6 +208,76 @@ struct Foo {
 fn main() {
     const $0BAR: usize = 0;
     let foo = Foo { bar: BAR };
+}
+",
+        )
+    }
+
+    #[test]
+    fn usage_in_macro() {
+        check_assist(
+            promote_local_to_const,
+            r"
+macro_rules! identity {
+    ($body:expr) => {
+        $body
+    }
+}
+
+fn baz() -> usize {
+    let $0foo = 2;
+    identity![foo]
+}
+",
+            r"
+macro_rules! identity {
+    ($body:expr) => {
+        $body
+    }
+}
+
+fn baz() -> usize {
+    const $0FOO: usize = 2;
+    identity![FOO]
+}
+",
+        )
+    }
+
+    #[test]
+    fn usage_shorthand_in_macro() {
+        check_assist(
+            promote_local_to_const,
+            r"
+struct Foo {
+    foo: usize,
+}
+
+macro_rules! identity {
+    ($body:expr) => {
+        $body
+    };
+}
+
+fn baz() -> Foo {
+    let $0foo = 2;
+    identity![Foo { foo }]
+}
+",
+            r"
+struct Foo {
+    foo: usize,
+}
+
+macro_rules! identity {
+    ($body:expr) => {
+        $body
+    };
+}
+
+fn baz() -> Foo {
+    const $0FOO: usize = 2;
+    identity![Foo { foo: FOO }]
 }
 ",
         )

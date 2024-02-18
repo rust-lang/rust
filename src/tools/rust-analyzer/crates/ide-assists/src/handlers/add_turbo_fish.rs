@@ -85,9 +85,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
     if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
         if let_stmt.colon_token().is_none() {
-            if let_stmt.pat().is_none() {
-                return None;
-            }
+            let_stmt.pat()?;
 
             acc.add(
                 AssistId("add_type_ascription", AssistKind::RefactorRewrite),

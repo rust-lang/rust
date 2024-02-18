@@ -95,8 +95,10 @@ impl fmt::Display for AllocError {
 /// # Safety
 ///
 /// * Memory blocks returned from an allocator that are [*currently allocated*] must point to
-///   valid memory and retain their validity while they are [*currently allocated*] and at
-///   least one of the instance and all of its clones has not been dropped.
+///   valid memory and retain their validity while they are [*currently allocated*] and the shorter
+///   of:
+///   - the borrow-checker lifetime of the allocator type itself.
+///   - as long as at least one of the instance and all of its clones has not been dropped.
 ///
 /// * copying, cloning, or moving the allocator must not invalidate memory blocks returned from this
 ///   allocator. A copied or cloned allocator must behave like the same allocator, and
@@ -113,6 +115,10 @@ pub unsafe trait Allocator {
     ///
     /// The returned block may have a larger size than specified by `layout.size()`, and may or may
     /// not have its contents initialized.
+    ///
+    /// The returned block of memory remains valid as long as it is [*currently allocated*] and the shorter of:
+    ///   - the borrow-checker lifetime of the allocator type itself.
+    ///   - as long as at the allocator and all its clones has not been dropped.
     ///
     /// # Errors
     ///

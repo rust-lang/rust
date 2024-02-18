@@ -1,6 +1,6 @@
 // Check that type privacy is taken into account when considering reachability
 
-// check-pass
+//@ check-pass
 
 #![feature(decl_macro, staged_api)]
 #![stable(feature = "test", since = "1.0.0")]

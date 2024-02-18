@@ -3,17 +3,15 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
+#![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
-#![feature(trusted_step)]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -22,7 +20,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{Diagnostic, DiagnosticBuilder};
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{BitSet, ChunkedBitSet};
@@ -113,14 +111,16 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
     let (input_body, promoted) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
 
-    if input_body.borrow().should_skip() {
-        debug!("Skipping borrowck because of injected body");
+    let input_body: &Body<'_> = &input_body.borrow();
+
+    if input_body.should_skip() || input_body.tainted_by_errors.is_some() {
+        debug!("Skipping borrowck because of injected body or tainted body");
         // Let's make up a borrowck result! Fun times!
         let result = BorrowCheckResult {
             concrete_opaque_types: FxIndexMap::default(),
             closure_requirements: None,
             used_mut_upvars: SmallVec::new(),
-            tainted_by_errors: None,
+            tainted_by_errors: input_body.tainted_by_errors,
         };
         return tcx.arena.alloc(result);
     }
@@ -129,7 +129,6 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
 
     let infcx =
         tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id)).build();
-    let input_body: &Body<'_> = &input_body.borrow();
     let promoted: &IndexSlice<_, _> = &promoted.borrow();
     let opt_closure_req = do_mir_borrowck(&infcx, input_body, promoted, None).0;
     debug!("mir_borrowck done");
@@ -176,12 +175,11 @@ fn do_mir_borrowck<'tcx>(
         }
     }
 
-    let mut errors = error::BorrowckErrors::new(infcx.tcx);
+    let mut diags = diags::BorrowckDiags::new();
 
     // Gather the upvars of a closure, if any.
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
-        errors.set_tainted_by_errors(e);
     }
 
     // Replace all regions with fresh inference variables. This
@@ -247,7 +245,7 @@ fn do_mir_borrowck<'tcx>(
         &regioncx,
         &opt_closure_req,
         &opaque_type_values,
-        &mut errors,
+        &mut diags,
     );
 
     // The various `flow_*` structures can be large. We drop `flow_inits` here
@@ -274,11 +272,12 @@ fn do_mir_borrowck<'tcx>(
         // The first argument is the coroutine type passed by value
         if let Some(local) = body.local_decls.raw.get(1)
         // Get the interior types and args which typeck computed
-        && let ty::Coroutine(_, _, hir::Movability::Static) = local.ty.kind()
+        && let ty::Coroutine(def_id, _) = *local.ty.kind()
+        && tcx.coroutine_movability(def_id) == hir::Movability::Movable
     {
-        false
-    } else {
         true
+    } else {
+        false
     };
 
     for (idx, move_data) in promoted_move_data {
@@ -307,11 +306,11 @@ fn do_mir_borrowck<'tcx>(
             next_region_name: RefCell::new(1),
             polonius_output: None,
             move_errors: Vec::new(),
-            errors,
+            diags,
         };
         MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
         promoted_mbcx.report_move_errors();
-        errors = promoted_mbcx.errors;
+        diags = promoted_mbcx.diags;
 
         struct MoveVisitor<'a, 'cx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'cx, 'tcx>,
@@ -348,7 +347,7 @@ fn do_mir_borrowck<'tcx>(
         next_region_name: RefCell::new(1),
         polonius_output,
         move_errors: Vec::new(),
-        errors,
+        diags,
     };
 
     // Compute and report region errors, if any.
@@ -414,7 +413,7 @@ fn do_mir_borrowck<'tcx>(
 
         let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
 
-        tcx.emit_spanned_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
+        tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
     }
 
     let tainted_by_errors = mbcx.emit_errors();
@@ -576,7 +575,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Rc<PoloniusOutput>>,
 
-    errors: error::BorrowckErrors<'tcx>,
+    diags: diags::BorrowckDiags<'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
@@ -702,7 +701,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
             } => {
                 self.consume_operand(loc, (func, span), flow_state);
                 for arg in args {
-                    self.consume_operand(loc, (arg, span), flow_state);
+                    self.consume_operand(loc, (&arg.node, arg.span), flow_state);
                 }
                 self.mutate_place(loc, (*destination, span), Deep, flow_state);
             }
@@ -1037,7 +1036,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self,
             self.infcx.tcx,
             self.body,
-            location,
             (sd, place_span.0),
             &borrow_set,
             |borrow_index| borrows_in_scope.contains(borrow_index),
@@ -1306,7 +1304,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // moved into the closure and subsequently used by the closure,
                 // in order to populate our used_mut set.
                 match **aggregate_kind {
-                    AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _, _) => {
+                    AggregateKind::Closure(def_id, _)
+                    | AggregateKind::CoroutineClosure(def_id, _)
+                    | AggregateKind::Coroutine(def_id, _) => {
                         let def_id = def_id.expect_local();
                         let BorrowCheckResult { used_mut_upvars, .. } =
                             self.infcx.tcx.mir_borrowck(def_id);
@@ -1612,7 +1612,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ty::FnPtr(_)
                     | ty::Dynamic(_, _, _)
                     | ty::Closure(_, _)
-                    | ty::Coroutine(_, _, _)
+                    | ty::CoroutineClosure(_, _)
+                    | ty::Coroutine(_, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Tuple(_)
@@ -1636,7 +1637,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             return;
                         }
                     }
-                    ty::Closure(_, _) | ty::Coroutine(_, _, _) | ty::Tuple(_) => (),
+                    ty::Closure(..)
+                    | ty::CoroutineClosure(..)
+                    | ty::Coroutine(_, _)
+                    | ty::Tuple(_) => (),
                     ty::Bool
                     | ty::Char
                     | ty::Int(_)
@@ -2127,14 +2131,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | WriteKind::MutableBorrow(BorrowKind::Fake),
             ) => {
                 if self.is_mutable(place.as_ref(), is_local_mutation_allowed).is_err()
-                    && !self.has_buffered_errors()
+                    && !self.has_buffered_diags()
                 {
                     // rust-lang/rust#46908: In pure NLL mode this code path should be
                     // unreachable, but we use `span_delayed_bug` because we can hit this when
                     // dereferencing a non-Copy raw pointer *and* have `-Ztreat-err-as-bug`
                     // enabled. We don't want to ICE for that case, as other errors will have
                     // been emitted (#52262).
-                    self.infcx.tcx.sess.span_delayed_bug(
+                    self.dcx().span_delayed_bug(
                         span,
                         format!(
                             "Accessing `{place:?}` with the kind `{kind:?}` shouldn't be possible",
@@ -2169,7 +2173,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // report the error as an illegal reassignment
                 let init = &self.move_data.inits[init_index];
                 let assigned_span = init.span(self.body);
-                self.report_illegal_reassignment(location, (place, span), assigned_span, place);
+                self.report_illegal_reassignment((place, span), assigned_span, place);
             } else {
                 self.report_mutability_error(place, span, the_place_err, error_access, location)
             }
@@ -2385,73 +2389,74 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 }
 
-mod error {
+mod diags {
     use rustc_errors::ErrorGuaranteed;
 
     use super::*;
 
-    pub struct BorrowckErrors<'tcx> {
-        tcx: TyCtxt<'tcx>,
+    enum BufferedDiag<'tcx> {
+        Error(DiagnosticBuilder<'tcx>),
+        NonError(DiagnosticBuilder<'tcx, ()>),
+    }
+
+    impl<'tcx> BufferedDiag<'tcx> {
+        fn sort_span(&self) -> Span {
+            match self {
+                BufferedDiag::Error(diag) => diag.sort_span,
+                BufferedDiag::NonError(diag) => diag.sort_span,
+            }
+        }
+    }
+
+    pub struct BorrowckDiags<'tcx> {
         /// This field keeps track of move errors that are to be reported for given move indices.
         ///
-        /// There are situations where many errors can be reported for a single move out (see #53807)
-        /// and we want only the best of those errors.
+        /// There are situations where many errors can be reported for a single move out (see
+        /// #53807) and we want only the best of those errors.
         ///
         /// The `report_use_of_moved_or_uninitialized` function checks this map and replaces the
-        /// diagnostic (if there is one) if the `Place` of the error being reported is a prefix of the
-        /// `Place` of the previous most diagnostic. This happens instead of buffering the error. Once
-        /// all move errors have been reported, any diagnostics in this map are added to the buffer
-        /// to be emitted.
+        /// diagnostic (if there is one) if the `Place` of the error being reported is a prefix of
+        /// the `Place` of the previous most diagnostic. This happens instead of buffering the
+        /// error. Once all move errors have been reported, any diagnostics in this map are added
+        /// to the buffer to be emitted.
         ///
         /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
         buffered_move_errors:
             BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)>,
+
         buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx>, usize)>,
-        /// Diagnostics to be reported buffer.
-        buffered: Vec<Diagnostic>,
-        /// Set to Some if we emit an error during borrowck
-        tainted_by_errors: Option<ErrorGuaranteed>,
+
+        /// Buffer of diagnostics to be reported. A mixture of error and non-error diagnostics.
+        buffered_diags: Vec<BufferedDiag<'tcx>>,
     }
 
-    impl<'tcx> BorrowckErrors<'tcx> {
-        pub fn new(tcx: TyCtxt<'tcx>) -> Self {
-            BorrowckErrors {
-                tcx,
+    impl<'tcx> BorrowckDiags<'tcx> {
+        pub fn new() -> Self {
+            BorrowckDiags {
                 buffered_move_errors: BTreeMap::new(),
                 buffered_mut_errors: Default::default(),
-                buffered: Default::default(),
-                tainted_by_errors: None,
+                buffered_diags: Default::default(),
             }
         }
 
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
-            if let None = self.tainted_by_errors {
-                self.tainted_by_errors = Some(self.tcx.sess.span_delayed_bug(
-                    t.span.clone_ignoring_labels(),
-                    "diagnostic buffered but not emitted",
-                ))
-            }
-            t.buffer(&mut self.buffered);
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'tcx>) {
+            self.buffered_diags.push(BufferedDiag::Error(t));
         }
 
-        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
-            t.buffer(&mut self.buffered);
-        }
-
-        pub fn set_tainted_by_errors(&mut self, e: ErrorGuaranteed) {
-            self.tainted_by_errors = Some(e);
+        pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'tcx, ()>) {
+            self.buffered_diags.push(BufferedDiag::NonError(t));
         }
     }
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
-            self.errors.buffer_error(t);
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'tcx>) {
+            self.diags.buffer_error(t);
         }
 
-        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
-            self.errors.buffer_non_error_diag(t);
+        pub fn buffer_non_error(&mut self, t: DiagnosticBuilder<'tcx, ()>) {
+            self.diags.buffer_non_error(t);
         }
 
         pub fn buffer_move_error(
@@ -2460,7 +2465,7 @@ mod error {
             place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
         ) -> bool {
             if let Some((_, diag)) =
-                self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
+                self.diags.buffered_move_errors.insert(move_out_indices, place_and_err)
             {
                 // Cancel the old diagnostic so we don't ICE
                 diag.cancel();
@@ -2474,46 +2479,51 @@ mod error {
             &mut self,
             span: Span,
         ) -> Option<(DiagnosticBuilder<'tcx>, usize)> {
-            self.errors.buffered_mut_errors.remove(&span)
+            // FIXME(#120456) - is `swap_remove` correct?
+            self.diags.buffered_mut_errors.swap_remove(&span)
         }
 
         pub fn buffer_mut_error(&mut self, span: Span, t: DiagnosticBuilder<'tcx>, count: usize) {
-            self.errors.buffered_mut_errors.insert(span, (t, count));
+            self.diags.buffered_mut_errors.insert(span, (t, count));
         }
 
         pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
+            let mut res = None;
+
             // Buffer any move errors that we collected and de-duplicated.
-            for (_, (_, diag)) in std::mem::take(&mut self.errors.buffered_move_errors) {
+            for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
-                diag.buffer(&mut self.errors.buffered);
+                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
             }
-            for (_, (mut diag, count)) in std::mem::take(&mut self.errors.buffered_mut_errors) {
+            for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
                 if count > 10 {
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
-                diag.buffer(&mut self.errors.buffered);
+                self.diags.buffered_diags.push(BufferedDiag::Error(diag));
             }
 
-            if !self.errors.buffered.is_empty() {
-                self.errors.buffered.sort_by_key(|diag| diag.sort_span);
-
-                for diag in self.errors.buffered.drain(..) {
-                    self.infcx.tcx.sess.dcx().emit_diagnostic(diag);
+            if !self.diags.buffered_diags.is_empty() {
+                self.diags.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
+                for buffered_diag in self.diags.buffered_diags.drain(..) {
+                    match buffered_diag {
+                        BufferedDiag::Error(diag) => res = Some(diag.emit()),
+                        BufferedDiag::NonError(diag) => diag.emit(),
+                    }
                 }
             }
 
-            self.errors.tainted_by_errors
+            res
         }
 
-        pub fn has_buffered_errors(&self) -> bool {
-            self.errors.buffered.is_empty()
+        pub(crate) fn has_buffered_diags(&self) -> bool {
+            self.diags.buffered_diags.is_empty()
         }
 
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx>)> {
-            self.errors.buffered_move_errors.get(move_out_indices)
+        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)> {
+            self.diags.buffered_move_errors.get(move_out_indices)
         }
     }
 }

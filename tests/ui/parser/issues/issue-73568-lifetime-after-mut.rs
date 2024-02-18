@@ -16,4 +16,5 @@ fn y<'a>(y: &mut 'a + Send) {
     //~| ERROR at least one trait is required for an object type
     let z = y as &mut 'a + Send;
     //~^ ERROR expected value, found trait `Send`
+    //~| ERROR at least one trait is required for an object type
 }

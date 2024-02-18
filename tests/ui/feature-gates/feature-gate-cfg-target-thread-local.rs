@@ -1,5 +1,5 @@
-// ignore-windows
-// aux-build:cfg-target-thread-local.rs
+//@ ignore-windows
+//@ aux-build:cfg-target-thread-local.rs
 
 #![feature(thread_local)]
 
@@ -13,4 +13,5 @@ extern "C" {
 
 fn main() {
     assert_eq!(FOO, 3);
+    //~^ ERROR extern static is unsafe
 }

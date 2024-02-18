@@ -15,10 +15,9 @@ use termcolor::{ColorSpec, WriteColor};
 use crate::emitter::{should_show_source_code, Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::translation::{to_fluent_args, Translate};
-use crate::DiagnosticId;
 use crate::{
-    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
-    TerminalUrl,
+    diagnostic::IsLint, CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel,
+    SubDiagnostic, TerminalUrl,
 };
 use rustc_lint_defs::Applicability;
 
@@ -177,7 +176,7 @@ impl Translate for JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
@@ -198,11 +197,11 @@ impl Emitter for JsonEmitter {
             .into_iter()
             .map(|mut diag| {
                 if diag.level == crate::Level::Allow {
-                    diag.level = crate::Level::Warning(None);
+                    diag.level = crate::Level::Warning;
                 }
                 FutureBreakageItem {
                     diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
-                        &diag, self,
+                        diag, self,
                     )),
                 }
             })
@@ -301,7 +300,8 @@ struct DiagnosticSpanMacroExpansion {
 
 #[derive(Serialize)]
 struct DiagnosticCode {
-    /// The code itself.
+    /// The error code (e.g. "E1234"), if the diagnostic has one. Or the lint
+    /// name, if it's a lint without an error code.
     code: String,
     /// An explanation for the code.
     explanation: Option<&'static str>,
@@ -340,7 +340,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_errors_diagnostic(diag: crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
             let translated_message =
@@ -382,6 +382,28 @@ impl Diagnostic {
                 Ok(())
             }
         }
+
+        let translated_message = je.translate_messages(&diag.messages, &args);
+
+        let code = if let Some(code) = diag.code {
+            Some(DiagnosticCode {
+                code: code.to_string(),
+                explanation: je.registry.as_ref().unwrap().try_find_description(code).ok(),
+            })
+        } else if let Some(IsLint { name, .. }) = &diag.is_lint {
+            Some(DiagnosticCode { code: name.to_string(), explanation: None })
+        } else {
+            None
+        };
+        let level = diag.level.to_str();
+        let spans = DiagnosticSpan::from_multispan(&diag.span, &args, je);
+        let children = diag
+            .children
+            .iter()
+            .map(|c| Diagnostic::from_sub_diagnostic(c, &args, je))
+            .chain(sugg)
+            .collect();
+
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered
@@ -398,18 +420,12 @@ impl Diagnostic {
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
-        let translated_message = je.translate_messages(&diag.messages, &args);
         Diagnostic {
             message: translated_message.to_string(),
-            code: DiagnosticCode::map_opt_string(diag.code.clone(), je),
-            level: diag.level.to_str(),
-            spans: DiagnosticSpan::from_multispan(&diag.span, &args, je),
-            children: diag
-                .children
-                .iter()
-                .map(|c| Diagnostic::from_sub_diagnostic(c, &args, je))
-                .chain(sugg)
-                .collect(),
+            code,
+            level,
+            spans,
+            children,
             rendered: Some(output),
         }
     }
@@ -590,20 +606,5 @@ impl DiagnosticSpanLine {
                     .collect()
             })
             .unwrap_or_else(|_| vec![])
-    }
-}
-
-impl DiagnosticCode {
-    fn map_opt_string(s: Option<DiagnosticId>, je: &JsonEmitter) -> Option<DiagnosticCode> {
-        s.map(|s| {
-            let s = match s {
-                DiagnosticId::Error(s) => s,
-                DiagnosticId::Lint { name, .. } => name,
-            };
-            let je_result =
-                je.registry.as_ref().map(|registry| registry.try_find_description(&s)).unwrap();
-
-            DiagnosticCode { code: s, explanation: je_result.ok() }
-        })
     }
 }

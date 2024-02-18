@@ -4,7 +4,7 @@
 // Note: This scenario is currently accepted, but as part of the
 // universe transition (#56105) may eventually become an error.
 
-// check-pass
+//@ check-pass
 
 trait TheTrait {
     fn foo(&self) {}

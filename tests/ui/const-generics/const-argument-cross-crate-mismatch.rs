@@ -1,4 +1,4 @@
-// aux-build:const_generic_lib.rs
+//@ aux-build:const_generic_lib.rs
 
 extern crate const_generic_lib;
 

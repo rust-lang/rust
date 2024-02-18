@@ -2,7 +2,7 @@
 //
 // Make sure that nested matchers work correctly rather than causing an infinite loop or crash.
 
-// edition:2018
+//@ edition:2018
 
 macro_rules! foo1 {
     ($($($i:ident)?)+) => {};

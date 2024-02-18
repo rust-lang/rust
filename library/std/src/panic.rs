@@ -5,13 +5,13 @@
 use crate::any::Any;
 use crate::collections;
 use crate::panicking;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{AtomicU8, Ordering};
 use crate::sync::{Mutex, RwLock};
 use crate::thread::Result;
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(libstd_sys_internals, const_format_args, core_panic, rt)]
+#[allow_internal_unstable(libstd_sys_internals, const_format_args, panic_internals, rt)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "std_panic_2015_macro")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
@@ -228,7 +228,7 @@ impl BacktraceStyle {
         if cfg!(feature = "backtrace") { Some(BacktraceStyle::Full) } else { None }
     }
 
-    fn as_usize(self) -> usize {
+    fn as_u8(self) -> u8 {
         match self {
             BacktraceStyle::Short => 1,
             BacktraceStyle::Full => 2,
@@ -236,7 +236,7 @@ impl BacktraceStyle {
         }
     }
 
-    fn from_usize(s: usize) -> Option<Self> {
+    fn from_u8(s: u8) -> Option<Self> {
         Some(match s {
             0 => return None,
             1 => BacktraceStyle::Short,
@@ -251,7 +251,7 @@ impl BacktraceStyle {
 // that backtrace.
 //
 // Internally stores equivalent of an Option<BacktraceStyle>.
-static SHOULD_CAPTURE: AtomicUsize = AtomicUsize::new(0);
+static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
 
 /// Configure whether the default panic hook will capture and display a
 /// backtrace.
@@ -264,7 +264,7 @@ pub fn set_backtrace_style(style: BacktraceStyle) {
         // If the `backtrace` feature of this crate isn't enabled, skip setting.
         return;
     }
-    SHOULD_CAPTURE.store(style.as_usize(), Ordering::Release);
+    SHOULD_CAPTURE.store(style.as_u8(), Ordering::Release);
 }
 
 /// Checks whether the standard library's panic hook will capture and print a
@@ -296,7 +296,7 @@ pub fn get_backtrace_style() -> Option<BacktraceStyle> {
         // to optimize away callers.
         return None;
     }
-    if let Some(style) = BacktraceStyle::from_usize(SHOULD_CAPTURE.load(Ordering::Acquire)) {
+    if let Some(style) = BacktraceStyle::from_u8(SHOULD_CAPTURE.load(Ordering::Acquire)) {
         return Some(style);
     }
 

@@ -15,11 +15,11 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(never_type)]
 #![feature(rustc_attrs)]
-#![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
+#![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::potential_query_instability)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![allow(internal_features)]
 
 #[macro_use]
@@ -37,7 +37,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrCode};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -55,6 +55,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -185,7 +186,7 @@ struct BindingError {
 #[derive(Debug)]
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer item.
-    GenericParamsFromOuterItem(Res, HasGenericParams),
+    GenericParamsFromOuterItem(Res, HasGenericParams, DefKind),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
     NameAlreadyUsedInParameterList(Symbol, Span),
@@ -213,7 +214,7 @@ enum ResolutionError<'a> {
     SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// Error E0433: failed to resolve.
     FailedToResolve {
-        last_segment: Option<Symbol>,
+        segment: Option<Symbol>,
         label: String,
         suggestion: Option<Suggestion>,
         module: Option<ModuleOrUniformRoot<'a>>,
@@ -257,7 +258,7 @@ enum ResolutionError<'a> {
         kind: &'static str,
         trait_path: String,
         trait_item_span: Span,
-        code: rustc_errors::DiagnosticId,
+        code: ErrCode,
     },
     /// Error E0201: multiple impl items for the same trait item.
     TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
@@ -265,6 +266,8 @@ enum ResolutionError<'a> {
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
     LowercaseSelf,
+    /// A never pattern has a binding.
+    BindingInNeverPattern,
 }
 
 enum VisResolutionError<'a> {
@@ -396,12 +399,14 @@ enum PathResult<'a> {
         suggestion: Option<Suggestion>,
         is_error_from_last_segment: bool,
         module: Option<ModuleOrUniformRoot<'a>>,
+        /// The segment name of target
+        segment_name: Symbol,
     },
 }
 
 impl<'a> PathResult<'a> {
     fn failed(
-        span: Span,
+        ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
         module: Option<ModuleOrUniformRoot<'a>>,
@@ -409,7 +414,14 @@ impl<'a> PathResult<'a> {
     ) -> PathResult<'a> {
         let (label, suggestion) =
             if finalize { label_and_suggestion() } else { (String::new(), None) };
-        PathResult::Failed { span, label, suggestion, is_error_from_last_segment, module }
+        PathResult::Failed {
+            span: ident.span,
+            segment_name: ident.name,
+            label,
+            suggestion,
+            is_error_from_last_segment,
+            module,
+        }
     }
 }
 
@@ -1004,6 +1016,8 @@ pub struct Resolver<'a, 'tcx> {
     binding_parent_modules: FxHashMap<NameBinding<'a>, Module<'a>>,
 
     underscore_disambiguator: u32,
+    /// Disambiguator for anonymous adts.
+    empty_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
@@ -1101,6 +1115,8 @@ pub struct Resolver<'a, 'tcx> {
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
+    /// Amount of parameters for each function in the crate.
+    fn_parameter_counts: LocalDefIdMap<usize>,
 
     main_def: Option<MainDefinition>,
     trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
@@ -1205,6 +1221,10 @@ impl<'tcx> Resolver<'_, 'tcx> {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
+    fn local_def_kind(&self, node: NodeId) -> DefKind {
+        self.tcx.def_kind(self.local_def_id(node))
+    }
+
     /// Adds a definition with a parent definition.
     fn create_def(
         &mut self,
@@ -1225,7 +1245,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         );
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let def_id = self.tcx.create_def(parent, name, def_kind);
+        let def_id = self.tcx.create_def(parent, name, def_kind).def_id();
 
         // Create the definition.
         if expn_id != ExpnId::root() {
@@ -1349,6 +1369,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
+            empty_disambiguator: 0,
             empty_module,
             module_map,
             block_map: Default::default(),
@@ -1439,6 +1460,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             all_macro_rules: Default::default(),
+            fn_parameter_counts: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1542,6 +1564,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
+            has_self: self.has_self,
+            fn_parameter_counts: self.fn_parameter_counts,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }
@@ -1610,6 +1634,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.tcx
                 .sess
                 .time("resolve_postprocess", || self.crate_loader(|c| c.postprocess(krate)));
+            self.crate_loader(|c| c.unload_unused_crates());
         });
 
         // Make sure we don't mutate the cstore from here on.
@@ -1712,6 +1737,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
             self.underscore_disambiguator
+        } else if ident.name == kw::Empty {
+            self.empty_disambiguator += 1;
+            self.empty_disambiguator
         } else {
             0
         };
@@ -1783,6 +1811,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
         if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
+            if let ImportKind::MacroUse { warn_private: true } = import.kind {
+                let msg = format!("macro `{ident}` is private");
+                self.lint_buffer().buffer_lint(PRIVATE_MACRO_USE, import.root_id, ident.span, msg);
+            }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
             if is_lexical_scope {
@@ -2053,7 +2085,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {
-                        LitKind::Int(a, _) => ret.push(a as usize),
+                        LitKind::Int(a, _) => ret.push(a.get() as usize),
                         _ => panic!("invalid arg index"),
                     }
                 }

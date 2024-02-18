@@ -1,5 +1,5 @@
-// compile-flags: -O
-// run-pass
+//@ compile-flags: -O
+//@ run-pass
 
 struct Foo {
     x: i32,

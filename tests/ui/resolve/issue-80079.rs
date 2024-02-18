@@ -1,4 +1,4 @@
-// aux-build:issue-80079.rs
+//@ aux-build:issue-80079.rs
 
 // using a module from another crate should not cause errors to suggest private
 // items in that module

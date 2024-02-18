@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 
 // Fine, but lints as unused
 type Foo where u32: Copy = ();

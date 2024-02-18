@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! The implementation should behave correctly when the `ASSUME` parameters are
 //! provided indirectly through an abstraction.
 

@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@ compile-flags: --test
 
 #[test] //~ ERROR: the `#[test]` attribute may only be used on a non-associated function
 mod test {}

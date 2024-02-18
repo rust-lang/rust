@@ -1,6 +1,6 @@
 // Regression test for issue 62165
 
-// check-pass
+//@ check-pass
 
 #![feature(never_type)]
 

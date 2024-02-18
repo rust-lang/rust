@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 // Makes sure we don't propagate generic instances of `Self: ?Sized` blanket impls.
 // This is relevant when we have an overlapping impl and builtin dyn instance.

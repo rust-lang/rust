@@ -1,4 +1,4 @@
-// aux-build:pub-and-stability.rs
+//@ aux-build:pub-and-stability.rs
 
 // A big point of this test is that we *declare* `unstable_declared`,
 // but do *not* declare `unstable_undeclared`. This way we can check

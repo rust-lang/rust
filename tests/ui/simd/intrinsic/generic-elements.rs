@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 #![feature(repr_simd, platform_intrinsics, rustc_attrs, adt_const_params)]
 #![allow(incomplete_features)]

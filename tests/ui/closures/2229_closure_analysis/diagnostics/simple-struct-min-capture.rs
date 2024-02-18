@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that borrow checker error is accurate and that min capture pass of the
 // closure analysis is working as expected.

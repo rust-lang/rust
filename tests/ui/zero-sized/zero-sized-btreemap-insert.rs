@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 use std::cmp::{Ord, Ordering, PartialOrd};

@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 // Verify that span interning correctly handles having a span of exactly MAX_LEN length.
-// compile-flags: --crate-type=lib
-// check-pass
+//@ compile-flags: --crate-type=lib
+//@ check-pass
 
 #![allow(dead_code)]
 fn a<'a, T>() -> &'a T {

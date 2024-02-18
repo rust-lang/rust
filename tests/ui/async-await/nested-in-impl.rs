@@ -1,8 +1,8 @@
 // Test that async fn works when nested inside of
 // impls with lifetime parameters.
 //
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 struct Foo<'a>(&'a ());
 

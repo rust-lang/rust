@@ -124,7 +124,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
                 .predicates
                 .into_iter()
                 .filter_map(move |(pred, _)| {
-                    pred.subst_supertrait(tcx, &inner_most_trait_ref).as_trait_clause()
+                    pred.instantiate_supertrait(tcx, &inner_most_trait_ref).as_trait_clause()
                 });
 
             // Find an unvisited supertrait
@@ -195,7 +195,7 @@ fn dump_vtable_entries<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     entries: &[VtblEntry<'tcx>],
 ) {
-    tcx.sess.emit_err(DumpVTableEntries { span: sp, trait_ref, entries: format!("{entries:#?}") });
+    tcx.dcx().emit_err(DumpVTableEntries { span: sp, trait_ref, entries: format!("{entries:#?}") });
 }
 
 fn has_own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {

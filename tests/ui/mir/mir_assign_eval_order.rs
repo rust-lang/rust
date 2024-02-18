@@ -1,6 +1,6 @@
 // Test evaluation order of assignment expressions is right to left.
 
-// run-pass
+//@ run-pass
 
 // We would previously not finish evaluating borrow and FRU expressions before
 // starting on the LHS

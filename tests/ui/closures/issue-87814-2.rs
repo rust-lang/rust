@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn main() {
     let mut schema_all: (Vec<String>, Vec<String>) = (vec![], vec![]);

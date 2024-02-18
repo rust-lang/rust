@@ -1,6 +1,6 @@
 // Test bindings-after-at with box-patterns
 
-// run-pass
+//@ run-pass
 
 #![feature(box_patterns)]
 

@@ -1,7 +1,7 @@
 // Here we test that `..` is allowed in all pattern locations *syntactically*.
 // The semantic test is in `rest-pat-semantic-disallowed.rs`.
 
-// check-pass
+//@ check-pass
 
 fn main() {}
 

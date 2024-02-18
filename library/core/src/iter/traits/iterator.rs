@@ -1,6 +1,6 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
-use crate::num::NonZeroUsize;
+use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
@@ -88,8 +88,6 @@ pub trait Iterator {
     /// [`Some(Item)`]: Some
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -249,8 +247,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     /// assert_eq!(a.iter().count(), 3);
@@ -279,8 +275,6 @@ pub trait Iterator {
     /// returned, `last()` will then return the last element it saw.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -324,12 +318,10 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(iter_advance_by)]
-    ///
     /// use std::num::NonZeroUsize;
+    ///
     /// let a = [1, 2, 3, 4];
     /// let mut iter = a.iter();
     ///
@@ -341,11 +333,11 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     #[rustc_do_not_const_check]
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         for i in 0..n {
             if self.next().is_none() {
                 // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZeroUsize::new_unchecked(n - i) });
+                return Err(unsafe { NonZero::new_unchecked(n - i) });
             }
         }
         Ok(())
@@ -431,8 +423,6 @@ pub trait Iterator {
     /// The method will panic if the given step is `0`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [0, 1, 2, 3, 4, 5];
@@ -1342,8 +1332,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     ///
@@ -1434,8 +1422,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3, 4];
     ///
@@ -1485,8 +1471,6 @@ pub trait Iterator {
     /// [`flatten`]: Iterator::flatten
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let words = ["alpha", "beta", "gamma"];
@@ -1765,8 +1749,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// // an iterator which alternates between Some and None
     /// struct Alternate {
@@ -1910,8 +1892,6 @@ pub trait Iterator {
     /// retaining ownership of the original iterator.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let mut words = ["hello", "world", "of", "Rust"].into_iter();
@@ -2220,8 +2200,6 @@ pub trait Iterator {
     /// [`partition_in_place()`]: Iterator::partition_in_place
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3094,16 +3072,23 @@ pub trait Iterator {
         P: FnMut(Self::Item) -> bool,
     {
         #[inline]
-        fn check<T>(
-            mut predicate: impl FnMut(T) -> bool,
-        ) -> impl FnMut(usize, T) -> ControlFlow<usize, usize> {
+        fn check<'a, T>(
+            mut predicate: impl FnMut(T) -> bool + 'a,
+            acc: &'a mut usize,
+        ) -> impl FnMut((), T) -> ControlFlow<usize, ()> + 'a {
             #[rustc_inherit_overflow_checks]
-            move |i, x| {
-                if predicate(x) { ControlFlow::Break(i) } else { ControlFlow::Continue(i + 1) }
+            move |_, x| {
+                if predicate(x) {
+                    ControlFlow::Break(*acc)
+                } else {
+                    *acc += 1;
+                    ControlFlow::Continue(())
+                }
             }
         }
 
-        self.try_fold(0, check(predicate)).break_value()
+        let mut acc = 0;
+        self.try_fold((), check(predicate, &mut acc)).break_value()
     }
 
     /// Searches for an element in an iterator from the right, returning its
@@ -3186,8 +3171,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     /// let b: Vec<u32> = Vec::new();
@@ -3224,8 +3207,6 @@ pub trait Iterator {
     /// ```
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3413,8 +3394,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [(1, 2), (3, 4), (5, 6)];
     ///
@@ -3450,8 +3429,6 @@ pub trait Iterator {
     /// iterator over `T`.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3530,8 +3507,6 @@ pub trait Iterator {
     /// original iterator is empty, the resulting iterator will also be empty.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -3617,8 +3592,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let a = [1, 2, 3];
     /// let sum: i32 = a.iter().sum();
@@ -3695,8 +3668,6 @@ pub trait Iterator {
     /// of another with respect to the specified comparison function.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// #![feature(iter_order_by)]
@@ -3783,8 +3754,6 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(iter_order_by)]
     ///
@@ -3855,8 +3824,6 @@ pub trait Iterator {
     /// another with respect to the specified equality function.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// #![feature(iter_order_by)]
@@ -4026,42 +3993,42 @@ pub trait Iterator {
         Self: Sized,
         Self::Item: PartialOrd,
     {
-        self.is_sorted_by(PartialOrd::partial_cmp)
+        self.is_sorted_by(|a, b| a <= b)
     }
 
     /// Checks if the elements of this iterator are sorted using the given comparator function.
     ///
     /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
-    /// function to determine the ordering of two elements. Apart from that, it's equivalent to
-    /// [`is_sorted`]; see its documentation for more information.
+    /// function to determine whether two elements are to be considered in sorted order.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(is_sorted)]
     ///
-    /// assert!([1, 2, 2, 9].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// assert!(![0.0, 1.0, f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
-    /// ```
+    /// assert!([1, 2, 2, 9].iter().is_sorted_by(|a, b| a <= b));
+    /// assert!(![1, 2, 2, 9].iter().is_sorted_by(|a, b| a < b));
     ///
-    /// [`is_sorted`]: Iterator::is_sorted
+    /// assert!([0].iter().is_sorted_by(|a, b| true));
+    /// assert!([0].iter().is_sorted_by(|a, b| false));
+    ///
+    /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| false));
+    /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| true));
+    /// ```
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
     #[rustc_do_not_const_check]
     fn is_sorted_by<F>(mut self, compare: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&Self::Item, &Self::Item) -> Option<Ordering>,
+        F: FnMut(&Self::Item, &Self::Item) -> bool,
     {
         #[inline]
         fn check<'a, T>(
             last: &'a mut T,
-            mut compare: impl FnMut(&T, &T) -> Option<Ordering> + 'a,
+            mut compare: impl FnMut(&T, &T) -> bool + 'a,
         ) -> impl FnMut(T) -> bool + 'a {
             move |curr| {
-                if let Some(Ordering::Greater) | None = compare(&last, &curr) {
+                if !compare(&last, &curr) {
                     return false;
                 }
                 *last = curr;
@@ -4171,7 +4138,7 @@ impl<I: Iterator + ?Sized> Iterator for &mut I {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (**self).size_hint()
     }
-    fn advance_by(&mut self, n: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         (**self).advance_by(n)
     }
     fn nth(&mut self, n: usize) -> Option<Self::Item> {

@@ -15,7 +15,7 @@ fn main() {
     let y = Foo { x: 1 };
     match y {
         FOO => { }
-        //~^ ERROR must be annotated with `#[derive(PartialEq, Eq)]`
+        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
         _ => { }
     }
 }

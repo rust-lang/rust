@@ -1,4 +1,4 @@
-// check-fail
+//@ check-fail
 #![feature(generic_const_exprs, transmutability)]
 #![allow(incomplete_features)]
 

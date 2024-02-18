@@ -375,6 +375,15 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         }
         ItemKind::MacCall(mac) => visitor.visit_mac_call(mac),
         ItemKind::MacroDef(ts) => visitor.visit_mac_def(ts, item.id),
+        ItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+            if let Some(qself) = qself {
+                visitor.visit_ty(&qself.ty);
+            }
+            visitor.visit_path(path, *id);
+            if let Some(body) = body {
+                visitor.visit_block(body);
+            }
+        }
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }
@@ -438,10 +447,10 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             walk_list!(visitor, visit_param_bound, bounds, BoundKind::Impl);
         }
         TyKind::Typeof(expression) => visitor.visit_anon_const(expression),
-        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
+        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Dummy | TyKind::Err(_) => {}
         TyKind::MacCall(mac) => visitor.visit_mac_call(mac),
         TyKind::Never | TyKind::CVarArgs => {}
-        TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
+        TyKind::AnonStruct(_, ref fields) | TyKind::AnonUnion(_, ref fields) => {
             walk_list!(visitor, visit_field_def, fields)
         }
     }
@@ -493,7 +502,7 @@ where
         }
         GenericArgs::Parenthesized(data) => {
             walk_list!(visitor, visit_ty, &data.inputs);
-            walk_fn_ret_ty(visitor, &data.output);
+            visitor.visit_fn_ret_ty(&data.output);
         }
     }
 }
@@ -559,7 +568,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             walk_list!(visitor, visit_expr, lower_bound);
             walk_list!(visitor, visit_expr, upper_bound);
         }
-        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+        PatKind::Wild | PatKind::Rest | PatKind::Never | PatKind::Err(_) => {}
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             walk_list!(visitor, visit_pat, elems);
         }
@@ -703,6 +712,15 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
         }
         AssocItemKind::MacCall(mac) => {
             visitor.visit_mac_call(mac);
+        }
+        AssocItemKind::Delegation(box Delegation { id, qself, path, body }) => {
+            if let Some(qself) = qself {
+                visitor.visit_ty(&qself.ty);
+            }
+            visitor.visit_path(path, *id);
+            if let Some(body) = body {
+                visitor.visit_block(body);
+            }
         }
     }
 }

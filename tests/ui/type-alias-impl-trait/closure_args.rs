@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // regression test for https://github.com/rust-lang/rust/issues/100800
 

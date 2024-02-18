@@ -1,9 +1,9 @@
-// run-pass
-// ignore-emscripten no processes
-// ignore-sgx no processes
-// ignore-vxworks no 'ps'
-// ignore-fuchsia no 'ps'
-// ignore-nto no 'ps'
+//@ run-pass
+//@ ignore-emscripten no processes
+//@ ignore-sgx no processes
+//@ ignore-vxworks no 'ps'
+//@ ignore-fuchsia no 'ps'
+//@ ignore-nto no 'ps'
 
 #![feature(rustc_private)]
 

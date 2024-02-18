@@ -1,7 +1,7 @@
 // Regression test for #88684: Improve diagnostics for combining marks
 // in character literals.
 
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let _spade = "♠️";

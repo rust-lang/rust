@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![warn(unused_imports)]
 
 use crate::foo::Bar;

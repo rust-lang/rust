@@ -98,66 +98,78 @@ LL |             let y = 1;
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:79:9
-   |
-LL |         1
-   |         ^ help: consider adding suffix: `1_i32`
-
-error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:85:27
+  --> $DIR/default_numeric_fallback_i32.rs:83:27
    |
 LL |         let f = || -> _ { 1 };
    |                           ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:89:29
+  --> $DIR/default_numeric_fallback_i32.rs:87:29
    |
 LL |         let f = || -> i32 { 1 };
    |                             ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:103:21
+  --> $DIR/default_numeric_fallback_i32.rs:101:21
    |
 LL |         generic_arg(1);
    |                     ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:106:32
+  --> $DIR/default_numeric_fallback_i32.rs:104:32
    |
 LL |         let x: _ = generic_arg(1);
    |                                ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:124:28
+  --> $DIR/default_numeric_fallback_i32.rs:122:28
    |
 LL |         GenericStruct { x: 1 };
    |                            ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:127:36
+  --> $DIR/default_numeric_fallback_i32.rs:125:36
    |
 LL |         let _ = GenericStruct { x: 1 };
    |                                    ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:145:24
+  --> $DIR/default_numeric_fallback_i32.rs:143:24
    |
 LL |         GenericEnum::X(1);
    |                        ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:165:23
+  --> $DIR/default_numeric_fallback_i32.rs:163:23
    |
 LL |         s.generic_arg(1);
    |                       ^ help: consider adding suffix: `1_i32`
 
 error: default numeric fallback might occur
-  --> $DIR/default_numeric_fallback_i32.rs:175:25
+  --> $DIR/default_numeric_fallback_i32.rs:173:25
    |
 LL |         inline!(let x = 22;);
    |                         ^^ help: consider adding suffix: `22_i32`
    |
    = note: this error originates in the macro `__inline_mac_fn_internal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 26 previous errors
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback_i32.rs:215:29
+   |
+LL |         let data_i32 = vec![1, 2, 3];
+   |                             ^ help: consider adding suffix: `1_i32`
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback_i32.rs:215:32
+   |
+LL |         let data_i32 = vec![1, 2, 3];
+   |                                ^ help: consider adding suffix: `2_i32`
+
+error: default numeric fallback might occur
+  --> $DIR/default_numeric_fallback_i32.rs:215:35
+   |
+LL |         let data_i32 = vec![1, 2, 3];
+   |                                   ^ help: consider adding suffix: `3_i32`
+
+error: aborting due to 28 previous errors
 

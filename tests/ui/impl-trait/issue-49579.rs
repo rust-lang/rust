@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn fibs(n: u32) -> impl Iterator<Item=u128> {
     (0 .. n)

@@ -9,6 +9,7 @@ mod apply_change;
 pub mod active_parameter;
 pub mod assists;
 pub mod defs;
+pub mod documentation;
 pub mod famous_defs;
 pub mod helpers;
 pub mod items_locator;
@@ -22,7 +23,6 @@ pub mod symbol_index;
 pub mod traits;
 pub mod ty_filter;
 pub mod use_trivial_constructor;
-pub mod documentation;
 
 pub mod imports {
     pub mod import_assets;
@@ -35,13 +35,15 @@ pub mod generated {
 }
 
 pub mod syntax_helpers {
-    pub mod node_ext;
-    pub mod insert_whitespace_into_node;
     pub mod format_string;
     pub mod format_string_exprs;
+    pub mod insert_whitespace_into_node;
+    pub mod node_ext;
 
     pub use parser::LexedStr;
 }
+
+pub use hir::Change;
 
 use std::{fmt, mem::ManuallyDrop};
 
@@ -97,21 +99,21 @@ impl fmt::Debug for RootDatabase {
 impl Upcast<dyn ExpandDatabase> for RootDatabase {
     #[inline]
     fn upcast(&self) -> &(dyn ExpandDatabase + 'static) {
-        &*self
+        self
     }
 }
 
 impl Upcast<dyn DefDatabase> for RootDatabase {
     #[inline]
     fn upcast(&self) -> &(dyn DefDatabase + 'static) {
-        &*self
+        self
     }
 }
 
 impl Upcast<dyn HirDatabase> for RootDatabase {
     #[inline]
     fn upcast(&self) -> &(dyn HirDatabase + 'static) {
-        &*self
+        self
     }
 }
 
@@ -122,7 +124,7 @@ impl FileLoader for RootDatabase {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }
@@ -143,7 +145,7 @@ impl RootDatabase {
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
-        db.update_parse_query_lru_capacity(lru_capacity);
+        db.update_base_query_lru_capacities(lru_capacity);
         db.setup_syntax_context_root();
         db
     }
@@ -152,11 +154,12 @@ impl RootDatabase {
         self.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
     }
 
-    pub fn update_parse_query_lru_capacity(&mut self, lru_capacity: Option<usize>) {
+    pub fn update_base_query_lru_capacities(&mut self, lru_capacity: Option<usize>) {
         let lru_capacity = lru_capacity.unwrap_or(base_db::DEFAULT_PARSE_LRU_CAP);
         base_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
         // macro expansions are usually rather small, so we can afford to keep more of them alive
         hir::db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(4 * lru_capacity);
+        hir::db::BorrowckQuery.in_db_mut(self).set_lru_capacity(base_db::DEFAULT_BORROWCK_LRU_CAP);
     }
 
     pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
@@ -173,6 +176,12 @@ impl RootDatabase {
                 .get(stringify!(ParseMacroExpansionQuery))
                 .copied()
                 .unwrap_or(4 * base_db::DEFAULT_PARSE_LRU_CAP),
+        );
+        hir_db::BorrowckQuery.in_db_mut(self).set_lru_capacity(
+            lru_capacities
+                .get(stringify!(BorrowckQuery))
+                .copied()
+                .unwrap_or(base_db::DEFAULT_BORROWCK_LRU_CAP),
         );
 
         macro_rules! update_lru_capacity_per_query {
@@ -208,15 +217,11 @@ impl RootDatabase {
             hir_db::FileItemTreeQuery
             hir_db::CrateDefMapQueryQuery
             hir_db::BlockDefMapQuery
-            hir_db::StructDataQuery
             hir_db::StructDataWithDiagnosticsQuery
-            hir_db::UnionDataQuery
             hir_db::UnionDataWithDiagnosticsQuery
             hir_db::EnumDataQuery
-            hir_db::EnumDataWithDiagnosticsQuery
-            hir_db::ImplDataQuery
+            hir_db::EnumVariantDataWithDiagnosticsQuery
             hir_db::ImplDataWithDiagnosticsQuery
-            hir_db::TraitDataQuery
             hir_db::TraitDataWithDiagnosticsQuery
             hir_db::TraitAliasDataQuery
             hir_db::TypeAliasDataQuery
@@ -230,9 +235,7 @@ impl RootDatabase {
             hir_db::BodyQuery
             hir_db::ExprScopesQuery
             hir_db::GenericParamsQuery
-            hir_db::VariantsAttrsQuery
             hir_db::FieldsAttrsQuery
-            hir_db::VariantsAttrsSourceMapQuery
             hir_db::FieldsAttrsSourceMapQuery
             hir_db::AttrsQuery
             hir_db::CrateLangItemsQuery
@@ -274,7 +277,7 @@ impl RootDatabase {
             // hir_db::InternImplTraitIdQuery
             // hir_db::InternTypeOrConstParamIdQuery
             // hir_db::InternClosureQuery
-            // hir_db::InternGeneratorQuery
+            // hir_db::InternCoroutineQuery
             hir_db::AssociatedTyDataQuery
             hir_db::TraitDatumQuery
             hir_db::StructDatumQuery
@@ -411,6 +414,6 @@ impl SnippetCap {
 
 #[cfg(test)]
 mod tests {
-    mod sourcegen_lints;
     mod line_index;
+    mod sourcegen_lints;
 }

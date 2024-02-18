@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Matching on a DST struct should not trigger an LLVM assertion.
 
 struct Foo<T: ?Sized> {

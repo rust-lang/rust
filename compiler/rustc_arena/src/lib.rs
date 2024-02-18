@@ -22,8 +22,6 @@
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 #![allow(clippy::mut_from_ref)] // Arena allocators are one of the places where this pattern is fine.
 
@@ -482,6 +480,19 @@ impl DroplessArena {
             mem.copy_from_nonoverlapping(slice.as_ptr(), slice.len());
             slice::from_raw_parts_mut(mem, slice.len())
         }
+    }
+
+    /// Used by `Lift` to check whether this slice is allocated
+    /// in this arena.
+    #[inline]
+    pub fn contains_slice<T>(&self, slice: &[T]) -> bool {
+        for chunk in self.chunks.borrow_mut().iter_mut() {
+            let ptr = slice.as_ptr().cast::<u8>().cast_mut();
+            if chunk.start() <= ptr && chunk.end() >= ptr {
+                return true;
+            }
+        }
+        false
     }
 
     /// Allocates a string slice that is copied into the `DroplessArena`, returning a

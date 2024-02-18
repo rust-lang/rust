@@ -1,6 +1,6 @@
-// run-pass
-// only-wasm32
-// compile-flags: -Zmir-opt-level=0 -C target-feature=+nontrapping-fptoint
+//@ run-pass
+//@ only-wasm32
+//@ compile-flags: -Zmir-opt-level=0 -C target-feature=+nontrapping-fptoint
 
 #![feature(test, stmt_expr_attributes)]
 #![deny(overflowing_literals)]

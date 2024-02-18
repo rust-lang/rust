@@ -1,7 +1,7 @@
-// compile-flags: -Zlint-mir --crate-type=lib -Ztreat-err-as-bug
-// failure-status: 101
-// dont-check-compiler-stderr
-// regex-error-pattern: use of local .*, which has no storage here
+//@ compile-flags: -Zlint-mir --crate-type=lib -Ztreat-err-as-bug
+//@ failure-status: 101
+//@ dont-check-compiler-stderr
+//@ regex-error-pattern: use of local .*, which has no storage here
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;
 use core::intrinsics::mir::*;

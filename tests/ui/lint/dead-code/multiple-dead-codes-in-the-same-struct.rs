@@ -15,6 +15,10 @@ struct Bar {
     _h: usize,
 }
 
+// Issue 119267: this should not ICE.
+#[derive(Debug)]
+struct Foo(usize, #[allow(unused)] usize); //~ WARN struct `Foo` is never constructed
+
 fn main() {
     Bar {
         a: 1,

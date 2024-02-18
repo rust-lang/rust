@@ -13,6 +13,7 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::def_id::DefId;
+use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
@@ -387,6 +388,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Takes read-only access to the allocation so we can keep all the memory read
     /// operations take `&self`. Use a `RefCell` in `AllocExtra` if you
     /// need to mutate.
+    ///
+    /// This is not invoked for ZST accesses, as no read actually happens.
     #[inline(always)]
     fn before_memory_read(
         _tcx: TyCtxtAt<'tcx>,
@@ -398,7 +401,20 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         Ok(())
     }
 
+    /// Hook for performing extra checks on any memory read access,
+    /// that involves an allocation, even ZST reads.
+    ///
+    /// Used to prevent statics from self-initializing by reading from their own memory
+    /// as it is being initialized.
+    fn before_alloc_read(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _alloc_id: AllocId,
+    ) -> InterpResult<'tcx> {
+        Ok(())
+    }
+
     /// Hook for performing extra checks on a memory write access.
+    /// This is not invoked for ZST accesses, as no write actually happens.
     #[inline(always)]
     fn before_memory_write(
         _tcx: TyCtxtAt<'tcx>,
@@ -509,6 +525,27 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
         _mplace: &MPlaceTy<'tcx, Self::Provenance>,
     ) -> InterpResult<'tcx> {
         Ok(())
+    }
+
+    /// Evaluate the given constant. The `eval` function will do all the required evaluation,
+    /// but this hook has the chance to do some pre/postprocessing.
+    #[inline(always)]
+    fn eval_mir_constant<F>(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        val: mir::Const<'tcx>,
+        span: Option<Span>,
+        layout: Option<TyAndLayout<'tcx>>,
+        eval: F,
+    ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>
+    where
+        F: Fn(
+            &InterpCx<'mir, 'tcx, Self>,
+            mir::Const<'tcx>,
+            Option<Span>,
+            Option<TyAndLayout<'tcx>>,
+        ) -> InterpResult<'tcx, OpTy<'tcx, Self::Provenance>>,
+    {
+        eval(ecx, val, span, layout)
     }
 }
 

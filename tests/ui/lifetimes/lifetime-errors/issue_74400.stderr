@@ -12,6 +12,36 @@ help: consider adding an explicit lifetime bound
 LL | fn g<T: 'static>(data: &[T]) {
    |       +++++++++
 
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/issue_74400.rs:12:5
+   |
+LL |     f(data, identity)
+   |     ^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn g<T: 'static>(data: &[T]) {
+   |       +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/issue_74400.rs:12:5
+   |
+LL |     f(data, identity)
+   |     ^^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `T` must be valid for the static lifetime...
+   |     ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn g<T: 'static>(data: &[T]) {
+   |       +++++++++
+
 error[E0308]: mismatched types
   --> $DIR/issue_74400.rs:12:5
    |
@@ -35,7 +65,7 @@ LL |     f(data, identity)
    = note: `fn(&'2 T) -> &'2 T {identity::<&'2 T>}` must implement `FnOnce<(&'1 T,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 T,)>`, for some specific lifetime `'2`
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0308, E0310.
 For more information about an error, try `rustc --explain E0308`.

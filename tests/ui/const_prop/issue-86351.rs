@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib -Zmir-opt-level=2
-// build-pass
+//@ compile-flags: --crate-type=lib -Zmir-opt-level=2
+//@ build-pass
 // ^-- Must be build-pass, because check-pass will not run const prop.
 
 pub trait TestTrait {

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Destructuring struct variants would ICE where regular structs wouldn't
 
 enum Foo {

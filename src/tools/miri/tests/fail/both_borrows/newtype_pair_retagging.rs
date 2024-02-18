@@ -3,7 +3,7 @@
 
 //@[stack]error-in-other-file: which is strongly protected
 //@[tree]error-in-other-file: /deallocation through .* is forbidden/
-struct Newtype<'a>(&'a mut i32, i32);
+struct Newtype<'a>(#[allow(dead_code)] &'a mut i32, #[allow(dead_code)] i32);
 
 fn dealloc_while_running(_n: Newtype<'_>, dealloc: impl FnOnce()) {
     dealloc();

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn main() {
     let args = vec!["foobie", "asdf::asdf"];

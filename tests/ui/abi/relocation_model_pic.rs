@@ -1,6 +1,6 @@
-// run-pass
-// compile-flags: -C relocation-model=pic
-// needs-relocation-model-pic
+//@ run-pass
+//@ compile-flags: -C relocation-model=pic
+//@ needs-relocation-model-pic
 
 #![feature(cfg_relocation_model)]
 

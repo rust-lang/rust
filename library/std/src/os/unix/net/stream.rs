@@ -752,6 +752,7 @@ impl AsFd for UnixStream {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixStream> for OwnedFd {
+    /// Takes ownership of a [`UnixStream`]'s socket file descriptor.
     #[inline]
     fn from(unix_stream: UnixStream) -> OwnedFd {
         unsafe { OwnedFd::from_raw_fd(unix_stream.into_raw_fd()) }

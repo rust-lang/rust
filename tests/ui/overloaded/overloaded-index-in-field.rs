@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test using overloaded indexing when the "map" is stored in a
 // field. This caused problems at some point.
 
@@ -27,7 +27,7 @@ impl Index<isize> for Foo {
 
 trait Int {
     fn get(self) -> isize;
-    fn get_from_ref(&self) -> isize;
+    fn get_from_ref(&self) -> isize; //~ WARN methods `get_from_ref` and `inc` are never used
     fn inc(&mut self);
 }
 

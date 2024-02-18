@@ -1,4 +1,4 @@
-// aux-build:variants.rs
+//@ aux-build:variants.rs
 
 extern crate variants;
 

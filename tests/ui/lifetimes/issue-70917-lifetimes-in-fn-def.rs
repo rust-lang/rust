@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 fn assert_static<T: 'static>(_: T) {}
 

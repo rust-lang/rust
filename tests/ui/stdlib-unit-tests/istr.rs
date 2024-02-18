@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn test_stack_assign() {
     let s: String = "a".to_string();

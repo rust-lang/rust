@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn grow(v: &mut Vec<isize> ) {
     v.push(1);

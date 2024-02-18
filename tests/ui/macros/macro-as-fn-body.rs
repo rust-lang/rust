@@ -1,5 +1,5 @@
 //
-// run-pass
+//@ run-pass
 //
 // Description - ensure Interpolated blocks can act as valid function bodies
 // Covered cases: free functions, struct methods, and default trait functions

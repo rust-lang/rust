@@ -4,6 +4,12 @@ error[E0657]: `impl Trait` can only capture lifetimes bound at the fn or impl le
 LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
    |                                    ^^
 
-error: aborting due to 1 previous error
+error: [o]
+  --> $DIR/implicit-capture-late.rs:10:55
+   |
+LL | fn foo(x: Vec<i32>) -> Box<dyn for<'a> Deref<Target = impl ?Sized>> {
+   |                                                       ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0657`.

@@ -15,18 +15,18 @@ fn validate_input<'a>(ecx: &mut ExtCtxt<'_>, mi: &'a ast::MetaItem) -> Option<&'
     match mi.meta_item_list() {
         None => {}
         Some([]) => {
-            ecx.emit_err(UnspecifiedPath(mi.span));
+            ecx.dcx().emit_err(UnspecifiedPath(mi.span));
         }
         Some([_, .., l]) => {
-            ecx.emit_err(MultiplePaths(l.span()));
+            ecx.dcx().emit_err(MultiplePaths(l.span()));
         }
         Some([nmi]) => match nmi.meta_item() {
             None => {
-                ecx.emit_err(LiteralPath(nmi.span()));
+                ecx.dcx().emit_err(LiteralPath(nmi.span()));
             }
             Some(mi) => {
                 if !mi.is_word() {
-                    ecx.emit_err(HasArguments(mi.span));
+                    ecx.dcx().emit_err(HasArguments(mi.span));
                 }
                 return Some(&mi.path);
             }
@@ -61,7 +61,7 @@ impl MultiItemModifier for Expander {
             Ok(true) => ExpandResult::Ready(vec![item]),
             Ok(false) => ExpandResult::Ready(Vec::new()),
             Err(Indeterminate) if ecx.force_mode => {
-                ecx.emit_err(errors::CfgAccessibleIndeterminate { span });
+                ecx.dcx().emit_err(errors::CfgAccessibleIndeterminate { span });
                 ExpandResult::Ready(vec![item])
             }
             Err(Indeterminate) => ExpandResult::Retry(item),

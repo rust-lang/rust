@@ -1,4 +1,4 @@
-// error-pattern: circular modules
+//@ error-pattern: circular modules
 
 #[path = "circular_modules_hello.rs"]
 mod circular_modules_hello;

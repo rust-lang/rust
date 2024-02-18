@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 struct A<const N: usize>;
 
 struct X;

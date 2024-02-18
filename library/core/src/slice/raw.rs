@@ -4,6 +4,7 @@ use crate::array;
 use crate::intrinsics::{
     assert_unsafe_precondition, is_aligned_and_not_null, is_valid_allocation_size,
 };
+use crate::mem::{align_of, size_of};
 use crate::ops::Range;
 use crate::ptr;
 
@@ -96,8 +97,14 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
     unsafe {
         assert_unsafe_precondition!(
             "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
-            [T](data: *const T, len: usize) => is_aligned_and_not_null(data)
-                && is_valid_allocation_size::<T>(len)
+            (
+                data: *mut () = data as *mut (),
+                size: usize = size_of::<T>(),
+                align: usize = align_of::<T>(),
+                len: usize = len,
+            ) =>
+                is_aligned_and_not_null(data, align)
+                && is_valid_allocation_size(size, len)
         );
         &*ptr::slice_from_raw_parts(data, len)
     }
@@ -143,8 +150,14 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
     unsafe {
         assert_unsafe_precondition!(
             "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
-            [T](data: *mut T, len: usize) => is_aligned_and_not_null(data)
-                && is_valid_allocation_size::<T>(len)
+            (
+                data: *mut () = data as *mut (),
+                size: usize = size_of::<T>(),
+                align: usize = align_of::<T>(),
+                len: usize = len,
+            ) =>
+                is_aligned_and_not_null(data, align)
+                && is_valid_allocation_size(size, len)
         );
         &mut *ptr::slice_from_raw_parts_mut(data, len)
     }

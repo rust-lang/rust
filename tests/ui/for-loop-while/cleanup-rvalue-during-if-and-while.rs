@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // This test verifies that temporaries created for `while`'s and `if`
 // conditions are dropped after the condition is evaluated.
 

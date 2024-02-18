@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const fn nested(x: (for<'a> fn(&'a ()), String)) -> (fn(&'static ()), String) {
     x

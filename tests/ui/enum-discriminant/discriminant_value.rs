@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(stable_features)]
 #![feature(core, core_intrinsics)]
 
@@ -27,14 +27,14 @@ enum CLike3 {
     D
 }
 
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 enum ADT {
     First(u32, u32),
     Second(u64)
 }
 
 enum NullablePointer {
-    Something(#[allow(unused_tuple_struct_fields)] &'static u32),
+    Something(#[allow(dead_code)] &'static u32),
     Nothing
 }
 

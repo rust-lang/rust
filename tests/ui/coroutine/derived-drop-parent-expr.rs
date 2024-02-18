@@ -1,4 +1,4 @@
-// build-pass
+//@ build-pass
 
 //! Like drop-tracking-parent-expression, but also tests that this doesn't ICE when building MIR
 #![feature(coroutines)]

@@ -72,8 +72,7 @@
       bb2: {
           StorageDead(_7);
           StorageDead(_6);
--         StorageLive(_8);
-+         nop;
+          StorageLive(_8);
           _8 = &raw const (*_1);
           StorageLive(_9);
           StorageLive(_10);
@@ -93,8 +92,7 @@
       bb4: {
           StorageDead(_12);
           StorageDead(_11);
--         StorageLive(_13);
-+         nop;
+          StorageLive(_13);
           _13 = &raw mut (*_1);
           StorageLive(_14);
           StorageLive(_15);
@@ -114,8 +112,7 @@
       bb6: {
           StorageDead(_17);
           StorageDead(_16);
--         StorageLive(_18);
-+         nop;
+          StorageLive(_18);
           _18 = &(*_1);
           StorageLive(_19);
 -         StorageLive(_20);
@@ -191,12 +188,9 @@
           StorageDead(_32);
           StorageDead(_31);
           _0 = const ();
--         StorageDead(_18);
--         StorageDead(_13);
--         StorageDead(_8);
-+         nop;
-+         nop;
-+         nop;
+          StorageDead(_18);
+          StorageDead(_13);
+          StorageDead(_8);
           return;
       }
   }

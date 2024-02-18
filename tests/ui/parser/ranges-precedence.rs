@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test that the precedence of ranges is correct
 
 

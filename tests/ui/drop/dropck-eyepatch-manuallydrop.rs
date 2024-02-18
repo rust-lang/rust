@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 //! This test checks that dropck knows that ManuallyDrop does not drop its field.
 #![feature(dropck_eyepatch)]
 

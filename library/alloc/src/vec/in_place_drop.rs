@@ -1,5 +1,9 @@
-use core::ptr::{self};
+use core::marker::PhantomData;
+use core::ptr::{self, drop_in_place};
 use core::slice::{self};
+
+use crate::alloc::Global;
+use crate::raw_vec::RawVec;
 
 // A helper struct for in-place iteration that drops the destination slice of iteration,
 // i.e. the head. The source slice (the tail) is dropped by IntoIter.
@@ -23,17 +27,23 @@ impl<T> Drop for InPlaceDrop<T> {
     }
 }
 
-// A helper struct for in-place collection that drops the destination allocation and elements,
-// to avoid leaking them if some other destructor panics.
-pub(super) struct InPlaceDstBufDrop<T> {
-    pub(super) ptr: *mut T,
+// A helper struct for in-place collection that drops the destination items together with
+// the source allocation - i.e. before the reallocation happened - to avoid leaking them
+// if some other destructor panics.
+pub(super) struct InPlaceDstDataSrcBufDrop<Src, Dest> {
+    pub(super) ptr: *mut Dest,
     pub(super) len: usize,
-    pub(super) cap: usize,
+    pub(super) src_cap: usize,
+    pub(super) src: PhantomData<Src>,
 }
 
-impl<T> Drop for InPlaceDstBufDrop<T> {
+impl<Src, Dest> Drop for InPlaceDstDataSrcBufDrop<Src, Dest> {
     #[inline]
     fn drop(&mut self) {
-        unsafe { super::Vec::from_raw_parts(self.ptr, self.len, self.cap) };
+        unsafe {
+            let _drop_allocation =
+                RawVec::<Src>::from_raw_parts_in(self.ptr.cast::<Src>(), self.src_cap, Global);
+            drop_in_place(core::ptr::slice_from_raw_parts_mut::<Dest>(self.ptr, self.len));
+        };
     }
 }

@@ -94,11 +94,11 @@ fn create_jit_module(
 
 pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
-        tcx.sess.fatal("JIT mode doesn't work with `cargo check`");
+        tcx.dcx().fatal("JIT mode doesn't work with `cargo check`");
     }
 
     if !tcx.crate_types().contains(&rustc_session::config::CrateType::Executable) {
-        tcx.sess.fatal("can't jit non-executable crate");
+        tcx.dcx().fatal("can't jit non-executable crate");
     }
 
     let (mut jit_module, mut cx) = create_jit_module(
@@ -141,17 +141,17 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                 }
                 MonoItem::GlobalAsm(item_id) => {
                     let item = tcx.hir().item(item_id);
-                    tcx.sess.span_fatal(item.span, "Global asm is not supported in JIT mode");
+                    tcx.dcx().span_fatal(item.span, "Global asm is not supported in JIT mode");
                 }
             }
         }
     });
 
     if !cx.global_asm.is_empty() {
-        tcx.sess.fatal("Inline asm is not supported in JIT mode");
+        tcx.dcx().fatal("Inline asm is not supported in JIT mode");
     }
 
-    tcx.sess.abort_if_errors();
+    tcx.dcx().abort_if_errors();
 
     jit_module.finalize_definitions().unwrap();
     unsafe { cx.unwind_context.register_jit(&jit_module) };
@@ -321,9 +321,9 @@ fn dep_symbol_lookup_fn(
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 let name = crate_info.crate_name[&cnum];
-                let mut err = sess.struct_err(format!("Can't load static lib {}", name));
-                err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
-                err.emit();
+                let mut diag = sess.dcx().struct_err(format!("Can't load static lib {}", name));
+                diag.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
+                diag.emit();
             }
             Linkage::Dynamic => {
                 dylib_paths.push(src.dylib.as_ref().unwrap().0.clone());
@@ -338,7 +338,7 @@ fn dep_symbol_lookup_fn(
             .collect::<Box<[_]>>(),
     );
 
-    sess.abort_if_errors();
+    sess.dcx().abort_if_errors();
 
     Box::new(move |sym_name| {
         for dylib in &*imported_dylibs {

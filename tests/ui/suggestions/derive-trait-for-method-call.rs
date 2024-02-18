@@ -19,7 +19,7 @@ struct CloneStruct {
 struct Foo<X, Y> (X, Y);
 impl<X: Clone + Default + , Y: Clone + Default> Foo<X, Y> {
     fn test(&self) -> (X, Y) {
-        (self.0, self.1)
+        (self.0.clone(), self.1.clone())
     }
 }
 

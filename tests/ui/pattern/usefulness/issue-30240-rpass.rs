@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn main() {
     let &ref a = &[0i32] as &[_];
     assert_eq!(a, &[0i32] as &[_]);

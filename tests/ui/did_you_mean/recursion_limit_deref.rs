@@ -1,7 +1,7 @@
 // Test that the recursion limit can be changed and that the compiler
 // suggests a fix. In this case, we have a long chain of Deref impls
 // which will cause an overflow during the autoderef loop.
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #![allow(dead_code)]
 #![recursion_limit="10"]

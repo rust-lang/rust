@@ -86,6 +86,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Std), "no_global_oom_handling", None),
     (Some(Mode::Std), "no_rc", None),
     (Some(Mode::Std), "no_sync", None),
+    (Some(Mode::Std), "netbsd10", None),
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
     (Some(Mode::Std), "target_env", Some(&["libnx"])),
@@ -721,16 +722,21 @@ impl Build {
         if self.config.profiler_enabled(target) {
             features.push_str(" profiler");
         }
+        // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
+        // automatically detects this target.
+        if target.contains("zkvm") {
+            features.push_str(" compiler-builtins-mem");
+        }
         features
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, kind: Kind) -> String {
+    fn rustc_features(&self, kind: Kind, target: TargetSelection) -> String {
         let mut features = vec![];
         if self.config.jemalloc {
             features.push("jemalloc");
         }
-        if self.config.llvm_enabled() || kind == Kind::Check {
+        if self.config.llvm_enabled(target) || kind == Kind::Check {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
@@ -787,12 +793,16 @@ impl Build {
         self.stage_out(compiler, mode).join(&*target.triple).join(self.cargo_dir())
     }
 
-    /// Root output directory for LLVM compiled for `target`
+    /// Root output directory of LLVM for `target`
     ///
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        self.out.join(&*target.triple).join("llvm")
+        if self.config.llvm_from_ci && self.config.build == target {
+            self.config.ci_llvm_root()
+        } else {
+            self.out.join(&*target.triple).join("llvm")
+        }
     }
 
     fn lld_out(&self, target: TargetSelection) -> PathBuf {
@@ -823,18 +833,34 @@ impl Build {
         INTERNER.intern_path(self.out.join(&*target.triple).join("md-doc"))
     }
 
-    /// Returns `true` if no custom `llvm-config` is set for the specified target.
+    /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
+    /// In particular, we expect llvm sources to be available when this is false.
     ///
-    /// If no custom `llvm-config` was specified then Rust's llvm will be used.
+    /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
+    fn is_system_llvm(&self, target: TargetSelection) -> bool {
+        match self.config.target_config.get(&target) {
+            Some(Target { llvm_config: Some(_), .. }) => {
+                let ci_llvm = self.config.llvm_from_ci && target == self.config.build;
+                !ci_llvm
+            }
+            // We're building from the in-tree src/llvm-project sources.
+            Some(Target { llvm_config: None, .. }) => false,
+            None => false,
+        }
+    }
+
+    /// Returns `true` if this is our custom, patched, version of LLVM.
+    ///
+    /// This does not necessarily imply that we're managing the `llvm-project` submodule.
     fn is_rust_llvm(&self, target: TargetSelection) -> bool {
         match self.config.target_config.get(&target) {
+            // We're using a user-controlled version of LLVM. The user has explicitly told us whether the version has our patches.
+            // (They might be wrong, but that's not a supported use-case.)
+            // In particular, this tries to support `submodules = false` and `patches = false`, for using a newer version of LLVM that's not through `rust-lang/llvm-project`.
             Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
-            Some(Target { llvm_config, .. }) => {
-                // If the user set llvm-config we assume Rust is not patched,
-                // but first check to see if it was configured by llvm-from-ci.
-                (self.config.llvm_from_ci && target == self.config.build) || llvm_config.is_none()
-            }
-            None => true,
+            // The user hasn't promised the patches match.
+            // This only has our patches if it's downloaded from CI or built from source.
+            _ => !self.is_system_llvm(target),
         }
     }
 
@@ -1535,7 +1561,8 @@ impl Build {
                         || target
                             .map(|t| self.config.profiler_enabled(t))
                             .unwrap_or_else(|| self.config.any_profiler_enabled()))
-                    && (dep != "rustc_codegen_llvm" || self.config.llvm_enabled())
+                    && (dep != "rustc_codegen_llvm"
+                        || self.config.hosts.iter().any(|host| self.config.llvm_enabled(*host)))
                 {
                     list.push(*dep);
                 }

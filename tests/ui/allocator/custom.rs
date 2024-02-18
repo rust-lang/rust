@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 
-// aux-build:helper.rs
-// no-prefer-dynamic
+//@ aux-build:helper.rs
+//@ no-prefer-dynamic
 
 #![feature(allocator_api)]
 #![feature(slice_ptr_get)]

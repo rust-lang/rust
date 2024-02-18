@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that unary structs can be mutably borrowed.
 
 struct Empty;

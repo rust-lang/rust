@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 fn const_mir() -> f32 { 9007199791611905.0 }
 
 fn main() {

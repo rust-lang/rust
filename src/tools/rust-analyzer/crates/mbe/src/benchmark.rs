@@ -20,7 +20,10 @@ fn benchmark_parse_macro_rules() {
     let rules = macro_rules_fixtures_tt();
     let hash: usize = {
         let _pt = bench("mbe parse macro rules");
-        rules.values().map(|it| DeclarativeMacro::parse_macro_rules(it, true).rules.len()).sum()
+        rules
+            .values()
+            .map(|it| DeclarativeMacro::parse_macro_rules(it, true, true).rules.len())
+            .sum()
     };
     assert_eq!(hash, 1144);
 }
@@ -38,7 +41,7 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(&tt, |_| ());
+                let res = rules[&id].expand(&tt, |_| (), true, DUMMY);
                 assert!(res.err.is_none());
                 res.value.token_trees.len()
             })
@@ -50,7 +53,7 @@ fn benchmark_expand_macro_rules() {
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro<DummyTestSpanData>> {
     macro_rules_fixtures_tt()
         .into_iter()
-        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true)))
+        .map(|(id, tt)| (id, DeclarativeMacro::parse_macro_rules(&tt, true, true)))
         .collect()
 }
 
@@ -64,8 +67,11 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<DummyTestSpanData>
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let def_tt =
-                syntax_node_to_token_tree(rule.token_tree().unwrap().syntax(), DummyTestSpanMap);
+            let def_tt = syntax_node_to_token_tree(
+                rule.token_tree().unwrap().syntax(),
+                DummyTestSpanMap,
+                DUMMY,
+            );
             (id, def_tt)
         })
         .collect()
@@ -94,18 +100,20 @@ fn invocation_fixtures(
                 // So we just skip any error cases and try again
                 let mut try_cnt = 0;
                 loop {
-                    let mut subtree = tt::Subtree {
+                    let mut token_trees = Vec::new();
+                    for op in rule.lhs.iter() {
+                        collect_from_op(op, &mut token_trees, &mut seed);
+                    }
+
+                    let subtree = tt::Subtree {
                         delimiter: tt::Delimiter {
                             open: DUMMY,
                             close: DUMMY,
                             kind: tt::DelimiterKind::Invisible,
                         },
-                        token_trees: vec![],
+                        token_trees: token_trees.into_boxed_slice(),
                     };
-                    for op in rule.lhs.iter() {
-                        collect_from_op(op, &mut subtree, &mut seed);
-                    }
-                    if it.expand(&subtree, |_| ()).err.is_none() {
+                    if it.expand(&subtree, |_| (), true, DUMMY).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }
@@ -121,45 +129,45 @@ fn invocation_fixtures(
 
     fn collect_from_op(
         op: &Op<DummyTestSpanData>,
-        parent: &mut tt::Subtree<DummyTestSpanData>,
+        token_trees: &mut Vec<tt::TokenTree<DummyTestSpanData>>,
         seed: &mut usize,
     ) {
         return match op {
             Op::Var { kind, .. } => match kind.as_ref() {
-                Some(MetaVarKind::Ident) => parent.token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Ty) => parent.token_trees.push(make_ident("Foo")),
-                Some(MetaVarKind::Tt) => parent.token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Vis) => parent.token_trees.push(make_ident("pub")),
-                Some(MetaVarKind::Pat) => parent.token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Path) => parent.token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Literal) => parent.token_trees.push(make_literal("1")),
-                Some(MetaVarKind::Expr) => parent.token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Ident) => token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Ty) => token_trees.push(make_ident("Foo")),
+                Some(MetaVarKind::Tt) => token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Vis) => token_trees.push(make_ident("pub")),
+                Some(MetaVarKind::Pat) => token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Path) => token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Literal) => token_trees.push(make_literal("1")),
+                Some(MetaVarKind::Expr) => token_trees.push(make_ident("foo")),
                 Some(MetaVarKind::Lifetime) => {
-                    parent.token_trees.push(make_punct('\''));
-                    parent.token_trees.push(make_ident("a"));
+                    token_trees.push(make_punct('\''));
+                    token_trees.push(make_ident("a"));
                 }
                 Some(MetaVarKind::Block) => {
-                    parent.token_trees.push(make_subtree(tt::DelimiterKind::Brace, None))
+                    token_trees.push(make_subtree(tt::DelimiterKind::Brace, None))
                 }
                 Some(MetaVarKind::Item) => {
-                    parent.token_trees.push(make_ident("fn"));
-                    parent.token_trees.push(make_ident("foo"));
-                    parent.token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
-                    parent.token_trees.push(make_subtree(tt::DelimiterKind::Brace, None));
+                    token_trees.push(make_ident("fn"));
+                    token_trees.push(make_ident("foo"));
+                    token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
+                    token_trees.push(make_subtree(tt::DelimiterKind::Brace, None));
                 }
                 Some(MetaVarKind::Meta) => {
-                    parent.token_trees.push(make_ident("foo"));
-                    parent.token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
+                    token_trees.push(make_ident("foo"));
+                    token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
                 }
 
                 None => (),
                 Some(kind) => panic!("Unhandled kind {kind:?}"),
             },
-            Op::Literal(it) => parent.token_trees.push(tt::Leaf::from(it.clone()).into()),
-            Op::Ident(it) => parent.token_trees.push(tt::Leaf::from(it.clone()).into()),
+            Op::Literal(it) => token_trees.push(tt::Leaf::from(it.clone()).into()),
+            Op::Ident(it) => token_trees.push(tt::Leaf::from(it.clone()).into()),
             Op::Punct(puncts) => {
                 for punct in puncts {
-                    parent.token_trees.push(tt::Leaf::from(*punct).into());
+                    token_trees.push(tt::Leaf::from(*punct).into());
                 }
             }
             Op::Repeat { tokens, kind, separator } => {
@@ -171,20 +179,20 @@ fn invocation_fixtures(
                 };
                 for i in 0..cnt {
                     for it in tokens.iter() {
-                        collect_from_op(it, parent, seed);
+                        collect_from_op(it, token_trees, seed);
                     }
                     if i + 1 != cnt {
                         if let Some(sep) = separator {
                             match sep {
                                 Separator::Literal(it) => {
-                                    parent.token_trees.push(tt::Leaf::Literal(it.clone()).into())
+                                    token_trees.push(tt::Leaf::Literal(it.clone()).into())
                                 }
                                 Separator::Ident(it) => {
-                                    parent.token_trees.push(tt::Leaf::Ident(it.clone()).into())
+                                    token_trees.push(tt::Leaf::Ident(it.clone()).into())
                                 }
                                 Separator::Puncts(puncts) => {
                                     for it in puncts {
-                                        parent.token_trees.push(tt::Leaf::Punct(*it).into())
+                                        token_trees.push(tt::Leaf::Punct(*it).into())
                                     }
                                 }
                             };
@@ -193,13 +201,17 @@ fn invocation_fixtures(
                 }
             }
             Op::Subtree { tokens, delimiter } => {
-                let mut subtree = tt::Subtree { delimiter: *delimiter, token_trees: Vec::new() };
+                let mut subtree = Vec::new();
                 tokens.iter().for_each(|it| {
                     collect_from_op(it, &mut subtree, seed);
                 });
-                parent.token_trees.push(subtree.into());
+
+                let subtree =
+                    tt::Subtree { delimiter: *delimiter, token_trees: subtree.into_boxed_slice() };
+
+                token_trees.push(subtree.into());
             }
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } => {}
+            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Length { .. } => {}
         };
 
         // Simple linear congruential generator for deterministic result
@@ -224,7 +236,7 @@ fn invocation_fixtures(
         ) -> tt::TokenTree<DummyTestSpanData> {
             tt::Subtree {
                 delimiter: tt::Delimiter { open: DUMMY, close: DUMMY, kind },
-                token_trees: token_trees.unwrap_or_default(),
+                token_trees: token_trees.map(Vec::into_boxed_slice).unwrap_or_default(),
             }
             .into()
         }

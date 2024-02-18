@@ -1,7 +1,7 @@
 // Regression test for #89469, where an extra non_snake_case warning was
 // reported for a shorthand field binding.
 
-// check-pass
+//@ check-pass
 #![deny(non_snake_case)]
 
 #[allow(non_snake_case)]

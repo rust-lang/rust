@@ -1,6 +1,6 @@
-// run-pass
-// only-x86_64
-// compile-flags: -C opt-level=3
+//@ run-pass
+//@ only-x86_64
+//@ compile-flags: -C opt-level=3
 
 // Regression test for issue #79865.
 // The assertion will fail when compiled with Rust 1.56..=1.59

@@ -1,6 +1,6 @@
 #![feature(diagnostic_namespace)]
-// check-pass
-// aux-build:proc-macro-helper.rs
+//@ check-pass
+//@ aux-build:proc-macro-helper.rs
 
 extern crate proc_macro_helper;
 

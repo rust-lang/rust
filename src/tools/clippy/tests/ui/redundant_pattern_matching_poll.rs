@@ -22,6 +22,12 @@ fn main() {
         bar();
     }
 
+    // Issue 6459
+    if matches!(Ready(42), Ready(_)) {}
+
+    // Issue 6459
+    if matches!(Pending::<()>, Pending) {}
+
     while let Ready(_) = Ready(42) {}
 
     while let Pending = Ready(42) {}

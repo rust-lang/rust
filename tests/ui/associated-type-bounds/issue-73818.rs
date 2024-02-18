@@ -1,6 +1,6 @@
 // Test that associated type bounds are correctly normalized when checking
 // default associated type values.
-// check-pass
+//@ check-pass
 
 #![allow(incomplete_features)]
 #![feature(specialization)]

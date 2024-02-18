@@ -11,6 +11,8 @@
 //! projections.
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
+// FIXME: This isn't really used anymore, at least not in a way where it does anything useful.
+// Check if we should get rid of this or make proper use of it instead.
 pub(crate) struct Trace<T, V> {
     arena: Option<Arena<T>>,
     map: Option<ArenaMap<Idx<T>, V>>,
@@ -18,6 +20,7 @@ pub(crate) struct Trace<T, V> {
 }
 
 impl<T, V> Trace<T, V> {
+    #[allow(dead_code)]
     pub(crate) fn new_for_arena() -> Trace<T, V> {
         Trace { arena: Some(Arena::default()), map: None, len: 0 }
     }
@@ -41,6 +44,7 @@ impl<T, V> Trace<T, V> {
         id
     }
 
+    #[allow(dead_code)]
     pub(crate) fn into_arena(mut self) -> Arena<T> {
         self.arena.take().unwrap()
     }

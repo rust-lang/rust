@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(dead_code)]
 
 struct RGB { r: f64, g: f64, b: f64 }

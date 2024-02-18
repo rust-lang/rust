@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Tests the default for the unused_features lint
 

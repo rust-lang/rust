@@ -7,17 +7,6 @@ LL |
 LL | #[allow(unused)]
    |         ^^^^^^ overruled by previous forbid
 
-error[E0453]: allow(unused) incompatible with previous forbid
-  --> $DIR/forbid-member-group.rs:6:9
-   |
-LL | #![forbid(unused_variables)]
-   |           ---------------- `forbid` level set here
-LL |
-LL | #[allow(unused)]
-   |         ^^^^^^ overruled by previous forbid
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0453`.

@@ -1,5 +1,5 @@
-// run-pass
-// edition:2018
+//@ run-pass
+//@ edition:2018
 
 #![allow(unused_imports)]
 #![allow(non_camel_case_types)]

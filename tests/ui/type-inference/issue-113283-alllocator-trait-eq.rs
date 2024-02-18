@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Verify that PartialEq implementations do not break type inference when
 // accepting types with different allocators
 

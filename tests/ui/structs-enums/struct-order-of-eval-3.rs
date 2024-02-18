@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Checks that functional-record-update order-of-eval is as expected
 // even when no Drop-implementations are involved.
 

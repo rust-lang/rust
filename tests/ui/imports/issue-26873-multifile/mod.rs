@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 mod A;
 
 use self::A::*;

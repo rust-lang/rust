@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(step_trait)]
 

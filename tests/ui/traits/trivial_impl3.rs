@@ -3,7 +3,7 @@
 //! which would break this crate. We want to avoid adding
 //! more ways in which adding an impl can be a breaking change.
 
-// aux-build:trivial3.rs
+//@ aux-build:trivial3.rs
 
 extern crate trivial3;
 

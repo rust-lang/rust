@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 
 // Test that we elaborate `Type: 'region` constraints and infer various important things.

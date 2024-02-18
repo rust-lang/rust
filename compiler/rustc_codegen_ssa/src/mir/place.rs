@@ -108,20 +108,17 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     // Also handles the first field of Scalar, ScalarPair, and Vector layouts.
                     self.llval
                 }
-                Abi::ScalarPair(a, b)
-                    if offset == a.size(bx.cx()).align_to(b.align(bx.cx()).abi) =>
-                {
-                    // Offset matches second field.
-                    let ty = bx.backend_type(self.layout);
-                    bx.struct_gep(ty, self.llval, 1)
+                Abi::ScalarPair(..) => {
+                    // FIXME(nikic): Generate this for all ABIs.
+                    bx.inbounds_gep(bx.type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
                 }
-                Abi::Scalar(_) | Abi::ScalarPair(..) | Abi::Vector { .. } if field.is_zst() => {
+                Abi::Scalar(_) | Abi::Vector { .. } if field.is_zst() => {
                     // ZST fields (even some that require alignment) are not included in Scalar,
                     // ScalarPair, and Vector layouts, so manually offset the pointer.
                     bx.gep(bx.cx().type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
                 }
-                Abi::Scalar(_) | Abi::ScalarPair(..) => {
-                    // All fields of Scalar and ScalarPair layouts must have been handled by this point.
+                Abi::Scalar(_) => {
+                    // All fields of Scalar layouts must have been handled by this point.
                     // Vector layouts have additional fields for each element of the vector, so don't panic in that case.
                     bug!(
                         "offset of non-ZST field `{:?}` does not match layout `{:#?}`",

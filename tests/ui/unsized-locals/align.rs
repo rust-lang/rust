@@ -1,6 +1,6 @@
 // Test that unsized locals uphold alignment requirements.
 // Regression test for #71416.
-// run-pass
+//@ run-pass
 #![feature(unsized_locals)]
 #![allow(incomplete_features)]
 use std::any::Any;

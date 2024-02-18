@@ -80,6 +80,22 @@ impl<'a, 'b, 'tcx> DefCollector<'a, 'b, 'tcx> {
             let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
             let def = self.create_def(field.id, name, DefKind::Field, field.span);
             self.with_parent(def, |this| visit::walk_field_def(this, field));
+            self.visit_anon_adt(&field.ty);
+        }
+    }
+
+    fn visit_anon_adt(&mut self, ty: &'a Ty) {
+        let def_kind = match &ty.kind {
+            TyKind::AnonStruct(..) => DefKind::Struct,
+            TyKind::AnonUnion(..) => DefKind::Union,
+            _ => return,
+        };
+        match &ty.kind {
+            TyKind::AnonStruct(node_id, _) | TyKind::AnonUnion(node_id, _) => {
+                let def_id = self.create_def(*node_id, kw::Empty, def_kind, ty.span);
+                self.with_parent(def_id, |this| visit::walk_ty(this, ty));
+            }
+            _ => {}
         }
     }
 
@@ -111,7 +127,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             ItemKind::TyAlias(..) => DefKind::TyAlias,
             ItemKind::Static(s) => DefKind::Static(s.mutability),
             ItemKind::Const(..) => DefKind::Const,
-            ItemKind::Fn(..) => DefKind::Fn,
+            ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(..) => {
                 let macro_data = self.resolver.compile_macro(i, self.resolver.tcx.sess.edition());
                 let macro_kind = macro_data.ext.macro_kind();
@@ -259,7 +275,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_kind = match &i.kind {
-            AssocItemKind::Fn(..) => DefKind::AssocFn,
+            AssocItemKind::Fn(..) | AssocItemKind::Delegation(..) => DefKind::AssocFn,
             AssocItemKind::Const(..) => DefKind::AssocConst,
             AssocItemKind::Type(..) => DefKind::AssocTy,
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
@@ -289,12 +305,18 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, kw::Empty, DefKind::Closure, expr.span);
                 match closure.coroutine_kind {
-                    Some(coroutine_kind) => self.create_def(
-                        coroutine_kind.closure_id(),
-                        kw::Empty,
-                        DefKind::Closure,
-                        expr.span,
-                    ),
+                    Some(coroutine_kind) => {
+                        self.with_parent(closure_def, |this| {
+                            let coroutine_def = this.create_def(
+                                coroutine_kind.closure_id(),
+                                kw::Empty,
+                                DefKind::Closure,
+                                expr.span,
+                            );
+                            this.with_parent(coroutine_def, |this| visit::walk_expr(this, expr));
+                        });
+                        return;
+                    }
                     None => closure_def,
                 }
             }
@@ -318,8 +340,10 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.kind {
+        match &ty.kind {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
+            // Anonymous structs or unions are visited later after defined.
+            TyKind::AnonStruct(..) | TyKind::AnonUnion(..) => {}
             _ => visit::walk_ty(self, ty),
         }
     }

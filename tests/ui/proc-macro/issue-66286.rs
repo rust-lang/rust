@@ -1,4 +1,4 @@
-// aux-build:issue-66286.rs
+//@ aux-build:issue-66286.rs
 
 // Regression test for #66286.
 

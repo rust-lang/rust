@@ -1,5 +1,5 @@
-// check-pass
-// edition:2018
+//@ check-pass
+//@ edition:2018
 
 async fn foo(x: &[Vec<u32>]) -> u32 {
     0

@@ -1,9 +1,9 @@
-// check-pass
+//@ check-pass
 
 #![warn(unused)]
 #![deny(warnings)]
 
-struct Inv<'a>(&'a mut &'a ());
+struct Inv<'a>(#[allow(dead_code)] &'a mut &'a ());
 
 trait Trait {}
 impl Trait for for<'a> fn(Inv<'a>) {}

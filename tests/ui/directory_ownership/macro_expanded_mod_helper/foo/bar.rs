@@ -1,1 +1,1 @@
-// ignore-test not a test, auxiliary
+//@ ignore-test not a test, auxiliary

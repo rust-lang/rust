@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 // Test that we DO warn when lifetime name is not used at all.
 

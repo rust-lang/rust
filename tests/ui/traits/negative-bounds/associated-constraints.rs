@@ -1,5 +1,4 @@
 #![feature(negative_bounds, associated_type_bounds)]
-//~^ WARN the feature `negative_bounds` is incomplete and may not be safe to use and/or cause compiler crashes
 
 trait Trait {
     type Assoc;
@@ -16,5 +15,8 @@ fn test3<T: !Trait<Assoc: Send>>() {}
 
 fn test4<T>() where T: !Trait<Assoc: Send> {}
 //~^ ERROR associated type constraints not allowed on negative bounds
+
+fn test5<T>() where T: !Fn() -> i32 {}
+//~^ ERROR parenthetical notation may not be used for negative bounds
 
 fn main() {}

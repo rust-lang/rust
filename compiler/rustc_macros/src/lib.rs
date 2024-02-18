@@ -6,10 +6,7 @@
 #![feature(proc_macro_span)]
 #![feature(proc_macro_tracked_env)]
 #![allow(rustc::default_hash_types)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
-#![recursion_limit = "128"]
 
 use synstructure::decl_derive;
 
@@ -17,6 +14,7 @@ use proc_macro::TokenStream;
 
 mod current_version;
 mod diagnostics;
+mod extension;
 mod hash_stable;
 mod lift;
 mod query;
@@ -43,6 +41,11 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     symbols::symbols(input.into()).into()
 }
 
+#[proc_macro_attribute]
+pub fn extension(attr: TokenStream, input: TokenStream) -> TokenStream {
+    extension::extension(attr, input)
+}
+
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
 decl_derive!(
     [HashStable_Generic, attributes(stable_hasher)] =>
@@ -56,6 +59,8 @@ decl_derive!(
     hash_stable::hash_stable_no_context_derive
 );
 
+decl_derive!([Decodable_Generic] => serialize::decodable_generic_derive);
+decl_derive!([Encodable_Generic] => serialize::encodable_generic_derive);
 decl_derive!([Decodable] => serialize::decodable_derive);
 decl_derive!([Encodable] => serialize::encodable_derive);
 decl_derive!([TyDecodable] => serialize::type_decodable_derive);

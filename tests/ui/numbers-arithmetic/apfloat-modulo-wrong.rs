@@ -1,5 +1,5 @@
-// run-pass
-// check-run-results
+//@ run-pass
+//@ check-run-results
 // regression test for issue #109567
 
 fn f() -> f64 {

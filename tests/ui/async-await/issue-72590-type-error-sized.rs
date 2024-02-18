@@ -1,6 +1,6 @@
 // Regression test for issue #72590
 // Tests that we don't emit a spurious "size cannot be statically determined" error
-// edition:2018
+//@ edition:2018
 
 struct Foo {
     foo: Nonexistent, //~ ERROR cannot find

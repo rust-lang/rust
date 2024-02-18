@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 pub struct Struct<K: 'static> {
     pub field: K,

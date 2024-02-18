@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Test that we point to the correct location that results a union being captured.
 // Union is special because it can't be disjointly captured.

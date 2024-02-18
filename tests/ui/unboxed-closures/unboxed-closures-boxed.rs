@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 
  fn make_adder(x: i32) -> Box<dyn FnMut(i32)->i32+'static> {

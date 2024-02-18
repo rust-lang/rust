@@ -1,4 +1,4 @@
-// compile-flags: --edition 2021
+//@ compile-flags: --edition 2021
 
 pub fn demo() -> Option<i32> {
     #[cfg(nope)]

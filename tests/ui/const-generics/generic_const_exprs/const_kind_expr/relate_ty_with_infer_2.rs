@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(inline_const, generic_const_exprs)]
 #![allow(incomplete_features)]
 use std::marker::PhantomData;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 // check that we don't accidentally capture upvars just because their name
 // occurs in a path

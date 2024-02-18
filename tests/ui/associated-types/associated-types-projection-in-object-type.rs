@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 #![allow(unused_imports)]
 // Corrected regression test for #20831. The original did not compile.
@@ -6,7 +6,7 @@
 // appear in associated type bindings in object types, which were not
 // being properly flagged.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::ops::{Shl, Shr};
 use std::cell::RefCell;

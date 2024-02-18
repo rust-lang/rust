@@ -1,21 +1,21 @@
-error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/async-borrowck-escaping-closure-error.rs:5:15
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/async-borrowck-escaping-closure-error.rs:6:5
    |
 LL |     Box::new((async || x)())
-   |               ^^^^^^^^ - `x` is borrowed here
-   |               |
-   |               may outlive borrowed value `x`
-   |
-note: closure is returned here
-  --> $DIR/async-borrowck-escaping-closure-error.rs:5:5
+   |     ^^^^^^^^^------------^^^
+   |     |        |
+   |     |        `x` is borrowed here
+   |     returns a value referencing data owned by the current function
+
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/async-borrowck-escaping-closure-error.rs:6:5
    |
 LL |     Box::new((async || x)())
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
-help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
-   |
-LL |     Box::new((async move || x)())
-   |                     ++++
+   |     ^^^^^^^^^------------^^^
+   |     |        |
+   |     |        temporary value created here
+   |     returns a value referencing data owned by the current function
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0373`.
+For more information about this error, try `rustc --explain E0515`.

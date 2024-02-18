@@ -2,11 +2,15 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
+
+// FIXME: Consider moving this into the span crate.
+
 use std::iter;
 
-use base_db::span::{MacroCallId, SpanData, SyntaxContextId};
+use base_db::salsa::{self, InternValue};
+use span::{MacroCallId, Span, SyntaxContextId};
 
-use crate::db::ExpandDatabase;
+use crate::db::{ExpandDatabase, InternSyntaxContextQuery};
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub struct SyntaxContextData {
@@ -17,6 +21,14 @@ pub struct SyntaxContextData {
     pub opaque: SyntaxContextId,
     /// This context, but with all transparent expansions filtered away.
     pub opaque_and_semitransparent: SyntaxContextId,
+}
+
+impl InternValue for SyntaxContextData {
+    type Key = (SyntaxContextId, Option<MacroCallId>, Transparency);
+
+    fn into_key(&self) -> Self::Key {
+        (self.parent, self.outer_expn, self.outer_transparency)
+    }
 }
 
 impl std::fmt::Debug for SyntaxContextData {
@@ -78,37 +90,29 @@ pub enum Transparency {
     Opaque,
 }
 
-pub fn span_with_def_site_ctxt(
-    db: &dyn ExpandDatabase,
-    span: SpanData,
-    expn_id: MacroCallId,
-) -> SpanData {
+pub fn span_with_def_site_ctxt(db: &dyn ExpandDatabase, span: Span, expn_id: MacroCallId) -> Span {
     span_with_ctxt_from_mark(db, span, expn_id, Transparency::Opaque)
 }
 
-pub fn span_with_call_site_ctxt(
-    db: &dyn ExpandDatabase,
-    span: SpanData,
-    expn_id: MacroCallId,
-) -> SpanData {
+pub fn span_with_call_site_ctxt(db: &dyn ExpandDatabase, span: Span, expn_id: MacroCallId) -> Span {
     span_with_ctxt_from_mark(db, span, expn_id, Transparency::Transparent)
 }
 
 pub fn span_with_mixed_site_ctxt(
     db: &dyn ExpandDatabase,
-    span: SpanData,
+    span: Span,
     expn_id: MacroCallId,
-) -> SpanData {
+) -> Span {
     span_with_ctxt_from_mark(db, span, expn_id, Transparency::SemiTransparent)
 }
 
 fn span_with_ctxt_from_mark(
     db: &dyn ExpandDatabase,
-    span: SpanData,
+    span: Span,
     expn_id: MacroCallId,
     transparency: Transparency,
-) -> SpanData {
-    SpanData { ctx: apply_mark(db, SyntaxContextId::ROOT, expn_id, transparency), ..span }
+) -> Span {
+    Span { ctx: apply_mark(db, SyntaxContextId::ROOT, expn_id, transparency), ..span }
 }
 
 pub(super) fn apply_mark(
@@ -121,7 +125,7 @@ pub(super) fn apply_mark(
         return apply_mark_internal(db, ctxt, Some(call_id), transparency);
     }
 
-    let call_site_ctxt = db.lookup_intern_macro_call(call_id).call_site;
+    let call_site_ctxt = db.lookup_intern_macro_call(call_id).call_site.ctx;
     let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
         call_site_ctxt.normalize_to_macros_2_0(db)
     } else {
@@ -159,29 +163,31 @@ fn apply_mark_internal(
 
     if transparency >= Transparency::Opaque {
         let parent = opaque;
-        let new_opaque = SyntaxContextId::SELF_REF;
-        // But we can't just grab the to be allocated ID either as that would not deduplicate
-        // things!
-        // So we need a new salsa store type here ...
-        opaque = db.intern_syntax_context(SyntaxContextData {
-            outer_expn: call_id,
-            outer_transparency: transparency,
-            parent,
-            opaque: new_opaque,
-            opaque_and_semitransparent: new_opaque,
-        });
+        opaque = salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
+            (parent, call_id, transparency),
+            |new_opaque| SyntaxContextData {
+                outer_expn: call_id,
+                outer_transparency: transparency,
+                parent,
+                opaque: new_opaque,
+                opaque_and_semitransparent: new_opaque,
+            },
+        );
     }
 
     if transparency >= Transparency::SemiTransparent {
         let parent = opaque_and_semitransparent;
-        let new_opaque_and_semitransparent = SyntaxContextId::SELF_REF;
-        opaque_and_semitransparent = db.intern_syntax_context(SyntaxContextData {
-            outer_expn: call_id,
-            outer_transparency: transparency,
-            parent,
-            opaque,
-            opaque_and_semitransparent: new_opaque_and_semitransparent,
-        });
+        opaque_and_semitransparent =
+            salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
+                (parent, call_id, transparency),
+                |new_opaque_and_semitransparent| SyntaxContextData {
+                    outer_expn: call_id,
+                    outer_transparency: transparency,
+                    parent,
+                    opaque,
+                    opaque_and_semitransparent: new_opaque_and_semitransparent,
+                },
+            );
     }
 
     let parent = ctxt;
@@ -202,20 +208,12 @@ pub trait SyntaxContextExt {
     fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)>;
 }
 
-#[inline(always)]
-fn handle_self_ref(p: SyntaxContextId, n: SyntaxContextId) -> SyntaxContextId {
-    match n {
-        SyntaxContextId::SELF_REF => p,
-        _ => n,
-    }
-}
-
 impl SyntaxContextExt for SyntaxContextId {
     fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> Self {
-        handle_self_ref(self, db.lookup_intern_syntax_context(self).opaque_and_semitransparent)
+        db.lookup_intern_syntax_context(self).opaque_and_semitransparent
     }
     fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> Self {
-        handle_self_ref(self, db.lookup_intern_syntax_context(self).opaque)
+        db.lookup_intern_syntax_context(self).opaque
     }
     fn parent_ctxt(self, db: &dyn ExpandDatabase) -> Self {
         db.lookup_intern_syntax_context(self).parent
@@ -245,4 +243,44 @@ pub fn marks_rev(
         Some(mark.parent_ctxt(db)).filter(|&it| it != SyntaxContextId::ROOT)
     })
     .map(|ctx| ctx.outer_mark(db))
+}
+
+pub(crate) fn dump_syntax_contexts(db: &dyn ExpandDatabase) -> String {
+    use crate::db::{InternMacroCallLookupQuery, InternSyntaxContextLookupQuery};
+    use base_db::salsa::debug::DebugQueryTable;
+
+    let mut s = String::from("Expansions:");
+    let mut entries = InternMacroCallLookupQuery.in_db(db).entries::<Vec<_>>();
+    entries.sort_by_key(|e| e.key);
+    for e in entries {
+        let id = e.key;
+        let expn_data = e.value.as_ref().unwrap();
+        s.push_str(&format!(
+            "\n{:?}: parent: {:?}, call_site_ctxt: {:?}, def_site_ctxt: {:?}, kind: {:?}",
+            id,
+            expn_data.kind.file_id(),
+            expn_data.call_site,
+            SyntaxContextId::ROOT, // FIXME expn_data.def_site,
+            expn_data.kind.descr(),
+        ));
+    }
+
+    s.push_str("\n\nSyntaxContexts:\n");
+    let mut entries = InternSyntaxContextLookupQuery.in_db(db).entries::<Vec<_>>();
+    entries.sort_by_key(|e| e.key);
+    for e in entries {
+        struct SyntaxContextDebug<'a>(
+            &'a dyn ExpandDatabase,
+            SyntaxContextId,
+            &'a SyntaxContextData,
+        );
+
+        impl<'a> std::fmt::Debug for SyntaxContextDebug<'a> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.2.fancy_debug(self.1, self.0, f)
+            }
+        }
+        stdx::format_to!(s, "{:?}\n", SyntaxContextDebug(db, e.key, &e.value.unwrap()));
+    }
+    s
 }

@@ -2,10 +2,10 @@
 // `type Outer = impl Trait<Assoc = impl Sized>`.
 // See the comments below.
 //
-// revisions: pass pass_sound fail
-// [pass] check-pass
-// [pass_sound] check-fail
-// [fail] check-fail
+//@ revisions: pass pass_sound fail
+//@ [pass] check-pass
+//@ [pass_sound] check-fail
+//@ [fail] check-fail
 
 #![feature(type_alias_impl_trait)]
 
@@ -43,7 +43,9 @@ mod pass_sound {
 
     fn test<T>() {
         let outer = define::<T>();
-        let _ = outer.get(); //[pass_sound]~ ERROR `T` may not live long enough
+        let _ = outer.get();
+        //[pass_sound]~^ ERROR `T` may not live long enough
+        //[pass_sound]~| ERROR `T` may not live long enough
     }
 }
 

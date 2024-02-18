@@ -1,5 +1,5 @@
-// compile-flags:-C panic=unwind
-// no-prefer-dynamic
+//@ compile-flags:-C panic=unwind
+//@ no-prefer-dynamic
 
 #![feature(panic_runtime)]
 #![crate_type = "rlib"]

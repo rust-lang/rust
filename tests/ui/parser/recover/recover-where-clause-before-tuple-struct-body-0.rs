@@ -1,10 +1,10 @@
 // Regression test for issues #100790 and #106439.
-// run-rustfix
+//@ run-rustfix
 
 pub struct Example
 where
     (): Sized,
-(usize);
+(#[allow(dead_code)] usize);
 //~^^^ ERROR where clauses are not allowed before tuple struct bodies
 
 struct _Demo

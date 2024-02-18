@@ -1,5 +1,5 @@
-// build-pass
-// aux-build:issue-97708-aux.rs
+//@ build-pass
+//@ aux-build:issue-97708-aux.rs
 
 extern crate issue_97708_aux;
 use issue_97708_aux::TaskStub;

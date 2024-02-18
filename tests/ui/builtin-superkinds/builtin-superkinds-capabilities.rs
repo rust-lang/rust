@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests "capabilities" granted by traits that inherit from super-
 // builtin-kinds, e.g., if a trait requires Send to implement, then
 // at usage site of that trait, we know we have the Send capability.

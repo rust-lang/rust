@@ -1,5 +1,5 @@
-// compile-flags: --target armv7-unknown-linux-gnueabihf
-// needs-llvm-components: arm
+//@ compile-flags: --target armv7-unknown-linux-gnueabihf
+//@ needs-llvm-components: arm
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]

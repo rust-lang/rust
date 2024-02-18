@@ -2,7 +2,7 @@
 //
 // Made to pass as part of fixing #98095.
 //
-// check-pass
+//@ check-pass
 
 pub fn serialize_as_csv<V>(value: &V) -> Result<String, &str>
 where

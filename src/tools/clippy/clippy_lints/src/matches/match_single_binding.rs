@@ -36,7 +36,7 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     .to_string();
 
     // Do we need to add ';' to suggestion ?
-    if let Node::Stmt(stmt) = cx.tcx.hir().get_parent(expr.hir_id)
+    if let Node::Stmt(stmt) = cx.tcx.parent_hir_node(expr.hir_id)
         && let StmtKind::Expr(_) = stmt.kind
         && match match_body.kind {
             // We don't need to add a ; to blocks, unless that block is from a macro expansion
@@ -146,18 +146,16 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
 
 /// Returns true if the `ex` match expression is in a local (`let`) or assign expression
 fn opt_parent_assign_span<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<AssignmentExpr> {
-    let map = &cx.tcx.hir();
-
-    if let Some(Node::Expr(parent_arm_expr)) = map.find_parent(ex.hir_id) {
-        return match map.find_parent(parent_arm_expr.hir_id) {
-            Some(Node::Local(parent_let_expr)) => Some(AssignmentExpr::Local {
+    if let Node::Expr(parent_arm_expr) = cx.tcx.parent_hir_node(ex.hir_id) {
+        return match cx.tcx.parent_hir_node(parent_arm_expr.hir_id) {
+            Node::Local(parent_let_expr) => Some(AssignmentExpr::Local {
                 span: parent_let_expr.span,
                 pat_span: parent_let_expr.pat.span(),
             }),
-            Some(Node::Expr(Expr {
+            Node::Expr(Expr {
                 kind: ExprKind::Assign(parent_assign_expr, match_expr, _),
                 ..
-            })) => Some(AssignmentExpr::Assign {
+            }) => Some(AssignmentExpr::Assign {
                 span: parent_assign_expr.span,
                 match_span: match_expr.span,
             }),
@@ -191,7 +189,7 @@ fn sugg_with_curlies<'a>(
 
     // If the parent is already an arm, and the body is another match statement,
     // we need curly braces around suggestion
-    if let Node::Arm(arm) = &cx.tcx.hir().get_parent(match_expr.hir_id) {
+    if let Node::Arm(arm) = &cx.tcx.parent_hir_node(match_expr.hir_id) {
         if let ExprKind::Match(..) = arm.body.kind {
             cbrace_end = format!("\n{indent}}}");
             // Fix body indent due to the match

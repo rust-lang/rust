@@ -1,5 +1,5 @@
-// compile-flags: --test
-// run-pass
+//@ compile-flags: --test
+//@ run-pass
 
 #![feature(custom_test_frameworks)]
 #![test_runner(crate::foo_runner)]

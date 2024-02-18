@@ -1,8 +1,8 @@
 // Allow an unstable re-export without requiring a feature gate.
 // #94972
 
-// aux-build:lint-stability.rs
-// aux-build:lint-stability-reexport.rs
+//@ aux-build:lint-stability.rs
+//@ aux-build:lint-stability-reexport.rs
 #![feature(staged_api)]
 #![stable(feature = "lint_stability", since = "1.0.0")]
 

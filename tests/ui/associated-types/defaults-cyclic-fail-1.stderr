@@ -1,10 +1,10 @@
-error[E0275]: overflow evaluating the requirement `<bool as Tr>::B == _`
+error[E0275]: overflow evaluating the requirement `<bool as Tr>::A == _`
   --> $DIR/defaults-cyclic-fail-1.rs:26:14
    |
 LL |     type A = Box<Self::B>;
    |              ^^^^^^^^^^^^
 
-error[E0275]: overflow evaluating the requirement `<usize as Tr>::A == _`
+error[E0275]: overflow evaluating the requirement `<usize as Tr>::B == _`
   --> $DIR/defaults-cyclic-fail-1.rs:32:14
    |
 LL |     type B = &'static Self::A;

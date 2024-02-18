@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    iter,
-};
+use std::iter;
 
 use hir::{HasSource, HirFileIdExt, ModuleSource};
 use ide_db::{
@@ -9,6 +6,7 @@ use ide_db::{
     base_db::FileId,
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
+    FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -235,9 +233,9 @@ impl Module {
     fn get_usages_and_record_fields(
         &self,
         ctx: &AssistContext<'_>,
-    ) -> (HashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
+    ) -> (FxHashMap<FileId, Vec<(TextRange, String)>>, Vec<SyntaxNode>) {
         let mut adt_fields = Vec::new();
-        let mut refs: HashMap<FileId, Vec<(TextRange, String)>> = HashMap::new();
+        let mut refs: FxHashMap<FileId, Vec<(TextRange, String)>> = FxHashMap::default();
 
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
@@ -320,7 +318,7 @@ impl Module {
         &self,
         ctx: &AssistContext<'_>,
         node_def: Definition,
-        refs_in_files: &mut HashMap<FileId, Vec<(TextRange, String)>>,
+        refs_in_files: &mut FxHashMap<FileId, Vec<(TextRange, String)>>,
     ) {
         for (file_id, references) in node_def.usages(&ctx.sema).all() {
             let source_file = ctx.sema.parse(file_id);
@@ -400,7 +398,7 @@ impl Module {
         ctx: &AssistContext<'_>,
     ) -> Vec<TextRange> {
         let mut import_paths_to_be_removed: Vec<TextRange> = vec![];
-        let mut node_set: HashSet<String> = HashSet::new();
+        let mut node_set: FxHashSet<String> = FxHashSet::default();
 
         for item in self.body_items.clone() {
             for x in item.syntax().descendants() {
@@ -668,7 +666,7 @@ fn check_intersection_and_push(
     // check for intersection between all current members
     // and combine all such ranges into one.
     let s: SmallVec<[_; 2]> = import_paths_to_be_removed
-        .into_iter()
+        .iter_mut()
         .positions(|it| it.intersect(import_path).is_some())
         .collect();
     for pos in s.into_iter().rev() {
@@ -689,27 +687,22 @@ fn does_source_exists_outside_sel_in_same_mod(
     match def {
         Definition::Module(x) => {
             let source = x.definition_source(ctx.db());
-            let have_same_parent;
-            if let Some(ast_module) = &curr_parent_module {
+            let have_same_parent = if let Some(ast_module) = &curr_parent_module {
                 if let Some(hir_module) = x.parent(ctx.db()) {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some();
+                    compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
+                    source_file_id == curr_file_id
                 }
             } else {
                 let source_file_id = source.file_id.original_file(ctx.db());
-                have_same_parent = source_file_id == curr_file_id;
-            }
+                source_file_id == curr_file_id
+            };
 
             if have_same_parent {
-                match source.value {
-                    ModuleSource::Module(module_) => {
-                        source_exists_outside_sel_in_same_mod =
-                            !selection_range.contains_range(module_.syntax().text_range());
-                    }
-                    _ => {}
+                if let ModuleSource::Module(module_) = source.value {
+                    source_exists_outside_sel_in_same_mod =
+                        !selection_range.contains_range(module_.syntax().text_range());
                 }
             }
         }

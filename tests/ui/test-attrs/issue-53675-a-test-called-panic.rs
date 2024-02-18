@@ -1,8 +1,8 @@
 // rust-lang/rust#53675: At one point the compiler errored when a test
 // named `panic` used the `assert!` macro in expression position.
 
-// check-pass
-// compile-flags: --test
+//@ check-pass
+//@ compile-flags: --test
 
 mod in_expression_position {
     #[test]

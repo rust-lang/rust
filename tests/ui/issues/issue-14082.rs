@@ -1,5 +1,5 @@
-// check-pass
-// pretty-expanded FIXME #23616
+//@ check-pass
+//@ pretty-expanded FIXME #23616
 
 #![allow(unused_imports, dead_code)]
 

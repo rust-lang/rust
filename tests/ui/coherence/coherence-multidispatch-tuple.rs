@@ -1,6 +1,6 @@
-// run-pass
+//@ check-pass
 #![allow(unused_imports)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 use std::fmt::Debug;
 use std::default::Default;

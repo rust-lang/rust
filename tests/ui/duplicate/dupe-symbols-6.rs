@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 #![crate_type="rlib"]
 #![allow(warnings)]

@@ -36,7 +36,7 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
-use crate::clean::external_path;
+use crate::clean::clean_middle_path;
 use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::utils::{is_literal_expr, print_evaluated_const};
 use crate::core::DocContext;
@@ -643,7 +643,7 @@ impl Item {
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
                     unsafety: if abi == Abi::RustIntrinsic {
-                        intrinsic_operation_unsafety(tcx, self.def_id().unwrap())
+                        intrinsic_operation_unsafety(tcx, def_id.expect_local())
                     } else {
                         hir::Unsafety::Unsafe
                     },
@@ -1012,7 +1012,7 @@ pub(crate) trait AttributesExt {
                             match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
                                 Err(e) => {
-                                    sess.span_err(e.span, e.msg);
+                                    sess.dcx().span_err(e.span, e.msg);
                                 }
                             }
                         }
@@ -1258,7 +1258,7 @@ impl GenericBound {
     fn sized_with(cx: &mut DocContext<'_>, modifier: hir::TraitBoundModifier) -> GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = ty::Binder::dummy(ty::GenericArgs::empty());
-        let path = external_path(cx, did, false, ThinVec::new(), empty);
+        let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(PolyTrait { trait_: path, generic_params: Vec::new() }, modifier)
     }
@@ -1326,7 +1326,7 @@ impl WherePredicate {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: ThinVec<Lifetime> },
-    Type { did: DefId, bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
+    Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
     Const { ty: Box<Type>, default: Option<Box<String>>, is_host_effect: bool },
 }
@@ -1340,12 +1340,13 @@ impl GenericParamDefKind {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct GenericParamDef {
     pub(crate) name: Symbol,
+    pub(crate) def_id: DefId,
     pub(crate) kind: GenericParamDefKind,
 }
 
 impl GenericParamDef {
-    pub(crate) fn lifetime(name: Symbol) -> Self {
-        Self { name, kind: GenericParamDefKind::Lifetime { outlives: ThinVec::new() } }
+    pub(crate) fn lifetime(def_id: DefId, name: Symbol) -> Self {
+        Self { name, def_id, kind: GenericParamDefKind::Lifetime { outlives: ThinVec::new() } }
     }
 
     pub(crate) fn is_synthetic_param(&self) -> bool {
@@ -1862,7 +1863,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
             .copied()
     }
 
@@ -1870,7 +1871,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter().flatten())
             .copied()
     }
 
@@ -2228,6 +2229,16 @@ pub(crate) enum GenericArg {
     Infer,
 }
 
+impl GenericArg {
+    pub(crate) fn as_lt(&self) -> Option<&Lifetime> {
+        if let Self::Lifetime(lt) = self { Some(lt) } else { None }
+    }
+
+    pub(crate) fn as_ty(&self) -> Option<&Type> {
+        if let Self::Type(ty) = self { Some(ty) } else { None }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
     AngleBracketed { args: Box<[GenericArg]>, bindings: ThinVec<TypeBinding> },
@@ -2528,35 +2539,6 @@ pub(crate) struct TypeBinding {
 pub(crate) enum TypeBindingKind {
     Equality { term: Term },
     Constraint { bounds: Vec<GenericBound> },
-}
-
-/// The type, lifetime, or constant that a private type alias's parameter should be
-/// replaced with when expanding a use of that type alias.
-///
-/// For example:
-///
-/// ```
-/// type PrivAlias<T> = Vec<T>;
-///
-/// pub fn public_fn() -> PrivAlias<i32> { vec![] }
-/// ```
-///
-/// `public_fn`'s docs will show it as returning `Vec<i32>`, since `PrivAlias` is private.
-/// [`SubstParam`] is used to record that `T` should be mapped to `i32`.
-pub(crate) enum SubstParam {
-    Type(Type),
-    Lifetime(Lifetime),
-    Constant,
-}
-
-impl SubstParam {
-    pub(crate) fn as_ty(&self) -> Option<&Type> {
-        if let Self::Type(ty) = self { Some(ty) } else { None }
-    }
-
-    pub(crate) fn as_lt(&self) -> Option<&Lifetime> {
-        if let Self::Lifetime(lt) = self { Some(lt) } else { None }
-    }
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.

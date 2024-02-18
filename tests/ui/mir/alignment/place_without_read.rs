@@ -1,5 +1,5 @@
-// run-pass
-// compile-flags: -C debug-assertions
+//@ run-pass
+//@ compile-flags: -C debug-assertions
 
 fn main() {
     let ptr = 1 as *const u16;

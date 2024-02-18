@@ -84,7 +84,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             start_sp: return_sp.with_hi(return_sp.lo() + BytePos(4)),
             end_sp: return_sp.shrink_to_hi(),
         };
-        err.subdiagnostic(sugg);
+        err.subdiagnostic(self.dcx(), sugg);
 
         let mut starts = Vec::new();
         let mut ends = Vec::new();
@@ -93,7 +93,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ends.push(span.shrink_to_hi());
         }
         let sugg = SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends };
-        err.subdiagnostic(sugg);
+        err.subdiagnostic(self.dcx(), sugg);
     }
 
     pub(super) fn suggest_tuple_pattern(
@@ -138,7 +138,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             span_low: cause.span.shrink_to_lo(),
                             span_high: cause.span.shrink_to_hi(),
                         };
-                        diag.subdiagnostic(sugg);
+                        diag.subdiagnostic(self.dcx(), sugg);
                     }
                     _ => {
                         // More than one matching variant.
@@ -147,7 +147,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             cause_span: cause.span,
                             compatible_variants,
                         };
-                        diag.subdiagnostic(sugg);
+                        diag.subdiagnostic(self.dcx(), sugg);
                     }
                 }
             }
@@ -203,10 +203,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                    prior_arms,
+                    prior_non_diverging_arms,
                     ..
                 }) => {
-                    if let [.., arm_span] = &prior_arms[..] {
+                    if let [.., arm_span] = &prior_non_diverging_arms[..] {
                         Some(ConsiderAddingAwait::BothFuturesSugg {
                             first: arm_span.shrink_to_hi(),
                             second: exp_span.shrink_to_hi(),
@@ -219,9 +219,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             },
             (_, Some(ty)) if self.same_type_modulo_infer(exp_found.expected, ty) => {
                 // FIXME: Seems like we can't have a suggestion and a note with different spans in a single subdiagnostic
-                diag.subdiagnostic(ConsiderAddingAwait::FutureSugg {
-                    span: exp_span.shrink_to_hi(),
-                });
+                diag.subdiagnostic(
+                    self.dcx(),
+                    ConsiderAddingAwait::FutureSugg { span: exp_span.shrink_to_hi() },
+                );
                 Some(ConsiderAddingAwait::FutureSuggNote { span: exp_span })
             }
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
@@ -234,11 +235,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                    ref prior_arms,
+                    ref prior_non_diverging_arms,
                     ..
                 }) => Some({
                     ConsiderAddingAwait::FutureSuggMultiple {
-                        spans: prior_arms.iter().map(|arm| arm.shrink_to_hi()).collect(),
+                        spans: prior_non_diverging_arms
+                            .iter()
+                            .map(|arm| arm.shrink_to_hi())
+                            .collect(),
                     }
                 }),
                 _ => None,
@@ -246,7 +250,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             _ => None,
         };
         if let Some(subdiag) = subdiag {
-            diag.subdiagnostic(subdiag);
+            diag.subdiagnostic(self.dcx(), subdiag);
         }
     }
 
@@ -282,7 +286,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         } else {
                             return;
                         };
-                        diag.subdiagnostic(suggestion);
+                        diag.subdiagnostic(self.dcx(), suggestion);
                     }
                 }
             }
@@ -313,7 +317,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
                     || !sig.is_suggestable(self.tcx, true)
-                    || self.tcx.is_intrinsic(*did)
+                    || self.tcx.intrinsic(*did).is_some()
                 {
                     return;
                 }
@@ -322,15 +326,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (true, false) => FunctionPointerSuggestion::UseRef { span, fn_name },
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
-                        diag.subdiagnostic(FnItemsAreDistinct);
+                        diag.subdiagnostic(self.dcx(), FnItemsAreDistinct);
                         FunctionPointerSuggestion::CastRef { span, fn_name, sig: *sig }
                     }
                     (false, false) => {
-                        diag.subdiagnostic(FnItemsAreDistinct);
+                        diag.subdiagnostic(self.dcx(), FnItemsAreDistinct);
                         FunctionPointerSuggestion::Cast { span, fn_name, sig: *sig }
                     }
                 };
-                diag.subdiagnostic(sugg);
+                diag.subdiagnostic(self.dcx(), sugg);
             }
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let expected_sig =
@@ -339,14 +343,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
 
                 if self.same_type_modulo_infer(*expected_sig, *found_sig) {
-                    diag.subdiagnostic(FnUniqTypes);
+                    diag.subdiagnostic(self.dcx(), FnUniqTypes);
                 }
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig)
                     || !found_sig.is_suggestable(self.tcx, true)
                     || !expected_sig.is_suggestable(self.tcx, true)
-                    || self.tcx.is_intrinsic(*did1)
-                    || self.tcx.is_intrinsic(*did2)
+                    || self.tcx.intrinsic(*did1).is_some()
+                    || self.tcx.intrinsic(*did2).is_some()
                 {
                     return;
                 }
@@ -368,7 +372,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 };
 
-                diag.subdiagnostic(sug);
+                diag.subdiagnostic(self.dcx(), sug);
             }
             (ty::FnDef(did, args), ty::FnPtr(sig)) => {
                 let expected_sig =
@@ -387,7 +391,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     format!("{fn_name} as {found_sig}")
                 };
 
-                diag.subdiagnostic(FnConsiderCasting { casting });
+                diag.subdiagnostic(self.dcx(), FnConsiderCasting { casting });
             }
             _ => {
                 return;
@@ -735,30 +739,29 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             };
             local.pat.walk(&mut find_compatible_candidates);
         }
-        match hir.find_parent(blk.hir_id) {
-            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => match hir.find_parent(*hir_id) {
-                Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
+        match self.tcx.parent_hir_node(blk.hir_id) {
+            hir::Node::Expr(hir::Expr { hir_id, .. }) => match self.tcx.parent_hir_node(*hir_id) {
+                hir::Node::Arm(hir::Arm { pat, .. }) => {
                     pat.walk(&mut find_compatible_candidates);
                 }
-                Some(
-                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
-                    | hir::Node::ImplItem(hir::ImplItem {
-                        kind: hir::ImplItemKind::Fn(_, body), ..
-                    })
-                    | hir::Node::TraitItem(hir::TraitItem {
-                        kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
-                        ..
-                    })
-                    | hir::Node::Expr(hir::Expr {
-                        kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
-                        ..
-                    }),
-                ) => {
+
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                | hir::Node::ImplItem(hir::ImplItem {
+                    kind: hir::ImplItemKind::Fn(_, body), ..
+                })
+                | hir::Node::TraitItem(hir::TraitItem {
+                    kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
+                    ..
+                })
+                | hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
+                    ..
+                }) => {
                     for param in hir.body(*body).params {
                         param.pat.walk(&mut find_compatible_candidates);
                     }
                 }
-                Some(hir::Node::Expr(hir::Expr {
+                hir::Node::Expr(hir::Expr {
                     kind:
                         hir::ExprKind::If(
                             hir::Expr { kind: hir::ExprKind::Let(let_), .. },
@@ -766,7 +769,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             _,
                         ),
                     ..
-                })) if then_block.hir_id == *hir_id => {
+                }) if then_block.hir_id == *hir_id => {
                     let_.pat.walk(&mut find_compatible_candidates);
                 }
                 _ => {}
@@ -820,7 +823,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let diag = self.consider_returning_binding_diag(blk, expected_ty);
         match diag {
             Some(diag) => {
-                err.subdiagnostic(diag);
+                err.subdiagnostic(self.dcx(), diag);
                 true
             }
             None => false,

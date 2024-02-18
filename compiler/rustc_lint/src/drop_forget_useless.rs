@@ -149,28 +149,28 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         DROPPING_REFERENCES,
                         expr.span,
                         DropRefDiag { arg_ty, label: arg.span },
                     );
                 }
                 sym::mem_forget if arg_ty.is_ref() => {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         FORGETTING_REFERENCES,
                         expr.span,
                         ForgetRefDiag { arg_ty, label: arg.span },
                     );
                 }
                 sym::mem_drop if is_copy && !drop_is_single_call_in_arm => {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         DROPPING_COPY_TYPES,
                         expr.span,
                         DropCopyDiag { arg_ty, label: arg.span },
                     );
                 }
                 sym::mem_forget if is_copy => {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         FORGETTING_COPY_TYPES,
                         expr.span,
                         ForgetCopyDiag { arg_ty, label: arg.span },
@@ -180,7 +180,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     if let ty::Adt(adt, _) = arg_ty.kind()
                         && adt.is_manually_drop() =>
                 {
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         UNDROPPED_MANUALLY_DROPS,
                         expr.span,
                         UndroppedManuallyDropsDiag {
@@ -214,8 +214,7 @@ fn is_single_call_in_arm<'tcx>(
     drop_expr: &'tcx Expr<'_>,
 ) -> bool {
     if arg.can_have_side_effects() {
-        let parent_node = cx.tcx.hir().find_parent(drop_expr.hir_id);
-        if let Some(Node::Arm(Arm { body, .. })) = &parent_node {
+        if let Node::Arm(Arm { body, .. }) = cx.tcx.parent_hir_node(drop_expr.hir_id) {
             return body.hir_id == drop_expr.hir_id;
         }
     }

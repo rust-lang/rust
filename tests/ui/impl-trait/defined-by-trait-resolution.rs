@@ -1,6 +1,6 @@
 //! The trait query `foo: Fn() -> u8` is a valid defining use of RPIT.
 
-// build-pass
+//@ build-pass
 
 fn returns_u8(_: impl Fn() -> u8) {}
 

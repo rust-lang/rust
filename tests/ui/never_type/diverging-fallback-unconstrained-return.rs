@@ -4,9 +4,9 @@
 // in the objc crate, where changing the fallback from `!` to `()`
 // resulted in unsoundness.
 //
-// check-pass
+//@ check-pass
 
-// revisions: nofallback fallback
+//@ revisions: nofallback fallback
 
 #![cfg_attr(fallback, feature(never_type, never_type_fallback))]
 #![allow(unit_bindings)]

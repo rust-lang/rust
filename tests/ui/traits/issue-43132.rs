@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused)]
 
 fn main() {

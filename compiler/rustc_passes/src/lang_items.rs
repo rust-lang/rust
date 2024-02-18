@@ -78,7 +78,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
                 // Known lang item with attribute on incorrect target.
                 Some(lang_item) => {
-                    self.tcx.sess.emit_err(LangItemOnIncorrectTarget {
+                    self.tcx.dcx().emit_err(LangItemOnIncorrectTarget {
                         span: attr_span,
                         name,
                         expected_target: lang_item.target(),
@@ -87,7 +87,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
                 // Unknown lang item.
                 _ => {
-                    self.tcx.sess.emit_err(UnknownLangItem { span: attr_span, name });
+                    self.tcx.dcx().emit_err(UnknownLangItem { span: attr_span, name });
                 }
             }
         }
@@ -149,7 +149,9 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
             };
 
-            self.tcx.sess.emit_err(DuplicateLangItem {
+            // When there's a duplicate lang item, something went very wrong and there's no value in recovering or doing anything.
+            // Give the user the one message to let them debug the mess they created and then wish them farewell.
+            self.tcx.dcx().emit_fatal(DuplicateLangItem {
                 local_span: item_span,
                 lang_item_name,
                 crate_name,
@@ -220,7 +222,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 // We are issuing E0718 "incorrect target" here, because while the
                 // item kind of the target is correct, the target is still wrong
                 // because of the wrong number of generic arguments.
-                self.tcx.sess.emit_err(IncorrectTarget {
+                self.tcx.dcx().emit_err(IncorrectTarget {
                     span: attr_span,
                     generics_span: generics.span,
                     name: name.as_str(),
@@ -271,7 +273,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::Use(_) => Target::Use,
             ast::ItemKind::Static(_) => Target::Static,
             ast::ItemKind::Const(_) => Target::Const,
-            ast::ItemKind::Fn(_) => Target::Fn,
+            ast::ItemKind::Fn(_) | ast::ItemKind::Delegation(..) => Target::Fn,
             ast::ItemKind::Mod(_, _) => Target::Mod,
             ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
             ast::ItemKind::GlobalAsm(_) => Target::GlobalAsm,
@@ -315,24 +317,29 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
     fn visit_assoc_item(&mut self, i: &'ast ast::AssocItem, ctxt: visit::AssocCtxt) {
         let (target, generics) = match &i.kind {
-            ast::AssocItemKind::Fn(fun) => (
-                match &self.parent_item.unwrap().kind {
-                    ast::ItemKind::Impl(i) => {
-                        if i.of_trait.is_some() {
-                            Target::Method(MethodKind::Trait { body: fun.body.is_some() })
-                        } else {
-                            Target::Method(MethodKind::Inherent)
+            ast::AssocItemKind::Fn(..) | ast::AssocItemKind::Delegation(..) => {
+                let (body, generics) = if let ast::AssocItemKind::Fn(fun) = &i.kind {
+                    (fun.body.is_some(), Some(&fun.generics))
+                } else {
+                    (true, None)
+                };
+                (
+                    match &self.parent_item.unwrap().kind {
+                        ast::ItemKind::Impl(i) => {
+                            if i.of_trait.is_some() {
+                                Target::Method(MethodKind::Trait { body })
+                            } else {
+                                Target::Method(MethodKind::Inherent)
+                            }
                         }
-                    }
-                    ast::ItemKind::Trait(_) => {
-                        Target::Method(MethodKind::Trait { body: fun.body.is_some() })
-                    }
-                    _ => unreachable!(),
-                },
-                &fun.generics,
-            ),
-            ast::AssocItemKind::Const(ct) => (Target::AssocConst, &ct.generics),
-            ast::AssocItemKind::Type(ty) => (Target::AssocTy, &ty.generics),
+                        ast::ItemKind::Trait(_) => Target::Method(MethodKind::Trait { body }),
+                        _ => unreachable!(),
+                    },
+                    generics,
+                )
+            }
+            ast::AssocItemKind::Const(ct) => (Target::AssocConst, Some(&ct.generics)),
+            ast::AssocItemKind::Type(ty) => (Target::AssocTy, Some(&ty.generics)),
             ast::AssocItemKind::MacCall(_) => unreachable!("macros should have been expanded"),
         };
 
@@ -341,7 +348,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             self.resolver.node_id_to_def_id[&i.id],
             &i.attrs,
             i.span,
-            Some(generics),
+            generics,
         );
 
         visit::walk_assoc_item(self, i, ctxt);

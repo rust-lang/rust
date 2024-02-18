@@ -1,7 +1,3 @@
-#![feature(min_specialization)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
-
 #[macro_use]
 extern crate rustc_macros;
 
@@ -9,7 +5,9 @@ pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, StableCompare, StableHasher, ToStableHashKey,
+};
 use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
@@ -541,6 +539,14 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
     }
 }
 
+impl StableCompare for LintId {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    fn stable_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.lint_name_raw().cmp(&other.lint_name_raw())
+    }
+}
+
 #[derive(Debug)]
 pub struct AmbiguityErrorDiag {
     pub msg: String,
@@ -702,7 +708,8 @@ impl LintBuffer {
     }
 
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
-        self.map.remove(&id).unwrap_or_default()
+        // FIXME(#120456) - is `swap_remove` correct?
+        self.map.swap_remove(&id).unwrap_or_default()
     }
 
     pub fn buffer_lint(

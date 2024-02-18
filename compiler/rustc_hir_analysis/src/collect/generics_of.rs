@@ -51,7 +51,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.features().generic_const_exprs {
-                let parent_node = tcx.hir().get_parent(hir_id);
+                let parent_node = tcx.parent_hir_node(hir_id);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
                     && constant.hir_id == hir_id
                 {
@@ -71,7 +71,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
                     //
                     // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
-                    // we substitute the defaults with the partially built args when we build the args. Subst'ing
+                    // we instantiate the defaults with the partially built args when we build the args. Instantiating
                     // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
                     //
                     // We fix this by having this function return the parent's generics ourselves and truncating the
@@ -113,7 +113,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     Some(parent_def_id.to_def_id())
                 }
             } else {
-                let parent_node = tcx.hir().get_parent(hir_id);
+                let parent_node = tcx.parent_hir_node(hir_id);
                 match parent_node {
                     // HACK(eddyb) this provides the correct generics for repeat
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
@@ -274,7 +274,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     Defaults::FutureCompatDisallowed
                         if tcx.features().default_type_parameter_fallback => {}
                     Defaults::FutureCompatDisallowed => {
-                        tcx.struct_span_lint_hir(
+                        tcx.node_span_lint(
                             lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                             param.hir_id,
                             param.span,
@@ -283,7 +283,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         );
                     }
                     Defaults::Deny => {
-                        tcx.sess.span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
+                        tcx.dcx().span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
                     }
                 }
             }
@@ -304,7 +304,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // `host` effect params are allowed to have defaults.
                 && !is_host_effect
             {
-                tcx.sess.span_err(
+                tcx.dcx().span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
                     `struct`, `enum`, `type`, or `trait` definitions",
@@ -315,7 +315,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             if is_host_effect {
                 if let Some(idx) = host_effect_index {
-                    bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
+                    tcx.dcx().span_delayed_bug(
+                        param.span,
+                        format!("parent also has host effect param? index: {idx}, def: {def_id:?}"),
+                    );
                 }
 
                 host_effect_index = Some(index as usize);
@@ -338,14 +341,28 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
     if let Node::Expr(&hir::Expr {
-        kind: hir::ExprKind::Closure(hir::Closure { movability: gen, .. }),
-        ..
+        kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
     }) = node
     {
-        let dummy_args = if gen.is_some() {
-            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
-        } else {
-            &["<closure_kind>", "<closure_signature>", "<upvars>"][..]
+        // See `ClosureArgsParts`, `CoroutineArgsParts`, and `CoroutineClosureArgsParts`
+        // for info on the usage of each of these fields.
+        let dummy_args = match kind {
+            ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
+            ClosureKind::Coroutine(_) => &[
+                "<coroutine_kind>",
+                "<resume_ty>",
+                "<yield_ty>",
+                "<return_ty>",
+                "<witness>",
+                "<upvars>",
+            ][..],
+            ClosureKind::CoroutineClosure(_) => &[
+                "<closure_kind>",
+                "<closure_signature_parts>",
+                "<upvars>",
+                "<bound_captures_by_ref>",
+                "<witness>",
+            ][..],
         };
 
         params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // https://github.com/rust-lang/rust/issues/56593#issuecomment-1133174514
 
 use thing::*;

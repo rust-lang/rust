@@ -15,6 +15,19 @@ note: but the referenced data is only valid for the lifetime `'b` as defined her
 LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
    |                  ^^
 
-error: aborting due to 1 previous error
+error: lifetime may not live long enough
+  --> $DIR/regions-free-region-ordering-callee-4.rs:8:12
+   |
+LL | fn ordering4<'a, 'b, F>(a: &'a usize, b: &'b usize, x: F) where F: FnOnce(&'a &'b usize) {
+   |              --  -- lifetime `'b` defined here
+   |              |
+   |              lifetime `'a` defined here
+...
+LL |     let z: Option<&'a &'b usize> = None;
+   |            ^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0491`.

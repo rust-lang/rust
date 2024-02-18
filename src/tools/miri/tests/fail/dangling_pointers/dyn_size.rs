@@ -1,7 +1,7 @@
 // should find the bug even without retagging
 //@compile-flags: -Zmiri-disable-stacked-borrows
 
-struct SliceWithHead(u8, [u8]);
+struct SliceWithHead(#[allow(dead_code)] u8, #[allow(dead_code)] [u8]);
 
 fn main() {
     let buf = [0u32; 1];

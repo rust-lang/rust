@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 
 #![allow(unused_imports)]
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub use foo::bar::{self, First};
 use self::bar::Second;

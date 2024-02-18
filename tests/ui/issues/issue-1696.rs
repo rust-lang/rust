@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 use std::collections::HashMap;
 
 pub fn main() {

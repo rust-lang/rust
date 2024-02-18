@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![allow(unused)]
 fn a() => usize { 0 }
 //~^ ERROR return types are denoted using `->`

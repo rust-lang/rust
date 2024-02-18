@@ -2,7 +2,7 @@
 // Tests that retrieving the ident of 'foo' variable in
 // the pattern inside main() does not cause an ICE
 
-// check-pass
+//@ check-pass
 
 struct X {
     foo: i32,

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // #30527 - We were not generating arms with guards in certain cases.
 
 fn match_with_guard(x: Option<i8>) -> i8 {

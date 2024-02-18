@@ -4,7 +4,8 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
-    CodeRegion, CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, Op,
+    CodeRegion, CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping,
+    MappingKind, Op,
 };
 use rustc_middle::ty::Instance;
 use rustc_span::Symbol;
@@ -64,8 +65,8 @@ impl<'tcx> FunctionCoverageCollector<'tcx> {
         // For each expression ID that is directly used by one or more mappings,
         // mark it as not-yet-seen. This indicates that we expect to see a
         // corresponding `ExpressionUsed` statement during MIR traversal.
-        for Mapping { term, .. } in &function_coverage_info.mappings {
-            if let &CovTerm::Expression(id) = term {
+        for term in function_coverage_info.mappings.iter().flat_map(|m| m.kind.terms()) {
+            if let CovTerm::Expression(id) = term {
                 expressions_seen.remove(id);
             }
         }
@@ -221,20 +222,21 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// that will be used by `mapgen` when preparing for FFI.
     pub(crate) fn counter_regions(
         &self,
-    ) -> impl Iterator<Item = (Counter, &CodeRegion)> + ExactSizeIterator {
+    ) -> impl Iterator<Item = (MappingKind, &CodeRegion)> + ExactSizeIterator {
         self.function_coverage_info.mappings.iter().map(move |mapping| {
-            let &Mapping { term, ref code_region } = mapping;
-            let counter = self.counter_for_term(term);
-            (counter, code_region)
+            let Mapping { kind, code_region } = mapping;
+            let kind =
+                kind.map_terms(|term| if self.is_zero_term(term) { CovTerm::Zero } else { term });
+            (kind, code_region)
         })
     }
 
     fn counter_for_term(&self, term: CovTerm) -> Counter {
-        if is_zero_term(&self.counters_seen, &self.zero_expressions, term) {
-            Counter::ZERO
-        } else {
-            Counter::from_term(term)
-        }
+        if self.is_zero_term(term) { Counter::ZERO } else { Counter::from_term(term) }
+    }
+
+    fn is_zero_term(&self, term: CovTerm) -> bool {
+        is_zero_term(&self.counters_seen, &self.zero_expressions, term)
     }
 }
 

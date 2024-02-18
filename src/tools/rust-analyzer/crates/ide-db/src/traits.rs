@@ -75,7 +75,7 @@ pub fn get_missing_assoc_items(
 pub(crate) fn convert_to_def_in_trait(db: &dyn HirDatabase, def: Definition) -> Definition {
     (|| {
         let assoc = def.as_assoc_item(db)?;
-        let trait_ = assoc.containing_trait_impl(db)?;
+        let trait_ = assoc.implemented_trait(db)?;
         assoc_item_of_trait(db, assoc, trait_)
     })()
     .unwrap_or(def)
@@ -113,10 +113,11 @@ fn assoc_item_of_trait(
 
 #[cfg(test)]
 mod tests {
-    use base_db::{fixture::ChangeFixture, FilePosition};
+    use base_db::FilePosition;
     use expect_test::{expect, Expect};
     use hir::Semantics;
     use syntax::ast::{self, AstNode};
+    use test_fixture::ChangeFixture;
 
     use crate::RootDatabase;
 

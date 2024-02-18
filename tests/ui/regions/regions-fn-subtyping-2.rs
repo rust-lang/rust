@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Issue #2263.
 
 // Here, `f` is a function that takes a pointer `x` and a function
 // `g`, where `g` requires its argument `y` to be in the same region
 // that `x` is in.
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 fn has_same_region(f: Box<dyn for<'a> FnMut(&'a isize, Box<dyn FnMut(&'a isize)>)>) {
     // `f` should be the type that `wants_same_region` wants, but

@@ -1,5 +1,5 @@
 // Regression test for #51446.
-// check-pass
+//@ check-pass
 
 trait Foo {
     type Item;

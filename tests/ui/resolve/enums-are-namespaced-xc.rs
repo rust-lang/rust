@@ -1,4 +1,4 @@
-// aux-build:namespaced_enums.rs
+//@ aux-build:namespaced_enums.rs
 extern crate namespaced_enums;
 
 fn main() {

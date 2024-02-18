@@ -33,20 +33,8 @@ enum Inserted<'tcx> {
     ShouldRecurseOn(DefId),
 }
 
-trait ChildrenExt<'tcx> {
-    fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId);
-    fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId);
-
-    fn insert(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        impl_def_id: DefId,
-        simplified_self: Option<SimplifiedType>,
-        overlap_mode: OverlapMode,
-    ) -> Result<Inserted<'tcx>, OverlapError<'tcx>>;
-}
-
-impl<'tcx> ChildrenExt<'tcx> for Children {
+#[extension(trait ChildrenExt<'tcx>)]
+impl<'tcx> Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().skip_binder();
@@ -247,22 +235,8 @@ where
     }
 }
 
-pub trait GraphExt<'tcx> {
-    /// Insert a local impl into the specialization graph. If an existing impl
-    /// conflicts with it (has overlap, but neither specializes the other),
-    /// information about the area of overlap is returned in the `Err`.
-    fn insert(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        impl_def_id: DefId,
-        overlap_mode: OverlapMode,
-    ) -> Result<Option<FutureCompatOverlapError<'tcx>>, OverlapError<'tcx>>;
-
-    /// Insert cached metadata mapping from a child impl back to its parent.
-    fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId);
-}
-
-impl<'tcx> GraphExt<'tcx> for Graph {
+#[extension(pub trait GraphExt<'tcx>)]
+impl<'tcx> Graph {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.

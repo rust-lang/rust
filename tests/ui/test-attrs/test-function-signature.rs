@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@ compile-flags: --test
 
 #[test]
 fn foo() -> Result<(), ()> {

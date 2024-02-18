@@ -13,7 +13,7 @@ pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField)
             d.field.name(ctx.sema.db).display(ctx.sema.db),
             d.field.parent_def(ctx.sema.db).name(ctx.sema.db).display(ctx.sema.db)
         ),
-        d.expr.clone().map(|it| it.into()),
+        d.expr.map(|it| it.into()),
     )
 }
 
@@ -79,6 +79,32 @@ fn main() {
                 field: (),
             }
             Struct { field: () }
+        }
+    };
+    strukt.field;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn block_module_madness2() {
+        check_diagnostics(
+            r#"
+fn main() {
+    use crate as ForceParentBlockDefMap;
+    let strukt = {
+        use crate as ForceParentBlockDefMap;
+        {
+            pub struct Struct {
+                field: (),
+            }
+            {
+                use crate as ForceParentBlockDefMap;
+                {
+                    Struct { field: () }
+                }
+            }
         }
     };
     strukt.field;

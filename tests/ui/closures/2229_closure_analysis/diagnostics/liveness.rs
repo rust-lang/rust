@@ -1,6 +1,6 @@
-// edition:2021
+//@ edition:2021
 
-// check-pass
+//@ check-pass
 #![allow(unreachable_code)]
 #![warn(unused)]
 #![allow(dead_code)]

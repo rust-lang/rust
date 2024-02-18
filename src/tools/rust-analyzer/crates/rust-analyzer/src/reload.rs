@@ -16,10 +16,9 @@
 use std::{iter, mem};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
-use hir::db::DefDatabase;
-use ide::Change;
+use hir::{db::DefDatabase, Change, ProcMacros};
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, ProcMacros},
+    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -71,7 +70,8 @@ impl GlobalState {
     }
 
     pub(crate) fn update_configuration(&mut self, config: Config) {
-        let _p = profile::span("GlobalState::update_configuration");
+        let _p =
+            tracing::span!(tracing::Level::INFO, "GlobalState::update_configuration").entered();
         let old_config = mem::replace(&mut self.config, Arc::new(config));
         if self.config.lru_parse_query_capacity() != old_config.lru_parse_query_capacity() {
             self.analysis_host.update_lru_capacity(self.config.lru_parse_query_capacity());
@@ -81,8 +81,9 @@ impl GlobalState {
                 &self.config.lru_query_capacities().cloned().unwrap_or_default(),
             );
         }
-        if self.config.linked_projects() != old_config.linked_projects() {
-            self.fetch_workspaces_queue.request_op("linked projects changed".to_string(), false)
+        if self.config.linked_or_discovered_projects() != old_config.linked_or_discovered_projects()
+        {
+            self.fetch_workspaces_queue.request_op("linked projects changed".to_owned(), false)
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -109,7 +110,7 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Proc-macros have changed and need to be rebuilt.\n\n");
         }
-        if let Err(_) = self.fetch_build_data_error() {
+        if self.fetch_build_data_error().is_err() {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
         }
@@ -129,7 +130,7 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
         }
-        if self.config.linked_projects().is_empty()
+        if self.config.linked_or_discovered_projects().is_empty()
             && self.config.detached_files().is_empty()
             && self.config.notifications().cargo_toml_not_found
         {
@@ -173,9 +174,23 @@ impl GlobalState {
             }
         }
 
-        if let Err(_) = self.fetch_workspace_error() {
+        if self.fetch_workspace_error().is_err() {
             status.health = lsp_ext::Health::Error;
-            message.push_str("Failed to load workspaces.\n\n");
+            message.push_str("Failed to load workspaces.");
+
+            if self.config.has_linked_projects() {
+                message.push_str(
+                    "`rust-analyzer.linkedProjects` have been specified, which may be incorrect. Specified project paths:\n",
+                );
+                message.push_str(&format!(
+                    "    {}",
+                    self.config.linked_manifests().map(|it| it.display()).format("\n    ")
+                ));
+                if self.config.has_linked_project_jsons() {
+                    message.push_str("\nAdditionally, one or more project jsons are specified")
+                }
+            }
+            message.push_str("\n\n");
         }
 
         if !message.is_empty() {
@@ -188,7 +203,7 @@ impl GlobalState {
         tracing::info!(%cause, "will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
-            let linked_projects = self.config.linked_projects();
+            let linked_projects = self.config.linked_or_discovered_projects();
             let detached_files = self.config.detached_files().to_vec();
             let cargo_config = self.config.cargo();
 
@@ -261,6 +276,8 @@ impl GlobalState {
         tracing::info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo();
+        let root_path = self.config.root_path().clone();
+
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
             sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
 
@@ -270,7 +287,12 @@ impl GlobalState {
                     sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
                 }
             };
-            let res = ProjectWorkspace::run_all_build_scripts(&workspaces, &config, &progress);
+            let res = ProjectWorkspace::run_all_build_scripts(
+                &workspaces,
+                &config,
+                &progress,
+                &root_path,
+            );
 
             sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
         });
@@ -334,7 +356,7 @@ impl GlobalState {
     }
 
     pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
-        let _p = profile::span("GlobalState::switch_workspaces");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::switch_workspaces").entered();
         tracing::info!(%cause, "will switch workspaces");
 
         let Some((workspaces, force_reload_crate_graph)) =
@@ -343,15 +365,13 @@ impl GlobalState {
             return;
         };
 
-        if let Err(_) = self.fetch_workspace_error() {
-            if !self.workspaces.is_empty() {
-                if *force_reload_crate_graph {
-                    self.recreate_crate_graph(cause);
-                }
-                // It only makes sense to switch to a partially broken workspace
-                // if we don't have any workspace at all yet.
-                return;
+        if self.fetch_workspace_error().is_err() && !self.workspaces.is_empty() {
+            if *force_reload_crate_graph {
+                self.recreate_crate_graph(cause);
             }
+            // It only makes sense to switch to a partially broken workspace
+            // if we don't have any workspace at all yet.
+            return;
         }
 
         let workspaces =
@@ -420,8 +440,8 @@ impl GlobalState {
                     .collect(),
             };
             let registration = lsp_types::Registration {
-                id: "workspace/didChangeWatchedFiles".to_string(),
-                method: "workspace/didChangeWatchedFiles".to_string(),
+                id: "workspace/didChangeWatchedFiles".to_owned(),
+                method: "workspace/didChangeWatchedFiles".to_owned(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
             self.send_request::<lsp_types::request::RegisterCapability>(
@@ -433,27 +453,27 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        if self.proc_macro_clients.is_empty() || !same_workspaces {
-            if self.config.expand_proc_macros() {
-                tracing::info!("Spawning proc-macro servers");
+        if (self.proc_macro_clients.is_empty() || !same_workspaces)
+            && self.config.expand_proc_macros()
+        {
+            tracing::info!("Spawning proc-macro servers");
 
-                self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
-                    let path = match self.config.proc_macro_srv() {
-                        Some(path) => path,
-                        None => ws.find_sysroot_proc_macro_srv()?,
-                    };
+            self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
+                let path = match self.config.proc_macro_srv() {
+                    Some(path) => path,
+                    None => ws.find_sysroot_proc_macro_srv()?,
+                };
 
-                    tracing::info!("Using proc-macro server at {path}");
-                    ProcMacroServer::spawn(path.clone()).map_err(|err| {
-                        tracing::error!(
-                            "Failed to run proc-macro server from path {path}, error: {err:?}",
-                        );
-                        anyhow::format_err!(
-                            "Failed to run proc-macro server from path {path}, error: {err:?}",
-                        )
-                    })
-                }))
-            };
+                tracing::info!("Using proc-macro server at {path}");
+                ProcMacroServer::spawn(path.clone()).map_err(|err| {
+                    tracing::error!(
+                        "Failed to run proc-macro server from path {path}, error: {err:?}",
+                    );
+                    anyhow::format_err!(
+                        "Failed to run proc-macro server from path {path}, error: {err:?}",
+                    )
+                })
+            }))
         }
 
         let watch = match files_config.watcher {
@@ -483,16 +503,15 @@ impl GlobalState {
             let mut crate_graph_file_dependencies = FxHashSet::default();
 
             let mut load = |path: &AbsPath| {
-                let _p = profile::span("switch_workspaces::load");
+                let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 crate_graph_file_dependencies.insert(vfs_path.clone());
                 match vfs.file_id(&vfs_path) {
                     Some(file_id) => Some(file_id),
                     None => {
-                        if !self.mem_docs.contains(&vfs_path) {
-                            let contents = loader.handle.load_sync(path);
-                            vfs.set_file_contents(vfs_path.clone(), contents);
-                        }
+                        // FIXME: Consider not loading this here?
+                        let contents = loader.handle.load_sync(path);
+                        vfs.set_file_contents(vfs_path.clone(), contents);
                         vfs.file_id(&vfs_path)
                     }
                 }
@@ -502,17 +521,23 @@ impl GlobalState {
             let mut proc_macros = Vec::default();
             for ws in &**self.workspaces {
                 let (other, mut crate_proc_macros) =
-                    ws.to_crate_graph(&mut load, &self.config.extra_env());
-                crate_graph.extend(other, &mut crate_proc_macros);
+                    ws.to_crate_graph(&mut load, self.config.extra_env());
+                crate_graph.extend(other, &mut crate_proc_macros, |_| {});
                 proc_macros.push(crate_proc_macros);
             }
             (crate_graph, proc_macros, crate_graph_file_dependencies)
         };
 
+        let mut change = Change::new();
         if self.config.expand_proc_macros() {
+            change.set_proc_macros(
+                crate_graph
+                    .iter()
+                    .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
+                    .collect(),
+            );
             self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
         }
-        let mut change = Change::new();
         change.set_crate_graph(crate_graph);
         self.analysis_host.apply_change(change);
         self.crate_graph_file_dependencies = crate_graph_file_dependencies;
@@ -549,10 +574,11 @@ impl GlobalState {
 
         for ws in &self.fetch_build_data_queue.last_op_result().1 {
             match ws {
-                Ok(data) => match data.error() {
-                    Some(stderr) => stdx::format_to!(buf, "{:#}\n", stderr),
-                    _ => (),
-                },
+                Ok(data) => {
+                    if let Some(stderr) = data.error() {
+                        stdx::format_to!(buf, "{:#}\n", stderr)
+                    }
+                }
                 // io errors
                 Err(err) => stdx::format_to!(buf, "{:#}\n", err),
             }
@@ -566,7 +592,7 @@ impl GlobalState {
     }
 
     fn reload_flycheck(&mut self) {
-        let _p = profile::span("GlobalState::reload_flycheck");
+        let _p = tracing::span!(tracing::Level::INFO, "GlobalState::reload_flycheck").entered();
         let config = self.config.flycheck();
         let sender = self.flycheck_sender.clone();
         let invocation_strategy = match config {

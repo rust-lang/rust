@@ -1,4 +1,3 @@
-// no-system-llvm
 // compile-flags: -O
 // only-64bit (because the LLVM type of i64 for usize shows up)
 // ignore-debug: the debug assertions get in the way

@@ -1,5 +1,6 @@
-// compile-flags: --error-format json
-// run-rustfix
+//@ compile-flags: --error-format json
+//@ error-pattern:unnecessary parentheses
+//@ run-rustfix
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
@@ -14,7 +15,7 @@ fn main() {
 
     let _b = false;
 
-    if (_b) { //~ ERROR unnecessary parentheses
+    if (_b) {
         println!("hello");
     }
 
@@ -25,29 +26,29 @@ fn main() {
 fn f() -> bool {
     let c = false;
 
-    if(c) { //~ ERROR unnecessary parentheses
+    if(c) {
         println!("next");
     }
 
-    if (c){ //~ ERROR unnecessary parentheses
+    if (c){
         println!("prev");
     }
 
     while (false && true){
-        if (c) { //~ ERROR unnecessary parentheses
+        if (c) {
             println!("norm");
         }
 
     }
 
-    while(true && false) { //~ ERROR unnecessary parentheses
-        for _ in (0 .. 3){ //~ ERROR unnecessary parentheses
+    while(true && false) {
+        for _ in (0 .. 3){
             println!("e~")
         }
     }
 
-    for _ in (0 .. 3) { //~ ERROR unnecessary parentheses
-        while (true && false) { //~ ERROR unnecessary parentheses
+    for _ in (0 .. 3) {
+        while (true && false) {
             println!("e~")
         }
     }

@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 // Tests that in cases where we individually capture all the fields of a type,
 // we still drop them in the order they would have been dropped in the 2018 edition.
@@ -23,6 +23,7 @@ fn test_one() {
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
         //~^ ERROR: Min Capture analysis includes:
         //~| ERROR
@@ -49,6 +50,7 @@ fn test_two() {
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
         //~^ ERROR: Min Capture analysis includes:
         //~| ERROR
@@ -75,6 +77,7 @@ fn test_three() {
     let c = #[rustc_capture_analysis]
     //~^ ERROR: attributes on expressions are experimental
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
+    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
         //~^ ERROR: Min Capture analysis includes:
         //~| ERROR

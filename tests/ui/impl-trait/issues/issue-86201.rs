@@ -1,7 +1,7 @@
 #![feature(unboxed_closures)]
 #![feature(type_alias_impl_trait)]
 
-// check-pass
+//@ check-pass
 
 type FunType = impl Fn<()>;
 static STATIC_FN: FunType = some_fn;

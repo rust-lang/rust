@@ -74,4 +74,7 @@ fn main() {
     //~^ ERROR: indexing may panic
     v[M];
     //~^ ERROR: indexing may panic
+
+    let slice = &x;
+    let _ = x[4];
 }

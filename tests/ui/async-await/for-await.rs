@@ -1,5 +1,5 @@
-// run-pass
-// edition: 2021
+//@ run-pass
+//@ edition: 2021
 #![feature(async_iterator, async_iter_from_iter, const_waker, async_for_loop, noop_waker)]
 
 use std::future::Future;
@@ -17,8 +17,7 @@ async fn real_main() {
 
 fn main() {
     let future = real_main();
-    let waker = std::task::Waker::noop();
-    let mut cx = &mut core::task::Context::from_waker(&waker);
+    let mut cx = &mut core::task::Context::from_waker(std::task::Waker::noop());
     let mut future = core::pin::pin!(future);
     while let core::task::Poll::Pending = future.as_mut().poll(&mut cx) {}
 }

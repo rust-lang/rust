@@ -1,6 +1,3 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
-
 use std::cell::RefCell;
 use std::mem::ManuallyDrop;
 
@@ -35,7 +32,6 @@ fn deref_union_field(mut u: URef) {
 }
 
 fn assign_noncopy_union_field(mut u: URefCell) {
-    // FIXME(thir-unsafeck)
     u.a = (ManuallyDrop::new(RefCell::new(0)), 1); // OK (assignment does not drop)
     u.a.0 = ManuallyDrop::new(RefCell::new(0)); // OK (assignment does not drop)
     u.a.1 = 1; // OK

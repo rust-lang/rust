@@ -1,6 +1,6 @@
-// run-pass
-// compile-flags:--test
-// ignore-emscripten
+//@ run-pass
+//@ compile-flags:--test
+//@ ignore-emscripten
 
 use std::sync::mpsc::channel;
 use std::sync::mpsc::TryRecvError;

@@ -1,5 +1,6 @@
-// check-pass
+//@ check-pass
 // ignore-tidy-tab
+//@ edition: 2021
 
 fn main() {
     let s = "\
@@ -8,11 +9,11 @@ fn main() {
     //~^^^ WARNING multiple lines skipped by escaped newline
     assert_eq!(s, "");
 
-    let s = "foo\
+    let s = c"foo\
              bar
              ";
     //~^^^ WARNING whitespace symbol '\u{a0}' is not skipped
-    assert_eq!(s, "foo           bar\n             ");
+    assert_eq!(s, c"foo           bar\n             ");
 
     let s = "a\
  b";
@@ -22,10 +23,10 @@ fn main() {
 	b";
     assert_eq!(s, "ab");
 
-    let s = "a\
+    let s = b"a\
     b";
     //~^^ WARNING whitespace symbol '\u{c}' is not skipped
     // '\x0c' is ASCII whitespace, but it may not need skipped
     // discussion: https://github.com/rust-lang/rust/pull/108403
-    assert_eq!(s, "a\x0cb");
+    assert_eq!(s, b"a\x0cb");
 }

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![allow(dead_code)]
 #[derive(Copy,Clone)]
 struct Functions {

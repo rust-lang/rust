@@ -16,7 +16,8 @@ use crate::fmt;
 ///
 /// This key uses the fastest possible implementation available to it for the
 /// target platform. It is instantiated with the [`thread_local!`] macro and the
-/// primary method is the [`with`] method.
+/// primary method is the [`with`] method, though there are helpers to make
+/// working with [`Cell`] types easier.
 ///
 /// The [`with`] method yields a reference to the contained value which cannot
 /// outlive the current thread or escape the given closure.
@@ -25,13 +26,29 @@ use crate::fmt;
 ///
 /// # Initialization and Destruction
 ///
-/// Initialization is dynamically performed on the first call to [`with`]
-/// within a thread, and values that implement [`Drop`] get destructed when a
-/// thread exits. Some caveats apply, which are explained below.
+/// Initialization is dynamically performed on the first call to a setter (e.g.
+/// [`with`]) within a thread, and values that implement [`Drop`] get
+/// destructed when a thread exits. Some caveats apply, which are explained below.
 ///
 /// A `LocalKey`'s initializer cannot recursively depend on itself. Using a
 /// `LocalKey` in this way may cause panics, aborts or infinite recursion on
 /// the first call to `with`.
+///
+/// # Single-thread Synchronization
+///
+/// Though there is no potential race with other threads, it is still possible to
+/// obtain multiple references to the thread-local data in different places on
+/// the call stack. For this reason, only shared (`&T`) references may be obtained.
+///
+/// To allow obtaining an exclusive mutable reference (`&mut T`), typically a
+/// [`Cell`] or [`RefCell`] is used (see the [`std::cell`] for more information
+/// on how exactly this works). To make this easier there are specialized
+/// implementations for [`LocalKey<Cell<T>>`] and [`LocalKey<RefCell<T>>`].
+///
+/// [`std::cell`]: `crate::cell`
+/// [`LocalKey<Cell<T>>`]: struct.LocalKey.html#impl-LocalKey<Cell<T>>
+/// [`LocalKey<RefCell<T>>`]: struct.LocalKey.html#impl-LocalKey<RefCell<T>>
+///
 ///
 /// # Examples
 ///
@@ -41,26 +58,20 @@ use crate::fmt;
 ///
 /// thread_local!(static FOO: RefCell<u32> = RefCell::new(1));
 ///
-/// FOO.with(|f| {
-///     assert_eq!(*f.borrow(), 1);
-///     *f.borrow_mut() = 2;
-/// });
+/// FOO.with_borrow(|v| assert_eq!(*v, 1));
+/// FOO.with_borrow_mut(|v| *v = 2);
 ///
 /// // each thread starts out with the initial value of 1
 /// let t = thread::spawn(move|| {
-///     FOO.with(|f| {
-///         assert_eq!(*f.borrow(), 1);
-///         *f.borrow_mut() = 3;
-///     });
+///     FOO.with_borrow(|v| assert_eq!(*v, 1));
+///     FOO.with_borrow_mut(|v| *v = 3);
 /// });
 ///
 /// // wait for the thread to complete and bail out on panic
 /// t.join().unwrap();
 ///
 /// // we retain our original value of 2 despite the child thread
-/// FOO.with(|f| {
-///     assert_eq!(*f.borrow(), 2);
-/// });
+/// FOO.with_borrow(|v| assert_eq!(*v, 2));
 /// ```
 ///
 /// # Platform-specific behavior
@@ -137,9 +148,12 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 ///     static BAR: RefCell<f32> = RefCell::new(1.0);
 /// }
 ///
-/// FOO.with(|foo| assert_eq!(*foo.borrow(), 1));
-/// BAR.with(|bar| assert_eq!(*bar.borrow(), 1.0));
+/// FOO.with_borrow(|v| assert_eq!(*v, 1));
+/// BAR.with_borrow(|v| assert_eq!(*v, 1.0));
 /// ```
+///
+/// Note that only shared references (`&T`) to the inner data may be obtained, so a
+/// type such as [`Cell`] or [`RefCell`] is typically used to allow mutating access.
 ///
 /// This macro supports a special `const {}` syntax that can be used
 /// when the initialization expression can be evaluated as a constant.
@@ -155,7 +169,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 ///     pub static FOO: Cell<u32> = const { Cell::new(1) };
 /// }
 ///
-/// FOO.with(|foo| assert_eq!(foo.get(), 1));
+/// assert_eq!(FOO.get(), 1);
 /// ```
 ///
 /// See [`LocalKey` documentation][`std::thread::LocalKey`] for more
@@ -166,16 +180,18 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
+// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
+#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
 
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const { $init:expr }; $($rest:tt)*) => (
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const $init:block; $($rest:tt)*) => (
         $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
         $crate::thread_local!($($rest)*);
     );
 
-    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const { $init:expr }) => (
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const $init:block) => (
         $crate::thread::local_impl::thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
     );
 

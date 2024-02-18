@@ -1,1 +1,1 @@
-// ignore-test not a test. aux file
+//@ ignore-test not a test. aux file

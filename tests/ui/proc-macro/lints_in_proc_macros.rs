@@ -1,4 +1,4 @@
-// aux-build:bang_proc_macro2.rs
+//@ aux-build:bang_proc_macro2.rs
 
 extern crate bang_proc_macro2;
 

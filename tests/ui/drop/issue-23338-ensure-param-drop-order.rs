@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(non_upper_case_globals)]
 
 // This test is ensuring that parameters are indeed dropped after
@@ -13,38 +13,39 @@ pub fn main() {
     d::println("created empty log");
     test(&log);
 
-    assert_eq!(&log.borrow()[..],
-               [
-                   //                                    created empty log
-                   //    +-- Make D(da_0, 0)
-                   //    | +-- Make D(de_1, 1)
-                   //    | |                             calling foo
-                   //    | |                             entered foo
-                   //    | | +-- Make D(de_2, 2)
-                   //    | | | +-- Make D(da_1, 3)
-                   //    | | | | +-- Make D(de_3, 4)
-                   //    | | | | | +-- Make D(de_4, 5)
-                   3, // | | | +-- Drop D(da_1, 3)
-                   //    | | |   | |
-                   4, // | | |   +-- Drop D(de_3, 4)
-                   //    | | |     |
-                   //    | | |     |                     eval tail of foo
-                   //    | | | +-- Make D(de_5, 6)
-                   //    | | | | +-- Make D(de_6, 7)
-                   5, // | | | | | +-- Drop D(de_4, 5)
-                   //    | | | | |
-                   2, // | | +-- Drop D(de_2, 2)
-                   //    | |   | |
-                   6, // | |   +-- Drop D(de_5, 6)
-                   //    | |     |
-                   1, // | +-- Drop D(de_1, 1)
-                   //    |       |
-                   0, // +-- Drop D(da_0, 0)
-                   //            |
-                   //            |                       result D(de_6, 7)
-                   7 //          +-- Drop D(de_6, 7)
-
-                       ]);
+    assert_eq!(
+        &log.borrow()[..],
+        [
+            //                                    created empty log
+            //    +-- Make D(da_0, 0)
+            //    | +-- Make D(de_1, 1)
+            //    | |                             calling foo
+            //    | |                             entered foo
+            //    | | +-- Make D(de_2, 2)
+            //    | | | +-- Make D(da_1, 3)
+            //    | | | | +-- Make D(de_3, 4)
+            //    | | | | | +-- Make D(de_4, 5)
+            3, // | | | +-- Drop D(da_1, 3)
+            //    | | |   | |
+            4, // | | |   +-- Drop D(de_3, 4)
+            //    | | |     |
+            //    | | |     |                     eval tail of foo
+            //    | | | +-- Make D(de_5, 6)
+            //    | | | | +-- Make D(de_6, 7)
+            5, // | | | | | +-- Drop D(de_4, 5)
+            //    | | | | |
+            2, // | | +-- Drop D(de_2, 2)
+            //    | |   | |
+            6, // | |   +-- Drop D(de_5, 6)
+            //    | |     |
+            1, // | +-- Drop D(de_1, 1)
+            //    |       |
+            0, // +-- Drop D(da_0, 0)
+            //            |
+            //            |                       result D(de_6, 7)
+            7 //          +-- Drop D(de_6, 7)
+        ]
+    );
 }
 
 fn test<'a>(log: d::Log<'a>) {
@@ -57,13 +58,13 @@ fn test<'a>(log: d::Log<'a>) {
 
 fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {
     d::println("entered foo");
-    let de2 = de1.incr();      // creates D(de_2, 2)
+    let de2 = de1.incr(); // creates D(de_2, 2)
     let de4 = {
         let _da1 = da0.incr(); // creates D(da_1, 3)
-        de2.incr().incr()      // creates D(de_3, 4) and D(de_4, 5)
+        de2.incr().incr() // creates D(de_3, 4) and D(de_4, 5)
     };
     d::println("eval tail of foo");
-    de4.incr().incr()          // creates D(de_5, 6) and D(de_6, 7)
+    de4.incr().incr() // creates D(de_5, 6) and D(de_6, 7)
 }
 
 // This module provides simultaneous printouts of the dynamic extents
@@ -74,9 +75,9 @@ const PREF_INDENT: u32 = 16;
 
 pub mod d {
     #![allow(unused_parens)]
+    use std::cell::RefCell;
     use std::fmt;
     use std::mem;
-    use std::cell::RefCell;
 
     static mut counter: u32 = 0;
     static mut trails: u64 = 0;
@@ -89,7 +90,8 @@ pub mod d {
 
     pub fn max_width() -> u32 {
         unsafe {
-            (mem::size_of_val(&trails)*8) as u32
+            (mem::size_of_val(&trails) * 8) as u32
+            //~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
         }
     }
 
@@ -123,7 +125,11 @@ pub mod d {
     }
 
     pub struct D<'a> {
-        name: &'static str, i: u32, uid: u32, trail: u32, log: Log<'a>
+        name: &'static str,
+        i: u32,
+        uid: u32,
+        trail: u32,
+        log: Log<'a>,
     }
 
     impl<'a> fmt::Display for D<'a> {
@@ -139,9 +145,7 @@ pub mod d {
                 let ctr = counter;
                 counter += 1;
                 trails |= (1 << trail);
-                let ret = D {
-                    name: name, i: i, log: log, uid: ctr, trail: trail
-                };
+                let ret = D { name: name, i: i, log: log, uid: ctr, trail: trail };
                 indent_println(trail, &format!("+-- Make {}", ret));
                 ret
             }
@@ -153,7 +157,9 @@ pub mod d {
 
     impl<'a> Drop for D<'a> {
         fn drop(&mut self) {
-            unsafe { trails &= !(1 << self.trail); };
+            unsafe {
+                trails &= !(1 << self.trail);
+            };
             self.log.borrow_mut().push(self.uid);
             indent_println(self.trail, &format!("+-- Drop {}", self));
             indent_println(::PREF_INDENT, "");

@@ -45,6 +45,17 @@ impl<'a> Into<[usize; 5]> for LogScalar<'a> {
     }
 }
 
+pub(crate) enum LogLend {
+    StandardOutput = 1,
+    StandardError = 2,
+}
+
+impl Into<usize> for LogLend {
+    fn into(self) -> usize {
+        self as usize
+    }
+}
+
 /// Return a `Connection` to the log server, which is used for printing messages to
 /// the console and reporting panics. If the log server has not yet started, this
 /// will block until the server is running. It is safe to call this multiple times,

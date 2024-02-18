@@ -21,7 +21,18 @@ LL | |     T: Into<Cow<'static, str>>,
    = note: conflicting implementation in crate `core`:
            - impl<T> From<T> for T;
 
-error: aborting due to 2 previous errors
+error[E0618]: expected function, found `LabelText`
+  --> $DIR/impl-bound-with-references-error.rs:16:9
+   |
+LL |     Plain,
+   |     ----- `LabelText::Plain` defined here
+...
+LL |         LabelText::Plain(text.into())
+   |         ^^^^^^^^^^^^^^^^-------------
+   |         |
+   |         call expression requires function
 
-Some errors have detailed explanations: E0119, E0412.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0119, E0412, E0618.
 For more information about an error, try `rustc --explain E0119`.

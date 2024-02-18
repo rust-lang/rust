@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test by-ref capture of environment in unboxed closure types
 
 fn call_fn<F: Fn()>(f: F) {

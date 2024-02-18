@@ -1,6 +1,6 @@
 // Syntactically, a free `const` item can omit its body.
 
-// check-pass
+//@ check-pass
 
 fn main() {}
 

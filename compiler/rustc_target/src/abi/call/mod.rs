@@ -93,9 +93,10 @@ pub use attr_impl::ArgAttribute;
 #[allow(unused)]
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
+    #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, HashStable_Generic)]
+    pub struct ArgAttribute(u8);
     bitflags::bitflags! {
-        #[derive(Default, HashStable_Generic)]
-        pub struct ArgAttribute: u8 {
+        impl ArgAttribute: u8 {
             const NoAlias   = 1 << 1;
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
@@ -104,6 +105,7 @@ mod attr_impl {
             const NoUndef = 1 << 6;
         }
     }
+    rustc_data_structures::external_bitflags_debug! { ArgAttribute }
 }
 
 /// Sometimes an ABI requires small integers to be extended to a full or partial register. This enum
@@ -703,7 +705,6 @@ pub enum Conv {
     X86_64SysV,
     X86_64Win64,
 
-    AmdGpuKernel,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
 
@@ -838,7 +839,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi) == spec::abi::Abi::PtxKernel {
+                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::PtxKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -847,7 +848,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" | "wasm64" => {
-                if cx.target_spec().adjust_abi(abi) == spec::abi::Abi::Wasm {
+                if cx.target_spec().adjust_abi(abi, self.c_variadic) == spec::abi::Abi::Wasm {
                     wasm::compute_wasm_abi_info(self)
                 } else {
                     wasm::compute_c_abi_info(cx, self)
@@ -885,7 +886,6 @@ impl FromStr for Conv {
             "X86VectorCall" => Ok(Conv::X86VectorCall),
             "X86_64SysV" => Ok(Conv::X86_64SysV),
             "X86_64Win64" => Ok(Conv::X86_64Win64),
-            "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
             "RiscvInterrupt(machine)" => {

@@ -1,5 +1,5 @@
-// run-pass
-struct S<T: 'static>(#[allow(unused_tuple_struct_fields)] Option<&'static T>);
+//@ run-pass
+struct S<T: 'static>(#[allow(dead_code)] Option<&'static T>);
 
 trait Tr { type Out; }
 impl<T> Tr for T { type Out = T; }

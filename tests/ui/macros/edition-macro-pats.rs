@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@ run-pass
+//@ edition:2021
 
 macro_rules! foo {
     (a $x:pat_param) => {};

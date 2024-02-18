@@ -1,6 +1,6 @@
 // Nested impl-traits can impose different member constraints on the same region variable.
 
-// check-pass
+//@ check-pass
 
 trait Cap<'a> {}
 impl<T> Cap<'_> for T {}

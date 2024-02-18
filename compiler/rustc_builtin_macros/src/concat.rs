@@ -33,14 +33,14 @@ pub fn expand_concat(
                     accumulator.push_str(&b.to_string());
                 }
                 Ok(ast::LitKind::CStr(..)) => {
-                    cx.emit_err(errors::ConcatCStrLit { span: e.span });
+                    cx.dcx().emit_err(errors::ConcatCStrLit { span: e.span });
                     has_errors = true;
                 }
                 Ok(ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..)) => {
-                    cx.emit_err(errors::ConcatBytestr { span: e.span });
+                    cx.dcx().emit_err(errors::ConcatBytestr { span: e.span });
                     has_errors = true;
                 }
-                Ok(ast::LitKind::Err) => {
+                Ok(ast::LitKind::Err(_)) => {
                     has_errors = true;
                 }
                 Err(err) => {
@@ -63,7 +63,7 @@ pub fn expand_concat(
                 }
             }
             ast::ExprKind::IncludedBytes(..) => {
-                cx.emit_err(errors::ConcatBytestr { span: e.span });
+                cx.dcx().emit_err(errors::ConcatBytestr { span: e.span });
             }
             ast::ExprKind::Err => {
                 has_errors = true;
@@ -75,7 +75,7 @@ pub fn expand_concat(
     }
 
     if !missing_literal.is_empty() {
-        cx.emit_err(errors::ConcatMissingLiteral { spans: missing_literal });
+        cx.dcx().emit_err(errors::ConcatMissingLiteral { spans: missing_literal });
         return DummyResult::any(sp);
     } else if has_errors {
         return DummyResult::any(sp);

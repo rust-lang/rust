@@ -1,4 +1,4 @@
-// compile-flags: --test
+//@ compile-flags: --test
 
 //! Test that makes sure wrongly-typed bench functions aren't ignored
 

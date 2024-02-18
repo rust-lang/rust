@@ -1,5 +1,5 @@
-// aux-build:edition-lint-paths.rs
-// run-rustfix
+//@ aux-build:edition-lint-paths.rs
+//@ run-rustfix
 
 // Oddball: extern crate appears in a submodule, making it harder for
 // us to rewrite paths. We don't (and we leave the `extern crate` in

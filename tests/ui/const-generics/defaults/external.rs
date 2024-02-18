@@ -1,5 +1,5 @@
-// aux-build:const_defaulty.rs
-// check-pass
+//@ aux-build:const_defaulty.rs
+//@ check-pass
 extern crate const_defaulty;
 use const_defaulty::Defaulted;
 

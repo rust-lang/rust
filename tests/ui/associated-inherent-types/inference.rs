@@ -1,7 +1,7 @@
 // Testing inference capabilities.
-// check-pass
-// revisions: current next
-//[next] compile-flags: -Znext-solver
+//@ check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

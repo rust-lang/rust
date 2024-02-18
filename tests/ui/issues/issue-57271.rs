@@ -1,4 +1,4 @@
-// aux-build:issue-57271-lib.rs
+//@ aux-build:issue-57271-lib.rs
 
 extern crate issue_57271_lib;
 

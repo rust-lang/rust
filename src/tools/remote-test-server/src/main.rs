@@ -347,7 +347,7 @@ fn recv<B: BufRead>(dir: &Path, io: &mut B) -> PathBuf {
     // the filesystem limits.
     let len = cmp::min(filename.len() - 1, 50);
     let dst = dir.join(t!(str::from_utf8(&filename[..len])));
-    let amt = read_u32(io) as u64;
+    let amt = read_u64(io);
     t!(io::copy(&mut io.take(amt), &mut t!(File::create(&dst))));
     set_permissions(&dst);
     dst
@@ -365,7 +365,7 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
     loop {
         let n = t!(src.read(&mut b));
         let mut dst = dst.lock().unwrap();
-        t!(dst.write_all(&create_header(which, n as u32)));
+        t!(dst.write_all(&create_header(which, n as u64)));
         if n > 0 {
             t!(dst.write_all(&b[..n]));
         } else {
@@ -377,7 +377,7 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
 fn batch_copy(buf: &[u8], which: u8, dst: &Mutex<dyn Write>) {
     let n = buf.len();
     let mut dst = dst.lock().unwrap();
-    t!(dst.write_all(&create_header(which, n as u32)));
+    t!(dst.write_all(&create_header(which, n as u64)));
     if n > 0 {
         t!(dst.write_all(buf));
         // Marking buf finished
@@ -385,13 +385,13 @@ fn batch_copy(buf: &[u8], which: u8, dst: &Mutex<dyn Write>) {
     }
 }
 
-const fn create_header(which: u8, n: u32) -> [u8; 5] {
+const fn create_header(which: u8, n: u64) -> [u8; 9] {
     let bytes = n.to_be_bytes();
-    [which, bytes[0], bytes[1], bytes[2], bytes[3]]
+    [which, bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]
 }
 
-fn read_u32(r: &mut dyn Read) -> u32 {
-    let mut len = [0; 4];
+fn read_u64(r: &mut dyn Read) -> u64 {
+    let mut len = [0; 8];
     t!(r.read_exact(&mut len));
-    u32::from_be_bytes(len)
+    u64::from_be_bytes(len)
 }

@@ -25,7 +25,11 @@ impl Tr for Foo {
 
 fn main() {
     b(10);
+    //~^ ERROR functions with the "rust-call" ABI must take a single non-self tuple argument
     Foo::bar();
+    //~^ ERROR functions with the "rust-call" ABI must take a single non-self tuple argument
     <Foo as Tr>::a();
+    //~^ ERROR functions with the "rust-call" ABI must take a single non-self tuple argument
     <Foo as Tr>::b();
+    //~^ ERROR functions with the "rust-call" ABI must take a single non-self tuple argument
 }

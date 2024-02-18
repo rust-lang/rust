@@ -1,9 +1,9 @@
-// check-pass
+//@ check-pass
 // Check that the anonymous lifetimes used here aren't considered to shadow one
 // another. Note that `async fn` is different to `fn` here because the lifetimes
 // are numbered by HIR lowering, rather than lifetime resolution.
 
-// edition:2018
+//@ edition:2018
 
 struct A<'a, 'b>(&'a &'b i32);
 struct B<'a>(&'a i32);

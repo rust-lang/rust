@@ -130,7 +130,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let suggestion =
             AddLifetimeParamsSuggestion { tcx: self.tcx(), sub, ty_sup, ty_sub, add_note: true };
         let err = LifetimeMismatch { span, labels, suggestion };
-        let reported = self.tcx().sess.emit_err(err);
+        let reported = self.tcx().dcx().emit_err(err);
         Some(reported)
     }
 }

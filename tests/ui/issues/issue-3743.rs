@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // If `Mul` used an associated type for its output, this test would
 // work more smoothly.
 

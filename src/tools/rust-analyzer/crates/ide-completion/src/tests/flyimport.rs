@@ -106,7 +106,7 @@ fn main() {
 }
 "#,
         r#"
-use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
+use dep::{some_module::{SecondStruct, ThirdStruct}, FirstStruct};
 
 fn main() {
     ThirdStruct
@@ -599,6 +599,7 @@ fn main() {
         expect![[r#"
             fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
             ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
+            me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
 }

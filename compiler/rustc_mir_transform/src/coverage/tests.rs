@@ -630,8 +630,10 @@ fn test_make_bcb_counters() {
         // coverage spans for BCBs 1 and 2. Now we skip that step and just tell
         // BCB counter construction that those BCBs have spans.
         let bcb_has_coverage_spans = |bcb: BasicCoverageBlock| (1..=2).contains(&bcb.as_usize());
-        let mut coverage_counters = counters::CoverageCounters::new(&basic_coverage_blocks);
-        coverage_counters.make_bcb_counters(&basic_coverage_blocks, bcb_has_coverage_spans);
+        let coverage_counters = counters::CoverageCounters::make_bcb_counters(
+            &basic_coverage_blocks,
+            bcb_has_coverage_spans,
+        );
         assert_eq!(coverage_counters.num_expressions(), 0);
 
         assert_eq!(

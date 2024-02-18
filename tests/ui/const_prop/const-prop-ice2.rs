@@ -1,4 +1,4 @@
-// build-fail
+//@ build-fail
 
 fn main() {
     enum Enum { One=1 }

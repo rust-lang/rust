@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![deny(missing_docs)]
 //! this tests the syntax of `thread_local!`
 

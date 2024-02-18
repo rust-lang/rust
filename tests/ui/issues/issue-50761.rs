@@ -1,6 +1,6 @@
 // Confirm that we don't accidentally divide or mod by zero in llvm_type
 
-// build-pass
+//@ build-pass
 
 mod a {
     pub trait A {}

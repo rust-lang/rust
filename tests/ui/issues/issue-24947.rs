@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // #24947 ICE using a trait-associated const in an array size
 
 

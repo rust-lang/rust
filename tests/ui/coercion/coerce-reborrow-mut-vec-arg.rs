@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 
 fn reverse(v: &mut [usize]) {

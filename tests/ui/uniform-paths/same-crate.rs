@@ -1,5 +1,5 @@
-// run-pass
-// edition:2018
+//@ run-pass
+//@ edition:2018
 
 pub const A: usize = 0;
 

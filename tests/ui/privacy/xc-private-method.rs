@@ -1,4 +1,4 @@
-// aux-build:xc-private-method-lib.rs
+//@ aux-build:xc-private-method-lib.rs
 
 extern crate xc_private_method_lib;
 

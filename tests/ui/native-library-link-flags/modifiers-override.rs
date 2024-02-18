@@ -1,4 +1,4 @@
-// compile-flags:-ldylib:+as-needed=foo -lstatic=bar -Zunstable-options
+//@ compile-flags:-ldylib:+as-needed=foo -lstatic=bar -Zunstable-options
 
 #[link(name = "foo")]
 #[link(

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 extern crate core;
 use core as core_export;

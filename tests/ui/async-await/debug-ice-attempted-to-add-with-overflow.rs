@@ -1,5 +1,5 @@
-// check-fail
-// edition:2021
+//@ check-fail
+//@ edition:2021
 
 // test for issue-114912 - debug ice: attempted to add with overflow
 

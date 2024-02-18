@@ -2,7 +2,7 @@
 // It ensures that transparent types where all fields are PhantomData are marked as
 // FFI-safe.
 
-// check-pass
+//@ check-pass
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]

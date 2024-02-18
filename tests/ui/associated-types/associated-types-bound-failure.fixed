@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 // Test equality constraints on associated types in a where clause.
 #![allow(dead_code)]
 

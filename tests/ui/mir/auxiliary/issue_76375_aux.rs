@@ -1,5 +1,5 @@
-// edition:2018
-// compile-flags: -Z mir-opt-level=3
+//@ edition:2018
+//@ compile-flags: -Z mir-opt-level=3
 
 #[inline(always)]
 pub fn copy_prop(s: bool) -> String {

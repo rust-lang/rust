@@ -8,16 +8,16 @@
   
       bb0: {
           _2 = discriminant(_1);
-          switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2];
+          switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
       }
   
       bb1: {
-          _0 = const 1_u8;
-          goto -> bb4;
+          unreachable;
       }
   
       bb2: {
-          unreachable;
+          _0 = const 1_u8;
+          goto -> bb4;
       }
   
       bb3: {

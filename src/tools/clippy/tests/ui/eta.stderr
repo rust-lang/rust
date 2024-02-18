@@ -161,10 +161,34 @@ LL |     dyn_opt.map(|d| d.method_on_dyn());
    |                 ^^^^^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `<dyn TestTrait>::method_on_dyn`
 
 error: redundant closure
-  --> $DIR/eta.rs:389:19
+  --> $DIR/eta.rs:406:19
    |
 LL |     let _ = f(&0, |x, y| f2(x, y));
    |                   ^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `f2`
 
-error: aborting due to 27 previous errors
+error: redundant closure
+  --> $DIR/eta.rs:434:22
+   |
+LL |             test.map(|t| t.method())
+   |                      ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `Test::method`
+
+error: redundant closure
+  --> $DIR/eta.rs:438:22
+   |
+LL |             test.map(|t| t.method())
+   |                      ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `super::Outer::method`
+
+error: redundant closure
+  --> $DIR/eta.rs:451:18
+   |
+LL |         test.map(|t| t.method())
+   |                  ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `test_mod::Test::method`
+
+error: redundant closure
+  --> $DIR/eta.rs:458:30
+   |
+LL |                     test.map(|t| t.method())
+   |                              ^^^^^^^^^^^^^^ help: replace the closure with the method itself: `crate::issue_10854::d::Test::method`
+
+error: aborting due to 31 previous errors
 

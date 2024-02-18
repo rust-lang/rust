@@ -1,5 +1,5 @@
-// edition: 2021
-// known-bug: #110963
+//@ edition: 2021
+//@ known-bug: #110963
 
 #![feature(return_type_notation)]
 

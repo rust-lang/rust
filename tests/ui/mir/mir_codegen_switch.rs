@@ -1,7 +1,7 @@
-// run-pass
+//@ run-pass
 enum Abc {
-    A(#[allow(unused_tuple_struct_fields)] u8),
-    B(#[allow(unused_tuple_struct_fields)] i8),
+    A(#[allow(dead_code)] u8),
+    B(#[allow(dead_code)] i8),
     C,
     D,
 }

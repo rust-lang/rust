@@ -20,23 +20,11 @@ use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Targ
 
 use std::cmp;
 use std::fmt;
-use std::num::NonZeroUsize;
+use std::num::NonZero;
 use std::ops::Bound;
 
-pub trait IntegerExt {
-    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
-    fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer;
-    fn from_uint_ty<C: HasDataLayout>(cx: &C, uty: ty::UintTy) -> Integer;
-    fn repr_discr<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        repr: &ReprOptions,
-        min: i128,
-        max: i128,
-    ) -> (Integer, bool);
-}
-
-impl IntegerExt for Integer {
+#[extension(pub trait IntegerExt)]
+impl Integer {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
@@ -123,12 +111,8 @@ impl IntegerExt for Integer {
     }
 }
 
-pub trait PrimitiveExt {
-    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-    fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
-}
-
-impl PrimitiveExt for Primitive {
+#[extension(pub trait PrimitiveExt)]
+impl Primitive {
     #[inline]
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
@@ -269,7 +253,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 }
 
 impl<'tcx> IntoDiagnosticArg for LayoutError<'tcx> {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }
@@ -284,7 +268,7 @@ impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
     fn delayed_bug(&self, txt: String) {
-        self.tcx.sess.span_delayed_bug(DUMMY_SP, txt);
+        self.tcx.dcx().delayed_bug(txt);
     }
 
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef {
@@ -761,7 +745,7 @@ where
                 };
                 tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
-                    fields: match NonZeroUsize::new(fields) {
+                    fields: match NonZero::new(fields) {
                         Some(fields) => FieldsShape::Union(fields),
                         None => FieldsShape::Arbitrary { offsets: IndexVec::new(), memory_index: IndexVec::new() },
                     },
@@ -906,7 +890,13 @@ where
                     i,
                 ),
 
-                ty::Coroutine(def_id, args, _) => match this.variants {
+                ty::CoroutineClosure(_, args) => field_ty_or_layout(
+                    TyAndLayout { ty: args.as_coroutine_closure().tupled_upvars_ty(), ..this },
+                    cx,
+                    i,
+                ),
+
+                ty::Coroutine(def_id, args) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)
@@ -1247,7 +1237,6 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         PtxKernel
         | Msp430Interrupt
         | X86Interrupt
-        | AmdGpuKernel
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt

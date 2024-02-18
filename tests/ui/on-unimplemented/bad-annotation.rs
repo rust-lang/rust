@@ -25,7 +25,7 @@ trait BadAnnotation2<A,B>
 {}
 
 #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]
-//~^ only named substitution parameters are allowed
+//~^ only named generic parameters are allowed
 trait BadAnnotation3<A,B>
 {}
 

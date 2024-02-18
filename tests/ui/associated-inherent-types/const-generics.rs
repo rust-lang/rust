@@ -1,5 +1,5 @@
 // Regression test for issue #109759.
-// check-pass
+//@ check-pass
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

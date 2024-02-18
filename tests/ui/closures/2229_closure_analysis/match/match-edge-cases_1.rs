@@ -1,5 +1,5 @@
-// run-pass
-// edition:2021
+//@ run-pass
+//@ edition:2021
 
 const PATTERN_REF: &str = "Hello World";
 const NUMBER: i32 = 30;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn foo<'r>(s: &'r usize) -> bool {
     match s {

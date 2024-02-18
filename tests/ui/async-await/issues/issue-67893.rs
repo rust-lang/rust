@@ -1,5 +1,5 @@
-// aux-build: issue_67893.rs
-// edition:2018
+//@ aux-build: issue_67893.rs
+//@ edition:2018
 
 extern crate issue_67893;
 

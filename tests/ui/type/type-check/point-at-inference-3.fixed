@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 fn main() {
     let mut v = Vec::new();
     v.push(0i32);

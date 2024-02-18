@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(coerce_unsized, unsize)]
 
 use std::marker::Unsize;

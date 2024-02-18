@@ -936,8 +936,10 @@ fn read_link() {
         }
         // Check that readlink works with non-drive paths on Windows.
         let link = tmpdir.join("link_unc");
-        check!(symlink_dir(r"\\localhost\c$\", &link));
-        assert_eq!(check!(fs::read_link(&link)), Path::new(r"\\localhost\c$\"));
+        if got_symlink_permission(&tmpdir) {
+            check!(symlink_dir(r"\\localhost\c$\", &link));
+            assert_eq!(check!(fs::read_link(&link)), Path::new(r"\\localhost\c$\"));
+        };
     }
     let link = tmpdir.join("link");
     if !got_symlink_permission(&tmpdir) {

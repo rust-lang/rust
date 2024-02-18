@@ -1,4 +1,4 @@
-// compile-flags: -Zalways-encode-mir
+//@ compile-flags: -Zalways-encode-mir
 
 static S: usize = 42;
 

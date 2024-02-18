@@ -418,10 +418,10 @@ impl<'tcx> TyCtxt<'tcx> {
 // Shifter
 //
 // Shifts the De Bruijn indices on all escaping bound vars by a
-// fixed amount. Useful in substitution or when otherwise introducing
+// fixed amount. Useful in instantiation or when otherwise introducing
 // a binding level that is not intended to capture the existing bound
 // vars. See comment on `shift_vars_through_binders` method in
-// `subst.rs` for more details.
+// `rustc_middle/src/ty/generic_args.rs` for more details.
 
 struct Shifter<'tcx> {
     tcx: TyCtxt<'tcx>,

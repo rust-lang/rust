@@ -102,8 +102,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(round_ties_even)]
-    ///
     /// let f = 3.3_f32;
     /// let g = -3.3_f32;
     /// let h = 3.5_f32;
@@ -116,7 +114,7 @@ impl f32 {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[unstable(feature = "round_ties_even", issue = "96710")]
+    #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f32 {
         unsafe { intrinsics::rintf32(self) }

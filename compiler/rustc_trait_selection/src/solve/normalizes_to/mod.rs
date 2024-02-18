@@ -195,7 +195,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             };
 
             let error_response = |ecx: &mut EvalCtxt<'_, 'tcx>, reason| {
-                let guar = tcx.sess.span_delayed_bug(tcx.def_span(assoc_def.item.def_id), reason);
+                let guar = tcx.dcx().span_delayed_bug(tcx.def_span(assoc_def.item.def_id), reason);
                 let error_term = match assoc_def.item.kind {
                     ty::AssocKind::Const => ty::Const::new_error(
                         tcx,
@@ -286,7 +286,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        ecx.tcx().sess.span_delayed_bug(
+        ecx.tcx().dcx().span_delayed_bug(
             ecx.tcx().def_span(goal.predicate.def_id()),
             "associated types not allowed on auto traits",
         );
@@ -366,6 +366,119 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         Self::consider_implied_clause(ecx, goal, pred, [goal.with(tcx, output_is_sized_pred)])
     }
 
+    fn consider_builtin_async_fn_trait_candidates(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+        goal_kind: ty::ClosureKind,
+    ) -> QueryResult<'tcx> {
+        let tcx = ecx.tcx();
+
+        let env_region = match goal_kind {
+            ty::ClosureKind::Fn | ty::ClosureKind::FnMut => goal.predicate.alias.args.region_at(2),
+            // Doesn't matter what this region is
+            ty::ClosureKind::FnOnce => tcx.lifetimes.re_static,
+        };
+        let (tupled_inputs_and_output_and_coroutine, nested_preds) =
+            structural_traits::extract_tupled_inputs_and_output_from_async_callable(
+                tcx,
+                goal.predicate.self_ty(),
+                goal_kind,
+                env_region,
+            )?;
+        let output_is_sized_pred =
+            tupled_inputs_and_output_and_coroutine.map_bound(|(_, output, _)| {
+                ty::TraitRef::from_lang_item(tcx, LangItem::Sized, DUMMY_SP, [output])
+            });
+
+        let pred = tupled_inputs_and_output_and_coroutine
+            .map_bound(|(inputs, output, coroutine)| {
+                let (projection_ty, term) = match tcx.item_name(goal.predicate.def_id()) {
+                    sym::CallOnceFuture => (
+                        ty::AliasTy::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [goal.predicate.self_ty(), inputs],
+                        ),
+                        coroutine.into(),
+                    ),
+                    sym::CallMutFuture | sym::CallFuture => (
+                        ty::AliasTy::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [
+                                ty::GenericArg::from(goal.predicate.self_ty()),
+                                inputs.into(),
+                                env_region.into(),
+                            ],
+                        ),
+                        coroutine.into(),
+                    ),
+                    sym::Output => (
+                        ty::AliasTy::new(
+                            tcx,
+                            goal.predicate.def_id(),
+                            [ty::GenericArg::from(goal.predicate.self_ty()), inputs.into()],
+                        ),
+                        output.into(),
+                    ),
+                    name => bug!("no such associated type: {name}"),
+                };
+                ty::ProjectionPredicate { projection_ty, term }
+            })
+            .to_predicate(tcx);
+
+        // A built-in `AsyncFn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
+        Self::consider_implied_clause(
+            ecx,
+            goal,
+            pred,
+            [goal.with(tcx, output_is_sized_pred)]
+                .into_iter()
+                .chain(nested_preds.into_iter().map(|pred| goal.with(tcx, pred))),
+        )
+    }
+
+    fn consider_builtin_async_fn_kind_helper_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let [
+            closure_fn_kind_ty,
+            goal_kind_ty,
+            borrow_region,
+            tupled_inputs_ty,
+            tupled_upvars_ty,
+            coroutine_captures_by_ref_ty,
+        ] = **goal.predicate.alias.args
+        else {
+            bug!();
+        };
+
+        let Some(closure_kind) = closure_fn_kind_ty.expect_ty().to_opt_closure_kind() else {
+            // We don't need to worry about the self type being an infer var.
+            return Err(NoSolution);
+        };
+        let Some(goal_kind) = goal_kind_ty.expect_ty().to_opt_closure_kind() else {
+            return Err(NoSolution);
+        };
+        if !closure_kind.extends(goal_kind) {
+            return Err(NoSolution);
+        }
+
+        let upvars_ty = ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
+            ecx.tcx(),
+            goal_kind,
+            tupled_inputs_ty.expect_ty(),
+            tupled_upvars_ty.expect_ty(),
+            coroutine_captures_by_ref_ty.expect_ty(),
+            borrow_region.expect_region(),
+        );
+
+        ecx.eq(goal.param_env, goal.predicate.term.ty().unwrap(), upvars_ty)?;
+        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+    }
+
     fn consider_builtin_tuple_candidate(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -378,6 +491,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let tcx = ecx.tcx();
+        let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
+        assert_eq!(metadata_def_id, goal.predicate.def_id());
         ecx.probe_misc_candidate("builtin pointee").enter(|ecx| {
             let metadata_ty = match goal.predicate.self_ty().kind() {
                 ty::Bool
@@ -391,6 +506,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 | ty::FnDef(..)
                 | ty::FnPtr(..)
                 | ty::Closure(..)
+                | ty::CoroutineClosure(..)
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
                 | ty::Coroutine(..)
                 | ty::CoroutineWitness(..)
@@ -408,7 +524,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 }
 
                 ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                    // FIXME(ptr_metadata): It would also be possible to return a `Ok(Ambig)` with no constraints.
+                    // This is the "fallback impl" for type parameters, unnormalizable projections
+                    // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                    // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                    // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
                     let sized_predicate = ty::TraitRef::from_lang_item(
                         tcx,
                         LangItem::Sized,
@@ -422,30 +541,16 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
                 ty::Adt(def, args) if def.is_struct() => match def.non_enum_variant().tail_opt() {
                     None => tcx.types.unit,
-                    Some(field_def) => {
-                        let self_ty = field_def.ty(tcx, args);
-                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
-                        ecx.add_goal(
-                            GoalSource::Misc,
-                            goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),
-                        );
-                        return ecx
-                            .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                    Some(tail_def) => {
+                        let tail_ty = tail_def.ty(tcx, args);
+                        Ty::new_projection(tcx, metadata_def_id, [tail_ty])
                     }
                 },
                 ty::Adt(_, _) => tcx.types.unit,
 
                 ty::Tuple(elements) => match elements.last() {
                     None => tcx.types.unit,
-                    Some(&self_ty) => {
-                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
-                        ecx.add_goal(
-                            GoalSource::Misc,
-                            goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),
-                        );
-                        return ecx
-                            .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
-                    }
+                    Some(&tail_ty) => Ty::new_projection(tcx, metadata_def_id, [tail_ty]),
                 },
 
                 ty::Infer(
@@ -468,7 +573,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -499,7 +604,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -530,7 +635,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -564,7 +669,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -603,13 +708,6 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         )
     }
 
-    fn consider_unsize_to_dyn_candidate(
-        _ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx> {
-        bug!("`Unsize` does not have an associated type: {:?}", goal)
-    }
-
     fn consider_structural_builtin_unsize_candidates(
         _ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -634,6 +732,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Closure(..)
+            | ty::CoroutineClosure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)

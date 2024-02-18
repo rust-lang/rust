@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![feature(core_intrinsics)]
 #![feature(const_type_name)]

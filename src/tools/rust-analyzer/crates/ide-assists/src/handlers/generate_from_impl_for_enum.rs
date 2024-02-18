@@ -90,7 +90,7 @@ fn existing_from_impl(
 
     let enum_type = enum_.ty(sema.db);
 
-    let wrapped_type = variant.fields(sema.db).get(0)?.ty(sema.db);
+    let wrapped_type = variant.fields(sema.db).first()?.ty(sema.db);
 
     if enum_type.impls_trait(sema.db, from_trait, &[wrapped_type]) {
         Some(())

@@ -1,5 +1,5 @@
-// no-prefer-dynamic
-// compile-flags: -Z thinlto -C codegen-units=8 -C prefer-dynamic
+//@ no-prefer-dynamic
+//@ compile-flags: -Z thinlto -C codegen-units=8 -C prefer-dynamic
 
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

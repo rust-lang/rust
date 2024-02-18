@@ -1,5 +1,5 @@
-// run-pass
-// only-windows
+//@ run-pass
+//@ only-windows
 
 #![allow(non_camel_case_types)]
 pub type HANDLE = usize;

@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 trait ConstDefault {
     const DEFAULT: Self;

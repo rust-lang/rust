@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(non_snake_case)]
 trait Product {

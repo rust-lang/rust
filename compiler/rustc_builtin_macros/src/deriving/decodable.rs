@@ -177,7 +177,7 @@ fn decodable_substructure(
                 ],
             )
         }
-        _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
+        _ => cx.dcx().bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
     };
     BlockOrExpr::new_expr(expr)
 }

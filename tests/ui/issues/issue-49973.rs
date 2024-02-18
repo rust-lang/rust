@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #[derive(Debug)]
 #[repr(i32)]
 enum E {

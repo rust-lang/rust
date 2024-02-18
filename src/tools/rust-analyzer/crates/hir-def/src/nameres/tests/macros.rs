@@ -1,5 +1,11 @@
-use super::*;
+use expect_test::expect;
+use test_fixture::WithFixture;
+
 use itertools::Itertools;
+
+use crate::nameres::tests::check;
+
+use super::*;
 
 #[test]
 fn macro_rules_are_globally_visible() {
@@ -1259,6 +1265,54 @@ struct A;
 }
 
 #[test]
+fn nested_include() {
+    check(
+        r#"
+//- minicore: include
+//- /lib.rs
+include!("out_dir/includes.rs");
+
+//- /out_dir/includes.rs
+pub mod company_name {
+    pub mod network {
+        pub mod v1 {
+            include!("company_name.network.v1.rs");
+        }
+    }
+}
+//- /out_dir/company_name.network.v1.rs
+pub struct IpAddress {
+    pub ip_type: &'static str,
+}
+/// Nested message and enum types in `IpAddress`.
+pub mod ip_address {
+    pub enum IpType {
+        IpV4(u32),
+    }
+}
+
+"#,
+        expect![[r#"
+            crate
+            company_name: t
+
+            crate::company_name
+            network: t
+
+            crate::company_name::network
+            v1: t
+
+            crate::company_name::network::v1
+            IpAddress: t
+            ip_address: t
+
+            crate::company_name::network::v1::ip_address
+            IpType: t
+        "#]],
+    );
+}
+
+#[test]
 fn macro_use_imports_all_macro_types() {
     let db = TestDB::with_files(
         r#"
@@ -1294,8 +1348,8 @@ fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
 
     let actual = def_map
         .macro_use_prelude
-        .iter()
-        .map(|(name, _)| name.display(&db).to_string())
+        .keys()
+        .map(|name| name.display(&db).to_string())
         .sorted()
         .join("\n");
 

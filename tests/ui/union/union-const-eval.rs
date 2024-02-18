@@ -1,6 +1,4 @@
-// check-pass
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
+//@ check-pass
 
 union U {
     a: usize,

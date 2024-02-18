@@ -10,16 +10,40 @@ LL | | }
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
 
 error: function has missing const stability attribute
-  --> $DIR/staged-api.rs:42:1
+  --> $DIR/staged-api.rs:41:1
    |
 LL | / pub const fn const_context_not_const_stable() {
 LL | |
 LL | |     Unstable::func();
-LL | |     // ^ This is okay regardless of whether the `unstable` feature is enabled, as this function is
+LL | |
 ...  |
 LL | |     // ^ fails, because the `foo` feature is not active
 LL | | }
    | |_^
 
-error: aborting due to 2 previous errors
+error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:32:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+
+error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:43:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable)]` to the crate attributes to enable
+
+error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:53:5
+   |
+LL |     Unstable::func();
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: const-stable functions can only call other const-stable functions
+
+error: aborting due to 5 previous errors
 

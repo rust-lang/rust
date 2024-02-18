@@ -1,5 +1,5 @@
-// build-pass
-// compile-flags: --crate-type=rlib --emit=llvm-ir -Cno-prepopulate-passes
+//@ build-pass
+//@ compile-flags: --crate-type=rlib --emit=llvm-ir -Cno-prepopulate-passes
 
 // This is a variant of issue-91050-1.rs -- see there for an explanation.
 

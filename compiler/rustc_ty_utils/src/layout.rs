@@ -11,7 +11,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::*;
 
 use std::fmt::Debug;
@@ -91,7 +90,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.sess.span_delayed_bug(DUMMY_SP, "struct cannot be packed and aligned");
+        cx.tcx.dcx().delayed_bug("struct cannot be packed and aligned");
         return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
     }
 
@@ -316,10 +315,21 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(unit)
         }
 
-        ty::Coroutine(def_id, args, _) => coroutine_layout(cx, ty, def_id, args)?,
+        ty::Coroutine(def_id, args) => coroutine_layout(cx, ty, def_id, args)?,
 
         ty::Closure(_, args) => {
             let tys = args.as_closure().upvar_tys();
+            univariant(
+                &tys.iter()
+                    .map(|ty| Ok(cx.layout_of(ty)?.layout))
+                    .try_collect::<IndexVec<_, _>>()?,
+                &ReprOptions::default(),
+                StructKind::AlwaysSized,
+            )?
+        }
+
+        ty::CoroutineClosure(_, args) => {
+            let tys = args.as_coroutine_closure().upvar_tys();
             univariant(
                 &tys.iter()
                     .map(|ty| Ok(cx.layout_of(ty)?.layout))
@@ -344,10 +354,7 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, args) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.sess.span_delayed_bug(
-                    DUMMY_SP,
-                    "#[repr(simd)] was applied to an ADT that is not a struct",
-                );
+                tcx.dcx().delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
                 return Err(error(cx, LayoutError::Unknown(ty)));
             }
 
@@ -364,7 +371,7 @@ fn layout_of_uncached<'tcx>(
             // SIMD vectors with zero fields are not supported.
             // (should be caught by typeck)
             if fields.is_empty() {
-                tcx.sess.emit_fatal(ZeroLengthSimdType { ty })
+                tcx.dcx().emit_fatal(ZeroLengthSimdType { ty })
             }
 
             // Type of the first ADT field:
@@ -374,8 +381,7 @@ fn layout_of_uncached<'tcx>(
             // (should be caught by typeck)
             for fi in fields {
                 if fi.ty(tcx, args) != f0_ty {
-                    tcx.sess.span_delayed_bug(
-                        DUMMY_SP,
+                    tcx.dcx().delayed_bug(
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
                     return Err(error(cx, LayoutError::Unknown(ty)));
@@ -395,7 +401,7 @@ fn layout_of_uncached<'tcx>(
                 // SIMD vectors with multiple array fields are not supported:
                 // Can't be caught by typeck with a generic simd type.
                 if def.non_enum_variant().fields.len() != 1 {
-                    tcx.sess.emit_fatal(MultipleArrayFieldsSimdType { ty });
+                    tcx.dcx().emit_fatal(MultipleArrayFieldsSimdType { ty });
                 }
 
                 // Extract the number of elements from the layout of the array field:
@@ -415,9 +421,9 @@ fn layout_of_uncached<'tcx>(
             //
             // Can't be caught in typeck if the array length is generic.
             if e_len == 0 {
-                tcx.sess.emit_fatal(ZeroLengthSimdType { ty });
+                tcx.dcx().emit_fatal(ZeroLengthSimdType { ty });
             } else if e_len > MAX_SIMD_LANES {
-                tcx.sess.emit_fatal(OversizedSimdType { ty, max_lanes: MAX_SIMD_LANES });
+                tcx.dcx().emit_fatal(OversizedSimdType { ty, max_lanes: MAX_SIMD_LANES });
             }
 
             // Compute the ABI of the element type:
@@ -425,7 +431,7 @@ fn layout_of_uncached<'tcx>(
             let Abi::Scalar(e_abi) = e_ly.abi else {
                 // This error isn't caught in typeck, e.g., if
                 // the element type of the vector is generic.
-                tcx.sess.emit_fatal(NonPrimitiveSimdType { ty, e_ty });
+                tcx.dcx().emit_fatal(NonPrimitiveSimdType { ty, e_ty });
             };
 
             // Compute the size and alignment of the vector:
@@ -485,7 +491,7 @@ fn layout_of_uncached<'tcx>(
 
             if def.is_union() {
                 if def.repr().pack.is_some() && def.repr().align.is_some() {
-                    cx.tcx.sess.span_delayed_bug(
+                    cx.tcx.dcx().span_delayed_bug(
                         tcx.def_span(def.did()),
                         "union cannot be packed and aligned",
                     );
@@ -735,7 +741,7 @@ fn coroutine_layout<'tcx>(
 ) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
     use SavedLocalEligibility::*;
     let tcx = cx.tcx;
-    let subst_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
+    let instantiate_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
 
     let Some(info) = tcx.coroutine_layout(def_id) else {
         return Err(error(cx, LayoutError::Unknown(ty)));
@@ -757,7 +763,7 @@ fn coroutine_layout<'tcx>(
     let tag_layout = cx.tcx.mk_layout(LayoutS::scalar(cx, tag));
 
     let promoted_layouts = ineligible_locals.iter().map(|local| {
-        let field_ty = subst_field(info.field_tys[local].ty);
+        let field_ty = instantiate_field(info.field_tys[local].ty);
         let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
         Ok(cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)?.layout)
     });
@@ -832,7 +838,7 @@ fn coroutine_layout<'tcx>(
                     Ineligible(_) => false,
                 })
                 .map(|local| {
-                    let field_ty = subst_field(info.field_tys[*local].ty);
+                    let field_ty = instantiate_field(info.field_tys[*local].ty);
                     Ty::new_maybe_uninit(tcx, field_ty)
                 });
 
@@ -961,7 +967,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: T
             record(adt_kind.into(), adt_packed, opt_discr_size, variant_infos);
         }
 
-        ty::Coroutine(def_id, args, _) => {
+        ty::Coroutine(def_id, args) => {
             debug!("print-type-size t: `{:?}` record coroutine", layout.ty);
             // Coroutines always have a begin/poisoned/end state with additional suspend points
             let (variant_infos, opt_discr_size) =
@@ -1057,6 +1063,8 @@ fn variant_info_for_coroutine<'tcx>(
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
+    use itertools::Itertools;
+
     let Variants::Multiple { tag, ref tag_encoding, tag_field, .. } = layout.variants else {
         return (vec![], None);
     };
@@ -1069,7 +1077,7 @@ fn variant_info_for_coroutine<'tcx>(
         .as_coroutine()
         .upvar_tys()
         .iter()
-        .zip(upvar_names)
+        .zip_eq(upvar_names)
         .enumerate()
         .map(|(field_idx, (_, name))| {
             let field_layout = layout.field(cx, field_idx);

@@ -407,7 +407,7 @@ impl IpAddr {
     }
 
     /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise it
-    /// return `self` as-is.
+    /// returns `self` as-is.
     ///
     /// # Examples
     ///
@@ -771,7 +771,11 @@ impl Ipv4Addr {
             || self.is_loopback()
             || self.is_link_local()
             // addresses reserved for future protocols (`192.0.0.0/24`)
-            ||(self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0)
+            // .9 and .10 are documented as globally reachable so they're excluded
+            || (
+                self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
+                && self.octets()[3] != 9 && self.octets()[3] != 10
+            )
             || self.is_documentation()
             || self.is_benchmarking()
             || self.is_reserved()
@@ -1515,8 +1519,12 @@ impl Ipv6Addr {
                     // AS112-v6 (`2001:4:112::/48`)
                     || matches!(self.segments(), [0x2001, 4, 0x112, _, _, _, _, _])
                     // ORCHIDv2 (`2001:20::/28`)
-                    || matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b >= 0x20 && b <= 0x2F)
+                    // Drone Remote ID Protocol Entity Tags (DETs) Prefix (`2001:30::/28`)`
+                    || matches!(self.segments(), [0x2001, b, _, _, _, _, _, _] if b >= 0x20 && b <= 0x3F)
                 ))
+            // 6to4 (`2002::/16`) – it's not explicitly documented as globally reachable,
+            // IANA says N/A.
+            || matches!(self.segments(), [0x2002, _, _, _, _, _, _, _])
             || self.is_documentation()
             || self.is_unique_local()
             || self.is_unicast_link_local())
@@ -1777,6 +1785,31 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
+    /// Returns [`true`] if the address is an IPv4-mapped address (`::ffff:0:0/96`).
+    ///
+    /// IPv4-mapped addresses can be converted to their canonical IPv4 address with
+    /// [`to_ipv4_mapped`](Ipv6Addr::to_ipv4_mapped).
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::{Ipv4Addr, Ipv6Addr};
+    ///
+    /// let ipv4_mapped = Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped();
+    /// assert_eq!(ipv4_mapped.is_ipv4_mapped(), true);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff).is_ipv4_mapped(), true);
+    ///
+    /// assert_eq!(Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0).is_ipv4_mapped(), false);
+    /// ```
+    #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
+    #[unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn is_ipv4_mapped(&self) -> bool {
+        matches!(self.segments(), [0, 0, 0, 0, 0, 0xffff, _, _])
+    }
+
     /// Converts this address to an [`IPv4` address] if it's an [IPv4-mapped] address,
     /// as defined in [IETF RFC 4291 section 2.5.5.2], otherwise returns [`None`].
     ///
@@ -1860,7 +1893,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).is_loopback(), false);

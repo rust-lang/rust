@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 fn main() {
     let _ptr1: *const u32 = std::ptr::null();

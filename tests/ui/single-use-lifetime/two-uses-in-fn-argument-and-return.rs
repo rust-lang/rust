@@ -1,7 +1,7 @@
 // Test that we DO NOT warn when lifetime name is used in
 // both the argument and return.
 //
-// check-pass
+//@ check-pass
 
 #![deny(single_use_lifetimes)]
 #![allow(dead_code)]

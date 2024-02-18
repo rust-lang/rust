@@ -30,7 +30,7 @@ fn move_out_from_end() -> () {
         StorageLive(_2);
         _3 = SizeOf(i32);
         _4 = AlignOf(i32);
-        _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind: bb12];
+        _5 = alloc::alloc::exchange_malloc(move _3, move _4) -> [return: bb1, unwind: bb13];
     }
 
     bb1: {
@@ -38,7 +38,7 @@ fn move_out_from_end() -> () {
         _6 = ShallowInitBox(move _5, i32);
         (*_6) = const 1_i32;
         _2 = move _6;
-        drop(_6) -> [return: bb2, unwind: bb11];
+        drop(_6) -> [return: bb2, unwind: bb12];
     }
 
     bb2: {
@@ -46,7 +46,7 @@ fn move_out_from_end() -> () {
         StorageLive(_7);
         _8 = SizeOf(i32);
         _9 = AlignOf(i32);
-        _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb11];
+        _10 = alloc::alloc::exchange_malloc(move _8, move _9) -> [return: bb3, unwind: bb12];
     }
 
     bb3: {
@@ -54,18 +54,18 @@ fn move_out_from_end() -> () {
         _11 = ShallowInitBox(move _10, i32);
         (*_11) = const 2_i32;
         _7 = move _11;
-        drop(_11) -> [return: bb4, unwind: bb10];
+        drop(_11) -> [return: bb4, unwind: bb11];
     }
 
     bb4: {
         StorageDead(_11);
         _1 = [move _2, move _7];
-        drop(_7) -> [return: bb5, unwind: bb11];
+        drop(_7) -> [return: bb5, unwind: bb12];
     }
 
     bb5: {
         StorageDead(_7);
-        drop(_2) -> [return: bb6, unwind: bb12];
+        drop(_2) -> [return: bb6, unwind: bb13];
     }
 
     bb6: {
@@ -75,32 +75,37 @@ fn move_out_from_end() -> () {
         StorageLive(_12);
         _12 = move _1[1 of 2];
         _0 = const ();
-        drop(_12) -> [return: bb7, unwind: bb9];
+        drop(_12) -> [return: bb8, unwind: bb10];
     }
 
     bb7: {
-        StorageDead(_12);
-        drop(_1) -> [return: bb8, unwind: bb12];
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
     }
 
     bb8: {
+        StorageDead(_12);
+        drop(_1) -> [return: bb9, unwind: bb13];
+    }
+
+    bb9: {
         StorageDead(_1);
         return;
     }
 
-    bb9 (cleanup): {
-        drop(_1) -> [return: bb12, unwind terminate(cleanup)];
-    }
-
     bb10 (cleanup): {
-        drop(_7) -> [return: bb11, unwind terminate(cleanup)];
+        drop(_1) -> [return: bb13, unwind terminate(cleanup)];
     }
 
     bb11 (cleanup): {
-        drop(_2) -> [return: bb12, unwind terminate(cleanup)];
+        drop(_7) -> [return: bb12, unwind terminate(cleanup)];
     }
 
     bb12 (cleanup): {
+        drop(_2) -> [return: bb13, unwind terminate(cleanup)];
+    }
+
+    bb13 (cleanup): {
         resume;
     }
 }

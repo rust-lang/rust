@@ -1,5 +1,5 @@
-// run-rustfix
-// edition:2021
+//@ run-rustfix
+//@ edition:2021
 #![allow(dead_code, unused_mut, unused_variables)]
 struct A {}
 struct Msg<'a> {

@@ -310,6 +310,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         Ok(())
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn check_constraint(
         &self,
         constraint: &Constraint,
@@ -320,7 +321,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 kind.matches(code)?;
             }
             Constraint::Not(sub) => {
-                if self.check_constraint(&*sub, code).is_ok() {
+                if self.check_constraint(sub, code).is_ok() {
                     fail_match!("Constraint {:?} failed for '{}'", constraint, code.text());
                 }
             }
@@ -455,7 +456,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                         SyntaxElement::Token(t) => Some(t.clone()),
                         SyntaxElement::Node(n) => n.first_token(),
                     })
-                    .map(|p| p.text().to_string());
+                    .map(|p| p.text().to_owned());
                 let first_matched_token = child.clone();
                 let mut last_matched_token = child;
                 // Read code tokens util we reach one equal to the next token from our pattern
@@ -705,7 +706,7 @@ where
 // we are trying to match that bit of code. This saves us having to pass a boolean into all the bits
 // of code that can make the decision to not match.
 thread_local! {
-    pub static RECORDING_MATCH_FAIL_REASONS: Cell<bool> = Cell::new(false);
+    pub static RECORDING_MATCH_FAIL_REASONS: Cell<bool> = const { Cell::new(false) };
 }
 
 fn recording_match_fail_reasons() -> bool {
@@ -764,12 +765,7 @@ impl Iterator for PatternIterator {
     type Item = SyntaxElement;
 
     fn next(&mut self) -> Option<SyntaxElement> {
-        for element in &mut self.iter {
-            if !element.kind().is_trivia() {
-                return Some(element);
-            }
-        }
-        None
+        self.iter.find(|element| !element.kind().is_trivia())
     }
 }
 
@@ -799,7 +795,7 @@ mod tests {
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
         let edit = &edits[&position.file_id];
-        let mut after = input.to_string();
+        let mut after = input.to_owned();
         edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");
     }

@@ -62,10 +62,10 @@ pub fn expand_deriving_clone(
                     cs_clone_simple("Clone", c, s, sub, true)
                 }));
             }
-            _ => cx.span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
+            _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
         },
 
-        _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
+        _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
     let trait_def = TraitDef {
@@ -110,7 +110,9 @@ fn cs_clone_simple(
                 && !seen_type_names.insert(name)
             {
                 // Already produced an assertion for this type.
-            } else {
+                // Anonymous structs or unions must be eliminated as they cannot be
+                // type parameters.
+            } else if !field.ty.kind.is_anon_adt() {
                 // let _: AssertParamIsClone<FieldTy>;
                 super::assert_ty_bounds(
                     cx,
@@ -144,7 +146,7 @@ fn cs_clone_simple(
                     process_variant(&variant.data);
                 }
             }
-            _ => cx.span_bug(
+            _ => cx.dcx().span_bug(
                 trait_span,
                 format!("unexpected substructure in simple `derive({name})`"),
             ),
@@ -180,10 +182,10 @@ fn cs_clone(
             vdata = &variant.data;
         }
         EnumTag(..) | AllFieldlessEnum(..) => {
-            cx.span_bug(trait_span, format!("enum tags in `derive({name})`",))
+            cx.dcx().span_bug(trait_span, format!("enum tags in `derive({name})`",))
         }
         StaticEnum(..) | StaticStruct(..) => {
-            cx.span_bug(trait_span, format!("associated function in `derive({name})`"))
+            cx.dcx().span_bug(trait_span, format!("associated function in `derive({name})`"))
         }
     }
 
@@ -193,7 +195,7 @@ fn cs_clone(
                 .iter()
                 .map(|field| {
                     let Some(ident) = field.name else {
-                        cx.span_bug(
+                        cx.dcx().span_bug(
                             trait_span,
                             format!("unnamed field in normal struct in `derive({name})`",),
                         );

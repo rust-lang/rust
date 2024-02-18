@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // Checks that the NoopMethodCall lint doesn't call Instance::resolve on unresolved consts
 
 #![feature(generic_const_exprs)]

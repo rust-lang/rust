@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[derive(Clone)]
 struct A<'a, T>(&'a T);

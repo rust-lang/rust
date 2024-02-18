@@ -16,4 +16,6 @@ impl<S, T> X<'_, T> for (S,) {
 
 pub fn main() {
     <(i32,) as X<i32>>::f("abc");
+    //~^ ERROR the trait bound `for<'b> i32: X<'b, i32>` is not satisfied
+    //~| ERROR the trait bound `i32: X<'_, i32>` is not satisfied
 }

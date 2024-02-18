@@ -4,7 +4,7 @@ struct E<T> {
 }
 
 trait TestMut {
-    type Output<'a>;
+    type Output<'a>; //~ ERROR missing required bound
     fn test_mut<'a>(&'a mut self) -> Self::Output<'a>;
 }
 
@@ -22,11 +22,12 @@ fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
   //~^ ERROR missing generics for associated type
 {
     for n in 0i16..100 {
-        *dst.test_mut() = n.into();
+        *dst.test_mut() = n.into(); //~ ERROR: cannot borrow
+        //~^ ERROR: borrowed data escapes outside of function
     }
 }
 
 fn main() {
     let mut t1: E<f32> = Default::default();
-    test_simpler(&mut t1);
+    test_simpler(&mut t1); //~ ERROR does not live long enough
 }

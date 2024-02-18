@@ -1,6 +1,6 @@
 // Regression test for issue #89485.
 
-// run-pass
+//@ run-pass
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Type {

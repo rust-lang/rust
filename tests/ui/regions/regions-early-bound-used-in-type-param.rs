@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that you can use a fn lifetime parameter as part of
 // the value for a type parameter in a bound.
 

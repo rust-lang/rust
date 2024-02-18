@@ -1,4 +1,3 @@
-// no-system-llvm
 // compile-flags: -O -C panic=abort
 #![crate_type = "lib"]
 

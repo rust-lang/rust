@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_macros)]
 macro_rules! foo { ($x:pat | $y:pat) => {} } // should be ok
 macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} } // should be ok

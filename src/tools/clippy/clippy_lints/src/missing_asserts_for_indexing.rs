@@ -7,6 +7,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{eq_expr_value, hash_expr, higher};
 use rustc_ast::{LitKind, RangeLimits};
+use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
@@ -102,8 +103,8 @@ fn len_comparison<'hir>(
 ) -> Option<(LengthComparison, usize, &'hir Expr<'hir>)> {
     macro_rules! int_lit_pat {
         ($id:ident) => {
-            ExprKind::Lit(Spanned {
-                node: LitKind::Int($id, _),
+            ExprKind::Lit(&Spanned {
+                node: LitKind::Int(Pu128($id), _),
                 ..
             })
         };
@@ -112,13 +113,13 @@ fn len_comparison<'hir>(
     // normalize comparison, `v.len() > 4` becomes `4 < v.len()`
     // this simplifies the logic a bit
     let (op, left, right) = normalize_comparison(bin_op.node, left, right)?;
-    match (op, &left.kind, &right.kind) {
-        (Rel::Lt, int_lit_pat!(left), _) => Some((LengthComparison::IntLessThanLength, *left as usize, right)),
-        (Rel::Lt, _, int_lit_pat!(right)) => Some((LengthComparison::LengthLessThanInt, *right as usize, left)),
-        (Rel::Le, int_lit_pat!(left), _) => Some((LengthComparison::IntLessThanOrEqualLength, *left as usize, right)),
-        (Rel::Le, _, int_lit_pat!(right)) => Some((LengthComparison::LengthLessThanOrEqualInt, *right as usize, left)),
-        (Rel::Eq, int_lit_pat!(left), _) => Some((LengthComparison::LengthEqualInt, *left as usize, right)),
-        (Rel::Eq, _, int_lit_pat!(right)) => Some((LengthComparison::LengthEqualInt, *right as usize, left)),
+    match (op, left.kind, right.kind) {
+        (Rel::Lt, int_lit_pat!(left), _) => Some((LengthComparison::IntLessThanLength, left as usize, right)),
+        (Rel::Lt, _, int_lit_pat!(right)) => Some((LengthComparison::LengthLessThanInt, right as usize, left)),
+        (Rel::Le, int_lit_pat!(left), _) => Some((LengthComparison::IntLessThanOrEqualLength, left as usize, right)),
+        (Rel::Le, _, int_lit_pat!(right)) => Some((LengthComparison::LengthLessThanOrEqualInt, right as usize, left)),
+        (Rel::Eq, int_lit_pat!(left), _) => Some((LengthComparison::LengthEqualInt, left as usize, right)),
+        (Rel::Eq, _, int_lit_pat!(right)) => Some((LengthComparison::LengthEqualInt, right as usize, left)),
         _ => None,
     }
 }
@@ -206,14 +207,14 @@ impl<'hir> IndexEntry<'hir> {
 /// for `..=5` this returns `Some(5)`
 fn upper_index_expr(expr: &Expr<'_>) -> Option<usize> {
     if let ExprKind::Lit(lit) = &expr.kind
-        && let LitKind::Int(index, _) = lit.node
+        && let LitKind::Int(Pu128(index), _) = lit.node
     {
         Some(index as usize)
     } else if let Some(higher::Range {
         end: Some(end), limits, ..
     }) = higher::Range::hir(expr)
         && let ExprKind::Lit(lit) = &end.kind
-        && let LitKind::Int(index @ 1.., _) = lit.node
+        && let LitKind::Int(Pu128(index @ 1..), _) = lit.node
     {
         match limits {
             RangeLimits::HalfOpen => Some(index as usize - 1),
@@ -331,7 +332,7 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
                     slice,
                 } if indexes.len() > 1 => {
                     // if we have found an `assert!`, let's also check that it's actually right
-                    // and if it convers the highest index and if not, suggest the correct length
+                    // and if it covers the highest index and if not, suggest the correct length
                     let sugg = match comparison {
                         // `v.len() < 5` and `v.len() <= 5` does nothing in terms of bounds checks.
                         // The user probably meant `v.len() > 5`

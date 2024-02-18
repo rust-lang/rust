@@ -1,4 +1,4 @@
-// aux-build:uninhabited.rs
+//@ aux-build:uninhabited.rs
 #![deny(unreachable_patterns)]
 #![feature(never_type)]
 

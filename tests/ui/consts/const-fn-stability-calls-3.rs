@@ -1,7 +1,7 @@
 // Test use of const fn from another crate without a feature gate.
 
-// check-pass
-// aux-build:const_fn_lib.rs
+//@ check-pass
+//@ aux-build:const_fn_lib.rs
 
 extern crate const_fn_lib;
 

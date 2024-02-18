@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, ConstTy,
     InferCtxtLike, Interner, IntoKind, PlaceholderLike,
@@ -62,8 +63,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> Canonicalizer<'a, Infc
 
         let value = value.fold_with(&mut canonicalizer);
         // FIXME: Restore these assertions. Should we uplift type flags?
-        // assert!(!value.has_infer(), "unexpected infer in {value:?}");
-        // assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
 
         let (max_universe, variables) = canonicalizer.finalize();
 
@@ -332,8 +333,9 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
-            | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)

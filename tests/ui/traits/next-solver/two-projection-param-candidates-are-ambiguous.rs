@@ -1,4 +1,4 @@
-// compile-flags: -Znext-solver
+//@ compile-flags: -Znext-solver
 
 // When we're solving `<T as Foo>::Assoc = i32`, we actually first solve
 // `<T as Foo>::Assoc = ?1t`, then unify `?1t` with `i32`. That goal

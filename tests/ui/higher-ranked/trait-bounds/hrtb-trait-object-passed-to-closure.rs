@@ -1,10 +1,10 @@
-// run-pass
+//@ run-pass
 #![allow(dead_code)]
 // Test that `&PrinterSupport`, which is really short for `&'a
 // PrinterSupport<'b>`, gets properly expanded when it appears in a
 // closure type. This used to result in messed up De Bruijn indices.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 trait PrinterSupport<'ast> {
     fn ast_map(&self) -> Option<&'ast usize> { None }

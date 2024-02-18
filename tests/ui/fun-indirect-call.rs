@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 fn f() -> isize { return 42; }
 

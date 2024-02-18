@@ -9,14 +9,15 @@
 //! `.cargo/config`.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(clippy::print_stderr, clippy::print_stdout)]
 
 mod flags;
 
-mod install;
-mod release;
 mod dist;
-mod publish;
+mod install;
 mod metrics;
+mod publish;
+mod release;
 
 use anyhow::bail;
 use std::{

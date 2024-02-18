@@ -5,6 +5,7 @@ LL | #[prelude_import]
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(prelude_import)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 1 previous error
 

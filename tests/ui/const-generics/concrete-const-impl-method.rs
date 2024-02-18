@@ -1,6 +1,6 @@
 // Test that a method/associated non-method within an impl block of a concrete const type i.e. A<2>,
 // is callable.
-// run-pass
+//@ run-pass
 
 pub struct A<const N: u32>;
 

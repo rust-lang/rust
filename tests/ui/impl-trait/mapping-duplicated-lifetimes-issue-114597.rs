@@ -1,6 +1,6 @@
-// check-pass
+//@ check-pass
 // issue: 114597
-// edition: 2021
+//@ edition: 2021
 
 struct A<'a> {
     dat: &'a (),

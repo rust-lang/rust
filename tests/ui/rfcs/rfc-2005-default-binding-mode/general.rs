@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 #![allow(unused_variables)]
 fn some_or_wildcard(r: &Option<i32>, b: &i32) {
     let _: &i32 = match r {

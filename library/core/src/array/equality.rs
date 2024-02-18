@@ -2,36 +2,36 @@ use crate::cmp::BytewiseEq;
 use crate::convert::TryInto;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[B; N]> for [A; N]
+impl<T, U, const N: usize> PartialEq<[U; N]> for [T; N]
 where
-    A: PartialEq<B>,
+    T: PartialEq<U>,
 {
     #[inline]
-    fn eq(&self, other: &[B; N]) -> bool {
+    fn eq(&self, other: &[U; N]) -> bool {
         SpecArrayEq::spec_eq(self, other)
     }
     #[inline]
-    fn ne(&self, other: &[B; N]) -> bool {
+    fn ne(&self, other: &[U; N]) -> bool {
         SpecArrayEq::spec_ne(self, other)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[B]> for [A; N]
+impl<T, U, const N: usize> PartialEq<[U]> for [T; N]
 where
-    A: PartialEq<B>,
+    T: PartialEq<U>,
 {
     #[inline]
-    fn eq(&self, other: &[B]) -> bool {
-        let b: Result<&[B; N], _> = other.try_into();
+    fn eq(&self, other: &[U]) -> bool {
+        let b: Result<&[U; N], _> = other.try_into();
         match b {
             Ok(b) => *self == *b,
             Err(_) => false,
         }
     }
     #[inline]
-    fn ne(&self, other: &[B]) -> bool {
-        let b: Result<&[B; N], _> = other.try_into();
+    fn ne(&self, other: &[U]) -> bool {
+        let b: Result<&[U; N], _> = other.try_into();
         match b {
             Ok(b) => *self != *b,
             Err(_) => true,
@@ -40,21 +40,21 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[A; N]> for [B]
+impl<T, U, const N: usize> PartialEq<[U; N]> for [T]
 where
-    B: PartialEq<A>,
+    T: PartialEq<U>,
 {
     #[inline]
-    fn eq(&self, other: &[A; N]) -> bool {
-        let b: Result<&[B; N], _> = self.try_into();
+    fn eq(&self, other: &[U; N]) -> bool {
+        let b: Result<&[T; N], _> = self.try_into();
         match b {
             Ok(b) => *b == *other,
             Err(_) => false,
         }
     }
     #[inline]
-    fn ne(&self, other: &[A; N]) -> bool {
-        let b: Result<&[B; N], _> = self.try_into();
+    fn ne(&self, other: &[U; N]) -> bool {
+        let b: Result<&[T; N], _> = self.try_into();
         match b {
             Ok(b) => *b != *other,
             Err(_) => true,
@@ -63,61 +63,61 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<&[B]> for [A; N]
+impl<T, U, const N: usize> PartialEq<&[U]> for [T; N]
 where
-    A: PartialEq<B>,
+    T: PartialEq<U>,
 {
     #[inline]
-    fn eq(&self, other: &&[B]) -> bool {
+    fn eq(&self, other: &&[U]) -> bool {
         *self == **other
     }
     #[inline]
-    fn ne(&self, other: &&[B]) -> bool {
+    fn ne(&self, other: &&[U]) -> bool {
         *self != **other
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[A; N]> for &[B]
+impl<T, U, const N: usize> PartialEq<[U; N]> for &[T]
 where
-    B: PartialEq<A>,
+    T: PartialEq<U>,
 {
     #[inline]
-    fn eq(&self, other: &[A; N]) -> bool {
+    fn eq(&self, other: &[U; N]) -> bool {
         **self == *other
     }
     #[inline]
-    fn ne(&self, other: &[A; N]) -> bool {
+    fn ne(&self, other: &[U; N]) -> bool {
         **self != *other
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<&mut [B]> for [A; N]
+impl<T, U, const N: usize> PartialEq<&mut [U]> for [T; N]
 where
-    A: PartialEq<B>,
+    T: PartialEq<U>,
 {
     #[inline]
-    fn eq(&self, other: &&mut [B]) -> bool {
+    fn eq(&self, other: &&mut [U]) -> bool {
         *self == **other
     }
     #[inline]
-    fn ne(&self, other: &&mut [B]) -> bool {
+    fn ne(&self, other: &&mut [U]) -> bool {
         *self != **other
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, const N: usize> PartialEq<[A; N]> for &mut [B]
+impl<T, U, const N: usize> PartialEq<[U; N]> for &mut [T]
 where
-    B: PartialEq<A>,
+    T: PartialEq<U>,
 {
     #[inline]
-    fn eq(&self, other: &[A; N]) -> bool {
+    fn eq(&self, other: &[U; N]) -> bool {
         **self == *other
     }
     #[inline]
-    fn ne(&self, other: &[A; N]) -> bool {
+    fn ne(&self, other: &[U; N]) -> bool {
         **self != *other
     }
 }

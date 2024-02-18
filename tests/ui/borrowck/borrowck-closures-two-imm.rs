@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Tests that two closures can simultaneously have immutable
 // access to the variable, whether that immutable access be used
 // for direct reads or for taking immutable ref. Also check

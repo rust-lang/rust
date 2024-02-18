@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 // Test associated types appearing in struct-like enum variants.
 
 
