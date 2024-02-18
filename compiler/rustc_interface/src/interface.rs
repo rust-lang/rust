@@ -338,7 +338,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
 
-            let (codegen_backend, target_cfg) = match config.make_codegen_backend {
+            let (codegen_backend, target_override) = match config.make_codegen_backend {
                 None => {
                     // Build a target without override, so that it can override the backend if needed
                     let target =
@@ -365,35 +365,23 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                         );
                     }
 
-                    // Re-build target with the (potential) override
-                    let target = config::build_target_config(
-                        &early_dcx,
-                        &config.opts,
-                        target_override,
-                        &sysroot,
-                    );
-
-                    (backend, target)
+                    (backend, target_override)
                 }
                 Some(make_codegen_backend) => {
                     // N.B. `make_codegen_backend` takes precedence over `target.default_codegen_backend`,
                     //      which is ignored in this case.
-
                     let backend = make_codegen_backend(&config.opts);
 
                     // target_override is documented to be called before init(), so this is okay
                     let target_override = backend.target_override(&config.opts);
 
-                    let target = config::build_target_config(
-                        &early_dcx,
-                        &config.opts,
-                        target_override,
-                        &sysroot,
-                    );
-
-                    (backend, target)
+                    (backend, target_override)
                 }
             };
+
+            // Re-build target with the (potential) override
+            let target_cfg =
+                config::build_target_config(&early_dcx, &config.opts, target_override, &sysroot);
 
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
