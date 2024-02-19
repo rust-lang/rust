@@ -5,8 +5,8 @@ mod a {
         fn hello(&self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod b {
@@ -16,8 +16,8 @@ mod b {
         fn hello(&'static self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod c {
@@ -27,8 +27,8 @@ mod c {
         fn hello(&'static self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod d {
@@ -38,8 +38,8 @@ mod d {
         fn hello(&self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod e {
@@ -49,8 +49,8 @@ mod e {
         fn hello(&self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod f {
@@ -60,8 +60,8 @@ mod f {
         fn hello(&'static self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod g {
@@ -71,8 +71,8 @@ mod g {
         fn hello(&'static self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod h {
@@ -82,8 +82,8 @@ mod h {
         fn hello(&self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod i {
@@ -93,8 +93,8 @@ mod i {
         fn hello(&self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod j {
@@ -104,8 +104,8 @@ mod j {
         fn hello(&'static self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod k {
@@ -115,8 +115,8 @@ mod k {
         fn hello(&'static self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod l {
@@ -126,8 +126,8 @@ mod l {
         fn hello(&self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod m {
@@ -137,8 +137,8 @@ mod m {
         fn hello(&self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod n {
@@ -148,8 +148,8 @@ mod n {
         fn hello(&'static self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod o {
@@ -159,8 +159,8 @@ mod o {
         fn hello(&'static self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod p {
@@ -170,8 +170,8 @@ mod p {
         fn hello(&self) where Self: 'static {}
     }
     fn bar<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 mod q {
@@ -203,8 +203,8 @@ mod s {
 
     }
     fn convert<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 fn main() {}

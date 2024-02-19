@@ -745,6 +745,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 diag.span_suggestion_verbose(span, msg, sugg, Applicability::MachineApplicable);
                 // This is redundant but needed because we won't enter the section with the
                 // additional note, so we point at the method call here too.
+                diag.replace_span_with(*call_span, false);
                 diag.span_label(
                     *call_span,
                     "calling this method introduces a `'static` lifetime requirement",
@@ -765,6 +766,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             predicates.push(tcx.def_span(parent));
         }
         if !predicates.is_empty() {
+            diag.replace_span_with(*call_span, false);
             diag.span_label(
                 *call_span,
                 "calling this method introduces a `'static` lifetime requirement",
