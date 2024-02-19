@@ -311,7 +311,8 @@ fn ios_deployment_target(arch: Arch, abi: &str) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
     let (major, minor) = match (arch, abi) {
         (Arm64e, _) => (14, 0),
-        (_, "macabi") => (14, 0),
+        // Mac Catalyst defaults to 13.1 in Clang.
+        (_, "macabi") => (13, 1),
         _ => (10, 0),
     };
     from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((major, minor))
