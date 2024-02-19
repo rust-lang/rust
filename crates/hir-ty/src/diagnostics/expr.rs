@@ -109,7 +109,7 @@ impl ExprValidator {
                     self.check_for_trailing_return(*body_expr, &body);
                 }
                 Expr::If { .. } => {
-                    self.check_for_unnecessary_else(id, expr, &body, db);
+                    self.check_for_unnecessary_else(id, expr, db);
                 }
                 Expr::Block { .. } => {
                     self.validate_block(db, expr);
@@ -337,18 +337,12 @@ impl ExprValidator {
         }
     }
 
-    fn check_for_unnecessary_else(
-        &mut self,
-        id: ExprId,
-        expr: &Expr,
-        body: &Body,
-        db: &dyn HirDatabase,
-    ) {
+    fn check_for_unnecessary_else(&mut self, id: ExprId, expr: &Expr, db: &dyn HirDatabase) {
         if let Expr::If { condition: _, then_branch, else_branch } = expr {
             if else_branch.is_none() {
                 return;
             }
-            if let Expr::Block { statements, tail, .. } = &body.exprs[*then_branch] {
+            if let Expr::Block { statements, tail, .. } = &self.body.exprs[*then_branch] {
                 let last_then_expr = tail.or_else(|| match statements.last()? {
                     Statement::Expr { expr, .. } => Some(*expr),
                     _ => None,
