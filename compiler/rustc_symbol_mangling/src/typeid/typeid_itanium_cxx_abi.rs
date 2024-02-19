@@ -759,7 +759,11 @@ fn transform_predicates<'tcx>(
             ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
         })
         .collect();
-    tcx.mk_poly_existential_predicates(&predicates)
+    if predicates.len() == 0 {
+        List::empty()
+    } else {
+        tcx.mk_poly_existential_predicates(&predicates)
+    }
 }
 
 /// Transforms args for being encoded and used in the substitution dictionary.
