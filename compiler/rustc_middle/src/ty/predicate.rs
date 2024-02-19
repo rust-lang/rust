@@ -290,7 +290,7 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
     /// have a "trivial" vtable consisting of just the size, alignment,
     /// and destructor.
     pub fn principal(&self) -> Option<ty::Binder<'tcx, ExistentialTraitRef<'tcx>>> {
-        self[0]
+        self.get(0)?
             .map_bound(|this| match this {
                 ExistentialPredicate::Trait(tr) => Some(tr),
                 _ => None,
