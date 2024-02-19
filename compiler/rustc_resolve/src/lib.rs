@@ -53,7 +53,7 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt, TyCtxtFeed};
-use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs, Feed};
+use rustc_middle::ty::{Feed, ResolverGlobalCtxt, ResolverOutputs};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::LintBuffer;
@@ -1340,7 +1340,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
         let mut node_id_to_def_id = NodeMap::default();
-        let crate_feed = tcx.feed_local_crate_def_id().downgrade();
+        let crate_feed = tcx.create_local_crate_def_id(crate_span);
+
+        crate_feed.def_kind(DefKind::Mod);
+        let crate_feed = crate_feed.downgrade();
         node_id_to_def_id.insert(CRATE_NODE_ID, crate_feed);
 
         let mut invocation_parents = FxHashMap::default();

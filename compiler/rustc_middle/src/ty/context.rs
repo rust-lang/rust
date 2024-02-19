@@ -545,6 +545,10 @@ impl<T: fmt::Debug + Copy> fmt::Debug for Feed<'_, T> {
     }
 }
 
+/// Some workarounds to use cases that cannot use `create_def`.
+/// Do not add new ways to create `TyCtxtFeed` without consulting
+/// with T-compiler and making an analysis about why your addition
+/// does not cause incremental compilation issues.
 impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
         TyCtxtFeed { tcx: self, key: () }
@@ -553,8 +557,12 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtFeed { tcx: self, key: LOCAL_CRATE }
     }
 
-    pub fn feed_local_crate_def_id(self) -> TyCtxtFeed<'tcx, LocalDefId> {
-        TyCtxtFeed { tcx: self, key: CRATE_DEF_ID }
+    /// Only used in the resolver to register the `CRATE_DEF_ID` `DefId` and feed
+    /// some queries for it. It will panic if used twice.
+    pub fn create_local_crate_def_id(self, span: Span) -> TyCtxtFeed<'tcx, LocalDefId> {
+        let key = self.untracked().source_span.push(span);
+        assert_eq!(key, CRATE_DEF_ID);
+        TyCtxtFeed { tcx: self, key }
     }
 
     /// In order to break cycles involving `AnonConst`, we need to set the expected type by side
