@@ -98,12 +98,11 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     };
 
     let min_version: StaticCow<str> = {
-        let (major, minor) = match (os, abi) {
-            ("ios", "macabi") => mac_catalyst_deployment_target(),
-            ("ios", _) => ios_deployment_target(arch),
-            ("tvos", _) => tvos_deployment_target(),
-            ("watchos", _) => watchos_deployment_target(),
-            ("macos", _) => macos_deployment_target(arch),
+        let (major, minor) = match os {
+            "ios" => ios_deployment_target(arch, abi),
+            "tvos" => tvos_deployment_target(),
+            "watchos" => watchos_deployment_target(),
+            "macos" => macos_deployment_target(arch),
             _ => unreachable!(),
         };
         format!("{major}.{minor}").into()
@@ -232,16 +231,13 @@ pub fn deployment_target(target: &Target) -> Option<(u32, u32)> {
             };
             macos_deployment_target(arch)
         }
-        "ios" => match &*target.abi {
-            "macabi" => mac_catalyst_deployment_target(),
-            _ => {
-                let arch = match target.arch.as_ref() {
-                    "arm64e" => Arm64e,
-                    _ => Arm64,
-                };
-                ios_deployment_target(arch)
-            }
-        },
+        "ios" => {
+            let arch = match target.arch.as_ref() {
+                "arm64e" => Arm64e,
+                _ => Arm64,
+            };
+            ios_deployment_target(arch, &target.abi)
+        }
         "watchos" => watchos_deployment_target(),
         "tvos" => tvos_deployment_target(),
         _ => return None,
@@ -311,15 +307,14 @@ fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     }
 }
 
-fn ios_deployment_target(arch: Arch) -> (u32, u32) {
+fn ios_deployment_target(arch: Arch, abi: &str) -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    let (major, minor) = if arch == Arm64e { (14, 0) } else { (10, 0) };
+    let (major, minor) = match (arch, abi) {
+        (Arm64e, _) => (14, 0),
+        (_, "macabi") => (14, 0),
+        _ => (10, 0),
+    };
     from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((major, minor))
-}
-
-fn mac_catalyst_deployment_target() -> (u32, u32) {
-    // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
-    from_set_deployment_target("IPHONEOS_DEPLOYMENT_TARGET").unwrap_or((14, 0))
 }
 
 pub fn ios_llvm_target(arch: Arch) -> String {
@@ -329,17 +324,17 @@ pub fn ios_llvm_target(arch: Arch) -> String {
     // set high enough. Luckily one LC_BUILD_VERSION is enough, for Xcode
     // to pick it up (since std and core are still built with the fallback
     // of version 7.0 and hence emit the old LC_IPHONE_MIN_VERSION).
-    let (major, minor) = ios_deployment_target(arch);
+    let (major, minor) = ios_deployment_target(arch, "");
     format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
 }
 
 pub fn mac_catalyst_llvm_target(arch: Arch) -> String {
-    let (major, minor) = mac_catalyst_deployment_target();
+    let (major, minor) = ios_deployment_target(arch, "macabi");
     format!("{}-apple-ios{}.{}.0-macabi", arch.target_name(), major, minor)
 }
 
 pub fn ios_sim_llvm_target(arch: Arch) -> String {
-    let (major, minor) = ios_deployment_target(arch);
+    let (major, minor) = ios_deployment_target(arch, "sim");
     format!("{}-apple-ios{}.{}.0-simulator", arch.target_name(), major, minor)
 }
 
