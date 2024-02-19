@@ -1,6 +1,6 @@
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{needs_normalization, BoundVarReplacer, PlaceholderReplacer};
+use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -205,10 +205,9 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
     }
 
     fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
-        let reveal = self.at.param_env.reveal();
         let infcx = self.at.infcx;
         debug_assert_eq!(ct, infcx.shallow_resolve(ct));
-        if !needs_normalization(&ct, reveal) {
+        if !ct.has_projections() {
             return Ok(ct);
         }
 

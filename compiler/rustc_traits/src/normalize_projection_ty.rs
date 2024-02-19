@@ -25,10 +25,10 @@ fn normalize_projection_ty<'tcx>(
     goal: CanonicalProjectionGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
     debug!("normalize_provider(goal={:#?})", goal);
-
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
+            debug_assert!(!ocx.infcx.next_trait_solver());
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = vec![];
@@ -45,23 +45,22 @@ fn normalize_projection_ty<'tcx>(
             // are recursive (given some generic parameters of the opaque's type variables).
             // In that case, we may only realize a cycle error when calling
             // `normalize_erasing_regions` in mono.
-            if !ocx.infcx.next_trait_solver() {
-                let errors = ocx.select_where_possible();
-                if !errors.is_empty() {
-                    // Rustdoc may attempt to normalize type alias types which are not
-                    // well-formed. Rustdoc also normalizes types that are just not
-                    // well-formed, since we don't do as much HIR analysis (checking
-                    // that impl vars are constrained by the signature, for example).
-                    if !tcx.sess.opts.actually_rustdoc {
-                        for error in &errors {
-                            if let FulfillmentErrorCode::Cycle(cycle) = &error.code {
-                                ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
-                            }
+            let errors = ocx.select_where_possible();
+            if !errors.is_empty() {
+                // Rustdoc may attempt to normalize type alias types which are not
+                // well-formed. Rustdoc also normalizes types that are just not
+                // well-formed, since we don't do as much HIR analysis (checking
+                // that impl vars are constrained by the signature, for example).
+                if !tcx.sess.opts.actually_rustdoc {
+                    for error in &errors {
+                        if let FulfillmentErrorCode::Cycle(cycle) = &error.code {
+                            ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
                         }
                     }
-                    return Err(NoSolution);
                 }
+                return Err(NoSolution);
             }
+
             // FIXME(associated_const_equality): All users of normalize_projection_ty expected
             // a type, but there is the possibility it could've been a const now. Maybe change
             // it to a Term later?

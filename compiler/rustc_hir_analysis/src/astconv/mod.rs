@@ -1425,17 +1425,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             vec![]
         };
 
-        let (impl_, (assoc_item, def_scope)) =
-            crate::traits::project::with_replaced_escaping_bound_vars(
-                infcx,
-                &mut universes,
-                self_ty,
-                |self_ty| {
-                    self.select_inherent_assoc_type_candidates(
-                        infcx, name, span, self_ty, param_env, candidates,
-                    )
-                },
-            )?;
+        let (impl_, (assoc_item, def_scope)) = crate::traits::with_replaced_escaping_bound_vars(
+            infcx,
+            &mut universes,
+            self_ty,
+            |self_ty| {
+                self.select_inherent_assoc_type_candidates(
+                    infcx, name, span, self_ty, param_env, candidates,
+                )
+            },
+        )?;
 
         self.check_assoc_ty(assoc_item, name, def_scope, block, span);
 
