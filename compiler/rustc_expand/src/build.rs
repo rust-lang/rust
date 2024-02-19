@@ -324,6 +324,9 @@ impl<'a> ExtCtxt<'a> {
             is_placeholder: false,
         }
     }
+    pub fn expr_err(&self, span: Span) -> P<ast::Expr> {
+        self.expr(span, ast::ExprKind::Err)
+    }
     pub fn expr_struct(
         &self,
         span: Span,

@@ -48,6 +48,7 @@ impl Path {
     ) -> P<ast::Ty> {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics))
     }
+
     pub fn to_path(
         &self,
         cx: &ExtCtxt<'_>,
@@ -68,6 +69,10 @@ impl Path {
                 cx.path_all(span, false, idents, params)
             }
         }
+    }
+
+    pub fn components(&self) -> &[Symbol] {
+        &self.path
     }
 }
 

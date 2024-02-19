@@ -475,6 +475,26 @@ impl<'a> TraitDef<'a> {
                     false
                 });
 
+                if let ast::ItemKind::Struct(struct_def, _) | ast::ItemKind::Union(struct_def, _) =
+                    &item.kind
+                    && let Some(&trait_name) = self.path.components().last()
+                    && !(trait_name == sym::Copy || trait_name == sym::Clone)
+                {
+                    let unnamed = struct_def
+                        .fields()
+                        .iter()
+                        .filter(|f| f.ident.is_some_and(|i| i.name == kw::Underscore))
+                        .map(|f| f.span)
+                        .collect::<Vec<_>>();
+                    if !unnamed.is_empty() {
+                        cx.dcx().emit_err(errors::UnnamedFieldDerive {
+                            span: self.span,
+                            fields: unnamed,
+                        });
+                        return;
+                    }
+                };
+
                 let newitem = match &item.kind {
                     ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
                         cx,

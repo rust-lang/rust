@@ -1,0 +1,23 @@
+error: only `Copy` and `Clone` may be derived on structs with unnamed fields
+  --> $DIR/derive.rs:11:10
+   |
+LL | #[derive(Debug)]
+   |          ^^^^^
+   |
+note: unnamed field
+  --> $DIR/derive.rs:13:5
+   |
+LL |     _: Foo,
+   |     ^^^^^^
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: deriving `Clone` on a type with unnamed fields requires also deriving `Copy`
+  --> $DIR/derive.rs:23:10
+   |
+LL | #[derive(Clone)]
+   |          ^^^^^
+   |
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+

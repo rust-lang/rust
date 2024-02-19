@@ -1,6 +1,7 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
+use crate::errors;
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -32,41 +33,51 @@ pub fn expand_deriving_clone(
     let bounds;
     let substructure;
     let is_simple;
-    match item {
-        Annotatable::Item(annitem) => match &annitem.kind {
-            ItemKind::Struct(_, Generics { params, .. })
-            | ItemKind::Enum(_, Generics { params, .. }) => {
-                let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
-                let has_derive_copy = cx.resolver.has_derive_copy(container_id);
-                if has_derive_copy
-                    && !params
-                        .iter()
-                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
-                {
-                    bounds = vec![];
-                    is_simple = true;
-                    substructure = combine_substructure(Box::new(|c, s, sub| {
-                        cs_clone_simple("Clone", c, s, sub, false)
-                    }));
-                } else {
-                    bounds = vec![];
-                    is_simple = false;
-                    substructure =
-                        combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
-                }
-            }
-            ItemKind::Union(..) => {
-                bounds = vec![Path(path_std!(marker::Copy))];
+    let Annotatable::Item(annitem) = item else {
+        cx.dcx().span_bug(span, "`#[derive(Clone)]` on trait item or impl item")
+    };
+    let has_unnamed = if let ItemKind::Struct(VariantData::Struct { fields, .. }, _) = &annitem.kind
+    {
+        fields.iter().any(|f| f.ident.is_some_and(|i| i.name == kw::Underscore))
+    } else {
+        false
+    };
+    match &annitem.kind {
+        ItemKind::Struct(_, Generics { params, .. })
+        | ItemKind::Enum(_, Generics { params, .. }) => {
+            let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
+            let has_derive_copy = cx.resolver.has_derive_copy(container_id);
+            if has_derive_copy
+                && !params
+                    .iter()
+                    .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
+            {
+                bounds = vec![];
                 is_simple = true;
                 substructure = combine_substructure(Box::new(|c, s, sub| {
-                    cs_clone_simple("Clone", c, s, sub, true)
+                    cs_clone_simple("Clone", c, s, sub, false)
                 }));
+            } else {
+                bounds = vec![];
+                is_simple = false;
+                substructure =
+                    combine_substructure(Box::new(|c, s, sub| cs_clone("Clone", c, s, sub)));
             }
-            _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
-        },
-
-        _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
+        }
+        ItemKind::Union(..) => {
+            bounds = vec![Path(path_std!(marker::Copy))];
+            is_simple = true;
+            substructure = combine_substructure(Box::new(|c, s, sub| {
+                cs_clone_simple("Clone", c, s, sub, true)
+            }));
+        }
+        _ => cx.dcx().span_bug(span, "`#[derive(Clone)]` on wrong item kind"),
     }
+
+    if !is_simple && has_unnamed {
+        cx.dcx().emit_err(errors::UnnamedFieldDeriveClone { span });
+        return;
+    };
 
     let trait_def = TraitDef {
         span,

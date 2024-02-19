@@ -843,6 +843,22 @@ pub(crate) struct TestRunnerNargs {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_unnamed_field_derive)]
+pub(crate) struct UnnamedFieldDerive {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[note]
+    pub(crate) fields: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_unnamed_field_derive_clone)]
+pub(crate) struct UnnamedFieldDeriveClone {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_expected_register_class_or_explicit_register)]
 pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]

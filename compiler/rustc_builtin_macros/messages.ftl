@@ -245,3 +245,9 @@ builtin_macros_unexpected_lit = expected path to a trait, found literal
     .other = for example, write `#[derive(Debug)]` for `Debug`
 
 builtin_macros_unnameable_test_items = cannot test inner items
+
+builtin_macros_unnamed_field_derive = only `Copy` and `Clone` may be derived on structs with unnamed fields
+    .note = unnamed field
+
+builtin_macros_unnamed_field_derive_clone =
+    deriving `Clone` on a type with unnamed fields requires also deriving `Copy`
