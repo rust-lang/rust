@@ -191,6 +191,7 @@ use rustc_span::source_map::{dummy_spanned, respan, Spanned};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Size;
+use std::iter;
 use std::path::PathBuf;
 
 use crate::errors::{
@@ -1206,23 +1207,51 @@ fn create_mono_items_for_vtable_methods<'tcx>(
             assert!(!poly_trait_ref.has_escaping_bound_vars());
 
             // Walk all methods of the trait, including those of its supertraits
-            let entries = tcx.vtable_entries(poly_trait_ref);
-            let methods = entries
-                .iter()
-                .filter_map(|entry| match entry {
+            for entry in tcx.vtable_entries(poly_trait_ref) {
+                match entry {
                     VtblEntry::MetadataDropInPlace
                     | VtblEntry::MetadataSize
                     | VtblEntry::MetadataAlign
-                    | VtblEntry::Vacant => None,
-                    VtblEntry::TraitVPtr(_) => {
-                        // all super trait items already covered, so skip them.
-                        None
+                    | VtblEntry::Vacant => (),
+                    VtblEntry::TraitVPtr(super_trait) => {
+                        // If CFI shims are enabled, the super_trait will use a different invocation
+                        // type than the instances selected for this trait. This means we must walk
+                        // the super_trait pointer visit its instances as well.
+                        if tcx.sess.cfi_shims() {
+                            let pep: ty::PolyExistentialPredicate<'tcx> =
+                                super_trait.map_bound(|t| {
+                                    ty::ExistentialPredicate::Trait(
+                                        ty::ExistentialTraitRef::erase_self_ty(tcx, t),
+                                    )
+                                });
+                            let existential_predicates = tcx
+                                .mk_poly_existential_predicates_from_iter(
+                                    iter::once(pep).chain(trait_ty.iter().skip(1)),
+                                );
+                            let super_trait_ty = Ty::new_dynamic(
+                                tcx,
+                                existential_predicates,
+                                tcx.lifetimes.re_erased,
+                                ty::Dyn,
+                            );
+
+                            create_mono_items_for_vtable_methods(
+                                tcx,
+                                super_trait_ty,
+                                impl_ty,
+                                source,
+                                output,
+                            );
+                        }
                     }
-                    VtblEntry::Method(instance) => Some(instance.cfi_shim(tcx, invoke_trait))
-                        .filter(|instance| should_codegen_locally(tcx, instance)),
-                })
-                .map(|item| create_fn_mono_item(tcx, item, source));
-            output.extend(methods);
+                    VtblEntry::Method(instance) => {
+                        let instance = instance.cfi_shim(tcx, invoke_trait);
+                        if should_codegen_locally(tcx, &instance) {
+                            output.push(create_fn_mono_item(tcx, instance, source));
+                        }
+                    }
+                }
+            }
         };
 
         // Also add the destructor.
