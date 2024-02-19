@@ -63,10 +63,10 @@ fn check_conditional_variables_timed_wait_timeout() {
     let cvar = Condvar::new();
     let guard = lock.lock().unwrap();
     let now = Instant::now();
-    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(100)).unwrap();
+    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(10)).unwrap();
     assert!(timeout.timed_out());
     let elapsed_time = now.elapsed().as_millis();
-    assert!(100 <= elapsed_time && elapsed_time <= 1000);
+    assert!(10 <= elapsed_time && elapsed_time <= 1000);
 }
 
 /// Test that signaling a conditional variable when waiting with a timeout works
@@ -79,7 +79,7 @@ fn check_conditional_variables_timed_wait_notimeout() {
     let guard = lock.lock().unwrap();
 
     let handle = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(100)); // Make sure the other thread is waiting by the time we call `notify`.
+        thread::sleep(Duration::from_millis(1)); // Make sure the other thread is waiting by the time we call `notify`.
         let (_lock, cvar) = &*pair2;
         cvar.notify_one();
     });
