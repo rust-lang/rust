@@ -13,6 +13,7 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
+use rustc_span::sym;
 use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
@@ -169,6 +170,13 @@ impl<'tcx> Inliner<'tcx> {
         let callee_attrs = self.tcx.codegen_fn_attrs(callsite.callee.def_id());
         let cross_crate_inlinable = self.tcx.cross_crate_inlinable(callsite.callee.def_id());
         self.check_codegen_attributes(callsite, callee_attrs, cross_crate_inlinable)?;
+
+        // Intrinsic fallback bodies are automatically made cross-crate inlineable,
+        // but at this stage we don't know whether codegen knows the intrinsic,
+        // so just conservatively don't inline it.
+        if self.tcx.has_attr(callsite.callee.def_id(), sym::rustc_intrinsic) {
+            return Err("Callee is an intrinsic, do not inline fallback bodies");
+        }
 
         let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
         let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
