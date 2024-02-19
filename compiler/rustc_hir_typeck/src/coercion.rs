@@ -1129,17 +1129,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 match (prev_ty.kind(), new_ty.kind()) {
                     (ty::FnDef(..), ty::FnDef(..)) => {
-                        // Don't reify if the function types have a LUB, i.e., they
-                        // are the same function and their parameters have a LUB.
+                        // Don't reify if the FnDefs are equatable.
                         match self.commit_if_ok(|_| {
-                            self.at(cause, self.param_env).lub(
+                            self.at(cause, self.param_env).eq(
                                 DefineOpaqueTypes::No,
                                 prev_ty,
                                 new_ty,
                             )
                         }) {
-                            // We have a LUB of prev_ty and new_ty, just return it.
-                            Ok(ok) => return Ok(self.register_infer_ok_obligations(ok)),
+                            Ok(InferOk { value: (), obligations }) => {
+                                self.register_predicates(obligations);
+                                return Ok(new_ty);
+                            }
                             Err(_) => {
                                 (Some(prev_ty.fn_sig(self.tcx)), Some(new_ty.fn_sig(self.tcx)))
                             }
@@ -1184,14 +1185,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
-            let sig = self
-                .at(cause, self.param_env)
-                .trace(prev_ty, new_ty)
-                .lub(DefineOpaqueTypes::No, a_sig, b_sig)
-                .map(|ok| self.register_infer_ok_obligations(ok))?;
+            self.register_infer_ok_obligations(
+                self.at(cause, self.param_env).trace(prev_ty, new_ty).eq(
+                    DefineOpaqueTypes::No,
+                    a_sig,
+                    b_sig,
+                )?,
+            );
 
             // Reify both sides and return the reified fn pointer type.
-            let fn_ptr = Ty::new_fn_ptr(self.tcx, sig);
+            let fn_ptr = Ty::new_fn_ptr(self.tcx, a_sig);
             let prev_adjustment = match prev_ty.kind() {
                 ty::Closure(..) => {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.unsafety()))
