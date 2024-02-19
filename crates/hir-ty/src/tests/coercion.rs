@@ -536,7 +536,7 @@ fn test() {
 
 #[test]
 fn coerce_unsize_generic() {
-    check_no_mismatches(
+    check(
         r#"
 //- minicore: coerce_unsized
 struct Foo<T> { t: T };
@@ -544,7 +544,9 @@ struct Bar<T>(Foo<T>);
 
 fn test() {
     let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
+                         //^^^^^^^^^^^^^^^^^^^^^ expected &Foo<[usize]>, got &Foo<[i32; 3]>
     let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
+                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &Bar<[usize]>, got &Bar<[i32; 3]>
 }
 "#,
     );
