@@ -1051,13 +1051,18 @@ fn should_encode_mir(
         // Coroutines require optimized MIR to compute layout.
         DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
         // Full-fledged functions + closures
-        DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
+        def_kind @ (DefKind::AssocFn | DefKind::Fn | DefKind::Closure) => {
             let generics = tcx.generics_of(def_id);
-            let opt = tcx.sess.opts.unstable_opts.always_encode_mir
+            let mut opt = tcx.sess.opts.unstable_opts.always_encode_mir
                 || (tcx.sess.opts.output_types.should_codegen()
                     && reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
+            if matches!(def_kind, DefKind::AssocFn | DefKind::Fn) {
+                if let Some(intrinsic) = tcx.intrinsic(def_id) {
+                    opt &= !intrinsic.must_be_overridden;
+                }
+            }
             // The function has a `const` modifier or is in a `#[const_trait]`.
             let is_const_fn = tcx.is_const_fn_raw(def_id.to_def_id())
                 || tcx.is_const_default_method(def_id.to_def_id());

@@ -2499,9 +2499,8 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn black_box<T>(dummy: T) -> T;
 
-    /// `ptr` must point to a vtable.
-    /// The intrinsic will return the size stored in that vtable.
     #[rustc_nounwind]
+    #[cfg(bootstrap)]
     pub fn vtable_size(ptr: *const ()) -> usize;
 
     /// `ptr` must point to a vtable.
@@ -2680,6 +2679,17 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 #[cfg_attr(bootstrap, inline)]
 pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+
+/// `ptr` must point to a vtable.
+/// The intrinsic will return the size stored in that vtable.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(not(bootstrap), rustc_intrinsic_must_be_overridden)]
+#[cfg(not(bootstrap))]
+pub unsafe fn vtable_size(_ptr: *const ()) -> usize {
+    unreachable!()
+}
 
 // Some functions are defined here because they accidentally got made
 // available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.

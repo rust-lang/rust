@@ -903,7 +903,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             MergingSucc::False
                         };
                     }
-                    Err(instance) => Some(instance),
+                    Err(instance) => {
+                        if intrinsic.must_be_overridden {
+                            span_bug!(
+                                span,
+                                "intrinsic {} must be overridden by codegen backend, but isn't",
+                                intrinsic.name,
+                            );
+                        }
+                        Some(instance)
+                    }
                 }
             }
         };

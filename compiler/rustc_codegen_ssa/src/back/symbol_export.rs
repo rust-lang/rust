@@ -16,6 +16,7 @@ use rustc_middle::ty::{self, SymbolName, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
+use rustc_span::sym;
 use rustc_target::spec::{SanitizerSet, TlsModel};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
@@ -79,6 +80,10 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
             {
                 let library = tcx.native_library(def_id)?;
                 return library.kind.is_statically_included().then_some(def_id);
+            }
+
+            if tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden) {
+                return None;
             }
 
             // Only consider nodes that actually have exported symbols.
