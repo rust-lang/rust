@@ -1279,11 +1279,11 @@ impl Thing {
     );
     check(
         r#"
-        enum Thing { A }
-        impl Thing {
-            pub fn thing(a: Self$0) {}
-        }
-        "#,
+enum Thing { A }
+impl Thing {
+    pub fn thing(a: Self$0) {}
+}
+"#,
         expect![[r#"
                 *Self*
 
@@ -1297,6 +1297,42 @@ impl Thing {
                 }
                 ```
             "#]],
+    );
+    check(
+        r#"
+impl usize {
+    pub fn thing(a: Self$0) {}
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            usize
+            ```
+        "#]],
+    );
+    check(
+        r#"
+impl fn() -> usize {
+    pub fn thing(a: Self$0) {}
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn() -> usize
+            ```
+        "#]],
     );
 }
 
@@ -7196,6 +7232,65 @@ impl Iterator for S {
              // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
              // size = 0, align = 1
             struct S
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn extern_items() {
+    check(
+        r#"
+extern "C" {
+    static STATIC$0: ();
+}
+"#,
+        expect![[r#"
+            *STATIC*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            static STATIC: ()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+extern "C" {
+    fn fun$0();
+}
+"#,
+        expect![[r#"
+            *fun*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            unsafe fn fun()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+extern "C" {
+    type Ty$0;
+}
+"#,
+        expect![[r#"
+            *Ty*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+             // size = 0, align = 1
+            type Ty
             ```
         "#]],
     );
