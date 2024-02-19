@@ -723,6 +723,35 @@ fn main() {
 }
 
 #[test]
+fn doctest_destructure_struct_binding() {
+    check_doc_test(
+        "destructure_struct_binding",
+        r#####"
+struct Foo {
+    bar: i32,
+    baz: i32,
+}
+fn main() {
+    let $0foo = Foo { bar: 1, baz: 2 };
+    let bar2 = foo.bar;
+    let baz2 = &foo.baz;
+}
+"#####,
+        r#####"
+struct Foo {
+    bar: i32,
+    baz: i32,
+}
+fn main() {
+    let Foo { bar, baz } = Foo { bar: 1, baz: 2 };
+    let bar2 = bar;
+    let baz2 = &baz;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_destructure_tuple_binding() {
     check_doc_test(
         "destructure_tuple_binding",
