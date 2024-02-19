@@ -1,6 +1,6 @@
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
 #![feature(thread_local)]
-#![allow(static_mut_ref)]
+#![allow(static_mut_refs)]
 
 extern "C" {
     static mut DATA: u8;

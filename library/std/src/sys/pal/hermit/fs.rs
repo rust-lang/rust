@@ -269,7 +269,7 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path, |path| File::open_c(&path, opts))
+        run_path_with_cstr(path, &|path| File::open_c(&path, opts))
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
@@ -421,7 +421,7 @@ pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, |path| cvt(unsafe { abi::unlink(path.as_ptr()) }).map(|_| ()))
+    run_path_with_cstr(path, &|path| cvt(unsafe { abi::unlink(path.as_ptr()) }).map(|_| ()))
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {

@@ -281,6 +281,8 @@ pub(crate) struct RenderOptions {
     pub(crate) no_emit_shared: bool,
     /// If `true`, HTML source code pages won't be generated.
     pub(crate) html_no_source: bool,
+    /// Whether `-Zforce-unstable-if-unmarked` unstable option is set
+    pub(crate) force_unstable_if_unmarked: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -347,6 +349,7 @@ impl Options {
 
         let codegen_options = CodegenOptions::build(early_dcx, matches);
         let unstable_opts = UnstableOptions::build(early_dcx, matches);
+        let force_unstable_if_unmarked = unstable_opts.force_unstable_if_unmarked;
 
         let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
 
@@ -760,6 +763,7 @@ impl Options {
             call_locations,
             no_emit_shared: false,
             html_no_source,
+            force_unstable_if_unmarked,
         };
         Some((options, render_options))
     }

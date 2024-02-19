@@ -84,7 +84,6 @@ pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
-    rename_external: bool,
 ) -> RenameResult<SourceChange> {
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
@@ -104,7 +103,7 @@ pub(crate) fn rename(
                     return rename_to_self(&sema, local);
                 }
             }
-            def.rename(&sema, new_name, rename_external)
+            def.rename(&sema, new_name)
         })
         .collect();
 
@@ -123,9 +122,9 @@ pub(crate) fn will_rename_file(
     let module = sema.to_module_def(file_id)?;
     let def = Definition::Module(module);
     let mut change = if is_raw_identifier(new_name_stem) {
-        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem]), true).ok()?
+        def.rename(&sema, &SmolStr::from_iter(["r#", new_name_stem])).ok()?
     } else {
-        def.rename(&sema, new_name_stem, true).ok()?
+        def.rename(&sema, new_name_stem).ok()?
     };
     change.file_system_edits.clear();
     Some(change)
@@ -377,16 +376,11 @@ mod tests {
     use super::{RangeInfo, RenameError};
 
     fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-        check_with_rename_config(new_name, ra_fixture_before, ra_fixture_after, true);
+        check_with_rename_config(new_name, ra_fixture_before, ra_fixture_after);
     }
 
     #[track_caller]
-    fn check_with_rename_config(
-        new_name: &str,
-        ra_fixture_before: &str,
-        ra_fixture_after: &str,
-        rename_external: bool,
-    ) {
+    fn check_with_rename_config(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -395,7 +389,7 @@ mod tests {
             }
         }
         let rename_result = analysis
-            .rename(position, new_name, rename_external)
+            .rename(position, new_name)
             .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
         match rename_result {
             Ok(source_change) => {
@@ -426,10 +420,8 @@ mod tests {
 
     fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
-        let source_change = analysis
-            .rename(position, new_name, true)
-            .unwrap()
-            .expect("Expect returned a RenameError");
+        let source_change =
+            analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_eq(&filter_expect(source_change))
     }
 
@@ -2636,19 +2628,7 @@ pub struct S;
 //- /main.rs crate:main deps:lib new_source_root:local
 use lib::S$0;
 "#,
-            "error: Cannot rename a non-local definition as the config for it is disabled",
-            false,
-        );
-
-        check(
-            "Baz",
-            r#"
-//- /lib.rs crate:lib new_source_root:library
-pub struct S;
-//- /main.rs crate:main deps:lib new_source_root:local
-use lib::S$0;
-"#,
-            "use lib::Baz;\n",
+            "error: Cannot rename a non-local definition",
         );
     }
 
@@ -2663,8 +2643,7 @@ use core::hash::Hash;
 #[derive(H$0ash)]
 struct A;
             "#,
-            "error: Cannot rename a non-local definition as the config for it is disabled",
-            false,
+            "error: Cannot rename a non-local definition",
         );
     }
 

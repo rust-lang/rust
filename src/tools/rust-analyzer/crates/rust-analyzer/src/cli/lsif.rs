@@ -13,7 +13,7 @@ use ide_db::{
     LineIndexDatabase,
 };
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
-use lsp_types::{self, lsif};
+use lsp_types::lsif;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rustc_hash::FxHashMap;
 use vfs::{AbsPathBuf, Vfs};

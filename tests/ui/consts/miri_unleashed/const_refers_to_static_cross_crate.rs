@@ -3,7 +3,7 @@
 //@ normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 #![feature(exclusive_range_pattern, half_open_range_patterns_in_slices)]
-#![allow(static_mut_ref)]
+#![allow(static_mut_refs)]
 
 extern crate static_cross_crate;
 

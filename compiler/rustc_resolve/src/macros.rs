@@ -5,7 +5,7 @@ use crate::errors::CannotDetermineMacroResolution;
 use crate::errors::{self, AddAsNonDerive, CannotFindIdentInThisScope};
 use crate::errors::{MacroExpectedFound, RemoveSurroundingDerive};
 use crate::Namespace::*;
-use crate::{BuiltinMacroState, Determinacy, MacroData};
+use crate::{BuiltinMacroState, Determinacy, MacroData, Used};
 use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, ScopeSet};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::expand::StrippedCfgItem;
@@ -794,7 +794,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ) {
                 Ok(binding) => {
                     let initial_res = initial_binding.map(|initial_binding| {
-                        self.record_use(ident, initial_binding, false);
+                        self.record_use(ident, initial_binding, Used::Other);
                         initial_binding.res()
                     });
                     let res = binding.res();

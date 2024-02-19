@@ -59,7 +59,6 @@ mod remove_place_mention;
 mod add_subtyping_projections;
 pub mod cleanup_post_borrowck;
 mod const_debuginfo;
-mod const_prop;
 mod const_prop_lint;
 mod copy_prop;
 mod coroutine;

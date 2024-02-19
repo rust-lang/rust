@@ -21,7 +21,7 @@ jobs:
           rustup component add rustfmt rust-src
           rustup default stable
       - name: Cache cargo
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -36,10 +36,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Restore cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -52,7 +52,7 @@ jobs:
         run: cargo xtask metrics build
 
       - name: Cache target
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: target/
           key: ${{ runner.os }}-target-${{ github.sha }}
@@ -73,10 +73,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Restore cargo cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/
@@ -86,7 +86,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ github.sha }}
 
       - name: Restore target cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: target/
           key: ${{ runner.os }}-target-${{ github.sha }}
@@ -106,7 +106,7 @@ jobs:
     needs: [build_metrics, other_metrics]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download build metrics
         uses: actions/download-artifact@v3

@@ -275,9 +275,9 @@ macro_rules! depth_too_large {
 }
 
 fn test() {
-    /* error: invalid macro definition: invalid metavariable expression */;
-    /* error: invalid macro definition: invalid metavariable expression */;
-    /* error: invalid macro definition: invalid metavariable expression */;
+    /* error: macro definition has parse errors */;
+    /* error: macro definition has parse errors */;
+    /* error: macro definition has parse errors */;
 }
 "#]],
     );

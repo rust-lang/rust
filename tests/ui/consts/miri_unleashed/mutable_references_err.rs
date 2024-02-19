@@ -1,9 +1,9 @@
 //@ stderr-per-bitwidth
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
-#![allow(invalid_reference_casting, static_mut_ref)]
+#![allow(invalid_reference_casting, static_mut_refs)]
 
-use std::sync::atomic::*;
 use std::cell::UnsafeCell;
+use std::sync::atomic::*;
 
 // this test ensures that our mutability story is sound
 
@@ -14,7 +14,8 @@ unsafe impl Sync for Meh {}
 
 // the following will never be ok! no interior mut behind consts, because
 // all allocs interned here will be marked immutable.
-const MUH: Meh = Meh { //~ ERROR: mutable pointer in final value
+const MUH: Meh = Meh {
+    //~^ ERROR encountered mutable pointer in final value of constant
     x: &UnsafeCell::new(42),
 };
 
@@ -59,7 +60,9 @@ const POINTS_TO_MUTABLE_INNER2: *const i32 = &mut 42 as *const _;
 const INTERIOR_MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
 //~^ ERROR: mutable pointer in final value
 
-struct SyncPtr<T> { x : *const T }
+struct SyncPtr<T> {
+    x: *const T,
+}
 unsafe impl<T> Sync for SyncPtr<T> {}
 
 // These pass the lifetime checks because of the "tail expression" / "outer scope" rule.
@@ -68,7 +71,7 @@ unsafe impl<T> Sync for SyncPtr<T> {}
 // (Also see `static-no-inner-mut` for similar tests on `static`.)
 const RAW_SYNC: SyncPtr<AtomicI32> = SyncPtr { x: &AtomicI32::new(42) };
 //~^ ERROR mutable pointer in final value
-const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _ };
+const RAW_MUT_CAST: SyncPtr<i32> = SyncPtr { x: &mut 42 as *mut _ as *const _ };
 //~^ ERROR mutable pointer in final value
 const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 //~^ ERROR mutable pointer in final value

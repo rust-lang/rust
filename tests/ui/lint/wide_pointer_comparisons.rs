@@ -110,10 +110,12 @@ fn main() {
     {
         macro_rules! cmp {
             ($a:tt, $b:tt) => { $a == $b }
-            //~^ WARN ambiguous wide pointer comparison
         }
 
+        // FIXME: This lint uses some custom span combination logic.
+        // Rewrite it to adapt to the new metavariable span rules.
         cmp!(a, b);
+        //~^ WARN ambiguous wide pointer comparison
     }
 
     {

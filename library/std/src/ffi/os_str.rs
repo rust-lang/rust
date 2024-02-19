@@ -9,7 +9,7 @@ use crate::hash::{Hash, Hasher};
 use crate::ops::{self, Range};
 use crate::rc::Rc;
 use crate::slice;
-use crate::str::{from_utf8 as str_from_utf8, FromStr};
+use crate::str::FromStr;
 use crate::sync::Arc;
 
 use crate::sys::os_str::{Buf, Slice};
@@ -997,42 +997,15 @@ impl OsStr {
     /// ```
     #[unstable(feature = "os_str_slice", issue = "118485")]
     pub fn slice_encoded_bytes<R: ops::RangeBounds<usize>>(&self, range: R) -> &Self {
-        #[track_caller]
-        fn check_valid_boundary(bytes: &[u8], index: usize) {
-            if index == 0 || index == bytes.len() {
-                return;
-            }
-
-            // Fast path
-            if bytes[index - 1].is_ascii() || bytes[index].is_ascii() {
-                return;
-            }
-
-            let (before, after) = bytes.split_at(index);
-
-            // UTF-8 takes at most 4 bytes per codepoint, so we don't
-            // need to check more than that.
-            let after = after.get(..4).unwrap_or(after);
-            match str_from_utf8(after) {
-                Ok(_) => return,
-                Err(err) if err.valid_up_to() != 0 => return,
-                Err(_) => (),
-            }
-
-            for len in 2..=4.min(index) {
-                let before = &before[index - len..];
-                if str_from_utf8(before).is_ok() {
-                    return;
-                }
-            }
-
-            panic!("byte index {index} is not an OsStr boundary");
-        }
-
         let encoded_bytes = self.as_encoded_bytes();
         let Range { start, end } = slice::range(range, ..encoded_bytes.len());
-        check_valid_boundary(encoded_bytes, start);
-        check_valid_boundary(encoded_bytes, end);
+
+        // `check_public_boundary` should panic if the index does not lie on an
+        // `OsStr` boundary as described above. It's possible to do this in an
+        // encoding-agnostic way, but details of the internal encoding might
+        // permit a more efficient implementation.
+        self.inner.check_public_boundary(start);
+        self.inner.check_public_boundary(end);
 
         // SAFETY: `slice::range` ensures that `start` and `end` are valid
         let slice = unsafe { encoded_bytes.get_unchecked(start..end) };

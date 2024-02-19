@@ -311,6 +311,24 @@ fn main() {
     }
 
     #[test]
+    fn mismatched_types_issue_15883() {
+        // Check we don't panic.
+        check_diagnostics_no_bails(
+            r#"
+//- minicore: option
+fn main() {
+    match Some((true, false)) {
+        Some(true) | Some(false) => {}
+        //   ^^^^ error: expected (bool, bool), found bool
+        //                ^^^^^ error: expected (bool, bool), found bool
+        None => {}
+    }
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn mismatched_types_in_or_patterns() {
         cov_mark::check_count!(validate_match_bailed_out, 2);
         check_diagnostics(

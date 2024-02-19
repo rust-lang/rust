@@ -135,12 +135,11 @@ impl flags::Scip {
                     }
 
                     if symbols_emitted.insert(id) {
-                        let documentation = token
-                            .hover
-                            .as_ref()
-                            .map(|hover| hover.markup.as_str())
-                            .filter(|it| !it.is_empty())
-                            .map(|it| vec![it.to_owned()]);
+                        let documentation = match &token.documentation {
+                            Some(doc) => vec![doc.as_str().to_owned()],
+                            None => vec![],
+                        };
+
                         let position_encoding =
                             scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
                         let signature_documentation =
@@ -153,7 +152,7 @@ impl flags::Scip {
                             });
                         let symbol_info = scip_types::SymbolInformation {
                             symbol: symbol.clone(),
-                            documentation: documentation.unwrap_or_default(),
+                            documentation,
                             relationships: Vec::new(),
                             special_fields: Default::default(),
                             kind: symbol_kind(token.kind).into(),
@@ -598,5 +597,23 @@ pub mod example_mod {
     "#,
             "rust-analyzer cargo main . MyTypeAlias#",
         );
+    }
+
+    #[test]
+    fn documentation_matches_doc_comment() {
+        let s = "/// foo\nfn bar() {}";
+
+        let mut host = AnalysisHost::default();
+        let change_fixture = ChangeFixture::parse(s);
+        host.raw_database_mut().apply_change(change_fixture.change);
+
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(&analysis);
+
+        let file = si.files.first().unwrap();
+        let (_, token_id) = file.tokens.first().unwrap();
+        let token = si.tokens.get(*token_id).unwrap();
+
+        assert_eq!(token.documentation.as_ref().map(|d| d.as_str()), Some("foo"));
     }
 }

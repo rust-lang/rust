@@ -1941,13 +1941,8 @@ in src-script.js and main.js
 		   pixels to avoid overflowing the topbar when the user sets a bigger
 		   font size. */
 		font-size: 24px;
-	}
-
-	.mobile-topbar h2 a {
-		display: block;
-		text-overflow: ellipsis;
-		overflow: hidden;
 		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
 	.mobile-topbar .logo-container > img {

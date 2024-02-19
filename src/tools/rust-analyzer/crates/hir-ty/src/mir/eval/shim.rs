@@ -4,11 +4,7 @@
 use std::cmp;
 
 use chalk_ir::TyKind;
-use hir_def::{
-    builtin_type::{BuiltinInt, BuiltinUint},
-    resolver::HasResolver,
-};
-use hir_expand::mod_path::ModPath;
+use hir_def::builtin_type::{BuiltinInt, BuiltinUint};
 
 use super::*;
 

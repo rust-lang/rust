@@ -112,7 +112,8 @@ fn add_missing_ok_or_some(
 
     let variant_name = if Some(expected_enum) == core_result { "Ok" } else { "Some" };
 
-    let wrapped_actual_ty = expected_adt.ty_with_args(ctx.sema.db, &[d.actual.clone()]);
+    let wrapped_actual_ty =
+        expected_adt.ty_with_args(ctx.sema.db, std::iter::once(d.actual.clone()));
 
     if !d.expected.could_unify_with(ctx.sema.db, &wrapped_actual_ty) {
         return None;

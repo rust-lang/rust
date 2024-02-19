@@ -22,7 +22,7 @@ use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    codes::*, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrCode,
+    codes::*, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage,
     ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
