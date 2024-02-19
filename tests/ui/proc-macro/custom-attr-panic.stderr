@@ -1,0 +1,10 @@
+error: custom attribute panicked
+  --> $DIR/custom-attr-panic.rs:5:1
+   |
+LL | #[test_macros::panic_attr]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: panic-attr
+
+error: aborting due to 1 previous error
+
