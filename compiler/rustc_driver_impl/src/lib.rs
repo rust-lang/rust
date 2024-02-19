@@ -144,16 +144,6 @@ pub const EXIT_FAILURE: i32 = 1;
 pub const DEFAULT_BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
-pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T {
-    match result {
-        Err(..) => {
-            sess.dcx().abort_if_errors();
-            panic!("error reported but abort_if_errors didn't abort???");
-        }
-        Ok(x) => x,
-    }
-}
-
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
@@ -665,10 +655,11 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                 };
             }
         };
-        let result = compiler.codegen_backend.link(sess, codegen_results, &outputs);
-        abort_on_err(result, sess);
+        if compiler.codegen_backend.link(sess, codegen_results, &outputs).is_err() {
+            FatalError.raise();
+        }
     } else {
-        dcx.emit_fatal(RlinkNotAFile {})
+        dcx.emit_fatal(RlinkNotAFile {});
     }
 }
 
