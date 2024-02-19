@@ -243,6 +243,7 @@ where
     T: Tag,
 {
     #[inline]
+    #[allow(ambiguous_wide_pointer_comparisons)]
     fn eq(&self, other: &Self) -> bool {
         self.packed == other.packed
     }
