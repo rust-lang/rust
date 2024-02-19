@@ -119,4 +119,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `target.<triple>.codegen-backends` added to config.toml.",
     },
+    ChangeInfo {
+        change_id: 121203,
+        severity: ChangeSeverity::Info,
+        summary: "A new `rust.frame-pointers` option has been introduced and made the default in the compiler and codegen profiles.",
+    },
 ];

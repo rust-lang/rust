@@ -1870,6 +1870,10 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Wrustc::internal");
         }
 
+        if self.config.rust_frame_pointers {
+            rustflags.arg("-Cforce-frame-pointers=true");
+        }
+
         // If Control Flow Guard is enabled, pass the `control-flow-guard` flag to rustc
         // when compiling the standard library, since this might be linked into the final outputs
         // produced by rustc. Since this mitigation is only available on Windows, only enable it
