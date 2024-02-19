@@ -229,7 +229,7 @@ impl<'tcx> PrintExtra<'tcx> {
     {
         match self {
             PrintExtra::AfterParsing { krate, .. } => f(krate),
-            PrintExtra::NeedsAstMap { tcx } => f(&tcx.resolver_for_lowering(()).borrow().1),
+            PrintExtra::NeedsAstMap { tcx } => f(&tcx.resolver_for_lowering().borrow().1),
         }
     }
 
@@ -281,7 +281,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         }
         AstTreeExpanded => {
             debug!("pretty-printing expanded AST");
-            format!("{:#?}", ex.tcx().resolver_for_lowering(()).borrow().1)
+            format!("{:#?}", ex.tcx().resolver_for_lowering().borrow().1)
         }
         Hir(s) => {
             debug!("pretty printing HIR {:?}", s);

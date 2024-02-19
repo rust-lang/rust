@@ -39,7 +39,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
+use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, Lrc, WorkerLocal};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
@@ -553,6 +553,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Can only be fed before queries are run, and is thus exempt from any
     /// incremental issues. Do not use except for the initial query feeding.
     pub fn feed_unit_query(self) -> TyCtxtFeed<'tcx, ()> {
+        self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key: () }
     }
 
@@ -2381,6 +2382,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// (probably due to hashing spans in `ModChild`ren).
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
+    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Lrc<ast::Crate>)> {
+        self.resolver_for_lowering_raw(()).0
     }
 
     /// Given an `impl_id`, return the trait it implements.
