@@ -2,7 +2,6 @@
 //! Protocol. This module specifically handles requests.
 
 use std::{
-    collections::HashSet,
     fs,
     io::Write as _,
     path::PathBuf,
@@ -14,10 +13,10 @@ use anyhow::Context;
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
     HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, RangeLimit,
-    ReferenceCategory, ReferenceSearchResult, Runnable, RunnableKind, SingleResolve, SourceChange,
-    TextEdit,
+    ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
+use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -30,8 +29,6 @@ use lsp_types::{
 };
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
-#[allow(unused_imports)]
-use stdx::IsNoneOr;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use triomphe::Arc;
@@ -1059,10 +1056,9 @@ pub(crate) fn handle_references(
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
     let exclude_tests = snap.config.find_all_refs_exclude_tests();
 
-    let Some(mut refs) = snap.analysis.find_all_refs(position, None)? else {
+    let Some(refs) = snap.analysis.find_all_refs(position, None)? else {
         return Ok(None);
     };
-    deduplicate_declarations(&mut refs);
 
     let include_declaration = params.context.include_declaration;
     let locations = refs
@@ -1088,21 +1084,11 @@ pub(crate) fn handle_references(
                 })
                 .chain(decl)
         })
+        .unique()
         .filter_map(|frange| to_proto::location(&snap, frange).ok())
         .collect();
 
     Ok(Some(locations))
-}
-
-fn deduplicate_declarations(refs: &mut Vec<ReferenceSearchResult>) {
-    if refs.iter().filter(|decl| decl.declaration.is_some()).take(2).count() > 1 {
-        let mut seen_navigation_targets = HashSet::new();
-        refs.retain(|res| {
-            res.declaration
-                .as_ref()
-                .is_none_or(|decl| seen_navigation_targets.insert(decl.nav.clone()))
-        });
-    }
 }
 
 pub(crate) fn handle_formatting(
@@ -1809,10 +1795,7 @@ fn show_ref_command_link(
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     if snap.config.hover_actions().references && snap.config.client_commands().show_reference {
-        if let Some(mut ref_search_res) =
-            snap.analysis.find_all_refs(*position, None).unwrap_or(None)
-        {
-            deduplicate_declarations(&mut ref_search_res);
+        if let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None) {
             let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.file_line_index(position.file_id).ok()?;
             let position = to_proto::position(&line_index, position.offset);
@@ -1820,10 +1803,10 @@ fn show_ref_command_link(
                 .into_iter()
                 .flat_map(|res| res.references)
                 .flat_map(|(file_id, ranges)| {
-                    ranges.into_iter().filter_map(move |(range, _)| {
-                        to_proto::location(snap, FileRange { file_id, range }).ok()
-                    })
+                    ranges.into_iter().map(move |(range, _)| FileRange { file_id, range })
                 })
+                .unique()
+                .filter_map(|range| to_proto::location(snap, range).ok())
                 .collect();
             let title = to_proto::reference_title(locations.len());
             let command = to_proto::command::show_references(title, &uri, position, locations);
