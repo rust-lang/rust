@@ -527,12 +527,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             check_enum(tcx, def_id);
         }
         DefKind::Fn => {
-            if let Some(name) = tcx.intrinsic(def_id) {
+            if let Some(i) = tcx.intrinsic(def_id) {
                 intrinsic::check_intrinsic_type(
                     tcx,
                     def_id,
                     tcx.def_ident_span(def_id).unwrap(),
-                    name,
+                    i.name,
                     Abi::Rust,
                 )
             }

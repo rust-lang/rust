@@ -30,6 +30,7 @@ pub use adt::*;
 pub use assoc::*;
 pub use generic_args::*;
 pub use generics::*;
+pub use intrinsic::IntrinsicDef;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability};
