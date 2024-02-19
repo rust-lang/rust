@@ -184,14 +184,11 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 
     /// Entry point to all function calls.
     ///
-    /// Returns either the mir to use for the call, or `None` if execution should
-    /// just proceed (which usually means this hook did all the work that the
-    /// called function should usually have done). In the latter case, it is
-    /// this hook's responsibility to advance the instruction pointer!
-    /// (This is to support functions like `__rust_maybe_catch_panic` that neither find a MIR
-    /// nor just jump to `ret`, but instead push their own stack frame.)
-    /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
-    /// was used.
+    /// Returns either the mir to use for the call, or an [`ExtraFnVal`] for special functions
+    /// handled by [`call_extra_fn`].
+    ///
+    /// [`ExtraFnVal`]: Machine::ExtraFnVal
+    /// [`call_extra_fn`]: Machine::call_extra_fn
     fn find_mir_or_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
