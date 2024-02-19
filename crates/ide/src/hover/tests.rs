@@ -1202,7 +1202,7 @@ fn main() {
             *C*
 
             ```rust
-            test
+            test::X
             ```
 
             ```rust
@@ -2277,7 +2277,7 @@ fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
             *foo*
 
             ```rust
-            test
+            test::<extern>
             ```
 
             ```rust
@@ -4266,7 +4266,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4295,7 +4295,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4327,7 +4327,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4919,7 +4919,7 @@ fn test() {
             *FOO*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -5284,7 +5284,7 @@ impl T1 for Foo {
             *Bar*
 
             ```rust
-            test::t2
+            test::t2::T2
             ```
 
             ```rust
@@ -5306,7 +5306,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -5327,7 +5327,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -5346,7 +5346,7 @@ trait A where
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -6632,7 +6632,7 @@ fn test() {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -6661,7 +6661,7 @@ fn test() {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -6691,7 +6691,7 @@ mod m {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -7249,7 +7249,7 @@ extern "C" {
             *STATIC*
 
             ```rust
-            test
+            test::<extern>
             ```
 
             ```rust
@@ -7267,7 +7267,7 @@ extern "C" {
             *fun*
 
             ```rust
-            test
+            test::<extern>
             ```
 
             ```rust
@@ -7285,7 +7285,7 @@ extern "C" {
             *Ty*
 
             ```rust
-            test
+            test::<extern>
             ```
 
             ```rust

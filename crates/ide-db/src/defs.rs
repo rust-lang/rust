@@ -8,11 +8,11 @@
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType, Const, Crate,
-    DefWithBody, DeriveHelper, DocLinkDef, ExternCrateDecl, Field, Function, GenericParam,
-    HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module, ModuleDef, Name, PathResolution,
-    Semantics, Static, ToolModule, Trait, TraitAlias, TupleField, TypeAlias, Variant, VariantDef,
-    Visibility,
+    Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
+    Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
+    Function, GenericParam, HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module,
+    ModuleDef, Name, PathResolution, Semantics, Static, ToolModule, Trait, TraitAlias, TupleField,
+    TypeAlias, Variant, VariantDef, Visibility,
 };
 use stdx::{format_to, impl_from};
 use syntax::{
@@ -737,6 +737,17 @@ impl AsAssocItem for Definition {
             Definition::Function(it) => it.as_assoc_item(db),
             Definition::Const(it) => it.as_assoc_item(db),
             Definition::TypeAlias(it) => it.as_assoc_item(db),
+            _ => None,
+        }
+    }
+}
+
+impl AsExternAssocItem for Definition {
+    fn as_extern_assoc_item(self, db: &dyn hir::db::HirDatabase) -> Option<ExternAssocItem> {
+        match self {
+            Definition::Function(it) => it.as_extern_assoc_item(db),
+            Definition::Static(it) => it.as_extern_assoc_item(db),
+            Definition::TypeAlias(it) => it.as_extern_assoc_item(db),
             _ => None,
         }
     }

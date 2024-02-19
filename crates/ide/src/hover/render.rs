@@ -3,8 +3,8 @@ use std::{mem, ops::Not};
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout, LayoutError, Name,
-    Semantics, Trait, Type, TypeInfo,
+    Adt, AsAssocItem, AsExternAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout,
+    LayoutError, Name, Semantics, Trait, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -369,12 +369,20 @@ fn definition_owner_name(db: &RootDatabase, def: &Definition) -> Option<String> 
     match def {
         Definition::Field(f) => Some(f.parent_def(db).name(db)),
         Definition::Local(l) => l.parent(db).name(db),
-        Definition::Function(f) => match f.as_assoc_item(db)?.container(db) {
-            hir::AssocItemContainer::Trait(t) => Some(t.name(db)),
-            hir::AssocItemContainer::Impl(i) => i.self_ty(db).as_adt().map(|adt| adt.name(db)),
-        },
         Definition::Variant(e) => Some(e.parent_enum(db).name(db)),
-        _ => None,
+
+        d => {
+            if let Some(assoc_item) = d.as_assoc_item(db) {
+                match assoc_item.container(db) {
+                    hir::AssocItemContainer::Trait(t) => Some(t.name(db)),
+                    hir::AssocItemContainer::Impl(i) => {
+                        i.self_ty(db).as_adt().map(|adt| adt.name(db))
+                    }
+                }
+            } else {
+                return d.as_extern_assoc_item(db).map(|_| "<extern>".to_owned());
+            }
+        }
     }
     .map(|name| name.display(db).to_string())
 }
