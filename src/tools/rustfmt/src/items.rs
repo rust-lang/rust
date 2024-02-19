@@ -1651,8 +1651,7 @@ struct TyAliasRewriteInfo<'c, 'g>(
     &'c RewriteContext<'c>,
     Indent,
     &'g ast::Generics,
-    (ast::TyAliasWhereClause, ast::TyAliasWhereClause),
-    usize,
+    ast::TyAliasWhereClauses,
     symbol::Ident,
     Span,
 );
@@ -1672,7 +1671,6 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
         ref bounds,
         ref ty,
         where_clauses,
-        where_predicates_split,
     } = *ty_alias_kind;
     let ty_opt = ty.as_ref();
     let (ident, vis) = match visitor_kind {
@@ -1680,15 +1678,7 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
         AssocTraitItem(i) | AssocImplItem(i) => (i.ident, &i.vis),
         ForeignItem(i) => (i.ident, &i.vis),
     };
-    let rw_info = &TyAliasRewriteInfo(
-        context,
-        indent,
-        generics,
-        where_clauses,
-        where_predicates_split,
-        ident,
-        span,
-    );
+    let rw_info = &TyAliasRewriteInfo(context, indent, generics, where_clauses, ident, span);
     let op_ty = opaque_ty(ty);
     // Type Aliases are formatted slightly differently depending on the context
     // in which they appear, whether they are opaque, and whether they are associated.
@@ -1724,19 +1714,11 @@ fn rewrite_ty<R: Rewrite>(
     vis: &ast::Visibility,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
-    let TyAliasRewriteInfo(
-        context,
-        indent,
-        generics,
-        where_clauses,
-        where_predicates_split,
-        ident,
-        span,
-    ) = *rw_info;
+    let TyAliasRewriteInfo(context, indent, generics, where_clauses, ident, span) = *rw_info;
     let (before_where_predicates, after_where_predicates) = generics
         .where_clause
         .predicates
-        .split_at(where_predicates_split);
+        .split_at(where_clauses.split);
     if !after_where_predicates.is_empty() {
         return None;
     }
@@ -1771,7 +1753,7 @@ fn rewrite_ty<R: Rewrite>(
     let where_clause_str = rewrite_where_clause(
         context,
         before_where_predicates,
-        where_clauses.0.1,
+        where_clauses.before.span,
         context.config.brace_style(),
         Shape::legacy(where_budget, indent),
         false,
@@ -1795,7 +1777,7 @@ fn rewrite_ty<R: Rewrite>(
         let comment_span = context
             .snippet_provider
             .opt_span_before(span, "=")
-            .map(|op_lo| mk_sp(where_clauses.0.1.hi(), op_lo));
+            .map(|op_lo| mk_sp(where_clauses.before.span.hi(), op_lo));
 
         let lhs = match comment_span {
             Some(comment_span)

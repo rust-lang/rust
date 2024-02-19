@@ -43,7 +43,6 @@ impl<'a> State<'a> {
                 defaultness,
                 generics,
                 where_clauses,
-                where_predicates_split,
                 bounds,
                 ty,
             }) => {
@@ -51,7 +50,6 @@ impl<'a> State<'a> {
                     ident,
                     generics,
                     *where_clauses,
-                    *where_predicates_split,
                     bounds,
                     ty.as_deref(),
                     vis,
@@ -108,15 +106,14 @@ impl<'a> State<'a> {
         &mut self,
         ident: Ident,
         generics: &ast::Generics,
-        where_clauses: (ast::TyAliasWhereClause, ast::TyAliasWhereClause),
-        where_predicates_split: usize,
+        where_clauses: ast::TyAliasWhereClauses,
         bounds: &ast::GenericBounds,
         ty: Option<&ast::Ty>,
         vis: &ast::Visibility,
         defaultness: ast::Defaultness,
     ) {
         let (before_predicates, after_predicates) =
-            generics.where_clause.predicates.split_at(where_predicates_split);
+            generics.where_clause.predicates.split_at(where_clauses.split);
         self.head("");
         self.print_visibility(vis);
         self.print_defaultness(defaultness);
@@ -127,13 +124,13 @@ impl<'a> State<'a> {
             self.word_nbsp(":");
             self.print_type_bounds(bounds);
         }
-        self.print_where_clause_parts(where_clauses.0.0, before_predicates);
+        self.print_where_clause_parts(where_clauses.before.has_where_token, before_predicates);
         if let Some(ty) = ty {
             self.space();
             self.word_space("=");
             self.print_type(ty);
         }
-        self.print_where_clause_parts(where_clauses.1.0, after_predicates);
+        self.print_where_clause_parts(where_clauses.after.has_where_token, after_predicates);
         self.word(";");
         self.end(); // end inner head-block
         self.end(); // end outer head-block
@@ -249,7 +246,6 @@ impl<'a> State<'a> {
                 defaultness,
                 generics,
                 where_clauses,
-                where_predicates_split,
                 bounds,
                 ty,
             }) => {
@@ -257,7 +253,6 @@ impl<'a> State<'a> {
                     item.ident,
                     generics,
                     *where_clauses,
-                    *where_predicates_split,
                     bounds,
                     ty.as_deref(),
                     &item.vis,
@@ -536,7 +531,6 @@ impl<'a> State<'a> {
                 defaultness,
                 generics,
                 where_clauses,
-                where_predicates_split,
                 bounds,
                 ty,
             }) => {
@@ -544,7 +538,6 @@ impl<'a> State<'a> {
                     ident,
                     generics,
                     *where_clauses,
-                    *where_predicates_split,
                     bounds,
                     ty.as_deref(),
                     vis,

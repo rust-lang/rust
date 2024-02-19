@@ -33,19 +33,20 @@ pub(super) struct ItemLowerer<'a, 'hir> {
 /// clause if it exists.
 fn add_ty_alias_where_clause(
     generics: &mut ast::Generics,
-    mut where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
+    mut where_clauses: TyAliasWhereClauses,
     prefer_first: bool,
 ) {
     if !prefer_first {
-        where_clauses = (where_clauses.1, where_clauses.0);
+        (where_clauses.before, where_clauses.after) = (where_clauses.after, where_clauses.before);
     }
-    if where_clauses.0.0 || !where_clauses.1.0 {
-        generics.where_clause.has_where_token = where_clauses.0.0;
-        generics.where_clause.span = where_clauses.0.1;
-    } else {
-        generics.where_clause.has_where_token = where_clauses.1.0;
-        generics.where_clause.span = where_clauses.1.1;
-    }
+    let where_clause =
+        if where_clauses.before.has_where_token || !where_clauses.after.has_where_token {
+            where_clauses.before
+        } else {
+            where_clauses.after
+        };
+    generics.where_clause.has_where_token = where_clause.has_where_token;
+    generics.where_clause.span = where_clause.span;
 }
 
 impl<'a, 'hir> ItemLowerer<'a, 'hir> {
