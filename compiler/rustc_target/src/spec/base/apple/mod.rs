@@ -131,7 +131,7 @@ pub fn opts(os: &'static str, arch: Arch) -> TargetOptions {
         abi: abi.into(),
         os: os.into(),
         cpu: arch.target_cpu().into(),
-        link_env_remove: link_env_remove(arch, os),
+        link_env_remove: link_env_remove(os),
         vendor: "apple".into(),
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
         // macOS has -dead_strip, which doesn't rely on function_sections
@@ -270,7 +270,7 @@ pub fn macos_llvm_target(arch: Arch) -> String {
     format!("{}-apple-macosx{}.{}.0", arch.target_name(), major, minor)
 }
 
-fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> {
+fn link_env_remove(os: &'static str) -> StaticCow<[StaticCow<str>]> {
     // Apple platforms only officially support macOS as a host for any compilation.
     //
     // If building for macOS, we go ahead and remove any erroneous environment state
@@ -298,15 +298,9 @@ fn link_env_remove(arch: Arch, os: &'static str) -> StaticCow<[StaticCow<str>]> 
         env_remove.push("TVOS_DEPLOYMENT_TARGET".into());
         env_remove.into()
     } else {
-        // Otherwise if cross-compiling for a different OS/SDK, remove any part
+        // Otherwise if cross-compiling for a different OS/SDK (including Mac Catalyst), remove any part
         // of the linking environment that's wrong and reversed.
-        match arch {
-            Armv7k | Armv7s | Arm64 | Arm64e | Arm64_32 | I386 | I386_sim | I686 | X86_64
-            | X86_64_sim | X86_64h | Arm64_sim => {
-                cvs!["MACOSX_DEPLOYMENT_TARGET"]
-            }
-            X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
-        }
+        cvs!["MACOSX_DEPLOYMENT_TARGET"]
     }
 }
 
