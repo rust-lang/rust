@@ -221,6 +221,9 @@ pub enum InferenceDiagnostic {
     UnresolvedAssocItem {
         id: ExprOrPatId,
     },
+    UnresolvedIdent {
+        expr: ExprId,
+    },
     // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
         expr: ExprId,

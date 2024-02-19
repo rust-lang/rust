@@ -448,7 +448,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_owned()),
+            &["remove-unnecessary-else"],
         );
         check_diagnostics_with_disabled(
             r#"
@@ -463,7 +463,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_owned()),
+            &["remove-unnecessary-else"],
         );
     }
 
