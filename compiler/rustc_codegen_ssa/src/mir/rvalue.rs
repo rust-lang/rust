@@ -306,11 +306,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(imm, to_backend_ty)
             }
             (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
-            (Int(..), Pointer(..)) => bx.inttoptr(imm, to_backend_ty),
+            (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
             (Pointer(..), Int(..)) => bx.ptrtoint(imm, to_backend_ty),
             (F16 | F32 | F64 | F128, Pointer(..)) => {
                 let int_imm = bx.bitcast(imm, bx.cx().type_isize());
-                bx.inttoptr(int_imm, to_backend_ty)
+                bx.ptradd(bx.const_null(bx.type_ptr()), int_imm)
             }
             (Pointer(..), F16 | F32 | F64 | F128) => {
                 let int_imm = bx.ptrtoint(imm, bx.cx().type_isize());
