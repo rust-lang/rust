@@ -491,13 +491,12 @@ fn test2() {
 }
 "#,
         );
-        check_diagnostics_with_disabled(
+        check_diagnostics(
             r#"
-fn test3() {
+fn test3() -> u8 {
     foo(if a { return 1 } else { 0 })
 }
 "#,
-            std::iter::once("E0308".to_owned()),
         );
     }
 }
