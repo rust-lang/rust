@@ -64,6 +64,7 @@ diagnostics![
     MissingUnsafe,
     MovedOutOfRef,
     NeedMut,
+    NonExhaustiveLet,
     NoSuchField,
     PrivateAssocItem,
     PrivateField,
@@ -281,6 +282,12 @@ pub struct MissingMatchArms {
 }
 
 #[derive(Debug)]
+pub struct NonExhaustiveLet {
+    pub pat: InFile<AstPtr<ast::Pat>>,
+    pub uncovered_patterns: String,
+}
+
+#[derive(Debug)]
 pub struct TypeMismatch {
     pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     pub expected: Type,
@@ -454,6 +461,22 @@ impl AnyDiagnostic {
                         }
                     }
                     Err(SyntheticSyntax) => (),
+                }
+            }
+            BodyValidationDiagnostic::NonExhaustiveLet { pat, uncovered_patterns } => {
+                match source_map.pat_syntax(pat) {
+                    Ok(source_ptr) => {
+                        if let Some(ast_pat) = source_ptr.value.cast::<ast::Pat>() {
+                            return Some(
+                                NonExhaustiveLet {
+                                    pat: InFile::new(source_ptr.file_id, ast_pat),
+                                    uncovered_patterns,
+                                }
+                                .into(),
+                            );
+                        }
+                    }
+                    Err(SyntheticSyntax) => {}
                 }
             }
             BodyValidationDiagnostic::RemoveTrailingReturn { return_expr } => {
