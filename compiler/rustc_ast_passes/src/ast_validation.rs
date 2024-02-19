@@ -139,14 +139,14 @@ impl<'a> AstValidator<'a> {
         ty_alias: &TyAlias,
     ) -> Result<(), errors::WhereClauseBeforeTypeAlias> {
         let before_predicates =
-            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_predicates_split).0;
+            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_clauses.split).0;
 
         if ty_alias.ty.is_none() || before_predicates.is_empty() {
             return Ok(());
         }
 
         let mut state = State::new();
-        if !ty_alias.where_clauses.1.0 {
+        if !ty_alias.where_clauses.after.has_where_token {
             state.space();
             state.word_space("where");
         } else {
@@ -161,13 +161,13 @@ impl<'a> AstValidator<'a> {
             state.print_where_predicate(p);
         }
 
-        let span = ty_alias.where_clauses.0.1;
+        let span = ty_alias.where_clauses.before.span;
         Err(errors::WhereClauseBeforeTypeAlias {
             span,
             sugg: errors::WhereClauseBeforeTypeAliasSugg {
                 left: span,
                 snippet: state.s.eof(),
-                right: ty_alias.where_clauses.1.1.shrink_to_hi(),
+                right: ty_alias.where_clauses.after.span.shrink_to_hi(),
             },
         })
     }
@@ -457,8 +457,7 @@ impl<'a> AstValidator<'a> {
     fn check_foreign_ty_genericless(
         &self,
         generics: &Generics,
-        before_where_clause: &TyAliasWhereClause,
-        after_where_clause: &TyAliasWhereClause,
+        where_clauses: &TyAliasWhereClauses,
     ) {
         let cannot_have = |span, descr, remove_descr| {
             self.dcx().emit_err(errors::ExternTypesCannotHave {
@@ -473,14 +472,14 @@ impl<'a> AstValidator<'a> {
             cannot_have(generics.span, "generic parameters", "generic parameters");
         }
 
-        let check_where_clause = |where_clause: &TyAliasWhereClause| {
-            if let TyAliasWhereClause(true, where_clause_span) = where_clause {
-                cannot_have(*where_clause_span, "`where` clauses", "`where` clause");
+        let check_where_clause = |where_clause: TyAliasWhereClause| {
+            if where_clause.has_where_token {
+                cannot_have(where_clause.span, "`where` clauses", "`where` clause");
             }
         };
 
-        check_where_clause(before_where_clause);
-        check_where_clause(after_where_clause);
+        check_where_clause(where_clauses.before);
+        check_where_clause(where_clauses.after);
     }
 
     fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
@@ -1122,9 +1121,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
-                } else if where_clauses.1.0 {
+                } else if where_clauses.after.has_where_token {
                     self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
-                        span: where_clauses.1.1,
+                        span: where_clauses.after.span,
                         help: self.session.is_nightly_build().then_some(()),
                     });
                 }
@@ -1154,7 +1153,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
-                self.check_foreign_ty_genericless(generics, &where_clauses.0, &where_clauses.1);
+                self.check_foreign_ty_genericless(generics, where_clauses);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
