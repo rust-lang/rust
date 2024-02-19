@@ -179,7 +179,7 @@ fn test() {
 
     #[test]
     fn remove_unnecessary_else_for_return3() {
-        check_diagnostics_with_needless_return_disabled(
+        check_diagnostics_with_disabled(
             r#"
 fn test(a: bool) -> i32 {
     if a {
@@ -190,6 +190,7 @@ fn test(a: bool) -> i32 {
     }
 }
 "#,
+            &["needless_return", "E0425"],
         );
         check_fix(
             r#"
@@ -473,7 +474,7 @@ fn test() {
 
     #[test]
     fn no_diagnostic_if_not_expr_stmt() {
-        check_diagnostics_with_needless_return_disabled(
+        check_diagnostics_with_disabled(
             r#"
 fn test1() {
     let _x = if a {
@@ -495,13 +496,15 @@ fn test2() {
     };
 }
 "#,
+            &["needless_return", "E0425"],
         );
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn test3() -> u8 {
     foo(if a { return 1 } else { 0 })
 }
 "#,
+            &["E0425"],
         );
     }
 }
