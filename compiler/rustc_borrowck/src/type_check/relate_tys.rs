@@ -164,10 +164,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         );
     }
 
-    fn forbid_inference_vars() -> bool {
-        true
-    }
-
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         let _: Result<_, ErrorGuaranteed> = self.type_checker.fully_perform_op(
             self.locations,

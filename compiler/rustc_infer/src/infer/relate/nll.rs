@@ -96,10 +96,6 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// we will invoke this method to instantiate `'b` with a
     /// placeholder region.
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx>;
-
-    /// Enables some optimizations if we do not expect inference variables
-    /// in the RHS of the relation.
-    fn forbid_inference_vars() -> bool;
 }
 
 impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
@@ -316,16 +312,11 @@ where
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn tys(&mut self, a: Ty<'tcx>, mut b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let infcx = self.infcx;
 
         let a = self.infcx.shallow_resolve(a);
-
-        if !D::forbid_inference_vars() {
-            b = self.infcx.shallow_resolve(b);
-        } else {
-            assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
-        }
+        assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
 
         if a == b {
             return Ok(a);
@@ -409,16 +400,13 @@ where
     fn consts(
         &mut self,
         a: ty::Const<'tcx>,
-        mut b: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         let a = self.infcx.shallow_resolve(a);
-
-        if !D::forbid_inference_vars() {
-            b = self.infcx.shallow_resolve(b);
-        }
+        assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
 
         match b.kind() {
-            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+            ty::ConstKind::Infer(InferConst::Var(_)) => {
                 // Forbid inference variables in the RHS.
                 self.infcx
                     .dcx()
