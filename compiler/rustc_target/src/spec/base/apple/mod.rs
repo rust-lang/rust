@@ -106,11 +106,9 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     }
     .into();
 
-    let arch = arch.target_name();
-
     let mut args = TargetOptions::link_args(
         LinkerFlavor::Darwin(Cc::No, Lld::No),
-        &["-arch", arch, "-platform_version"],
+        &["-arch", arch.target_name(), "-platform_version"],
     );
     add_link_args_iter(
         &mut args,
@@ -118,7 +116,17 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
         [platform_name, platform_version.clone(), platform_version].into_iter(),
     );
     if abi != "macabi" {
-        add_link_args(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-arch", arch]);
+        add_link_args(
+            &mut args,
+            LinkerFlavor::Darwin(Cc::Yes, Lld::No),
+            &["-arch", arch.target_name()],
+        );
+    } else {
+        add_link_args_iter(
+            &mut args,
+            LinkerFlavor::Darwin(Cc::Yes, Lld::No),
+            ["-target".into(), mac_catalyst_llvm_target(arch).into()].into_iter(),
+        );
     }
 
     args
@@ -324,6 +332,11 @@ pub fn ios_llvm_target(arch: Arch) -> String {
     // of version 7.0 and hence emit the old LC_IPHONE_MIN_VERSION).
     let (major, minor) = ios_deployment_target(arch);
     format!("{}-apple-ios{}.{}.0", arch.target_name(), major, minor)
+}
+
+pub fn mac_catalyst_llvm_target(arch: Arch) -> String {
+    let (major, minor) = mac_catalyst_deployment_target();
+    format!("{}-apple-ios{}.{}.0-macabi", arch.target_name(), major, minor)
 }
 
 fn ios_lld_platform_version(arch: Arch) -> String {
