@@ -1,4 +1,4 @@
-use super::waitqueue::{try_lock_or_false, SpinMutex, WaitQueue, WaitVariable};
+use crate::sys::pal::waitqueue::{try_lock_or_false, SpinMutex, WaitQueue, WaitVariable};
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 /// FIXME: `UnsafeList` is not movable.

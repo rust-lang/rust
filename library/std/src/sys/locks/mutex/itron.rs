@@ -1,6 +1,6 @@
 //! Mutex implementation backed by μITRON mutexes. Assumes `acre_mtx` and
 //! `TA_INHERIT` are available.
-use super::{
+use crate::sys::pal::itron::{
     abi,
     error::{expect_success, expect_success_aborting, fail, ItronError},
     spin::SpinIdOnceCell,
@@ -64,22 +64,5 @@ impl Drop for Mutex {
         if let Some(mtx) = self.mtx.get().map(|x| x.0) {
             expect_success_aborting(unsafe { abi::del_mtx(mtx) }, &"del_mtx");
         }
-    }
-}
-
-pub(super) struct MutexGuard<'a>(&'a Mutex);
-
-impl<'a> MutexGuard<'a> {
-    #[inline]
-    pub(super) fn lock(x: &'a Mutex) -> Self {
-        x.lock();
-        Self(x)
-    }
-}
-
-impl Drop for MutexGuard<'_> {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe { self.0.unlock() };
     }
 }

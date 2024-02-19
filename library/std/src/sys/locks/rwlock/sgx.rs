@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests;
 
+use crate::alloc::Layout;
 use crate::num::NonZero;
-use crate::sys_common::lazy_box::{LazyBox, LazyInit};
-
-use super::waitqueue::{
+use crate::sys::pal::waitqueue::{
     try_lock_or_false, NotifiedTcs, SpinMutex, SpinMutexGuard, WaitQueue, WaitVariable,
 };
-use crate::alloc::Layout;
+use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 
 struct AllocatedRwLock {
     readers: SpinMutex<WaitVariable<Option<NonZero<usize>>>>,
