@@ -11,7 +11,6 @@
 //! from previous invocations as appropriate.
 
 mod derived;
-mod doctest;
 mod durability;
 mod hash;
 mod input;

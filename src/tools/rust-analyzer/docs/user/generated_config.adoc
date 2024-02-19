@@ -71,7 +71,7 @@ cargo check --quiet --workspace --message-format=json --all-targets
 ```
 .
 --
-[[rust-analyzer.cargo.buildScripts.rebuildOnSave]]rust-analyzer.cargo.buildScripts.rebuildOnSave (default: `false`)::
+[[rust-analyzer.cargo.buildScripts.rebuildOnSave]]rust-analyzer.cargo.buildScripts.rebuildOnSave (default: `true`)::
 +
 --
 Rerun proc-macros building/build-scripts running when proc-macro
@@ -234,6 +234,11 @@ each of them, with the working directory being the workspace root
 by changing `#rust-analyzer.check.invocationStrategy#` and
 `#rust-analyzer.check.invocationLocation#`.
 
+If `$saved_file` is part of the command, rust-analyzer will pass
+the absolute path of the saved file to the provided command. This is
+intended to be used with non-Cargo build systems.
+Note that `$saved_file` is experimental and may be removed in the futureg.
+
 An example command would be:
 
 ```bash
@@ -343,6 +348,11 @@ Default:
 ----
 Custom completion snippets.
 
+--
+[[rust-analyzer.completion.termSearch.enable]]rust-analyzer.completion.termSearch.enable (default: `false`)::
++
+--
+Whether to enable term search based snippets like `Some(foo.bar().baz())`.
 --
 [[rust-analyzer.diagnostics.disabled]]rust-analyzer.diagnostics.disabled (default: `[]`)::
 +
@@ -792,11 +802,6 @@ Exclude imports from find-all-references.
 +
 --
 Exclude tests from find-all-references.
---
-[[rust-analyzer.rename.allowExternalItems]]rust-analyzer.rename.allowExternalItems (default: `false`)::
-+
---
-Allow renaming of items not belonging to the loaded workspaces.
 --
 [[rust-analyzer.runnables.command]]rust-analyzer.runnables.command (default: `null`)::
 +

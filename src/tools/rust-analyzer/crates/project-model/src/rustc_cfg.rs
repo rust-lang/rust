@@ -8,17 +8,13 @@ use rustc_hash::FxHashMap;
 use crate::{cfg_flag::CfgFlag, utf8_stdout, ManifestPath, Sysroot};
 
 /// Determines how `rustc --print cfg` is discovered and invoked.
-///
-/// There options are supported:
-/// - [`RustcCfgConfig::Cargo`], which relies on `cargo rustc --print cfg`
-///   and `RUSTC_BOOTSTRAP`.
-/// - [`RustcCfgConfig::Explicit`], which uses an explicit path to the `rustc`
-///   binary in the sysroot.
-/// - [`RustcCfgConfig::Discover`], which uses [`toolchain::rustc`].
 pub(crate) enum RustcCfgConfig<'a> {
-    Cargo(&'a ManifestPath),
-    Explicit(&'a Sysroot),
-    Discover,
+    /// Use `rustc --print cfg`, either from with the binary from the sysroot or by discovering via
+    /// [`toolchain::rustc`].
+    Rustc(Option<&'a Sysroot>),
+    /// Use `cargo --print cfg`, either from with the binary from the sysroot or by discovering via
+    /// [`toolchain::cargo`].
+    Cargo(Option<&'a Sysroot>, &'a ManifestPath),
 }
 
 pub(crate) fn get(
@@ -71,9 +67,10 @@ fn get_rust_cfgs(
     extra_env: &FxHashMap<String, String>,
     config: RustcCfgConfig<'_>,
 ) -> anyhow::Result<String> {
-    let mut cmd = match config {
-        RustcCfgConfig::Cargo(cargo_toml) => {
-            let mut cmd = Command::new(toolchain::cargo());
+    let sysroot = match config {
+        RustcCfgConfig::Cargo(sysroot, cargo_toml) => {
+            let mut cmd = Command::new(toolchain::Tool::Cargo.path());
+            Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
                 .args(["rustc", "-Z", "unstable-options", "--print", "cfg"])
@@ -82,25 +79,24 @@ fn get_rust_cfgs(
                 cmd.args(["--target", target]);
             }
 
-            return utf8_stdout(cmd).context("Unable to run `cargo rustc`");
+            match utf8_stdout(cmd) {
+                Ok(it) => return Ok(it),
+                Err(e) => {
+                    tracing::warn!("failed to run `cargo rustc --print cfg`, falling back to invoking rustc directly: {e}");
+                    sysroot
+                }
+            }
         }
-        RustcCfgConfig::Explicit(sysroot) => {
-            let rustc: std::path::PathBuf = sysroot.discover_rustc()?.into();
-            tracing::debug!(?rustc, "using explicit rustc from sysroot");
-            Command::new(rustc)
-        }
-        RustcCfgConfig::Discover => {
-            let rustc = toolchain::rustc();
-            tracing::debug!(?rustc, "using rustc from env");
-            Command::new(rustc)
-        }
+        RustcCfgConfig::Rustc(sysroot) => sysroot,
     };
 
+    let mut cmd = Command::new(toolchain::Tool::Rustc.path());
+    Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
     cmd.envs(extra_env);
     cmd.args(["--print", "cfg", "-O"]);
     if let Some(target) = target {
         cmd.args(["--target", target]);
     }
 
-    utf8_stdout(cmd).context("Unable to run `rustc`")
+    utf8_stdout(cmd).context("unable to fetch cfgs via `rustc --print cfg -O`")
 }

@@ -31,7 +31,7 @@ use base_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt, SourceRootId, Upcast,
 };
-use fst::{self, raw::IndexedValue, Automaton, Streamer};
+use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir::{
     db::HirDatabase,
     import_map::{AssocSearchMode, SearchMode},

@@ -2,7 +2,41 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use std::{env, iter, path::PathBuf};
+use std::{
+    env, iter,
+    path::{Path, PathBuf},
+};
+
+#[derive(Copy, Clone)]
+pub enum Tool {
+    Cargo,
+    Rustc,
+    Rustup,
+    Rustfmt,
+}
+
+impl Tool {
+    pub fn path(self) -> PathBuf {
+        get_path_for_executable(self.name())
+    }
+
+    pub fn path_in(self, path: &Path) -> Option<PathBuf> {
+        probe_for_binary(path.join(self.name()))
+    }
+
+    pub fn path_in_or_discover(self, path: &Path) -> PathBuf {
+        probe_for_binary(path.join(self.name())).unwrap_or_else(|| self.path())
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Tool::Cargo => "cargo",
+            Tool::Rustc => "rustc",
+            Tool::Rustup => "rustup",
+            Tool::Rustfmt => "rustfmt",
+        }
+    }
+}
 
 pub fn cargo() -> PathBuf {
     get_path_for_executable("cargo")
@@ -47,7 +81,7 @@ fn get_path_for_executable(executable_name: &'static str) -> PathBuf {
     if let Some(mut path) = get_cargo_home() {
         path.push("bin");
         path.push(executable_name);
-        if let Some(path) = probe(path) {
+        if let Some(path) = probe_for_binary(path) {
             return path;
         }
     }
@@ -57,7 +91,7 @@ fn get_path_for_executable(executable_name: &'static str) -> PathBuf {
 
 fn lookup_in_path(exec: &str) -> bool {
     let paths = env::var_os("PATH").unwrap_or_default();
-    env::split_paths(&paths).map(|path| path.join(exec)).find_map(probe).is_some()
+    env::split_paths(&paths).map(|path| path.join(exec)).find_map(probe_for_binary).is_some()
 }
 
 fn get_cargo_home() -> Option<PathBuf> {
@@ -73,7 +107,7 @@ fn get_cargo_home() -> Option<PathBuf> {
     None
 }
 
-fn probe(path: PathBuf) -> Option<PathBuf> {
+pub fn probe_for_binary(path: PathBuf) -> Option<PathBuf> {
     let with_extension = match env::consts::EXE_EXTENSION {
         "" => None,
         it => Some(path.with_extension(it)),

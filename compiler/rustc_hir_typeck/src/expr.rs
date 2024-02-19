@@ -27,7 +27,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic,
-    DiagnosticBuilder, ErrCode, ErrorGuaranteed, StashKey,
+    DiagnosticBuilder, ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};

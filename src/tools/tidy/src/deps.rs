@@ -384,6 +384,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
     "windows",
+    "windows-core",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",

@@ -18,3 +18,15 @@ pub trait T2 {
     fn f<T: Eq>()
         where Self: Eq, Self: Eq2, T: Eq2;
 }
+
+// Checking that we support empty bounds (we used to crash on empty outlives-bounds).
+// Note that we don't want to hide them since they have a semantic effect.
+// For outlives-bounds, they force the lifetime param to be early-bound instead of late-bound.
+// For trait bounds, it can affect well-formedness (see `ClauseKind::WellFormed`).
+// @has 'foo/fn.empty.html'
+// @has - '//pre[@class="rust item-decl"]' "empty<'a, T>()where T:, 'a:,"
+pub fn empty<'a, T>()
+    where
+        T:,
+        'a:,
+{}

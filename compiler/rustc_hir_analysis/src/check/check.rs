@@ -5,10 +5,9 @@ use super::compare_impl_item::check_type_bounds;
 use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
-use rustc_errors::{codes::*, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{codes::*, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
@@ -129,17 +128,20 @@ fn check_unnamed_fields(tcx: TyCtxt<'_>, def: ty::AdtDef<'_>) {
     for field in variant.fields.iter().filter(|f| f.is_unnamed()) {
         let field_ty = tcx.type_of(field.did).instantiate_identity();
         if let Some(adt) = field_ty.ty_adt_def()
-            && !adt.is_anonymous()
-            && !adt.repr().c()
+            && !adt.is_enum()
         {
-            let field_ty_span = tcx.def_span(adt.did());
-            tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
-                span: tcx.def_span(field.did),
-                field_ty_span,
-                field_ty,
-                field_adt_kind: adt.descr(),
-                sugg_span: field_ty_span.shrink_to_lo(),
-            });
+            if !adt.is_anonymous() && !adt.repr().c() {
+                let field_ty_span = tcx.def_span(adt.did());
+                tcx.dcx().emit_err(errors::UnnamedFieldsRepr::FieldMissingReprC {
+                    span: tcx.def_span(field.did),
+                    field_ty_span,
+                    field_ty,
+                    field_adt_kind: adt.descr(),
+                    sugg_span: field_ty_span.shrink_to_lo(),
+                });
+            }
+        } else {
+            tcx.dcx().emit_err(errors::InvalidUnnamedFieldTy { span: tcx.def_span(field.did) });
         }
     }
 }

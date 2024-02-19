@@ -377,27 +377,39 @@ impl AttrsWithOwner {
             AttrDefId::GenericParamId(it) => match it {
                 GenericParamId::ConstParamId(it) => {
                     let src = it.parent().child_source(db);
-                    RawAttrs::from_attrs_owner(
-                        db.upcast(),
-                        src.with_value(&src.value[it.local_id()]),
-                        db.span_map(src.file_id).as_ref(),
-                    )
+                    // FIXME: We should be never getting `None` here.
+                    match src.value.get(it.local_id()) {
+                        Some(val) => RawAttrs::from_attrs_owner(
+                            db.upcast(),
+                            src.with_value(val),
+                            db.span_map(src.file_id).as_ref(),
+                        ),
+                        None => RawAttrs::EMPTY,
+                    }
                 }
                 GenericParamId::TypeParamId(it) => {
                     let src = it.parent().child_source(db);
-                    RawAttrs::from_attrs_owner(
-                        db.upcast(),
-                        src.with_value(&src.value[it.local_id()]),
-                        db.span_map(src.file_id).as_ref(),
-                    )
+                    // FIXME: We should be never getting `None` here.
+                    match src.value.get(it.local_id()) {
+                        Some(val) => RawAttrs::from_attrs_owner(
+                            db.upcast(),
+                            src.with_value(val),
+                            db.span_map(src.file_id).as_ref(),
+                        ),
+                        None => RawAttrs::EMPTY,
+                    }
                 }
                 GenericParamId::LifetimeParamId(it) => {
                     let src = it.parent.child_source(db);
-                    RawAttrs::from_attrs_owner(
-                        db.upcast(),
-                        src.with_value(&src.value[it.local_id]),
-                        db.span_map(src.file_id).as_ref(),
-                    )
+                    // FIXME: We should be never getting `None` here.
+                    match src.value.get(it.local_id) {
+                        Some(val) => RawAttrs::from_attrs_owner(
+                            db.upcast(),
+                            src.with_value(val),
+                            db.span_map(src.file_id).as_ref(),
+                        ),
+                        None => RawAttrs::EMPTY,
+                    }
                 }
             },
             AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),

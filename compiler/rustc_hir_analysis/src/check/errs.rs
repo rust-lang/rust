@@ -1,6 +1,6 @@
 use rustc_hir as hir;
 use rustc_hir_pretty::qpath_to_string;
-use rustc_lint_defs::builtin::STATIC_MUT_REF;
+use rustc_lint_defs::builtin::STATIC_MUT_REFS;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_type_ir::Mutability;
@@ -66,32 +66,24 @@ fn handle_static_mut_ref(
     hir_id: hir::HirId,
 ) {
     if e2024 {
-        let sugg = if mutable {
-            errors::StaticMutRefSugg::Mut { span, var }
+        let (sugg, shared) = if mutable {
+            (errors::StaticMutRefSugg::Mut { span, var }, "mutable")
         } else {
-            errors::StaticMutRefSugg::Shared { span, var }
+            (errors::StaticMutRefSugg::Shared { span, var }, "shared")
         };
-        tcx.sess.parse_sess.dcx.emit_err(errors::StaticMutRef { span, sugg });
+        tcx.sess.parse_sess.dcx.emit_err(errors::StaticMutRef { span, sugg, shared });
         return;
     }
 
-    let (label, sugg, shared) = if mutable {
-        (
-            errors::RefOfMutStaticLabel::Mut { span },
-            errors::RefOfMutStaticSugg::Mut { span, var },
-            "mutable ",
-        )
+    let (sugg, shared) = if mutable {
+        (errors::RefOfMutStaticSugg::Mut { span, var }, "mutable")
     } else {
-        (
-            errors::RefOfMutStaticLabel::Shared { span },
-            errors::RefOfMutStaticSugg::Shared { span, var },
-            "shared ",
-        )
+        (errors::RefOfMutStaticSugg::Shared { span, var }, "shared")
     };
     tcx.emit_node_span_lint(
-        STATIC_MUT_REF,
+        STATIC_MUT_REFS,
         hir_id,
         span,
-        errors::RefOfMutStatic { shared, why_note: (), label, sugg },
+        errors::RefOfMutStatic { span, sugg, shared },
     );
 }

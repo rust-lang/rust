@@ -329,6 +329,7 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::RecordExpr(_)
         | ast::Expr::RefExpr(_)
         | ast::Expr::ReturnExpr(_)
+        | ast::Expr::BecomeExpr(_)
         | ast::Expr::TryExpr(_)
         | ast::Expr::TupleExpr(_)
         | ast::Expr::LetExpr(_)

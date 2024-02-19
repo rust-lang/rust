@@ -1,3 +1,5 @@
+use crate::tests::check_no_mismatches;
+
 use super::check;
 
 #[test]
@@ -90,6 +92,46 @@ fn test(x: bool) {
   //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), got bool
                                    //^ expected bool, got i32
     ()
+}
+"#,
+    );
+}
+
+#[test]
+fn no_mismatches_on_atpit() {
+    check_no_mismatches(
+        r#"
+//- minicore: option, sized
+#![feature(impl_trait_in_assoc_type)]
+
+trait WrappedAssoc {
+    type Assoc;
+    fn do_thing(&self) -> Option<Self::Assoc>;
+}
+
+struct Foo;
+impl WrappedAssoc for Foo {
+    type Assoc = impl Sized;
+
+    fn do_thing(&self) -> Option<Self::Assoc> {
+        Some(())
+    }
+}
+"#,
+    );
+    check_no_mismatches(
+        r#"
+//- minicore: option, sized
+#![feature(impl_trait_in_assoc_type)]
+
+trait Trait {
+    type Assoc;
+    const DEFINE: Option<Self::Assoc>;
+}
+
+impl Trait for () {
+    type Assoc = impl Sized;
+    const DEFINE: Option<Self::Assoc> = Option::Some(());
 }
 "#,
     );

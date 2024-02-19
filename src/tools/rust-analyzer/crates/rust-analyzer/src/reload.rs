@@ -17,8 +17,9 @@ use std::{iter, mem};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
 use hir::{db::DefDatabase, Change, ProcMacros};
+use ide::CrateId;
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths},
+    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, Version},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -28,7 +29,7 @@ use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
 use rustc_hash::FxHashSet;
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
-use vfs::{AbsPath, ChangeKind};
+use vfs::{AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
@@ -83,7 +84,7 @@ impl GlobalState {
         }
         if self.config.linked_or_discovered_projects() != old_config.linked_or_discovered_projects()
         {
-            self.fetch_workspaces_queue.request_op("linked projects changed".to_owned(), false)
+            self.fetch_workspaces_queue.request_op("discovered projects changed".to_owned(), false)
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
         }
@@ -106,9 +107,11 @@ impl GlobalState {
         };
         let mut message = String::new();
 
-        if self.proc_macro_changed {
+        if self.build_deps_changed {
             status.health = lsp_ext::Health::Warning;
-            message.push_str("Proc-macros have changed and need to be rebuilt.\n\n");
+            message.push_str(
+                "Proc-macros and/or build scripts have changed and need to be rebuilt.\n\n",
+            );
         }
         if self.fetch_build_data_error().is_err() {
             status.health = lsp_ext::Health::Warning;
@@ -234,7 +237,6 @@ impl GlobalState {
                                 it.clone(),
                                 cargo_config.target.as_deref(),
                                 &cargo_config.extra_env,
-                                None,
                             ))
                         }
                     })
@@ -300,13 +302,13 @@ impl GlobalState {
 
     pub(crate) fn fetch_proc_macros(&mut self, cause: Cause, paths: Vec<ProcMacroPaths>) {
         tracing::info!(%cause, "will load proc macros");
-        let dummy_replacements = self.config.dummy_replacements().clone();
+        let ignored_proc_macros = self.config.ignored_proc_macros().clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
             sender.send(Task::LoadProcMacros(ProcMacroProgress::Begin)).unwrap();
 
-            let dummy_replacements = &dummy_replacements;
+            let ignored_proc_macros = &ignored_proc_macros;
             let progress = {
                 let sender = sender.clone();
                 &move |msg| {
@@ -334,7 +336,12 @@ impl GlobalState {
                                         crate_name
                                             .as_deref()
                                             .and_then(|crate_name| {
-                                                dummy_replacements.get(crate_name).map(|v| &**v)
+                                                ignored_proc_macros.iter().find_map(
+                                                    |(name, macros)| {
+                                                        eq_ignore_underscore(name, crate_name)
+                                                            .then_some(&**macros)
+                                                    },
+                                                )
                                             })
                                             .unwrap_or_default(),
                                     )
@@ -404,6 +411,10 @@ impl GlobalState {
                 if *force_reload_crate_graph {
                     self.recreate_crate_graph(cause);
                 }
+                if self.build_deps_changed && self.config.run_build_scripts() {
+                    self.build_deps_changed = false;
+                    self.fetch_build_data_queue.request_op("build_deps_changed".to_owned(), ());
+                }
                 // Current build scripts do not match the version of the active
                 // workspace, so there's nothing for us to update.
                 return;
@@ -415,6 +426,11 @@ impl GlobalState {
             // we don't care about build-script results, they are stale.
             // FIXME: can we abort the build scripts here?
             self.workspaces = Arc::new(workspaces);
+
+            if self.config.run_build_scripts() {
+                self.build_deps_changed = false;
+                self.fetch_build_data_queue.request_op("workspace updated".to_owned(), ());
+            }
         }
 
         if let FilesWatcher::Client = self.config.files().watcher {
@@ -464,8 +480,23 @@ impl GlobalState {
                     None => ws.find_sysroot_proc_macro_srv()?,
                 };
 
+                let env =
+                    match ws {
+                        ProjectWorkspace::Cargo { cargo_config_extra_env, sysroot, .. } => {
+                            cargo_config_extra_env
+                                .iter()
+                                .chain(self.config.extra_env())
+                                .map(|(a, b)| (a.clone(), b.clone()))
+                                .chain(sysroot.as_ref().map(|it| {
+                                    ("RUSTUP_TOOLCHAIN".to_owned(), it.root().to_string())
+                                }))
+                                .collect()
+                        }
+                        _ => Default::default(),
+                    };
                 tracing::info!("Using proc-macro server at {path}");
-                ProcMacroServer::spawn(path.clone()).map_err(|err| {
+
+                ProcMacroServer::spawn(path.clone(), &env).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );
@@ -494,15 +525,15 @@ impl GlobalState {
     }
 
     fn recreate_crate_graph(&mut self, cause: String) {
-        // Create crate graph from all the workspaces
-        let (crate_graph, proc_macro_paths, crate_graph_file_dependencies) = {
+        {
+            // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
             // crate graph construction relies on these paths, record them so when one of them gets
             // deleted or created we trigger a reconstruction of the crate graph
             let mut crate_graph_file_dependencies = FxHashSet::default();
 
-            let mut load = |path: &AbsPath| {
+            let load = |path: &AbsPath| {
                 let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 crate_graph_file_dependencies.insert(vfs_path.clone());
@@ -517,32 +548,26 @@ impl GlobalState {
                 }
             };
 
-            let mut crate_graph = CrateGraph::default();
-            let mut proc_macros = Vec::default();
-            for ws in &**self.workspaces {
-                let (other, mut crate_proc_macros) =
-                    ws.to_crate_graph(&mut load, self.config.extra_env());
-                crate_graph.extend(other, &mut crate_proc_macros, |_| {});
-                proc_macros.push(crate_proc_macros);
+            let (crate_graph, proc_macro_paths, layouts, toolchains) =
+                ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load);
+
+            let mut change = Change::new();
+            if self.config.expand_proc_macros() {
+                change.set_proc_macros(
+                    crate_graph
+                        .iter()
+                        .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
+                        .collect(),
+                );
+                self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
             }
-            (crate_graph, proc_macros, crate_graph_file_dependencies)
-        };
-
-        let mut change = Change::new();
-        if self.config.expand_proc_macros() {
-            change.set_proc_macros(
-                crate_graph
-                    .iter()
-                    .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
-                    .collect(),
-            );
-            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
+            change.set_crate_graph(crate_graph);
+            change.set_target_data_layouts(layouts);
+            change.set_toolchains(toolchains);
+            self.analysis_host.apply_change(change);
+            self.crate_graph_file_dependencies = crate_graph_file_dependencies;
         }
-        change.set_crate_graph(crate_graph);
-        self.analysis_host.apply_change(change);
-        self.crate_graph_file_dependencies = crate_graph_file_dependencies;
         self.process_changes();
-
         self.reload_flycheck();
     }
 
@@ -605,6 +630,7 @@ impl GlobalState {
                 0,
                 Box::new(move |msg| sender.send(msg).unwrap()),
                 config,
+                None,
                 self.config.root_path().clone(),
             )],
             flycheck::InvocationStrategy::PerWorkspace => {
@@ -612,23 +638,32 @@ impl GlobalState {
                     .iter()
                     .enumerate()
                     .filter_map(|(id, w)| match w {
-                        ProjectWorkspace::Cargo { cargo, .. } => Some((id, cargo.workspace_root())),
-                        ProjectWorkspace::Json { project, .. } => {
+                        ProjectWorkspace::Cargo { cargo, sysroot, .. } => Some((
+                            id,
+                            cargo.workspace_root(),
+                            sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
+                        )),
+                        ProjectWorkspace::Json { project, sysroot, .. } => {
                             // Enable flychecks for json projects if a custom flycheck command was supplied
                             // in the workspace configuration.
                             match config {
-                                FlycheckConfig::CustomCommand { .. } => Some((id, project.path())),
+                                FlycheckConfig::CustomCommand { .. } => Some((
+                                    id,
+                                    project.path(),
+                                    sysroot.as_ref().ok().map(|sysroot| sysroot.root().to_owned()),
+                                )),
                                 _ => None,
                             }
                         }
                         ProjectWorkspace::DetachedFiles { .. } => None,
                     })
-                    .map(|(id, root)| {
+                    .map(|(id, root, sysroot_root)| {
                         let sender = sender.clone();
                         FlycheckHandle::spawn(
                             id,
                             Box::new(move |msg| sender.send(msg).unwrap()),
                             config.clone(),
+                            sysroot_root,
                             root.to_path_buf(),
                         )
                     })
@@ -637,6 +672,69 @@ impl GlobalState {
         }
         .into();
     }
+}
+
+// FIXME: Move this into load-cargo?
+pub fn ws_to_crate_graph(
+    workspaces: &[ProjectWorkspace],
+    extra_env: &FxHashMap<String, String>,
+    mut load: impl FnMut(&AbsPath) -> Option<vfs::FileId>,
+) -> (
+    CrateGraph,
+    Vec<FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>>,
+    Vec<Result<Arc<str>, Arc<str>>>,
+    Vec<Option<Version>>,
+) {
+    let mut crate_graph = CrateGraph::default();
+    let mut proc_macro_paths = Vec::default();
+    let mut layouts = Vec::default();
+    let mut toolchains = Vec::default();
+    let e = Err(Arc::from("missing layout"));
+    for ws in workspaces {
+        let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
+        let num_layouts = layouts.len();
+        let num_toolchains = toolchains.len();
+        let (toolchain, layout) = match ws {
+            ProjectWorkspace::Cargo { toolchain, target_layout, .. }
+            | ProjectWorkspace::Json { toolchain, target_layout, .. } => {
+                (toolchain.clone(), target_layout.clone())
+            }
+            ProjectWorkspace::DetachedFiles { .. } => {
+                (None, Err("detached files have no layout".into()))
+            }
+        };
+
+        let mapping = crate_graph.extend(
+            other,
+            &mut crate_proc_macros,
+            |(cg_id, cg_data), (_o_id, o_data)| {
+                // if the newly created crate graph's layout is equal to the crate of the merged graph, then
+                // we can merge the crates.
+                let id = cg_id.into_raw().into_u32() as usize;
+                layouts[id] == layout && toolchains[id] == toolchain && cg_data == o_data
+            },
+        );
+        // Populate the side tables for the newly merged crates
+        mapping.values().for_each(|val| {
+            let idx = val.into_raw().into_u32() as usize;
+            // we only need to consider crates that were not merged and remapped, as the
+            // ones that were remapped already have the correct layout and toolchain
+            if idx >= num_layouts {
+                if layouts.len() <= idx {
+                    layouts.resize(idx + 1, e.clone());
+                }
+                layouts[idx] = layout.clone();
+            }
+            if idx >= num_toolchains {
+                if toolchains.len() <= idx {
+                    toolchains.resize(idx + 1, None);
+                }
+                toolchains[idx] = toolchain.clone();
+            }
+        });
+        proc_macro_paths.push(crate_proc_macros);
+    }
+    (crate_graph, proc_macro_paths, layouts, toolchains)
 }
 
 pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind) -> bool {
@@ -682,4 +780,19 @@ pub(crate) fn should_refresh_for_change(path: &AbsPath, change_kind: ChangeKind)
         }
     }
     false
+}
+
+/// Similar to [`str::eq_ignore_ascii_case`] but instead of ignoring
+/// case, we say that `-` and `_` are equal.
+fn eq_ignore_underscore(s1: &str, s2: &str) -> bool {
+    if s1.len() != s2.len() {
+        return false;
+    }
+
+    s1.as_bytes().iter().zip(s2.as_bytes()).all(|(c1, c2)| {
+        let c1_underscore = c1 == &b'_' || c1 == &b'-';
+        let c2_underscore = c2 == &b'_' || c2 == &b'-';
+
+        c1 == c2 || (c1_underscore && c2_underscore)
+    })
 }

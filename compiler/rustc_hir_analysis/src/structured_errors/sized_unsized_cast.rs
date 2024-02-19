@@ -1,5 +1,5 @@
 use crate::{errors, structured_errors::StructuredDiagnostic};
-use rustc_errors::{codes::*, DiagnosticBuilder, ErrCode};
+use rustc_errors::{codes::*, DiagnosticBuilder};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;

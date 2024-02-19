@@ -242,7 +242,7 @@ macro_rules! foo {
 
 fn f() {
     foo!();
-  //^^^ error: invalid macro definition: expected subtree
+  //^^^ error: macro definition has parse errors
 
 }
 "#,

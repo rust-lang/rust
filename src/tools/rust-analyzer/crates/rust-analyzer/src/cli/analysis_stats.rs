@@ -32,7 +32,7 @@ use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{AstNode, SyntaxNode};
 use vfs::{AbsPathBuf, FileId, Vfs, VfsPath};
 
@@ -91,7 +91,7 @@ impl flags::AnalysisStats {
         };
 
         let (host, vfs, _proc_macro) =
-            load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
+            load_workspace(workspace.clone(), &cargo_config.extra_env, &load_cargo_config)?;
         let db = host.raw_database();
         eprint!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
         eprint!(" (metadata {metadata_time}");
@@ -232,7 +232,11 @@ impl flags::AnalysisStats {
         }
 
         if self.run_all_ide_things {
-            self.run_ide_things(host.analysis(), file_ids);
+            self.run_ide_things(host.analysis(), file_ids.clone());
+        }
+
+        if self.run_term_search {
+            self.run_term_search(&workspace, db, &vfs, file_ids, verbosity);
         }
 
         let total_span = analysis_sw.elapsed();
@@ -319,6 +323,212 @@ impl flags::AnalysisStats {
         eprintln!("Failed const evals: {fail} ({}%)", percentage(fail, all));
         report_metric("failed const evals", fail, "#");
         report_metric("const eval time", const_eval_time.time.as_millis() as u64, "ms");
+    }
+
+    fn run_term_search(
+        &self,
+        ws: &ProjectWorkspace,
+        db: &RootDatabase,
+        vfs: &Vfs,
+        mut file_ids: Vec<FileId>,
+        verbosity: Verbosity,
+    ) {
+        let cargo_config = CargoConfig {
+            sysroot: match self.no_sysroot {
+                true => None,
+                false => Some(RustLibSource::Discover),
+            },
+            ..Default::default()
+        };
+
+        let mut bar = match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(file_ids.len() as u64),
+        };
+
+        file_ids.sort();
+        file_ids.dedup();
+
+        #[derive(Debug, Default)]
+        struct Acc {
+            tail_expr_syntax_hits: u64,
+            tail_expr_no_term: u64,
+            total_tail_exprs: u64,
+            error_codes: FxHashMap<String, u32>,
+            syntax_errors: u32,
+        }
+
+        let mut acc: Acc = Default::default();
+        bar.tick();
+        let mut sw = self.stop_watch();
+
+        for &file_id in &file_ids {
+            let sema = hir::Semantics::new(db);
+            let _ = db.parse(file_id);
+
+            let parse = sema.parse(file_id);
+            let file_txt = db.file_text(file_id);
+            let path = vfs.file_path(file_id).as_path().unwrap().to_owned();
+
+            for node in parse.syntax().descendants() {
+                let expr = match syntax::ast::Expr::cast(node.clone()) {
+                    Some(it) => it,
+                    None => continue,
+                };
+                let block = match syntax::ast::BlockExpr::cast(expr.syntax().clone()) {
+                    Some(it) => it,
+                    None => continue,
+                };
+                let target_ty = match sema.type_of_expr(&expr) {
+                    Some(it) => it.adjusted(),
+                    None => continue, // Failed to infer type
+                };
+
+                let expected_tail = match block.tail_expr() {
+                    Some(it) => it,
+                    None => continue,
+                };
+
+                if expected_tail.is_block_like() {
+                    continue;
+                }
+
+                let range = sema.original_range(expected_tail.syntax()).range;
+                let original_text: String = db
+                    .file_text(file_id)
+                    .chars()
+                    .skip(usize::from(range.start()))
+                    .take(usize::from(range.end()) - usize::from(range.start()))
+                    .collect();
+
+                let scope = match sema.scope(expected_tail.syntax()) {
+                    Some(it) => it,
+                    None => continue,
+                };
+
+                let ctx = hir::term_search::TermSearchCtx {
+                    sema: &sema,
+                    scope: &scope,
+                    goal: target_ty,
+                    config: hir::term_search::TermSearchConfig {
+                        enable_borrowcheck: true,
+                        ..Default::default()
+                    },
+                };
+                let found_terms = hir::term_search::term_search(&ctx);
+
+                if found_terms.is_empty() {
+                    acc.tail_expr_no_term += 1;
+                    acc.total_tail_exprs += 1;
+                    // println!("\n{}\n", &original_text);
+                    continue;
+                };
+
+                fn trim(s: &str) -> String {
+                    s.chars().filter(|c| !c.is_whitespace()).collect()
+                }
+
+                let todo = syntax::ast::make::ext::expr_todo().to_string();
+                let mut formatter = |_: &hir::Type| todo.clone();
+                let mut syntax_hit_found = false;
+                for term in found_terms {
+                    let generated =
+                        term.gen_source_code(&scope, &mut formatter, false, true).unwrap();
+                    syntax_hit_found |= trim(&original_text) == trim(&generated);
+
+                    // Validate if type-checks
+                    let mut txt = file_txt.to_string();
+
+                    let edit = ide::TextEdit::replace(range, generated.clone());
+                    edit.apply(&mut txt);
+
+                    if self.validate_term_search {
+                        std::fs::write(&path, txt).unwrap();
+
+                        let res = ws.run_build_scripts(&cargo_config, &|_| ()).unwrap();
+                        if let Some(err) = res.error() {
+                            if err.contains("error: could not compile") {
+                                if let Some(mut err_idx) = err.find("error[E") {
+                                    err_idx += 7;
+                                    let err_code = &err[err_idx..err_idx + 4];
+                                    match err_code {
+                                        "0282" => continue,                              // Byproduct of testing method
+                                        "0277" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                        _ => (),
+                                    }
+                                    bar.println(err);
+                                    bar.println(generated);
+                                    acc.error_codes
+                                        .entry(err_code.to_owned())
+                                        .and_modify(|n| *n += 1)
+                                        .or_insert(1);
+                                } else {
+                                    acc.syntax_errors += 1;
+                                    bar.println(format!("Syntax error: \n{}", err));
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if syntax_hit_found {
+                    acc.tail_expr_syntax_hits += 1;
+                }
+                acc.total_tail_exprs += 1;
+
+                let msg = move || {
+                    format!(
+                        "processing: {:<50}",
+                        trim(&original_text).chars().take(50).collect::<String>()
+                    )
+                };
+                if verbosity.is_spammy() {
+                    bar.println(msg());
+                }
+                bar.set_message(msg);
+            }
+            // Revert file back to original state
+            if self.validate_term_search {
+                std::fs::write(&path, file_txt.to_string()).unwrap();
+            }
+
+            bar.inc(1);
+        }
+        let term_search_time = sw.elapsed();
+
+        bar.println(format!(
+            "Tail Expr syntactic hits: {}/{} ({}%)",
+            acc.tail_expr_syntax_hits,
+            acc.total_tail_exprs,
+            percentage(acc.tail_expr_syntax_hits, acc.total_tail_exprs)
+        ));
+        bar.println(format!(
+            "Tail Exprs found: {}/{} ({}%)",
+            acc.total_tail_exprs - acc.tail_expr_no_term,
+            acc.total_tail_exprs,
+            percentage(acc.total_tail_exprs - acc.tail_expr_no_term, acc.total_tail_exprs)
+        ));
+        if self.validate_term_search {
+            bar.println(format!(
+                "Tail Exprs total errors: {}, syntax errors: {}, error codes:",
+                acc.error_codes.values().sum::<u32>() + acc.syntax_errors,
+                acc.syntax_errors,
+            ));
+            for (err, count) in acc.error_codes {
+                bar.println(format!(
+                    "    E{err}: {count:>5}  (https://doc.rust-lang.org/error_codes/E{err}.html)"
+                ));
+            }
+        }
+        bar.println(format!(
+            "Term search avg time: {}ms",
+            term_search_time.time.as_millis() as u64 / acc.total_tail_exprs
+        ));
+        bar.println(format!("{:<20} {}", "Term search:", term_search_time));
+        report_metric("term search time", term_search_time.time.as_millis() as u64, "ms");
+
+        bar.finish_and_clear();
     }
 
     fn run_mir_lowering(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {

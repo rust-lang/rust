@@ -13,7 +13,7 @@ use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    codes::*, pluralize, Applicability, Diagnostic, ErrCode, ErrorGuaranteed, MultiSpan, StashKey,
+    codes::*, pluralize, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};

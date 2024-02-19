@@ -31,6 +31,11 @@ pub(crate) fn complete_type_path(
             ScopeDef::ImplSelfType(_) => location.complete_self_type(),
             // Don't suggest attribute macros and derives.
             ScopeDef::ModuleDef(Macro(mac)) => mac.is_fn_like(ctx.db),
+            ScopeDef::ModuleDef(Trait(_) | Module(_))
+                if matches!(location, TypeLocation::ImplTrait) =>
+            {
+                true
+            }
             // Type things are fine
             ScopeDef::ModuleDef(
                 BuiltinType(_) | Adt(_) | Module(_) | Trait(_) | TraitAlias(_) | TypeAlias(_),
@@ -183,6 +188,21 @@ pub(crate) fn complete_type_path(
                             }
                         }
                     }
+                }
+                TypeLocation::ImplTrait => {
+                    acc.add_nameref_keywords_with_colon(ctx);
+                    ctx.process_all_names(&mut |name, def, doc_aliases| {
+                        let is_trait_or_module = matches!(
+                            def,
+                            ScopeDef::ModuleDef(
+                                hir::ModuleDef::Module(_) | hir::ModuleDef::Trait(_)
+                            )
+                        );
+                        if is_trait_or_module {
+                            acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases);
+                        }
+                    });
+                    return;
                 }
                 _ => {}
             };
