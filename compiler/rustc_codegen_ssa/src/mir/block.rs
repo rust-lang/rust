@@ -12,7 +12,7 @@ use crate::MemFlags;
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{self, AssertKind, SwitchTargets, UnwindTerminateReason};
+use rustc_middle::mir::{self, AssertKind, BasicBlock, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
@@ -832,8 +832,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
 
                 let mut llargs = Vec::with_capacity(arg_count);
-                let ret_dest =
-                    self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, true, true);
+                let ret_dest = self.make_return_dest(
+                    bx,
+                    destination,
+                    &fn_abi.ret,
+                    &mut llargs,
+                    intrinsic,
+                    Some(target),
+                );
                 assert_eq!(llargs, []);
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(bx, tmp);
@@ -854,8 +860,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     destination,
                     &fn_abi.ret,
                     &mut llargs,
-                    true,
-                    target.is_some(),
+                    Some(intrinsic),
+                    target,
                 );
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
@@ -910,7 +916,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut llargs = Vec::with_capacity(arg_count);
         let destination = target.as_ref().map(|&target| {
-            (self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, false, true), target)
+            (
+                self.make_return_dest(
+                    bx,
+                    destination,
+                    &fn_abi.ret,
+                    &mut llargs,
+                    None,
+                    Some(target),
+                ),
+                target,
+            )
         });
 
         // Split the rust-call tupled arguments off.
@@ -1643,10 +1659,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
-        is_intrinsic: bool,
-        has_target: bool,
+        intrinsic: Option<ty::IntrinsicDef>,
+        target: Option<BasicBlock>,
     ) -> ReturnDest<'tcx, Bx::Value> {
-        if !has_target {
+        if target.is_none() {
             return ReturnDest::Nothing;
         }
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
@@ -1667,7 +1683,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         tmp.storage_live(bx);
                         llargs.push(tmp.llval);
                         ReturnDest::IndirectOperand(tmp, index)
-                    } else if is_intrinsic {
+                    } else if intrinsic.is_some() {
                         // Currently, intrinsics always need a location to store
                         // the result, so we create a temporary `alloca` for the
                         // result.
