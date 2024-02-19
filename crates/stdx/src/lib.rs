@@ -302,6 +302,22 @@ pub fn slice_tails<T>(this: &[T]) -> impl Iterator<Item = &[T]> {
     (0..this.len()).map(|i| &this[i..])
 }
 
+pub trait IsNoneOr {
+    type Type;
+    #[allow(clippy::wrong_self_convention)]
+    fn is_none_or(self, s: impl FnOnce(Self::Type) -> bool) -> bool;
+}
+#[allow(unstable_name_collisions)]
+impl<T> IsNoneOr for Option<T> {
+    type Type = T;
+    fn is_none_or(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            Some(v) => f(v),
+            None => true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

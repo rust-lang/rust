@@ -904,15 +904,16 @@ pub(crate) fn goto_definition_response(
     if snap.config.location_link() {
         let links = targets
             .into_iter()
+            .unique_by(|nav| (nav.file_id, nav.full_range, nav.focus_range))
             .map(|nav| location_link(snap, src, nav))
             .collect::<Cancellable<Vec<_>>>()?;
         Ok(links.into())
     } else {
         let locations = targets
             .into_iter()
-            .map(|nav| {
-                location(snap, FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
-            })
+            .map(|nav| FileRange { file_id: nav.file_id, range: nav.focus_or_full_range() })
+            .unique()
+            .map(|range| location(snap, range))
             .collect::<Cancellable<Vec<_>>>()?;
         Ok(locations.into())
     }
