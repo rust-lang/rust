@@ -1,4 +1,6 @@
+#![feature(inline_const)]
 #![warn(clippy::const_is_empty)]
+#![allow(clippy::needless_late_init, unused_must_use)]
 
 fn test_literal() {
     if "".is_empty() {
@@ -98,4 +100,70 @@ fn main() {
     //~^ ERROR: this expression always evaluates to true
     let _ = b"".is_empty();
     //~^ ERROR: this expression always evaluates to true
+}
+
+fn str_from_arg(var: &str) {
+    var.is_empty();
+    // Do not lint, we know nothiny about var
+}
+
+fn update_str() {
+    let mut value = "duck";
+    value = "penguin";
+
+    let _ = value.is_empty();
+    // Do not lint since value is mutable
+}
+
+fn macros() {
+    // Content from Macro
+    let file = include_str!("const_is_empty.rs");
+    let _ = file.is_empty();
+    // No lint because initializer comes from a macro result
+
+    let var = env!("PATH");
+    let _ = var.is_empty();
+    // No lint because initializer comes from a macro result
+}
+
+fn conditional_value() {
+    let value;
+
+    if true {
+        value = "hey";
+    } else {
+        value = "hej";
+    }
+
+    let _ = value.is_empty();
+    // Do not lint, current constant folding is too simple to detect this
+}
+
+fn cfg_conditioned() {
+    #[cfg(test)]
+    let val = "";
+    #[cfg(not(test))]
+    let val = "foo";
+
+    let _ = val.is_empty();
+    // Do not lint, value depend on a #[cfg(…)] directive
+}
+
+fn not_cfg_conditioned() {
+    let val = "";
+    #[cfg(not(target_os = "inexistent"))]
+    let _ = val.is_empty();
+    //~^ ERROR: this expression always evaluates to true
+}
+
+const fn const_rand() -> &'static str {
+    "17"
+}
+
+fn const_expressions() {
+    let _ = const { if true { "1" } else { "2" } }.is_empty();
+    // Do not lint, we do not recurse into boolean expressions
+
+    let _ = const_rand().is_empty();
+    // Do not lint, we do not recurse into functions
 }
