@@ -29,44 +29,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// It is a bug to call this with a not-fully-simplified pattern.
     pub(super) fn test<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> Test<'tcx> {
-        match match_pair.pattern.kind {
-            PatKind::Variant { adt_def, args: _, variant_index: _, subpatterns: _ } => Test {
-                span: match_pair.pattern.span,
-                kind: TestKind::Switch {
-                    adt_def,
-                    variants: BitSet::new_empty(adt_def.variants().len()),
-                },
-            },
+        let kind = match match_pair.pattern.kind {
+            PatKind::Variant { adt_def, args: _, variant_index: _, subpatterns: _ } => {
+                TestKind::Switch { adt_def, variants: BitSet::new_empty(adt_def.variants().len()) }
+            }
 
             PatKind::Constant { .. } if is_switch_ty(match_pair.pattern.ty) => {
                 // For integers, we use a `SwitchInt` match, which allows
                 // us to handle more cases.
-                Test {
-                    span: match_pair.pattern.span,
-                    kind: TestKind::SwitchInt {
-                        switch_ty: match_pair.pattern.ty,
+                TestKind::SwitchInt {
+                    switch_ty: match_pair.pattern.ty,
 
-                        // these maps are empty to start; cases are
-                        // added below in add_cases_to_switch
-                        options: Default::default(),
-                    },
+                    // these maps are empty to start; cases are
+                    // added below in add_cases_to_switch
+                    options: Default::default(),
                 }
             }
 
-            PatKind::Constant { value } => Test {
-                span: match_pair.pattern.span,
-                kind: TestKind::Eq { value, ty: match_pair.pattern.ty },
-            },
+            PatKind::Constant { value } => TestKind::Eq { value, ty: match_pair.pattern.ty },
 
             PatKind::Range(ref range) => {
                 assert_eq!(range.ty, match_pair.pattern.ty);
-                Test { span: match_pair.pattern.span, kind: TestKind::Range(range.clone()) }
+                TestKind::Range(range.clone())
             }
 
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
                 let op = if slice.is_some() { BinOp::Ge } else { BinOp::Eq };
-                Test { span: match_pair.pattern.span, kind: TestKind::Len { len: len as u64, op } }
+                TestKind::Len { len: len as u64, op }
             }
 
             PatKind::Or { .. } => bug!("or-patterns should have already been handled"),
@@ -80,7 +70,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Leaf { .. }
             | PatKind::Deref { .. }
             | PatKind::Error(_) => self.error_simplifiable(match_pair),
-        }
+        };
+
+        Test { span: match_pair.pattern.span, kind }
     }
 
     pub(super) fn add_cases_to_switch<'pat>(
