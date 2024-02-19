@@ -711,6 +711,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
+        let mut new_primary_span = false;
         // When we have the HIR `Node` at hand, see if we can identify an
         // implicit `'static` bound in an `impl dyn Trait {}` and if that's
         // the only restriction, suggest relaxing it.
@@ -735,7 +736,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
                 hir::LifetimeName::Static if predicates.is_empty() => {
                     // `impl dyn Trait + 'static {}`
-                    Some((lt.ident.span, "consider replacing this `'static` requirement", "'_"))
+                    Some((lt.ident.span, "consider relaxing this `'static` requirement", "'_"))
                 }
                 _ => None,
             };
@@ -743,13 +744,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // We only emit the suggestion to write `impl dyn Trait + '_ {}` if that's the only
                 // thing needed.
                 diag.span_suggestion_verbose(span, msg, sugg, Applicability::MachineApplicable);
-                // This is redundant but needed because we won't enter the section with the
-                // additional note, so we point at the method call here too.
-                diag.replace_span_with(*call_span, false);
-                diag.span_label(
-                    *call_span,
-                    "calling this method introduces a `'static` lifetime requirement",
-                );
+                new_primary_span = true;
             } else if let hir::LifetimeName::ImplicitObjectLifetimeDefault
             | hir::LifetimeName::Static = lt.res
             {
@@ -766,11 +761,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             predicates.push(tcx.def_span(parent));
         }
         if !predicates.is_empty() {
-            diag.replace_span_with(*call_span, false);
-            diag.span_label(
-                *call_span,
-                "calling this method introduces a `'static` lifetime requirement",
-            );
+            new_primary_span = true;
             let a_static_lt = if predicates.len() == 1 {
                 "a `'static` lifetime requirement"
             } else {
@@ -778,6 +769,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             };
             let span: MultiSpan = predicates.into();
             diag.span_note(span, format!("the `impl` on `{ty}` has {a_static_lt}"));
+        }
+        if new_primary_span && diag.span.primary_span() != Some(*call_span) {
+            diag.replace_span_with(*call_span, false);
+            diag.span_label(
+                *call_span,
+                "calling this method introduces a `'static` lifetime requirement",
+            );
         }
     }
 

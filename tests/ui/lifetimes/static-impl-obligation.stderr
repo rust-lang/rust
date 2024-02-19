@@ -77,7 +77,7 @@ LL |         let y: &dyn Foo = x;
 LL |         y.hello();
    |         ^^^^^^^^^ calling this method introduces a `'static` lifetime requirement
    |
-help: consider replacing this `'static` requirement
+help: consider relaxing this `'static` requirement
    |
 LL |     impl dyn Foo + '_ {
    |                    ~~
@@ -288,7 +288,6 @@ LL |         x.hello();
    |         |
    |         `x` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
-   |         calling this method introduces a `'static` lifetime requirement
    |
 note: the `impl` on `q::Foo` has a `'static` lifetime requirement
   --> $DIR/static-impl-obligation.rs:180:18
@@ -308,7 +307,6 @@ LL |         x.hello();
    |         |
    |         `x` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
-   |         calling this method introduces a `'static` lifetime requirement
    |
 note: the `impl` on `r::Foo` has `'static` lifetime requirements
   --> $DIR/static-impl-obligation.rs:189:18

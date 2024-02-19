@@ -45,7 +45,7 @@ mod d {
 mod e {
     trait Foo {}
     impl<'a> Foo for &'a u32 {}
-    impl dyn Foo + 'static { //~ HELP consider replacing this `'static` requirement
+    impl dyn Foo + 'static { //~ HELP consider relaxing this `'static` requirement
         fn hello(&self) {}
     }
     fn bar<'a>(x: &'a &'a u32) {

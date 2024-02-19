@@ -10,7 +10,6 @@ LL |         val.use_self::<T>()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
-   |         calling this method introduces a `'static` lifetime requirement
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:15:32
@@ -36,7 +35,6 @@ LL |         val.use_self()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
-   |         calling this method introduces a `'static` lifetime requirement
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:67:14
@@ -106,7 +104,6 @@ LL |         val.use_self()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
-   |         calling this method introduces a `'static` lifetime requirement
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:32:26
