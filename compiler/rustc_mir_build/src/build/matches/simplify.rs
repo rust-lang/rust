@@ -95,9 +95,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!(simplified = ?match_pairs, "simplify_match_pairs");
     }
 
-    /// Given `candidate` that has a single or-pattern for its match-pairs,
-    /// creates a fresh candidate for each of its input subpatterns passed via
-    /// `pats`.
+    /// Create a new candidate for each pattern in `pats`, and recursively simplify tje
+    /// single-or-pattern case.
     pub(super) fn create_or_subcandidates<'pat>(
         &mut self,
         place: &PlaceBuilder<'tcx>,
@@ -119,11 +118,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .collect()
     }
 
-    /// Tries to simplify `match_pair`, returning `Ok(())` if
-    /// successful. If successful, new match pairs and bindings will
-    /// have been pushed into the candidate. If no simplification is
-    /// possible, `Err` is returned and no changes are made to
-    /// candidate.
+    /// Tries to simplify `match_pair`, returning `Ok(())` if successful. If successful, new match
+    /// pairs and bindings will have been pushed into the respective `Vec`s. If no simplification is
+    /// possible, `Err` is returned.
     fn simplify_match_pair<'pat>(
         &mut self,
         mut match_pair: MatchPair<'pat, 'tcx>,
