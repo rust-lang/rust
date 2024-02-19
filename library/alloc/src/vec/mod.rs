@@ -1929,7 +1929,7 @@ impl<T, A: Allocator> Vec<T, A> {
             let end = self.as_mut_ptr().add(self.len);
             ptr::write(end, value);
             self.len += 1;
-            core::hint::assert_unchecked(self.len() < self.capacity());
+            core::hint::assert_unchecked(self.len() <= self.capacity());
         }
     }
 
