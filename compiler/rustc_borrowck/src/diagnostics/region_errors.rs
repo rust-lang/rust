@@ -637,11 +637,28 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             return;
         };
         let def_id = instance.def_id();
-        let parent = tcx.parent(def_id);
-        let hir::def::DefKind::Impl { .. } = tcx.def_kind(parent) else {
-            return;
-        };
-        let ty = tcx.type_of(parent).instantiate(tcx, instance.args);
+        let mut parent = tcx.parent(def_id);
+        match tcx.def_kind(parent) {
+            hir::def::DefKind::Impl { .. } => {}
+            hir::def::DefKind::Trait => {
+                let Some(ty) = args.get(0).and_then(|arg| arg.as_type()) else {
+                    return;
+                };
+                let mut impls = vec![];
+                tcx.for_each_relevant_impl(parent, ty, |id| {
+                    impls.push(id);
+                });
+                if let [def_id] = impls[..] {
+                    // The method we have is on the trait, but for `parent` we want to analyze the
+                    // relevant impl instead.
+                    parent = def_id;
+                } else {
+                    return;
+                };
+            }
+            _ => return,
+        }
+        let ty = tcx.type_of(parent).instantiate_identity();
         if self.to_error_region(outlived_fr) != Some(tcx.lifetimes.re_static) {
             return;
         }
@@ -723,7 +740,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }),
             ..
         })) = tcx.hir().get_if_local(parent)
-            && let Some(hir::Node::ImplItem(hir::ImplItem { .. })) = tcx.hir().get_if_local(def_id)
         {
             let suggestion = match lt.res {
                 hir::LifetimeName::ImplicitObjectLifetimeDefault if predicates.is_empty() => {
