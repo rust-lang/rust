@@ -31,6 +31,7 @@ pub use assoc::*;
 pub use generic_args::*;
 pub use generics::*;
 use rustc_ast as ast;
+use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability};
 use rustc_attr as attr;
@@ -189,6 +190,7 @@ pub struct ResolverGlobalCtxt {
     pub doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
     pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
+    pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
 
 /// Resolutions that should only be used for lowering.

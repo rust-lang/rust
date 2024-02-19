@@ -2230,7 +2230,6 @@ rustc_queries! {
     /// Should not be called for the local crate before the resolver outputs are created, as it
     /// is only fed there.
     query stripped_cfg_items(cnum: CrateNum) -> &'tcx [StrippedCfgItem] {
-        feedable
         desc { "getting cfg-ed out item names" }
         separate_provide_extern
     }

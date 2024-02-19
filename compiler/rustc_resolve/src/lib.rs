@@ -1559,13 +1559,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let confused_type_with_std_module = self.confused_type_with_std_module;
         let effective_visibilities = self.effective_visibilities;
 
-        self.tcx.feed_local_crate().stripped_cfg_items(self.tcx.arena.alloc_from_iter(
-            self.stripped_cfg_items.into_iter().filter_map(|item| {
-                let parent_module =
-                    self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
-                Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg })
-            }),
-        ));
+        let stripped_cfg_items = Steal::new(
+            self.stripped_cfg_items
+                .into_iter()
+                .filter_map(|item| {
+                    let parent_module =
+                        self.node_id_to_def_id.get(&item.parent_module)?.key().to_def_id();
+                    Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg })
+                })
+                .collect(),
+        );
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
@@ -1582,6 +1585,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             doc_link_resolutions: self.doc_link_resolutions,
             doc_link_traits_in_scope: self.doc_link_traits_in_scope,
             all_macro_rules: self.all_macro_rules,
+            stripped_cfg_items,
         };
         let ast_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args,

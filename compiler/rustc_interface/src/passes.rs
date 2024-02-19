@@ -608,6 +608,8 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
     providers.resolver_for_lowering = resolver_for_lowering;
+    providers.stripped_cfg_items =
+        |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
