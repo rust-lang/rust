@@ -40,7 +40,7 @@ pub(crate) trait LruNode: Sized + Debug {
 
 #[derive(Debug)]
 pub(crate) struct LruIndex {
-    /// Index in the approprate LRU list, or std::usize::MAX if not a
+    /// Index in the appropriate LRU list, or std::usize::MAX if not a
     /// member.
     index: AtomicUsize,
 }
