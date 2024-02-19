@@ -3580,6 +3580,7 @@ dependencies = [
  "either",
  "itertools 0.12.1",
  "polonius-engine",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",

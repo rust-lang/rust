@@ -451,6 +451,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Obligations emitted during the normalization of a weak type alias.
     TypeAlias(InternedObligationCauseCode<'tcx>, Span, DefId),
+
+    /// During borrowck we've found a method call that could have introduced a lifetime requirement.
+    MethodCallConstraint(Ty<'tcx>, Span),
 }
 
 /// Whether a value can be extracted into a const.

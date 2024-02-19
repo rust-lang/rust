@@ -2051,6 +2051,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         CRATE_DEF_ID.to_def_id(),
                         predicate_span,
                     ))
+                } else if let ConstraintCategory::CallArgument(Some(fn_def)) = constraint.category {
+                    Some(ObligationCauseCode::MethodCallConstraint(fn_def, constraint.span))
                 } else {
                     None
                 }

@@ -1,0 +1,336 @@
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:8:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+help: consider relaxing the implicit `'static` requirement on the impl
+   |
+LL |     impl dyn Foo + '_ {
+   |                  ++++
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:19:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn b::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:15:10
+   |
+LL |     impl dyn Foo {
+   |          ^^^^^^^
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:30:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn c::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:26:10
+   |
+LL |     impl dyn Foo {
+   |          ^^^^^^^
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:41:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn d::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:37:10
+   |
+LL |     impl dyn Foo {
+   |          ^^^^^^^
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:52:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+help: consider replacing this `'static` requirement
+   |
+LL |     impl dyn Foo + '_ {
+   |                    ~~
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:63:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn f::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:59:20
+   |
+LL |     impl dyn Foo + 'static {
+   |                    ^^^^^^^
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:74:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn g::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:70:20
+   |
+LL |     impl dyn Foo + 'static {
+   |                    ^^^^^^^
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:85:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn h::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:81:20
+   |
+LL |     impl dyn Foo + 'static {
+   |                    ^^^^^^^
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:96:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn i::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:92:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:107:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn j::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:103:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:118:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn k::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:114:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:129:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn l::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:125:10
+   |
+LL |     impl dyn Foo where Self: 'static {
+   |          ^^^^^^^             ^^^^^^^
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:140:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn m::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:136:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:151:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn n::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:147:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:162:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn o::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:158:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:173:27
+   |
+LL |     fn bar<'a>(x: &'a &'a u32) {
+   |            -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `(dyn p::Foo + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:169:20
+   |
+LL |     impl dyn Foo + 'static where Self: 'static {
+   |                    ^^^^^^^             ^^^^^^^
+LL |         fn hello(&self) where Self: 'static {}
+   |                                     ^^^^^^^
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:183:9
+   |
+LL |     fn bar<'a>(x: &'a &'a Foo) {
+   |            --  - `x` is a reference that is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         x.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |         calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `q::Foo` has a `'static` lifetime requirement
+  --> $DIR/static-impl-obligation.rs:180:18
+   |
+LL |         fn hello(&'static self) {}
+   |                  ^^^^^^^^^^^^^
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:192:9
+   |
+LL |     fn bar<'a>(x: &'a &'a Foo) {
+   |            --  - `x` is a reference that is only valid in the function body
+   |            |
+   |            lifetime `'a` defined here
+LL |         x.hello();
+   |         ^^^^^^^^^
+   |         |
+   |         `x` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |         calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `r::Foo` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:189:18
+   |
+LL |         fn hello(&'static self) where Self: 'static {}
+   |                  ^^^^^^^^^^^^^              ^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:206:27
+   |
+LL |     fn convert<'a>(x: &'a &'a u32) {
+   |                -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         --------- calling this method introduces a `'static` lifetime requirement
+   |
+help: consider relaxing the implicit `'static` requirement on the impl
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |                            ++++
+
+error: aborting due to 19 previous errors
+
+For more information about this error, try `rustc --explain E0521`.

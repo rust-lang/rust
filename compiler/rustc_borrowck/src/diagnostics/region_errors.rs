@@ -1,5 +1,6 @@
 //! Error reporting machinery for lifetime errors.
 
+use rustc_ast::TraitObjectSyntax::Dyn;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -16,14 +17,12 @@ use rustc_infer::infer::{
         HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor,
     },
     error_reporting::unexpected_hidden_region_diagnostic,
-    NllRegionVariableOrigin, RelateParamBound,
+    BoundRegionConversionTime, NllRegionVariableOrigin, RelateParamBound,
 };
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::TypeVisitor;
-use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_middle::ty::{Region, TyCtxt};
+use rustc_middle::traits::ObligationCauseCode;
+use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
@@ -499,19 +498,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         };
 
+        self.explain_impl_static_obligation(&mut diag, cause.code(), outlived_fr);
+
         match variance_info {
             ty::VarianceDiagInfo::None => {}
             ty::VarianceDiagInfo::Invariant { ty, param_index } => {
                 let (desc, note) = match ty.kind() {
                     ty::RawPtr(ty_mut) => {
-                        assert_eq!(ty_mut.mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(ty_mut.mutbl, hir::Mutability::Mut);
                         (
                             format!("a mutable pointer to `{}`", ty_mut.ty),
                             "mutable pointers are invariant over their type parameter".to_string(),
                         )
                     }
                     ty::Ref(_, inner_ty, mutbl) => {
-                        assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
+                        assert_eq!(*mutbl, hir::Mutability::Mut);
                         (
                             format!("a mutable reference to `{inner_ty}`"),
                             "mutable references are invariant over their type parameter"
@@ -527,10 +528,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let adt_desc = adt.descr();
 
                         let desc = format!(
-                            "the type `{ty}`, which makes the generic argument `{generic_arg}` invariant"
+                            "the type `{ty}`, which makes the generic argument `{generic_arg}` \
+                             invariant"
                         );
                         let note = format!(
-                            "the {adt_desc} `{base_ty}` is invariant over the parameter `{base_generic_arg}`"
+                            "the {adt_desc} `{base_ty}` is invariant over the parameter \
+                             `{base_generic_arg}`"
                         );
                         (desc, note)
                     }
@@ -548,19 +551,232 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
                 diag.note(format!("requirement occurs because of {desc}",));
                 diag.note(note);
-                diag.help("see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance");
+                diag.help(
+                    "see <https://doc.rust-lang.org/nomicon/subtyping.html> for more \
+                     information about variance",
+                );
             }
         }
 
         for extra in extra_info {
             match extra {
                 ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
-                    diag.span_note(span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
+                    diag.span_note(
+                        span,
+                        "due to current limitations in the borrow checker, this implies a \
+                         `'static` lifetime",
+                    );
                 }
             }
         }
 
         self.buffer_error(diag);
+    }
+
+    /// Report a specialized error when a `'static` obligation comes from an `impl dyn Trait`
+    ///
+    /// ```text
+    /// error: lifetime may not live long enough
+    ///   --> $DIR/static-impl-obligation.rs:8:27
+    ///    |
+    /// LL |     fn bar<'a>(x: &'a &'a u32) {
+    ///    |            -- lifetime `'a` defined here
+    /// LL |         let y: &dyn Foo = x;
+    ///    |                           ^ cast requires that `'a` must outlive `'static`
+    /// LL |         y.hello();
+    ///    |         --------- calling this method introduces a `'static` lifetime requirement
+    ///    |
+    /// note: the `impl` on `(dyn a::Foo + 'static)` has a `'static` lifetime requirement
+    ///   --> $DIR/static-impl-obligation.rs:4:10
+    ///    |
+    /// LL |     impl dyn Foo {
+    ///    |          ^^^^^^^
+    /// help: relax the implicit `'static` bound on the impl
+    ///    |
+    /// LL |     impl dyn Foo + '_ {
+    ///    |                  ++++
+    /// ```
+    /// ```text
+    /// error: lifetime may not live long enough
+    ///   --> $DIR/static-impl-obligation.rs:173:27
+    ///    |
+    /// LL |     fn bar<'a>(x: &'a &'a u32) {
+    ///    |            -- lifetime `'a` defined here
+    /// LL |         let y: &dyn Foo = x;
+    ///    |                           ^ cast requires that `'a` must outlive `'static`
+    /// LL |         y.hello();
+    ///    |         --------- calling this method introduces a `'static` lifetime requirement
+    ///    |
+    /// note: the `impl` on `(dyn p::Foo + 'static)` has `'static` lifetime requirements
+    ///   --> $DIR/static-impl-obligation.rs:169:20
+    ///    |
+    /// LL |     impl dyn Foo + 'static where Self: 'static {
+    ///    |                    ^^^^^^^             ^^^^^^^
+    /// LL |         fn hello(&self) where Self: 'static {}
+    ///    |                                     ^^^^^^^
+    /// ```
+    fn explain_impl_static_obligation(
+        &self,
+        diag: &mut Diag<'_>,
+        code: &ObligationCauseCode<'tcx>,
+        outlived_fr: RegionVid,
+    ) {
+        let tcx = self.infcx.tcx;
+        let ObligationCauseCode::MethodCallConstraint(ty, call_span) = code else {
+            return;
+        };
+        let ty::FnDef(def_id, args) = ty.kind() else {
+            return;
+        };
+        let Ok(Some(instance)) = ty::Instance::resolve(
+            tcx,
+            self.param_env,
+            *def_id,
+            self.infcx.resolve_vars_if_possible(args),
+        ) else {
+            return;
+        };
+        let def_id = instance.def_id();
+        let parent = tcx.parent(def_id);
+        let hir::def::DefKind::Impl { .. } = tcx.def_kind(parent) else {
+            return;
+        };
+        let ty = tcx.type_of(parent).instantiate(tcx, instance.args);
+        if self.to_error_region(outlived_fr) != Some(tcx.lifetimes.re_static) {
+            return;
+        }
+        // FIXME: there's a case that's yet to be handled: `impl dyn Trait + '_ where Self: '_`
+        // causes *two* errors to be produded, one about `where Self: '_` not being allowed,
+        // and the regular error with no additional information about "lifetime may not live
+        // long enough for `'static`" without mentioning where it came from. This is because
+        // our error recovery fallback is indeed `ReStatic`. We should at some point introduce
+        // a `ReError` instead to avoid this and other similar issues.
+
+        // Look for `'static` bounds in the generics of the method and the `impl`.
+        // ```
+        // impl dyn Trait where Self: 'static {
+        //     fn foo(&self) where Self: 'static {}
+        // }
+        // ```
+        let mut predicates: Vec<Span> = tcx
+            .predicates_of(def_id)
+            .predicates
+            .iter()
+            .chain(tcx.predicates_of(parent).predicates.iter())
+            .filter_map(|(pred, pred_span)| {
+                if let Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r))) =
+                        pred.kind().no_bound_vars()
+                        // Look for `'static` bounds
+                        && r.kind() == ty::ReStatic
+                        // We only want bounds on `Self`
+                        && self.infcx.can_eq(self.param_env, ty, pred_ty)
+                {
+                    Some(*pred_span)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
+        // ```
+        // impl dyn Trait {
+        //     fn foo(&'static self) {}
+        // }
+        // ```
+        if let ty::Ref(region, _, _) = self
+            .infcx
+            .instantiate_binder_with_fresh_vars(
+                *call_span,
+                BoundRegionConversionTime::FnCall,
+                tcx.fn_sig(def_id).instantiate_identity().inputs().map_bound(|inputs| inputs[0]),
+            )
+            .kind()
+            && *region == tcx.lifetimes.re_static
+            && let Some(assoc) = tcx.opt_associated_item(def_id)
+            && assoc.fn_has_self_parameter
+        {
+            // We have a `&'static self` receiver.
+            if let Some(def_id) = def_id.as_local()
+                && let owner = tcx.expect_hir_owner_node(def_id)
+                && let Some(decl) = owner.fn_decl()
+                && let Some(ty) = decl.inputs.get(0)
+            {
+                // Point at the `&'static self` receiver.
+                predicates.push(ty.span);
+            } else {
+                // The method is not defined on the local crate, point at the signature
+                // instead of just the receiver as an approximation.
+                predicates.push(tcx.def_span(def_id))
+            }
+        }
+
+        // When we have the HIR `Node` at hand, see if we can identify an
+        // implicit `'static` bound in an `impl dyn Trait {}` and if that's
+        // the only restriction, suggest relaxing it.
+        if let Some(hir::Node::Item(hir::Item {
+            kind:
+                hir::ItemKind::Impl(hir::Impl {
+                    self_ty: hir::Ty { kind: hir::TyKind::TraitObject(_, lt, _), span, .. },
+                    ..
+                }),
+            ..
+        })) = tcx.hir().get_if_local(parent)
+            && let Some(hir::Node::ImplItem(hir::ImplItem { .. })) = tcx.hir().get_if_local(def_id)
+        {
+            let suggestion = match lt.res {
+                hir::LifetimeName::ImplicitObjectLifetimeDefault if predicates.is_empty() => {
+                    // `impl dyn Trait {}`
+                    Some((
+                        span.shrink_to_hi(),
+                        "consider relaxing the implicit `'static` requirement on the impl",
+                        " + '_",
+                    ))
+                }
+                hir::LifetimeName::Static if predicates.is_empty() => {
+                    // `impl dyn Trait + 'static {}`
+                    Some((lt.ident.span, "consider replacing this `'static` requirement", "'_"))
+                }
+                _ => None,
+            };
+            if let Some((span, msg, sugg)) = suggestion {
+                // We only emit the suggestion to write `impl dyn Trait + '_ {}` if that's the only
+                // thing needed.
+                diag.span_suggestion_verbose(span, msg, sugg, Applicability::MachineApplicable);
+                // This is redundant but needed because we won't enter the section with the
+                // additional note, so we point at the method call here too.
+                diag.span_label(
+                    *call_span,
+                    "calling this method introduces a `'static` lifetime requirement",
+                );
+            } else if let hir::LifetimeName::ImplicitObjectLifetimeDefault
+            | hir::LifetimeName::Static = lt.res
+            {
+                // Otherwise, we add the right span for the note pointing at all the places where
+                // a `'static` requirement is introduced when invoking the method on this `impl`.
+                predicates.push(lt.ident.span);
+            }
+        } else if let ty::Dynamic(_, region, ty::Dyn) = ty.kind()
+            && *region == tcx.lifetimes.re_static
+        {
+            // The `self_ty` has a `'static` bound on a `dyn Trait`, either implicit or explicit,
+            // but we don't have access to the HIR to identify which one nor to provide a targetted
+            // enough `Span`, so instead we fall back to pointing at the `impl` header instead.
+            predicates.push(tcx.def_span(parent));
+        }
+        if !predicates.is_empty() {
+            diag.span_label(
+                *call_span,
+                "calling this method introduces a `'static` lifetime requirement",
+            );
+            let a_static_lt = if predicates.len() == 1 {
+                "a `'static` lifetime requirement"
+            } else {
+                "`'static` lifetime requirements"
+            };
+            let span: MultiSpan = predicates.into();
+            diag.span_note(span, format!("the `impl` on `{ty}` has {a_static_lt}"));
+        }
     }
 
     /// Report a specialized error when `FnMut` closures return a reference to a captured variable.
@@ -810,7 +1026,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.add_static_impl_trait_suggestion(&mut diag, *fr, fr_name, *outlived_fr);
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
         self.suggest_move_on_borrowing_closure(&mut diag);
-
         diag
     }
 
@@ -927,37 +1142,32 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let tcx = self.infcx.tcx;
 
-        let instance = if let ConstraintCategory::CallArgument(Some(func_ty)) = category {
-            let (fn_did, args) = match func_ty.kind() {
-                ty::FnDef(fn_did, args) => (fn_did, args),
-                _ => return,
-            };
-            debug!(?fn_did, ?args);
+        let ConstraintCategory::CallArgument(Some(func_ty)) = category else {
+            return;
+        };
+        let ty::FnDef(fn_did, args) = func_ty.kind() else {
+            return;
+        };
+        debug!(?fn_did, ?args);
 
-            // Only suggest this on function calls, not closures
-            let ty = tcx.type_of(fn_did).instantiate_identity();
-            debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
-            if let ty::Closure(_, _) = ty.kind() {
-                return;
-            }
+        // Only suggest this on function calls, not closures
+        let ty = tcx.type_of(fn_did).instantiate_identity();
+        debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
+        if let ty::Closure(_, _) = ty.kind() {
+            return;
+        }
 
-            if let Ok(Some(instance)) = ty::Instance::resolve(
-                tcx,
-                self.param_env,
-                *fn_did,
-                self.infcx.resolve_vars_if_possible(args),
-            ) {
-                instance
-            } else {
-                return;
-            }
-        } else {
+        let Ok(Some(instance)) = ty::Instance::resolve(
+            tcx,
+            self.param_env,
+            *fn_did,
+            self.infcx.resolve_vars_if_possible(args),
+        ) else {
             return;
         };
 
-        let param = match find_param_with_region(tcx, f, o) {
-            Some(param) => param,
-            None => return,
+        let Some(param) = find_param_with_region(tcx, f, o) else {
+            return;
         };
         debug!(?param);
 
@@ -1001,12 +1211,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     "calling this method introduces the `impl`'s `'static` requirement",
                 );
                 err.subdiagnostic(self.dcx(), RequireStaticErr::UsedImpl { multi_span });
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "consider relaxing the implicit `'static` requirement",
-                    " + '_",
-                    Applicability::MaybeIncorrect,
-                );
+                if let hir::TyKind::TraitObject(traits, lt, Dyn) = self_ty.kind
+                    && lt.res == hir::LifetimeName::ImplicitObjectLifetimeDefault
+                    && traits.iter().any(|t| t.span == *span)
+                {
+                    // We already handle the case where `self_ty` has an implicit `'static`
+                    // requirement specifically in `explain_impl_static_obligation`.
+                } else {
+                    err.span_suggestion_verbose(
+                        span.shrink_to_hi(),
+                        "consider relaxing the implicit `'static` requirement",
+                        " + '_",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
                 suggested = true;
             }
         }

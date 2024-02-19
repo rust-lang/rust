@@ -2726,6 +2726,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
             | ObligationCauseCode::UnifyReceiver(..)
+            | ObligationCauseCode::MethodCallConstraint(..)
             | ObligationCauseCode::MiscObligation
             | ObligationCauseCode::WellFormed(..)
             | ObligationCauseCode::MatchImpl(..)

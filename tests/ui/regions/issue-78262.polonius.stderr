@@ -6,8 +6,14 @@ LL |     let f = |x: &dyn TT| x.func();
    |              |  |        |
    |              |  |        `x` escapes the closure body here
    |              |  |        argument requires that `'1` must outlive `'static`
+   |              |  |        calling this method introduces a `'static` lifetime requirement
    |              |  let's call the lifetime of this reference `'1`
    |              `x` is a reference that is only valid in the closure body
+   |
+help: consider relaxing the implicit `'static` requirement on the impl
+   |
+LL | impl dyn TT + '_ {
+   |             ++++
 
 error: aborting due to 1 previous error
 
