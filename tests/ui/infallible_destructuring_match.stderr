@@ -1,5 +1,5 @@
 error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
-  --> $DIR/infallible_destructuring_match.rs:28:5
+  --> tests/ui/infallible_destructuring_match.rs:28:5
    |
 LL | /     let data = match wrapper {
 LL | |         SingleVariantEnum::Variant(i) => i,
@@ -10,7 +10,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::infallible_destructuring_match)]`
 
 error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
-  --> $DIR/infallible_destructuring_match.rs:60:5
+  --> tests/ui/infallible_destructuring_match.rs:60:5
    |
 LL | /     let data = match wrapper {
 LL | |         TupleStruct(i) => i,
@@ -18,7 +18,7 @@ LL | |     };
    | |______^ help: try: `let TupleStruct(data) = wrapper;`
 
 error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
-  --> $DIR/infallible_destructuring_match.rs:84:5
+  --> tests/ui/infallible_destructuring_match.rs:84:5
    |
 LL | /     let data = match wrapper {
 LL | |         TupleStructWithNonCopy(ref n) => n,
@@ -26,7 +26,7 @@ LL | |     };
    | |______^ help: try: `let TupleStructWithNonCopy(ref data) = wrapper;`
 
 error: you seem to be trying to use `match` to destructure a single infallible pattern. Consider using `let`
-  --> $DIR/infallible_destructuring_match.rs:103:5
+  --> tests/ui/infallible_destructuring_match.rs:103:5
    |
 LL | /     let data = match wrapper {
 LL | |         Ok(i) => i,

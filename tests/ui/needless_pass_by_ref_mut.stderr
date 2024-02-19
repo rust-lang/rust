@@ -1,5 +1,5 @@
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:12:11
+  --> tests/ui/needless_pass_by_ref_mut.rs:12:11
    |
 LL | fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
    |           ^^^^^^^^^^^^^ help: consider changing to: `&Vec<u32>`
@@ -8,79 +8,79 @@ LL | fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
    = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:37:12
+  --> tests/ui/needless_pass_by_ref_mut.rs:37:12
    |
 LL | fn foo6(s: &mut Vec<u32>) {
    |            ^^^^^^^^^^^^^ help: consider changing to: `&Vec<u32>`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:50:29
+  --> tests/ui/needless_pass_by_ref_mut.rs:50:29
    |
 LL |     fn mushroom(&self, vec: &mut Vec<i32>) -> usize {
    |                             ^^^^^^^^^^^^^ help: consider changing to: `&Vec<i32>`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:55:31
+  --> tests/ui/needless_pass_by_ref_mut.rs:55:31
    |
 LL |     fn badger(&mut self, vec: &mut Vec<i32>) -> usize {
    |                               ^^^^^^^^^^^^^ help: consider changing to: `&Vec<i32>`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:132:16
+  --> tests/ui/needless_pass_by_ref_mut.rs:132:16
    |
 LL | async fn a1(x: &mut i32) {
    |                ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:136:16
+  --> tests/ui/needless_pass_by_ref_mut.rs:136:16
    |
 LL | async fn a2(x: &mut i32, y: String) {
    |                ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:140:16
+  --> tests/ui/needless_pass_by_ref_mut.rs:140:16
    |
 LL | async fn a3(x: &mut i32, y: String, z: String) {
    |                ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:144:16
+  --> tests/ui/needless_pass_by_ref_mut.rs:144:16
    |
 LL | async fn a4(x: &mut i32, y: i32) {
    |                ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:148:24
+  --> tests/ui/needless_pass_by_ref_mut.rs:148:24
    |
 LL | async fn a5(x: i32, y: &mut i32) {
    |                        ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:152:24
+  --> tests/ui/needless_pass_by_ref_mut.rs:152:24
    |
 LL | async fn a6(x: i32, y: &mut i32) {
    |                        ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:156:32
+  --> tests/ui/needless_pass_by_ref_mut.rs:156:32
    |
 LL | async fn a7(x: i32, y: i32, z: &mut i32) {
    |                                ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:160:24
+  --> tests/ui/needless_pass_by_ref_mut.rs:160:24
    |
 LL | async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
    |                        ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:160:45
+  --> tests/ui/needless_pass_by_ref_mut.rs:160:45
    |
 LL | async fn a8(x: i32, a: &mut i32, y: i32, z: &mut i32) {
    |                                             ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:194:16
+  --> tests/ui/needless_pass_by_ref_mut.rs:194:16
    |
 LL | fn cfg_warn(s: &mut u32) {}
    |                ^^^^^^^^ help: consider changing to: `&u32`
@@ -88,7 +88,7 @@ LL | fn cfg_warn(s: &mut u32) {}
    = note: this is cfg-gated and may require further changes
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:200:20
+  --> tests/ui/needless_pass_by_ref_mut.rs:200:20
    |
 LL |     fn cfg_warn(s: &mut u32) {}
    |                    ^^^^^^^^ help: consider changing to: `&u32`
@@ -96,19 +96,19 @@ LL |     fn cfg_warn(s: &mut u32) {}
    = note: this is cfg-gated and may require further changes
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:214:39
+  --> tests/ui/needless_pass_by_ref_mut.rs:214:39
    |
 LL | async fn inner_async2(x: &mut i32, y: &mut u32) {
    |                                       ^^^^^^^^ help: consider changing to: `&u32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:222:26
+  --> tests/ui/needless_pass_by_ref_mut.rs:222:26
    |
 LL | async fn inner_async3(x: &mut i32, y: &mut u32) {
    |                          ^^^^^^^^ help: consider changing to: `&i32`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:241:34
+  --> tests/ui/needless_pass_by_ref_mut.rs:241:34
    |
 LL | pub async fn call_in_closure1(n: &mut str) {
    |                                  ^^^^^^^^ help: consider changing to: `&str`
@@ -116,7 +116,7 @@ LL | pub async fn call_in_closure1(n: &mut str) {
    = warning: changing this function will impact semver compatibility
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:253:25
+  --> tests/ui/needless_pass_by_ref_mut.rs:253:25
    |
 LL | pub async fn closure(n: &mut usize) -> impl '_ + FnMut() {
    |                         ^^^^^^^^^^ help: consider changing to: `&usize`
@@ -124,7 +124,7 @@ LL | pub async fn closure(n: &mut usize) -> impl '_ + FnMut() {
    = warning: changing this function will impact semver compatibility
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:260:20
+  --> tests/ui/needless_pass_by_ref_mut.rs:260:20
    |
 LL | pub fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
    |                    ^^^^^^^^^^ help: consider changing to: `&usize`
@@ -132,7 +132,7 @@ LL | pub fn closure2(n: &mut usize) -> impl '_ + FnMut() -> usize {
    = warning: changing this function will impact semver compatibility
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:271:26
+  --> tests/ui/needless_pass_by_ref_mut.rs:271:26
    |
 LL | pub async fn closure4(n: &mut usize) {
    |                          ^^^^^^^^^^ help: consider changing to: `&usize`
@@ -140,61 +140,61 @@ LL | pub async fn closure4(n: &mut usize) {
    = warning: changing this function will impact semver compatibility
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:311:18
+  --> tests/ui/needless_pass_by_ref_mut.rs:311:18
    |
 LL | fn _empty_tup(x: &mut (())) {}
    |                  ^^^^^^^^^ help: consider changing to: `&()`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:312:19
+  --> tests/ui/needless_pass_by_ref_mut.rs:312:19
    |
 LL | fn _single_tup(x: &mut ((i32,))) {}
    |                   ^^^^^^^^^^^^^ help: consider changing to: `&(i32,)`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:313:18
+  --> tests/ui/needless_pass_by_ref_mut.rs:313:18
    |
 LL | fn _multi_tup(x: &mut ((i32, u32))) {}
    |                  ^^^^^^^^^^^^^^^^^ help: consider changing to: `&(i32, u32)`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:314:11
+  --> tests/ui/needless_pass_by_ref_mut.rs:314:11
    |
 LL | fn _fn(x: &mut (fn())) {}
    |           ^^^^^^^^^^^ help: consider changing to: `&fn()`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:316:23
+  --> tests/ui/needless_pass_by_ref_mut.rs:316:23
    |
 LL | fn _extern_rust_fn(x: &mut extern "Rust" fn()) {}
    |                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&extern "Rust" fn()`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:317:20
+  --> tests/ui/needless_pass_by_ref_mut.rs:317:20
    |
 LL | fn _extern_c_fn(x: &mut extern "C" fn()) {}
    |                    ^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&extern "C" fn()`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:318:18
+  --> tests/ui/needless_pass_by_ref_mut.rs:318:18
    |
 LL | fn _unsafe_fn(x: &mut unsafe fn()) {}
    |                  ^^^^^^^^^^^^^^^^ help: consider changing to: `&unsafe fn()`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:319:25
+  --> tests/ui/needless_pass_by_ref_mut.rs:319:25
    |
 LL | fn _unsafe_extern_fn(x: &mut unsafe extern "C" fn()) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&unsafe extern "C" fn()`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:320:20
+  --> tests/ui/needless_pass_by_ref_mut.rs:320:20
    |
 LL | fn _fn_with_arg(x: &mut unsafe extern "C" fn(i32)) {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&unsafe extern "C" fn(i32)`
 
 error: this argument is a mutable reference, but not used mutably
-  --> $DIR/needless_pass_by_ref_mut.rs:321:20
+  --> tests/ui/needless_pass_by_ref_mut.rs:321:20
    |
 LL | fn _fn_with_ret(x: &mut unsafe extern "C" fn() -> (i32)) {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&unsafe extern "C" fn() -> (i32)`

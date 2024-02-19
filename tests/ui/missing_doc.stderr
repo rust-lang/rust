@@ -1,5 +1,5 @@
 error: missing documentation for a type alias
-  --> $DIR/missing_doc.rs:16:1
+  --> tests/ui/missing_doc.rs:16:1
    |
 LL | type Typedef = String;
    | ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,19 +8,19 @@ LL | type Typedef = String;
    = help: to override `-D warnings` add `#[allow(clippy::missing_docs_in_private_items)]`
 
 error: missing documentation for a module
-  --> $DIR/missing_doc.rs:19:1
+  --> tests/ui/missing_doc.rs:19:1
    |
 LL | mod module_no_dox {}
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing_doc.rs:25:1
+  --> tests/ui/missing_doc.rs:25:1
    |
 LL | fn foo3() {}
    | ^^^^^^^^^^^^
 
 error: missing documentation for an enum
-  --> $DIR/missing_doc.rs:39:1
+  --> tests/ui/missing_doc.rs:39:1
    |
 LL | / enum Baz {
 LL | |     BazA { a: isize, b: isize },
@@ -29,43 +29,43 @@ LL | | }
    | |_^
 
 error: missing documentation for a variant
-  --> $DIR/missing_doc.rs:40:5
+  --> tests/ui/missing_doc.rs:40:5
    |
 LL |     BazA { a: isize, b: isize },
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/missing_doc.rs:40:12
+  --> tests/ui/missing_doc.rs:40:12
    |
 LL |     BazA { a: isize, b: isize },
    |            ^^^^^^^^
 
 error: missing documentation for a struct field
-  --> $DIR/missing_doc.rs:40:22
+  --> tests/ui/missing_doc.rs:40:22
    |
 LL |     BazA { a: isize, b: isize },
    |                      ^^^^^^^^
 
 error: missing documentation for a variant
-  --> $DIR/missing_doc.rs:41:5
+  --> tests/ui/missing_doc.rs:41:5
    |
 LL |     BarB,
    |     ^^^^
 
 error: missing documentation for a constant
-  --> $DIR/missing_doc.rs:65:1
+  --> tests/ui/missing_doc.rs:65:1
    |
 LL | const FOO: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a static
-  --> $DIR/missing_doc.rs:74:1
+  --> tests/ui/missing_doc.rs:74:1
    |
 LL | static BAR: u32 = 0;
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a module
-  --> $DIR/missing_doc.rs:83:1
+  --> tests/ui/missing_doc.rs:83:1
    |
 LL | / mod internal_impl {
 LL | |     /// dox
@@ -77,13 +77,13 @@ LL | | }
    | |_^
 
 error: missing documentation for a function
-  --> $DIR/missing_doc.rs:88:5
+  --> tests/ui/missing_doc.rs:88:5
    |
 LL |     fn undocumented3() {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: missing documentation for a function
-  --> $DIR/missing_doc.rs:94:9
+  --> tests/ui/missing_doc.rs:94:9
    |
 LL |         fn also_undocumented2() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: casting a character literal to `u8` truncates
-  --> $DIR/char_lit_as_u8.rs:5:13
+  --> tests/ui/char_lit_as_u8.rs:5:13
    |
 LL |     let _ = '❤' as u8;
    |             ^^^^^^^^^

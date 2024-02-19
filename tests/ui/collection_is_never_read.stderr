@@ -1,5 +1,5 @@
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:21:5
+  --> tests/ui/collection_is_never_read.rs:21:5
    |
 LL |     let mut x = HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,115 +8,115 @@ LL |     let mut x = HashMap::new();
    = help: to override `-D warnings` add `#[allow(clippy::collection_is_never_read)]`
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:62:5
+  --> tests/ui/collection_is_never_read.rs:62:5
    |
 LL |     let mut x = vec![1, 2, 3];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:78:5
+  --> tests/ui/collection_is_never_read.rs:78:5
    |
 LL |     let mut x = HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:84:5
+  --> tests/ui/collection_is_never_read.rs:84:5
    |
 LL |     let mut x = HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:93:5
+  --> tests/ui/collection_is_never_read.rs:93:5
    |
 LL |     let mut x = vec![1, 2, 3];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:100:5
+  --> tests/ui/collection_is_never_read.rs:100:5
    |
 LL |     let mut x = vec![1, 2, 3];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:107:5
+  --> tests/ui/collection_is_never_read.rs:107:5
    |
 LL |     let mut x = vec![1, 2, 3];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:115:5
+  --> tests/ui/collection_is_never_read.rs:115:5
    |
 LL |     let mut x = vec![1, 2, 3];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:133:5
+  --> tests/ui/collection_is_never_read.rs:133:5
    |
 LL |     let mut x = HashSet::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:148:5
+  --> tests/ui/collection_is_never_read.rs:148:5
    |
 LL |     let x = vec![1, 2, 3];
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:184:5
+  --> tests/ui/collection_is_never_read.rs:184:5
    |
 LL |     let mut x = std::collections::BTreeMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:188:5
+  --> tests/ui/collection_is_never_read.rs:188:5
    |
 LL |     let mut x = std::collections::BTreeSet::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:192:5
+  --> tests/ui/collection_is_never_read.rs:192:5
    |
 LL |     let mut x = std::collections::BinaryHeap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:196:5
+  --> tests/ui/collection_is_never_read.rs:196:5
    |
 LL |     let mut x = std::collections::HashMap::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:200:5
+  --> tests/ui/collection_is_never_read.rs:200:5
    |
 LL |     let mut x = std::collections::HashSet::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:204:5
+  --> tests/ui/collection_is_never_read.rs:204:5
    |
 LL |     let mut x = std::collections::LinkedList::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:208:5
+  --> tests/ui/collection_is_never_read.rs:208:5
    |
 LL |     let mut x = Some(true);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:212:5
+  --> tests/ui/collection_is_never_read.rs:212:5
    |
 LL |     let mut x = String::from("hello");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:216:5
+  --> tests/ui/collection_is_never_read.rs:216:5
    |
 LL |     let mut x = Vec::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: collection is never read
-  --> $DIR/collection_is_never_read.rs:221:5
+  --> tests/ui/collection_is_never_read.rs:221:5
    |
 LL |     let mut x = std::collections::VecDeque::new();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace_macro.rs:10:21
+  --> tests/ui/mem_replace_macro.rs:10:21
    |
 LL |     let _ = inline!(std::mem::replace($s, Default::default()));
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:15:13
+  --> tests/ui/if_same_then_else2.rs:15:13
    |
 LL |       if true {
    |  _____________^
@@ -12,7 +12,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:24:12
+  --> tests/ui/if_same_then_else2.rs:24:12
    |
 LL |       } else {
    |  ____________^
@@ -27,7 +27,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:36:13
+  --> tests/ui/if_same_then_else2.rs:36:13
    |
 LL |       if true {
    |  _____________^
@@ -36,7 +36,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:38:12
+  --> tests/ui/if_same_then_else2.rs:38:12
    |
 LL |       } else {
    |  ____________^
@@ -45,7 +45,7 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:43:13
+  --> tests/ui/if_same_then_else2.rs:43:13
    |
 LL |       if true {
    |  _____________^
@@ -54,7 +54,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:45:12
+  --> tests/ui/if_same_then_else2.rs:45:12
    |
 LL |       } else {
    |  ____________^
@@ -63,19 +63,19 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:93:21
+  --> tests/ui/if_same_then_else2.rs:93:21
    |
 LL |     let _ = if true { f32::NAN } else { f32::NAN };
    |                     ^^^^^^^^^^^^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:93:39
+  --> tests/ui/if_same_then_else2.rs:93:39
    |
 LL |     let _ = if true { f32::NAN } else { f32::NAN };
    |                                       ^^^^^^^^^^^^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:96:13
+  --> tests/ui/if_same_then_else2.rs:96:13
    |
 LL |       if true {
    |  _____________^
@@ -84,7 +84,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:98:12
+  --> tests/ui/if_same_then_else2.rs:98:12
    |
 LL |       } else {
    |  ____________^
@@ -93,7 +93,7 @@ LL | |     }
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else2.rs:120:20
+  --> tests/ui/if_same_then_else2.rs:120:20
    |
 LL |       } else if true {
    |  ____________________^
@@ -103,7 +103,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else2.rs:123:12
+  --> tests/ui/if_same_then_else2.rs:123:12
    |
 LL |       } else {
    |  ____________^

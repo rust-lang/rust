@@ -1,5 +1,5 @@
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
-  --> $DIR/if_let_mutex.rs:10:5
+  --> tests/ui/if_let_mutex.rs:10:5
    |
 LL |       if let Err(locked) = m.lock() {
    |       ^                    - this Mutex will remain locked for the entire `if let`-block...
@@ -19,7 +19,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::if_let_mutex)]`
 
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
-  --> $DIR/if_let_mutex.rs:23:5
+  --> tests/ui/if_let_mutex.rs:23:5
    |
 LL |       if let Some(locked) = m.lock().unwrap().deref() {
    |       ^                     - this Mutex will remain locked for the entire `if let`-block...
@@ -37,7 +37,7 @@ LL | |     };
    = help: move the lock call outside of the `if let ...` expression
 
 error: calling `Mutex::lock` inside the scope of another `Mutex::lock` causes a deadlock
-  --> $DIR/if_let_mutex.rs:45:5
+  --> tests/ui/if_let_mutex.rs:45:5
    |
 LL |       if let Ok(i) = mutex.lock() {
    |       ^              ----- this Mutex will remain locked for the entire `if let`-block...

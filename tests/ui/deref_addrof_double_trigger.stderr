@@ -1,5 +1,5 @@
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof_double_trigger.rs:10:14
+  --> tests/ui/deref_addrof_double_trigger.rs:10:14
    |
 LL |     let b = **&&a;
    |              ^^^^ help: try: `&a`
@@ -8,13 +8,13 @@ LL |     let b = **&&a;
    = help: to override `-D warnings` add `#[allow(clippy::deref_addrof)]`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof_double_trigger.rs:16:17
+  --> tests/ui/deref_addrof_double_trigger.rs:16:17
    |
 LL |         let y = *&mut x;
    |                 ^^^^^^^ help: try: `x`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof_double_trigger.rs:24:18
+  --> tests/ui/deref_addrof_double_trigger.rs:24:18
    |
 LL |         let y = **&mut &mut x;
    |                  ^^^^^^^^^^^^ help: try: `&mut x`

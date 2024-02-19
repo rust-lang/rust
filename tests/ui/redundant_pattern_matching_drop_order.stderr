@@ -1,5 +1,5 @@
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:15:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:15:12
    |
 LL |     if let Ok(_) = m.lock() {}
    |     -------^^^^^----------- help: try: `if m.lock().is_ok()`
@@ -10,7 +10,7 @@ LL |     if let Ok(_) = m.lock() {}
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:16:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:16:12
    |
 LL |     if let Err(_) = Err::<(), _>(m.lock().unwrap().0) {}
    |     -------^^^^^^------------------------------------ help: try: `if Err::<(), _>(m.lock().unwrap().0).is_err()`
@@ -19,7 +19,7 @@ LL |     if let Err(_) = Err::<(), _>(m.lock().unwrap().0) {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:19:16
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:19:16
    |
 LL |         if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
    |         -------^^^^^----------------------------------------- help: try: `if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok()`
@@ -28,7 +28,7 @@ LL |         if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:21:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:21:12
    |
 LL |     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {
    |     -------^^^^^----------------------------------------- help: try: `if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok()`
@@ -37,31 +37,31 @@ LL |     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:24:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:24:12
    |
 LL |     if let Ok(_) = Ok::<_, std::sync::MutexGuard<()>>(()) {}
    |     -------^^^^^----------------------------------------- help: try: `if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:25:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:25:12
    |
 LL |     if let Err(_) = Err::<std::sync::MutexGuard<()>, _>(()) {}
    |     -------^^^^^^------------------------------------------ help: try: `if Err::<std::sync::MutexGuard<()>, _>(()).is_err()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:27:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:27:12
    |
 LL |     if let Ok(_) = Ok::<_, ()>(String::new()) {}
    |     -------^^^^^----------------------------- help: try: `if Ok::<_, ()>(String::new()).is_ok()`
 
 error: redundant pattern matching, consider using `is_err()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:28:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:28:12
    |
 LL |     if let Err(_) = Err::<(), _>((String::new(), ())) {}
    |     -------^^^^^^------------------------------------ help: try: `if Err::<(), _>((String::new(), ())).is_err()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:31:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:31:12
    |
 LL |     if let Some(_) = Some(m.lock()) {}
    |     -------^^^^^^^----------------- help: try: `if Some(m.lock()).is_some()`
@@ -70,7 +70,7 @@ LL |     if let Some(_) = Some(m.lock()) {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:32:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:32:12
    |
 LL |     if let Some(_) = Some(m.lock().unwrap().0) {}
    |     -------^^^^^^^---------------------------- help: try: `if Some(m.lock().unwrap().0).is_some()`
@@ -79,7 +79,7 @@ LL |     if let Some(_) = Some(m.lock().unwrap().0) {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:35:16
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:35:16
    |
 LL |         if let None = None::<std::sync::MutexGuard<()>> {}
    |         -------^^^^------------------------------------ help: try: `if None::<std::sync::MutexGuard<()>>.is_none()`
@@ -88,7 +88,7 @@ LL |         if let None = None::<std::sync::MutexGuard<()>> {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:37:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:37:12
    |
 LL |     if let None = None::<std::sync::MutexGuard<()>> {
    |     -------^^^^------------------------------------ help: try: `if None::<std::sync::MutexGuard<()>>.is_none()`
@@ -97,25 +97,25 @@ LL |     if let None = None::<std::sync::MutexGuard<()>> {
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:41:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:41:12
    |
 LL |     if let None = None::<std::sync::MutexGuard<()>> {}
    |     -------^^^^------------------------------------ help: try: `if None::<std::sync::MutexGuard<()>>.is_none()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:43:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:43:12
    |
 LL |     if let Some(_) = Some(String::new()) {}
    |     -------^^^^^^^---------------------- help: try: `if Some(String::new()).is_some()`
 
 error: redundant pattern matching, consider using `is_some()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:44:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:44:12
    |
 LL |     if let Some(_) = Some((String::new(), ())) {}
    |     -------^^^^^^^---------------------------- help: try: `if Some((String::new(), ())).is_some()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:47:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:47:12
    |
 LL |     if let Ready(_) = Ready(m.lock()) {}
    |     -------^^^^^^^^------------------ help: try: `if Ready(m.lock()).is_ready()`
@@ -124,7 +124,7 @@ LL |     if let Ready(_) = Ready(m.lock()) {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:48:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:48:12
    |
 LL |     if let Ready(_) = Ready(m.lock().unwrap().0) {}
    |     -------^^^^^^^^----------------------------- help: try: `if Ready(m.lock().unwrap().0).is_ready()`
@@ -133,7 +133,7 @@ LL |     if let Ready(_) = Ready(m.lock().unwrap().0) {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:51:16
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:51:16
    |
 LL |         if let Pending = Pending::<std::sync::MutexGuard<()>> {}
    |         -------^^^^^^^--------------------------------------- help: try: `if Pending::<std::sync::MutexGuard<()>>.is_pending()`
@@ -142,7 +142,7 @@ LL |         if let Pending = Pending::<std::sync::MutexGuard<()>> {}
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:53:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:53:12
    |
 LL |     if let Pending = Pending::<std::sync::MutexGuard<()>> {
    |     -------^^^^^^^--------------------------------------- help: try: `if Pending::<std::sync::MutexGuard<()>>.is_pending()`
@@ -151,19 +151,19 @@ LL |     if let Pending = Pending::<std::sync::MutexGuard<()>> {
    = note: add `#[allow(clippy::redundant_pattern_matching)]` if this is important
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:57:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:57:12
    |
 LL |     if let Pending = Pending::<std::sync::MutexGuard<()>> {}
    |     -------^^^^^^^--------------------------------------- help: try: `if Pending::<std::sync::MutexGuard<()>>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:59:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:59:12
    |
 LL |     if let Ready(_) = Ready(String::new()) {}
    |     -------^^^^^^^^----------------------- help: try: `if Ready(String::new()).is_ready()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> $DIR/redundant_pattern_matching_drop_order.rs:60:12
+  --> tests/ui/redundant_pattern_matching_drop_order.rs:60:12
    |
 LL |     if let Ready(_) = Ready((String::new(), ())) {}
    |     -------^^^^^^^^----------------------------- help: try: `if Ready((String::new(), ())).is_ready()`

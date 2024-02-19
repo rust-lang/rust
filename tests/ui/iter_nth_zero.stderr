@@ -1,5 +1,5 @@
 error: called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent
-  --> $DIR/iter_nth_zero.rs:18:14
+  --> tests/ui/iter_nth_zero.rs:18:14
    |
 LL |     let _x = s.iter().nth(0);
    |              ^^^^^^^^^^^^^^^ help: try calling `.next()` instead of `.nth(0)`: `s.iter().next()`
@@ -8,13 +8,13 @@ LL |     let _x = s.iter().nth(0);
    = help: to override `-D warnings` add `#[allow(clippy::iter_nth_zero)]`
 
 error: called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent
-  --> $DIR/iter_nth_zero.rs:23:14
+  --> tests/ui/iter_nth_zero.rs:23:14
    |
 LL |     let _y = iter.nth(0);
    |              ^^^^^^^^^^^ help: try calling `.next()` instead of `.nth(0)`: `iter.next()`
 
 error: called `.nth(0)` on a `std::iter::Iterator`, when `.next()` is equivalent
-  --> $DIR/iter_nth_zero.rs:28:22
+  --> tests/ui/iter_nth_zero.rs:28:22
    |
 LL |     let _unwrapped = iter2.nth(0).unwrap();
    |                      ^^^^^^^^^^^^ help: try calling `.next()` instead of `.nth(0)`: `iter2.next()`

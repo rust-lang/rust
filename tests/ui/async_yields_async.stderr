@@ -1,5 +1,5 @@
 error: an async construct yields a type which is itself awaitable
-  --> $DIR/async_yields_async.rs:39:9
+  --> tests/ui/async_yields_async.rs:39:9
    |
 LL |        let _h = async {
    |  _____________________-
@@ -20,7 +20,7 @@ LL +         }.await
    |
 
 error: an async construct yields a type which is itself awaitable
-  --> $DIR/async_yields_async.rs:44:9
+  --> tests/ui/async_yields_async.rs:44:9
    |
 LL |       let _i = async {
    |  ____________________-
@@ -33,7 +33,7 @@ LL | |     };
    | |_____- outer async construct
 
 error: an async construct yields a type which is itself awaitable
-  --> $DIR/async_yields_async.rs:50:9
+  --> tests/ui/async_yields_async.rs:50:9
    |
 LL |        let _j = async || {
    |  ________________________-
@@ -52,7 +52,7 @@ LL +         }.await
    |
 
 error: an async construct yields a type which is itself awaitable
-  --> $DIR/async_yields_async.rs:55:9
+  --> tests/ui/async_yields_async.rs:55:9
    |
 LL |       let _k = async || {
    |  _______________________-
@@ -65,7 +65,7 @@ LL | |     };
    | |_____- outer async construct
 
 error: an async construct yields a type which is itself awaitable
-  --> $DIR/async_yields_async.rs:57:23
+  --> tests/ui/async_yields_async.rs:57:23
    |
 LL |     let _l = async || CustomFutureType;
    |                       ^^^^^^^^^^^^^^^^
@@ -75,7 +75,7 @@ LL |     let _l = async || CustomFutureType;
    |                       help: consider awaiting this value: `CustomFutureType.await`
 
 error: an async construct yields a type which is itself awaitable
-  --> $DIR/async_yields_async.rs:63:9
+  --> tests/ui/async_yields_async.rs:63:9
    |
 LL |       let _m = async || {
    |  _______________________-

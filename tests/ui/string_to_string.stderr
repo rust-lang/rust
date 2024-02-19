@@ -1,5 +1,5 @@
 error: `to_string()` called on a `String`
-  --> $DIR/string_to_string.rs:6:17
+  --> tests/ui/string_to_string.rs:6:17
    |
 LL |     let mut v = message.to_string();
    |                 ^^^^^^^^^^^^^^^^^^^

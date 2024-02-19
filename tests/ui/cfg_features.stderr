@@ -1,5 +1,5 @@
 error: 'feature' may be misspelled as 'features'
-  --> $DIR/cfg_features.rs:4:11
+  --> tests/ui/cfg_features.rs:4:11
    |
 LL |     #[cfg(features = "not-really-a-feature")]
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `feature = "not-really-a-feature"`
@@ -8,43 +8,43 @@ LL |     #[cfg(features = "not-really-a-feature")]
    = help: to override `-D warnings` add `#[allow(clippy::maybe_misused_cfg)]`
 
 error: 'feature' may be misspelled as 'features'
-  --> $DIR/cfg_features.rs:9:34
+  --> tests/ui/cfg_features.rs:9:34
    |
 LL |     #[cfg(all(feature = "right", features = "wrong"))]
    |                                  ^^^^^^^^^^^^^^^^^^ help: did you mean: `feature = "wrong"`
 
 error: 'feature' may be misspelled as 'features'
-  --> $DIR/cfg_features.rs:13:15
+  --> tests/ui/cfg_features.rs:13:15
    |
 LL |     #[cfg(all(features = "wrong1", any(feature = "right", features = "wrong2", feature, features)))]
    |               ^^^^^^^^^^^^^^^^^^^ help: did you mean: `feature = "wrong1"`
 
 error: 'feature' may be misspelled as 'features'
-  --> $DIR/cfg_features.rs:13:59
+  --> tests/ui/cfg_features.rs:13:59
    |
 LL |     #[cfg(all(features = "wrong1", any(feature = "right", features = "wrong2", feature, features)))]
    |                                                           ^^^^^^^^^^^^^^^^^^^ help: did you mean: `feature = "wrong2"`
 
 error: 'test' may be misspelled as 'tests'
-  --> $DIR/cfg_features.rs:18:11
+  --> tests/ui/cfg_features.rs:18:11
    |
 LL |     #[cfg(tests)]
    |           ^^^^^ help: did you mean: `test`
 
 error: 'test' may be misspelled as 'Test'
-  --> $DIR/cfg_features.rs:21:11
+  --> tests/ui/cfg_features.rs:21:11
    |
 LL |     #[cfg(Test)]
    |           ^^^^ help: did you mean: `test`
 
 error: 'test' may be misspelled as 'tests'
-  --> $DIR/cfg_features.rs:25:15
+  --> tests/ui/cfg_features.rs:25:15
    |
 LL |     #[cfg(all(tests, Test))]
    |               ^^^^^ help: did you mean: `test`
 
 error: 'test' may be misspelled as 'Test'
-  --> $DIR/cfg_features.rs:25:22
+  --> tests/ui/cfg_features.rs:25:22
    |
 LL |     #[cfg(all(tests, Test))]
    |                      ^^^^ help: did you mean: `test`

@@ -1,5 +1,5 @@
 error: this union has the default representation
-  --> $DIR/default_union_representation.rs:4:1
+  --> tests/ui/default_union_representation.rs:4:1
    |
 LL | / union NoAttribute {
 LL | |
@@ -13,7 +13,7 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::default_union_representation)]`
 
 error: this union has the default representation
-  --> $DIR/default_union_representation.rs:17:1
+  --> tests/ui/default_union_representation.rs:17:1
    |
 LL | / union ReprPacked {
 LL | |
@@ -25,7 +25,7 @@ LL | | }
    = help: consider annotating `ReprPacked` with `#[repr(C)]` to explicitly specify memory layout
 
 error: this union has the default representation
-  --> $DIR/default_union_representation.rs:36:1
+  --> tests/ui/default_union_representation.rs:36:1
    |
 LL | / union ReprAlign {
 LL | |
@@ -37,7 +37,7 @@ LL | | }
    = help: consider annotating `ReprAlign` with `#[repr(C)]` to explicitly specify memory layout
 
 error: this union has the default representation
-  --> $DIR/default_union_representation.rs:57:1
+  --> tests/ui/default_union_representation.rs:57:1
    |
 LL | / union ZSTAndTwoFields {
 LL | |

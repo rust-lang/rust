@@ -1,5 +1,5 @@
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:9:39
+  --> tests/ui/needless_collect_indirect.rs:9:39
    |
 LL |     let indirect_iter = sample.iter().collect::<Vec<_>>();
    |                                       ^^^^^^^
@@ -18,7 +18,7 @@ LL ~     sample.iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:13:38
+  --> tests/ui/needless_collect_indirect.rs:13:38
    |
 LL |     let indirect_len = sample.iter().collect::<VecDeque<_>>();
    |                                      ^^^^^^^
@@ -34,7 +34,7 @@ LL ~     sample.iter().count();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:16:40
+  --> tests/ui/needless_collect_indirect.rs:16:40
    |
 LL |     let indirect_empty = sample.iter().collect::<VecDeque<_>>();
    |                                        ^^^^^^^
@@ -50,7 +50,7 @@ LL ~     sample.iter().next().is_none();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:19:43
+  --> tests/ui/needless_collect_indirect.rs:19:43
    |
 LL |     let indirect_contains = sample.iter().collect::<VecDeque<_>>();
    |                                           ^^^^^^^
@@ -66,7 +66,7 @@ LL ~     sample.iter().any(|x| x == &5);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:32:48
+  --> tests/ui/needless_collect_indirect.rs:32:48
    |
 LL |     let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
    |                                                ^^^^^^^
@@ -82,7 +82,7 @@ LL ~     sample.into_iter().any(|x| x == a);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:62:51
+  --> tests/ui/needless_collect_indirect.rs:62:51
    |
 LL |         let buffer: Vec<&str> = string.split('/').collect();
    |                                                   ^^^^^^^
@@ -98,7 +98,7 @@ LL ~         string.split('/').count()
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:68:55
+  --> tests/ui/needless_collect_indirect.rs:68:55
    |
 LL |         let indirect_len: VecDeque<_> = sample.iter().collect();
    |                                                       ^^^^^^^
@@ -114,7 +114,7 @@ LL ~         sample.iter().count()
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:74:57
+  --> tests/ui/needless_collect_indirect.rs:74:57
    |
 LL |         let indirect_len: LinkedList<_> = sample.iter().collect();
    |                                                         ^^^^^^^
@@ -130,7 +130,7 @@ LL ~         sample.iter().count()
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:80:57
+  --> tests/ui/needless_collect_indirect.rs:80:57
    |
 LL |         let indirect_len: BinaryHeap<_> = sample.iter().collect();
    |                                                         ^^^^^^^
@@ -146,7 +146,7 @@ LL ~         sample.iter().count()
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:141:59
+  --> tests/ui/needless_collect_indirect.rs:141:59
    |
 LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
    |                                                           ^^^^^^^
@@ -164,7 +164,7 @@ LL ~             vec.iter().map(|k| k * k).any(|x| x == i);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:167:59
+  --> tests/ui/needless_collect_indirect.rs:167:59
    |
 LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
    |                                                           ^^^^^^^
@@ -182,7 +182,7 @@ LL ~             vec.iter().map(|k| k * k).any(|x| x == n);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:197:63
+  --> tests/ui/needless_collect_indirect.rs:197:63
    |
 LL |                 let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
    |                                                               ^^^^^^^
@@ -200,7 +200,7 @@ LL ~                 vec.iter().map(|k| k * k).any(|x| x == n);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:234:59
+  --> tests/ui/needless_collect_indirect.rs:234:59
    |
 LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
    |                                                           ^^^^^^^
@@ -218,7 +218,7 @@ LL ~                 vec.iter().map(|k| k * k).any(|x| x == n);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:260:26
+  --> tests/ui/needless_collect_indirect.rs:260:26
    |
 LL |         let w = v.iter().collect::<Vec<_>>();
    |                          ^^^^^^^
@@ -235,7 +235,7 @@ LL ~         for _ in 0..v.iter().count() {
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:283:30
+  --> tests/ui/needless_collect_indirect.rs:283:30
    |
 LL |         let mut w = v.iter().collect::<Vec<_>>();
    |                              ^^^^^^^
@@ -252,7 +252,7 @@ LL ~         while 1 == v.iter().count() {
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:306:30
+  --> tests/ui/needless_collect_indirect.rs:306:30
    |
 LL |         let mut w = v.iter().collect::<Vec<_>>();
    |                              ^^^^^^^

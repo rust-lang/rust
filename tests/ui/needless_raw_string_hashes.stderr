@@ -1,5 +1,5 @@
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:5:5
+  --> tests/ui/needless_raw_string_hashes.rs:5:5
    |
 LL |     r#"\aaa"#;
    |     ^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     r"\aaa";
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:6:5
+  --> tests/ui/needless_raw_string_hashes.rs:6:5
    |
 LL |     r##"Hello "world"!"##;
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     r#"Hello "world"!"#;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:7:5
+  --> tests/ui/needless_raw_string_hashes.rs:7:5
    |
 LL |     r######" "### "## "# "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     r####" "### "## "# "####;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:8:5
+  --> tests/ui/needless_raw_string_hashes.rs:8:5
    |
 LL |     r######" "aa" "# "## "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     r###" "aa" "# "## "###;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:9:5
+  --> tests/ui/needless_raw_string_hashes.rs:9:5
    |
 LL |     br#"\aaa"#;
    |     ^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     br"\aaa";
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:10:5
+  --> tests/ui/needless_raw_string_hashes.rs:10:5
    |
 LL |     br##"Hello "world"!"##;
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     br#"Hello "world"!"#;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:11:5
+  --> tests/ui/needless_raw_string_hashes.rs:11:5
    |
 LL |     br######" "### "## "# "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     br####" "### "## "# "####;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:12:5
+  --> tests/ui/needless_raw_string_hashes.rs:12:5
    |
 LL |     br######" "aa" "# "## "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL +     br###" "aa" "# "## "###;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:13:5
+  --> tests/ui/needless_raw_string_hashes.rs:13:5
    |
 LL |     cr#"\aaa"#;
    |     ^^^^^^^^^^
@@ -109,7 +109,7 @@ LL +     cr"\aaa";
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:14:5
+  --> tests/ui/needless_raw_string_hashes.rs:14:5
    |
 LL |     cr##"Hello "world"!"##;
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL +     cr#"Hello "world"!"#;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:15:5
+  --> tests/ui/needless_raw_string_hashes.rs:15:5
    |
 LL |     cr######" "### "## "# "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -133,7 +133,7 @@ LL +     cr####" "### "## "# "####;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:16:5
+  --> tests/ui/needless_raw_string_hashes.rs:16:5
    |
 LL |     cr######" "aa" "# "## "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -145,7 +145,7 @@ LL +     cr###" "aa" "# "## "###;
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:18:5
+  --> tests/ui/needless_raw_string_hashes.rs:18:5
    |
 LL | /     r#"
 LL | |         \a
@@ -164,7 +164,7 @@ LL ~     ";
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:24:5
+  --> tests/ui/needless_raw_string_hashes.rs:24:5
    |
 LL |     r###"rust"###;
    |     ^^^^^^^^^^^^^
@@ -176,7 +176,7 @@ LL +     r"rust";
    |
 
 error: unnecessary hashes around raw string literal
-  --> $DIR/needless_raw_string_hashes.rs:25:5
+  --> tests/ui/needless_raw_string_hashes.rs:25:5
    |
 LL |     r#"hello world"#;
    |     ^^^^^^^^^^^^^^^^

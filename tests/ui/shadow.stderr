@@ -1,11 +1,11 @@
 error: `x` is shadowed by itself in `x`
-  --> $DIR/shadow.rs:24:9
+  --> tests/ui/shadow.rs:24:9
    |
 LL |     let x = x;
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:23:9
+  --> tests/ui/shadow.rs:23:9
    |
 LL |     let x = 1;
    |         ^
@@ -13,49 +13,49 @@ LL |     let x = 1;
    = help: to override `-D warnings` add `#[allow(clippy::shadow_same)]`
 
 error: `mut x` is shadowed by itself in `&x`
-  --> $DIR/shadow.rs:25:13
+  --> tests/ui/shadow.rs:25:13
    |
 LL |     let mut x = &x;
    |             ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:24:9
+  --> tests/ui/shadow.rs:24:9
    |
 LL |     let x = x;
    |         ^
 
 error: `x` is shadowed by itself in `&mut x`
-  --> $DIR/shadow.rs:26:9
+  --> tests/ui/shadow.rs:26:9
    |
 LL |     let x = &mut x;
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:25:9
+  --> tests/ui/shadow.rs:25:9
    |
 LL |     let mut x = &x;
    |         ^^^^^
 
 error: `x` is shadowed by itself in `*x`
-  --> $DIR/shadow.rs:27:9
+  --> tests/ui/shadow.rs:27:9
    |
 LL |     let x = *x;
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:26:9
+  --> tests/ui/shadow.rs:26:9
    |
 LL |     let x = &mut x;
    |         ^
 
 error: `x` is shadowed
-  --> $DIR/shadow.rs:32:9
+  --> tests/ui/shadow.rs:32:9
    |
 LL |     let x = x.0;
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:31:9
+  --> tests/ui/shadow.rs:31:9
    |
 LL |     let x = ([[0]], ());
    |         ^
@@ -63,97 +63,97 @@ LL |     let x = ([[0]], ());
    = help: to override `-D warnings` add `#[allow(clippy::shadow_reuse)]`
 
 error: `x` is shadowed
-  --> $DIR/shadow.rs:33:9
+  --> tests/ui/shadow.rs:33:9
    |
 LL |     let x = x[0];
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:32:9
+  --> tests/ui/shadow.rs:32:9
    |
 LL |     let x = x.0;
    |         ^
 
 error: `x` is shadowed
-  --> $DIR/shadow.rs:34:10
+  --> tests/ui/shadow.rs:34:10
    |
 LL |     let [x] = x;
    |          ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:33:9
+  --> tests/ui/shadow.rs:33:9
    |
 LL |     let x = x[0];
    |         ^
 
 error: `x` is shadowed
-  --> $DIR/shadow.rs:35:9
+  --> tests/ui/shadow.rs:35:9
    |
 LL |     let x = Some(x);
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:34:10
+  --> tests/ui/shadow.rs:34:10
    |
 LL |     let [x] = x;
    |          ^
 
 error: `x` is shadowed
-  --> $DIR/shadow.rs:36:9
+  --> tests/ui/shadow.rs:36:9
    |
 LL |     let x = foo(x);
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:35:9
+  --> tests/ui/shadow.rs:35:9
    |
 LL |     let x = Some(x);
    |         ^
 
 error: `x` is shadowed
-  --> $DIR/shadow.rs:37:9
+  --> tests/ui/shadow.rs:37:9
    |
 LL |     let x = || x;
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:36:9
+  --> tests/ui/shadow.rs:36:9
    |
 LL |     let x = foo(x);
    |         ^
 
 error: `x` is shadowed
-  --> $DIR/shadow.rs:38:9
+  --> tests/ui/shadow.rs:38:9
    |
 LL |     let x = Some(1).map(|_| x)?;
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:37:9
+  --> tests/ui/shadow.rs:37:9
    |
 LL |     let x = || x;
    |         ^
 
 error: `y` is shadowed
-  --> $DIR/shadow.rs:40:9
+  --> tests/ui/shadow.rs:40:9
    |
 LL |     let y = match y {
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:39:9
+  --> tests/ui/shadow.rs:39:9
    |
 LL |     let y = 1;
    |         ^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:55:9
+  --> tests/ui/shadow.rs:55:9
    |
 LL |     let x = 2;
    |         ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:54:9
+  --> tests/ui/shadow.rs:54:9
    |
 LL |     let x = 1;
    |         ^
@@ -161,121 +161,121 @@ LL |     let x = 1;
    = help: to override `-D warnings` add `#[allow(clippy::shadow_unrelated)]`
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:60:13
+  --> tests/ui/shadow.rs:60:13
    |
 LL |         let x = 1;
    |             ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:59:10
+  --> tests/ui/shadow.rs:59:10
    |
 LL |     fn f(x: u32) {
    |          ^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:65:14
+  --> tests/ui/shadow.rs:65:14
    |
 LL |         Some(x) => {
    |              ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:62:9
+  --> tests/ui/shadow.rs:62:9
    |
 LL |     let x = 1;
    |         ^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:66:17
+  --> tests/ui/shadow.rs:66:17
    |
 LL |             let x = 1;
    |                 ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:65:14
+  --> tests/ui/shadow.rs:65:14
    |
 LL |         Some(x) => {
    |              ^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:70:17
+  --> tests/ui/shadow.rs:70:17
    |
 LL |     if let Some(x) = Some(1) {}
    |                 ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:62:9
+  --> tests/ui/shadow.rs:62:9
    |
 LL |     let x = 1;
    |         ^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:71:20
+  --> tests/ui/shadow.rs:71:20
    |
 LL |     while let Some(x) = Some(1) {}
    |                    ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:62:9
+  --> tests/ui/shadow.rs:62:9
    |
 LL |     let x = 1;
    |         ^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:72:15
+  --> tests/ui/shadow.rs:72:15
    |
 LL |     let _ = |[x]: [u32; 1]| {
    |               ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:62:9
+  --> tests/ui/shadow.rs:62:9
    |
 LL |     let x = 1;
    |         ^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:73:13
+  --> tests/ui/shadow.rs:73:13
    |
 LL |         let x = 1;
    |             ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:72:15
+  --> tests/ui/shadow.rs:72:15
    |
 LL |     let _ = |[x]: [u32; 1]| {
    |               ^
 
 error: `y` is shadowed
-  --> $DIR/shadow.rs:76:17
+  --> tests/ui/shadow.rs:76:17
    |
 LL |     if let Some(y) = y {}
    |                 ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:75:9
+  --> tests/ui/shadow.rs:75:9
    |
 LL |     let y = Some(1);
    |         ^
 
 error: `_b` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:112:9
+  --> tests/ui/shadow.rs:112:9
    |
 LL |     let _b = _a;
    |         ^^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:111:28
+  --> tests/ui/shadow.rs:111:28
    |
 LL | pub async fn foo2(_a: i32, _b: i64) {
    |                            ^^
 
 error: `x` shadows a previous, unrelated binding
-  --> $DIR/shadow.rs:118:21
+  --> tests/ui/shadow.rs:118:21
    |
 LL |         if let Some(x) = Some(1) { x } else { 1 }
    |                     ^
    |
 note: previous binding is here
-  --> $DIR/shadow.rs:117:13
+  --> tests/ui/shadow.rs:117:13
    |
 LL |         let x = 1;
    |             ^

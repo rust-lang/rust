@@ -1,5 +1,5 @@
 error: empty string literal in `writeln!`
-  --> $DIR/writeln_empty_string.rs:9:5
+  --> tests/ui/writeln_empty_string.rs:9:5
    |
 LL |     writeln!(v, "");
    |     ^^^^^^^^^^----^
@@ -10,7 +10,7 @@ LL |     writeln!(v, "");
    = help: to override `-D warnings` add `#[allow(clippy::writeln_empty_string)]`
 
 error: empty string literal in `writeln!`
-  --> $DIR/writeln_empty_string.rs:12:5
+  --> tests/ui/writeln_empty_string.rs:12:5
    |
 LL |     writeln!(suggestion, "");
    |     ^^^^^^^^^^^^^^^^^^^----^

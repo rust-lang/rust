@@ -1,5 +1,5 @@
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:33:9
+  --> tests/ui/redundant_field_names.rs:33:9
    |
 LL |         gender: gender,
    |         ^^^^^^^^^^^^^^ help: replace it with: `gender`
@@ -8,43 +8,43 @@ LL |         gender: gender,
    = help: to override `-D warnings` add `#[allow(clippy::redundant_field_names)]`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:34:9
+  --> tests/ui/redundant_field_names.rs:34:9
    |
 LL |         age: age,
    |         ^^^^^^^^ help: replace it with: `age`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:55:25
+  --> tests/ui/redundant_field_names.rs:55:25
    |
 LL |     let _ = RangeFrom { start: start };
    |                         ^^^^^^^^^^^^ help: replace it with: `start`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:56:23
+  --> tests/ui/redundant_field_names.rs:56:23
    |
 LL |     let _ = RangeTo { end: end };
    |                       ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:57:21
+  --> tests/ui/redundant_field_names.rs:57:21
    |
 LL |     let _ = Range { start: start, end: end };
    |                     ^^^^^^^^^^^^ help: replace it with: `start`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:57:35
+  --> tests/ui/redundant_field_names.rs:57:35
    |
 LL |     let _ = Range { start: start, end: end };
    |                                   ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:59:32
+  --> tests/ui/redundant_field_names.rs:59:32
    |
 LL |     let _ = RangeToInclusive { end: end };
    |                                ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:88:25
+  --> tests/ui/redundant_field_names.rs:88:25
    |
 LL |     let _ = RangeFrom { start: start };
    |                         ^^^^^^^^^^^^ help: replace it with: `start`

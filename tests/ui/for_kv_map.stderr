@@ -1,5 +1,5 @@
 error: you seem to want to iterate on a map's values
-  --> $DIR/for_kv_map.rs:9:19
+  --> tests/ui/for_kv_map.rs:9:19
    |
 LL |     for (_, v) in &m {
    |                   ^^
@@ -12,7 +12,7 @@ LL |     for v in m.values() {
    |         ~    ~~~~~~~~~~
 
 error: you seem to want to iterate on a map's values
-  --> $DIR/for_kv_map.rs:16:19
+  --> tests/ui/for_kv_map.rs:16:19
    |
 LL |     for (_, v) in &*m {
    |                   ^^^
@@ -23,7 +23,7 @@ LL |     for v in (*m).values() {
    |         ~    ~~~~~~~~~~~~~
 
 error: you seem to want to iterate on a map's values
-  --> $DIR/for_kv_map.rs:25:19
+  --> tests/ui/for_kv_map.rs:25:19
    |
 LL |     for (_, v) in &mut m {
    |                   ^^^^^^
@@ -34,7 +34,7 @@ LL |     for v in m.values_mut() {
    |         ~    ~~~~~~~~~~~~~~
 
 error: you seem to want to iterate on a map's values
-  --> $DIR/for_kv_map.rs:31:19
+  --> tests/ui/for_kv_map.rs:31:19
    |
 LL |     for (_, v) in &mut *m {
    |                   ^^^^^^^
@@ -45,7 +45,7 @@ LL |     for v in (*m).values_mut() {
    |         ~    ~~~~~~~~~~~~~~~~~
 
 error: you seem to want to iterate on a map's keys
-  --> $DIR/for_kv_map.rs:38:24
+  --> tests/ui/for_kv_map.rs:38:24
    |
 LL |     for (k, _value) in rm {
    |                        ^^

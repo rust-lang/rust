@@ -1,5 +1,5 @@
 error: this `.find_map` can be written more simply using `.find`
-  --> $DIR/unnecessary_find_map.rs:4:13
+  --> tests/ui/unnecessary_find_map.rs:4:13
    |
 LL |     let _ = (0..4).find_map(|x| if x > 1 { Some(x) } else { None });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = (0..4).find_map(|x| if x > 1 { Some(x) } else { None });
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_find_map)]`
 
 error: this `.find_map` can be written more simply using `.find`
-  --> $DIR/unnecessary_find_map.rs:7:13
+  --> tests/ui/unnecessary_find_map.rs:7:13
    |
 LL |       let _ = (0..4).find_map(|x| {
    |  _____________^
@@ -21,7 +21,7 @@ LL | |     });
    | |______^
 
 error: this `.find_map` can be written more simply using `.find`
-  --> $DIR/unnecessary_find_map.rs:14:13
+  --> tests/ui/unnecessary_find_map.rs:14:13
    |
 LL |       let _ = (0..4).find_map(|x| match x {
    |  _____________^
@@ -32,13 +32,13 @@ LL | |     });
    | |______^
 
 error: this `.find_map` can be written more simply using `.map(..).next()`
-  --> $DIR/unnecessary_find_map.rs:20:13
+  --> tests/ui/unnecessary_find_map.rs:20:13
    |
 LL |     let _ = (0..4).find_map(|x| Some(x + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this `.find_map` can be written more simply using `.find`
-  --> $DIR/unnecessary_find_map.rs:32:14
+  --> tests/ui/unnecessary_find_map.rs:32:14
    |
 LL |     let _x = std::iter::once(1).find_map(|n| (n > 1).then_some(n));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

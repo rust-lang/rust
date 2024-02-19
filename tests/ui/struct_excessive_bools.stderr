@@ -1,5 +1,5 @@
 error: more than 3 bools in a struct
-  --> $DIR/struct_excessive_bools.rs:22:1
+  --> tests/ui/struct_excessive_bools.rs:22:1
    |
 LL | / struct BadFoo {
 LL | |
@@ -15,7 +15,7 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::struct_excessive_bools)]`
 
 error: more than 3 bools in a struct
-  --> $DIR/struct_excessive_bools.rs:39:5
+  --> tests/ui/struct_excessive_bools.rs:39:5
    |
 LL | /     struct FooFoo {
 LL | |

@@ -1,5 +1,5 @@
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:7:1
+  --> tests/ui/doc_errors.rs:7:1
    |
 LL | pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,37 +8,37 @@ LL | pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
    = help: to override `-D warnings` add `#[allow(clippy::missing_errors_doc)]`
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:13:1
+  --> tests/ui/doc_errors.rs:13:1
    |
 LL | pub async fn async_pub_fn_missing_errors_header() -> Result<(), ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:19:1
+  --> tests/ui/doc_errors.rs:19:1
    |
 LL | pub fn pub_fn_returning_io_result() -> io::Result<()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:25:1
+  --> tests/ui/doc_errors.rs:25:1
    |
 LL | pub async fn async_pub_fn_returning_io_result() -> io::Result<()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:56:5
+  --> tests/ui/doc_errors.rs:56:5
    |
 LL |     pub fn pub_method_missing_errors_header() -> Result<(), ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:62:5
+  --> tests/ui/doc_errors.rs:62:5
    |
 LL |     pub async fn async_pub_method_missing_errors_header() -> Result<(), ()> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function returning `Result` missing `# Errors` section
-  --> $DIR/doc_errors.rs:113:5
+  --> tests/ui/doc_errors.rs:113:5
    |
 LL |     fn trait_method_missing_errors_header() -> Result<(), ()>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

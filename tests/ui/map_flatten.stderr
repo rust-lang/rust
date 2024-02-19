@@ -1,5 +1,5 @@
 error: called `map(..).flatten()` on `Option`
-  --> $DIR/map_flatten.rs:8:10
+  --> tests/ui/map_flatten.rs:8:10
    |
 LL |           .map(|x| {
    |  __________^
@@ -27,7 +27,7 @@ LL ~         });
    |
 
 error: called `map(..).flatten()` on `Result`
-  --> $DIR/map_flatten.rs:20:10
+  --> tests/ui/map_flatten.rs:20:10
    |
 LL |           .map(|x| {
    |  __________^
@@ -52,7 +52,7 @@ LL ~         });
    |
 
 error: called `map(..).flatten()` on `Result`
-  --> $DIR/map_flatten.rs:33:10
+  --> tests/ui/map_flatten.rs:33:10
    |
 LL |           .map(|res| {
    |  __________^
@@ -78,7 +78,7 @@ LL ~         });
    |
 
 error: called `map(..).flatten()` on `Iterator`
-  --> $DIR/map_flatten.rs:46:10
+  --> tests/ui/map_flatten.rs:46:10
    |
 LL |           .map(|some_value| {
    |  __________^

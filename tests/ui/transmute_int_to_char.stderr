@@ -1,5 +1,5 @@
 error: transmute from a `u32` to a `char`
-  --> $DIR/transmute_int_to_char.rs:4:28
+  --> tests/ui/transmute_int_to_char.rs:4:28
    |
 LL |     let _: char = unsafe { std::mem::transmute(0_u32) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_u32).unwrap()`
@@ -8,7 +8,7 @@ LL |     let _: char = unsafe { std::mem::transmute(0_u32) };
    = help: to override `-D warnings` add `#[allow(clippy::transmute_int_to_char)]`
 
 error: transmute from a `i32` to a `char`
-  --> $DIR/transmute_int_to_char.rs:7:28
+  --> tests/ui/transmute_int_to_char.rs:7:28
    |
 LL |     let _: char = unsafe { std::mem::transmute(0_i32) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::char::from_u32(0_i32 as u32).unwrap()`

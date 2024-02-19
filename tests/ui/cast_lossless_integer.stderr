@@ -1,5 +1,5 @@
 error: casting `i8` to `i16` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:6:13
+  --> tests/ui/cast_lossless_integer.rs:6:13
    |
 LL |     let _ = 1i8 as i16;
    |             ^^^^^^^^^^ help: try: `i16::from(1i8)`
@@ -8,121 +8,121 @@ LL |     let _ = 1i8 as i16;
    = help: to override `-D warnings` add `#[allow(clippy::cast_lossless)]`
 
 error: casting `i8` to `i32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:7:13
+  --> tests/ui/cast_lossless_integer.rs:7:13
    |
 LL |     let _ = 1i8 as i32;
    |             ^^^^^^^^^^ help: try: `i32::from(1i8)`
 
 error: casting `i8` to `i64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:8:13
+  --> tests/ui/cast_lossless_integer.rs:8:13
    |
 LL |     let _ = 1i8 as i64;
    |             ^^^^^^^^^^ help: try: `i64::from(1i8)`
 
 error: casting `u8` to `i16` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:9:13
+  --> tests/ui/cast_lossless_integer.rs:9:13
    |
 LL |     let _ = 1u8 as i16;
    |             ^^^^^^^^^^ help: try: `i16::from(1u8)`
 
 error: casting `u8` to `i32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:10:13
+  --> tests/ui/cast_lossless_integer.rs:10:13
    |
 LL |     let _ = 1u8 as i32;
    |             ^^^^^^^^^^ help: try: `i32::from(1u8)`
 
 error: casting `u8` to `i64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:11:13
+  --> tests/ui/cast_lossless_integer.rs:11:13
    |
 LL |     let _ = 1u8 as i64;
    |             ^^^^^^^^^^ help: try: `i64::from(1u8)`
 
 error: casting `u8` to `u16` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:12:13
+  --> tests/ui/cast_lossless_integer.rs:12:13
    |
 LL |     let _ = 1u8 as u16;
    |             ^^^^^^^^^^ help: try: `u16::from(1u8)`
 
 error: casting `u8` to `u32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:13:13
+  --> tests/ui/cast_lossless_integer.rs:13:13
    |
 LL |     let _ = 1u8 as u32;
    |             ^^^^^^^^^^ help: try: `u32::from(1u8)`
 
 error: casting `u8` to `u64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:14:13
+  --> tests/ui/cast_lossless_integer.rs:14:13
    |
 LL |     let _ = 1u8 as u64;
    |             ^^^^^^^^^^ help: try: `u64::from(1u8)`
 
 error: casting `i16` to `i32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:15:13
+  --> tests/ui/cast_lossless_integer.rs:15:13
    |
 LL |     let _ = 1i16 as i32;
    |             ^^^^^^^^^^^ help: try: `i32::from(1i16)`
 
 error: casting `i16` to `i64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:16:13
+  --> tests/ui/cast_lossless_integer.rs:16:13
    |
 LL |     let _ = 1i16 as i64;
    |             ^^^^^^^^^^^ help: try: `i64::from(1i16)`
 
 error: casting `u16` to `i32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:17:13
+  --> tests/ui/cast_lossless_integer.rs:17:13
    |
 LL |     let _ = 1u16 as i32;
    |             ^^^^^^^^^^^ help: try: `i32::from(1u16)`
 
 error: casting `u16` to `i64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:18:13
+  --> tests/ui/cast_lossless_integer.rs:18:13
    |
 LL |     let _ = 1u16 as i64;
    |             ^^^^^^^^^^^ help: try: `i64::from(1u16)`
 
 error: casting `u16` to `u32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:19:13
+  --> tests/ui/cast_lossless_integer.rs:19:13
    |
 LL |     let _ = 1u16 as u32;
    |             ^^^^^^^^^^^ help: try: `u32::from(1u16)`
 
 error: casting `u16` to `u64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:20:13
+  --> tests/ui/cast_lossless_integer.rs:20:13
    |
 LL |     let _ = 1u16 as u64;
    |             ^^^^^^^^^^^ help: try: `u64::from(1u16)`
 
 error: casting `i32` to `i64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:21:13
+  --> tests/ui/cast_lossless_integer.rs:21:13
    |
 LL |     let _ = 1i32 as i64;
    |             ^^^^^^^^^^^ help: try: `i64::from(1i32)`
 
 error: casting `u32` to `i64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:22:13
+  --> tests/ui/cast_lossless_integer.rs:22:13
    |
 LL |     let _ = 1u32 as i64;
    |             ^^^^^^^^^^^ help: try: `i64::from(1u32)`
 
 error: casting `u32` to `u64` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:23:13
+  --> tests/ui/cast_lossless_integer.rs:23:13
    |
 LL |     let _ = 1u32 as u64;
    |             ^^^^^^^^^^^ help: try: `u64::from(1u32)`
 
 error: casting `u8` to `u16` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:26:13
+  --> tests/ui/cast_lossless_integer.rs:26:13
    |
 LL |     let _ = (1u8 + 1u8) as u16;
    |             ^^^^^^^^^^^^^^^^^^ help: try: `u16::from(1u8 + 1u8)`
 
 error: casting `i8` to `i32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:60:13
+  --> tests/ui/cast_lossless_integer.rs:60:13
    |
 LL |     let _ = sign_cast!(x, u8, i8) as i32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::from(sign_cast!(x, u8, i8))`
 
 error: casting `i8` to `i32` may become silently lossy if you later change the type
-  --> $DIR/cast_lossless_integer.rs:61:13
+  --> tests/ui/cast_lossless_integer.rs:61:13
    |
 LL |     let _ = (sign_cast!(x, u8, i8) + 1) as i32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `i32::from(sign_cast!(x, u8, i8) + 1)`

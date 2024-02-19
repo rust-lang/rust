@@ -1,5 +1,5 @@
 error: manual implementation of an assign operation
-  --> $DIR/string_add.rs:13:9
+  --> tests/ui/string_add.rs:13:9
    |
 LL |         x = x + ".";
    |         ^^^^^^^^^^^ help: replace it with: `x += "."`
@@ -8,7 +8,7 @@ LL |         x = x + ".";
    = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> $DIR/string_add.rs:13:13
+  --> tests/ui/string_add.rs:13:13
    |
 LL |         x = x + ".";
    |             ^^^^^^^
@@ -17,13 +17,13 @@ LL |         x = x + ".";
    = help: to override `-D warnings` add `#[allow(clippy::string_add)]`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> $DIR/string_add.rs:17:13
+  --> tests/ui/string_add.rs:17:13
    |
 LL |     let z = y + "...";
    |             ^^^^^^^^^
 
 error: manual implementation of an assign operation
-  --> $DIR/string_add.rs:22:5
+  --> tests/ui/string_add.rs:22:5
    |
 LL |     x = x + 1;
    |     ^^^^^^^^^ help: replace it with: `x += 1`

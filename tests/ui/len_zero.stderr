@@ -1,5 +1,5 @@
 error: length comparison to zero
-  --> $DIR/len_zero.rs:82:8
+  --> tests/ui/len_zero.rs:82:8
    |
 LL |     if x.len() == 0 {
    |        ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `x.is_empty()`
@@ -8,13 +8,13 @@ LL |     if x.len() == 0 {
    = help: to override `-D warnings` add `#[allow(clippy::len_zero)]`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:86:8
+  --> tests/ui/len_zero.rs:86:8
    |
 LL |     if "".len() == 0 {}
    |        ^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `"".is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/len_zero.rs:95:20
+  --> tests/ui/len_zero.rs:95:20
    |
 LL |     println!("{}", *s1 == "");
    |                    ^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s1.is_empty()`
@@ -23,121 +23,121 @@ LL |     println!("{}", *s1 == "");
    = help: to override `-D warnings` add `#[allow(clippy::comparison_to_empty)]`
 
 error: comparison to empty slice
-  --> $DIR/len_zero.rs:96:20
+  --> tests/ui/len_zero.rs:96:20
    |
 LL |     println!("{}", **s2 == "");
    |                    ^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s2.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/len_zero.rs:97:20
+  --> tests/ui/len_zero.rs:97:20
    |
 LL |     println!("{}", ***s3 == "");
    |                    ^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s3.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/len_zero.rs:98:20
+  --> tests/ui/len_zero.rs:98:20
    |
 LL |     println!("{}", ****s4 == "");
    |                    ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s4.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/len_zero.rs:99:20
+  --> tests/ui/len_zero.rs:99:20
    |
 LL |     println!("{}", *****s5 == "");
    |                    ^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `s5.is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/len_zero.rs:100:20
+  --> tests/ui/len_zero.rs:100:20
    |
 LL |     println!("{}", ******(s6) == "");
    |                    ^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(s6).is_empty()`
 
 error: comparison to empty slice
-  --> $DIR/len_zero.rs:103:20
+  --> tests/ui/len_zero.rs:103:20
    |
 LL |     println!("{}", &**d2s == "");
    |                    ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `(**d2s).is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:118:8
+  --> tests/ui/len_zero.rs:118:8
    |
 LL |     if has_is_empty.len() == 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:121:8
+  --> tests/ui/len_zero.rs:121:8
    |
 LL |     if has_is_empty.len() != 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:124:8
+  --> tests/ui/len_zero.rs:124:8
    |
 LL |     if has_is_empty.len() > 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:127:8
+  --> tests/ui/len_zero.rs:127:8
    |
 LL |     if has_is_empty.len() < 1 {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:130:8
+  --> tests/ui/len_zero.rs:130:8
    |
 LL |     if has_is_empty.len() >= 1 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:141:8
+  --> tests/ui/len_zero.rs:141:8
    |
 LL |     if 0 == has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:144:8
+  --> tests/ui/len_zero.rs:144:8
    |
 LL |     if 0 != has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:147:8
+  --> tests/ui/len_zero.rs:147:8
    |
 LL |     if 0 < has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:150:8
+  --> tests/ui/len_zero.rs:150:8
    |
 LL |     if 1 <= has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to one
-  --> $DIR/len_zero.rs:153:8
+  --> tests/ui/len_zero.rs:153:8
    |
 LL |     if 1 > has_is_empty.len() {
    |        ^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:167:8
+  --> tests/ui/len_zero.rs:167:8
    |
 LL |     if with_is_empty.len() == 0 {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `with_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:179:6
+  --> tests/ui/len_zero.rs:179:6
    |
 LL |     (has_is_empty.len() > 0).then(|| println!("This can happen."));
    |      ^^^^^^^^^^^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:180:6
+  --> tests/ui/len_zero.rs:180:6
    |
 LL |     (has_is_empty.len() == 0).then(|| println!("Or this!"));
    |      ^^^^^^^^^^^^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `has_is_empty.is_empty()`
 
 error: length comparison to zero
-  --> $DIR/len_zero.rs:184:8
+  --> tests/ui/len_zero.rs:184:8
    |
 LL |     if b.len() != 0 {}
    |        ^^^^^^^^^^^^ help: using `!is_empty` is clearer and more explicit: `!b.is_empty()`

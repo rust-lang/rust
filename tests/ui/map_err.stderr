@@ -1,5 +1,5 @@
 error: `map_err(|_|...` wildcard pattern discards the original error
-  --> $DIR/map_err.rs:22:32
+  --> tests/ui/map_err.rs:22:32
    |
 LL |     println!("{:?}", x.map_err(|_| Errors::Ignored));
    |                                ^^^

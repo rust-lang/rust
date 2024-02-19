@@ -1,5 +1,5 @@
 error: the loop variable `i` is only used to index `ns`
-  --> $DIR/needless_range_loop2.rs:11:14
+  --> tests/ui/needless_range_loop2.rs:11:14
    |
 LL |     for i in 3..10 {
    |              ^^^^^
@@ -12,7 +12,7 @@ LL |     for <item> in ns.iter().take(10).skip(3) {
    |         ~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: the loop variable `i` is only used to index `ms`
-  --> $DIR/needless_range_loop2.rs:34:14
+  --> tests/ui/needless_range_loop2.rs:34:14
    |
 LL |     for i in 0..ms.len() {
    |              ^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     for <item> in &mut ms {
    |         ~~~~~~    ~~~~~~~
 
 error: the loop variable `i` is only used to index `ms`
-  --> $DIR/needless_range_loop2.rs:41:14
+  --> tests/ui/needless_range_loop2.rs:41:14
    |
 LL |     for i in 0..ms.len() {
    |              ^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     for <item> in &mut ms {
    |         ~~~~~~    ~~~~~~~
 
 error: the loop variable `i` is only used to index `vec`
-  --> $DIR/needless_range_loop2.rs:66:14
+  --> tests/ui/needless_range_loop2.rs:66:14
    |
 LL |     for i in x..x + 4 {
    |              ^^^^^^^^
@@ -45,7 +45,7 @@ LL |     for <item> in vec.iter_mut().skip(x).take(4) {
    |         ~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: the loop variable `i` is only used to index `vec`
-  --> $DIR/needless_range_loop2.rs:74:14
+  --> tests/ui/needless_range_loop2.rs:74:14
    |
 LL |     for i in x..=x + 4 {
    |              ^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     for <item> in vec.iter_mut().skip(x).take(4 + 1) {
    |         ~~~~~~    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: the loop variable `i` is only used to index `arr`
-  --> $DIR/needless_range_loop2.rs:81:14
+  --> tests/ui/needless_range_loop2.rs:81:14
    |
 LL |     for i in 0..3 {
    |              ^^^^
@@ -67,7 +67,7 @@ LL |     for <item> in &arr {
    |         ~~~~~~    ~~~~
 
 error: the loop variable `i` is only used to index `arr`
-  --> $DIR/needless_range_loop2.rs:86:14
+  --> tests/ui/needless_range_loop2.rs:86:14
    |
 LL |     for i in 0..2 {
    |              ^^^^
@@ -78,7 +78,7 @@ LL |     for <item> in arr.iter().take(2) {
    |         ~~~~~~    ~~~~~~~~~~~~~~~~~~
 
 error: the loop variable `i` is only used to index `arr`
-  --> $DIR/needless_range_loop2.rs:91:14
+  --> tests/ui/needless_range_loop2.rs:91:14
    |
 LL |     for i in 1..3 {
    |              ^^^^

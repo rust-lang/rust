@@ -1,5 +1,5 @@
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/manual_while_let_some.rs:21:9
+  --> tests/ui/manual_while_let_some.rs:21:9
    |
 LL |         let number = numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL ~
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/manual_while_let_some.rs:29:9
+  --> tests/ui/manual_while_let_some.rs:29:9
    |
 LL |         let number = val.numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL ~
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/manual_while_let_some.rs:33:20
+  --> tests/ui/manual_while_let_some.rs:33:20
    |
 LL |         accept_i32(numbers.pop().unwrap());
    |                    ^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL ~         accept_i32(element);
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/manual_while_let_some.rs:37:20
+  --> tests/ui/manual_while_let_some.rs:37:20
    |
 LL |         accept_i32(numbers.pop().expect(""));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL ~         accept_i32(element);
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/manual_while_let_some.rs:80:9
+  --> tests/ui/manual_while_let_some.rs:80:9
    |
 LL |         let (a, b) = numbers.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL ~
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/manual_while_let_some.rs:84:26
+  --> tests/ui/manual_while_let_some.rs:84:26
    |
 LL |         accept_i32_tuple(numbers.pop().unwrap());
    |                          ^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL ~         accept_i32_tuple(element);
    |
 
 error: you seem to be trying to pop elements from a `Vec` in a loop
-  --> $DIR/manual_while_let_some.rs:89:9
+  --> tests/ui/manual_while_let_some.rs:89:9
    |
 LL |         let Foo { a, b } = results.pop().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

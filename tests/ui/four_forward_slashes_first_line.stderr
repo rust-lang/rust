@@ -1,5 +1,5 @@
 error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
-  --> $DIR/four_forward_slashes_first_line.rs:1:1
+  --> tests/ui/four_forward_slashes_first_line.rs:1:1
    |
 LL | / //// borked doc comment on the first line. doesn't combust!
 LL | | fn a() {}

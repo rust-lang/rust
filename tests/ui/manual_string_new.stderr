@@ -1,5 +1,5 @@
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:14:13
+  --> tests/ui/manual_string_new.rs:14:13
    |
 LL |     let _ = "".to_string();
    |             ^^^^^^^^^^^^^^ help: consider using: `String::new()`
@@ -8,49 +8,49 @@ LL |     let _ = "".to_string();
    = help: to override `-D warnings` add `#[allow(clippy::manual_string_new)]`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:17:13
+  --> tests/ui/manual_string_new.rs:17:13
    |
 LL |     let _ = "".to_owned();
    |             ^^^^^^^^^^^^^ help: consider using: `String::new()`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:20:21
+  --> tests/ui/manual_string_new.rs:20:21
    |
 LL |     let _: String = "".into();
    |                     ^^^^^^^^^ help: consider using: `String::new()`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:27:13
+  --> tests/ui/manual_string_new.rs:27:13
    |
 LL |     let _ = String::from("");
    |             ^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:28:13
+  --> tests/ui/manual_string_new.rs:28:13
    |
 LL |     let _ = <String>::from("");
    |             ^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:33:13
+  --> tests/ui/manual_string_new.rs:33:13
    |
 LL |     let _ = String::try_from("").unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:39:21
+  --> tests/ui/manual_string_new.rs:39:21
    |
 LL |     let _: String = From::from("");
    |                     ^^^^^^^^^^^^^^ help: consider using: `String::new()`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:44:21
+  --> tests/ui/manual_string_new.rs:44:21
    |
 LL |     let _: String = TryFrom::try_from("").unwrap();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`
 
 error: empty String is being created manually
-  --> $DIR/manual_string_new.rs:47:21
+  --> tests/ui/manual_string_new.rs:47:21
    |
 LL |     let _: String = TryFrom::try_from("").expect("this should warn");
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::new()`

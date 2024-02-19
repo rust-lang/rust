@@ -1,5 +1,5 @@
 error: called `skip_while(<p>).next()` on an `Iterator`
-  --> $DIR/skip_while_next.rs:14:13
+  --> tests/ui/skip_while_next.rs:14:13
    |
 LL |     let _ = v.iter().skip_while(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let _ = v.iter().skip_while(|&x| *x < 0).next();
    = help: to override `-D warnings` add `#[allow(clippy::skip_while_next)]`
 
 error: called `skip_while(<p>).next()` on an `Iterator`
-  --> $DIR/skip_while_next.rs:17:13
+  --> tests/ui/skip_while_next.rs:17:13
    |
 LL |       let _ = v.iter().skip_while(|&x| {
    |  _____________^

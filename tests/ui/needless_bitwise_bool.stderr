@@ -1,5 +1,5 @@
 error: use of bitwise operator instead of lazy operator between booleans
-  --> $DIR/needless_bitwise_bool.rs:22:8
+  --> tests/ui/needless_bitwise_bool.rs:22:8
    |
 LL |     if y & !x {
    |        ^^^^^^ help: try: `y && !x`

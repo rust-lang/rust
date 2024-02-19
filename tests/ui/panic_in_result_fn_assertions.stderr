@@ -1,5 +1,5 @@
 error: used `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn_assertions.rs:7:5
+  --> tests/ui/panic_in_result_fn_assertions.rs:7:5
    |
 LL | /     fn result_with_assert_with_message(x: i32) -> Result<bool, String> // should emit lint
 LL | |
@@ -11,7 +11,7 @@ LL | |     }
    |
    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn_assertions.rs:10:9
+  --> tests/ui/panic_in_result_fn_assertions.rs:10:9
    |
 LL |         assert!(x == 5, "wrong argument");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |         assert!(x == 5, "wrong argument");
    = help: to override `-D warnings` add `#[allow(clippy::panic_in_result_fn)]`
 
 error: used `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn_assertions.rs:14:5
+  --> tests/ui/panic_in_result_fn_assertions.rs:14:5
    |
 LL | /     fn result_with_assert_eq(x: i32) -> Result<bool, String> // should emit lint
 LL | |
@@ -31,13 +31,13 @@ LL | |     }
    |
    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn_assertions.rs:17:9
+  --> tests/ui/panic_in_result_fn_assertions.rs:17:9
    |
 LL |         assert_eq!(x, 5);
    |         ^^^^^^^^^^^^^^^^
 
 error: used `panic!()` or assertion in a function that returns `Result`
-  --> $DIR/panic_in_result_fn_assertions.rs:21:5
+  --> tests/ui/panic_in_result_fn_assertions.rs:21:5
    |
 LL | /     fn result_with_assert_ne(x: i32) -> Result<bool, String> // should emit lint
 LL | |
@@ -49,7 +49,7 @@ LL | |     }
    |
    = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
 note: return Err() instead of panicking
-  --> $DIR/panic_in_result_fn_assertions.rs:24:9
+  --> tests/ui/panic_in_result_fn_assertions.rs:24:9
    |
 LL |         assert_ne!(x, 1);
    |         ^^^^^^^^^^^^^^^^

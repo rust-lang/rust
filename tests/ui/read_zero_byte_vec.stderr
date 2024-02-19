@@ -1,5 +1,5 @@
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:21:5
+  --> tests/ui/read_zero_byte_vec.rs:21:5
    |
 LL |     f.read_exact(&mut data).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data.resize(20, 0); f.read_exact(&mut data)`
@@ -8,61 +8,61 @@ LL |     f.read_exact(&mut data).unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::read_zero_byte_vec)]`
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:27:5
+  --> tests/ui/read_zero_byte_vec.rs:27:5
    |
 LL |     f.read_exact(&mut data2)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `data2.resize(cap, 0); f.read_exact(&mut data2)`
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:32:5
+  --> tests/ui/read_zero_byte_vec.rs:32:5
    |
 LL |     f.read_exact(&mut data3)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:37:13
+  --> tests/ui/read_zero_byte_vec.rs:37:13
    |
 LL |     let _ = f.read(&mut data4)?;
    |             ^^^^^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:43:9
+  --> tests/ui/read_zero_byte_vec.rs:43:9
    |
 LL |         f.read(&mut data5)
    |         ^^^^^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:50:9
+  --> tests/ui/read_zero_byte_vec.rs:50:9
    |
 LL |         f.read(&mut data6)
    |         ^^^^^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:84:9
+  --> tests/ui/read_zero_byte_vec.rs:84:9
    |
 LL |         f.read(&mut v)?;
    |         ^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:94:5
+  --> tests/ui/read_zero_byte_vec.rs:94:5
    |
 LL |     r.read(&mut data).await.unwrap();
    |     ^^^^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:99:5
+  --> tests/ui/read_zero_byte_vec.rs:99:5
    |
 LL |     r.read_exact(&mut data2).await.unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:106:5
+  --> tests/ui/read_zero_byte_vec.rs:106:5
    |
 LL |     r.read(&mut data).await.unwrap();
    |     ^^^^^^^^^^^^^^^^^
 
 error: reading zero byte data to `Vec`
-  --> $DIR/read_zero_byte_vec.rs:111:5
+  --> tests/ui/read_zero_byte_vec.rs:111:5
    |
 LL |     r.read_exact(&mut data2).await.unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

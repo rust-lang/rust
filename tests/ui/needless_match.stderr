@@ -1,5 +1,5 @@
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:15:18
+  --> tests/ui/needless_match.rs:15:18
    |
 LL |       let _: i32 = match i {
    |  __________________^
@@ -14,7 +14,7 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::needless_match)]`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:22:19
+  --> tests/ui/needless_match.rs:22:19
    |
 LL |       let _: &str = match s {
    |  ___________________^
@@ -25,7 +25,7 @@ LL | |     };
    | |_____^ help: replace it with: `s`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:31:21
+  --> tests/ui/needless_match.rs:31:21
    |
 LL |       let _: Simple = match se {
    |  _____________________^
@@ -37,7 +37,7 @@ LL | |     };
    | |_____^ help: replace it with: `se`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:53:26
+  --> tests/ui/needless_match.rs:53:26
    |
 LL |       let _: Option<i32> = match x {
    |  __________________________^
@@ -47,7 +47,7 @@ LL | |     };
    | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:69:31
+  --> tests/ui/needless_match.rs:69:31
    |
 LL |       let _: Result<i32, i32> = match Ok(1) {
    |  _______________________________^
@@ -57,7 +57,7 @@ LL | |     };
    | |_____^ help: replace it with: `Ok(1)`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:73:31
+  --> tests/ui/needless_match.rs:73:31
    |
 LL |       let _: Result<i32, i32> = match func_ret_err(0_i32) {
    |  _______________________________^
@@ -67,25 +67,25 @@ LL | |     };
    | |_____^ help: replace it with: `func_ret_err(0_i32)`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:86:13
+  --> tests/ui/needless_match.rs:86:13
    |
 LL |     let _ = if let Some(a) = Some(1) { Some(a) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(1)`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:121:31
+  --> tests/ui/needless_match.rs:121:31
    |
 LL |     let _: Result<i32, i32> = if let Err(e) = x { Err(e) } else { x };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:122:31
+  --> tests/ui/needless_match.rs:122:31
    |
 LL |     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:129:21
+  --> tests/ui/needless_match.rs:129:21
    |
 LL |       let _: Simple = if let Simple::A = x {
    |  _____________________^
@@ -98,7 +98,7 @@ LL | |     };
    | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:168:26
+  --> tests/ui/needless_match.rs:168:26
    |
 LL |           let _: Complex = match ce {
    |  __________________________^
@@ -111,7 +111,7 @@ LL | |         };
    | |_________^ help: replace it with: `ce`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:252:17
+  --> tests/ui/needless_match.rs:252:17
    |
 LL |           let _ = match e {
    |  _________________^
@@ -121,7 +121,7 @@ LL | |         };
    | |_________^ help: replace it with: `e`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:258:17
+  --> tests/ui/needless_match.rs:258:17
    |
 LL |           let _ = match e {
    |  _________________^
