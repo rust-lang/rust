@@ -31,14 +31,14 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
         DiffMode::Inactive => false,
         DiffMode::Source => false,
         DiffMode::Forward => {
-            // Doesn't recognize all illegal cases (insufficient information)
-            activity != DiffActivity::Active && activity != DiffActivity::ActiveOnly
-                && activity != DiffActivity::Duplicated && activity != DiffActivity::DuplicatedOnly
+            activity == DiffActivity::Dual ||
+                activity == DiffActivity::DualOnly ||
+                activity == DiffActivity::Const
         }
         DiffMode::Reverse => {
-            // Doesn't recognize all illegal cases (insufficient information)
-            activity != DiffActivity::Duplicated && activity != DiffActivity::DuplicatedOnly
-             && activity != DiffActivity::Dual && activity != DiffActivity::DualOnly
+            activity == DiffActivity::Const ||
+                activity == DiffActivity::Active ||
+                activity == DiffActivity::ActiveOnly
         }
     }
 }
@@ -55,8 +55,10 @@ fn is_ptr_or_ref(ty: &Ty) -> bool {
 //}
 pub fn valid_ty_for_activity(ty: &P<Ty>, activity: DiffActivity) -> bool {
     if is_ptr_or_ref(ty) {
-        return activity == DiffActivity::Dual || activity == DiffActivity::DualOnly ||
-            activity == DiffActivity::Duplicated || activity == DiffActivity::DuplicatedOnly ||
+        return activity == DiffActivity::Dual ||
+            activity == DiffActivity::DualOnly ||
+            activity == DiffActivity::Duplicated ||
+            activity == DiffActivity::DuplicatedOnly ||
             activity == DiffActivity::Const;
     }
     true
@@ -85,8 +87,13 @@ pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
             }
         };
 }
-pub fn valid_input_activities(mode: DiffMode, activity_vec: &[DiffActivity]) -> bool {
-    return activity_vec.iter().any(|&x| !valid_input_activity(mode, x));
+pub fn invalid_input_activities(mode: DiffMode, activity_vec: &[DiffActivity]) -> Option<usize> {
+    for i in 0..activity_vec.len() {
+        if !valid_input_activity(mode, activity_vec[i]) {
+            return Some(i);
+        }
+    }
+    None
 }
 
 #[allow(dead_code)]

@@ -1,4 +1,4 @@
-use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode, valid_ret_activity, valid_input_activities};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode, valid_ret_activity, invalid_input_activities};
 use rustc_ast::{ast, attr, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_errors::struct_span_err;
@@ -811,17 +811,20 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> AutoDiffAttrs {
         }
     }
 
-    let msg = "Invalid activity for mode";
-    let valid_input = valid_input_activities(mode, &arg_activities);
-    let valid_ret = valid_ret_activity(mode, ret_activity);
-    if !valid_input || !valid_ret {
+    let mut msg = "".to_string();
+    if let Some(i) = invalid_input_activities(mode, &arg_activities) {
+        msg = format!("Invalid input activity {} for {} mode", arg_activities[i], mode);
+    }
+    if !valid_ret_activity(mode, ret_activity) {
+        msg = format!("Invalid return activity {} for {} mode", ret_activity, mode);
+    }
+    if msg != "".to_string() {
         tcx.sess
             .struct_span_err(attr.span, msg)
             .span_label(attr.span, "invalid activity")
             .emit();
         return AutoDiffAttrs::inactive();
     }
-
 
     AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities }
 }
