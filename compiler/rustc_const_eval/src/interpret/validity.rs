@@ -435,6 +435,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 found_bytes: has.bytes()
             },
         );
+        // Make sure this is non-null. (ZST references can be dereferenceable and null.)
+        if self.ecx.scalar_may_be_null(Scalar::from_maybe_pointer(place.ptr(), self.ecx))? {
+            throw_validation_failure!(self.path, NullPtr { ptr_kind })
+        }
         // Do not allow pointers to uninhabited types.
         if place.layout.abi.is_uninhabited() {
             let ty = place.layout.ty;
@@ -802,6 +806,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         trace!("visit_value: {:?}, {:?}", *op, op.layout);
 
         // Check primitive types -- the leaves of our recursive descent.
+        // We assume that the Scalar validity range does not restrict these values
+        // any further than `try_visit_primitive` does!
         if self.try_visit_primitive(op)? {
             return Ok(());
         }

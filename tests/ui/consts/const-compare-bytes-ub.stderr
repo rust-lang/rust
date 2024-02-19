@@ -1,14 +1,14 @@
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-compare-bytes-ub.rs:10:9
    |
-LL |         compare_bytes(0 as *const u8, 2 as *const u8, 0)
+LL |         compare_bytes(0 as *const u8, 2 as *const u8, 1)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-compare-bytes-ub.rs:14:9
    |
-LL |         compare_bytes(1 as *const u8, 0 as *const u8, 0)
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: null pointer is a dangling pointer (it has no provenance)
+LL |         compare_bytes(1 as *const u8, 0 as *const u8, 1)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: 0x1[noalloc] is a dangling pointer (it has no provenance)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-compare-bytes-ub.rs:18:9
