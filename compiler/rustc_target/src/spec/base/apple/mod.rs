@@ -97,14 +97,18 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
         _ => os.into(),
     };
 
-    let platform_version: StaticCow<str> = match os {
-        "ios" => ios_lld_platform_version(arch),
-        "tvos" => tvos_lld_platform_version(),
-        "watchos" => watchos_lld_platform_version(),
-        "macos" => macos_lld_platform_version(arch),
-        _ => unreachable!(),
-    }
-    .into();
+    let min_version: StaticCow<str> = {
+        let (major, minor) = match (os, abi) {
+            ("ios", "macabi") => mac_catalyst_deployment_target(),
+            ("ios", _) => ios_deployment_target(arch),
+            ("tvos", _) => tvos_deployment_target(),
+            ("watchos", _) => watchos_deployment_target(),
+            ("macos", _) => macos_deployment_target(arch),
+            _ => unreachable!(),
+        };
+        format!("{major}.{minor}").into()
+    };
+    let sdk_version = min_version.clone();
 
     let mut args = TargetOptions::link_args(
         LinkerFlavor::Darwin(Cc::No, Lld::No),
@@ -113,7 +117,7 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     add_link_args_iter(
         &mut args,
         LinkerFlavor::Darwin(Cc::No, Lld::No),
-        [platform_name, platform_version.clone(), platform_version].into_iter(),
+        [platform_name, min_version, sdk_version].into_iter(),
     );
     if abi != "macabi" {
         add_link_args(
@@ -268,11 +272,6 @@ fn macos_deployment_target(arch: Arch) -> (u32, u32) {
         .unwrap_or_else(|| macos_default_deployment_target(arch))
 }
 
-fn macos_lld_platform_version(arch: Arch) -> String {
-    let (major, minor) = macos_deployment_target(arch);
-    format!("{major}.{minor}")
-}
-
 pub fn macos_llvm_target(arch: Arch) -> String {
     let (major, minor) = macos_deployment_target(arch);
     format!("{}-apple-macosx{}.{}.0", arch.target_name(), major, minor)
@@ -339,11 +338,6 @@ pub fn mac_catalyst_llvm_target(arch: Arch) -> String {
     format!("{}-apple-ios{}.{}.0-macabi", arch.target_name(), major, minor)
 }
 
-fn ios_lld_platform_version(arch: Arch) -> String {
-    let (major, minor) = ios_deployment_target(arch);
-    format!("{major}.{minor}")
-}
-
 pub fn ios_sim_llvm_target(arch: Arch) -> String {
     let (major, minor) = ios_deployment_target(arch);
     format!("{}-apple-ios{}.{}.0-simulator", arch.target_name(), major, minor)
@@ -352,11 +346,6 @@ pub fn ios_sim_llvm_target(arch: Arch) -> String {
 fn tvos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
     from_set_deployment_target("TVOS_DEPLOYMENT_TARGET").unwrap_or((10, 0))
-}
-
-fn tvos_lld_platform_version() -> String {
-    let (major, minor) = tvos_deployment_target();
-    format!("{major}.{minor}")
 }
 
 pub fn tvos_llvm_target(arch: Arch) -> String {
@@ -372,11 +361,6 @@ pub fn tvos_sim_llvm_target(arch: Arch) -> String {
 fn watchos_deployment_target() -> (u32, u32) {
     // If you are looking for the default deployment target, prefer `rustc --print deployment-target`.
     from_set_deployment_target("WATCHOS_DEPLOYMENT_TARGET").unwrap_or((5, 0))
-}
-
-fn watchos_lld_platform_version() -> String {
-    let (major, minor) = watchos_deployment_target();
-    format!("{major}.{minor}")
 }
 
 pub fn watchos_sim_llvm_target(arch: Arch) -> String {
