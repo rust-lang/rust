@@ -456,12 +456,12 @@ pub trait Query: Debug + Default + Sized + for<'d> QueryDb<'d> {
     /// Name of the query method (e.g., `foo`)
     const QUERY_NAME: &'static str;
 
-    /// Extact storage for this query from the storage for its group.
+    /// Extract storage for this query from the storage for its group.
     fn query_storage<'a>(
         group_storage: &'a <Self as QueryDb<'_>>::GroupStorage,
     ) -> &'a std::sync::Arc<Self::Storage>;
 
-    /// Extact storage for this query from the storage for its group.
+    /// Extract storage for this query from the storage for its group.
     fn query_storage_mut<'a>(
         group_storage: &'a <Self as QueryDb<'_>>::GroupStorage,
     ) -> &'a std::sync::Arc<Self::Storage>;
