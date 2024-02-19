@@ -589,8 +589,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // away.)
         let (match_pair_index, match_pair) =
             candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == *test_place)?;
-        let mut fully_matched = false;
 
+        let fully_matched;
         let ret = match (&test.kind, &match_pair.pattern.kind) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
@@ -602,8 +602,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 fully_matched = true;
                 Some(variant_index.as_usize())
             }
-
-            (&TestKind::Switch { .. }, _) => None,
+            (&TestKind::Switch { .. }, _) => {
+                fully_matched = false;
+                None
+            }
 
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
@@ -617,8 +619,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let index = options.get_index_of(value).unwrap();
                 Some(index)
             }
-
             (TestKind::SwitchInt { switch_ty: _, options }, PatKind::Range(range)) => {
+                fully_matched = false;
                 let not_contained =
                     self.values_not_contained_in_range(&*range, options).unwrap_or(false);
 
@@ -628,8 +630,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     options.len()
                 })
             }
-
-            (&TestKind::SwitchInt { .. }, _) => None,
+            (&TestKind::SwitchInt { .. }, _) => {
+                fully_matched = false;
+                None
+            }
 
             (
                 &TestKind::Len { len: test_len, op: BinOp::Eq },
@@ -647,21 +651,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // test_len < pat_len. If $actual_len = test_len,
                         // then $actual_len < pat_len and we don't have
                         // enough elements.
+                        fully_matched = false;
                         Some(1)
                     }
                     (Ordering::Equal | Ordering::Greater, &Some(_)) => {
                         // This can match both if $actual_len = test_len >= pat_len,
                         // and if $actual_len > test_len. We can't advance.
+                        fully_matched = false;
                         None
                     }
                     (Ordering::Greater, &None) => {
                         // test_len != pat_len, so if $actual_len = test_len, then
                         // $actual_len != pat_len.
+                        fully_matched = false;
                         Some(1)
                     }
                 }
             }
-
             (
                 &TestKind::Len { len: test_len, op: BinOp::Ge },
                 PatKind::Slice { prefix, slice, suffix },
@@ -679,16 +685,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // test_len <= pat_len. If $actual_len < test_len,
                         // then it is also < pat_len, so the test passing is
                         // necessary (but insufficient).
+                        fully_matched = false;
                         Some(0)
                     }
                     (Ordering::Greater, &None) => {
                         // test_len > pat_len. If $actual_len >= test_len > pat_len,
                         // then we know we won't have a match.
+                        fully_matched = false;
                         Some(1)
                     }
                     (Ordering::Greater, &Some(_)) => {
                         // test_len < pat_len, and is therefore less
                         // strict. This can still go both ways.
+                        fully_matched = false;
                         None
                     }
                 }
@@ -699,13 +708,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     fully_matched = true;
                     Some(0)
                 } else {
+                    fully_matched = false;
                     // If the testing range does not overlap with pattern range,
                     // the pattern can be matched only if this test fails.
                     if !test.overlaps(pat, self.tcx, self.param_env)? { Some(1) } else { None }
                 }
             }
-
             (TestKind::Range(range), &PatKind::Constant { value }) => {
+                fully_matched = false;
                 if !range.contains(value, self.tcx, self.param_env)? {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
@@ -714,8 +724,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 }
             }
-
-            (&TestKind::Range { .. }, _) => None,
+            (&TestKind::Range { .. }, _) => {
+                fully_matched = false;
+                None
+            }
 
             (&TestKind::Eq { .. } | &TestKind::Len { .. }, _) => {
                 // The call to `self.test(&match_pair)` below is not actually used to generate any
@@ -737,6 +749,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     fully_matched = true;
                     Some(0)
                 } else {
+                    fully_matched = false;
                     None
                 }
             }
