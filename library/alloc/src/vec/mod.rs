@@ -905,10 +905,14 @@ impl<T, A: Allocator> Vec<T, A> {
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
+    #[inline(always)]
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
+        unsafe {
+            core::hint::assert_unchecked(self.len().unchecked_add(additional) <= self.capacity());
+        }
     }
 
     /// Reserves the minimum capacity for at least `additional` more elements to
@@ -1925,6 +1929,7 @@ impl<T, A: Allocator> Vec<T, A> {
             let end = self.as_mut_ptr().add(self.len);
             ptr::write(end, value);
             self.len += 1;
+            core::hint::assert_unchecked(self.len() < self.capacity());
         }
     }
 
