@@ -26,8 +26,7 @@ use buffer::Buffer;
 /// unwrapping the `BufReader<R>` with [`BufReader::into_inner`] can also cause
 /// data loss.
 ///
-// HACK(#78696): can't use `crate` for associated items
-/// [`TcpStream::read`]: super::super::super::net::TcpStream::read
+/// [`TcpStream::read`]: crate::net::TcpStream::read
 /// [`TcpStream`]: crate::net::TcpStream
 ///
 /// # Examples
