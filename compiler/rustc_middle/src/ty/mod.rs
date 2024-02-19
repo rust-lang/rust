@@ -148,6 +148,7 @@ mod generic_args;
 mod generics;
 mod impls_ty;
 mod instance;
+mod intrinsic;
 mod list;
 mod opaque_types;
 mod parameterized;

@@ -160,7 +160,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 fn_span,
                 ..
             } if let ty::FnDef(def_id, _) = *const_.ty().kind()
-                && matches!(tcx.intrinsic(def_id), Some(sym::const_eval_select)) =>
+                && tcx.is_intrinsic(def_id, sym::const_eval_select) =>
             {
                 let [tupled_args, called_in_const, called_at_rt]: [_; 3] =
                     std::mem::take(args).try_into().unwrap();
