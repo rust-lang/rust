@@ -398,10 +398,11 @@ impl Step for Rustc {
             let host = compiler.host;
             let src = builder.sysroot(compiler);
 
-            // Copy rustc/rustdoc binaries
+            // Copy rustc binary
             t!(fs::create_dir_all(image.join("bin")));
             builder.cp_r(&src.join("bin"), &image.join("bin"));
 
+            // If enabled, copy rustdoc binary
             if builder
                 .config
                 .tools
