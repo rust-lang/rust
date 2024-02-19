@@ -734,6 +734,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 remapped_types.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
+                // This code path is not reached in any tests, but may be
+                // reachable. If this is triggered, it should be converted to
+                // `span_delayed_bug` and the triggering case turned into a
+                // test.
                 tcx.dcx()
                     .span_bug(return_span, format!("could not fully resolve: {ty} => {err:?}"));
             }
@@ -914,7 +918,13 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                         .with_note(format!("hidden type inferred to be `{}`", self.ty))
                         .emit()
                 }
-                _ => self.tcx.dcx().bug("should've been able to remap region"),
+                _ => {
+                    // This code path is not reached in any tests, but may be
+                    // reachable. If this is triggered, it should be converted
+                    // to `delayed_bug` and the triggering case turned into a
+                    // test.
+                    self.tcx.dcx().bug("should've been able to remap region");
+                }
             };
             return Err(guar);
         };
@@ -1273,6 +1283,8 @@ fn compare_number_of_generics<'tcx>(
     // inheriting the generics from will also have mismatched arguments, and
     // we'll report an error for that instead. Delay a bug for safety, though.
     if trait_.is_impl_trait_in_trait() {
+        // FIXME: no tests trigger this. If you find example code that does
+        // trigger this, please add it to the test suite.
         tcx.dcx()
             .bug("errors comparing numbers of generics of trait/impl functions were not emitted");
     }

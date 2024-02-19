@@ -82,7 +82,7 @@ where
     let value = infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::new(infcx);
         let value = op(&ocx).map_err(|_| {
-            infcx.dcx().span_bug(span, format!("error performing operation: {name}"))
+            infcx.dcx().span_delayed_bug(span, format!("error performing operation: {name}"))
         })?;
         let errors = ocx.select_all_or_error();
         if errors.is_empty() {

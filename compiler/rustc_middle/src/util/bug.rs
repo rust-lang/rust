@@ -42,7 +42,7 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
 /// delayed bug, so what is the point of this? It exists to help us test the interaction of delayed
 /// bugs with the query system and incremental.
 pub fn trigger_delayed_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
-    tcx.dcx().span_bug(
+    tcx.dcx().span_delayed_bug(
         tcx.def_span(key),
         "delayed bug triggered by #[rustc_error(delayed_bug_from_inside_query)]",
     );

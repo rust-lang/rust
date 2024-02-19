@@ -12,12 +12,12 @@ pub(crate) fn lit_to_const<'tcx>(
 
     let trunc = |n| {
         let param_ty = ParamEnv::reveal_all().and(ty);
-        let width = tcx
-            .layout_of(param_ty)
-            .map_err(|_| {
+        let width = match tcx.layout_of(param_ty) {
+            Ok(layout) => layout.size,
+            Err(_) => {
                 tcx.dcx().bug(format!("couldn't compute width of literal: {:?}", lit_input.lit))
-            })?
-            .size;
+            }
+        };
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);

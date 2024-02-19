@@ -1087,12 +1087,8 @@ fn check_type_defn<'tcx>(
                 packed && {
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
                     let ty = tcx.erase_regions(ty);
-                    if ty.has_infer() {
-                        // Unresolved type expression.
-                        tcx.dcx().span_bug(item.span, format!("inference variables in {ty:?}"));
-                    } else {
-                        ty.needs_drop(tcx, tcx.param_env(item.owner_id))
-                    }
+                    assert!(!ty.has_infer());
+                    ty.needs_drop(tcx, tcx.param_env(item.owner_id))
                 }
             };
             // All fields (except for possibly the last) should be sized.

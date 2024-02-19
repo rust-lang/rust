@@ -622,7 +622,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 );
                 // If this was a hard error, don't bother continuing evaluation.
                 if is_error {
-                    let guard: rustc_errors::ErrorGuaranteed = ecx
+                    let guard = ecx
                         .tcx
                         .dcx()
                         .span_delayed_bug(span, "The deny lint should have already errored");

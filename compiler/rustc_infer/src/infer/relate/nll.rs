@@ -422,7 +422,7 @@ where
                 // Forbid inference variables in the RHS.
                 self.infcx
                     .dcx()
-                    .span_bug(self.delegate.span(), format!("unexpected inference var {b:?}",));
+                    .span_bug(self.delegate.span(), format!("unexpected inference var {b:?}"));
             }
             // FIXME(invariance): see the related FIXME above.
             _ => self.infcx.super_combine_consts(self, a, b),
