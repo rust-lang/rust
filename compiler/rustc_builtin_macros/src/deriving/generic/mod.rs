@@ -1578,14 +1578,12 @@ impl<'a> TraitDef<'a> {
                     // `unwrap_or_else` case otherwise the hygiene is wrong and we get
                     // "field `0` of struct `Point` is private" errors on tuple
                     // structs.
-                    let mut field_expr = cx.expr(
+                    let mut field_expr = cx.expr_field(
                         sp,
-                        ast::ExprKind::Field(
-                            selflike_arg.clone(),
-                            struct_field.ident.unwrap_or_else(|| {
-                                Ident::from_str_and_span(&i.to_string(), struct_field.span)
-                            }),
-                        ),
+                        selflike_arg.clone(),
+                        struct_field.ident.unwrap_or_else(|| {
+                            Ident::from_str_and_span(&i.to_string(), struct_field.span)
+                        }),
                     );
                     if is_packed {
                         // In general, fields in packed structs are copied via a
