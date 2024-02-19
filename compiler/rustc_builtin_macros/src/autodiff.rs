@@ -334,6 +334,9 @@ fn gen_enzyme_decl(
                 });
                 d_inputs.push(shadow_arg);
             }
+            DiffActivity::Const => {
+                // Nothing to do here.
+            }
             _ => {
                 dbg!(&activity);
                 panic!("Not implemented");
