@@ -440,9 +440,9 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         debug!(?self.ambient_variance, "new ambient variance");
         // Recursive calls to `relate` can overflow the stack. For example a deeper version of
         // `ui/associated-consts/issue-93775.rs`.
-        let r = ensure_sufficient_stack(|| self.relate(a, b))?;
+        let r = ensure_sufficient_stack(|| self.relate(a, b));
         self.ambient_variance = old_ambient_variance;
-        Ok(r)
+        r
     }
 
     #[instrument(level = "debug", skip(self, t2), ret)]
