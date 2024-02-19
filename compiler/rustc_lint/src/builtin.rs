@@ -393,6 +393,10 @@ impl EarlyLintPass for UnsafeCode {
                 }
             }
 
+            ast::ItemKind::GlobalAsm(..) => {
+                self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
+            }
+
             _ => {}
         }
     }
