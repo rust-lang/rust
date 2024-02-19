@@ -2256,7 +2256,9 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
         // either unique to begin with, or became one upon cloning the contents.
         unsafe { Self::get_mut_unchecked(this) }
     }
+}
 
+impl<T: Clone, A: Allocator> Arc<T, A> {
     /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
     /// clone.
     ///
@@ -2690,6 +2692,13 @@ impl<T: ?Sized> Weak<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Weak<T, A> {
+    /// Returns a reference to the underlying allocator.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn allocator(&self) -> &A {
+        &self.alloc
+    }
+
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
     /// The pointer is valid only if there are some strong references. The pointer may be dangling,
@@ -3494,7 +3503,7 @@ impl<T: ?Sized, A: Allocator> From<Box<T, A>> for Arc<T, A> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T, A: Allocator + Clone> From<Vec<T, A>> for Arc<[T], A> {
+impl<T, A: Allocator> From<Vec<T, A>> for Arc<[T], A> {
     /// Allocate a reference-counted slice and move `v`'s items into it.
     ///
     /// # Example
