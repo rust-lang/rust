@@ -731,13 +731,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         ty::Region::new_placeholder(self.infcx.tcx, placeholder)
     }
 
-    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        self.infcx.next_nll_region_var_in_universe(
-            NllRegionVariableOrigin::Existential { from_forall: false },
-            universe,
-        )
-    }
-
     fn push_outlives(
         &mut self,
         sup: ty::Region<'tcx>,

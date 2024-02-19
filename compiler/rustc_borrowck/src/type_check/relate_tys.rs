@@ -143,22 +143,6 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         reg
     }
 
-    #[instrument(skip(self), level = "debug")]
-    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        let reg = self.type_checker.infcx.next_nll_region_var_in_universe(
-            NllRegionVariableOrigin::Existential { from_forall: false },
-            universe,
-        );
-
-        if cfg!(debug_assertions) {
-            let mut var_to_origin = self.type_checker.infcx.reg_var_to_origin.borrow_mut();
-            let prev = var_to_origin.insert(reg.as_var(), RegionCtxt::Existential(None));
-            assert_eq!(prev, None);
-        }
-
-        reg
-    }
-
     fn push_outlives(
         &mut self,
         sup: ty::Region<'tcx>,

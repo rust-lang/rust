@@ -25,13 +25,11 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
 use rustc_span::{Span, Symbol};
-use std::fmt::Debug;
 
 use super::combine::ObligationEmittingRelation;
-use super::generalize::{self, Generalization};
 use crate::infer::InferCtxt;
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::{Obligation, PredicateObligations};
@@ -99,15 +97,6 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// placeholder region.
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx>;
 
-    /// Creates a new existential region in the given universe. This
-    /// is used when handling subtyping and type variables -- if we
-    /// have that `?X <: Foo<'a>`, for example, we would instantiate
-    /// `?X` with a type like `Foo<'?0>` where `'?0` is a fresh
-    /// existential variable created by this function. We would then
-    /// relate `Foo<'?0>` with `Foo<'a>` (and probably add an outlives
-    /// relation stating that `'?0: 'a`).
-    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
-
     /// Enables some optimizations if we do not expect inference variables
     /// in the RHS of the relation.
     fn forbid_inference_vars() -> bool;
@@ -153,112 +142,44 @@ where
         self.delegate.push_outlives(sup, sub, info);
     }
 
-    /// Relate a type inference variable with a value type. This works
-    /// by creating a "generalization" G of the value where all the
-    /// lifetimes are replaced with fresh inference values. This
-    /// generalization G becomes the value of the inference variable,
-    /// and is then related in turn to the value. So e.g. if you had
-    /// `vid = ?0` and `value = &'a u32`, we might first instantiate
-    /// `?0` to a type like `&'0 u32` where `'0` is a fresh variable,
-    /// and then relate `&'0 u32` with `&'a u32` (resulting in
-    /// relations between `'0` and `'a`).
-    ///
-    /// The variable `pair` can be either a `(vid, ty)` or `(ty, vid)`
-    /// -- in other words, it is always an (unresolved) inference
-    /// variable `vid` and a type `ty` that are being related, but the
-    /// vid may appear either as the "a" type or the "b" type,
-    /// depending on where it appears in the tuple. The trait
-    /// `VidValuePair` lets us work with the vid/type while preserving
-    /// the "sidedness" when necessary -- the sidedness is relevant in
-    /// particular for the variance and set of in-scope things.
-    fn relate_ty_var<PAIR: VidValuePair<'tcx>>(
-        &mut self,
-        pair: PAIR,
-    ) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("relate_ty_var({:?})", pair);
-
-        let vid = pair.vid();
-        let value_ty = pair.value_ty();
-
-        // FIXME(invariance) -- this logic assumes invariance, but that is wrong.
-        // This only presently applies to chalk integration, as NLL
-        // doesn't permit type variables to appear on both sides (and
-        // doesn't use lazy norm).
-        match *value_ty.kind() {
-            ty::Infer(ty::TyVar(value_vid)) => {
-                // Two type variables: just equate them.
-                self.infcx.inner.borrow_mut().type_variables().equate(vid, value_vid);
-                return Ok(value_ty);
-            }
-
-            _ => (),
-        }
-
-        let generalized_ty = self.generalize(value_ty, vid)?;
-        debug!("relate_ty_var: generalized_ty = {:?}", generalized_ty);
-
-        if D::forbid_inference_vars() {
-            // In NLL, we don't have type inference variables
-            // floating around, so we can do this rather imprecise
-            // variant of the occurs-check.
-            assert!(!generalized_ty.has_non_region_infer());
-        }
-
-        self.infcx.inner.borrow_mut().type_variables().instantiate(vid, generalized_ty);
-
-        // Relate the generalized kind to the original one.
-        let result = pair.relate_generalized_ty(self, generalized_ty);
-
-        debug!("relate_ty_var: complete, result = {:?}", result);
-        result
-    }
-
-    fn generalize(&mut self, ty: Ty<'tcx>, for_vid: ty::TyVid) -> RelateResult<'tcx, Ty<'tcx>> {
-        let Generalization { value_may_be_infer: ty, needs_wf: _ } = generalize::generalize(
-            self.infcx,
-            &mut self.delegate,
-            ty,
-            for_vid,
-            self.ambient_variance,
-        )?;
-
-        if ty.is_ty_var() {
-            span_bug!(self.delegate.span(), "occurs check failure in MIR typeck");
-        }
-        Ok(ty)
-    }
-
-    fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
+        let infcx = self.infcx;
+        debug_assert!(!infcx.next_trait_solver());
         let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
-        let mut generalize = |ty, ty_is_expected| {
-            let var = self.infcx.next_ty_var_id_in_universe(
+        // `handle_opaque_type` cannot handle subtyping, so to support subtyping
+        // we instead eagerly generalize here. This is a bit of a mess but will go
+        // away once we're using the new solver.
+        let mut enable_subtyping = |ty, ty_is_expected| {
+            let ty_vid = infcx.next_ty_var_id_in_universe(
                 TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: self.delegate.span(),
                 },
                 ty::UniverseIndex::ROOT,
             );
-            if ty_is_expected {
-                self.relate_ty_var((ty, var))
+
+            let variance = if ty_is_expected {
+                self.ambient_variance
             } else {
-                self.relate_ty_var((var, ty))
-            }
+                self.ambient_variance.xform(ty::Contravariant)
+            };
+
+            self.infcx.instantiate_ty_var(self, ty_is_expected, ty_vid, variance, ty)?;
+            Ok(infcx.resolve_vars_if_possible(Ty::new_infer(infcx.tcx, ty::TyVar(ty_vid))))
         };
+
         let (a, b) = match (a.kind(), b.kind()) {
-            (&ty::Alias(ty::Opaque, ..), _) => (a, generalize(b, false)?),
-            (_, &ty::Alias(ty::Opaque, ..)) => (generalize(a, true)?, b),
+            (&ty::Alias(ty::Opaque, ..), _) => (a, enable_subtyping(b, false)?),
+            (_, &ty::Alias(ty::Opaque, ..)) => (enable_subtyping(a, true)?, b),
             _ => unreachable!(
                 "expected at least one opaque type in `relate_opaques`, got {a} and {b}."
             ),
         };
         let cause = ObligationCause::dummy_with_span(self.delegate.span());
-        let obligations = self
-            .infcx
-            .handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?
-            .obligations;
+        let obligations =
+            infcx.handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?.obligations;
         self.delegate.register_obligations(obligations);
-        trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
-        Ok(a)
+        Ok(())
     }
 
     fn enter_forall<T, U>(
@@ -356,76 +277,6 @@ where
     }
 }
 
-/// When we instantiate an inference variable with a value in
-/// `relate_ty_var`, we always have the pair of a `TyVid` and a `Ty`,
-/// but the ordering may vary (depending on whether the inference
-/// variable was found on the `a` or `b` sides). Therefore, this trait
-/// allows us to factor out common code, while preserving the order
-/// when needed.
-trait VidValuePair<'tcx>: Debug {
-    /// Extract the inference variable (which could be either the
-    /// first or second part of the tuple).
-    fn vid(&self) -> ty::TyVid;
-
-    /// Extract the value it is being related to (which will be the
-    /// opposite part of the tuple from the vid).
-    fn value_ty(&self) -> Ty<'tcx>;
-
-    /// Given a generalized type G that should replace the vid, relate
-    /// G to the value, putting G on whichever side the vid would have
-    /// appeared.
-    fn relate_generalized_ty<D>(
-        &self,
-        relate: &mut TypeRelating<'_, 'tcx, D>,
-        generalized_ty: Ty<'tcx>,
-    ) -> RelateResult<'tcx, Ty<'tcx>>
-    where
-        D: TypeRelatingDelegate<'tcx>;
-}
-
-impl<'tcx> VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
-    fn vid(&self) -> ty::TyVid {
-        self.0
-    }
-
-    fn value_ty(&self) -> Ty<'tcx> {
-        self.1
-    }
-
-    fn relate_generalized_ty<D>(
-        &self,
-        relate: &mut TypeRelating<'_, 'tcx, D>,
-        generalized_ty: Ty<'tcx>,
-    ) -> RelateResult<'tcx, Ty<'tcx>>
-    where
-        D: TypeRelatingDelegate<'tcx>,
-    {
-        relate.relate(generalized_ty, self.value_ty())
-    }
-}
-
-// In this case, the "vid" is the "b" type.
-impl<'tcx> VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
-    fn vid(&self) -> ty::TyVid {
-        self.1
-    }
-
-    fn value_ty(&self) -> Ty<'tcx> {
-        self.0
-    }
-
-    fn relate_generalized_ty<D>(
-        &self,
-        relate: &mut TypeRelating<'_, 'tcx, D>,
-        generalized_ty: Ty<'tcx>,
-    ) -> RelateResult<'tcx, Ty<'tcx>>
-    where
-        D: TypeRelatingDelegate<'tcx>,
-    {
-        relate.relate(self.value_ty(), generalized_ty)
-    }
-}
-
 impl<'tcx, D> TypeRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
@@ -472,6 +323,8 @@ where
 
         if !D::forbid_inference_vars() {
             b = self.infcx.shallow_resolve(b);
+        } else {
+            assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
         }
 
         if a == b {
@@ -479,22 +332,30 @@ where
         }
 
         match (a.kind(), b.kind()) {
-            (_, &ty::Infer(ty::TyVar(vid))) => {
-                if D::forbid_inference_vars() {
-                    // Forbid inference variables in the RHS.
-                    bug!("unexpected inference var {:?}", b)
-                } else {
-                    self.relate_ty_var((a, vid))
+            (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                match self.ambient_variance {
+                    ty::Invariant => infcx.inner.borrow_mut().type_variables().equate(a_vid, b_vid),
+                    _ => unimplemented!(),
                 }
             }
 
-            (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
+            (&ty::Infer(ty::TyVar(a_vid)), _) => {
+                infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?
+            }
+
+            (_, &ty::Infer(ty::TyVar(b_vid))) => infcx.instantiate_ty_var(
+                self,
+                false,
+                b_vid,
+                self.ambient_variance.xform(ty::Contravariant),
+                a,
+            )?,
 
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
             ) if a_def_id == b_def_id || infcx.next_trait_solver() => {
-                infcx.super_combine_tys(self, a, b).or_else(|err| {
+                infcx.super_combine_tys(self, a, b).map(|_| ()).or_else(|err| {
                     // This behavior is only there for the old solver, the new solver
                     // shouldn't ever fail. Instead, it unconditionally emits an
                     // alias-relate goal.
@@ -504,22 +365,24 @@ where
                         "failure to relate an opaque to itself should result in an error later on",
                     );
                     if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
-                })
+                })?;
             }
             (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if def_id.is_local() && !self.infcx.next_trait_solver() =>
             {
-                self.relate_opaques(a, b)
+                self.relate_opaques(a, b)?;
             }
 
             _ => {
                 debug!(?a, ?b, ?self.ambient_variance);
 
                 // Will also handle unification of `IntVar` and `FloatVar`.
-                self.infcx.super_combine_tys(self, a, b)
+                self.infcx.super_combine_tys(self, a, b)?;
             }
         }
+
+        Ok(a)
     }
 
     #[instrument(skip(self), level = "trace")]
@@ -669,6 +532,10 @@ impl<'tcx, D> ObligationEmittingRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
+    fn span(&self) -> Span {
+        self.delegate.span()
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.delegate.param_env()
     }
