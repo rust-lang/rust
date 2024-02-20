@@ -1279,10 +1279,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BasicBlock {
         assert!(candidate.otherwise_block.is_none());
         assert!(candidate.pre_binding_block.is_none());
-        debug_assert!(
-            candidate.subcandidates.is_empty(),
-            "subcandidates should be empty in select_matched_candidates",
-        );
+        assert!(candidate.subcandidates.is_empty());
 
         if let Some(fake_borrows) = fake_borrows {
             // Insert a borrows of prefixes of places that are bound and are
