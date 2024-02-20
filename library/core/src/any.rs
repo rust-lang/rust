@@ -605,7 +605,8 @@ impl dyn Any + Send + Sync {
 #[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
-    // See #115620 for this representation.
+    // We avoid using `u128` because that imposes higher alignment requirements on many platforms.
+    // See issue #115620 for more information.
     t: (u64, u64),
 }
 
