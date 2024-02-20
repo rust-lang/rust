@@ -42,3 +42,7 @@ tests/ui/codegen/issue-79865-llvm-miscompile.rs
 tests/ui/std-backtrace.rs
 tests/ui/mir/alignment/packed.rs
 tests/ui/intrinsics/intrinsics-integer.rs
+tests/ui/asm/x86_64/evex512-implicit-feature.rs
+tests/ui/packed/dyn-trait.rs
+tests/ui/packed/issue-118537-field-offset-ice.rs
+tests/ui/stable-mir-print/basic_function.rs
