@@ -490,11 +490,9 @@ pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// often used as a return value, especially within the frequently-used
     /// `PResult` type. In theory, return value optimization (RVO) should avoid
     /// unnecessary copying. In practice, it does not (at the time of writing).
-    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
-    pub(crate) diag: Option<Box<Diagnostic>>,
+    diag: Option<Box<Diagnostic>>,
 
-    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
-    pub(crate) _marker: PhantomData<G>,
+    _marker: PhantomData<G>,
 }
 
 // Cloning a `DiagnosticBuilder` is a recipe for a diagnostic being emitted
@@ -1246,21 +1244,18 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Takes the diagnostic. For use by methods that consume the
     /// DiagnosticBuilder: `emit`, `cancel`, etc. Afterwards, `drop` is the
     /// only code that will be run on `self`.
-    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
-    pub(crate) fn take_diag(&mut self) -> Diagnostic {
+    fn take_diag(&mut self) -> Diagnostic {
         Box::into_inner(self.diag.take().unwrap())
     }
 
     /// Most `emit_producing_guarantee` functions use this as a starting point.
-    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
-    pub(crate) fn emit_producing_nothing(mut self) {
+    fn emit_producing_nothing(mut self) {
         let diag = self.take_diag();
         self.dcx.emit_diagnostic(diag);
     }
 
     /// `ErrorGuaranteed::emit_producing_guarantee` uses this.
-    // FIXME(nnethercote) Make private once this moves to diagnostic.rs.
-    pub(crate) fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
+    fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
         let diag = self.take_diag();
 
         // The only error levels that produce `ErrorGuaranteed` are
