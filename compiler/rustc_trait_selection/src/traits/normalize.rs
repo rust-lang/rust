@@ -101,19 +101,17 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     value: &T,
     reveal: Reveal,
 ) -> bool {
+    let mut flags = ty::TypeFlags::HAS_TY_PROJECTION
+        | ty::TypeFlags::HAS_TY_WEAK
+        | ty::TypeFlags::HAS_TY_INHERENT
+        | ty::TypeFlags::HAS_CT_PROJECTION;
+
     match reveal {
-        Reveal::UserFacing => value.has_type_flags(
-            ty::TypeFlags::HAS_TY_PROJECTION
-                | ty::TypeFlags::HAS_TY_INHERENT
-                | ty::TypeFlags::HAS_CT_PROJECTION,
-        ),
-        Reveal::All => value.has_type_flags(
-            ty::TypeFlags::HAS_TY_PROJECTION
-                | ty::TypeFlags::HAS_TY_INHERENT
-                | ty::TypeFlags::HAS_TY_OPAQUE
-                | ty::TypeFlags::HAS_CT_PROJECTION,
-        ),
+        Reveal::UserFacing => {}
+        Reveal::All => flags |= ty::TypeFlags::HAS_TY_OPAQUE,
     }
+
+    value.has_type_flags(flags)
 }
 
 struct AssocTypeNormalizer<'a, 'b, 'tcx> {
@@ -355,8 +353,6 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
                 let data = data.fold_with(self);
 
-                // FIXME(inherent_associated_types): Do we need to honor `self.eager_inference_replacement`
-                // here like `ty::Projection`?
                 project::normalize_inherent_projection(
                     self.selcx,
                     self.param_env,

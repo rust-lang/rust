@@ -133,7 +133,7 @@ fn check_always_applicable(
 
     res = res.and(check_constness(tcx, impl1_def_id, impl2_node, span));
     res = res.and(check_static_lifetimes(tcx, &parent_args, span));
-    res = res.and(check_duplicate_params(tcx, impl1_args, &parent_args, span));
+    res = res.and(check_duplicate_params(tcx, impl1_args, parent_args, span));
     res = res.and(check_predicates(tcx, impl1_def_id, impl1_args, impl2_node, impl2_args, span));
 
     res
@@ -266,15 +266,15 @@ fn unconstrained_parent_impl_args<'tcx>(
                 continue;
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projection_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, projection_ty, true));
 
-            for param in cgp::parameters_for(tcx, &projected_ty, false) {
+            for param in cgp::parameters_for(tcx, projected_ty, false) {
                 if !unconstrained_parameters.contains(&param) {
                     constrained_params.insert(param.0);
                 }
             }
 
-            unconstrained_parameters.extend(cgp::parameters_for(tcx, &projected_ty, true));
+            unconstrained_parameters.extend(cgp::parameters_for(tcx, projected_ty, true));
         }
     }
 
@@ -309,7 +309,7 @@ fn unconstrained_parent_impl_args<'tcx>(
 fn check_duplicate_params<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl1_args: GenericArgsRef<'tcx>,
-    parent_args: &Vec<GenericArg<'tcx>>,
+    parent_args: Vec<GenericArg<'tcx>>,
     span: Span,
 ) -> Result<(), ErrorGuaranteed> {
     let mut base_params = cgp::parameters_for(tcx, parent_args, true);

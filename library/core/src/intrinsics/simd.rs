@@ -259,12 +259,13 @@ extern "platform-intrinsic" {
     ///
     /// `T` must be a vector.
     ///
-    /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
+    /// `U` must be a pointer to the element type of `T`
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
     ///
     /// For each element, if the corresponding value in `mask` is `!0`, read the corresponding
-    /// pointer from `ptr`.
+    /// pointer offset from `ptr`.
+    /// The first element is loaded from `ptr`, the second from `ptr.wrapping_offset(1)` and so on.
     /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
     /// `val`.
     ///
@@ -279,12 +280,13 @@ extern "platform-intrinsic" {
     ///
     /// `T` must be a vector.
     ///
-    /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
+    /// `U` must be a pointer to the element type of `T`
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
     ///
     /// For each element, if the corresponding value in `mask` is `!0`, write the corresponding
-    /// value in `val` to the pointer.
+    /// value in `val` to the pointer offset from `ptr`.
+    /// The first element is written to `ptr`, the second to `ptr.wrapping_offset(1)` and so on.
     /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
     ///
     /// # Safety

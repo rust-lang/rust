@@ -31,7 +31,7 @@ use crate::query::plumbing::{
 };
 use crate::thir;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
@@ -1938,9 +1938,13 @@ rustc_queries! {
         arena_cache
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_projection_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_projection_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
@@ -1948,9 +1952,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value.value }
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_weak_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_weak_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
@@ -1958,9 +1966,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value.value }
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_inherent_projection_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_inherent_projection_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,

@@ -1,5 +1,5 @@
 error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-param-due-to-overflow.rs:4:6
+  --> $DIR/unconstrained-params-in-impl-due-to-overflow.rs:4:6
    |
 LL | impl<T> Loop<T> {}
    |      ^ unconstrained type parameter

@@ -4,6 +4,11 @@ error[E0599]: no function or associated item named `new_undirected` found for st
 LL |     let ug = Graph::<i32, i32>::new_undirected();
    |                                 ^^^^^^^^^^^^^^ function or associated item not found in `Graph<i32, i32>`
    |
+note: if you're trying to build a new `issue_30123_aux::Graph<i32, i32>`, consider using `issue_30123_aux::Graph::<N, E>::new` which returns `issue_30123_aux::Graph<_, _>`
+  --> $DIR/auxiliary/issue-30123-aux.rs:14:5
+   |
+LL |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
    = note: the function or associated item was found for
            - `issue_30123_aux::Graph<N, E, Undirected>`
 
