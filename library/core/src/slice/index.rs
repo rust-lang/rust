@@ -13,7 +13,7 @@ where
 {
     type Output = I::Output;
 
-    #[inline(always)]
+    #[inline]
     fn index(&self, index: I) -> &I::Output {
         index.index(self)
     }
@@ -24,7 +24,7 @@ impl<T, I> ops::IndexMut<I> for [T]
 where
     I: SliceIndex<[T]>,
 {
-    #[inline(always)]
+    #[inline]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
         index.index_mut(self)
     }
@@ -390,7 +390,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn index(self, slice: &[T]) -> &[T] {
         if self.start > self.end {
             slice_index_order_fail(self.start, self.end);
@@ -440,7 +440,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
         unsafe { (0..self.end).get_unchecked_mut(slice) }
     }
 
-    #[inline(always)]
+    #[inline]
     fn index(self, slice: &[T]) -> &[T] {
         (0..self.end).index(slice)
     }
