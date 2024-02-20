@@ -760,9 +760,6 @@ impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
         self.cx.ctor_arity(ctor, self.ty)
     }
-    fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
-        self.cx.ctors_for_ty(self.ty)
-    }
     fn wild_from_ctor(&self, ctor: Constructor<Cx>) -> WitnessPat<Cx> {
         WitnessPat::wild_from_ctor(self.cx, ctor, self.ty.clone())
     }
@@ -815,7 +812,8 @@ impl fmt::Display for ValidityConstraint {
     }
 }
 
-/// Data about a place under investigation.
+/// Data about a place under investigation. Its methods contain a lot of the logic used to analyze
+/// the constructors in the matrix.
 struct PlaceInfo<Cx: TypeCx> {
     /// The type of the place.
     ty: Cx::Ty,
@@ -826,6 +824,8 @@ struct PlaceInfo<Cx: TypeCx> {
 }
 
 impl<Cx: TypeCx> PlaceInfo<Cx> {
+    /// Given a constructor for the current place, we return one `PlaceInfo` for each field of the
+    /// constructor.
     fn specialize<'a>(
         &'a self,
         cx: &'a Cx,
@@ -838,6 +838,77 @@ impl<Cx: TypeCx> PlaceInfo<Cx> {
             validity: ctor_sub_validity,
             is_scrutinee: false,
         })
+    }
+
+    /// This analyzes a column of constructors corresponding to the current place. It returns a pair
+    /// `(split_ctors, missing_ctors)`.
+    ///
+    /// `split_ctors` is a splitted list of constructors that cover the whole type. This will be
+    /// used to specialize the matrix.
+    ///
+    /// `missing_ctors` is a list of the constructors not found in the column, for reporting
+    /// purposes.
+    fn split_column_ctors<'a>(
+        &self,
+        cx: &Cx,
+        ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
+    ) -> Result<(SmallVec<[Constructor<Cx>; 1]>, Vec<Constructor<Cx>>), Cx::Error>
+    where
+        Cx: 'a,
+    {
+        let ctors_for_ty = cx.ctors_for_ty(&self.ty)?;
+
+        // We treat match scrutinees of type `!` or `EmptyEnum` differently.
+        let is_toplevel_exception =
+            self.is_scrutinee && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
+        // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
+        // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
+        let empty_arms_are_unreachable = self.validity.is_known_valid()
+            && (is_toplevel_exception
+                || cx.is_exhaustive_patterns_feature_on()
+                || cx.is_min_exhaustive_patterns_feature_on());
+        // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
+        // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
+        let can_omit_empty_arms = empty_arms_are_unreachable
+            || is_toplevel_exception
+            || cx.is_exhaustive_patterns_feature_on();
+
+        // Analyze the constructors present in this column.
+        let mut split_set = ctors_for_ty.split(ctors);
+        let all_missing = split_set.present.is_empty();
+
+        // Build the set of constructors we will specialize with. It must cover the whole type, so
+        // we add `Missing` to represent the missing ones. This is explained under "Constructor
+        // Splitting" at the top of this file.
+        let mut split_ctors = split_set.present;
+        if !(split_set.missing.is_empty()
+            && (split_set.missing_empty.is_empty() || empty_arms_are_unreachable))
+        {
+            split_ctors.push(Constructor::Missing);
+        }
+
+        // Which empty constructors are considered missing. We ensure that
+        // `!missing_ctors.is_empty() => split_ctors.contains(Missing)`. The converse usually holds
+        // except when `!self.validity.is_known_valid()`.
+        let mut missing_ctors = split_set.missing;
+        if !can_omit_empty_arms {
+            missing_ctors.append(&mut split_set.missing_empty);
+        }
+
+        // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing". At the top
+        // level we prefer to list all constructors.
+        let report_individual_missing_ctors = self.is_scrutinee || !all_missing;
+        if !missing_ctors.is_empty() && !report_individual_missing_ctors {
+            // Report `_` as missing.
+            missing_ctors = vec![Constructor::Wildcard];
+        } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
+            // We need to report a `_` anyway, so listing other constructors would be redundant.
+            // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
+            // up by diagnostics to add a note about why `_` is required here.
+            missing_ctors = vec![Constructor::NonExhaustive];
+        }
+
+        Ok((split_ctors, missing_ctors))
     }
 }
 
@@ -1314,40 +1385,23 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
         pcx: &PlaceCtxt<'_, Cx>,
         missing_ctors: &[Constructor<Cx>],
         ctor: &Constructor<Cx>,
-        report_individual_missing_ctors: bool,
     ) {
         if self.is_empty() {
             return;
         }
         if matches!(ctor, Constructor::Missing) {
             // We got the special `Missing` constructor that stands for the constructors not present
-            // in the match.
-            if missing_ctors.is_empty() {
-                // Nothing to report.
-                *self = Self::empty();
-            } else if !report_individual_missing_ctors {
-                // Report `_` as missing.
-                let pat = pcx.wild_from_ctor(Constructor::Wildcard);
-                self.push_pattern(pat);
-            } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
-                // We need to report a `_` anyway, so listing other constructors would be redundant.
-                // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
-                // up by diagnostics to add a note about why `_` is required here.
-                let pat = pcx.wild_from_ctor(Constructor::NonExhaustive);
-                self.push_pattern(pat);
-            } else {
-                // For each missing constructor `c`, we add a `c(_, _, _)` witness appropriately
-                // filled with wildcards.
-                let mut ret = Self::empty();
-                for ctor in missing_ctors {
-                    let pat = pcx.wild_from_ctor(ctor.clone());
-                    // Clone `self` and add `c(_, _, _)` to each of its witnesses.
-                    let mut wit_matrix = self.clone();
-                    wit_matrix.push_pattern(pat);
-                    ret.extend(wit_matrix);
-                }
-                *self = ret;
+            // in the match. For each missing constructor `c`, we add a `c(_, _, _)` witness
+            // appropriately filled with wildcards.
+            let mut ret = Self::empty();
+            for ctor in missing_ctors {
+                let pat = pcx.wild_from_ctor(ctor.clone());
+                // Clone `self` and add `c(_, _, _)` to each of its witnesses.
+                let mut wit_matrix = self.clone();
+                wit_matrix.push_pattern(pat);
+                ret.extend(wit_matrix);
             }
+            *self = ret;
         } else {
             // Any other constructor we unspecialize as expected.
             for witness in self.0.iter_mut() {
@@ -1479,51 +1533,13 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         };
     };
 
+    // Analyze the constructors present in this column.
+    debug!("ty: {:?}", place.ty);
+    let ctors = matrix.heads().map(|p| p.ctor());
+    let (split_ctors, missing_ctors) = place.split_column_ctors(mcx.tycx, ctors)?;
+
     let ty = &place.ty.clone(); // Clone it out so we can mutate `matrix` later.
     let pcx = &PlaceCtxt { cx: mcx.tycx, ty };
-    debug!("ty: {:?}", pcx.ty);
-    let ctors_for_ty = pcx.ctors_for_ty()?;
-
-    // We treat match scrutinees of type `!` or `EmptyEnum` differently.
-    let is_toplevel_exception =
-        place.is_scrutinee && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
-    // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
-    // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
-    let empty_arms_are_unreachable = place.validity.is_known_valid()
-        && (is_toplevel_exception
-            || mcx.tycx.is_exhaustive_patterns_feature_on()
-            || mcx.tycx.is_min_exhaustive_patterns_feature_on());
-    // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
-    // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
-    let can_omit_empty_arms = empty_arms_are_unreachable
-        || is_toplevel_exception
-        || mcx.tycx.is_exhaustive_patterns_feature_on();
-
-    // Analyze the constructors present in this column.
-    let ctors = matrix.heads().map(|p| p.ctor());
-    let mut split_set = ctors_for_ty.split(ctors);
-    let all_missing = split_set.present.is_empty();
-    // Build the set of constructors we will specialize with. It must cover the whole type.
-    // We need to iterate over a full set of constructors, so we add `Missing` to represent the
-    // missing ones. This is explained under "Constructor Splitting" at the top of this file.
-    let mut split_ctors = split_set.present;
-    if !(split_set.missing.is_empty()
-        && (split_set.missing_empty.is_empty() || empty_arms_are_unreachable))
-    {
-        split_ctors.push(Constructor::Missing);
-    }
-
-    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing". At the top
-    // level we prefer to list all constructors.
-    let report_individual_missing_ctors = place.is_scrutinee || !all_missing;
-    // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
-    // split_ctors.contains(Missing)`. The converse usually holds except when
-    // `!place_validity.is_known_valid()`.
-    let mut missing_ctors = split_set.missing;
-    if !can_omit_empty_arms {
-        missing_ctors.append(&mut split_set.missing_empty);
-    }
-
     let mut ret = WitnessMatrix::empty();
     for ctor in split_ctors {
         // Dig into rows that match `ctor`.
@@ -1538,7 +1554,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         })?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
-        witnesses.apply_constructor(pcx, &missing_ctors, &ctor, report_individual_missing_ctors);
+        witnesses.apply_constructor(pcx, &missing_ctors, &ctor);
         // Accumulate the found witnesses.
         ret.extend(witnesses);
 
