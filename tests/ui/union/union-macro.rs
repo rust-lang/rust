@@ -15,6 +15,7 @@ macro_rules! duplicate {
 
 duplicate! {
     pub union U {
+        #[allow(dead_code)]
         pub a: u8
     }
 }
