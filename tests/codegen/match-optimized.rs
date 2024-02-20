@@ -26,12 +26,12 @@ pub fn exhaustive_match(e: E) -> u8 {
 // CHECK-NEXT: store i8 1, ptr %_0, align 1
 // CHECK-NEXT: br label %[[EXIT]]
 // CHECK: [[C]]:
-// CHECK-NEXT: store i8 2, ptr %_0, align 1
+// CHECK-NEXT: store i8 3, ptr %_0, align 1
 // CHECK-NEXT: br label %[[EXIT]]
     match e {
         E::A => 0,
         E::B => 1,
-        E::C => 2,
+        E::C => 3,
     }
 }
 
