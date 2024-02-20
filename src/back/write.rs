@@ -70,7 +70,8 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, dcx: &Dia
         }
 
         if config.emit_ir {
-            unimplemented!();
+            let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
+            std::fs::write(out, "").expect("write file");
         }
 
         if config.emit_asm {

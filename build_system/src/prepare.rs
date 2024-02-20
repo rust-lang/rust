@@ -1,10 +1,16 @@
 use crate::rustc_info::get_rustc_path;
-use crate::utils::{cargo_install, git_clone, run_command, run_command_with_output, walk_dir};
+use crate::utils::{
+    cargo_install, git_clone, remove_file, run_command, run_command_with_output, walk_dir,
+};
 
 use std::fs;
 use std::path::Path;
 
-fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile: bool) -> Result<(), String> {
+fn prepare_libcore(
+    sysroot_path: &Path,
+    libgccjit12_patches: bool,
+    cross_compile: bool,
+) -> Result<(), String> {
     let rustc_path = match get_rustc_path() {
         Some(path) => path,
         None => return Err("`rustc` path not found".to_string()),
@@ -88,10 +94,14 @@ fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile
         },
     )?;
     if cross_compile {
-        walk_dir("cross_patches", |_| Ok(()), |file_path: &Path| {
-            patches.push(file_path.to_path_buf());
-            Ok(())
-        })?;
+        walk_dir(
+            "patches/cross_patches",
+            |_| Ok(()),
+            |file_path: &Path| {
+                patches.push(file_path.to_path_buf());
+                Ok(())
+            },
+        )?;
     }
     if libgccjit12_patches {
         walk_dir(
@@ -129,8 +139,7 @@ fn build_raytracer(repo_dir: &Path) -> Result<(), String> {
     run_command(&[&"cargo", &"build"], Some(repo_dir))?;
     let mv_target = repo_dir.join("raytracer_cg_llvm");
     if mv_target.is_file() {
-        std::fs::remove_file(&mv_target)
-            .map_err(|e| format!("Failed to remove file `{}`: {e:?}", mv_target.display()))?;
+        remove_file(&mv_target)?;
     }
     run_command(
         &[&"mv", &"target/debug/main", &"raytracer_cg_llvm"],
@@ -143,16 +152,16 @@ fn clone_and_setup<F>(repo_url: &str, checkout_commit: &str, extra: Option<F>) -
 where
     F: Fn(&Path) -> Result<(), String>,
 {
-    let clone_result = git_clone(repo_url, None)?;
+    let clone_result = git_clone(repo_url, Some(&Path::new(crate::BUILD_DIR)), false)?;
     if !clone_result.ran_clone {
         println!("`{}` has already been cloned", clone_result.repo_name);
     }
-    let repo_path = Path::new(&clone_result.repo_name);
+    let repo_path = Path::new(crate::BUILD_DIR).join(&clone_result.repo_name);
     run_command(&[&"git", &"checkout", &"--", &"."], Some(&repo_path))?;
     run_command(&[&"git", &"checkout", &checkout_commit], Some(&repo_path))?;
     let filter = format!("-{}-", clone_result.repo_name);
     walk_dir(
-        "crate_patches",
+        "patches/crate_patches",
         |_| Ok(()),
         |file_path| {
             let patch = file_path.as_os_str().to_str().unwrap();
@@ -210,8 +219,7 @@ impl PrepareArg {
     --only-libcore           : Only setup libcore and don't clone other repositories
     --cross                  : Apply the patches needed to do cross-compilation
     --libgccjit12-patches    : Apply patches needed for libgccjit12
-    --help                   : Show this help
-"#
+    --help                   : Show this help"#
         )
     }
 }

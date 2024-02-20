@@ -4,6 +4,7 @@
  * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
  * For Thin LTO, this might be helpful:
  * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
+ * Or the new incremental LTO?
  *
  * Maybe some missing optizations enabled by rustc's LTO is in there: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
  * Like -fipa-icf (should be already enabled) and maybe -fdevirtualize-at-ltrans.
@@ -27,6 +28,7 @@
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
+#![deny(clippy::pattern_type_mismatch)]
 
 extern crate rustc_apfloat;
 extern crate rustc_ast;
@@ -247,6 +249,7 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
     }
     #[cfg(feature="master")]
     {
+        context.set_allow_special_chars_in_func_names(true);
         let version = Version::get();
         let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
         context.set_output_ident(&format!("rustc version {} with libgccjit {}",

@@ -7,6 +7,7 @@ use std::{
 
 use lang_tester::LangTester;
 use tempfile::TempDir;
+use boml::Toml;
 
 /// Controls the compile options (e.g., optimization level) used to compile
 /// test code.
@@ -20,8 +21,21 @@ pub fn main_inner(profile: Profile) {
     let tempdir = TempDir::new().expect("temp dir");
     let current_dir = current_dir().expect("current dir");
     let current_dir = current_dir.to_str().expect("current dir").to_string();
-    let gcc_path = include_str!("../gcc_path");
-    let gcc_path = gcc_path.trim();
+    let toml = Toml::parse(include_str!("../config.toml"))
+        .expect("Failed to parse `config.toml`");
+    let gcc_path = if let Ok(gcc_path) = toml.get_string("gcc-path") {
+        PathBuf::from(gcc_path.to_string())
+    } else {
+        // then we try to retrieve it from the `target` folder.
+        let commit = include_str!("../libgccjit.version").trim();
+        Path::new("build/libgccjit").join(commit)
+    };
+
+    let gcc_path = Path::new(&gcc_path)
+        .canonicalize()
+        .expect("failed to get absolute path of `gcc-path`")
+        .display()
+        .to_string();
     env::set_var("LD_LIBRARY_PATH", gcc_path);
 
     fn rust_filter(filename: &Path) -> bool {

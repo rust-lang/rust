@@ -2,11 +2,16 @@ use std::env;
 use std::process;
 
 mod build;
+mod cargo;
+mod clean;
 mod config;
+mod info;
 mod prepare;
 mod rustc_info;
 mod test;
 mod utils;
+
+const BUILD_DIR: &str = "build";
 
 macro_rules! arg_error {
     ($($err:tt)*) => {{
@@ -22,17 +27,23 @@ fn usage() {
         "\
 Available commands for build_system:
 
+    cargo    : Run cargo command
+    clean    : Run clean command
     prepare  : Run prepare command
     build    : Run build command
     test     : Run test command
+    info:    : Run info command
     --help   : Show this message"
     );
 }
 
 pub enum Command {
+    Cargo,
+    Clean,
     Prepare,
     Build,
     Test,
+    Info,
 }
 
 fn main() {
@@ -41,9 +52,12 @@ fn main() {
     }
 
     let command = match env::args().nth(1).as_deref() {
+        Some("cargo") => Command::Cargo,
+        Some("clean") => Command::Clean,
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
         Some("test") => Command::Test,
+        Some("info") => Command::Info,
         Some("--help") => {
             usage();
             process::exit(0);
@@ -57,11 +71,14 @@ fn main() {
     };
 
     if let Err(e) = match command {
+        Command::Cargo => cargo::run(),
+        Command::Clean => clean::run(),
         Command::Prepare => prepare::run(),
         Command::Build => build::run(),
         Command::Test => test::run(),
+        Command::Info => info::run(),
     } {
-        eprintln!("Command failed to run: {e:?}");
+        eprintln!("Command failed to run: {e}");
         process::exit(1);
     }
 }
