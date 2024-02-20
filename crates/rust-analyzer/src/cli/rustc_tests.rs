@@ -1,9 +1,13 @@
 //! Run all tests in a project, similar to `cargo test`, but using the mir interpreter.
 
+use std::convert::identity;
+use std::thread::Builder;
+use std::time::{Duration, Instant};
 use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::PathBuf};
 
 use hir::{Change, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
+use itertools::Either;
 use profile::StopWatch;
 use project_model::target_data_layout::RustcDataLayoutConfig;
 use project_model::{target_data_layout, CargoConfig, ProjectWorkspace, RustLibSource, Sysroot};
@@ -100,6 +104,7 @@ impl Tester {
     }
 
     fn test(&mut self, p: PathBuf) {
+        println!("{}", p.display());
         if p.parent().unwrap().file_name().unwrap() == "auxiliary" {
             // These are not tests
             return;
@@ -132,15 +137,44 @@ impl Tester {
         self.host.apply_change(change);
         let diagnostic_config = DiagnosticsConfig::test_sample();
 
+        let res = std::thread::scope(|s| {
+            let worker = Builder::new()
+                .stack_size(40 * 1024 * 1024)
+                .spawn_scoped(s, {
+                    let diagnostic_config = &diagnostic_config;
+                    let main = std::thread::current();
+                    let analysis = self.host.analysis();
+                    let root_file = self.root_file;
+                    move || {
+                        let res = std::panic::catch_unwind(move || {
+                            analysis.diagnostics(
+                                diagnostic_config,
+                                ide::AssistResolveStrategy::None,
+                                root_file,
+                            )
+                        });
+                        main.unpark();
+                        res
+                    }
+                })
+                .unwrap();
+
+            let timeout = Duration::from_secs(5);
+            let now = Instant::now();
+            while now.elapsed() <= timeout && !worker.is_finished() {
+                std::thread::park_timeout(timeout - now.elapsed());
+            }
+
+            if !worker.is_finished() {
+                // attempt to cancel the worker, won't work for chalk hangs unfortunately
+                self.host.request_cancellation();
+            }
+            worker.join().and_then(identity)
+        });
         let mut actual = FxHashMap::default();
-        let panicked = match std::panic::catch_unwind(|| {
-            self.host
-                .analysis()
-                .diagnostics(&diagnostic_config, ide::AssistResolveStrategy::None, self.root_file)
-                .unwrap()
-        }) {
-            Err(e) => Some(e),
-            Ok(diags) => {
+        let panicked = match res {
+            Err(e) => Some(Either::Left(e)),
+            Ok(Ok(diags)) => {
                 for diag in diags {
                     if !matches!(diag.code, DiagnosticCode::RustcHardError(_)) {
                         continue;
@@ -152,6 +186,7 @@ impl Tester {
                 }
                 None
             }
+            Ok(Err(e)) => Some(Either::Right(e)),
         };
         // Ignore tests with diagnostics that we don't emit.
         ignore_test |= expected.keys().any(|k| !SUPPORTED_DIAGNOSTICS.contains(k));
@@ -159,14 +194,19 @@ impl Tester {
             println!("{p:?} IGNORE");
             self.ignore_count += 1;
         } else if let Some(panic) = panicked {
-            if let Some(msg) = panic
-                .downcast_ref::<String>()
-                .map(String::as_str)
-                .or_else(|| panic.downcast_ref::<&str>().copied())
-            {
-                println!("{msg:?} ")
+            match panic {
+                Either::Left(panic) => {
+                    if let Some(msg) = panic
+                        .downcast_ref::<String>()
+                        .map(String::as_str)
+                        .or_else(|| panic.downcast_ref::<&str>().copied())
+                    {
+                        println!("{msg:?} ")
+                    }
+                    println!("{p:?} PANIC");
+                }
+                Either::Right(_) => println!("{p:?} CANCELLED"),
             }
-            println!("PANIC");
             self.fail_count += 1;
         } else if actual == expected {
             println!("{p:?} PASS");
