@@ -303,7 +303,6 @@ fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use syntax::SourceFile;
     use test_utils::{add_cursor, assert_eq_text, extract_offset, extract_range};
 
     use super::*;

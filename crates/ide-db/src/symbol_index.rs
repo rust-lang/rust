@@ -31,7 +31,7 @@ use base_db::{
     salsa::{self, ParallelDatabase},
     SourceDatabaseExt, SourceRootId, Upcast,
 };
-use fst::{self, raw::IndexedValue, Automaton, Streamer};
+use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir::{
     db::HirDatabase,
     import_map::{AssocSearchMode, SearchMode},
@@ -394,7 +394,6 @@ impl Query {
 mod tests {
 
     use expect_test::expect_file;
-    use hir::symbols::SymbolCollector;
     use test_fixture::WithFixture;
 
     use super::*;

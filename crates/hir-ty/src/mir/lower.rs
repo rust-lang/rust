@@ -31,13 +31,19 @@ use crate::{
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
+    mir::{
+        intern_const_scalar, return_slot, AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp,
+        BorrowKind, CastKind, ClosureId, ConstScalar, Either, Expr, FieldId, Idx, InferenceResult,
+        Interner, Local, LocalId, MemoryMap, MirBody, MirSpan, Mutability, Operand, Place,
+        PlaceElem, PointerCast, ProjectionElem, ProjectionStore, RawIdx, Rvalue, Statement,
+        StatementKind, Substitution, SwitchTargets, Terminator, TerminatorKind, TupleFieldId, Ty,
+        UnOp, VariantId,
+    },
     static_lifetime,
     traits::FnTrait,
     utils::{generics, ClosureSubst},
     Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
 };
-
-use super::*;
 
 mod as_place;
 mod pattern_matching;
