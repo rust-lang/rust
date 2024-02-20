@@ -28,6 +28,12 @@ LL |         val.use_self()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: the `impl` on `dyn t::ObjectTrait` has a `'static` lifetime requirement
+  --> $DIR/static-impl-obligation.rs:216:47
+   |
+LL |         fn use_self(&self) -> &() where Self: 'static { panic!() }
+   |                                               ^^^^^^^
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/static-impl-obligation.rs:243:9
@@ -41,6 +47,12 @@ LL |         val.use_self()
    |         |
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+note: the `impl` on `dyn u::ObjectTrait` has a `'static` lifetime requirement
+  --> $DIR/static-impl-obligation.rs:234:47
+   |
+LL |         fn use_self(&self) -> &() where Self: 'static { panic!() }
+   |                                               ^^^^^^^
 
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/static-impl-obligation.rs:261:9

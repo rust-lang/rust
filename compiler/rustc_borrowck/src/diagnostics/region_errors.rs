@@ -25,6 +25,7 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
+use rustc_trait_selection::traits;
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -675,25 +676,31 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         //     fn foo(&self) where Self: 'static {}
         // }
         // ```
-        let mut predicates: Vec<Span> = tcx
-            .predicates_of(def_id)
-            .predicates
-            .iter()
-            .chain(tcx.predicates_of(parent).predicates.iter())
-            .filter_map(|(pred, pred_span)| {
-                if let Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r))) =
-                        pred.kind().no_bound_vars()
-                        // Look for `'static` bounds
-                        && r.kind() == ty::ReStatic
-                        // We only want bounds on `Self`
-                        && self.infcx.can_eq(self.param_env, ty, pred_ty)
-                {
-                    Some(*pred_span)
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let mut predicates: Vec<Span> = traits::elaborate(
+            tcx,
+            tcx.predicates_of(def_id).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
+        )
+        .chain(traits::elaborate(
+            tcx,
+            tcx.predicates_of(parent).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
+        ))
+        .filter_map(|(pred, pred_span)| {
+            if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
+                && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r)) = clause
+                // Look for `'static` bounds
+                && r.kind() == ty::ReStatic
+                // We only want bounds on `Self`
+                && (self.infcx.can_eq(self.param_env, ty, pred_ty)
+                    || matches!(
+                        pred_ty.kind(),
+                        ty::Param(name) if name.name.as_str() == "Self"))
+            {
+                Some(pred_span)
+            } else {
+                None
+            }
+        })
+        .collect();
 
         // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
         // ```
