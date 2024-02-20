@@ -1,5 +1,8 @@
-//! Propagates constants for early reporting of statically known
-//! assertion failures
+//! A lint that checks for known panics like
+//! overflows, division by zero,
+//! out-of-bound access etc.
+//! Uses const propagation to determine the
+//! values of operands during checks.
 
 use std::fmt::Debug;
 
@@ -21,9 +24,9 @@ use crate::dataflow_const_prop::DummyMachine;
 use crate::errors::{AssertLint, AssertLintKind};
 use crate::MirLint;
 
-pub struct ConstPropLint;
+pub struct KnownPanicsLint;
 
-impl<'tcx> MirLint<'tcx> for ConstPropLint {
+impl<'tcx> MirLint<'tcx> for KnownPanicsLint {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         if body.tainted_by_errors.is_some() {
             return;
@@ -37,31 +40,28 @@ impl<'tcx> MirLint<'tcx> for ConstPropLint {
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
             // skip anon_const/statics/consts because they'll be evaluated by miri anyway
-            trace!("ConstPropLint skipped for {:?}", def_id);
+            trace!("KnownPanicsLint skipped for {:?}", def_id);
             return;
         }
 
         // FIXME(welseywiser) const prop doesn't work on coroutines because of query cycles
         // computing their layout.
         if tcx.is_coroutine(def_id.to_def_id()) {
-            trace!("ConstPropLint skipped for coroutine {:?}", def_id);
+            trace!("KnownPanicsLint skipped for coroutine {:?}", def_id);
             return;
         }
 
-        trace!("ConstPropLint starting for {:?}", def_id);
+        trace!("KnownPanicsLint starting for {:?}", def_id);
 
-        // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
-        // constants, instead of just checking for const-folding succeeding.
-        // That would require a uniform one-def no-mutation analysis
-        // and RPO (or recursing when needing the value of a local).
         let mut linter = ConstPropagator::new(body, tcx);
         linter.visit_body(body);
 
-        trace!("ConstPropLint done for {:?}", def_id);
+        trace!("KnownPanicsLint done for {:?}", def_id);
     }
 }
 
-/// Finds optimization opportunities on the MIR.
+/// Visits MIR nodes, performs const propagation
+/// and runs lint checks as it goes
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'mir, 'tcx, DummyMachine>,
     tcx: TyCtxt<'tcx>,
@@ -238,7 +238,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // dedicated error variants should be introduced instead.
                 assert!(
                     !error.kind().formatted_string(),
-                    "const-prop encountered formatting error: {}",
+                    "known panics lint encountered formatting error: {}",
                     format_interp_error(self.ecx.tcx.dcx(), error),
                 );
                 None
@@ -253,7 +253,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        // Normalization needed b/c const prop lint runs in
+        // Normalization needed b/c known panics lint runs in
         // `mir_drops_elaborated_and_const_checked`, which happens before
         // optimized MIR. Only after optimizing the MIR can we guarantee
         // that the `RevealAll` pass has happened and that the body's consts
@@ -864,6 +864,8 @@ pub enum ConstPropMode {
     NoPropagation,
 }
 
+/// A visitor that determines locals in a MIR body
+/// that can be const propagated
 pub struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
