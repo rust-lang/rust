@@ -4,7 +4,7 @@ use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
 use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
-use project_model::{self, CargoFeatures, ManifestPath, TargetKind};
+use project_model::{CargoFeatures, ManifestPath, TargetKind};
 use rustc_hash::FxHashSet;
 use vfs::AbsPathBuf;
 
@@ -208,7 +208,6 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
-    use cfg::CfgExpr;
     use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},

@@ -44,13 +44,13 @@ use std::{
     ops::{Index, Range},
 };
 
-use ast::{AstNode, HasName, StructKind};
+use ast::{AstNode, StructKind};
 use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     attrs::RawAttrs,
-    name::{name, AsName, Name},
+    name::Name,
     ExpandTo, HirFileId, InFile,
 };
 use intern::Interned;
@@ -67,7 +67,7 @@ use crate::{
     attr::Attrs,
     db::DefDatabase,
     generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
-    path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
+    path::{GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
     visibility::{RawVisibility, VisibilityExplicitness},
     BlockId, Lookup,

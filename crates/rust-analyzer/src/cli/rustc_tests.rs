@@ -5,7 +5,8 @@ use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::Path
 use hir::{Change, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use profile::StopWatch;
-use project_model::{CargoConfig, ProjectWorkspace, RustLibSource, Sysroot};
+use project_model::target_data_layout::RustcDataLayoutConfig;
+use project_model::{target_data_layout, CargoConfig, ProjectWorkspace, RustLibSource, Sysroot};
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use rustc_hash::FxHashMap;
@@ -60,15 +61,22 @@ impl Tester {
         std::fs::write(&tmp_file, "")?;
         let cargo_config =
             CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
+
+        let sysroot =
+            Ok(Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env, false)
+                .unwrap());
+        let data_layout = target_data_layout::get(
+            RustcDataLayoutConfig::Rustc(sysroot.as_ref().ok()),
+            None,
+            &cargo_config.extra_env,
+        );
+
         let workspace = ProjectWorkspace::DetachedFiles {
             files: vec![tmp_file.clone()],
-            sysroot: Ok(Sysroot::discover(
-                tmp_file.parent().unwrap(),
-                &cargo_config.extra_env,
-                false,
-            )
-            .unwrap()),
+            sysroot,
             rustc_cfg: vec![],
+            toolchain: None,
+            target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
