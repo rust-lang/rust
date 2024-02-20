@@ -280,4 +280,5 @@ ast_passes_where_clause_after_type_alias = where clauses are not allowed after t
 
 ast_passes_where_clause_before_type_alias = where clauses are not allowed before the type for type aliases
     .note = see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
-    .suggestion = move it to the end of the type declaration
+    .remove_suggestion = remove this `where`
+    .move_suggestion = move it to the end of the type declaration

@@ -138,38 +138,42 @@ impl<'a> AstValidator<'a> {
         &mut self,
         ty_alias: &TyAlias,
     ) -> Result<(), errors::WhereClauseBeforeTypeAlias> {
-        let before_predicates =
-            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_clauses.split).0;
-
-        if ty_alias.ty.is_none() || before_predicates.is_empty() {
+        if ty_alias.ty.is_none() || !ty_alias.where_clauses.before.has_where_token {
             return Ok(());
         }
 
-        let mut state = State::new();
-        if !ty_alias.where_clauses.after.has_where_token {
-            state.space();
-            state.word_space("where");
-        } else {
-            state.word_space(",");
-        }
-        let mut first = true;
-        for p in before_predicates {
-            if !first {
-                state.word_space(",");
-            }
-            first = false;
-            state.print_where_predicate(p);
-        }
-
+        let (before_predicates, after_predicates) =
+            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_clauses.split);
         let span = ty_alias.where_clauses.before.span;
-        Err(errors::WhereClauseBeforeTypeAlias {
-            span,
-            sugg: errors::WhereClauseBeforeTypeAliasSugg {
+
+        let sugg = if !before_predicates.is_empty() || !ty_alias.where_clauses.after.has_where_token
+        {
+            let mut state = State::new();
+
+            if !ty_alias.where_clauses.after.has_where_token {
+                state.space();
+                state.word_space("where");
+            }
+
+            let mut first = after_predicates.is_empty();
+            for p in before_predicates {
+                if !first {
+                    state.word_space(",");
+                }
+                first = false;
+                state.print_where_predicate(p);
+            }
+
+            errors::WhereClauseBeforeTypeAliasSugg::Move {
                 left: span,
                 snippet: state.s.eof(),
                 right: ty_alias.where_clauses.after.span.shrink_to_hi(),
-            },
-        })
+            }
+        } else {
+            errors::WhereClauseBeforeTypeAliasSugg::Remove { span }
+        };
+
+        Err(errors::WhereClauseBeforeTypeAlias { span, sugg })
     }
 
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
@@ -1476,15 +1480,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let AssocItemKind::Type(ty_alias) = &item.kind
             && let Err(err) = self.check_type_alias_where_clause_location(ty_alias)
         {
+            let sugg = match err.sugg {
+                errors::WhereClauseBeforeTypeAliasSugg::Remove { .. } => None,
+                errors::WhereClauseBeforeTypeAliasSugg::Move { snippet, right, .. } => {
+                    Some((right, snippet))
+                }
+            };
             self.lint_buffer.buffer_lint_with_diagnostic(
                 DEPRECATED_WHERE_CLAUSE_LOCATION,
                 item.id,
                 err.span,
                 fluent::ast_passes_deprecated_where_clause_location,
-                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
-                    err.sugg.right,
-                    err.sugg.snippet,
-                ),
+                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(sugg),
             );
         }
 
