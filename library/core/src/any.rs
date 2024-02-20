@@ -605,7 +605,8 @@ impl dyn Any + Send + Sync {
 #[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
-    t: u128,
+    // See #115620 for this representation.
+    t: (u64, u64),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -637,7 +638,10 @@ impl TypeId {
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         let t: u128 = intrinsics::type_id::<T>();
-        TypeId { t }
+
+        let t1 = (t >> 64) as u64;
+        let t2 = t as u64;
+        TypeId { t: (t1, t2) }
     }
 }
 
@@ -657,7 +661,7 @@ impl hash::Hash for TypeId {
         // - It is correct to do so -- only hashing a subset of `self` is still
         //   with an `Eq` implementation that considers the entire value, as
         //   ours does.
-        (self.t as u64).hash(state);
+        self.t.0.hash(state);
     }
 }
 
