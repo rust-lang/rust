@@ -13,7 +13,7 @@ where
 {
     type Output = I::Output;
 
-    #[inline]
+    #[inline(always)]
     fn index(&self, index: I) -> &I::Output {
         index.index(self)
     }
@@ -24,7 +24,7 @@ impl<T, I> ops::IndexMut<I> for [T]
 where
     I: SliceIndex<[T]>,
 {
-    #[inline]
+    #[inline(always)]
     fn index_mut(&mut self, index: I) -> &mut I::Output {
         index.index_mut(self)
     }
@@ -227,14 +227,16 @@ unsafe impl<T> SliceIndex<[T]> for usize {
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
         debug_assert_nounwind!(
             self < slice.len(),
-            "slice::get_unchecked requires that the index is within the slice",
+            "slice::get_unchecked requires that the index is within the slice"
         );
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
         unsafe {
-            crate::hint::assert_unchecked(self < slice.len());
+            // Use intrinsics::assume instead of hint::assert_unchecked so that we don't check the
+            // precondition of this function twice.
+            crate::intrinsics::assume(self < slice.len());
             slice.as_ptr().add(self)
         }
     }
@@ -243,7 +245,7 @@ unsafe impl<T> SliceIndex<[T]> for usize {
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut T {
         debug_assert_nounwind!(
             self < slice.len(),
-            "slice::get_unchecked_mut requires that the index is within the slice",
+            "slice::get_unchecked_mut requires that the index is within the slice"
         );
         // SAFETY: see comments for `get_unchecked` above.
         unsafe { slice.as_mut_ptr().add(self) }
@@ -305,8 +307,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         debug_assert_nounwind!(
             self.end() <= slice.len(),
-            "slice::get_unchecked_mut requires that the index is within the slice",
+            "slice::get_unchecked_mut requires that the index is within the slice"
         );
+
         // SAFETY: see comments for `get_unchecked` above.
         unsafe { ptr::slice_from_raw_parts_mut(slice.as_mut_ptr().add(self.start()), self.len()) }
     }
@@ -361,8 +364,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
         debug_assert_nounwind!(
             self.end >= self.start && self.end <= slice.len(),
-            "slice::get_unchecked requires that the range is within the slice",
+            "slice::get_unchecked requires that the range is within the slice"
         );
+
         // SAFETY: the caller guarantees that `slice` is not dangling, so it
         // cannot be longer than `isize::MAX`. They also guarantee that
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
@@ -377,7 +381,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
         debug_assert_nounwind!(
             self.end >= self.start && self.end <= slice.len(),
-            "slice::get_unchecked_mut requires that the range is within the slice",
+            "slice::get_unchecked_mut requires that the range is within the slice"
         );
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
@@ -386,7 +390,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn index(self, slice: &[T]) -> &[T] {
         if self.start > self.end {
             slice_index_order_fail(self.start, self.end);
@@ -436,7 +440,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
         unsafe { (0..self.end).get_unchecked_mut(slice) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn index(self, slice: &[T]) -> &[T] {
         (0..self.end).index(slice)
     }
