@@ -124,4 +124,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "A new `rust.frame-pointers` option has been introduced and made the default in the compiler and codegen profiles.",
     },
+    ChangeInfo {
+        change_id: 121278,
+        severity: ChangeSeverity::Warning,
+        summary: "The \"codegen\"/\"llvm\" profile has been removed and replaced with \"compiler\", use it instead for the same behavior.",
+    },
 ];

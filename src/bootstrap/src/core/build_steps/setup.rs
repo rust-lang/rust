@@ -19,7 +19,6 @@ mod tests;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Profile {
     Compiler,
-    Codegen,
     Library,
     Tools,
     Dist,
@@ -48,7 +47,7 @@ impl Profile {
     pub fn all() -> impl Iterator<Item = Self> {
         use Profile::*;
         // N.B. these are ordered by how they are displayed, not alphabetically
-        [Library, Compiler, Codegen, Tools, Dist, None].iter().copied()
+        [Library, Compiler, Tools, Dist, None].iter().copied()
     }
 
     pub fn purpose(&self) -> String {
@@ -56,7 +55,6 @@ impl Profile {
         match self {
             Library => "Contribute to the standard library",
             Compiler => "Contribute to the compiler itself",
-            Codegen => "Contribute to the compiler, and also modify LLVM or codegen",
             Tools => "Contribute to tools which depend on the compiler, but do not modify it directly (e.g. rustdoc, clippy, miri)",
             Dist => "Install Rust from source",
             None => "Do not modify `config.toml`"
@@ -75,7 +73,6 @@ impl Profile {
     pub fn as_str(&self) -> &'static str {
         match self {
             Profile::Compiler => "compiler",
-            Profile::Codegen => "codegen",
             Profile::Library => "library",
             Profile::Tools => "tools",
             Profile::Dist => "dist",
@@ -91,12 +88,15 @@ impl FromStr for Profile {
         match s {
             "lib" | "library" => Ok(Profile::Library),
             "compiler" => Ok(Profile::Compiler),
-            "llvm" | "codegen" => Ok(Profile::Codegen),
             "maintainer" | "dist" | "user" => Ok(Profile::Dist),
             "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" | "rls" => {
                 Ok(Profile::Tools)
             }
             "none" => Ok(Profile::None),
+            "llvm" | "codegen" => Err(format!(
+                "the \"llvm\" and \"codegen\" profiles have been removed,\
+                use \"compiler\" instead which has the same functionality"
+            )),
             _ => Err(format!("unknown profile: '{s}'")),
         }
     }
@@ -170,22 +170,13 @@ impl Step for Profile {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        // During ./x.py setup once you select the codegen profile.
-        // The submodule will be downloaded. It does not work in the
-        // tarball case since they don't include Git and submodules
-        // are already included.
-        if !builder.rust_info().is_from_tarball() {
-            if self == Profile::Codegen {
-                builder.update_submodule(&Path::new("src/llvm-project"));
-            }
-        }
-        setup(&builder.build.config, self)
+        setup(&builder.build.config, self);
     }
 }
 
 pub fn setup(config: &Config, profile: Profile) {
     let suggestions: &[&str] = match profile {
-        Profile::Codegen | Profile::Compiler | Profile::None => &["check", "build", "test"],
+        Profile::Compiler | Profile::None => &["check", "build", "test"],
         Profile::Tools => &[
             "check",
             "build",
