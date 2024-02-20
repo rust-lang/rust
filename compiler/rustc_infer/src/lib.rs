@@ -23,6 +23,7 @@
 #![feature(extend_one)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
+#![feature(never_type)]
 #![feature(iterator_try_collect)]
 #![cfg_attr(bootstrap, feature(min_specialization))]
 #![feature(try_blocks)]

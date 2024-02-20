@@ -1,6 +1,8 @@
 pub use self::at::DefineOpaqueTypes;
 pub use self::freshen::TypeFreshener;
 pub use self::lexical_region_resolve::RegionResolutionError;
+use self::opaque_types::OpaqueTypeStorage;
+pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
 pub use self::BoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
@@ -10,9 +12,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::infer::unify_key::EffectVarValue;
 use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
-
-use self::opaque_types::OpaqueTypeStorage;
-pub(crate) use self::undo_log::{InferCtxtUndoLogs, Snapshot, UndoLog};
+use rustc_middle::ty::TypeVisitable;
 
 use crate::traits::{
     self, ObligationCause, ObligationInspector, PredicateObligations, TraitEngine, TraitEngineExt,
@@ -45,6 +45,7 @@ use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
+use std::ops::ControlFlow;
 
 use self::error_reporting::TypeErrCtxt;
 use self::free_regions::RegionRelations;
@@ -890,24 +891,34 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&CombinedSnapshot<'tcx>) -> Result<T, E>,
+        E: PlugSnapshotLeaks<'tcx>,
     {
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
         debug!("commit_if_ok() -- r.is_ok() = {}", r.is_ok());
         match r {
-            Ok(_) => {
+            Ok(value) => {
                 self.commit_from(snapshot);
+                Some(value)
             }
-            Err(_) => {
+            Err(e) => {
                 self.rollback_to(snapshot);
+                Err(e.plug_leaks(self))
             }
         }
-        r
     }
 
     /// Execute `f` then unroll any bindings it creates.
     #[instrument(skip(self, f), level = "debug")]
-    pub fn probe<R, F>(&self, f: F) -> R
+    pub fn probe<R: PlugSnapshotLeaks<'tcx>, F>(&self, f: F) -> R
+    where
+        F: FnOnce(&CombinedSnapshot<'tcx>) -> R,
+    {
+        let r = self.probe_unchecked(f);
+        r.plug_leaks(self)
+    }
+
+    pub fn probe_unchecked<R, F>(&self, f: F) -> R
     where
         F: FnOnce(&CombinedSnapshot<'tcx>) -> R,
     {
@@ -2133,4 +2144,130 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
     }
 
     args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: 0 })
+}
+
+pub trait PlugSnapshotLeaks<'tcx> {
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self;
+}
+
+macro_rules! noop_plug_leaks {
+    (<$tcx:lifetime> $($ty:ty),*$(,)?) => {
+        $(
+            impl<$tcx> PlugSnapshotLeaks<$tcx> for $ty {
+                fn plug_leaks(self, _: &InferCtxt<$tcx>) -> Self {
+                    self
+                }
+            }
+        )*
+    };
+}
+
+noop_plug_leaks!(<'tcx>
+    !,
+    (),
+    bool,
+    usize,
+    DefId,
+    rustc_middle::ty::AssocItem,
+    rustc_middle::traits::query::NoSolution,
+    rustc_middle::traits::solve::Certainty,
+    rustc_middle::traits::EvaluationResult,
+    rustc_middle::traits::BuiltinImplSource,
+    rustc_middle::traits::query::MethodAutoderefStepsResult<'tcx>,
+    rustc_span::symbol::Ident,
+    ErrorGuaranteed,
+    rustc_middle::traits::OverflowError,
+);
+
+impl<'tcx, T: PlugSnapshotLeaks<'tcx>> PlugSnapshotLeaks<'tcx> for Option<T> {
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self {
+        self.map(|v| v.plug_leaks(infcx))
+    }
+}
+
+impl<'tcx, T0, T1> PlugSnapshotLeaks<'tcx> for (T0, T1)
+where
+    T0: PlugSnapshotLeaks<'tcx>,
+    T1: PlugSnapshotLeaks<'tcx>,
+{
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self {
+        (self.0.plug_leaks(infcx), self.1.plug_leaks(infcx))
+    }
+}
+
+impl<'tcx, V: TypeVisitable<TyCtxt<'tcx>>> PlugSnapshotLeaks<'tcx> for Canonical<'tcx, V> {
+    fn plug_leaks(self, _: &InferCtxt<'tcx>) -> Self {
+        debug_assert!(!self.has_infer() && !self.has_placeholders());
+        self
+    }
+}
+
+impl<'tcx, T, E> PlugSnapshotLeaks<'tcx> for Result<T, E>
+where
+    T: PlugSnapshotLeaks<'tcx>,
+    E: PlugSnapshotLeaks<'tcx>,
+{
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self {
+        match self {
+            Ok(v) => Ok(v.plug_leaks(infcx)),
+            Err(e) => Err(e.plug_leaks(infcx)),
+        }
+    }
+}
+
+impl<'tcx, T, E> PlugSnapshotLeaks<'tcx> for ControlFlow<T, E>
+where
+    T: PlugSnapshotLeaks<'tcx>,
+    E: PlugSnapshotLeaks<'tcx>,
+{
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self {
+        match self {
+            ControlFlow::Continue(c) => ControlFlow::Continue(c.plug_leaks(infcx)),
+            ControlFlow::Break(b) => ControlFlow::Break(b.plug_leaks(infcx)),
+        }
+    }
+}
+
+impl<'tcx, T: PlugSnapshotLeaks<'tcx>> PlugSnapshotLeaks<'tcx> for Vec<T> {
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self {
+        self.into_iter().map(|e| e.plug_leaks(infcx)).collect()
+    }
+}
+
+impl<'tcx> PlugSnapshotLeaks<'tcx> for TypeError<'tcx> {
+    fn plug_leaks(self, _: &InferCtxt<'tcx>) -> Self {
+        match self {
+            TypeError::Mismatch
+            | TypeError::ConstnessMismatch(_)
+            | TypeError::PolarityMismatch(_)
+            | TypeError::UnsafetyMismatch(_)
+            | TypeError::AbiMismatch(_)
+            | TypeError::Mutability
+            | TypeError::ArgumentMutability(_)
+            | TypeError::TupleSize(_)
+            | TypeError::FixedArraySize(_)
+            | TypeError::ArgCount
+            | TypeError::FieldMisMatch(_, _)
+            | TypeError::RegionsPlaceholderMismatch
+            | TypeError::IntMismatch(_)
+            | TypeError::FloatMismatch(_)
+            | TypeError::Traits(_)
+            | TypeError::VariadicMismatch(_)
+            | TypeError::ProjectionMismatched(_)
+            | TypeError::IntrinsicCast
+            | TypeError::TargetFeatureCast(_) => {
+                debug_assert!(!self.has_infer() && !self.has_placeholders());
+                self
+            }
+
+            TypeError::RegionsDoesNotOutlive(_, _)
+            | TypeError::RegionsInsufficientlyPolymorphic(_, _)
+            | TypeError::Sorts(_)
+            | TypeError::ArgumentSorts(_, _)
+            | TypeError::CyclicTy(_)
+            | TypeError::CyclicConst(_)
+            | TypeError::ExistentialMismatch(_)
+            | TypeError::ConstMismatch(_) => TypeError::Mismatch,
+        }
+    }
 }

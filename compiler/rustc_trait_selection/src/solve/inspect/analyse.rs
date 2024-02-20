@@ -10,7 +10,7 @@
 /// as is until we start using it for something else.
 use std::ops::ControlFlow;
 
-use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::{InferCtxt, PlugSnapshotLeaks};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{inspect, QueryResult};
 use rustc_middle::traits::solve::{Certainty, Goal};
@@ -211,7 +211,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
 /// The public API to interact with proof trees.
 pub trait ProofTreeVisitor<'tcx> {
-    type BreakTy;
+    type BreakTy: PlugSnapshotLeaks<'tcx>;
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy>;
 }

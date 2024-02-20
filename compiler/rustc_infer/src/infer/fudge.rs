@@ -109,7 +109,7 @@ impl<'tcx> InferCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let variable_lengths = self.variable_lengths();
-        let (mut fudger, value) = self.probe(|_| {
+        let (mut fudger, value) = self.probe_unchecked(|_| {
             match f() {
                 Ok(value) => {
                     let value = self.resolve_vars_if_possible(value);

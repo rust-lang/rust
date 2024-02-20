@@ -2,7 +2,7 @@
 
 use super::PredicateObligation;
 
-use crate::infer::InferCtxtUndoLogs;
+use crate::infer::{InferCtxt, InferCtxtUndoLogs, PlugSnapshotLeaks};
 
 use rustc_data_structures::{
     snapshot_map::{self, SnapshotMapRef, SnapshotMapStorage},
@@ -18,6 +18,11 @@ pub(crate) type UndoLog<'tcx> =
 #[derive(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>,
+}
+impl<'tcx> PlugSnapshotLeaks<'tcx> for MismatchedProjectionTypes<'tcx> {
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self {
+        MismatchedProjectionTypes { err: self.err.plug_leaks(infcx) }
+    }
 }
 
 #[derive(Clone)]

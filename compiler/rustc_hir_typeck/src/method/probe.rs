@@ -14,12 +14,15 @@ use rustc_infer::infer::canonical::OriginalQueryValues;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::PlugSnapshotLeaks;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::AssocItem;
 use rustc_middle::ty::GenericParamDefKind;
+use rustc_middle::ty::PolySubtypePredicate;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
@@ -136,6 +139,12 @@ pub(crate) struct Candidate<'tcx> {
     pub(crate) kind: CandidateKind<'tcx>,
     pub(crate) import_ids: SmallVec<[LocalDefId; 1]>,
 }
+impl<'tcx> PlugSnapshotLeaks<'tcx> for Candidate<'tcx> {
+    fn plug_leaks(self, _: &InferCtxt<'tcx>) -> Self {
+        // TODO
+        self
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) enum CandidateKind<'tcx> {
@@ -157,6 +166,11 @@ enum ProbeResult {
     NoMatch,
     BadReturnType,
     Match,
+}
+impl<'tcx> PlugSnapshotLeaks<'tcx> for ProbeResult {
+    fn plug_leaks(self, _: &infer::InferCtxt<'tcx>) -> Self {
+        self
+    }
 }
 
 /// When adjusting a receiver we often want to do one of
@@ -214,6 +228,13 @@ pub struct Pick<'tcx> {
 
     /// Unstable candidates alongside the stable ones.
     unstable_candidates: Vec<(Candidate<'tcx>, Symbol)>,
+}
+
+impl<'tcx> PlugSnapshotLeaks<'tcx> for Pick<'tcx> {
+    fn plug_leaks(self, _: &infer::InferCtxt<'tcx>) -> Self {
+        // TODO
+        self
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -355,7 +376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .unwrap()
     }
 
-    fn probe_op<OP, R>(
+    fn probe_op<OP, R: PlugSnapshotLeaks<'tcx>>(
         &'a self,
         span: Span,
         mode: Mode,

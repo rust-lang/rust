@@ -15,7 +15,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, SubdiagnosticMessage};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{self, InferOk};
+use rustc_infer::infer::{self, InferCtxt, InferOk, PlugSnapshotLeaks};
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, GenericParamDefKind, Ty, TypeVisitableExt};
@@ -67,6 +67,13 @@ pub enum MethodError<'tcx> {
     BadReturnType,
 }
 
+impl<'tcx> PlugSnapshotLeaks<'tcx> for MethodError<'tcx> {
+    fn plug_leaks(self, infcx: &InferCtxt<'tcx>) -> Self {
+        // TODO
+        self
+    }
+}
+
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
 #[derive(Debug)]
@@ -85,6 +92,11 @@ pub struct NoMatchData<'tcx> {
 pub enum CandidateSource {
     Impl(DefId),
     Trait(DefId /* trait id */),
+}
+impl<'tcx> PlugSnapshotLeaks<'tcx> for CandidateSource {
+    fn plug_leaks(self, _: &InferCtxt<'tcx>) -> Self {
+        self
+    }
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {

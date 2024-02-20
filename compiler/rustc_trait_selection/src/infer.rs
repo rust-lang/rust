@@ -86,22 +86,20 @@ impl<'tcx> InferCtxt<'tcx> {
         ty: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<Vec<traits::FulfillmentError<'tcx>>> {
-        self.probe(|_snapshot| {
-            let mut selcx = SelectionContext::new(self);
-            match selcx.select(&Obligation::new(
-                self.tcx,
-                ObligationCause::dummy(),
-                param_env,
-                ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
-            )) {
-                Ok(Some(selection)) => {
-                    let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self);
-                    fulfill_cx.register_predicate_obligations(self, selection.nested_obligations());
-                    Some(fulfill_cx.select_all_or_error(self))
-                }
-                Ok(None) | Err(_) => None,
+        let mut selcx = SelectionContext::new(self);
+        match selcx.select(&Obligation::new(
+            self.tcx,
+            ObligationCause::dummy(),
+            param_env,
+            ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
+        )) {
+            Ok(Some(selection)) => {
+                let mut fulfill_cx = <dyn TraitEngine<'tcx>>::new(self);
+                fulfill_cx.register_predicate_obligations(self, selection.nested_obligations());
+                Some(fulfill_cx.select_all_or_error(self))
             }
-        })
+            Ok(None) | Err(_) => None,
+        }
     }
 }
 

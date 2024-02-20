@@ -34,6 +34,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::infer::PlugSnapshotLeaks;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::DepNodeIndex;
@@ -3083,6 +3084,11 @@ pub enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
     No,
+}
+impl PlugSnapshotLeaks<'_> for ProjectionMatchesProjection {
+    fn plug_leaks(self, _: &InferCtxt<'_>) -> Self {
+        self
+    }
 }
 
 /// Replace all regions inside the coroutine interior with late bound regions.

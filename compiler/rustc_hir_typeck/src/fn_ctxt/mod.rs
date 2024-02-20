@@ -163,7 +163,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if fn_sig.has_escaping_bound_vars() {
                     return fn_sig;
                 }
-                self.probe(|_| {
+                // We only return the normalized `fn_sig` if it does not contain infer vars.
+                self.probe_unchecked(|_| {
                     let ocx = ObligationCtxt::new(self);
                     let normalized_fn_sig =
                         ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);

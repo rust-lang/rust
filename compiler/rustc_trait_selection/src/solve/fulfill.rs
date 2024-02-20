@@ -75,25 +75,25 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         self.obligations
             .drain(..)
             .map(|obligation| {
-                let code = infcx.probe(|_| {
-                    match infcx
+                let code = match infcx.probe(|_| {
+                    infcx
                         .evaluate_root_goal(obligation.clone().into(), GenerateProofTree::IfEnabled)
                         .0
-                    {
-                        Ok((_, Certainty::Maybe(MaybeCause::Ambiguity), _)) => {
-                            FulfillmentErrorCode::Ambiguity { overflow: false }
-                        }
-                        Ok((_, Certainty::Maybe(MaybeCause::Overflow), _)) => {
-                            FulfillmentErrorCode::Ambiguity { overflow: true }
-                        }
-                        Ok((_, Certainty::Yes, _)) => {
-                            bug!("did not expect successful goal when collecting ambiguity errors")
-                        }
-                        Err(_) => {
-                            bug!("did not expect selection error when collecting ambiguity errors")
-                        }
+                        .map(|(_, cert, _)| cert)
+                }) {
+                    Ok(Certainty::Maybe(MaybeCause::Ambiguity)) => {
+                        FulfillmentErrorCode::Ambiguity { overflow: false }
                     }
-                });
+                    Ok(Certainty::Maybe(MaybeCause::Overflow)) => {
+                        FulfillmentErrorCode::Ambiguity { overflow: true }
+                    }
+                    Ok(Certainty::Yes) => {
+                        bug!("did not expect successful goal when collecting ambiguity errors")
+                    }
+                    Err(_) => {
+                        bug!("did not expect selection error when collecting ambiguity errors")
+                    }
+                };
 
                 FulfillmentError {
                     obligation: obligation.clone(),
