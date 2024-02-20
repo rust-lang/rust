@@ -5,8 +5,8 @@ use clippy_utils::{any_parent_is_automatically_derived, get_parent_node, is_lint
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, Node, PatKind, Stmt,
-    StmtKind, UnsafeSource,
+    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind,
+    Stmt, StmtKind, UnsafeSource,
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -178,6 +178,7 @@ impl NoEffect {
             }
         } else if let StmtKind::Local(local) = stmt.kind {
             if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
+                && !matches!(local.source, LocalSource::AsyncFn)
                 && let Some(init) = local.init
                 && local.els.is_none()
                 && !local.pat.span.from_expansion()
