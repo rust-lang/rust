@@ -10,3 +10,6 @@ core = { path = "../core" }
 panic_unwind = { path = "../panic_unwind" }
 panic_abort = { path = "../panic_abort" }
 libc = { version = "0.2.150", default-features = false }
+
+[dev-dependencies]
+rand = { version = "0.8.5" }

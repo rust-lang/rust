@@ -544,6 +544,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         time_options: None,
         force_run_in_process: false,
         fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
+        output_postprocess_executable: None,
+        output_postprocess_args: vec![],
     }
 }
 
