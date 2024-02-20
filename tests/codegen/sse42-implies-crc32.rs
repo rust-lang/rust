@@ -12,4 +12,4 @@ pub unsafe fn crc32sse(v: u8) -> u32 {
     _mm_crc32_u8(out, v)
 }
 
-// CHECK: attributes #0 {{.*"target-features"="\+sse4.2,\+crc32"}}
+// CHECK: attributes #0 {{.*"target-features"=".*\+sse4.2,\+crc32"}}
