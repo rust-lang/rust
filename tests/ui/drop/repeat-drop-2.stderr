@@ -1,3 +1,12 @@
+error[E0493]: destructor of `String` cannot be evaluated at compile-time
+  --> $DIR/repeat-drop-2.rs:7:25
+   |
+LL | const _: [String; 0] = [String::new(); 0];
+   |                        -^^^^^^^^^^^^^----
+   |                        ||
+   |                        |the destructor for this type cannot be evaluated in constants
+   |                        value is dropped here
+
 error[E0382]: use of moved value: `foo`
   --> $DIR/repeat-drop-2.rs:4:17
    |
@@ -12,15 +21,6 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     let _bar = foo.clone();
    |                   ++++++++
-
-error[E0493]: destructor of `String` cannot be evaluated at compile-time
-  --> $DIR/repeat-drop-2.rs:7:25
-   |
-LL | const _: [String; 0] = [String::new(); 0];
-   |                        -^^^^^^^^^^^^^----
-   |                        ||
-   |                        |the destructor for this type cannot be evaluated in constants
-   |                        value is dropped here
 
 error[E0381]: used binding `x` isn't initialized
   --> $DIR/repeat-drop-2.rs:12:14

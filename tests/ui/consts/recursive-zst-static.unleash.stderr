@@ -16,17 +16,7 @@ note: ...which requires evaluating initializer of static `B`...
 LL | static B: () = A;
    |                ^
    = note: ...which again requires evaluating initializer of static `A`, completing the cycle
-note: cycle used when linting top-level module
-  --> $DIR/recursive-zst-static.rs:10:1
-   |
-LL | / static FOO: () = FOO;
-LL | |
-LL | |
-LL | | static A: () = B;
-...  |
-LL | |     FOO
-LL | | }
-   | |_^
+   = note: cycle used when running analysis passes on this crate
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 2 previous errors

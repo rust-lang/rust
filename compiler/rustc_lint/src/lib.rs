@@ -213,8 +213,6 @@ late_lint_methods!(
             ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
             InvalidValue: InvalidValue,
             DerefNullPtr: DerefNullPtr,
-            // May Depend on constants elsewhere
-            UnusedBrokenConst: UnusedBrokenConst,
             UnstableFeatures: UnstableFeatures,
             UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
             ArrayIntoIter: ArrayIntoIter::default(),

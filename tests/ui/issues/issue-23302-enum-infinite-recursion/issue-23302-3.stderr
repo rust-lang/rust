@@ -20,15 +20,7 @@ note: ...which requires const-evaluating + checking `B`...
 LL | const B: i32 = A;
    |                ^
    = note: ...which again requires simplifying constant for the type system `A`, completing the cycle
-note: cycle used when linting top-level module
-  --> $DIR/issue-23302-3.rs:1:1
-   |
-LL | / const A: i32 = B;
-LL | |
-LL | | const B: i32 = A;
-LL | |
-LL | | fn main() { }
-   | |_____________^
+   = note: cycle used when running analysis passes on this crate
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error
