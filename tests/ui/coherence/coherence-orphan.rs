@@ -7,18 +7,16 @@ use lib::TheTrait;
 
 struct TheType;
 
-impl TheTrait<usize> for isize { }
+impl TheTrait<usize> for isize {}
 //~^ ERROR E0117
 //~| ERROR not all trait items implemented
 
-impl TheTrait<TheType> for isize { }
+impl TheTrait<TheType> for isize {}
 //~^ ERROR not all trait items implemented
 
-impl TheTrait<isize> for TheType { }
+impl TheTrait<isize> for TheType {}
 //~^ ERROR not all trait items implemented
 
-impl !Send for Vec<isize> { } //~ ERROR E0117
-//~^ WARNING
-//~| WARNING this will change its meaning
+impl !Send for Vec<isize> {} //~ ERROR E0117
 
-fn main() { }
+fn main() {}

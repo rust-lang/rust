@@ -13,7 +13,7 @@ LL | |     A: RefFromWasmAbi,
 LL | |     R: ReturnWasmAbi,
    | |_____________________^ conflicting implementation for `&dyn Fn(&_) -> _`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: the behavior may change in a future release
    = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
    = note: downstream crates may implement trait `FromWasmAbi` for type `&_`
    = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
