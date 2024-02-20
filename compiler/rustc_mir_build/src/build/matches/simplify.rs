@@ -15,9 +15,7 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::{Ascription, Binding, Candidate, MatchPair, TestCase};
 use crate::build::Builder;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::thir::{self, *};
-use rustc_middle::ty;
+use rustc_middle::thir::{Pat, PatKind};
 
 use std::mem;
 
@@ -128,79 +126,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ascriptions: &mut Vec<Ascription<'tcx>>,
         match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        // Collect bindings and ascriptions.
-        match match_pair.pattern.kind {
-            PatKind::AscribeUserType {
-                ascription: thir::Ascription { ref annotation, variance },
-                ..
-            } => {
-                // Apply the type ascription to the value at `match_pair.place`
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    ascriptions.push(Ascription {
-                        annotation: annotation.clone(),
-                        source,
-                        variance,
-                    });
-                }
+        if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
+            if let Some(binding) = binding {
+                bindings.push(binding);
             }
-
-            PatKind::Binding {
-                name: _,
-                mutability: _,
-                mode,
-                var,
-                ty: _,
-                subpattern: _,
-                is_primary: _,
-            } => {
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    bindings.push(Binding {
-                        span: match_pair.pattern.span,
-                        source,
-                        var_id: var,
-                        binding_mode: mode,
-                    });
-                }
+            if let Some(ascription) = ascription {
+                ascriptions.push(ascription);
             }
-
-            PatKind::InlineConstant { subpattern: ref pattern, def } => {
-                // Apply a type ascription for the inline constant to the value at `match_pair.place`
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    let span = match_pair.pattern.span;
-                    let parent_id = self.tcx.typeck_root_def_id(self.def_id.to_def_id());
-                    let args = ty::InlineConstArgs::new(
-                        self.tcx,
-                        ty::InlineConstArgsParts {
-                            parent_args: ty::GenericArgs::identity_for_item(self.tcx, parent_id),
-                            ty: self.infcx.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            }),
-                        },
-                    )
-                    .args;
-                    let user_ty =
-                        self.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
-                            def.to_def_id(),
-                            ty::UserArgs { args, user_self_ty: None },
-                        ));
-                    let annotation = ty::CanonicalUserTypeAnnotation {
-                        inferred_ty: pattern.ty,
-                        span,
-                        user_ty: Box::new(user_ty),
-                    };
-                    ascriptions.push(Ascription {
-                        annotation,
-                        source,
-                        variance: ty::Contravariant,
-                    });
-                }
-            }
-
-            _ => {}
-        }
-
-        if let TestCase::Irrefutable = match_pair.test_case {
             // Simplifiable pattern; we replace it with its subpairs.
             match_pairs.append(&mut match_pair.subpairs);
             Ok(())

@@ -60,7 +60,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
 
-            TestCase::Irrefutable => span_bug!(
+            TestCase::Irrefutable { .. } => span_bug!(
                 match_pair.pattern.span,
                 "simplifiable pattern found: {:?}",
                 match_pair.pattern

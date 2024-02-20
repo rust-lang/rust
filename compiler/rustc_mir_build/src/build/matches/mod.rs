@@ -1054,7 +1054,7 @@ struct Ascription<'tcx> {
 
 #[derive(Debug, Clone)]
 enum TestCase<'pat, 'tcx> {
-    Irrefutable,
+    Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: mir::Const<'tcx> },
     Range(&'pat PatRange<'tcx>),
