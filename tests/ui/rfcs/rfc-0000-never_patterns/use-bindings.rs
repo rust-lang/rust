@@ -1,3 +1,4 @@
+//@ check-pass
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 
@@ -9,26 +10,20 @@ fn main() {
 
     let (Ok(x) | Err(!)) = res_void;
     println!("{x}");
-    //~^ ERROR: used binding `x` is possibly-uninitialized
     let (Ok(x) | Err(!)) = &res_void;
     println!("{x}");
-    //~^ ERROR: used binding `x` is possibly-uninitialized
     let (Err(!) | Ok(x)) = res_void;
     println!("{x}");
-    //~^ ERROR: used binding `x` is possibly-uninitialized
 
     match res_void {
         Ok(x) | Err(!) => println!("{x}"),
-        //~^ ERROR: used binding `x` is possibly-uninitialized
     }
     match res_void {
         Err(!) | Ok(x) => println!("{x}"),
-        //~^ ERROR: used binding `x` is possibly-uninitialized
     }
 
     let res_res_void: Result<Result<bool, Void>, Void> = Ok(Ok(true));
     match res_res_void {
         Ok(Ok(x) | Err(!)) | Err(!) => println!("{x}"),
-        //~^ ERROR: used binding `x` is possibly-uninitialized
     }
 }
