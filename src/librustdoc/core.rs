@@ -3,7 +3,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::emitter::{DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::{codes::*, TerminalUrl};
+use rustc_errors::{codes::*, ErrorGuaranteed, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
@@ -306,7 +306,7 @@ pub(crate) fn run_global_ctxt(
     show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
-) -> (clean::Crate, RenderOptions, Cache) {
+) -> Result<(clean::Crate, RenderOptions, Cache), ErrorGuaranteed> {
     // Certain queries assume that some checks were run elsewhere
     // (see https://github.com/rust-lang/rust/pull/73566#issuecomment-656954425),
     // so type-check everything other than function bodies in this crate before running lints.
@@ -331,7 +331,10 @@ pub(crate) fn run_global_ctxt(
         });
     });
 
-    tcx.dcx().abort_if_errors();
+    if let Some(guar) = tcx.dcx().has_errors() {
+        return Err(guar);
+    }
+
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_attrs(module))
@@ -452,14 +455,13 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
-    // We must include lint errors here.
-    if tcx.dcx().has_errors_or_lint_errors().is_some() {
-        rustc_errors::FatalError.raise();
+    if let Some(guar) = tcx.dcx().has_errors() {
+        return Err(guar);
     }
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
 
-    (krate, ctxt.render_options, ctxt.cache)
+    Ok((krate, ctxt.render_options, ctxt.cache))
 }
 
 /// Due to <https://github.com/rust-lang/rust/pull/73566>,

@@ -772,12 +772,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // lot of annoying errors in the ui tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
-    if let Some(reported) = sess.dcx().has_errors() {
-        return Err(reported);
-    } else if sess.dcx().stashed_err_count() > 0 {
-        // Without this case we sometimes get delayed bug ICEs and I don't
-        // understand why. -nnethercote
-        return Err(sess.dcx().delayed_bug("some stashed error is waiting for use"));
+    //
+    // But we exclude lint errors from this, because lint errors are typically
+    // less serious and we're more likely to want to continue (#87337).
+    if let Some(guar) = sess.dcx().has_errors_excluding_lint_errors() {
+        return Err(guar);
     }
 
     sess.time("misc_checking_3", || {
@@ -937,9 +936,7 @@ pub fn start_codegen<'tcx>(
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
         if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
-            let dcx = tcx.dcx();
-            dcx.emit_err(errors::CantEmitMIR { error });
-            dcx.abort_if_errors();
+            tcx.dcx().emit_fatal(errors::CantEmitMIR { error });
         }
     }
 
