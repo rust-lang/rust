@@ -2,10 +2,7 @@
 //!
 //! [AVX512BF16 intrinsics]: https://software.intel.com/sites/landingpage/IntrinsicsGuide/#expand=1769&avx512techs=AVX512_BF16
 
-use crate::{
-    core_arch::{simd::*, simd_llvm::*, x86::*},
-    mem::transmute,
-};
+use crate::core_arch::{simd::*, simd_llvm::*, x86::*};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

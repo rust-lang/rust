@@ -2,7 +2,7 @@
 
 use crate::{
     core_arch::{simd::*, simd_llvm::*, x86::*},
-    intrinsics, mem, ptr,
+    mem, ptr,
 };
 
 #[cfg(test)]

@@ -1,7 +1,4 @@
-use crate::{
-    core_arch::{simd::*, x86::*},
-    mem::transmute,
-};
+use crate::core_arch::{simd::*, x86::*};
 
 #[allow(improper_ctypes)]
 extern "C" {

@@ -1,8 +1,7 @@
 use crate::{
     arch::asm,
     core_arch::{simd::*, simd_llvm::*, x86::*},
-    mem::{self, transmute},
-    ptr,
+    mem, ptr,
 };
 
 // x86-32 wants to use a 32-bit address size, but asm! defaults to using the full

@@ -2,11 +2,7 @@
 //!
 //! [F16C intrinsics]: https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=fp16&expand=1769
 
-use crate::{
-    core_arch::{simd::*, x86::*},
-    //    hint::unreachable_unchecked,
-    mem::transmute,
-};
+use crate::core_arch::{simd::*, x86::*};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

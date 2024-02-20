@@ -1,9 +1,6 @@
 //! Supplemental Streaming SIMD Extensions 3 (SSSE3)
 
-use crate::{
-    core_arch::{simd::*, simd_llvm::*, x86::*},
-    mem::transmute,
-};
+use crate::core_arch::{simd::*, simd_llvm::*, x86::*};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

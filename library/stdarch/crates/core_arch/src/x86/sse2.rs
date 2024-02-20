@@ -5,9 +5,7 @@ use stdarch_test::assert_instr;
 
 use crate::{
     core_arch::{simd::*, simd_llvm::*, x86::*},
-    intrinsics,
-    mem::{self, transmute},
-    ptr,
+    mem, ptr,
 };
 
 /// Provides a hint to the processor that the code sequence is a spin-wait loop.

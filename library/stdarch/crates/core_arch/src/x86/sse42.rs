@@ -5,10 +5,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-use crate::{
-    core_arch::{simd::*, simd_llvm::*, x86::*},
-    mem::transmute,
-};
+use crate::core_arch::{simd::*, simd_llvm::*, x86::*};
 
 /// String contains unsigned 8-bit characters *(Default)*
 #[stable(feature = "simd_x86", since = "1.27.0")]
