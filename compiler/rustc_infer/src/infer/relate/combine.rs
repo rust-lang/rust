@@ -194,7 +194,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::ConstKind::Infer(InferConst::Var(b_vid)),
             ) => {
                 self.inner.borrow_mut().const_unification_table().union(a_vid, b_vid);
-                return Ok(a);
+                Ok(a)
             }
 
             (
@@ -202,7 +202,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 ty::ConstKind::Infer(InferConst::EffectVar(b_vid)),
             ) => {
                 self.inner.borrow_mut().effect_unification_table().union(a_vid, b_vid);
-                return Ok(a);
+                Ok(a)
             }
 
             // All other cases of inference with other variables are errors.
@@ -220,19 +220,21 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
-                return self.instantiate_const_var(vid, b);
+                self.instantiate_const_var(relation, relation.a_is_expected(), vid, b)?;
+                Ok(b)
             }
 
             (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
-                return self.instantiate_const_var(vid, a);
+                self.instantiate_const_var(relation, !relation.a_is_expected(), vid, a)?;
+                Ok(a)
             }
 
             (ty::ConstKind::Infer(InferConst::EffectVar(vid)), _) => {
-                return Ok(self.unify_effect_variable(vid, b));
+                Ok(self.unify_effect_variable(vid, b))
             }
 
             (_, ty::ConstKind::Infer(InferConst::EffectVar(vid))) => {
-                return Ok(self.unify_effect_variable(vid, a));
+                Ok(self.unify_effect_variable(vid, a))
             }
 
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
@@ -240,7 +242,7 @@ impl<'tcx> InferCtxt<'tcx> {
             {
                 let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
 
-                relation.register_predicates([ty::Binder::dummy(if self.next_trait_solver() {
+                relation.register_predicates([if self.next_trait_solver() {
                     ty::PredicateKind::AliasRelate(
                         a.into(),
                         b.into(),
@@ -248,14 +250,12 @@ impl<'tcx> InferCtxt<'tcx> {
                     )
                 } else {
                     ty::PredicateKind::ConstEquate(a, b)
-                })]);
+                }]);
 
-                return Ok(b);
+                Ok(b)
             }
-            _ => {}
+            _ => ty::relate::structurally_relate_consts(relation, a, b),
         }
-
-        ty::relate::structurally_relate_consts(relation, a, b)
     }
 
     fn unify_integral_variable(
