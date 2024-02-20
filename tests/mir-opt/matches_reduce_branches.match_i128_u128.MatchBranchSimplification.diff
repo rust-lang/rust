@@ -1,0 +1,42 @@
+- // MIR for `match_i128_u128` before MatchBranchSimplification
++ // MIR for `match_i128_u128` after MatchBranchSimplification
+  
+  fn match_i128_u128(_1: EnumAi128) -> u128 {
+      debug i => _1;
+      let mut _0: u128;
+      let mut _2: i128;
+  
+      bb0: {
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [1: bb3, 2: bb4, 3: bb5, 340282366920938463463374607431768211455: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _0 = const core::num::<impl u128>::MAX;
+          goto -> bb6;
+      }
+  
+      bb3: {
+          _0 = const 1_u128;
+          goto -> bb6;
+      }
+  
+      bb4: {
+          _0 = const 2_u128;
+          goto -> bb6;
+      }
+  
+      bb5: {
+          _0 = const 3_u128;
+          goto -> bb6;
+      }
+  
+      bb6: {
+          return;
+      }
+  }
+  
