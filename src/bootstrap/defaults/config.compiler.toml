@@ -19,5 +19,10 @@ lto = "off"
 frame-pointers = true
 
 [llvm]
+# This enables debug-assertions in LLVM,
+# catching logic errors in codegen much earlier in the process.
+assertions = true
+# Enable warnings during the LLVM compilation (when LLVM is changed, causing a compilation)
+enable-warnings = true
 # Will download LLVM from CI if available on your platform.
 download-ci-llvm = "if-unchanged"

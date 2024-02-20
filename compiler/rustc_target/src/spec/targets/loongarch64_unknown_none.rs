@@ -16,7 +16,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(64),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
-            code_model: Some(CodeModel::Medium),
+            code_model: Some(CodeModel::Small),
             ..Default::default()
         },
     }

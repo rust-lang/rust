@@ -114,6 +114,9 @@ pub enum BuiltinUnsafe {
     DeclUnsafeMethod,
     #[diag(lint_builtin_impl_unsafe_method)]
     ImplUnsafeMethod,
+    #[diag(lint_builtin_global_asm)]
+    #[note(lint_builtin_global_macro_unsafety)]
+    GlobalAsm,
 }
 
 #[derive(LintDiagnostic)]

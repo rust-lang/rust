@@ -81,6 +81,217 @@ impl_zeroable_primitive!(isize);
 #[rustc_diagnostic_item = "NonZero"]
 pub struct NonZero<T: ZeroablePrimitive>(T);
 
+macro_rules! impl_nonzero_fmt {
+    ($Trait:ident) => {
+        #[stable(feature = "nonzero", since = "1.28.0")]
+        impl<T> fmt::$Trait for NonZero<T>
+        where
+            T: ZeroablePrimitive + fmt::$Trait,
+        {
+            #[inline]
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.get().fmt(f)
+            }
+        }
+    };
+}
+
+impl_nonzero_fmt!(Debug);
+impl_nonzero_fmt!(Display);
+impl_nonzero_fmt!(Binary);
+impl_nonzero_fmt!(Octal);
+impl_nonzero_fmt!(LowerHex);
+impl_nonzero_fmt!(UpperHex);
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+impl<T> Clone for NonZero<T>
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        // SAFETY: The contained value is non-zero.
+        unsafe { Self(self.0) }
+    }
+}
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+impl<T> PartialEq for NonZero<T>
+where
+    T: ZeroablePrimitive + PartialEq,
+{
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.get() == other.get()
+    }
+
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        self.get() != other.get()
+    }
+}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<T> StructuralPartialEq for NonZero<T> where T: ZeroablePrimitive + StructuralPartialEq {}
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+impl<T> Eq for NonZero<T> where T: ZeroablePrimitive + Eq {}
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+impl<T> PartialOrd for NonZero<T>
+where
+    T: ZeroablePrimitive + PartialOrd,
+{
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.get().partial_cmp(&other.get())
+    }
+
+    #[inline]
+    fn lt(&self, other: &Self) -> bool {
+        self.get() < other.get()
+    }
+
+    #[inline]
+    fn le(&self, other: &Self) -> bool {
+        self.get() <= other.get()
+    }
+
+    #[inline]
+    fn gt(&self, other: &Self) -> bool {
+        self.get() > other.get()
+    }
+
+    #[inline]
+    fn ge(&self, other: &Self) -> bool {
+        self.get() >= other.get()
+    }
+}
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+impl<T> Ord for NonZero<T>
+where
+    T: ZeroablePrimitive + Ord,
+{
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.get().cmp(&other.get())
+    }
+
+    #[inline]
+    fn max(self, other: Self) -> Self {
+        // SAFETY: The maximum of two non-zero values is still non-zero.
+        unsafe { Self(self.get().max(other.get())) }
+    }
+
+    #[inline]
+    fn min(self, other: Self) -> Self {
+        // SAFETY: The minimum of two non-zero values is still non-zero.
+        unsafe { Self(self.get().min(other.get())) }
+    }
+
+    #[inline]
+    fn clamp(self, min: Self, max: Self) -> Self {
+        // SAFETY: A non-zero value clamped between two non-zero values is still non-zero.
+        unsafe { Self(self.get().clamp(min.get(), max.get())) }
+    }
+}
+
+#[stable(feature = "nonzero", since = "1.28.0")]
+impl<T> Hash for NonZero<T>
+where
+    T: ZeroablePrimitive + Hash,
+{
+    #[inline]
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.get().hash(state)
+    }
+}
+
+#[stable(feature = "from_nonzero", since = "1.31.0")]
+impl<T> From<NonZero<T>> for T
+where
+    T: ZeroablePrimitive,
+{
+    #[inline]
+    fn from(nonzero: NonZero<T>) -> Self {
+        // Call `get` method to keep range information.
+        nonzero.get()
+    }
+}
+
+#[stable(feature = "nonzero_bitor", since = "1.45.0")]
+impl<T> BitOr for NonZero<T>
+where
+    T: ZeroablePrimitive + BitOr<Output = T>,
+{
+    type Output = Self;
+
+    #[inline]
+    fn bitor(self, rhs: Self) -> Self::Output {
+        // SAFETY: Bitwise OR of two non-zero values is still non-zero.
+        unsafe { Self(self.get() | rhs.get()) }
+    }
+}
+
+#[stable(feature = "nonzero_bitor", since = "1.45.0")]
+impl<T> BitOr<T> for NonZero<T>
+where
+    T: ZeroablePrimitive + BitOr<Output = T>,
+{
+    type Output = Self;
+
+    #[inline]
+    fn bitor(self, rhs: T) -> Self::Output {
+        // SAFETY: Bitwise OR of a non-zero value with anything is still non-zero.
+        unsafe { Self(self.get() | rhs) }
+    }
+}
+
+#[stable(feature = "nonzero_bitor", since = "1.45.0")]
+impl<T> BitOr<NonZero<T>> for T
+where
+    T: ZeroablePrimitive + BitOr<Output = T>,
+{
+    type Output = NonZero<T>;
+
+    #[inline]
+    fn bitor(self, rhs: NonZero<T>) -> Self::Output {
+        // SAFETY: Bitwise OR of anything with a non-zero value is still non-zero.
+        unsafe { NonZero(self | rhs.get()) }
+    }
+}
+
+#[stable(feature = "nonzero_bitor", since = "1.45.0")]
+impl<T> BitOrAssign for NonZero<T>
+where
+    T: ZeroablePrimitive,
+    Self: BitOr<Output = Self>,
+{
+    #[inline]
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
+
+#[stable(feature = "nonzero_bitor", since = "1.45.0")]
+impl<T> BitOrAssign<T> for NonZero<T>
+where
+    T: ZeroablePrimitive,
+    Self: BitOr<T, Output = Self>,
+{
+    #[inline]
+    fn bitor_assign(&mut self, rhs: T) {
+        *self = *self | rhs;
+    }
+}
+
 impl<T> NonZero<T>
 where
     T: ZeroablePrimitive,
@@ -180,20 +391,6 @@ where
                 unsafe { intrinsics::unreachable() }
             }
         }
-    }
-}
-
-macro_rules! impl_nonzero_fmt {
-    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
-        $(
-            #[$stability]
-            impl fmt::$Trait for $Ty {
-                #[inline]
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    self.get().fmt(f)
-                }
-            }
-        )+
     }
 }
 
@@ -547,171 +744,6 @@ macro_rules! nonzero_integer {
                 // So the result cannot be zero.
                 unsafe { Self::new_unchecked(self.get().saturating_pow(other)) }
             }
-        }
-
-        #[$stability]
-        impl Clone for $Ty {
-            #[inline]
-            fn clone(&self) -> Self {
-                // SAFETY: The contained value is non-zero.
-                unsafe { Self(self.0) }
-            }
-        }
-
-        #[$stability]
-        impl Copy for $Ty {}
-
-        #[$stability]
-        impl PartialEq for $Ty {
-            #[inline]
-            fn eq(&self, other: &Self) -> bool {
-                self.0 == other.0
-            }
-
-            #[inline]
-            fn ne(&self, other: &Self) -> bool {
-                self.0 != other.0
-            }
-        }
-
-        #[unstable(feature = "structural_match", issue = "31434")]
-        impl StructuralPartialEq for $Ty {}
-
-        #[$stability]
-        impl Eq for $Ty {}
-
-        #[$stability]
-        impl PartialOrd for $Ty {
-            #[inline]
-            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                self.0.partial_cmp(&other.0)
-            }
-
-            #[inline]
-            fn lt(&self, other: &Self) -> bool {
-                self.0 < other.0
-            }
-
-            #[inline]
-            fn le(&self, other: &Self) -> bool {
-                self.0 <= other.0
-            }
-
-            #[inline]
-            fn gt(&self, other: &Self) -> bool {
-                self.0 > other.0
-            }
-
-            #[inline]
-            fn ge(&self, other: &Self) -> bool {
-                self.0 >= other.0
-            }
-        }
-
-        #[$stability]
-        impl Ord for $Ty {
-            #[inline]
-            fn cmp(&self, other: &Self) -> Ordering {
-                self.0.cmp(&other.0)
-            }
-
-            #[inline]
-            fn max(self, other: Self) -> Self {
-                // SAFETY: The maximum of two non-zero values is still non-zero.
-                unsafe { Self(self.0.max(other.0)) }
-            }
-
-            #[inline]
-            fn min(self, other: Self) -> Self {
-                // SAFETY: The minimum of two non-zero values is still non-zero.
-                unsafe { Self(self.0.min(other.0)) }
-            }
-
-            #[inline]
-            fn clamp(self, min: Self, max: Self) -> Self {
-                // SAFETY: A non-zero value clamped between two non-zero values is still non-zero.
-                unsafe { Self(self.0.clamp(min.0, max.0)) }
-            }
-        }
-
-        #[$stability]
-        impl Hash for $Ty {
-            #[inline]
-            fn hash<H>(&self, state: &mut H)
-            where
-                H: Hasher,
-            {
-                self.0.hash(state)
-            }
-        }
-
-        #[stable(feature = "from_nonzero", since = "1.31.0")]
-        impl From<$Ty> for $Int {
-            #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
-            #[inline]
-            fn from(nonzero: $Ty) -> Self {
-                // Call nonzero to keep information range information
-                // from get method.
-                nonzero.get()
-            }
-        }
-
-        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-        impl BitOr for $Ty {
-            type Output = Self;
-
-            #[inline]
-            fn bitor(self, rhs: Self) -> Self::Output {
-                // SAFETY: since `self` and `rhs` are both nonzero, the
-                // result of the bitwise-or will be nonzero.
-                unsafe { Self::new_unchecked(self.get() | rhs.get()) }
-            }
-        }
-
-        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-        impl BitOr<$Int> for $Ty {
-            type Output = Self;
-
-            #[inline]
-            fn bitor(self, rhs: $Int) -> Self::Output {
-                // SAFETY: since `self` is nonzero, the result of the
-                // bitwise-or will be nonzero regardless of the value of
-                // `rhs`.
-                unsafe { Self::new_unchecked(self.get() | rhs) }
-            }
-        }
-
-        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-        impl BitOr<$Ty> for $Int {
-            type Output = $Ty;
-
-            #[inline]
-            fn bitor(self, rhs: $Ty) -> Self::Output {
-                // SAFETY: since `rhs` is nonzero, the result of the
-                // bitwise-or will be nonzero regardless of the value of
-                // `self`.
-                unsafe { $Ty::new_unchecked(self | rhs.get()) }
-            }
-        }
-
-        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-        impl BitOrAssign for $Ty {
-            #[inline]
-            fn bitor_assign(&mut self, rhs: Self) {
-                *self = *self | rhs;
-            }
-        }
-
-        #[stable(feature = "nonzero_bitor", since = "1.45.0")]
-        impl BitOrAssign<$Int> for $Ty {
-            #[inline]
-            fn bitor_assign(&mut self, rhs: $Int) {
-                *self = *self | rhs;
-            }
-        }
-
-        impl_nonzero_fmt! {
-            #[$stability] (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
         }
 
         #[stable(feature = "nonzero_parse", since = "1.35.0")]
