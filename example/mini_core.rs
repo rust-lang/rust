@@ -4,7 +4,7 @@
     thread_local
 )]
 #![no_core]
-#![allow(dead_code, internal_features)]
+#![allow(dead_code, internal_features, ambiguous_wide_pointer_comparisons)]
 
 #[no_mangle]
 unsafe extern "C" fn _Unwind_Resume() {
@@ -99,9 +99,6 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {}
-
-#[lang = "structural_teq"]
-pub trait StructuralEq {}
 
 #[lang = "not"]
 pub trait Not {

@@ -62,9 +62,6 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
             func.add_attribute(FnAttribute::Cold);
         }
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_RETURNS_TWICE) {
-            func.add_attribute(FnAttribute::ReturnsTwice);
-        }
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
             func.add_attribute(FnAttribute::Pure);
         }
@@ -80,7 +77,7 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         let span = cx.tcx
             .get_attr(instance.def_id(), sym::target_feature)
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        cx.tcx.sess.create_err(TiedTargetFeatures {
+        cx.tcx.dcx().create_err(TiedTargetFeatures {
             features: features.join(", "),
             span,
         })

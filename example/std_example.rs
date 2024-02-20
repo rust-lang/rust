@@ -1,3 +1,4 @@
+#![allow(internal_features)]
 #![feature(core_intrinsics, coroutines, coroutine_trait, is_sorted)]
 
 #[cfg(feature="master")]

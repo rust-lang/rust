@@ -90,7 +90,7 @@ fn create_wrapper_function(
         .collect();
     let func = context.new_function(None, FunctionType::Exported, output.unwrap_or(void), &args, from_name, false);
 
-    if tcx.sess.target.options.default_hidden_visibility {
+    if tcx.sess.default_hidden_visibility() {
         #[cfg(feature="master")]
         func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
     }

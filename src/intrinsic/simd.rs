@@ -38,7 +38,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     // macros for error handling:
     macro_rules! return_error {
         ($err:expr) => {{
-            bx.sess().emit_err($err);
+            bx.tcx.dcx().emit_err($err);
             return Err(());
         }};
     }
@@ -583,7 +583,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     ) -> Result<RValue<'gcc>, ()> {
         macro_rules! return_error {
             ($err:expr) => {{
-                bx.sess().emit_err($err);
+                bx.tcx.dcx().emit_err($err);
                 return Err(());
             }};
         }

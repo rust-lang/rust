@@ -1313,7 +1313,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     // Atomic Operations
-    fn atomic_cmpxchg(&mut self, dst: RValue<'gcc>, cmp: RValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering, failure_order: AtomicOrdering, weak: bool) -> RValue<'gcc> {
+    fn atomic_cmpxchg(&mut self, dst: RValue<'gcc>, cmp: RValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering, failure_order: AtomicOrdering, weak: bool) -> (RValue<'gcc>, RValue<'gcc>) {
         let expected = self.current_func().new_local(None, cmp.get_type(), "expected");
         self.llbb().add_assignment(None, expected, cmp);
         // NOTE: gcc doesn't support a failure memory model that is stronger than the success
@@ -1327,20 +1327,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             };
         let success = self.compare_exchange(dst, expected, src, order, failure_order, weak);
 
-        let pair_type = self.cx.type_struct(&[src.get_type(), self.bool_type], false);
-        let result = self.current_func().new_local(None, pair_type, "atomic_cmpxchg_result");
-        let align = Align::from_bits(64).expect("align"); // TODO(antoyo): use good align.
+        // NOTE: since success contains the call to the intrinsic, it must be added to the basic block before
+        // expected so that we store expected after the call.
+        let success_var = self.current_func().new_local(None, self.bool_type, "success");
+        self.llbb().add_assignment(None, success_var, success);
 
-        let value_type = result.to_rvalue().get_type();
-        if let Some(struct_type) = value_type.is_struct() {
-            self.store(success, result.access_field(None, struct_type.get_field(1)).get_address(None), align);
-            // NOTE: since success contains the call to the intrinsic, it must be stored before
-            // expected so that we store expected after the call.
-            self.store(expected.to_rvalue(), result.access_field(None, struct_type.get_field(0)).get_address(None), align);
-        }
-        // TODO(antoyo): handle when value is not a struct.
-
-        result.to_rvalue()
+        (expected.to_rvalue(), success_var.to_rvalue())
     }
 
     fn atomic_rmw(&mut self, op: AtomicRmwBinOp, dst: RValue<'gcc>, src: RValue<'gcc>, order: AtomicOrdering) -> RValue<'gcc> {

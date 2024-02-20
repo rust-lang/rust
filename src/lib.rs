@@ -28,8 +28,6 @@
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
-#![deny(rustc::untranslatable_diagnostic)]
-#![deny(rustc::diagnostic_outside_of_impl)]
 #![deny(clippy::pattern_type_mismatch)]
 
 extern crate rustc_apfloat;
@@ -99,12 +97,10 @@ use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods};
-use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
+use rustc_errors::{ErrorGuaranteed, DiagCtxt};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::util::Providers;
@@ -118,7 +114,7 @@ use tempfile::TempDir;
 use crate::back::lto::ModuleBuffer;
 use crate::gcc_util::target_cpu;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 
@@ -195,7 +191,7 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(feature="master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
         if sess.lto() == Lto::Thin {
-            sess.emit_warning(LTONotSupported {});
+            sess.dcx().emit_warn(LTONotSupported {});
         }
 
         #[cfg(not(feature="master"))]
@@ -223,13 +219,11 @@ impl CodegenBackend for GccCodegenBackend {
         Box::new(res)
     }
 
-    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
-        let (codegen_results, work_products) = ongoing_codegen
+    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+        ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess);
-
-        Ok((codegen_results, work_products))
+            .join(sess)
     }
 
     fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorGuaranteed> {
@@ -335,7 +329,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!()
     }
 
-    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _diag_handler: &Handler, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
+    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _dcx: &DiagCtxt, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
         Ok(())
     }
@@ -349,8 +343,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    unsafe fn codegen(cgcx: &CodegenContext<Self>, diag_handler: &Handler, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, diag_handler, module, config)
+    unsafe fn codegen(cgcx: &CodegenContext<Self>, dcx: &DiagCtxt, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
+        back::write::codegen(cgcx, dcx, module, config)
     }
 
     fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
@@ -361,8 +355,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    fn run_link(cgcx: &CodegenContext<Self>, diag_handler: &Handler, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::write::link(cgcx, diag_handler, modules)
+    fn run_link(cgcx: &CodegenContext<Self>, dcx: &DiagCtxt, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        back::write::link(cgcx, dcx, modules)
     }
 }
 
@@ -401,7 +395,9 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 }
 
 pub fn target_features(sess: &Session, allow_unstable: bool, target_info: &LockedTargetInfo) -> Vec<Symbol> {
-    supported_target_features(sess)
+    sess
+        .target
+        .supported_target_features()
         .iter()
         .filter_map(
             |&(feature, gate)| {
@@ -411,7 +407,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool, target_info: &Locke
         .filter(|_feature| {
             target_info.cpu_supports(_feature)
             /*
-               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512ifma,
+               adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
                avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
                bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
                sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves

@@ -159,21 +159,6 @@ where
     let repo_path = Path::new(crate::BUILD_DIR).join(&clone_result.repo_name);
     run_command(&[&"git", &"checkout", &"--", &"."], Some(&repo_path))?;
     run_command(&[&"git", &"checkout", &checkout_commit], Some(&repo_path))?;
-    let filter = format!("-{}-", clone_result.repo_name);
-    walk_dir(
-        "patches/crate_patches",
-        |_| Ok(()),
-        |file_path| {
-            let patch = file_path.as_os_str().to_str().unwrap();
-            if patch.contains(&filter) && patch.ends_with(".patch") {
-                run_command_with_output(
-                    &[&"git", &"am", &file_path.canonicalize().unwrap()],
-                    Some(&repo_path),
-                )?;
-            }
-            Ok(())
-        },
-    )?;
     if let Some(extra) = extra {
         extra(&repo_path)?;
     }
@@ -238,7 +223,7 @@ pub fn run() -> Result<(), String> {
         let to_clone = &[
             (
                 "https://github.com/rust-random/rand.git",
-                "0f933f9c7176e53b2a3c7952ded484e1783f0bf1",
+                "1f4507a8e1cf8050e4ceef95eeda8f64645b6719",
                 None,
             ),
             (
