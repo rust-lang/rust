@@ -369,6 +369,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let Some(file) = file {
             err.note(format!("the full type name has been written to '{}'", file.display()));
+            err.note(format!(
+                "consider using `--verbose` to print the full type name to the console"
+            ));
         }
 
         err
@@ -493,6 +496,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(file) = ty_file {
             err.note(format!("the full type name has been written to '{}'", file.display(),));
+            err.note(format!(
+                "consider using `--verbose` to print the full type name to the console"
+            ));
         }
         if rcvr_ty.references_error() {
             err.downgrade_to_delayed_bug();
