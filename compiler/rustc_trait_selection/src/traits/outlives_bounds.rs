@@ -62,9 +62,10 @@ fn implied_outlives_bounds<'a, 'tcx>(
     };
 
     let mut constraints = QueryRegionConstraints::default();
+    let span = infcx.tcx.def_span(body_id);
     let Ok(InferOk { value: mut bounds, obligations }) = infcx
         .instantiate_nll_query_response_and_region_obligations(
-            &ObligationCause::dummy(),
+            &ObligationCause::dummy_with_span(span),
             param_env,
             &canonical_var_values,
             canonical_result,
@@ -80,8 +81,6 @@ fn implied_outlives_bounds<'a, 'tcx>(
     bounds.retain(|bound| !bound.has_placeholders());
 
     if !constraints.is_empty() {
-        let span = infcx.tcx.def_span(body_id);
-
         debug!(?constraints);
         if !constraints.member_constraints.is_empty() {
             span_bug!(span, "{:#?}", constraints.member_constraints);

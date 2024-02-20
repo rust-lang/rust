@@ -405,7 +405,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// will instantiate fresh inference variables for each canonical
     /// variable instead. Therefore, the result of this method must be
     /// properly unified
-    #[instrument(level = "debug", skip(self, cause, param_env))]
+    #[instrument(level = "debug", skip(self, param_env))]
     fn query_response_instantiation_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,

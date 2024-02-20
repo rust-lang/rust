@@ -8,7 +8,7 @@ use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Const
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -183,7 +183,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
                         // we don't actually use this for anything, but
                         // the `TypeOutlives` code needs an origin.
-                        let origin = infer::RelateParamBound(DUMMY_SP, t1, None);
+                        let origin = infer::RelateParamBound(self.span, t1, None);
 
                         TypeOutlives::new(
                             &mut *self,
