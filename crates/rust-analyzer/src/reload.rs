@@ -411,10 +411,7 @@ impl GlobalState {
                 if *force_reload_crate_graph {
                     self.recreate_crate_graph(cause);
                 }
-                if self.build_deps_changed && self.config.run_build_scripts() {
-                    self.build_deps_changed = false;
-                    self.fetch_build_data_queue.request_op("build_deps_changed".to_owned(), ());
-                }
+
                 // Current build scripts do not match the version of the active
                 // workspace, so there's nothing for us to update.
                 return;
@@ -424,7 +421,7 @@ impl GlobalState {
 
             // Here, we completely changed the workspace (Cargo.toml edit), so
             // we don't care about build-script results, they are stale.
-            // FIXME: can we abort the build scripts here?
+            // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
 
             if self.config.run_build_scripts() {
