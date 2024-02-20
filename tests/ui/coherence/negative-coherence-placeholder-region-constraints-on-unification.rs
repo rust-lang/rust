@@ -20,6 +20,6 @@ trait FnMarker {}
 impl<T: ?Sized + Marker> FnMarker for fn(T) {}
 impl<T: ?Sized> FnMarker for fn(&T) {}
 //[explicit]~^ ERROR conflicting implementations of trait `FnMarker` for type `fn(&_)`
-//[explicit]~| WARN this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+//[explicit]~| WARN the behavior may change in a future release
 
 fn main() {}

@@ -1630,7 +1630,7 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
 #[instrument(level = "debug", skip(tcx))]
 fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     let mut result = tcx.explicit_predicates_of(def_id);
-    debug!("predicates_defined_on: explicit_predicates_of({:?}) = {:?}", def_id, result,);
+    debug!("predicates_defined_on: explicit_predicates_of({:?}) = {:?}", def_id, result);
     let inferred_outlives = tcx.inferred_outlives_of(def_id);
     if !inferred_outlives.is_empty() {
         debug!(

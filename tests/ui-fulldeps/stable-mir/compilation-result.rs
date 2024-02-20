@@ -55,7 +55,7 @@ fn test_skipped(mut args: Vec<String>) {
 fn test_failed(mut args: Vec<String>) {
     args.push("--cfg=broken".to_string());
     let result = run!(args, || unreachable!() as ControlFlow<()>);
-    assert_eq!(result, Err(stable_mir::CompilerError::CompilationFailed));
+    assert_eq!(result, Err(stable_mir::CompilerError::Failed));
 }
 
 /// Test that we are able to pass a closure and set the return according to the captured value.
