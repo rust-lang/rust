@@ -1651,7 +1651,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.tcx
                 .sess
                 .time("resolve_postprocess", || self.crate_loader(|c| c.postprocess(krate)));
-            self.crate_loader(|c| c.unload_unused_crates());
         });
 
         // Make sure we don't mutate the cstore from here on.
