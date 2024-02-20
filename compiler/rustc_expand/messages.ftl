@@ -114,6 +114,10 @@ expand_only_one_argument =
 expand_only_one_word =
     must only be one word
 
+expand_proc_macro_derive_panicked =
+    proc-macro derive panicked
+    .help = message: {$message}
+
 expand_proc_macro_derive_tokens =
     proc-macro derive produced unparsable tokens
 

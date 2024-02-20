@@ -147,11 +147,14 @@ impl MultiItemModifier for DeriveProcMacro {
             match self.client.run(&strategy, server, input, proc_macro_backtrace) {
                 Ok(stream) => stream,
                 Err(e) => {
-                    let mut err = ecx.dcx().struct_span_err(span, "proc-macro derive panicked");
-                    if let Some(s) = e.as_str() {
-                        err.help(format!("message: {s}"));
-                    }
-                    err.emit();
+                    ecx.dcx().emit_err({
+                        errors::ProcMacroDerivePanicked {
+                            span,
+                            message: e.as_str().map(|message| {
+                                errors::ProcMacroDerivePanickedHelp { message: message.into() }
+                            }),
+                        }
+                    });
                     return ExpandResult::Ready(vec![]);
                 }
             }
