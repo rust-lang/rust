@@ -623,6 +623,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         outlived_fr: RegionVid,
     ) {
         let tcx = self.infcx.tcx;
+        debug!(?code);
         let ObligationCauseCode::MethodCallConstraint(ty, call_span) = code else {
             return;
         };
@@ -637,10 +638,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         ) else {
             return;
         };
+        debug!(?instance);
         let def_id = instance.def_id();
         let mut parent = tcx.parent(def_id);
-        match tcx.def_kind(parent) {
-            hir::def::DefKind::Impl { .. } => {}
+        debug!(?def_id, ?parent);
+        let trait_preds = match tcx.def_kind(parent) {
+            hir::def::DefKind::Impl { .. } => &[],
             hir::def::DefKind::Trait => {
                 let Some(ty) = args.get(0).and_then(|arg| arg.as_type()) else {
                     return;
@@ -652,14 +655,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let [def_id] = impls[..] {
                     // The method we have is on the trait, but for `parent` we want to analyze the
                     // relevant impl instead.
+                    let preds = tcx.predicates_of(parent).predicates;
                     parent = def_id;
+                    preds
                 } else {
                     return;
-                };
+                }
             }
             _ => return,
-        }
+        };
+        debug!(?def_id, ?parent);
         let ty = tcx.type_of(parent).instantiate_identity();
+        debug!(?ty);
         if self.to_error_region(outlived_fr) != Some(tcx.lifetimes.re_static) {
             return;
         }
@@ -678,23 +685,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // ```
         let mut predicates: Vec<Span> = traits::elaborate(
             tcx,
-            tcx.predicates_of(def_id)
-                .predicates
-                .iter()
-                .map(|(p, sp)| (p.as_predicate(), *sp))
-                .chain(
-                    tcx.predicates_of(parent)
-                        .predicates
-                        .iter()
-                        .map(|(p, sp)| (p.as_predicate(), *sp)),
-                ),
+            tcx.predicates_of(def_id).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
         )
+        .chain(traits::elaborate(
+            tcx,
+            tcx.predicates_of(parent).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
+        ))
+        .chain(traits::elaborate(tcx, trait_preds.iter().map(|(p, sp)| (p.as_predicate(), *sp))))
         .filter_map(|(pred, pred_span)| {
             if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
                 && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r)) = clause
-                // Look for `'static` bounds
                 && r.kind() == ty::ReStatic
-                // We only want bounds on `Self`
                 && (self.infcx.can_eq(self.param_env, ty, pred_ty)
                     || matches!(
                         pred_ty.kind(),
@@ -706,6 +707,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         })
         .collect();
+        debug!(?predicates);
 
         // Look at the receiver for `&'static self`, which introduces a `'static` obligation.
         // ```

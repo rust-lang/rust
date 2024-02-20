@@ -29,9 +29,11 @@ LL |         val.use_self()
    |         `val` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
    |
-note: the `impl` on `dyn t::ObjectTrait` has a `'static` lifetime requirement
-  --> $DIR/static-impl-obligation.rs:216:47
+note: the `impl` on `dyn t::ObjectTrait` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:215:31
    |
+LL |     trait MyTrait where Self: 'static {
+   |                               ^^^^^^^
 LL |         fn use_self(&self) -> &() where Self: 'static { panic!() }
    |                                               ^^^^^^^
 
@@ -76,8 +78,10 @@ LL |         fn use_self(&'static self) -> &() { panic!() }
 LL |     impl MyTrait for dyn ObjectTrait {}
    |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
 note: the `impl` on `(dyn v::ObjectTrait + 'static)` has `'static` lifetime requirements
-  --> $DIR/static-impl-obligation.rs:252:21
+  --> $DIR/static-impl-obligation.rs:251:31
    |
+LL |     trait MyTrait where Self: 'static {
+   |                               ^^^^^^^
 LL |         fn use_self(&'static self) -> &() { panic!() }
    |                     ^^^^^^^^^^^^^
 ...
