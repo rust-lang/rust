@@ -2,6 +2,7 @@ use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_type_ir::fold::TypeFoldable;
 use std::ops::ControlFlow;
 
 pub use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
@@ -109,10 +110,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// variables will also be equated.
     pub fn collect_constrained_late_bound_regions<T>(
         self,
-        value: &Binder<'tcx, T>,
+        value: Binder<'tcx, T>,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
-        T: TypeVisitable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.collect_late_bound_regions(value, true)
     }
@@ -120,25 +121,26 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns a set of all late-bound regions that appear in `value` anywhere.
     pub fn collect_referenced_late_bound_regions<T>(
         self,
-        value: &Binder<'tcx, T>,
+        value: Binder<'tcx, T>,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
-        T: TypeVisitable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.collect_late_bound_regions(value, false)
     }
 
     fn collect_late_bound_regions<T>(
         self,
-        value: &Binder<'tcx, T>,
+        value: Binder<'tcx, T>,
         just_constrained: bool,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
-        T: TypeVisitable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let mut collector = LateBoundRegionsCollector::new(self, just_constrained);
+        let mut collector = LateBoundRegionsCollector::new(just_constrained);
+        let value = value.skip_binder();
         let value = if just_constrained { self.expand_weak_alias_tys(value) } else { value };
-        let result = value.as_ref().skip_binder().visit_with(&mut collector);
+        let result = value.visit_with(&mut collector);
         assert!(result.is_continue()); // should never have stopped early
         collector.regions
     }

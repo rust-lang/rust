@@ -2678,9 +2678,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
         let inputs = bare_fn_ty.inputs();
         let late_bound_in_args =
-            tcx.collect_constrained_late_bound_regions(&inputs.map_bound(|i| i.to_owned()));
+            tcx.collect_constrained_late_bound_regions(inputs.map_bound(|i| i.to_owned()));
         let output = bare_fn_ty.output();
-        let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
+        let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(output);
 
         self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
             struct_span_code_err!(
