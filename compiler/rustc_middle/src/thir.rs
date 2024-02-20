@@ -958,22 +958,6 @@ impl<'tcx> PatRangeBoundary<'tcx> {
             Self::NegInfinity | Self::PosInfinity => None,
         }
     }
-    #[inline]
-    pub fn to_const(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> mir::Const<'tcx> {
-        match self {
-            Self::Finite(value) => value,
-            Self::NegInfinity => {
-                // Unwrap is ok because the type is known to be numeric.
-                let c = ty.numeric_min_val(tcx).unwrap();
-                mir::Const::from_ty_const(c, tcx)
-            }
-            Self::PosInfinity => {
-                // Unwrap is ok because the type is known to be numeric.
-                let c = ty.numeric_max_val(tcx).unwrap();
-                mir::Const::from_ty_const(c, tcx)
-            }
-        }
-    }
     pub fn eval_bits(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> u128 {
         match self {
             Self::Finite(value) => value.eval_bits(tcx, param_env),
