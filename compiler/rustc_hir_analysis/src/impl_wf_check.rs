@@ -111,7 +111,7 @@ fn enforce_impl_params_are_constrained(
             match item.kind {
                 ty::AssocKind::Type => {
                     if item.defaultness(tcx).has_value() {
-                        cgp::parameters_for(tcx, &tcx.type_of(def_id).instantiate_identity(), true)
+                        cgp::parameters_for(tcx, tcx.type_of(def_id).instantiate_identity(), true)
                     } else {
                         vec![]
                     }
