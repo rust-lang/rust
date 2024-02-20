@@ -207,4 +207,73 @@ mod s {
         y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
+mod t {
+    trait OtherTrait<'a> {}
+    impl<'a> OtherTrait<'a> for &'a () {}
+
+    trait ObjectTrait {}
+    trait MyTrait where Self: 'static {
+        fn use_self(&self) -> &() where Self: 'static { panic!() }
+    }
+    trait Irrelevant {
+        fn use_self(&self) -> &() { panic!() }
+    }
+
+    impl MyTrait for dyn ObjectTrait + '_ {} //~ ERROR lifetime bound not satisfied
+
+    fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+        val.use_self() //~ ERROR borrowed data escapes
+    }
+}
+mod u {
+    trait OtherTrait<'a> {}
+    impl<'a> OtherTrait<'a> for &'a () {}
+
+    trait ObjectTrait {}
+    trait MyTrait {
+        fn use_self(&self) -> &() where Self: 'static { panic!() }
+    }
+    trait Irrelevant {
+        fn use_self(&self) -> &() { panic!() }
+    }
+
+    impl MyTrait for dyn ObjectTrait + '_ {}
+
+    fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+        val.use_self() //~ ERROR borrowed data escapes
+    }
+}
+mod v {
+    trait OtherTrait<'a> {}
+    impl<'a> OtherTrait<'a> for &'a () {}
+
+    trait ObjectTrait {}
+    trait MyTrait where Self: 'static {
+        fn use_self(&'static self) -> &() { panic!() }
+    }
+    trait Irrelevant {
+        fn use_self(&self) -> &() { panic!() }
+    }
+
+    impl MyTrait for dyn ObjectTrait {}
+
+    fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+        val.use_self() //~ ERROR borrowed data escapes
+    }
+}
+mod w {
+    trait Foo {}
+    impl<'a> Foo for &'a u32 {}
+
+    trait Trait where Self: 'static { fn hello(&self) {} }
+
+    impl Trait for dyn Foo + '_ { //~ERROR lifetime bound not satisfied
+        fn hello(&self) {}
+
+    }
+    fn convert<'a>(x: &'a &'a u32) {
+        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
+        y.hello();
+    }
+}
 fn main() {}

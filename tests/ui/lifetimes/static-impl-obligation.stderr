@@ -1,3 +1,95 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/static-impl-obligation.rs:222:10
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |          ^^^^^^^
+   |
+note: lifetime parameter instantiated with the anonymous lifetime as defined here
+  --> $DIR/static-impl-obligation.rs:222:40
+   |
+LL |     impl MyTrait for dyn ObjectTrait + '_ {}
+   |                                        ^^
+   = note: but lifetime parameter must outlive the static lifetime
+note: `'static` requirement introduced here
+  --> $DIR/static-impl-obligation.rs:215:31
+   |
+LL |     trait MyTrait where Self: 'static {
+   |                               ^^^^^^^
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:225:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:243:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/static-impl-obligation.rs:261:9
+   |
+LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
+   |               --  --- `val` is a reference that is only valid in the function body
+   |               |
+   |               lifetime `'a` defined here
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^
+   |         |
+   |         `val` escapes the function body here
+   |         argument requires that `'a` must outlive `'static`
+   |
+note: the used `impl` has a `'static` requirement
+  --> $DIR/static-impl-obligation.rs:258:26
+   |
+LL |         fn use_self(&'static self) -> &() { panic!() }
+   |            -------- calling this method introduces the `impl`'s `'static` requirement
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                          ^^^^^^^^^^^ this has an implicit `'static` lifetime requirement
+note: the `impl` on `(dyn v::ObjectTrait + 'static)` has `'static` lifetime requirements
+  --> $DIR/static-impl-obligation.rs:252:21
+   |
+LL |         fn use_self(&'static self) -> &() { panic!() }
+   |                     ^^^^^^^^^^^^^
+...
+LL |     impl MyTrait for dyn ObjectTrait {}
+   |                      ^^^^^^^^^^^^^^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/static-impl-obligation.rs:270:10
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |          ^^^^^
+   |
+note: lifetime parameter instantiated with the anonymous lifetime as defined here
+  --> $DIR/static-impl-obligation.rs:270:30
+   |
+LL |     impl Trait for dyn Foo + '_ {
+   |                              ^^
+   = note: but lifetime parameter must outlive the static lifetime
+note: `'static` requirement introduced here
+  --> $DIR/static-impl-obligation.rs:268:29
+   |
+LL |     trait Trait where Self: 'static { fn hello(&self) {} }
+   |                             ^^^^^^^
+
 error: lifetime may not live long enough
   --> $DIR/static-impl-obligation.rs:9:9
    |
@@ -329,6 +421,15 @@ help: consider relaxing the implicit `'static` requirement on the impl
 LL |     impl Trait for dyn Foo + '_ {
    |                            ++++
 
-error: aborting due to 19 previous errors
+error: lifetime may not live long enough
+  --> $DIR/static-impl-obligation.rs:275:27
+   |
+LL |     fn convert<'a>(x: &'a &'a u32) {
+   |                -- lifetime `'a` defined here
+LL |         let y: &dyn Foo = x;
+   |                           ^ cast requires that `'a` must outlive `'static`
 
-For more information about this error, try `rustc --explain E0521`.
+error: aborting due to 25 previous errors
+
+Some errors have detailed explanations: E0478, E0521.
+For more information about an error, try `rustc --explain E0478`.

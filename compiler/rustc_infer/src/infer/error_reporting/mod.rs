@@ -61,7 +61,7 @@ use crate::traits::{
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
-    ErrorGuaranteed, IntoDiagArg,
+    ErrorGuaranteed, IntoDiagArg, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -458,11 +458,54 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     // the error. If all of these fails, we fall back to a rather
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
-                        if sub.is_placeholder() || sup.is_placeholder() {
-                            self.report_placeholder_failure(origin, sub, sup).emit()
+                        let mut err = if sub.is_placeholder() || sup.is_placeholder() {
+                            self.report_placeholder_failure(origin, sub, sup)
                         } else {
-                            self.report_concrete_failure(origin, sub, sup).emit()
+                            self.report_concrete_failure(origin, sub, sup)
+                        };
+                        if let hir::def::DefKind::Impl { .. } =
+                            self.tcx.def_kind(generic_param_scope)
+                            && let Some(def_id) =
+                                self.tcx.trait_id_of_impl(generic_param_scope.into())
+                        {
+                            // Collect all the `Span`s corresponding to the predicates introducing
+                            // the `sub` lifetime that couldn't be met (sometimes `'static`) on
+                            // both the `trait` and the `impl`.
+                            let spans: Vec<Span> = self
+                                .tcx
+                                .predicates_of(def_id)
+                                .predicates
+                                .iter()
+                                .chain(
+                                    self.tcx.predicates_of(generic_param_scope).predicates.iter(),
+                                )
+                                .filter_map(|(pred, span)| {
+                                    if let Some(ty::ClauseKind::TypeOutlives(
+                                        ty::OutlivesPredicate(pred_ty, r),
+                                    )) = pred.kind().no_bound_vars()
+                                        && r == sub
+                                        && let ty::Param(param) = pred_ty.kind()
+                                        && param.name.as_str() == "Self"
+                                    {
+                                        Some(*span)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+
+                            if !spans.is_empty() {
+                                let spans_len = spans.len();
+                                err.span_note(
+                                    MultiSpan::from(spans),
+                                    format!(
+                                        "`{sub}` requirement{} introduced here",
+                                        pluralize!(spans_len),
+                                    ),
+                                );
+                            }
                         }
+                        err.emit()
                     }
 
                     RegionResolutionError::GenericBoundFailure(origin, param_ty, sub) => self
