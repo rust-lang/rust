@@ -485,7 +485,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     )) = pred.kind().no_bound_vars()
                                         && r == sub
                                         && let ty::Param(param) = pred_ty.kind()
-                                        && param.name.as_str() == "Self"
+                                        && param.name == kw::SelfUpper
                                     {
                                         Some(*span)
                                     } else {

@@ -678,12 +678,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // ```
         let mut predicates: Vec<Span> = traits::elaborate(
             tcx,
-            tcx.predicates_of(def_id).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
+            tcx.predicates_of(def_id)
+                .predicates
+                .iter()
+                .map(|(p, sp)| (p.as_predicate(), *sp))
+                .chain(
+                    tcx.predicates_of(parent)
+                        .predicates
+                        .iter()
+                        .map(|(p, sp)| (p.as_predicate(), *sp)),
+                ),
         )
-        .chain(traits::elaborate(
-            tcx,
-            tcx.predicates_of(parent).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
-        ))
         .filter_map(|(pred, pred_span)| {
             if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
                 && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r)) = clause
@@ -693,7 +698,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 && (self.infcx.can_eq(self.param_env, ty, pred_ty)
                     || matches!(
                         pred_ty.kind(),
-                        ty::Param(name) if name.name.as_str() == "Self"))
+                        ty::Param(name) if name.name == kw::SelfUpper))
             {
                 Some(pred_span)
             } else {
