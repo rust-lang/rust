@@ -537,7 +537,10 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
-    from_raw_parts(invalid(0), ())
+    // Use transmute instead of casting so that Miri knows that the pointer is invalid.
+    // SAFETY: on all current platforms, usize and pointers have the same layout,
+    // and the validity invariant of pointers is the same as that of integers
+    unsafe { mem::transmute(0usize) }
 }
 
 /// Creates a null mutable raw pointer.
@@ -563,7 +566,10 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
-    from_raw_parts_mut(invalid_mut(0), ())
+    // Use transmute instead of casting so that Miri knows that the pointer is invalid.
+    // SAFETY: on all current platforms, usize and pointers have the same layout,
+    // and the validity invariant of pointers is the same as that of integers
+    unsafe { mem::transmute(0usize) }
 }
 
 /// Creates an invalid pointer with the given address.
@@ -590,11 +596,10 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
-    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
-    // pointer).
-    unsafe { mem::transmute(addr) }
+    // We offset the null pointer instead of using a cast so that LLVM doesn't
+    // use inttoptr and so tools like Miri can tell that it is *not* the same
+    // as from_exposed_addr.
+    null::<T>().wrapping_byte_add(addr)
 }
 
 /// Creates an invalid mutable pointer with the given address.
@@ -621,11 +626,10 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
-    // We use transmute rather than a cast so tools like Miri can tell that this
-    // is *not* the same as from_exposed_addr.
-    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
-    // pointer).
-    unsafe { mem::transmute(addr) }
+    // We offset the null pointer instead of using a cast so that LLVM doesn't
+    // use inttoptr and so tools like Miri can tell that it is *not* the same
+    // as from_exposed_addr.
+    null_mut::<T>().wrapping_byte_add(addr)
 }
 
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
