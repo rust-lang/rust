@@ -15,7 +15,7 @@ for test in $(rg --files-with-matches "lto" tests/{codegen-units,ui,incremental}
   rm $test
 done
 
-for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
+for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|//@ error-pattern:|//@ build-fail|//@ run-fail|-Cllvm-args" tests/ui); do
   rm $test
 done
 
