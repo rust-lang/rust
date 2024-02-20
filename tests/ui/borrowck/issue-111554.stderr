@@ -14,7 +14,15 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/issue-111554.rs:10:16
    |
 LL |         || bar(&mut self);
-   |                ^^^^^^^^^ cannot borrow as mutable
+   |                ^^^^^----
+   |                     |
+   |                     cannot borrow as mutable
+   |
+help: this expression is of type `&Foo`, which is an immutable reference
+  --> $DIR/issue-111554.rs:10:21
+   |
+LL |         || bar(&mut self);
+   |                     ^^^^
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-111554.rs:21:16

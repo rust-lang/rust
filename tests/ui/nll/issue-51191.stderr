@@ -48,21 +48,29 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/issue-51191.rs:22:9
    |
 LL |         (&mut self).bar();
-   |         ^^^^^^^^^^^ cannot borrow as mutable
+   |         ^^^^^^----^
+   |               |
+   |               cannot borrow as mutable
+   |
+help: this expression is of type `&Struct`, which is an immutable reference
+  --> $DIR/issue-51191.rs:22:15
+   |
+LL |         (&mut self).bar();
+   |               ^^^^
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:28:9
+  --> $DIR/issue-51191.rs:29:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
    |
 note: the binding is already a mutable borrow
-  --> $DIR/issue-51191.rs:27:16
+  --> $DIR/issue-51191.rs:28:16
    |
 LL |     fn mtblref(&mut self) {
    |                ^^^^^^^^^
 help: try removing `&mut` here
-  --> $DIR/issue-51191.rs:28:9
+  --> $DIR/issue-51191.rs:29:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
