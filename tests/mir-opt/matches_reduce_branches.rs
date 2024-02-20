@@ -204,7 +204,9 @@ enum EnumAi8 {
 // EMIT_MIR matches_reduce_branches.match_i8_i16.MatchBranchSimplification.diff
 fn match_i8_i16(i: EnumAi8) -> i16 {
     // CHECK-LABEL: fn match_i8_i16(
-    // CHECK: switchInt
+    // CHECK-NOT: switchInt
+    // CHECK: _0 = _3 as i16 (IntToInt);
+    // CHECH: return
     match i {
         EnumAi8::A => -1,
         EnumAi8::B => 2,
@@ -233,7 +235,9 @@ enum EnumAi16 {
 // EMIT_MIR matches_reduce_branches.match_i16_i8.MatchBranchSimplification.diff
 fn match_i16_i8(i: EnumAi16) -> i8 {
     // CHECK-LABEL: fn match_i16_i8(
-    // CHECK: switchInt
+    // CHECK-NOT: switchInt
+    // CHECK: _0 = _3 as i8 (IntToInt);
+    // CHECH: return
     match i {
         EnumAi16::A => -1,
         EnumAi16::B => 2,
