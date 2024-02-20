@@ -643,7 +643,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut parent = tcx.parent(def_id);
         debug!(?def_id, ?parent);
         let trait_preds = match tcx.def_kind(parent) {
-            hir::def::DefKind::Impl { .. } => &[],
+            hir::def::DefKind::Impl { .. } => {
+                tcx.trait_id_of_impl(parent).map_or(&[][..], |id| tcx.predicates_of(id).predicates)
+            }
             hir::def::DefKind::Trait => {
                 let Some(ty) = args.get(0).and_then(|arg| arg.as_type()) else {
                     return;

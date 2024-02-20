@@ -438,12 +438,20 @@ LL |     impl Trait for dyn Foo + '_ {
    |                            ++++
 
 error: lifetime may not live long enough
-  --> $DIR/static-impl-obligation.rs:275:27
+  --> $DIR/static-impl-obligation.rs:276:9
    |
 LL |     fn convert<'a>(x: &'a &'a u32) {
    |                -- lifetime `'a` defined here
 LL |         let y: &dyn Foo = x;
-   |                           ^ cast requires that `'a` must outlive `'static`
+   |                           - cast requires that `'a` must outlive `'static`
+LL |         y.hello();
+   |         ^^^^^^^^^ calling this method introduces a `'static` lifetime requirement
+   |
+note: the `impl` on `dyn w::Foo` has a `'static` lifetime requirement
+  --> $DIR/static-impl-obligation.rs:268:29
+   |
+LL |     trait Trait where Self: 'static { fn hello(&self) {} }
+   |                             ^^^^^^^
 
 error: aborting due to 25 previous errors
 

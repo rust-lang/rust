@@ -272,8 +272,8 @@ mod w {
 
     }
     fn convert<'a>(x: &'a &'a u32) {
-        let y: &dyn Foo = x; //~ ERROR lifetime may not live long enough
-        y.hello();
+        let y: &dyn Foo = x;
+        y.hello(); //~ ERROR lifetime may not live long enough
     }
 }
 fn main() {}
