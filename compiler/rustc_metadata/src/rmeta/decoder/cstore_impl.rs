@@ -519,6 +519,16 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             tcx.untracked().cstore.freeze();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
+        used_crates: |tcx, ()| {
+            // The list of loaded crates is now frozen in query cache,
+            // so make sure cstore is not mutably accessed from here on.
+            tcx.untracked().cstore.freeze();
+            tcx.arena.alloc_from_iter(
+                CStore::from_tcx(tcx)
+                    .iter_crate_data()
+                    .filter_map(|(cnum, data)| data.used().then_some(cnum)),
+            )
+        },
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);

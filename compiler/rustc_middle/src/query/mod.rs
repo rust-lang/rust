@@ -1872,6 +1872,13 @@ rustc_queries! {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
+    // Crates that are loaded non-speculatively (not for diagnostics or doc links).
+    // FIXME: This is currently only used for collecting lang items, but should be used instead of
+    // `crates` in most other cases too.
+    query used_crates(_: ()) -> &'tcx [CrateNum] {
+        eval_always
+        desc { "fetching `CrateNum`s for all crates loaded non-speculatively" }
+    }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.
     query traits(_: CrateNum) -> &'tcx [DefId] {
