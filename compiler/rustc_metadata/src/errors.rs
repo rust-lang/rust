@@ -505,6 +505,8 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for MultipleCandidates {
         diag.code(E0464);
         diag.span(self.span);
         for (i, candidate) in self.candidates.iter().enumerate() {
+            // FIXME: make this translatable
+            #[allow(rustc::untranslatable_diagnostic)]
             diag.note(format!("candidate #{}: {}", i + 1, candidate.display()));
         }
         diag
@@ -601,6 +603,8 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for InvalidMetadataFiles {
         diag.code(E0786);
         diag.span(self.span);
         for crate_rejection in self.crate_rejections {
+            // FIXME: make this translatable
+            #[allow(rustc::untranslatable_diagnostic)]
             diag.note(crate_rejection);
         }
         diag

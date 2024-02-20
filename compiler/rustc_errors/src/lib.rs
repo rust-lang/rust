@@ -46,7 +46,7 @@ pub use diagnostic_builder::{
 };
 pub use diagnostic_impls::{
     DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
-    IndicateAnonymousLifetime, InvalidFlushedDelayedDiagnosticLevel, SingleLabelManySpans,
+    IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
@@ -62,7 +62,6 @@ pub use snippet::Style;
 // See https://github.com/rust-lang/rust/pull/115393.
 pub use termcolor::{Color, ColorSpec, WriteColor};
 
-use crate::diagnostic_impls::{DelayedAtWithNewline, DelayedAtWithoutNewline};
 use emitter::{is_case_difference, DynEmitter, Emitter, HumanEmitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
@@ -1395,9 +1394,8 @@ impl DiagCtxtInner {
                 };
                 diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
                 if already_emitted {
-                    diagnostic.note(
-                        "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`",
-                    );
+                    let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
+                    diagnostic.sub(Level::Note, msg, MultiSpan::new());
                 }
 
                 if is_error {
@@ -1483,6 +1481,16 @@ impl DiagCtxtInner {
         self.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()
     }
 
+    fn eagerly_translate_for_subdiag(
+        &self,
+        diag: &Diagnostic,
+        msg: impl Into<SubdiagnosticMessage>,
+    ) -> SubdiagnosticMessage {
+        let args = diag.args();
+        let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
+        self.eagerly_translate(msg, args)
+    }
+
     fn flush_delayed(&mut self) {
         if self.delayed_bugs.is_empty() {
             return;
@@ -1527,17 +1535,14 @@ impl DiagCtxtInner {
             if bug.level != DelayedBug {
                 // NOTE(eddyb) not panicking here because we're already producing
                 // an ICE, and the more information the merrier.
-                let subdiag = InvalidFlushedDelayedDiagnosticLevel {
-                    span: bug.span.primary_span().unwrap(),
-                    level: bug.level,
-                };
-                // FIXME: Cannot use `Diagnostic::subdiagnostic` which takes `DiagCtxt`, but it
-                // just uses `DiagCtxtInner` functions.
-                subdiag.add_to_diagnostic_with(&mut bug, |diag, msg| {
-                    let args = diag.args();
-                    let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-                    self.eagerly_translate(msg, args)
-                });
+                //
+                // We are at the `Diagnostic`/`DiagCtxtInner` level rather than
+                // the usual `DiagnosticBuilder`/`DiagCtxt` level, so we must
+                // augment `bug` in a lower-level fashion.
+                bug.arg("level", bug.level);
+                let msg = crate::fluent_generated::errors_invalid_flushed_delayed_diagnostic_level;
+                let msg = self.eagerly_translate_for_subdiag(&bug, msg); // after the `arg` call
+                bug.sub(Level::Note, msg, bug.span.primary_span().unwrap().into());
             }
             bug.level = Bug;
 
@@ -1571,39 +1576,22 @@ impl DelayedDiagnostic {
         DelayedDiagnostic { inner: diagnostic, note: backtrace }
     }
 
-    fn decorate(mut self, dcx: &DiagCtxtInner) -> Diagnostic {
-        // FIXME: Cannot use `Diagnostic::subdiagnostic` which takes `DiagCtxt`, but it
-        // just uses `DiagCtxtInner` functions.
-        let subdiag_with = |diag: &mut Diagnostic, msg| {
-            let args = diag.args();
-            let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-            dcx.eagerly_translate(msg, args)
-        };
-
-        match self.note.status() {
-            BacktraceStatus::Captured => {
-                let inner = &self.inner;
-                let subdiag = DelayedAtWithNewline {
-                    span: inner.span.primary_span().unwrap_or(DUMMY_SP),
-                    emitted_at: inner.emitted_at.clone(),
-                    note: self.note,
-                };
-                subdiag.add_to_diagnostic_with(&mut self.inner, subdiag_with);
-            }
+    fn decorate(self, dcx: &DiagCtxtInner) -> Diagnostic {
+        // We are at the `Diagnostic`/`DiagCtxtInner` level rather than the
+        // usual `DiagnosticBuilder`/`DiagCtxt` level, so we must construct
+        // `diag` in a lower-level fashion.
+        let mut diag = self.inner;
+        let msg = match self.note.status() {
+            BacktraceStatus::Captured => crate::fluent_generated::errors_delayed_at_with_newline,
             // Avoid the needless newline when no backtrace has been captured,
             // the display impl should just be a single line.
-            _ => {
-                let inner = &self.inner;
-                let subdiag = DelayedAtWithoutNewline {
-                    span: inner.span.primary_span().unwrap_or(DUMMY_SP),
-                    emitted_at: inner.emitted_at.clone(),
-                    note: self.note,
-                };
-                subdiag.add_to_diagnostic_with(&mut self.inner, subdiag_with);
-            }
-        }
-
-        self.inner
+            _ => crate::fluent_generated::errors_delayed_at_without_newline,
+        };
+        diag.arg("emitted_at", diag.emitted_at.clone());
+        diag.arg("note", self.note);
+        let msg = dcx.eagerly_translate_for_subdiag(&diag, msg); // after the `arg` calls
+        diag.sub(Level::Note, msg, diag.span.primary_span().unwrap_or(DUMMY_SP).into());
+        diag
     }
 }
 
@@ -1745,9 +1733,9 @@ impl Level {
 }
 
 // FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.
-pub fn add_elided_lifetime_in_path_suggestion<E: EmissionGuarantee>(
+pub fn add_elided_lifetime_in_path_suggestion<G: EmissionGuarantee>(
     source_map: &SourceMap,
-    diag: &mut DiagnosticBuilder<'_, E>,
+    diag: &mut DiagnosticBuilder<'_, G>,
     n: usize,
     path_span: Span,
     incl_angl_brckt: bool,

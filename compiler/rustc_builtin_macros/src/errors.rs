@@ -1,6 +1,6 @@
 use rustc_errors::{
-    codes::*, AddToDiagnostic, DiagCtxt, Diagnostic, DiagnosticBuilder, EmissionGuarantee,
-    IntoDiagnostic, Level, MultiSpan, SingleLabelManySpans, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    Level, MultiSpan, SingleLabelManySpans, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -611,7 +611,11 @@ pub(crate) struct FormatUnusedArg {
 // Allow the singular form to be a subdiagnostic of the multiple-unused
 // form of diagnostic.
 impl AddToDiagnostic for FormatUnusedArg {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, f: F) {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+        self,
+        diag: &mut DiagnosticBuilder<'_, G>,
+        f: F,
+    ) {
         diag.arg("named", self.named);
         let msg = f(diag, crate::fluent_generated::builtin_macros_format_unused_arg.into());
         diag.span_label(self.span, msg);

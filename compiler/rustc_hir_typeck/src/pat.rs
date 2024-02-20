@@ -3,8 +3,8 @@ use crate::{errors, FnCtxt, LoweredTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, MultiSpan,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -529,7 +529,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    fn endpoint_has_type(&self, err: &mut Diagnostic, span: Span, ty: Ty<'_>) {
+    fn endpoint_has_type(&self, err: &mut DiagnosticBuilder<'_>, span: Span, ty: Ty<'_>) {
         if !ty.references_error() {
             err.span_label(span, format!("this is of type `{ty}`"));
         }
@@ -683,7 +683,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_adding_missing_ref_or_removing_ref(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
@@ -715,7 +715,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Precondition: pat is a Ref(_) pattern
-    fn borrow_pat_suggestion(&self, err: &mut Diagnostic, pat: &Pat<'_>) {
+    fn borrow_pat_suggestion(&self, err: &mut DiagnosticBuilder<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
             && let PatKind::Binding(_, _, binding, ..) = inner.kind
@@ -933,7 +933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_suggest_range_literal(
         &self,
-        e: &mut Diagnostic,
+        e: &mut DiagnosticBuilder<'_>,
         opt_def_id: Option<hir::def_id::DefId>,
         ident: Ident,
     ) -> bool {

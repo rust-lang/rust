@@ -18,8 +18,8 @@ use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    FatalError, MultiSpan,
+    codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError,
+    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -1724,7 +1724,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn prohibit_generics<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
-        extend: impl Fn(&mut Diagnostic),
+        extend: impl Fn(&mut DiagnosticBuilder<'_>),
     ) -> bool {
         let args = segments.clone().flat_map(|segment| segment.args().args);
 
