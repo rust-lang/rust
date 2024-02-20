@@ -23,7 +23,6 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{PrimTy, TraitCandidate};
-use rustc_metadata::creader::CStore;
 use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
@@ -4574,10 +4573,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         // Encoding foreign def ids in proc macro crate metadata will ICE.
                         return None;
                     }
-                    // Doc paths should be resolved speculatively and should not produce any
-                    // diagnostics, but if they are indeed resolved, then we need to keep the
-                    // corresponding crate alive.
-                    CStore::from_tcx_mut(self.r.tcx).set_used_recursively(def_id.krate);
                 }
                 res
             });
