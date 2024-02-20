@@ -59,7 +59,6 @@ mod remove_place_mention;
 mod add_subtyping_projections;
 pub mod cleanup_post_borrowck;
 mod const_debuginfo;
-mod const_prop_lint;
 mod copy_prop;
 mod coroutine;
 mod cost_checker;
@@ -83,6 +82,7 @@ mod gvn;
 pub mod inline;
 mod instsimplify;
 mod jump_threading;
+mod known_panics_lint;
 mod large_enums;
 mod lint;
 mod lower_intrinsics;
@@ -533,7 +533,7 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &coroutine::StateTransform,
         &add_retag::AddRetag,
-        &Lint(const_prop_lint::ConstPropLint),
+        &Lint(known_panics_lint::KnownPanicsLint),
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }
