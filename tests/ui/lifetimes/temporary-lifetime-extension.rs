@@ -26,6 +26,7 @@ fn main() {
         }
     };
     let h = match temp() {
+        // The {} moves the value, making a new temporary.
         owned_non_temporary => &{ owned_non_temporary },
     };
     println!("{a:?} {b:?} {c:?} {d:?} {e:?} {f:?} {g:?} {h:?}");
