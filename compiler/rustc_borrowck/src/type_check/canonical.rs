@@ -100,7 +100,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
     ) {
         for (predicate, span) in instantiated_predicates {
-            debug!(?predicate);
+            debug!(?span, ?predicate);
             let category = ConstraintCategory::Predicate(span);
             let predicate = self.normalize_with_category(predicate, locations, category);
             self.prove_predicate(predicate, locations, category);

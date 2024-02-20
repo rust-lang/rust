@@ -37,7 +37,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> Self {
         let mut checker = Self {
             infcx,
-            last_span: DUMMY_SP,
+            last_span: body.span,
             body,
             user_type_annotations: &body.user_type_annotations,
             param_env,
@@ -2766,7 +2766,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.param_env,
                 self.known_type_outlives_obligations,
                 locations,
-                DUMMY_SP,                   // irrelevant; will be overridden.
+                self.body.span,             // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 self.borrowck_context.constraints,
             )

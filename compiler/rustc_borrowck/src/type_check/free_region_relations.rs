@@ -10,7 +10,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
-use rustc_span::{ErrorGuaranteed, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
@@ -269,7 +269,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             debug!("build: input_or_output={:?}", ty);
             // We add implied bounds from both the unnormalized and normalized ty.
             // See issue #87748
-            let constraints_unnorm = self.add_implied_bounds(ty);
+            let constraints_unnorm = self.add_implied_bounds(ty, span);
             if let Some(c) = constraints_unnorm {
                 constraints.push(c)
             }
@@ -299,7 +299,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             // ```
             // Both &Self::Bar and &() are WF
             if ty != norm_ty {
-                let constraints_norm = self.add_implied_bounds(norm_ty);
+                let constraints_norm = self.add_implied_bounds(norm_ty, span);
                 if let Some(c) = constraints_norm {
                     constraints.push(c)
                 }
@@ -323,7 +323,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
                 // We currently add implied bounds from the normalized ty only.
                 // This is more conservative and matches wfcheck behavior.
-                let c = self.add_implied_bounds(norm_ty);
+                let c = self.add_implied_bounds(norm_ty, span);
                 constraints.extend(c);
             }
         }
@@ -361,11 +361,15 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     /// the same time, compute and add any implied bounds that come
     /// from this local.
     #[instrument(level = "debug", skip(self))]
-    fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
+    fn add_implied_bounds(
+        &mut self,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
         let TypeOpOutput { output: bounds, constraints, .. } = self
             .param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
-            .fully_perform(self.infcx, DUMMY_SP)
+            .fully_perform(self.infcx, span)
             .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
             .ok()?;
         debug!(?bounds, ?constraints);
