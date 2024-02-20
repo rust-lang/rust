@@ -695,8 +695,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Used by the `rustc::potential_query_instability` lint to warn methods which
     // might not be stable during incremental compilation.
     rustc_attr!(rustc_lint_query_instability, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
-    // Used by the `rustc::untranslatable_diagnostic` and `rustc::diagnostic_outside_of_impl` lints
-    // to assist in changes to diagnostic APIs.
+    // Used by the `rustc::diagnostic_outside_of_impl` lints to assist in changes to diagnostic
+    // APIs. Any function with this attribute will be checked by that lint.
     rustc_attr!(rustc_lint_diagnostics, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
     // Used by the `rustc::bad_opt_access` lint to identify `DebuggingOptions` and `CodegenOptions`
     // types (as well as any others in future).
