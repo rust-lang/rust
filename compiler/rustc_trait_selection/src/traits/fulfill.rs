@@ -181,7 +181,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             ) -> ProcessResult<PendingPredicateObligation<'tcx>, !> {
                 assert!(self.needs_process_obligation(pending_obligation));
                 self.removed_predicates.push(pending_obligation.obligation.clone());
-                ProcessResult::Changed(vec![])
+                ProcessResult::Changed(Box::new([]))
             }
 
             fn process_backedge<'c, I>(
@@ -207,7 +207,7 @@ struct FulfillProcessor<'a, 'tcx> {
     selcx: SelectionContext<'a, 'tcx>,
 }
 
-fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligation<'_>> {
+fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Box<[PendingPredicateObligation<'_>]> {
     os.into_iter()
         .map(|o| PendingPredicateObligation { obligation: o, stalled_on: vec![] })
         .collect()
@@ -386,7 +386,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         infcx.region_outlives_predicate(&obligation.cause, Binder::dummy(data));
                     }
 
-                    ProcessResult::Changed(vec![])
+                    ProcessResult::Changed(Box::new([]))
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
@@ -396,7 +396,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     if infcx.considering_regions {
                         infcx.register_region_obligation_with_cause(t_a, r_b, &obligation.cause);
                     }
-                    ProcessResult::Changed(vec![])
+                    ProcessResult::Changed(Box::new([]))
                 }
 
                 ty::PredicateKind::Clause(ty::ClauseKind::Projection(ref data)) => {
@@ -413,7 +413,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     if !self.selcx.tcx().check_is_object_safe(trait_def_id) {
                         ProcessResult::Error(FulfillmentErrorCode::SelectionError(Unimplemented))
                     } else {
-                        ProcessResult::Changed(vec![])
+                        ProcessResult::Changed(Box::new([]))
                     }
                 }
 
@@ -535,7 +535,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         obligation.param_env,
                         obligation.cause.span,
                     ) {
-                        Ok(()) => ProcessResult::Changed(vec![]),
+                        Ok(()) => ProcessResult::Changed(Box::new([])),
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
                             pending_obligation.stalled_on.extend(
@@ -706,7 +706,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
                     "selecting trait at depth {} evaluated to holds",
                     obligation.recursion_depth
                 );
-                return ProcessResult::Changed(vec![]);
+                return ProcessResult::Changed(Box::new([]));
             }
         }
 
@@ -770,7 +770,7 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
                         .projection_cache()
                         .complete(key, EvaluationResult::EvaluatedToOk);
                 }
-                return ProcessResult::Changed(vec![]);
+                return ProcessResult::Changed(Box::new([]));
             } else {
                 debug!("Does NOT hold: {:?}", obligation);
             }
