@@ -25,5 +25,8 @@ fn main() {
             &temp()
         }
     };
-    println!("{a:?} {b:?} {c:?} {d:?} {e:?} {f:?} {g:?}");
+    let h = match temp() {
+        owned_non_temporary => &{ owned_non_temporary },
+    };
+    println!("{a:?} {b:?} {c:?} {d:?} {e:?} {f:?} {g:?} {h:?}");
 }
