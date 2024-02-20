@@ -3,6 +3,8 @@ use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
+use rustc_ast::visit::VisitorResult;
+use rustc_ast::walk_list;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
@@ -431,23 +433,28 @@ impl<'hir> Map<'hir> {
     }
 
     /// Walks the contents of the local crate. See also `visit_all_item_likes_in_crate`.
-    pub fn walk_toplevel_module(self, visitor: &mut impl Visitor<'hir>) {
+    pub fn walk_toplevel_module<V>(self, visitor: &mut V) -> V::Result
+    where
+        V: Visitor<'hir>,
+    {
         let (top_mod, span, hir_id) = self.get_module(LocalModDefId::CRATE_DEF_ID);
-        visitor.visit_mod(top_mod, span, hir_id);
+        visitor.visit_mod(top_mod, span, hir_id)
     }
 
     /// Walks the attributes in a crate.
-    pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
+    pub fn walk_attributes<V>(self, visitor: &mut V) -> V::Result
+    where
+        V: Visitor<'hir>,
+    {
         let krate = self.krate();
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
-                    for a in *attrs {
-                        visitor.visit_attribute(a)
-                    }
+                    walk_list!(visitor, visit_attribute, *attrs);
                 }
             }
         }
+        V::Result::output()
     }
 
     /// Visits all item-likes in the crate in some deterministic (but unspecified) order. If you
@@ -460,52 +467,38 @@ impl<'hir> Map<'hir> {
     /// provided by `tcx.hir_crate_items(())`.
     ///
     /// Please see the notes in `intravisit.rs` for more information.
-    pub fn visit_all_item_likes_in_crate<V>(self, visitor: &mut V)
+    pub fn visit_all_item_likes_in_crate<V>(self, visitor: &mut V) -> V::Result
     where
         V: Visitor<'hir>,
     {
         let krate = self.tcx.hir_crate_items(());
-
-        for id in krate.items() {
-            visitor.visit_item(self.item(id));
-        }
-
-        for id in krate.trait_items() {
-            visitor.visit_trait_item(self.trait_item(id));
-        }
-
-        for id in krate.impl_items() {
-            visitor.visit_impl_item(self.impl_item(id));
-        }
-
-        for id in krate.foreign_items() {
-            visitor.visit_foreign_item(self.foreign_item(id));
-        }
+        walk_list!(visitor, visit_item, krate.items().map(|id| self.item(id)));
+        walk_list!(visitor, visit_trait_item, krate.trait_items().map(|id| self.trait_item(id)));
+        walk_list!(visitor, visit_impl_item, krate.impl_items().map(|id| self.impl_item(id)));
+        walk_list!(
+            visitor,
+            visit_foreign_item,
+            krate.foreign_items().map(|id| self.foreign_item(id))
+        );
+        V::Result::output()
     }
 
     /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
     /// item-likes in a single module.
-    pub fn visit_item_likes_in_module<V>(self, module: LocalModDefId, visitor: &mut V)
+    pub fn visit_item_likes_in_module<V>(self, module: LocalModDefId, visitor: &mut V) -> V::Result
     where
         V: Visitor<'hir>,
     {
         let module = self.tcx.hir_module_items(module);
-
-        for id in module.items() {
-            visitor.visit_item(self.item(id));
-        }
-
-        for id in module.trait_items() {
-            visitor.visit_trait_item(self.trait_item(id));
-        }
-
-        for id in module.impl_items() {
-            visitor.visit_impl_item(self.impl_item(id));
-        }
-
-        for id in module.foreign_items() {
-            visitor.visit_foreign_item(self.foreign_item(id));
-        }
+        walk_list!(visitor, visit_item, module.items().map(|id| self.item(id)));
+        walk_list!(visitor, visit_trait_item, module.trait_items().map(|id| self.trait_item(id)));
+        walk_list!(visitor, visit_impl_item, module.impl_items().map(|id| self.impl_item(id)));
+        walk_list!(
+            visitor,
+            visit_foreign_item,
+            module.foreign_items().map(|id| self.foreign_item(id))
+        );
+        V::Result::output()
     }
 
     pub fn for_each_module(self, mut f: impl FnMut(LocalModDefId)) {

@@ -14,7 +14,8 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::visit::{self, AssocCtxt, Visitor};
+use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult};
+use rustc_ast::{try_visit, walk_list};
 use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind};
 use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
 use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
@@ -143,16 +144,15 @@ macro_rules! ast_fragments {
                 }
             }
 
-            pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
+            pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) -> V::Result {
                 match self {
-                    AstFragment::OptExpr(Some(expr)) => visitor.visit_expr(expr),
+                    AstFragment::OptExpr(Some(expr)) => try_visit!(visitor.visit_expr(expr)),
                     AstFragment::OptExpr(None) => {}
-                    AstFragment::MethodReceiverExpr(expr) => visitor.visit_method_receiver_expr(expr),
-                    $($(AstFragment::$Kind(ast) => visitor.$visit_ast(ast),)?)*
-                    $($(AstFragment::$Kind(ast) => for ast_elt in &ast[..] {
-                        visitor.$visit_ast_elt(ast_elt, $($args)*);
-                    })?)*
+                    AstFragment::MethodReceiverExpr(expr) => try_visit!(visitor.visit_method_receiver_expr(expr)),
+                    $($(AstFragment::$Kind(ast) => try_visit!(visitor.$visit_ast(ast)),)?)*
+                    $($(AstFragment::$Kind(ast) => walk_list!(visitor, $visit_ast_elt, &ast[..], $($args)*),)?)*
                 }
+                V::Result::output()
             }
         }
 
