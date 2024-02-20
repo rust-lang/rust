@@ -646,6 +646,8 @@ impl TestProps {
 }
 
 /// Extract a `(Option<line_config>, directive)` directive from a line if comment is present.
+///
+/// See [`HeaderLine`] for a diagram.
 pub fn line_directive<'line>(
     comment: &str,
     ln: &'line str,
@@ -790,16 +792,32 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "unset-rustc-env",
 ];
 
-/// Arguments passed to the callback in [`iter_header`].
+/// The broken-down contents of a line containing a test header directive,
+/// which [`iter_header`] passes to its callback function.
+///
+/// For example:
+///
+/// ```text
+/// //@ compile-flags: -O
+///     ^^^^^^^^^^^^^^^^^ directive
+/// ^^^^^^^^^^^^^^^^^^^^^ original_line
+///
+/// //@ [foo] compile-flags: -O
+///      ^^^                    header_revision
+///           ^^^^^^^^^^^^^^^^^ directive
+/// ^^^^^^^^^^^^^^^^^^^^^^^^^^^ original_line
+/// ```
 struct HeaderLine<'ln> {
-    /// Contents of the square brackets preceding this header, if present.
-    header_revision: Option<&'ln str>,
+    line_number: usize,
     /// Raw line from the test file, including comment prefix and any revision.
     original_line: &'ln str,
-    /// Remainder of the directive line, after the initial comment prefix
-    /// (`//` or `//@` or `#`) and revision (if any) have been stripped.
+    /// Some header directives start with a revision name in square brackets
+    /// (e.g. `[foo]`), and only apply to that revision of the test.
+    /// If present, this field contains the revision name (e.g. `foo`).
+    header_revision: Option<&'ln str>,
+    /// The main part of the header directive, after removing the comment prefix
+    /// and the optional revision specifier.
     directive: &'ln str,
-    line_number: usize,
 }
 
 fn iter_header(
@@ -831,7 +849,7 @@ fn iter_header(
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive in extra_directives {
-            it(HeaderLine { header_revision: None, original_line: "", directive, line_number: 0 });
+            it(HeaderLine { line_number: 0, original_line: "", header_revision: None, directive });
         }
     }
 
@@ -865,7 +883,7 @@ fn iter_header(
 
         // First try to accept `ui_test` style comments
         } else if let Some((header_revision, directive)) = line_directive(comment, ln) {
-            it(HeaderLine { header_revision, original_line, directive, line_number });
+            it(HeaderLine { line_number, original_line, header_revision, directive });
         } else if mode == Mode::Ui && suite == "ui" && !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
