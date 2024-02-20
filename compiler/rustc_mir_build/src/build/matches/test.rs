@@ -575,10 +575,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 fully_matched = true;
                 Some(variant_index.as_usize())
             }
-            (&TestKind::Switch { .. }, _) => {
-                fully_matched = false;
-                None
-            }
 
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
@@ -602,10 +598,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // so the pattern can be matched only if this test fails.
                     options.len()
                 })
-            }
-            (&TestKind::SwitchInt { .. }, _) => {
-                fully_matched = false;
-                None
             }
 
             (
@@ -673,10 +665,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 }
             }
-            (TestKind::Len { .. }, _) => {
-                fully_matched = false;
-                None
-            }
 
             (TestKind::Range(test), &TestCase::Range(pat)) => {
                 if test.as_ref() == pat {
@@ -699,10 +687,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 }
             }
-            (&TestKind::Range { .. }, _) => {
-                fully_matched = false;
-                None
-            }
 
             // FIXME(#29623): return `Some(1)` when the values are different.
             (TestKind::Eq { value: test_val, .. }, TestCase::Constant { value: case_val })
@@ -711,7 +695,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 fully_matched = true;
                 Some(0)
             }
-            (TestKind::Eq { .. }, _) => {
+
+            (
+                TestKind::Switch { .. }
+                | TestKind::SwitchInt { .. }
+                | TestKind::Len { .. }
+                | TestKind::Range { .. }
+                | TestKind::Eq { .. },
+                _,
+            ) => {
                 fully_matched = false;
                 None
             }
