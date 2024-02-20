@@ -2693,6 +2693,7 @@ pub(crate) fn is_valid_allocation_size(size: usize, len: usize) -> bool {
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size` do *not* overlap.
+#[inline]
 pub(crate) fn is_nonoverlapping(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
