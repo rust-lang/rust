@@ -296,12 +296,7 @@ impl BridgeState<'_> {
     /// N.B., while `f` is running, the thread-local state
     /// is `BridgeState::InUse`.
     fn with<R>(f: impl FnOnce(&mut BridgeState<'_>) -> R) -> R {
-        BRIDGE_STATE.with(|state| {
-            state.replace(BridgeState::InUse, |mut state| {
-                // FIXME(#52812) pass `f` directly to `replace` when `RefMutL` is gone
-                f(&mut *state)
-            })
-        })
+        BRIDGE_STATE.with(|state| state.replace(BridgeState::InUse, f))
     }
 }
 
