@@ -892,6 +892,39 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn expand_weak_alias_tys<T: TypeFoldable<TyCtxt<'tcx>>>(self, value: T) -> T {
         value.fold_with(&mut WeakAliasTypeExpander { tcx: self, depth: 0 })
     }
+
+    /// Peel off all [weak alias types] in this type until there are none left.
+    ///
+    /// This only expands weak alias types in “head” / outermost positions. It can
+    /// be used over [expand_weak_alias_tys] as an optimization in situations where
+    /// one only really cares about the *kind* of the final aliased type but not
+    /// the types the other constituent types alias.
+    ///
+    /// <div class="warning">
+    /// This delays a bug on overflow! Therefore you need to be certain that the
+    /// type gets fully normalized at a later stage.
+    /// </div>
+    ///
+    /// [weak]: ty::Weak
+    /// [expand_weak_alias_tys]: Self::expand_weak_alias_tys
+    pub fn peel_off_weak_alias_tys(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        let ty::Alias(ty::Weak, _) = ty.kind() else { return ty };
+
+        let limit = self.recursion_limit();
+        let mut depth = 0;
+
+        while let ty::Alias(ty::Weak, alias) = ty.kind() {
+            if !limit.value_within_limit(depth) {
+                let guar = self.dcx().delayed_bug("overflow expanding weak alias type");
+                return Ty::new_error(self, guar);
+            }
+
+            ty = self.type_of(alias.def_id).instantiate(self, alias.args);
+            depth += 1;
+        }
+
+        ty
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {
