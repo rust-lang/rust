@@ -60,13 +60,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut simplified_match_pairs = Vec::new();
         // Repeatedly simplify match pairs until we're left with only unsimplifiable ones.
         loop {
-            for match_pair in mem::take(match_pairs) {
-                if let Err(match_pair) = self.simplify_match_pair(
-                    match_pair,
-                    candidate_bindings,
-                    candidate_ascriptions,
-                    match_pairs,
-                ) {
+            for mut match_pair in mem::take(match_pairs) {
+                if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
+                    if let Some(binding) = binding {
+                        candidate_bindings.push(binding);
+                    }
+                    if let Some(ascription) = ascription {
+                        candidate_ascriptions.push(ascription);
+                    }
+                    // Simplifiable pattern; we replace it with its subpairs and simplify further.
+                    match_pairs.append(&mut match_pair.subpairs);
+                } else {
+                    // Unsimplifiable pattern; we recursively simplify its subpairs and don't
+                    // process it further.
+                    self.simplify_match_pairs(
+                        &mut match_pair.subpairs,
+                        candidate_bindings,
+                        candidate_ascriptions,
+                    );
                     simplified_match_pairs.push(match_pair);
                 }
             }
@@ -114,32 +125,5 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate
             })
             .collect()
-    }
-
-    /// Tries to simplify `match_pair`, returning `Ok(())` if successful. If successful, new match
-    /// pairs and bindings will have been pushed into the respective `Vec`s. If no simplification is
-    /// possible, `Err` is returned.
-    fn simplify_match_pair<'pat>(
-        &mut self,
-        mut match_pair: MatchPair<'pat, 'tcx>,
-        bindings: &mut Vec<Binding<'tcx>>,
-        ascriptions: &mut Vec<Ascription<'tcx>>,
-        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
-    ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
-            if let Some(binding) = binding {
-                bindings.push(binding);
-            }
-            if let Some(ascription) = ascription {
-                ascriptions.push(ascription);
-            }
-            // Simplifiable pattern; we replace it with its subpairs.
-            match_pairs.append(&mut match_pair.subpairs);
-            Ok(())
-        } else {
-            // Unsimplifiable pattern; we recursively simplify its subpairs.
-            self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
-            Err(match_pair)
-        }
     }
 }
