@@ -1373,9 +1373,9 @@ dependencies = [
 [[package]]
 name = "fluent-syntax"
 version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0abed97648395c902868fee9026de96483933faa54ea3b40d652f7dfe61ca78"
+source = "git+https://github.com/clubby789/fluent-rs/?branch=optimize-text-slice#f99c06ab6a769751b2b4713026215d6b8e13ac27"
 dependencies = [
+ "memchr",
  "thiserror",
 ]
 
