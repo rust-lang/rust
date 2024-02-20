@@ -2,6 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::root_macro_call;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_in_cfg_test, is_in_test_function};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -31,12 +32,12 @@ declare_clippy_lint! {
     "`dbg!` macro is intended as a debugging tool"
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct DbgMacro {
     allow_dbg_in_tests: bool,
-    /// Keep tracking of the previous `dbg!` macro call site in order to
-    /// skip any other expressions from the same expansion, including nested macro calls.
-    prev_dbg_call_site: Span,
+    /// Keep tracks the `dbg!` macro callsites that are already checked,
+    /// so that we can save some performance by skipping any expressions from the same expansion.
+    checked_dbg_call_site: FxHashSet<Span>,
 }
 
 impl_lint_pass!(DbgMacro => [DBG_MACRO]);
@@ -45,7 +46,7 @@ impl DbgMacro {
     pub fn new(allow_dbg_in_tests: bool) -> Self {
         DbgMacro {
             allow_dbg_in_tests,
-            prev_dbg_call_site: Span::default(),
+            checked_dbg_call_site: FxHashSet::default(),
         }
     }
 }
@@ -57,11 +58,10 @@ impl LateLintPass<'_> for DbgMacro {
         else {
             return;
         };
-        // skip previous checked exprs
-        if self.prev_dbg_call_site.contains(macro_call.span) {
+        if self.checked_dbg_call_site.contains(&macro_call.span) {
             return;
         }
-        self.prev_dbg_call_site = macro_call.span;
+        self.checked_dbg_call_site.insert(macro_call.span);
 
         // allows `dbg!` in test code if allow-dbg-in-test is set to true in clippy.toml
         if self.allow_dbg_in_tests && (is_in_test_function(cx.tcx, expr.hir_id) || is_in_cfg_test(cx.tcx, expr.hir_id))
