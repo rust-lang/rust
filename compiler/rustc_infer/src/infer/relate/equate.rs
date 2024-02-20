@@ -90,6 +90,11 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 infcx.instantiate_ty_var(self, !self.a_is_expected, b_vid, ty::Invariant, a)?;
             }
 
+            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
+                infcx.set_tainted_by_errors(e);
+                return Ok(Ty::new_error(self.tcx(), e));
+            }
+
             (
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
                 &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
