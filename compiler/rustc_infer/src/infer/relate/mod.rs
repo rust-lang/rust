@@ -8,5 +8,4 @@ mod glb;
 mod higher_ranked;
 mod lattice;
 mod lub;
-pub mod nll;
 mod sub;
