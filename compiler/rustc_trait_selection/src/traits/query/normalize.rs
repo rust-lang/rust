@@ -1,6 +1,6 @@
 //! Code for the 'normalization' query. This consists of a wrapper
 //! which folds deeply, invoking the underlying
-//! `normalize_projection_ty` query when it encounters projections.
+//! `normalize_canonicalized_projection_ty` query when it encounters projections.
 
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
@@ -271,9 +271,9 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 let result = match kind {
-                    ty::Projection => tcx.normalize_projection_ty(c_data),
-                    ty::Weak => tcx.normalize_weak_ty(c_data),
-                    ty::Inherent => tcx.normalize_inherent_projection_ty(c_data),
+                    ty::Projection => tcx.normalize_canonicalized_projection_ty(c_data),
+                    ty::Weak => tcx.normalize_canonicalized_weak_ty(c_data),
+                    ty::Inherent => tcx.normalize_canonicalized_inherent_projection_ty(c_data),
                     kind => unreachable!("did not expect {kind:?} due to match arm above"),
                 }?;
                 // We don't expect ambiguity.
@@ -308,10 +308,10 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 } else {
                     result.normalized_ty
                 };
-                // `tcx.normalize_projection_ty` may normalize to a type that still has
-                // unevaluated consts, so keep normalizing here if that's the case.
-                // Similarly, `tcx.normalize_weak_ty` will only unwrap one layer of type
-                // and we need to continue folding it to reveal the TAIT behind it.
+                // `tcx.normalize_canonicalized_projection_ty` may normalize to a type that
+                // still has unevaluated consts, so keep normalizing here if that's the case.
+                // Similarly, `tcx.normalize_canonicalized_weak_ty` will only unwrap one layer
+                // of type and we need to continue folding it to reveal the TAIT behind it.
                 if res != ty
                     && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) || kind == ty::Weak)
                 {
