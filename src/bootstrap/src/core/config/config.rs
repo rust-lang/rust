@@ -22,6 +22,7 @@ use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{exe, output, t};
 use build_helper::exit;
+use build_helper::util::fail;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
@@ -1418,7 +1419,7 @@ impl Config {
 
         config.initial_rustc = if let Some(rustc) = rustc {
             if !flags.skip_stage0_validation {
-                config.check_build_rustc_version(&rustc);
+                config.check_stage0_version(&rustc, "rustc");
             }
             PathBuf::from(rustc)
         } else {
@@ -1426,11 +1427,15 @@ impl Config {
             config.out.join(config.build.triple).join("stage0/bin/rustc")
         };
 
-        config.initial_cargo = cargo
-            .map(|cargo| {
-                t!(PathBuf::from(cargo).canonicalize(), "`initial_cargo` not found on disk")
-            })
-            .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
+        config.initial_cargo = if let Some(cargo) = cargo {
+            if !flags.skip_stage0_validation {
+                config.check_stage0_version(&cargo, "cargo");
+            }
+            PathBuf::from(cargo)
+        } else {
+            config.download_beta_toolchain();
+            config.out.join(config.build.triple).join("stage0/bin/cargo")
+        };
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
         if config.dry_run() {
@@ -2286,39 +2291,37 @@ impl Config {
         }
     }
 
-    pub fn check_build_rustc_version(&self, rustc_path: &str) {
+    // check rustc/cargo version is same or lower with 1 apart from the building one
+    pub fn check_stage0_version(&self, program_path: &str, component_name: &'static str) {
         if self.dry_run() {
             return;
         }
 
-        // check rustc version is same or lower with 1 apart from the building one
-        let mut cmd = Command::new(rustc_path);
-        cmd.arg("--version");
-        let rustc_output = output(&mut cmd)
-            .lines()
-            .next()
-            .unwrap()
-            .split(' ')
-            .nth(1)
-            .unwrap()
-            .split('-')
-            .next()
-            .unwrap()
-            .to_owned();
-        let rustc_version = Version::parse(rustc_output.trim()).unwrap();
+        let stage0_output = output(Command::new(program_path).arg("--version"));
+        let mut stage0_output = stage0_output.lines().next().unwrap().split(' ');
+
+        let stage0_name = stage0_output.next().unwrap();
+        if stage0_name != component_name {
+            fail(&format!(
+                "Expected to find {component_name} at {program_path} but it claims to be {stage0_name}"
+            ));
+        }
+
+        let stage0_version =
+            Version::parse(stage0_output.next().unwrap().split('-').next().unwrap().trim())
+                .unwrap();
         let source_version =
             Version::parse(fs::read_to_string(self.src.join("src/version")).unwrap().trim())
                 .unwrap();
-        if !(source_version == rustc_version
-            || (source_version.major == rustc_version.major
-                && (source_version.minor == rustc_version.minor
-                    || source_version.minor == rustc_version.minor + 1)))
+        if !(source_version == stage0_version
+            || (source_version.major == stage0_version.major
+                && (source_version.minor == stage0_version.minor
+                    || source_version.minor == stage0_version.minor + 1)))
         {
             let prev_version = format!("{}.{}.x", source_version.major, source_version.minor - 1);
-            eprintln!(
-                "Unexpected rustc version: {rustc_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
-            );
-            exit!(1);
+            fail(&format!(
+                "Unexpected {component_name} version: {stage0_version}, we should use {prev_version}/{source_version} to build source with {source_version}"
+            ));
         }
     }
 
