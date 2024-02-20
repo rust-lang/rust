@@ -454,9 +454,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
                     //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
                     let late_bound_in_projection_ty =
-                        tcx.collect_constrained_late_bound_regions(&projection_ty);
+                        tcx.collect_constrained_late_bound_regions(projection_ty);
                     let late_bound_in_term =
-                        tcx.collect_referenced_late_bound_regions(&trait_ref.rebind(term));
+                        tcx.collect_referenced_late_bound_regions(trait_ref.rebind(term));
                     debug!(?late_bound_in_projection_ty);
                     debug!(?late_bound_in_term);
 
