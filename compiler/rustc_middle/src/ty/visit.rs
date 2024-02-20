@@ -131,12 +131,13 @@ impl<'tcx> TyCtxt<'tcx> {
     fn collect_late_bound_regions<T>(
         self,
         value: &Binder<'tcx, T>,
-        just_constraint: bool,
+        just_constrained: bool,
     ) -> FxHashSet<ty::BoundRegionKind>
     where
         T: TypeVisitable<TyCtxt<'tcx>>,
     {
-        let mut collector = LateBoundRegionsCollector::new(just_constraint);
+        let mut collector = LateBoundRegionsCollector::new(self, just_constrained);
+        let value = if just_constrained { self.expand_weak_alias_tys(value) } else { value };
         let result = value.as_ref().skip_binder().visit_with(&mut collector);
         assert!(result.is_continue()); // should never have stopped early
         collector.regions
@@ -258,11 +259,7 @@ struct LateBoundRegionsCollector {
 
 impl LateBoundRegionsCollector {
     fn new(just_constrained: bool) -> Self {
-        LateBoundRegionsCollector {
-            current_index: ty::INNERMOST,
-            regions: Default::default(),
-            just_constrained,
-        }
+        Self { current_index: ty::INNERMOST, regions: Default::default(), just_constrained }
     }
 }
 
@@ -278,12 +275,16 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        // if we are only looking for "constrained" region, we have to
-        // ignore the inputs to a projection, as they may not appear
-        // in the normalized form
         if self.just_constrained {
-            if let ty::Alias(..) = t.kind() {
-                return ControlFlow::Continue(());
+            match t.kind() {
+                // If we are only looking for "constrained" regions, we have to ignore the
+                // inputs to a projection as they may not appear in the normalized form.
+                ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) => {
+                    return ControlFlow::Continue(());
+                }
+                // All weak alias types should've been expanded beforehand.
+                ty::Alias(ty::Weak, _) => bug!("unexpected weak alias type"),
+                _ => {}
             }
         }
 
