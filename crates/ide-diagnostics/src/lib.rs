@@ -142,7 +142,7 @@ pub struct Diagnostic {
     pub experimental: bool,
     pub fixes: Option<Vec<Assist>>,
     // The node that will be affected by `#[allow]` and similar attributes.
-    pub main_node: Option<InFile<SyntaxNode>>,
+    pub main_node: Option<InFile<SyntaxNodePtr>>,
 }
 
 impl Diagnostic {
@@ -174,9 +174,8 @@ impl Diagnostic {
         message: impl Into<String>,
         node: InFile<SyntaxNodePtr>,
     ) -> Diagnostic {
-        let file_id = node.file_id;
         Diagnostic::new(code, message, ctx.sema.diagnostics_display_range(node))
-            .with_main_node(node.map(|x| x.to_node(&ctx.sema.parse_or_expand(file_id))))
+            .with_main_node(node)
     }
 
     fn experimental(mut self) -> Diagnostic {
@@ -184,7 +183,7 @@ impl Diagnostic {
         self
     }
 
-    fn with_main_node(mut self, main_node: InFile<SyntaxNode>) -> Diagnostic {
+    fn with_main_node(mut self, main_node: InFile<SyntaxNodePtr>) -> Diagnostic {
         self.main_node = Some(main_node);
         self
     }
@@ -394,8 +393,17 @@ pub fn diagnostics(
         res.push(d)
     }
 
-    let mut diagnostics_of_range =
-        res.iter_mut().filter_map(|x| Some((x.main_node.clone()?, x))).collect::<FxHashMap<_, _>>();
+    let mut diagnostics_of_range = res
+        .iter_mut()
+        .filter_map(|it| {
+            Some((
+                it.main_node
+                    .map(|ptr| ptr.map(|node| node.to_node(&ctx.sema.parse_or_expand(ptr.file_id))))
+                    .clone()?,
+                it,
+            ))
+        })
+        .collect::<FxHashMap<_, _>>();
 
     let mut rustc_stack: FxHashMap<String, Vec<Severity>> = FxHashMap::default();
     let mut clippy_stack: FxHashMap<String, Vec<Severity>> = FxHashMap::default();
