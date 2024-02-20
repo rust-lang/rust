@@ -1,5 +1,5 @@
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
+use rustc_infer::infer::nll_relate::{NllTypeRelating, NllTypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
@@ -32,7 +32,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
-        TypeRelating::new(
+        NllTypeRelating::new(
             self.infcx,
             NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::relate(a, b)),
             v,
@@ -49,7 +49,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) -> Result<(), NoSolution> {
-        TypeRelating::new(
+        NllTypeRelating::new(
             self.infcx,
             NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::other()),
             ty::Variance::Invariant,
@@ -84,7 +84,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     }
 }
 
-impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
+impl<'tcx> NllTypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.locations.span(self.type_checker.body)
     }

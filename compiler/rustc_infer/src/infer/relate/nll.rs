@@ -34,9 +34,9 @@ use crate::infer::InferCtxt;
 use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::{Obligation, PredicateObligations};
 
-pub struct TypeRelating<'me, 'tcx, D>
+pub struct NllTypeRelating<'me, 'tcx, D>
 where
-    D: TypeRelatingDelegate<'tcx>,
+    D: NllTypeRelatingDelegate<'tcx>,
 {
     infcx: &'me InferCtxt<'tcx>,
 
@@ -54,7 +54,7 @@ where
     ambient_variance_info: ty::VarianceDiagInfo<'tcx>,
 }
 
-pub trait TypeRelatingDelegate<'tcx> {
+pub trait NllTypeRelatingDelegate<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
     fn span(&self) -> Span;
 
@@ -98,9 +98,9 @@ pub trait TypeRelatingDelegate<'tcx> {
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx>;
 }
 
-impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
+impl<'me, 'tcx, D> NllTypeRelating<'me, 'tcx, D>
 where
-    D: TypeRelatingDelegate<'tcx>,
+    D: NllTypeRelatingDelegate<'tcx>,
 {
     pub fn new(infcx: &'me InferCtxt<'tcx>, delegate: D, ambient_variance: ty::Variance) -> Self {
         Self {
@@ -273,9 +273,9 @@ where
     }
 }
 
-impl<'tcx, D> TypeRelation<'tcx> for TypeRelating<'_, 'tcx, D>
+impl<'tcx, D> TypeRelation<'tcx> for NllTypeRelating<'_, 'tcx, D>
 where
-    D: TypeRelatingDelegate<'tcx>,
+    D: NllTypeRelatingDelegate<'tcx>,
 {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
@@ -514,9 +514,9 @@ where
     }
 }
 
-impl<'tcx, D> ObligationEmittingRelation<'tcx> for TypeRelating<'_, 'tcx, D>
+impl<'tcx, D> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'tcx, D>
 where
-    D: TypeRelatingDelegate<'tcx>,
+    D: NllTypeRelatingDelegate<'tcx>,
 {
     fn span(&self) -> Span {
         self.delegate.span()
