@@ -650,27 +650,22 @@ impl TestProps {
 /// See [`HeaderLine`] for a diagram.
 pub fn line_directive<'line>(
     comment: &str,
-    ln: &'line str,
+    original_line: &'line str,
 ) -> Option<(Option<&'line str>, &'line str)> {
-    let ln = ln.trim_start();
-    if ln.starts_with(comment) {
-        let ln = ln[comment.len()..].trim_start();
-        if ln.starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            let Some(close_brace) = ln.find(']') else {
-                panic!(
-                    "malformed condition directive: expected `{}[foo]`, found `{}`",
-                    comment, ln
-                );
-            };
+    // Ignore lines that don't start with the comment prefix.
+    let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
 
-            let line_revision = &ln[1..close_brace];
-            Some((Some(line_revision), ln[(close_brace + 1)..].trim_start()))
-        } else {
-            Some((None, ln))
-        }
+    if let Some(after_open_bracket) = after_comment.strip_prefix('[') {
+        // A comment like `//@[foo]` only applies to revision `foo`.
+        let Some((line_revision, directive)) = after_open_bracket.split_once(']') else {
+            panic!(
+                "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
+            )
+        };
+
+        Some((Some(line_revision), directive.trim_start()))
     } else {
-        None
+        Some((None, after_comment))
     }
 }
 
