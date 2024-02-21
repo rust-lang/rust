@@ -67,7 +67,7 @@ typedef RustArchiveIterator *LLVMRustArchiveIteratorRef;
 
 extern "C" LLVMRustArchiveRef LLVMRustOpenArchive(char *Path) {
   ErrorOr<std::unique_ptr<MemoryBuffer>> BufOr =
-      MemoryBuffer::getFile(Path, -1, false);
+      MemoryBuffer::getFile(Path, /*IsText*/false, /*RequiresNullTerminator=*/false);
   if (!BufOr) {
     LLVMRustSetLastError(BufOr.getError().message().c_str());
     return nullptr;
