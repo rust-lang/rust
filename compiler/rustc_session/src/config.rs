@@ -278,15 +278,27 @@ impl LinkSelfContained {
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
-    /// `-C link-self-contained=+linker` syntax, or one of the `true` shorcuts.
+    /// `-C link-self-contained=+linker` syntax, or one of the `true` shortcuts.
     pub fn is_linker_enabled(&self) -> bool {
         self.enabled_components.contains(LinkSelfContainedComponents::LINKER)
     }
 
     /// Returns whether the self-contained linker component was disabled on the CLI, using the
-    /// `-C link-self-contained=-linker` syntax, or one of the `false` shorcuts.
+    /// `-C link-self-contained=-linker` syntax, or one of the `false` shortcuts.
     pub fn is_linker_disabled(&self) -> bool {
         self.disabled_components.contains(LinkSelfContainedComponents::LINKER)
+    }
+
+    // Returns whether the self-contained sanitizer component was enabled on the CLI, using the
+    // `-C link-self-contained=+sanitizers` syntax, or one of the `true` shortcuts.
+    pub fn is_sanitizers_enabled(&self) -> bool {
+        self.enabled_components.contains(LinkSelfContainedComponents::SANITIZERS)
+    }
+
+    /// Returns whether the self-contained linker component was disabled on the CLI, using the
+    /// `-C link-self-contained=-sanitizers` syntax, or one of the `false` shortcuts.
+    pub fn is_sanitizers_disabled(&self) -> bool {
+        self.disabled_components.contains(LinkSelfContainedComponents::SANITIZERS)
     }
 
     /// Returns CLI inconsistencies to emit errors: individual components were both enabled and
