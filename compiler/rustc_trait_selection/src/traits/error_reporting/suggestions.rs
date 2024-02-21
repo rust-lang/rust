@@ -1283,6 +1283,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             "the full type name has been written to '{}'",
                             file.display()
                         ));
+                        err.note(format!(
+                            "consider using `--verbose` to print full type name to the console"
+                        ));
                     }
 
                     if imm_ref_self_ty_satisfies_pred && mut_ref_self_ty_satisfies_pred {
@@ -2866,6 +2869,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         "the full name for the type has been written to '{}'",
                         file.display(),
                     ));
+                    err.note(format!(
+                        "consider using `--verbose` to print the full type name to the console"
+                    ));
                 }
             }
             ObligationCauseCode::RepeatElementCopy {
@@ -3333,6 +3339,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         "the full type name has been written to '{}'",
                         file.display(),
                     ));
+                    err.note(format!(
+                        "consider using `--verbose` to print the full type name to the console"
+                    ));
                 }
                 let mut parent_predicate = parent_trait_pred;
                 let mut data = &data.derived;
@@ -3385,6 +3394,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         err.note(format!(
                             "the full type name has been written to '{}'",
                             file.display(),
+                        ));
+                        err.note(format!(
+                            "consider using `--verbose` to print the full type name to the console"
                         ));
                     }
                 }
