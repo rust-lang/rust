@@ -1,3 +1,4 @@
+// ignore-tidy-linelength
 // ignore-freebsd: gdb package too new
 // only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
