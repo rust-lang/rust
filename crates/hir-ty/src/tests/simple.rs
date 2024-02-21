@@ -2887,6 +2887,43 @@ fn f() {
 }
 
 #[test]
+fn closure_kind_with_predicates() {
+    check_types(
+        r#"
+//- minicore: fn
+#![feature(unboxed_closures)]
+
+struct X<T: FnOnce()>(T);
+
+fn f1() -> impl FnOnce() {
+    || {}
+ // ^^^^^ impl FnOnce()
+}
+
+fn f2(c: impl FnOnce<(), Output = i32>) {}
+
+fn test {
+    let x1 = X(|| {});
+    let c1 = x1.0;
+     // ^^ impl FnOnce()
+
+    let c2 = || {};
+     // ^^ impl Fn()
+    let x2 = X(c2);
+    let c3 = x2.0
+     // ^^ impl Fn()
+
+    let c4 = f1();
+     // ^^ impl FnOnce() + ?Sized
+
+    f2(|| { 0 });
+    // ^^^^^^^^ impl FnOnce() -> i32
+}
+    "#,
+    )
+}
+
+#[test]
 fn derive_macro_should_work_for_associated_type() {
     check_types(
         r#"
