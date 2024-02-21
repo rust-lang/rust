@@ -1021,7 +1021,7 @@ impl f32 {
                          not(target_feature = "vfp2")))] {
                 // some 32-bit ARM architectures don't have native double-precision floats
                 // so fall back to a similar algorithm as in f64, but using f32
-                // This should only differ in the NaNs specific NaNs reported.
+                // This should only differ in the specific NaNs reported.
 
                 const LO: f32 = f32::MIN_POSITIVE * 2.;
                 const HI: f32 = f32::MAX / 2.;
