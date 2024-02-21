@@ -287,7 +287,7 @@ struct MyStruct<T> { x: u32, y: T }
 The type `MyStruct<u32>` would be an instance of `TyKind::Adt`:
 
 ```rust,ignore
-Adt(&'tcx AdtDef, GenericArgsRef<'tcx>)
+Adt(&'tcx AdtDef, GenericArgs<'tcx>)
 //  ------------  ---------------
 //  (1)            (2)
 //
@@ -301,12 +301,12 @@ There are two parts:
   parameters. In our example, this is the `MyStruct` part *without* the argument `u32`.
   (Note that in the HIR, structs, enums and unions are represented differently, but in `ty::Ty`,
   they are all represented using `TyKind::Adt`.)
-- The [`GenericArgsRef`][GenericArgsRef] is an interned list of values that are to be substituted
+- The [`GenericArgs`][GenericArgs] is an interned list of values that are to be substituted
 for the generic parameters.  In our example of `MyStruct<u32>`, we would end up with a list like
 `[u32]`. We’ll dig more into generics and substitutions in a little bit.
 
 [adtdef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.AdtDef.html
-[GenericArgsRef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/subst/type.GenericArgsRef.html
+[GenericArgs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
 
 **`AdtDef` and `DefId`**
 

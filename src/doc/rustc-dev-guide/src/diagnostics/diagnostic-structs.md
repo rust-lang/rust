@@ -1,7 +1,7 @@
 # Diagnostic and subdiagnostic structs
 rustc has three diagnostic derives that can be used to create simple diagnostics,
 which are recommended to be used when they are applicable:
-`#[derive(Diagnostic)]`, #[derive(LintDiagnostic)], and `#[derive(Subdiagnostic)]`.
+`#[derive(Diagnostic)]`, `#[derive(LintDiagnostic)]`, and `#[derive(Subdiagnostic)]`.
 
 Diagnostics created with the derive macros can be translated into different
 languages and each has a slug that uniquely identifies the diagnostic.

@@ -38,7 +38,9 @@ exclude = [
     "www\\.amazon\\.com",
     "www\\.rustaceans\\.org",
     "play\\.rust-lang\\.org",
-    "tomlee\\.co"
+    "tomlee\\.co",
+    "marketplace\\.visualstudio\\.com",
+    "objects\\.githubusercontent\\.com"
 ]
 cache-timeout = 86400
 warning-policy = "error"

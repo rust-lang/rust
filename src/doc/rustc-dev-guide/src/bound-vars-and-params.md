@@ -3,7 +3,7 @@
 ## Early-bound parameters
 
 Early-bound parameters in rustc are identified by an index, stored in the
-[`ParamTy`] struct for types or the [`EarlyBoundRegion`] struct for lifetimes.
+[`ParamTy`] struct for types or the [`EarlyParamRegion`] struct for lifetimes.
 The index counts from the outermost declaration in scope. This means that as you
 add more binders inside, the index doesn't change.
 
@@ -24,7 +24,7 @@ In rustc, the [`Generics`] structure carries this information. So the
 in [this chapter](./generics.md).
 
 [`ParamTy`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamTy.html
-[`EarlyBoundRegion`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.EarlyBoundRegion.html
+[`EarlyParamRegion`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/region/struct.EarlyParamRegion.html
 [`Generics`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Generics.html
 
 ## Late-bound parameters

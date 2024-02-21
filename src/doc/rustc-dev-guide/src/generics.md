@@ -6,20 +6,20 @@ inference, type checking, and trait solving. Conceptually, during these routines
 that one type is equal to another type and want to swap one out for the other and then swap that out
 for another type and so on until we eventually get some concrete types (or an error).
 
-In rustc this is done using [GenericArgsRef].
-Conceptually, you can think of `GenericArgsRef` as a list of types that are to be substituted for
+In rustc this is done using [GenericArgs].
+Conceptually, you can think of `GenericArgs` as a list of types that are to be substituted for
  the generic type parameters of the ADT.
 
-`GenericArgsRef` is a type alias of `&'tcx List<GenericArg<'tcx>>` (see [`List` rustdocs][list]).
+`GenericArgs` is a type alias of `&'tcx List<GenericArg<'tcx>>` (see [`List` rustdocs][list]).
 [`GenericArg`] is essentially a space-efficient wrapper around [`GenericArgKind`], which is an enum
 indicating what kind of generic the type parameter is (type, lifetime, or const).
-Thus, `GenericArgsRef` is conceptually like a `&'tcx [GenericArgKind<'tcx>]` slice (but it is
+Thus, `GenericArgs` is conceptually like a `&'tcx [GenericArgKind<'tcx>]` slice (but it is
 actually a `List`).
 
 [list]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.List.html
 [`GenericArg`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.GenericArg.html
 [`GenericArgKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.GenericArgKind.html
-[GenericArgsRef]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgsRef.html
+[GenericArgs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.GenericArgs.html
 
 So why do we use this `List` type instead of making it really a slice? It has the length "inline",
 so `&List` is only 32 bits. As a consequence, it cannot be "subsliced" (that only works if the
@@ -37,10 +37,10 @@ struct MyStruct<T>
 
 - There would be an `AdtDef` (and corresponding `DefId`) for `MyStruct`.
 - There would be a `TyKind::Param` (and corresponding `DefId`) for `T` (more later).
-- There would be a `GenericArgsRef` containing the list `[GenericArgKind::Type(Ty(T))]`
+- There would be a `GenericArgs` containing the list `[GenericArgKind::Type(Ty(T))]`
     - The `Ty(T)` here is my shorthand for entire other `ty::Ty` that has `TyKind::Param`, which we
       mentioned in the previous point.
-- This is one `TyKind::Adt` containing the `AdtDef` of `MyStruct` with the `GenericArgsRef` above.
+- This is one `TyKind::Adt` containing the `AdtDef` of `MyStruct` with the `GenericArgs` above.
 
 Finally, we will quickly mention the
 [`Generics`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Generics.html) type. It
@@ -114,7 +114,7 @@ This example has a few different substitutions:
 
 Let’s look a bit more closely at that last substitution to see why we use indexes. If we want to
 find the type of `foo.x`, we can get generic type of `x`, which is `Vec<Param(0)>`. Now we can take
-the index `0` and use it to find the right type substitution: looking at `Foo`'s `GenericArgsRef`,
+the index `0` and use it to find the right type substitution: looking at `Foo`'s `GenericArgs`,
 we have the list `[u32, f32]` , since we want to replace index `0`, we take the 0-th index of this
 list, which is `u32`. Voila!
 
@@ -127,7 +127,7 @@ You may have a couple of followup questions…
  `MyStruct`: `Adt(Foo, &[Param(0), Param(1)])`.
 
 How do we actually do the substitutions? There is a function for that too! You
-use [`instantiate`] to replace a `GenericArgsRef` with  another list of types.
+use [`instantiate`] to replace a `GenericArgs` with another list of types.
 
 [Here is an example of actually using `instantiate` in the compiler][instantiatex].
 The exact details are not too important, but in this piece of code, we happen to be
