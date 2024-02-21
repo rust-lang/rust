@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmir-opt-level=3 -Zunsound-mir-opts
+//@ compile-flags: -O
 
 #![crate_type = "lib"]
 
