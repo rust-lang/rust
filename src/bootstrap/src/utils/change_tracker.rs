@@ -2,6 +2,8 @@
 //! with the goal of keeping developers synchronized with important modifications in
 //! the bootstrap.
 
+use std::fmt::Display;
+
 #[cfg(test)]
 mod tests;
 
@@ -24,11 +26,11 @@ pub enum ChangeSeverity {
     Warning,
 }
 
-impl ToString for ChangeSeverity {
-    fn to_string(&self) -> String {
+impl Display for ChangeSeverity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChangeSeverity::Info => "INFO".to_string(),
-            ChangeSeverity::Warning => "WARNING".to_string(),
+            ChangeSeverity::Info => write!(f, "INFO"),
+            ChangeSeverity::Warning => write!(f, "WARNING"),
         }
     }
 }
@@ -40,7 +42,7 @@ pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
         // older one); otherwise, return the full list (assuming the user provided
         // the incorrect change-id by accident).
         if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
-            if &current_id > &config.change_id {
+            if current_id > config.change_id {
                 return Vec::new();
             }
         }

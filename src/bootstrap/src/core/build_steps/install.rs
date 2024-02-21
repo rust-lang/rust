@@ -24,7 +24,7 @@ const SHELL: &str = "sh";
 // We have to run a few shell scripts, which choke quite a bit on both `\`
 // characters and on `C:\` paths, so normalize both of them away.
 fn sanitize_sh(path: &Path) -> String {
-    let path = path.to_str().unwrap().replace("\\", "/");
+    let path = path.to_str().unwrap().replace('\\', "/");
     return change_drive(unc_to_lfs(&path)).unwrap_or(path);
 
     fn unc_to_lfs(s: &str) -> &str {
@@ -44,7 +44,7 @@ fn sanitize_sh(path: &Path) -> String {
     }
 }
 
-fn is_dir_writable_for_user(dir: &PathBuf) -> bool {
+fn is_dir_writable_for_user(dir: &Path) -> bool {
     let tmp = dir.join(".tmp");
     match fs::create_dir_all(&tmp) {
         Ok(_) => {
