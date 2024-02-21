@@ -478,6 +478,15 @@ macro_rules! t_t_s {
 }
 
 macro_rules! t_u {
+    (vector_bool_char) => {
+        vector_unsigned_char
+    };
+    (vector_bool_short) => {
+        vector_unsigned_short
+    };
+    (vector_bool_int) => {
+        vector_unsigned_int
+    };
     (vector_unsigned_char) => {
         vector_unsigned_char
     };
@@ -495,6 +504,42 @@ macro_rules! t_u {
     };
     (vector_signed_int) => {
         vector_unsigned_int
+    };
+    (vector_float) => {
+        vector_unsigned_int
+    };
+}
+
+macro_rules! t_b {
+    (vector_bool_char) => {
+        vector_bool_char
+    };
+    (vector_bool_short) => {
+        vector_bool_short
+    };
+    (vector_bool_int) => {
+        vector_bool_int
+    };
+    (vector_signed_char) => {
+        vector_bool_char
+    };
+    (vector_signed_short) => {
+        vector_bool_short
+    };
+    (vector_signed_int) => {
+        vector_bool_int
+    };
+    (vector_unsigned_char) => {
+        vector_bool_char
+    };
+    (vector_unsigned_short) => {
+        vector_bool_short
+    };
+    (vector_unsigned_int) => {
+        vector_bool_int
+    };
+    (vector_float) => {
+        vector_bool_int
     };
 }
 
@@ -2574,6 +2619,62 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, not(target_feature = "vsx")), assert_instr(vsel))]
+    #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxsel))]
+    pub unsafe fn vec_vsel(
+        a: vector_signed_char,
+        b: vector_signed_char,
+        c: vector_signed_char,
+    ) -> vector_signed_char {
+        let a: i8x16 = transmute(a);
+        let b: i8x16 = transmute(b);
+        let c: i8x16 = transmute(c);
+        let not_c = simd_xor(c, i8x16::splat(!0));
+
+        transmute(simd_or(simd_and(a, not_c), simd_and(b, c)))
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSel<Mask> {
+        unsafe fn vec_sel(self, b: Self, c: Mask) -> Self;
+    }
+
+    macro_rules! vector_sel {
+        ($ty: ty, $m: ty) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorSel<$m> for $ty {
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_sel(self, b: Self, c: $m) -> Self {
+                    let a = transmute(self);
+                    let b = transmute(b);
+                    let c = transmute(c);
+
+                    transmute(vec_vsel(a, b, c))
+                }
+            }
+        };
+        ($ty: ident) => {
+            vector_sel! { $ty, t_b!{ $ty } }
+            vector_sel! { $ty, t_u!{ $ty } }
+            vector_sel! { t_u!{ $ty }, t_b!{ $ty } }
+            vector_sel! { t_u!{ $ty }, t_u!{ $ty } }
+            vector_sel! { t_b!{ $ty }, t_b!{ $ty } }
+            vector_sel! { t_b!{ $ty }, t_u!{ $ty } }
+        };
+        (- $ty: ident) => {
+            vector_sel! { $ty, t_b!{ $ty } }
+            vector_sel! { $ty, t_u!{ $ty } }
+        };
+    }
+
+    vector_sel! { vector_signed_char }
+    vector_sel! { vector_signed_short }
+    vector_sel! { vector_signed_int }
+    vector_sel! {- vector_float }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vcfsx, IMM5 = 1))]
     unsafe fn vec_ctf_i32<const IMM5: i32>(a: vector_signed_int) -> vector_float {
         static_assert_uimm_bits!(IMM5, 5);
@@ -4186,6 +4287,25 @@ pub unsafe fn vec_madd(a: vector_float, b: vector_float, c: vector_float) -> vec
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_nmsub(a: vector_float, b: vector_float, c: vector_float) -> vector_float {
     vnmsubfp(a, b, c)
+}
+
+/// Vector Select
+///
+/// ## Purpose
+/// Returns a vector selecting bits from two source vectors depending on the corresponding
+/// bit values of a third source vector.
+///
+/// ## Result value
+/// Each bit of r has the value of the corresponding bit of a if the corresponding
+/// bit of c is 0. Otherwise, the bit of r has the value of the corresponding bit of b.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sel<T, U>(a: T, b: T, c: U) -> T
+where
+    T: sealed::VectorSel<U>,
+{
+    a.vec_sel(b, c)
 }
 
 /// Vector Sum Across Partial (1/4) Saturated
