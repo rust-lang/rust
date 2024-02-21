@@ -2547,6 +2547,31 @@ mod sealed {
 
     impl_vec_trait! { [VectorNor vec_nor]+ 2b (vec_vnorsb, vec_vnorsh, vec_vnorsw) }
 
+    macro_rules! vector_vnand {
+        ($fun:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(all(test, not(target_feature = "vsx")), assert_instr(vnand))]
+            #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxlnand))]
+            pub unsafe fn $fun(a: t_t_l!($ty), b: t_t_l!($ty)) -> t_t_l!($ty) {
+                let o = vec_splats(!0 as $ty);
+                vec_xor(vec_and(a, b), o)
+            }
+        };
+    }
+
+    vector_vnand! { vec_vnandsb i8 }
+    vector_vnand! { vec_vnandsh i16 }
+    vector_vnand! { vec_vnandsw i32 }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorNand<Other> {
+        type Result;
+        unsafe fn vec_nand(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorNand vec_nand]+ 2b (vec_vnandsb, vec_vnandsh, vec_vnandsw) }
+
     #[inline]
     #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vcfsx, IMM5 = 1))]
@@ -3742,6 +3767,23 @@ where
     T: sealed::VectorOr<U>,
 {
     a.vec_or(b)
+}
+
+/// Vector NAND
+///
+/// ## Purpose
+/// Performs a bitwise NAND of two vectors.
+///
+/// ## Result value
+/// r is the bitwise NAND of a and b.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_nand<T, U>(a: T, b: U) -> <T as sealed::VectorNand<U>>::Result
+where
+    T: sealed::VectorNand<U>,
+{
+    a.vec_nand(b)
 }
 
 /// Vector nor.
