@@ -53,12 +53,13 @@ use crate::errors::{self, ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::ExpectedFound;
+use crate::traits::util::elaborate;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     PredicateObligation,
 };
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
     ErrorGuaranteed, IntoDiagArg, MultiSpan,
@@ -458,11 +459,32 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     // the error. If all of these fails, we fall back to a rather
                     // general bit of code that displays the error information
                     RegionResolutionError::ConcreteFailure(origin, sub, sup) => {
+                        let extra_info = self.find_trait_object_relate_failure_reason(
+                            generic_param_scope,
+                            &origin,
+                            sub,
+                            sup,
+                        );
                         let mut err = if sub.is_placeholder() || sup.is_placeholder() {
                             self.report_placeholder_failure(origin, sub, sup)
                         } else {
                             self.report_concrete_failure(origin, sub, sup)
                         };
+                        if let Some((primary_spans, relevant_bindings)) = extra_info {
+                            if primary_spans.has_primary_spans() {
+                                // We shorten the span from the whole field type to only the traits
+                                // and lifetime bound that failed.
+                                err.span(primary_spans);
+                            }
+                            if relevant_bindings.has_primary_spans() {
+                                // Point at all the trait obligations for the lifetime that
+                                // couldn't be met.
+                                err.span_note(
+                                    relevant_bindings,
+                                    format!("unmet `{sub}` obligations introduced here"),
+                                );
+                            }
+                        }
                         if let hir::def::DefKind::Impl { .. } =
                             self.tcx.def_kind(generic_param_scope)
                             && let Some(def_id) =
@@ -471,28 +493,36 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             // Collect all the `Span`s corresponding to the predicates introducing
                             // the `sub` lifetime that couldn't be met (sometimes `'static`) on
                             // both the `trait` and the `impl`.
-                            let spans: Vec<Span> = self
-                                .tcx
-                                .predicates_of(def_id)
-                                .predicates
-                                .iter()
-                                .chain(
-                                    self.tcx.predicates_of(generic_param_scope).predicates.iter(),
-                                )
-                                .filter_map(|(pred, span)| {
-                                    if let Some(ty::ClauseKind::TypeOutlives(
-                                        ty::OutlivesPredicate(pred_ty, r),
-                                    )) = pred.kind().no_bound_vars()
-                                        && r == sub
-                                        && let ty::Param(param) = pred_ty.kind()
-                                        && param.name == kw::SelfUpper
-                                    {
-                                        Some(*span)
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect();
+                            let spans: Vec<Span> = elaborate(
+                                self.tcx,
+                                self.tcx
+                                    .predicates_of(def_id)
+                                    .predicates
+                                    .iter()
+                                    .map(|(p, sp)| (p.as_predicate(), *sp)),
+                            )
+                            .chain(elaborate(
+                                self.tcx,
+                                self.tcx
+                                    .predicates_of(generic_param_scope)
+                                    .predicates
+                                    .iter()
+                                    .map(|(p, sp)| (p.as_predicate(), *sp)),
+                            ))
+                            .filter_map(|(pred, pred_span)| {
+                                if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
+                                    && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
+                                        _pred_ty,
+                                        r,
+                                    )) = clause
+                                    && r.kind() == ty::ReStatic
+                                {
+                                    Some(pred_span)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
 
                             if !spans.is_empty() {
                                 let spans_len = spans.len();
@@ -2675,6 +2705,102 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         self.note_region_origin(&mut err, &sub_origin);
         if sub_region.is_error() | sup_region.is_error() { err.delay_as_bug() } else { err.emit() }
+    }
+
+    /// If a field on a struct has a trait object with lifetime requirement that can't be satisfied
+    /// by one of the traits in the trait object, shorten the span from the whole field type to only
+    /// the relevant traits and the lifetime. We also collect the spans for the places where the
+    /// traits' obligations were introduced.
+    fn find_trait_object_relate_failure_reason(
+        &self,
+        generic_param_scope: LocalDefId,
+        origin: &SubregionOrigin<'tcx>,
+        sub: ty::Region<'tcx>,
+        sup: ty::Region<'tcx>,
+    ) -> Option<(MultiSpan, MultiSpan)> {
+        let infer::RelateRegionParamBound(span) = origin else {
+            return None;
+        };
+        let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Struct(item, _), .. })) =
+            self.tcx.hir().get_if_local(generic_param_scope.into())
+        else {
+            return None;
+        };
+        /// Collect all `hir::Ty<'_>` `Span`s for trait objects with the sup lifetime.
+        pub struct HirTraitObjectVisitor<'tcx>(
+            pub Vec<&'tcx hir::PolyTraitRef<'tcx>>,
+            pub ty::Region<'tcx>,
+            pub FxHashSet<Span>,
+        );
+        impl<'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'tcx> {
+            fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+                // Find all the trait objects that have the lifetime that was found.
+                if let hir::TyKind::TraitObject(poly_trait_refs, lt, _) = t.kind
+                    && match (lt.res, self.1.kind()) {
+                        (
+                            hir::LifetimeName::ImplicitObjectLifetimeDefault
+                            | hir::LifetimeName::Static,
+                            ty::RegionKind::ReStatic,
+                        ) => true,
+                        (hir::LifetimeName::Param(a), ty::RegionKind::ReEarlyParam(b)) => {
+                            a.to_def_id() == b.def_id
+                        }
+                        _ => false,
+                    }
+                {
+                    for ptr in poly_trait_refs {
+                        // We'll filter the traits later, after collection.
+                        self.0.push(ptr);
+                    }
+                    // We want to keep a span to the lifetime bound on the trait object.
+                    self.2.insert(lt.ident.span);
+                }
+                hir::intravisit::walk_ty(self, t);
+            }
+        }
+        let mut visitor = HirTraitObjectVisitor(vec![], sup, Default::default());
+        for field in item.fields() {
+            if field.ty.span == *span {
+                // `span` points at the type of a field, we only want to look for trait objects in
+                // the field that failed.
+                visitor.visit_ty(field.ty);
+            }
+        }
+
+        // The display of these spans will not change regardless or sorting.
+        #[allow(rustc::potential_query_instability)]
+        let mut primary_spans: Vec<Span> = visitor.2.into_iter().collect();
+        let mut relevant_bindings: Vec<Span> = vec![];
+        for ptr in visitor.0 {
+            if let Some(def_id) = ptr.trait_ref.trait_def_id() {
+                // Find the bounds on the trait with the lifetime that couldn't be met.
+                let bindings: Vec<Span> = elaborate(
+                    self.tcx,
+                    self.tcx
+                        .predicates_of(def_id)
+                        .predicates
+                        .iter()
+                        .map(|(p, sp)| (p.as_predicate(), *sp)),
+                )
+                .filter_map(|(pred, pred_span)| {
+                    if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
+                        && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_pred_ty, r)) =
+                            clause
+                        && r == sub
+                    {
+                        Some(pred_span)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+                if !bindings.is_empty() {
+                    primary_spans.push(ptr.span);
+                    relevant_bindings.extend(bindings);
+                }
+            }
+        }
+        Some((primary_spans.into(), relevant_bindings.into()))
     }
 
     /// Determine whether an error associated with the given span and definition
