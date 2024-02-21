@@ -1,5 +1,5 @@
 [package]
-name = "stdarch-gen"
+name = "stdarch-gen-arm"
 version = "0.1.0"
 authors = ["Heinz Gies <heinz@licenser.net>"]
 edition = "2021"

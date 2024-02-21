@@ -3222,10 +3222,10 @@ fn main() -> io::Result<()> {
     let mut out_arm = String::from(
         r#"// This code is automatically generated. DO NOT MODIFY.
 //
-// Instead, modify `crates/stdarch-gen/neon.spec` and run the following command to re-generate this file:
+// Instead, modify `crates/stdarch-gen-arm/neon.spec` and run the following command to re-generate this file:
 //
 // ```
-// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen -- crates/stdarch-gen/neon.spec
+// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-arm -- crates/stdarch-gen-arm/neon.spec
 // ```
 use super::*;
 #[cfg(test)]
@@ -3249,10 +3249,10 @@ mod test {
     let mut out_aarch64 = String::from(
         r#"// This code is automatically generated. DO NOT MODIFY.
 //
-// Instead, modify `crates/stdarch-gen/neon.spec` and run the following command to re-generate this file:
+// Instead, modify `crates/stdarch-gen-arm/neon.spec` and run the following command to re-generate this file:
 //
 // ```
-// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen -- crates/stdarch-gen/neon.spec
+// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-arm -- crates/stdarch-gen-arm/neon.spec
 // ```
 use super::*;
 #[cfg(test)]

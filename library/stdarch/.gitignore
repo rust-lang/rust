@@ -2,7 +2,7 @@ Cargo.lock
 .*.swp
 target
 tags
-crates/stdarch-gen/aarch64.rs
-crates/stdarch-gen/arm.rs
+crates/stdarch-gen-arm/aarch64.rs
+crates/stdarch-gen-arm/arm.rs
 c_programs/*
 rust_programs/*

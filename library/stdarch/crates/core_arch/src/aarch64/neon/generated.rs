@@ -1,9 +1,9 @@
 // This code is automatically generated. DO NOT MODIFY.
 //
-// Instead, modify `crates/stdarch-gen/neon.spec` and run the following command to re-generate this file:
+// Instead, modify `crates/stdarch-gen-arm/neon.spec` and run the following command to re-generate this file:
 //
 // ```
-// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen -- crates/stdarch-gen/neon.spec
+// OUT_DIR=`pwd`/crates/core_arch cargo run -p stdarch-gen-arm -- crates/stdarch-gen-arm/neon.spec
 // ```
 use super::*;
 #[cfg(test)]

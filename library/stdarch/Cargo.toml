@@ -4,7 +4,7 @@ members = [
   "crates/stdarch-verify",
   "crates/core_arch",
   "crates/std_detect",
-  "crates/stdarch-gen",
+  "crates/stdarch-gen-arm",
   "crates/intrinsic-test",
   "examples/"
 ]
