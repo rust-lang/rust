@@ -107,37 +107,25 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
     rustflags.push_str(" -Z force-unstable-if-unmarked");
+    let mut env = env.clone();
+
+    let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
+
     if config.no_default_features {
         rustflags.push_str(" -Csymbol-mangling-version=v0");
+        args.push(&"--no-default-features");
     }
-    let mut env = env.clone();
+
     let channel = if config.sysroot_release_channel {
-        env.insert(
-            "RUSTFLAGS".to_string(),
-            format!("{} -Zmir-opt-level=3", rustflags),
-        );
-        run_command_with_output_and_env(
-            &[
-                &"cargo",
-                &"build",
-                &"--release",
-                &"--target",
-                &config.target,
-            ],
-            Some(start_dir),
-            Some(&env),
-        )?;
+        rustflags.push_str(" -Zmir-opt-level=3");
+        args.push(&"--release");
         "release"
     } else {
-        env.insert("RUSTFLAGS".to_string(), rustflags);
-
-        run_command_with_output_and_env(
-            &[&"cargo", &"build", &"--target", &config.target],
-            Some(start_dir),
-            Some(&env),
-        )?;
         "debug"
     };
+
+    env.insert("RUSTFLAGS".to_string(), rustflags);
+    run_command_with_output_and_env(&args, Some(start_dir), Some(&env))?;
 
     // Copy files to sysroot
     let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
