@@ -45,7 +45,7 @@ metadata_crate_not_panic_runtime =
     the crate `{$crate_name}` is not a panic runtime
 
 metadata_dl_error =
-    {$err}
+    {$path}{$err}
 
 metadata_empty_link_name =
     link name must not be empty
