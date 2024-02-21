@@ -9,7 +9,6 @@ where
     [u8; (N / 2) as usize]: Sized,
 {
     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
-    //~^ ERROR: mismatched types
     todo!()
 }
 
