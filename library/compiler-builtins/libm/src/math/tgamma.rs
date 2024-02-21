@@ -22,7 +22,6 @@ Gamma(x)*Gamma(-x) = -pi/(x sin(pi x))
 
 most ideas and constants are from boost and python
 */
-extern crate core;
 use super::{exp, floor, k_cos, k_sin, pow};
 
 const PI: f64 = 3.141592653589793238462643383279502884;
