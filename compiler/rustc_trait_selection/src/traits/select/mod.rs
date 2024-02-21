@@ -982,7 +982,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        DefineOpaqueTypes::No,
+                        // Only really excercised by generic_const_exprs
+                        DefineOpaqueTypes::Yes,
                         ct.ty(),
                         ty,
                     ) {
