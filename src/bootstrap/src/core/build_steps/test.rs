@@ -156,7 +156,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         // Run the linkchecker.
         let _guard =
             builder.msg(Kind::Test, compiler.stage, "Linkcheck", bootstrap_host, bootstrap_host);
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         builder.run_delaying_failure(linkchecker.arg(builder.out.join(host.triple).join("doc")));
     }
 
@@ -253,15 +253,15 @@ impl Step for Cargotest {
         let out_dir = builder.out.join("ct");
         t!(fs::create_dir_all(&out_dir));
 
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        let mut cmd = cmd
+        let cmd = cmd
             .arg(&cargo)
             .arg(&out_dir)
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
             .env("RUSTDOC", builder.rustdoc(compiler));
-        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
+        add_rustdoc_cargo_linker_args(cmd, builder, compiler.host, LldThreads::No);
         builder.run_delaying_failure(cmd);
     }
 }
@@ -322,7 +322,7 @@ impl Step for Cargo {
             builder,
         );
 
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         add_flags_and_try_run_tests(builder, &mut cargo);
     }
 }
@@ -474,7 +474,7 @@ impl Step for RustDemangler {
         );
 
         let dir = testdir(builder, compiler.host);
-        t!(fs::create_dir_all(&dir));
+        t!(fs::create_dir_all(dir));
 
         cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
         cargo.add_rustc_lib_path(builder);
@@ -525,7 +525,7 @@ impl Miri {
         // Tell `cargo miri setup` where to find the sources.
         cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
         // Tell it where to find Miri.
-        cargo.env("MIRI", &miri);
+        cargo.env("MIRI", miri);
         // Tell it where to put the sysroot.
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         // Debug things.
@@ -637,7 +637,7 @@ impl Step for Miri {
         // does not understand the flags added by `add_flags_and_try_run_test`.
         let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
         {
-            let _time = helpers::timeit(&builder);
+            let _time = helpers::timeit(builder);
             builder.run(&mut cargo);
         }
 
@@ -649,11 +649,11 @@ impl Step for Miri {
             // `MIRI_SKIP_UI_CHECKS` and `RUSTC_BLESS` are incompatible
             cargo.env_remove("RUSTC_BLESS");
             // Optimizations can change error locations and remove UB so don't run `fail` tests.
-            cargo.args(&["tests/pass", "tests/panic"]);
+            cargo.args(["tests/pass", "tests/panic"]);
 
             let mut cargo = prepare_cargo_test(cargo, &[], &[], "miri", compiler, target, builder);
             {
-                let _time = helpers::timeit(&builder);
+                let _time = helpers::timeit(builder);
                 builder.run(&mut cargo);
             }
         }
@@ -693,7 +693,7 @@ impl Step for Miri {
 
         let mut cargo = Command::from(cargo);
         {
-            let _time = helpers::timeit(&builder);
+            let _time = helpers::timeit(builder);
             builder.run(&mut cargo);
         }
     }
@@ -946,7 +946,7 @@ impl Step for RustdocJSNotStd {
 }
 
 fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String> {
-    let mut command = Command::new(&npm);
+    let mut command = Command::new(npm);
     command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
     if global {
         command.arg("--global");
@@ -954,7 +954,7 @@ fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String>
     let lines = command
         .output()
         .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
-        .unwrap_or(String::new());
+        .unwrap_or_default();
     lines
         .lines()
         .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
@@ -1048,7 +1048,7 @@ impl Step for RustdocGUI {
             cmd.arg("--npm").arg(npm);
         }
 
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         let _guard = builder.msg_sysroot_tool(
             Kind::Test,
             self.compiler.stage,
@@ -1096,7 +1096,7 @@ impl Step for Tidy {
             cmd.arg(format!("--extra-checks={s}"));
         }
         let mut args = std::env::args_os();
-        if let Some(_) = args.find(|arg| arg == OsStr::new("--")) {
+        if args.any(|arg| arg == OsStr::new("--")) {
             cmd.arg("--");
             cmd.args(args);
         }
@@ -1116,7 +1116,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 );
                 crate::exit!(1);
             }
-            crate::core::build_steps::format::format(&builder, !builder.config.cmd.bless(), &[]);
+            crate::core::build_steps::format::format(builder, !builder.config.cmd.bless(), &[]);
         }
 
         builder.info("tidy check");
@@ -1171,7 +1171,7 @@ impl Step for ExpandYamlAnchors {
         }
         builder.info("Ensuring the YAML anchors in the GitHub Actions config were expanded");
         builder.run_delaying_failure(
-            &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
+            builder.tool_cmd(Tool::ExpandYamlAnchors).arg("check").arg(&builder.src),
         );
     }
 
@@ -1759,7 +1759,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         for exclude in &builder.config.skip {
             cmd.arg("--skip");
-            cmd.arg(&exclude);
+            cmd.arg(exclude);
         }
 
         // Get paths from cmd args
@@ -1780,7 +1780,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // so the correct filters are passed to libtest
         if cfg!(windows) {
             let test_args_win: Vec<String> =
-                test_args.iter().map(|s| s.replace("/", "\\")).collect();
+                test_args.iter().map(|s| s.replace('/', "\\")).collect();
             cmd.args(&test_args_win);
         } else {
             cmd.args(&test_args);
@@ -1900,7 +1900,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // Note that if we encounter `PATH` we make sure to append to our own `PATH`
             // rather than stomp over it.
             if !builder.config.dry_run() && target.is_msvc() {
-                for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
+                for (k, v) in builder.cc.borrow()[&target].env() {
                     if k != "PATH" {
                         cmd.env(k, v);
                     }
@@ -1996,7 +1996,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let _group = builder.msg(
             Kind::Test,
             compiler.stage,
-            &format!("compiletest suite={suite} mode={mode}"),
+            format!("compiletest suite={suite} mode={mode}"),
             compiler.host,
             target,
         );
@@ -2022,7 +2022,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 "Check compiletest suite={} mode={} compare_mode={} ({} -> {})",
                 suite, mode, compare_mode, &compiler.host, target
             ));
-            let _time = helpers::timeit(&builder);
+            let _time = helpers::timeit(builder);
             try_run_tests(builder, &mut cmd, false);
         }
     }
@@ -2094,7 +2094,7 @@ impl BookTest {
             compiler.host,
             compiler.host,
         );
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         let toolstate = if builder.run_delaying_failure(&mut rustbook_cmd) {
             ToolState::TestPass
         } else {
@@ -2111,12 +2111,12 @@ impl BookTest {
         builder.ensure(compile::Std::new(compiler, host));
 
         let _guard =
-            builder.msg(Kind::Test, compiler.stage, &format!("book {}", self.name), host, host);
+            builder.msg(Kind::Test, compiler.stage, format!("book {}", self.name), host, host);
 
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
         let mut stack = vec![builder.src.join(self.path)];
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         let mut files = Vec::new();
         while let Some(p) = stack.pop() {
             if p.is_dir() {
@@ -2227,7 +2227,7 @@ impl Step for ErrorIndex {
 
         let guard =
             builder.msg(Kind::Test, compiler.stage, "error-index", compiler.host, compiler.host);
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
         builder.run_quiet(&mut tool);
         drop(guard);
         // The tests themselves need to link to std, so make sure it is
@@ -2315,11 +2315,8 @@ impl Step for CrateLibrustc {
         let builder = run.builder;
         let host = run.build_triple();
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let crates = run
-            .paths
-            .iter()
-            .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
-            .collect();
+        let crates =
+            run.paths.iter().map(|p| builder.crate_paths[&p.assert_single_path().path]).collect();
 
         builder.ensure(CrateLibrustc { compiler, target: run.target, crates });
     }
@@ -2351,7 +2348,7 @@ fn run_cargo_test<'a>(
 ) -> bool {
     let mut cargo =
         prepare_cargo_test(cargo, libtest_args, crates, primary_crate, compiler, target, builder);
-    let _time = helpers::timeit(&builder);
+    let _time = helpers::timeit(builder);
     let _group = description.into().and_then(|what| {
         builder.msg_sysroot_tool(Kind::Test, compiler.stage, what, compiler.host, target)
     });
@@ -2406,7 +2403,7 @@ fn prepare_cargo_test(
             if krate.has_lib {
                 cargo.arg("--lib");
             }
-            cargo.args(&["--bins", "--examples", "--tests", "--benches"]);
+            cargo.args(["--bins", "--examples", "--tests", "--benches"]);
         }
         DocTests::Yes => {}
     }
@@ -2468,11 +2465,8 @@ impl Step for Crate {
         let builder = run.builder;
         let host = run.build_triple();
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let crates = run
-            .paths
-            .iter()
-            .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
-            .collect();
+        let crates =
+            run.paths.iter().map(|p| builder.crate_paths[&p.assert_single_path().path]).collect();
 
         builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, crates });
     }
@@ -2844,11 +2838,11 @@ impl Step for Bootstrap {
         let compiler = builder.compiler(0, host);
         let _guard = builder.msg(Kind::Test, 0, "bootstrap", host, host);
 
-        let mut check_bootstrap = Command::new(&builder.python());
+        let mut check_bootstrap = Command::new(builder.python());
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
             .env("BUILD_DIR", &builder.out)
-            .env("BUILD_PLATFORM", &builder.build.build.triple)
+            .env("BUILD_PLATFORM", builder.build.build.triple)
             .current_dir(builder.src.join("src/bootstrap/"));
         // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
         // Use `python -m unittest` manually if you want to pass arguments.
@@ -3171,7 +3165,7 @@ impl Step for CodegenCranelift {
             &compiler.host,
             target
         ));
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
 
         // FIXME handle vendoring for source tarballs before removing the --skip-test below
         let download_dir = builder.out.join("cg_clif_download");
@@ -3300,7 +3294,7 @@ impl Step for CodegenGCC {
             &compiler.host,
             target
         ));
-        let _time = helpers::timeit(&builder);
+        let _time = helpers::timeit(builder);
 
         // FIXME: Uncomment the `prepare` command below once vendoring is implemented.
         /*

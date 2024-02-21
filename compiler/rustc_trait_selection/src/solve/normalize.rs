@@ -85,25 +85,16 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
             ),
         );
 
-        // Do not emit an error if normalization is known to fail but instead
-        // keep the projection unnormalized. This is the case for projections
-        // with a `T: Trait` where-clause and opaque types outside of the defining
-        // scope.
-        let result = if infcx.predicate_may_hold(&obligation) {
-            self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-            let errors = self.fulfill_cx.select_all_or_error(infcx);
-            if !errors.is_empty() {
-                return Err(errors);
-            }
-            let ty = infcx.resolve_vars_if_possible(new_infer_ty);
+        self.fulfill_cx.register_predicate_obligation(infcx, obligation);
+        let errors = self.fulfill_cx.select_all_or_error(infcx);
+        if !errors.is_empty() {
+            return Err(errors);
+        }
 
-            // Alias is guaranteed to be fully structurally resolved,
-            // so we can super fold here.
-            ty.try_super_fold_with(self)?
-        } else {
-            alias_ty.try_super_fold_with(self)?
-        };
-
+        // Alias is guaranteed to be fully structurally resolved,
+        // so we can super fold here.
+        let ty = infcx.resolve_vars_if_possible(new_infer_ty);
+        let result = ty.try_super_fold_with(self)?;
         self.depth -= 1;
         Ok(result)
     }
@@ -178,6 +169,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         Ok(t)
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ty, infcx.shallow_resolve(ty));
@@ -204,6 +196,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for NormalizationFolder<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         let infcx = self.at.infcx;
         debug_assert_eq!(ct, infcx.shallow_resolve(ct));

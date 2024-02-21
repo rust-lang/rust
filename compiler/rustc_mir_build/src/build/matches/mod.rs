@@ -1052,7 +1052,7 @@ struct Ascription<'tcx> {
     variance: ty::Variance,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
     // This place...
     place: PlaceBuilder<'tcx>,
@@ -1408,51 +1408,66 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         scrutinee_span: Span,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
-        block: BasicBlock,
+        start_block: BasicBlock,
         otherwise_block: BasicBlock,
         fake_borrows: &mut Option<FxIndexSet<Place<'tcx>>>,
     ) {
         let (first_candidate, remaining_candidates) = candidates.split_first_mut().unwrap();
-
-        // All of the or-patterns have been sorted to the end, so if the first
-        // pattern is an or-pattern we only have or-patterns.
-        match first_candidate.match_pairs[0].pattern.kind {
-            PatKind::Or { .. } => (),
-            _ => {
-                self.test_candidates(
-                    span,
-                    scrutinee_span,
-                    candidates,
-                    block,
-                    otherwise_block,
-                    fake_borrows,
-                );
-                return;
-            }
+        assert!(first_candidate.subcandidates.is_empty());
+        if !matches!(first_candidate.match_pairs[0].pattern.kind, PatKind::Or { .. }) {
+            self.test_candidates(
+                span,
+                scrutinee_span,
+                candidates,
+                start_block,
+                otherwise_block,
+                fake_borrows,
+            );
+            return;
         }
 
         let match_pairs = mem::take(&mut first_candidate.match_pairs);
-        first_candidate.pre_binding_block = Some(block);
+        let (first_match_pair, remaining_match_pairs) = match_pairs.split_first().unwrap();
+        let PatKind::Or { ref pats } = &first_match_pair.pattern.kind else { unreachable!() };
 
         let remainder_start = self.cfg.start_new_block();
-        for match_pair in match_pairs {
-            let PatKind::Or { ref pats } = &match_pair.pattern.kind else {
-                bug!("Or-patterns should have been sorted to the end");
-            };
-            let or_span = match_pair.pattern.span;
+        let or_span = first_match_pair.pattern.span;
+        // Test the alternatives of this or-pattern.
+        self.test_or_pattern(
+            first_candidate,
+            start_block,
+            remainder_start,
+            pats,
+            or_span,
+            &first_match_pair.place,
+            fake_borrows,
+        );
 
+        if !remaining_match_pairs.is_empty() {
+            // If more match pairs remain, test them after each subcandidate.
+            // We could add them to the or-candidates before the call to `test_or_pattern` but this
+            // would make it impossible to detect simplifiable or-patterns. That would guarantee
+            // exponentially large CFGs for cases like `(1 | 2, 3 | 4, ...)`.
             first_candidate.visit_leaves(|leaf_candidate| {
-                self.test_or_pattern(
-                    leaf_candidate,
-                    remainder_start,
-                    pats,
-                    or_span,
-                    &match_pair.place,
+                assert!(leaf_candidate.match_pairs.is_empty());
+                leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
+                let or_start = leaf_candidate.pre_binding_block.unwrap();
+                // In a case like `(a | b, c | d)`, if `a` succeeds and `c | d` fails, we know `(b,
+                // c | d)` will fail too. If there is no guard, we skip testing of `b` by branching
+                // directly to `remainder_start`. If there is a guard, we have to try `(b, c | d)`.
+                let or_otherwise = leaf_candidate.otherwise_block.unwrap_or(remainder_start);
+                self.test_candidates_with_or(
+                    span,
+                    scrutinee_span,
+                    &mut [leaf_candidate],
+                    or_start,
+                    or_otherwise,
                     fake_borrows,
                 );
             });
         }
 
+        // Test the remaining candidates.
         self.match_candidates(
             span,
             scrutinee_span,
@@ -1460,17 +1475,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             otherwise_block,
             remaining_candidates,
             fake_borrows,
-        )
+        );
     }
 
     #[instrument(
-        skip(self, otherwise, or_span, place, fake_borrows, candidate, pats),
+        skip(self, start_block, otherwise_block, or_span, place, fake_borrows, candidate, pats),
         level = "debug"
     )]
     fn test_or_pattern<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
-        otherwise: BasicBlock,
+        start_block: BasicBlock,
+        otherwise_block: BasicBlock,
         pats: &'pat [Box<Pat<'tcx>>],
         or_span: Span,
         place: &PlaceBuilder<'tcx>,
@@ -1482,16 +1498,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .map(|pat| Candidate::new(place.clone(), pat, candidate.has_guard, self))
             .collect();
         let mut or_candidate_refs: Vec<_> = or_candidates.iter_mut().collect();
-        let otherwise = if let Some(otherwise_block) = candidate.otherwise_block {
-            otherwise_block
-        } else {
-            otherwise
-        };
         self.match_candidates(
             or_span,
             or_span,
-            candidate.pre_binding_block.unwrap(),
-            otherwise,
+            start_block,
+            otherwise_block,
             &mut or_candidate_refs,
             fake_borrows,
         );

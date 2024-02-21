@@ -47,8 +47,7 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let param_env = ty::ParamEnv::reveal_all();
-    let ecx = mk_eval_cx(tcx.tcx, tcx.span, param_env, CanAccessMutGlobal::No);
-    let op = ecx.const_val_to_op(val, ty, None).ok()?;
+    let (ecx, op) = mk_eval_cx_for_const_val(tcx, param_env, val, ty)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match ty.kind() {

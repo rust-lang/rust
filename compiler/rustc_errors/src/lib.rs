@@ -37,12 +37,9 @@ extern crate self as rustc_errors;
 
 pub use codes::*;
 pub use diagnostic::{
-    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgName,
-    DiagnosticArgValue, DiagnosticStyledString, IntoDiagnosticArg, StringPart, SubDiagnostic,
-    SubdiagnosticMessageOp,
-};
-pub use diagnostic_builder::{
-    BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort, IntoDiagnostic,
+    AddToDiagnostic, BugAbort, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgName,
+    DiagnosticArgValue, DiagnosticBuilder, DiagnosticStyledString, EmissionGuarantee, FatalAbort,
+    IntoDiagnostic, IntoDiagnosticArg, StringPart, SubDiagnostic, SubdiagnosticMessageOp,
 };
 pub use diagnostic_impls::{
     DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
@@ -87,7 +84,6 @@ use Level::*;
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
 mod diagnostic;
-mod diagnostic_builder;
 mod diagnostic_impls;
 pub mod emitter;
 pub mod error;

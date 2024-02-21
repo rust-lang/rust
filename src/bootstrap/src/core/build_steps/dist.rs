@@ -78,7 +78,7 @@ impl Step for Docs {
         let mut tarball = Tarball::new(builder, "rust-docs", &host.triple);
         tarball.set_product_name("Rust Documentation");
         tarball.add_bulk_dir(&builder.doc_out(host), dest);
-        tarball.add_file(&builder.src.join("src/doc/robots.txt"), dest, 0o644);
+        tarball.add_file(builder.src.join("src/doc/robots.txt"), dest, 0o644);
         Some(tarball.generate())
     }
 }
@@ -342,7 +342,7 @@ impl Step for Mingw {
         // thrown away (this contains the runtime DLLs included in the rustc package
         // above) and the second argument is where to place all the MinGW components
         // (which is what we want).
-        make_win_dist(&tmpdir(builder), tarball.image_dir(), host, &builder);
+        make_win_dist(&tmpdir(builder), tarball.image_dir(), host, builder);
 
         Some(tarball.generate())
     }
@@ -658,7 +658,7 @@ impl Step for Std {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
         verify_uefi_rlib_format(builder, target, &stamp);
-        copy_target_libs(builder, target, &tarball.image_dir(), &stamp);
+        copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
         Some(tarball.generate())
     }
@@ -734,7 +734,7 @@ impl Step for Analysis {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "analysis");
+        let default = should_build_extended_tool(run.builder, "analysis");
         run.alias("rust-analysis").default_condition(default)
     }
 
@@ -890,7 +890,7 @@ impl Step for Src {
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
         if !builder.config.dry_run() {
-            builder.update_submodule(&Path::new("src/llvm-project"));
+            builder.update_submodule(Path::new("src/llvm-project"));
         }
 
         let tarball = Tarball::new_targetless(builder, "rust-src");
@@ -976,7 +976,7 @@ impl Step for PlainSourceTarball {
         ];
         let src_dirs = ["src", "compiler", "library", "tests"];
 
-        copy_src_dirs(builder, &builder.src, &src_dirs, &[], &plain_dst_src);
+        copy_src_dirs(builder, &builder.src, &src_dirs, &[], plain_dst_src);
 
         // Copy the files normally
         for item in &src_files {
@@ -986,8 +986,8 @@ impl Step for PlainSourceTarball {
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
         if let Some(info) = builder.rust_info().info() {
-            channel::write_commit_hash_file(&plain_dst_src, &info.sha);
-            channel::write_commit_info_file(&plain_dst_src, info);
+            channel::write_commit_hash_file(plain_dst_src, &info.sha);
+            channel::write_commit_info_file(plain_dst_src, info);
         }
 
         // If we're building from git or tarball sources, we need to vendor
@@ -1014,7 +1014,7 @@ impl Step for PlainSourceTarball {
                 // Will read the libstd Cargo.toml
                 // which uses the unstable `public-dependency` feature.
                 .env("RUSTC_BOOTSTRAP", "1")
-                .current_dir(&plain_dst_src);
+                .current_dir(plain_dst_src);
 
             let config = if !builder.config.dry_run() {
                 t!(String::from_utf8(t!(cmd.output()).stdout))
@@ -1043,7 +1043,7 @@ impl Step for Cargo {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "cargo");
+        let default = should_build_extended_tool(run.builder, "cargo");
         run.alias("cargo").default_condition(default)
     }
 
@@ -1070,7 +1070,7 @@ impl Step for Cargo {
         let mut tarball = Tarball::new(builder, "cargo", &target.triple);
         tarball.set_overlay(OverlayKind::Cargo);
 
-        tarball.add_file(&cargo, "bin", 0o755);
+        tarball.add_file(cargo, "bin", 0o755);
         tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
         tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
         tarball.add_dir(etc.join("man"), "share/man/man1");
@@ -1092,7 +1092,7 @@ impl Step for Rls {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "rls");
+        let default = should_build_extended_tool(run.builder, "rls");
         run.alias("rls").default_condition(default)
     }
 
@@ -1134,7 +1134,7 @@ impl Step for RustAnalyzer {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "rust-analyzer");
+        let default = should_build_extended_tool(run.builder, "rust-analyzer");
         run.alias("rust-analyzer").default_condition(default)
     }
 
@@ -1176,7 +1176,7 @@ impl Step for Clippy {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "clippy");
+        let default = should_build_extended_tool(run.builder, "clippy");
         run.alias("clippy").default_condition(default)
     }
 
@@ -1224,7 +1224,7 @@ impl Step for Miri {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "miri");
+        let default = should_build_extended_tool(run.builder, "miri");
         run.alias("miri").default_condition(default)
     }
 
@@ -1337,12 +1337,12 @@ impl Step for CodegenBackend {
         let src = builder.sysroot(compiler);
         let backends_src = builder.sysroot_codegen_backends(compiler);
         let backends_rel = backends_src
-            .strip_prefix(&src)
+            .strip_prefix(src)
             .unwrap()
             .strip_prefix(builder.sysroot_libdir_relative(compiler))
             .unwrap();
         // Don't use custom libdir here because ^lib/ will be resolved again with installer
-        let backends_dst = PathBuf::from("lib").join(&backends_rel);
+        let backends_dst = PathBuf::from("lib").join(backends_rel);
 
         let backend_name = format!("rustc_codegen_{}", backend);
         let mut found_backend = false;
@@ -1371,7 +1371,7 @@ impl Step for Rustfmt {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "rustfmt");
+        let default = should_build_extended_tool(run.builder, "rustfmt");
         run.alias("rustfmt").default_condition(default)
     }
 
@@ -1454,7 +1454,7 @@ impl Step for RustDemangler {
         let mut tarball = Tarball::new(builder, "rust-demangler", &target.triple);
         tarball.set_overlay(OverlayKind::RustDemangler);
         tarball.is_preview(true);
-        tarball.add_file(&rust_demangler, "bin", 0o755);
+        tarball.add_file(rust_demangler, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rust-demangler");
         Some(tarball.generate())
     }
@@ -1609,7 +1609,7 @@ impl Step for Extended {
             let prepare = |name: &str| {
                 builder.create_dir(&pkg.join(name));
                 builder.cp_r(
-                    &work.join(&format!("{}-{}", pkgname(builder, name), target.triple)),
+                    &work.join(format!("{}-{}", pkgname(builder, name), target.triple)),
                     &pkg.join(name),
                 );
                 builder.install(&etc.join("pkg/postinstall"), &pkg.join(name), 0o755);
@@ -1673,7 +1673,7 @@ impl Step for Extended {
                     name.to_string()
                 };
                 builder.cp_r(
-                    &work.join(&format!("{}-{}", pkgname(builder, name), target.triple)).join(dir),
+                    &work.join(format!("{}-{}", pkgname(builder, name), target.triple)).join(dir),
                     &exe.join(name),
                 );
                 builder.remove(&exe.join(name).join("manifest.in"));
@@ -1707,7 +1707,7 @@ impl Step for Extended {
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rustc")
-                    .args(&heat_flags)
+                    .args(heat_flags)
                     .arg("-cg")
                     .arg("RustcGroup")
                     .arg("-dr")
@@ -1723,7 +1723,7 @@ impl Step for Extended {
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("rust-docs")
-                        .args(&heat_flags)
+                        .args(heat_flags)
                         .arg("-cg")
                         .arg("DocsGroup")
                         .arg("-dr")
@@ -1741,7 +1741,7 @@ impl Step for Extended {
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("cargo")
-                    .args(&heat_flags)
+                    .args(heat_flags)
                     .arg("-cg")
                     .arg("CargoGroup")
                     .arg("-dr")
@@ -1758,7 +1758,7 @@ impl Step for Extended {
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rust-std")
-                    .args(&heat_flags)
+                    .args(heat_flags)
                     .arg("-cg")
                     .arg("StdGroup")
                     .arg("-dr")
@@ -1774,7 +1774,7 @@ impl Step for Extended {
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("rust-analyzer")
-                        .args(&heat_flags)
+                        .args(heat_flags)
                         .arg("-cg")
                         .arg("RustAnalyzerGroup")
                         .arg("-dr")
@@ -1793,7 +1793,7 @@ impl Step for Extended {
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("clippy")
-                        .args(&heat_flags)
+                        .args(heat_flags)
                         .arg("-cg")
                         .arg("ClippyGroup")
                         .arg("-dr")
@@ -1812,7 +1812,7 @@ impl Step for Extended {
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("rust-demangler")
-                        .args(&heat_flags)
+                        .args(heat_flags)
                         .arg("-cg")
                         .arg("RustDemanglerGroup")
                         .arg("-dr")
@@ -1831,7 +1831,7 @@ impl Step for Extended {
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("miri")
-                        .args(&heat_flags)
+                        .args(heat_flags)
                         .arg("-cg")
                         .arg("MiriGroup")
                         .arg("-dr")
@@ -1849,7 +1849,7 @@ impl Step for Extended {
                     .current_dir(&exe)
                     .arg("dir")
                     .arg("rust-analysis")
-                    .args(&heat_flags)
+                    .args(heat_flags)
                     .arg("-cg")
                     .arg("AnalysisGroup")
                     .arg("-dr")
@@ -1867,7 +1867,7 @@ impl Step for Extended {
                         .current_dir(&exe)
                         .arg("dir")
                         .arg("rust-mingw")
-                        .args(&heat_flags)
+                        .args(heat_flags)
                         .arg("-cg")
                         .arg("GccGroup")
                         .arg("-dr")
@@ -1890,10 +1890,10 @@ impl Step for Extended {
                     .arg("-dStdDir=rust-std")
                     .arg("-dAnalysisDir=rust-analysis")
                     .arg("-arch")
-                    .arg(&arch)
+                    .arg(arch)
                     .arg("-out")
                     .arg(&output)
-                    .arg(&input);
+                    .arg(input);
                 add_env(builder, &mut cmd, target);
 
                 if built_tools.contains("clippy") {
@@ -2026,7 +2026,7 @@ fn install_llvm_file(builder: &Builder<'_>, source: &Path, destination: &Path) {
         return;
     }
 
-    builder.install(&source, destination, 0o644);
+    builder.install(source, destination, 0o644);
 }
 
 /// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
@@ -2123,7 +2123,7 @@ impl Step for LlvmTools {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(&run.builder, "llvm-tools");
+        let default = should_build_extended_tool(run.builder, "llvm-tools");
         // FIXME: allow using the names of the tools themselves?
         run.alias("llvm-tools").default_condition(default)
     }
@@ -2231,12 +2231,12 @@ impl Step for RustDev {
             tarball.add_file(lld_path, "bin", 0o755);
         }
 
-        tarball.add_file(&builder.llvm_filecheck(target), "bin", 0o755);
+        tarball.add_file(builder.llvm_filecheck(target), "bin", 0o755);
 
         // Copy the include directory as well; needed mostly to build
         // librustc_llvm properly (e.g., llvm-config.h is in here). But also
         // just broadly useful to be able to link against the bundled LLVM.
-        tarball.add_dir(&builder.llvm_out(target).join("include"), "include");
+        tarball.add_dir(builder.llvm_out(target).join("include"), "include");
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like
         // `$ORIGIN/../lib` can find it. It may also be used as a dependency
@@ -2312,7 +2312,7 @@ impl Step for BuildManifest {
         let build_manifest = builder.tool_exe(Tool::BuildManifest);
 
         let tarball = Tarball::new(builder, "build-manifest", &self.target.triple);
-        tarball.add_file(&build_manifest, "bin", 0o755);
+        tarball.add_file(build_manifest, "bin", 0o755);
         tarball.generate()
     }
 }

@@ -27,6 +27,8 @@ parse_async_bound_modifier_in_2015 = `async` trait bounds are only allowed in Ru
 parse_async_fn_in_2015 = `async fn` is not permitted in Rust 2015
     .label = to use `async fn`, switch to Rust 2018 or later
 
+parse_async_impl = `async` trait implementations are unsupported
+
 parse_async_move_block_in_2015 = `async move` blocks are only allowed in Rust 2018 or later
 
 parse_async_move_order_incorrect = the order of `move` and `async` is incorrect

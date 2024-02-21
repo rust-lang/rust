@@ -22,7 +22,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// subtyping could occur. This also does the occurs checks, detecting whether
     /// instantiating `target_vid` would result in a cyclic type. We eagerly error
     /// in this case.
-    #[instrument(skip(self, relation, target_is_expected), level = "debug")]
+    #[instrument(level = "debug", skip(self, relation, target_is_expected))]
     pub(super) fn instantiate_ty_var<R: ObligationEmittingRelation<'tcx>>(
         &self,
         relation: &mut R,
@@ -158,26 +158,22 @@ impl<'tcx> InferCtxt<'tcx> {
     /// As `3 + 4` contains `N` in its args, this must not succeed.
     ///
     /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
-    #[instrument(level = "debug", skip(self))]
-    pub(super) fn instantiate_const_var(
+    #[instrument(level = "debug", skip(self, relation))]
+    pub(super) fn instantiate_const_var<R: ObligationEmittingRelation<'tcx>>(
         &self,
+        relation: &mut R,
+        target_is_expected: bool,
         target_vid: ty::ConstVid,
         source_ct: ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        let span = match self.inner.borrow_mut().const_unification_table().probe_value(target_vid) {
-            ConstVariableValue::Known { value } => {
-                bug!("instantiating a known const var: {target_vid:?} {value} {source_ct}")
-            }
-            ConstVariableValue::Unknown { origin, universe: _ } => origin.span,
-        };
+    ) -> RelateResult<'tcx, ()> {
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: generalized_ct, has_unconstrained_ty_var } =
-            self.generalize(span, target_vid, ty::Variance::Invariant, source_ct)?;
+            self.generalize(relation.span(), target_vid, ty::Variance::Invariant, source_ct)?;
 
         debug_assert!(!generalized_ct.is_ct_infer());
         if has_unconstrained_ty_var {
-            span_bug!(span, "unconstrained ty var when generalizing `{source_ct:?}`");
+            bug!("unconstrained ty var when generalizing `{source_ct:?}`");
         }
 
         self.inner
@@ -185,9 +181,25 @@ impl<'tcx> InferCtxt<'tcx> {
             .const_unification_table()
             .union_value(target_vid, ConstVariableValue::Known { value: generalized_ct });
 
-        // FIXME(generic_const_exprs): We have to make sure we actually equate
-        // `generalized_ct` and `source_ct` here.
-        Ok(generalized_ct)
+        // HACK: make sure that we `a_is_expected` continues to be
+        // correct when relating the generalized type with the source.
+        if target_is_expected == relation.a_is_expected() {
+            relation.relate_with_variance(
+                ty::Variance::Invariant,
+                ty::VarianceDiagInfo::default(),
+                generalized_ct,
+                source_ct,
+            )?;
+        } else {
+            relation.relate_with_variance(
+                ty::Variance::Invariant,
+                ty::VarianceDiagInfo::default(),
+                source_ct,
+                generalized_ct,
+            )?;
+        }
+
+        Ok(())
     }
 
     /// Attempts to generalize `source_term` for the type variable `target_vid`.
@@ -286,6 +298,49 @@ impl<'tcx> Generalizer<'_, 'tcx> {
             ty::TermKind::Ty(ty) => TypeError::CyclicTy(ty),
             ty::TermKind::Const(ct) => TypeError::CyclicConst(ct),
         }
+    }
+
+    /// An occurs check failure inside of an alias does not mean
+    /// that the types definitely don't unify. We may be able
+    /// to normalize the alias after all.
+    ///
+    /// We handle this by lazily equating the alias and generalizing
+    /// it to an inference variable.
+    ///
+    /// This is incomplete and will hopefully soon get fixed by #119106.
+    fn generalize_alias_ty(
+        &mut self,
+        alias: ty::AliasTy<'tcx>,
+    ) -> Result<Ty<'tcx>, TypeError<'tcx>> {
+        let is_nested_alias = mem::replace(&mut self.in_alias, true);
+        let result = match self.relate(alias, alias) {
+            Ok(alias) => Ok(alias.to_ty(self.tcx())),
+            Err(e) => {
+                if is_nested_alias {
+                    return Err(e);
+                } else {
+                    let mut visitor = MaxUniverse::new();
+                    alias.visit_with(&mut visitor);
+                    let infer_replacement_is_complete =
+                        self.for_universe.can_name(visitor.max_universe())
+                            && !alias.has_escaping_bound_vars();
+                    if !infer_replacement_is_complete {
+                        warn!("may incompletely handle alias type: {alias:?}");
+                    }
+
+                    debug!("generalization failure in alias");
+                    Ok(self.infcx.next_ty_var_in_universe(
+                        TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: self.span,
+                        },
+                        self.for_universe,
+                    ))
+                }
+            }
+        };
+        self.in_alias = is_nested_alias;
+        result
     }
 }
 
@@ -433,43 +488,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 }
             }
 
-            ty::Alias(kind, data) => {
-                // An occurs check failure inside of an alias does not mean
-                // that the types definitely don't unify. We may be able
-                // to normalize the alias after all.
-                //
-                // We handle this by lazily equating the alias and generalizing
-                // it to an inference variable.
-                let is_nested_alias = mem::replace(&mut self.in_alias, true);
-                let result = match self.relate(data, data) {
-                    Ok(data) => Ok(Ty::new_alias(self.tcx(), kind, data)),
-                    Err(e) => {
-                        if is_nested_alias {
-                            return Err(e);
-                        } else {
-                            let mut visitor = MaxUniverse::new();
-                            t.visit_with(&mut visitor);
-                            let infer_replacement_is_complete =
-                                self.for_universe.can_name(visitor.max_universe())
-                                    && !t.has_escaping_bound_vars();
-                            if !infer_replacement_is_complete {
-                                warn!("may incompletely handle alias type: {t:?}");
-                            }
-
-                            debug!("generalization failure in alias");
-                            Ok(self.infcx.next_ty_var_in_universe(
-                                TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::MiscVariable,
-                                    span: self.span,
-                                },
-                                self.for_universe,
-                            ))
-                        }
-                    }
-                };
-                self.in_alias = is_nested_alias;
-                result
-            }
+            ty::Alias(_, data) => self.generalize_alias_ty(data),
 
             _ => relate::structurally_relate_tys(self, t, t),
         }?;

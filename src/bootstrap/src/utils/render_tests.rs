@@ -15,10 +15,10 @@ use termcolor::{Color, ColorSpec, WriteColor};
 const TERSE_TESTS_PER_LINE: usize = 88;
 
 pub(crate) fn add_flags_and_try_run_tests(builder: &Builder<'_>, cmd: &mut Command) -> bool {
-    if cmd.get_args().position(|arg| arg == "--").is_none() {
+    if !cmd.get_args().any(|arg| arg == "--") {
         cmd.arg("--");
     }
-    cmd.args(&["-Z", "unstable-options", "--format", "json"]);
+    cmd.args(["-Z", "unstable-options", "--format", "json"]);
 
     try_run_tests(builder, cmd, false)
 }
@@ -303,19 +303,19 @@ impl Outcome<'_> {
     fn write_short(&self, writer: &mut dyn WriteColor) -> Result<(), std::io::Error> {
         match self {
             Outcome::Ok => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
                 write!(writer, ".")?;
             }
             Outcome::BenchOk => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Cyan)))?;
                 write!(writer, "b")?;
             }
             Outcome::Failed => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Red)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
                 write!(writer, "F")?;
             }
             Outcome::Ignored { .. } => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Yellow)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
                 write!(writer, "i")?;
             }
         }
@@ -325,19 +325,19 @@ impl Outcome<'_> {
     fn write_long(&self, writer: &mut dyn WriteColor) -> Result<(), std::io::Error> {
         match self {
             Outcome::Ok => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Green)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Green)))?;
                 write!(writer, "ok")?;
             }
             Outcome::BenchOk => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Cyan)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Cyan)))?;
                 write!(writer, "benchmarked")?;
             }
             Outcome::Failed => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Red)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
                 write!(writer, "FAILED")?;
             }
             Outcome::Ignored { reason } => {
-                writer.set_color(&ColorSpec::new().set_fg(Some(Color::Yellow)))?;
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
                 write!(writer, "ignored")?;
                 if let Some(reason) = reason {
                     write!(writer, ", {reason}")?;
