@@ -1582,7 +1582,8 @@ pub enum AmbiguousWidePointerComparisons<'a> {
 #[multipart_suggestion(
     lint_addr_metadata_suggestion,
     style = "verbose",
-    applicability = "machine-applicable"
+    // FIXME(#53934): make machine-applicable again
+    applicability = "maybe-incorrect"
 )]
 pub struct AmbiguousWidePointerComparisonsAddrMetadataSuggestion<'a> {
     pub ne: &'a str,
@@ -1601,7 +1602,8 @@ pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
     #[multipart_suggestion(
         lint_addr_suggestion,
         style = "verbose",
-        applicability = "machine-applicable"
+        // FIXME(#53934): make machine-applicable again
+        applicability = "maybe-incorrect"
     )]
     AddrEq {
         ne: &'a str,
@@ -1617,7 +1619,8 @@ pub enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
     #[multipart_suggestion(
         lint_addr_suggestion,
         style = "verbose",
-        applicability = "machine-applicable"
+        // FIXME(#53934): make machine-applicable again
+        applicability = "maybe-incorrect"
     )]
     Cast {
         deref_left: &'a str,
