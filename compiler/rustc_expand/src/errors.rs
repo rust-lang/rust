@@ -393,6 +393,36 @@ pub(crate) struct ProcMacroPanickedHelp {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_proc_macro_derive_panicked)]
+pub(crate) struct ProcMacroDerivePanicked {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub message: Option<ProcMacroDerivePanickedHelp>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(expand_help)]
+pub(crate) struct ProcMacroDerivePanickedHelp {
+    pub message: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(expand_custom_attribute_panicked)]
+pub(crate) struct CustomAttributePanicked {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub message: Option<CustomAttributePanickedHelp>,
+}
+
+#[derive(Subdiagnostic)]
+#[help(expand_help)]
+pub(crate) struct CustomAttributePanickedHelp {
+    pub message: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_proc_macro_derive_tokens)]
 pub struct ProcMacroDeriveTokens {
     #[primary_span]
