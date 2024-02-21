@@ -162,7 +162,7 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
                     if !remaining_issue_names.remove(stripped_path) {
                         tidy_error!(
                             bad,
-                            "file `{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
+                            "file `tests/{stripped_path}` must begin with a descriptive name, consider `{{reason}}-issue-{issue_n}.rs`",
                             issue_n = &test_name[1],
                         );
                     }
