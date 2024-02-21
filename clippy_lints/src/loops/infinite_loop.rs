@@ -1,17 +1,18 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{fn_def_id, is_lint_allowed};
+use clippy_utils::{fn_def_id, is_from_proc_macro, is_lint_allowed};
 use hir::intravisit::{walk_expr, Visitor};
 use hir::{Expr, ExprKind, FnRetTy, FnSig, Node};
 use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::LateContext;
+use rustc_lint::{LateContext, LintContext};
+use rustc_middle::lint::in_external_macro;
 
 use super::INFINITE_LOOP;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
-    expr: &Expr<'_>,
+    expr: &Expr<'tcx>,
     loop_block: &'tcx hir::Block<'_>,
     label: Option<Label>,
 ) {
@@ -31,6 +32,10 @@ pub(super) fn check<'tcx>(
             ..
         })
     ) {
+        return;
+    }
+
+    if in_external_macro(cx.sess(), expr.span) || is_from_proc_macro(cx, expr) {
         return;
     }
 
