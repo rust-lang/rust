@@ -2668,6 +2668,7 @@ macro_rules! assert_unsafe_precondition {
             #[cfg_attr(debug_assertions, inline(always))]
             #[cfg_attr(not(debug_assertions), inline(never))]
             #[rustc_nounwind]
+            #[track_caller]
             fn precondition_check($($name:$ty),*) {
                 if !$e {
                     ::core::panicking::panic_nounwind(

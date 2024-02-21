@@ -151,6 +151,7 @@ pub const fn panic(expr: &'static str) -> ! {
 #[lang = "panic_nounwind"] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
 #[rustc_const_unstable(feature = "panic_internals", issue = "none")]
+#[track_caller]
 pub const fn panic_nounwind(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ false);
 }
