@@ -52,14 +52,14 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
             // - Span A extends further left, or
             // - Both have the same start and span A extends further right
             .then_with(|| Ord::cmp(&a.span.hi(), &b.span.hi()).reverse())
-            // If two spans have the same lo & hi, put closure spans first,
-            // as they take precedence over non-closure spans.
-            .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
+            // If two spans have the same lo & hi, put hole spans first,
+            // as they take precedence over non-hole spans.
+            .then_with(|| Ord::cmp(&a.is_hole, &b.is_hole).reverse())
             // After deduplication, we want to keep only the most-dominated BCB.
             .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
     });
 
-    // Among covspans with the same span, keep only one. Closure spans take
+    // Among covspans with the same span, keep only one. Hole spans take
     // precedence, otherwise keep the one with the most-dominated BCB.
     // (Ideally we should try to preserve _all_ non-dominating BCBs, but that
     // requires a lot more complexity in the span refiner, for little benefit.)
@@ -78,8 +78,8 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
 fn remove_unwanted_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
     let mut seen_macro_spans = FxHashSet::default();
     initial_spans.retain(|covspan| {
-        // Ignore (retain) closure spans and non-macro-expansion spans.
-        if covspan.is_closure || covspan.visible_macro.is_none() {
+        // Ignore (retain) hole spans and non-macro-expansion spans.
+        if covspan.is_hole || covspan.visible_macro.is_none() {
             return true;
         }
 
@@ -96,7 +96,7 @@ fn split_visible_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
     let mut extra_spans = vec![];
 
     initial_spans.retain(|covspan| {
-        if covspan.is_closure {
+        if covspan.is_hole {
             return true;
         }
 
@@ -112,7 +112,7 @@ fn split_visible_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
             return true;
         }
 
-        assert!(!covspan.is_closure);
+        assert!(!covspan.is_hole);
         extra_spans.push(SpanFromMir::new(before, covspan.visible_macro, covspan.bcb, false));
         extra_spans.push(SpanFromMir::new(after, covspan.visible_macro, covspan.bcb, false));
         false // Discard the original covspan that we just split.
@@ -148,6 +148,8 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
             let expn_span = filtered_statement_span(statement)?;
             let (span, visible_macro) = unexpand(expn_span)?;
 
+            // A statement that looks like the assignment of a closure expression
+            // is treated as a "hole" span, to be carved out of other spans.
             Some(SpanFromMir::new(span, visible_macro, bcb, is_closure_like(statement)))
         });
 
@@ -336,7 +338,10 @@ pub(super) struct SpanFromMir {
     pub(super) span: Span,
     visible_macro: Option<Symbol>,
     pub(super) bcb: BasicCoverageBlock,
-    pub(super) is_closure: bool,
+    /// If true, this covspan represents a "hole" that should be carved out
+    /// from other spans, e.g. because it represents a closure expression that
+    /// will be instrumented separately as its own function.
+    pub(super) is_hole: bool,
 }
 
 impl SpanFromMir {
@@ -348,8 +353,8 @@ impl SpanFromMir {
         span: Span,
         visible_macro: Option<Symbol>,
         bcb: BasicCoverageBlock,
-        is_closure: bool,
+        is_hole: bool,
     ) -> Self {
-        Self { span, visible_macro, bcb, is_closure }
+        Self { span, visible_macro, bcb, is_hole }
     }
 }
