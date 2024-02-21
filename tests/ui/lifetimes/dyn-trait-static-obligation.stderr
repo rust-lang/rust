@@ -1,0 +1,24 @@
+error[E0521]: borrowed data escapes outside of method
+  --> $DIR/dyn-trait-static-obligation.rs:33:8
+   |
+LL | impl <'a>TestHolder<'a>{
+   |       -- lifetime `'a` defined here
+LL |     pub fn test_foo(&self){
+   |                     ----- `self` is a reference that is only valid in the method body
+LL |        self.holder.as_ref().unwrap().borrow_mut().set(20);
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        |
+   |        `self` escapes the method body here
+   |        argument requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of a mutable reference to `dyn FooSetter`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+help: consider relaxing the implicit `'static` requirement on the impl
+   |
+LL | impl BaseSetter for dyn FooSetter + '_ {
+   |                                   ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0521`.

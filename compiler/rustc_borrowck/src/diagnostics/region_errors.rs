@@ -499,7 +499,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         };
 
-        self.explain_impl_static_obligation(&mut diag, cause.code(), outlived_fr);
+        if let ConstraintCategory::CallArgument(Some(ty)) = category {
+            self.explain_impl_static_obligation(&mut diag, ty, cause.span, outlived_fr);
+        } else if let ObligationCauseCode::MethodCallConstraint(ty, call_span) = cause.code() {
+            self.explain_impl_static_obligation(&mut diag, *ty, *call_span, outlived_fr);
+        }
 
         match variance_info {
             ty::VarianceDiagInfo::None => {}
@@ -621,14 +625,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn explain_impl_static_obligation(
         &self,
         diag: &mut Diag<'_>,
-        code: &ObligationCauseCode<'tcx>,
+        ty: Ty<'tcx>,
+        call_span: Span,
         outlived_fr: RegionVid,
     ) {
         let tcx = self.infcx.tcx;
-        debug!(?code);
-        let ObligationCauseCode::MethodCallConstraint(ty, call_span) = code else {
-            return;
-        };
         let ty::FnDef(def_id, args) = ty.kind() else {
             return;
         };
@@ -722,7 +723,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let ty::Ref(region, _, _) = self
             .infcx
             .instantiate_binder_with_fresh_vars(
-                *call_span,
+                call_span,
                 BoundRegionConversionTime::FnCall,
                 tcx.fn_sig(def_id).instantiate_identity().inputs().map_bound(|inputs| inputs[0]),
             )
@@ -804,10 +805,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let span: MultiSpan = predicates.into();
             diag.span_note(span, format!("the `impl` on `{ty}` has {a_static_lt}"));
         }
-        if new_primary_span && diag.span.primary_span() != Some(*call_span) {
-            diag.replace_span_with(*call_span, false);
+        if new_primary_span && diag.span.primary_span() != Some(call_span) {
+            diag.replace_span_with(call_span, false);
             diag.span_label(
-                *call_span,
+                call_span,
                 "calling this method introduces a `'static` lifetime requirement",
             );
         }
