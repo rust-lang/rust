@@ -201,7 +201,8 @@ fn rematch_impl<'tcx>(
     nested.extend(
         infcx
             .at(&ObligationCause::dummy(), goal.param_env)
-            .eq(DefineOpaqueTypes::No, goal.predicate.trait_ref, impl_trait_ref)
+            // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+            .eq(DefineOpaqueTypes::Yes, goal.predicate.trait_ref, impl_trait_ref)
             .map_err(|_| SelectionError::Unimplemented)?
             .into_obligations(),
     );
@@ -277,7 +278,8 @@ fn rematch_unsize<'tcx>(
             nested.extend(
                 infcx
                     .at(&ObligationCause::dummy(), goal.param_env)
-                    .eq(DefineOpaqueTypes::No, a_elem_ty, b_elem_ty)
+                    // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+                    .eq(DefineOpaqueTypes::Yes, a_elem_ty, b_elem_ty)
                     .expect("expected rematch to succeed")
                     .into_obligations(),
             );
@@ -320,7 +322,8 @@ fn rematch_unsize<'tcx>(
             nested.extend(
                 infcx
                     .at(&ObligationCause::dummy(), goal.param_env)
-                    .eq(DefineOpaqueTypes::No, unsized_a_ty, b_ty)
+                    // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+                    .eq(DefineOpaqueTypes::Yes, unsized_a_ty, b_ty)
                     .expect("expected rematch to succeed")
                     .into_obligations(),
             );
@@ -349,7 +352,8 @@ fn rematch_unsize<'tcx>(
             nested.extend(
                 infcx
                     .at(&ObligationCause::dummy(), goal.param_env)
-                    .eq(DefineOpaqueTypes::No, unsized_a_ty, b_ty)
+                    // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+                    .eq(DefineOpaqueTypes::Yes, unsized_a_ty, b_ty)
                     .expect("expected rematch to succeed")
                     .into_obligations(),
             );

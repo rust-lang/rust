@@ -310,7 +310,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             nested_goals.extend(
                 infcx
                     .at(&ObligationCause::dummy(), param_env)
-                    .eq(DefineOpaqueTypes::No, orig, response)
+                    // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+                    .eq(DefineOpaqueTypes::Yes, orig, response)
                     .map(|InferOk { value: (), obligations }| {
                         obligations.into_iter().map(|o| Goal::from(o))
                     })
