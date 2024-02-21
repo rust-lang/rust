@@ -19,9 +19,6 @@ impl BuildArg {
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--no-default-features" => {
-                    build_arg.flags.push("--no-default-features".to_string());
-                }
                 "--features" => {
                     if let Some(arg) = args.next() {
                         build_arg.flags.push("--features".to_string());
@@ -51,7 +48,6 @@ impl BuildArg {
             r#"
 `build` command help:
 
-    --no-default-features  : Add `--no-default-features` flag
     --features [arg]       : Add a new feature [arg]"#
         );
         ConfigInfo::show_usage();
@@ -111,6 +107,9 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
     rustflags.push_str(" -Z force-unstable-if-unmarked");
+    if config.no_default_features {
+        rustflags.push_str(" -Csymbol-mangling-version=v0");
+    }
     let mut env = env.clone();
     let channel = if config.sysroot_release_channel {
         env.insert(
@@ -192,6 +191,13 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
         "LIBRARY_PATH".to_string(),
         args.config_info.gcc_path.clone(),
     );
+
+    if args.config_info.no_default_features {
+        env.insert(
+            "RUSTFLAGS".to_string(),
+            "-Csymbol-mangling-version=v0".to_string(),
+        );
+    }
 
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
     if args.config_info.channel == Channel::Release {

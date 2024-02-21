@@ -90,7 +90,6 @@ fn show_usage() {
 
     --release              : Build codegen in release mode
     --sysroot-panic-abort  : Build the sysroot without unwinding support.
-    --no-default-features  : Add `--no-default-features` flag
     --features [arg]       : Add a new feature [arg]
     --use-system-gcc       : Use system installed libgccjit
     --build-only           : Only build rustc_codegen_gcc then exits
@@ -110,7 +109,6 @@ fn show_usage() {
 
 #[derive(Default, Debug)]
 struct TestArg {
-    no_default_features: bool,
     build_only: bool,
     use_system_gcc: bool,
     runners: BTreeSet<String>,
@@ -132,13 +130,6 @@ impl TestArg {
 
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--no-default-features" => {
-                    // To prevent adding it more than once.
-                    if !test_arg.no_default_features {
-                        test_arg.flags.push("--no-default-features".into());
-                    }
-                    test_arg.no_default_features = true;
-                }
                 "--features" => match args.next() {
                     Some(feature) if !feature.is_empty() => {
                         test_arg
@@ -196,11 +187,14 @@ impl TestArg {
                 );
             }
         }
+        if test_arg.config_info.no_default_features {
+            test_arg.flags.push("--no-default-features".into());
+        }
         Ok(Some(test_arg))
     }
 
     pub fn is_using_gcc_master_branch(&self) -> bool {
-        !self.no_default_features
+        !self.config_info.no_default_features
     }
 }
 
@@ -612,20 +606,23 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
 
-    let rustc_args =
-        &format!(
-            r#"-Zpanic-abort-tests \
-            -Zcodegen-backend="{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}" \
-            --sysroot "{pwd}/build_sysroot/sysroot" -Cpanic=abort"#,
-            pwd = std::env::current_dir()
-                .map_err(|error| format!("`current_dir` failed: {:?}", error))?
-                .display(),
-            channel = args.config_info.channel.as_str(),
-            dylib_ext = args.config_info.dylib_ext,
-        );
+    let extra = if args.is_using_gcc_master_branch() {
+        ""
+    } else {
+        " -Csymbol-mangling-version=v0"
+    };
 
-    #[cfg(not(feature="master"))]
-    let rustc_args = format!("{} -Csymbol-mangling-version=v0", rustc_args);
+    let rustc_args = &format!(
+        r#"-Zpanic-abort-tests \
+            -Zcodegen-backend="{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}" \
+            --sysroot "{pwd}/build_sysroot/sysroot" -Cpanic=abort{extra}"#,
+        pwd = std::env::current_dir()
+            .map_err(|error| format!("`current_dir` failed: {:?}", error))?
+            .display(),
+        channel = args.config_info.channel.as_str(),
+        dylib_ext = args.config_info.dylib_ext,
+        extra = extra,
+    );
 
     run_command_with_env(
         &[
@@ -1069,15 +1066,20 @@ where
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rustc test suite");
     env.insert("COMPILETEST_FORCE_STAGE0".to_string(), "1".to_string());
+
+    let extra = if args.is_using_gcc_master_branch() {
+        ""
+    } else {
+        " -Csymbol-mangling-version=v0"
+    };
+
     let rustc_args = format!(
-        "{} -Zcodegen-backend={} --sysroot {}",
+        "{} -Zcodegen-backend={} --sysroot {}{}",
         env.get("TEST_FLAGS").unwrap_or(&String::new()),
         args.config_info.cg_backend_path,
         args.config_info.sysroot_path,
+        extra,
     );
-
-    #[cfg(not(feature="master"))]
-    let rustc_args = format!("{} -Csymbol-mangling-version=v0", rustc_args);
 
     env.get_mut("RUSTFLAGS").unwrap().clear();
     run_command_with_output_and_env(
