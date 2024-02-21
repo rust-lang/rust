@@ -172,7 +172,9 @@ fn do_normalize_predicates<'tcx>(
     // the normalized predicates.
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        tcx.dcx().span_delayed_bug(
+        // @lcnr: Let's still ICE here for now. I want a test case
+        // for that.
+        tcx.dcx().span_bug(
             span,
             format!("failed region resolution while normalizing {elaborated_env:?}: {errors:?}"),
         );

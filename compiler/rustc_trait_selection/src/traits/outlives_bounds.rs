@@ -100,7 +100,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
 
         let errors = ocx.select_all_or_error();
         if !errors.is_empty() {
-            infcx.dcx().span_delayed_bug(
+            infcx.dcx().span_bug(
                 span,
                 "implied_outlives_bounds failed to solve obligations from instantiation",
             );

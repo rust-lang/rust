@@ -626,9 +626,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     | GenericArgKind::Const(_),
                     _,
                 ) => {
-                    // HIR lowering sometimes doesn't catch this in erroneous
-                    // programs, so we need to use span_delayed_bug here. See #82126.
-                    self.dcx().span_delayed_bug(
+                    // This was previously a `span_delayed_bug` and could be
+                    // reached by the test for #82126, but no longer.
+                    self.dcx().span_bug(
                         hir_arg.span(),
                         format!("unmatched arg and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );

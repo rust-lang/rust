@@ -420,11 +420,9 @@ where
         match b.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
-                self.infcx.dcx().span_delayed_bug(
-                    self.delegate.span(),
-                    format!("unexpected inference var {b:?}",),
-                );
-                Ok(a)
+                self.infcx
+                    .dcx()
+                    .span_bug(self.delegate.span(), format!("unexpected inference var {b:?}"));
             }
             // FIXME(invariance): see the related FIXME above.
             _ => self.infcx.super_combine_consts(self, a, b),

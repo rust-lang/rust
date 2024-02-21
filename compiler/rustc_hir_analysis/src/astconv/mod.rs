@@ -1237,8 +1237,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
-                    let guar = tcx.dcx().span_delayed_bug(span, "expected cycle error");
-                    return Err(guar);
+                    tcx.dcx().span_bug(span, "expected cycle error");
                 };
 
                 self.one_bound_for_assoc_item(
