@@ -289,20 +289,20 @@ impl TestProps {
         }
     }
 
-    pub fn from_aux_file(&self, testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
+    pub fn from_aux_file(&self, testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
 
         // copy over select properties to the aux build:
         props.incremental_dir = self.incremental_dir.clone();
         props.ignore_pass = true;
-        props.load_from(testfile, cfg, config);
+        props.load_from(testfile, revision, config);
 
         props
     }
 
-    pub fn from_file(testfile: &Path, cfg: Option<&str>, config: &Config) -> Self {
+    pub fn from_file(testfile: &Path, revision: Option<&str>, config: &Config) -> Self {
         let mut props = TestProps::new();
-        props.load_from(testfile, cfg, config);
+        props.load_from(testfile, revision, config);
 
         match (props.pass_mode, props.fail_mode) {
             (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
@@ -315,9 +315,9 @@ impl TestProps {
 
     /// Loads properties from `testfile` into `props`. If a property is
     /// tied to a particular revision `foo` (indicated by writing
-    /// `//[foo]`), then the property is ignored unless `cfg` is
+    /// `//@[foo]`), then the property is ignored unless `test_revision` is
     /// `Some("foo")`.
-    fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
+    fn load_from(&mut self, testfile: &Path, test_revision: Option<&str>, config: &Config) {
         let mut has_edition = false;
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
@@ -331,7 +331,7 @@ impl TestProps {
                 testfile,
                 file,
                 &mut |HeaderLine { header_revision, directive: ln, .. }| {
-                    if header_revision.is_some() && header_revision != cfg {
+                    if header_revision.is_some() && header_revision != test_revision {
                         return;
                     }
 
@@ -455,7 +455,7 @@ impl TestProps {
                         &mut self.check_test_line_numbers_match,
                     );
 
-                    self.update_pass_mode(ln, cfg, config);
+                    self.update_pass_mode(ln, test_revision, config);
                     self.update_fail_mode(ln, config);
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
@@ -645,30 +645,27 @@ impl TestProps {
     }
 }
 
-/// Extract a `(Option<line_config>, directive)` directive from a line if comment is present.
+/// Extract an `(Option<line_revision>, directive)` directive from a line if comment is present.
+///
+/// See [`HeaderLine`] for a diagram.
 pub fn line_directive<'line>(
     comment: &str,
-    ln: &'line str,
+    original_line: &'line str,
 ) -> Option<(Option<&'line str>, &'line str)> {
-    let ln = ln.trim_start();
-    if ln.starts_with(comment) {
-        let ln = ln[comment.len()..].trim_start();
-        if ln.starts_with('[') {
-            // A comment like `//[foo]` is specific to revision `foo`
-            let Some(close_brace) = ln.find(']') else {
-                panic!(
-                    "malformed condition directive: expected `{}[foo]`, found `{}`",
-                    comment, ln
-                );
-            };
+    // Ignore lines that don't start with the comment prefix.
+    let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
 
-            let lncfg = &ln[1..close_brace];
-            Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
-        } else {
-            Some((None, ln))
-        }
+    if let Some(after_open_bracket) = after_comment.strip_prefix('[') {
+        // A comment like `//@[foo]` only applies to revision `foo`.
+        let Some((line_revision, directive)) = after_open_bracket.split_once(']') else {
+            panic!(
+                "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
+            )
+        };
+
+        Some((Some(line_revision), directive.trim_start()))
     } else {
-        None
+        Some((None, after_comment))
     }
 }
 
@@ -790,16 +787,32 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "unset-rustc-env",
 ];
 
-/// Arguments passed to the callback in [`iter_header`].
+/// The broken-down contents of a line containing a test header directive,
+/// which [`iter_header`] passes to its callback function.
+///
+/// For example:
+///
+/// ```text
+/// //@ compile-flags: -O
+///     ^^^^^^^^^^^^^^^^^ directive
+/// ^^^^^^^^^^^^^^^^^^^^^ original_line
+///
+/// //@ [foo] compile-flags: -O
+///      ^^^                    header_revision
+///           ^^^^^^^^^^^^^^^^^ directive
+/// ^^^^^^^^^^^^^^^^^^^^^^^^^^^ original_line
+/// ```
 struct HeaderLine<'ln> {
-    /// Contents of the square brackets preceding this header, if present.
-    header_revision: Option<&'ln str>,
+    line_number: usize,
     /// Raw line from the test file, including comment prefix and any revision.
     original_line: &'ln str,
-    /// Remainder of the directive line, after the initial comment prefix
-    /// (`//` or `//@` or `#`) and revision (if any) have been stripped.
+    /// Some header directives start with a revision name in square brackets
+    /// (e.g. `[foo]`), and only apply to that revision of the test.
+    /// If present, this field contains the revision name (e.g. `foo`).
+    header_revision: Option<&'ln str>,
+    /// The main part of the header directive, after removing the comment prefix
+    /// and the optional revision specifier.
     directive: &'ln str,
-    line_number: usize,
 }
 
 fn iter_header(
@@ -831,7 +844,7 @@ fn iter_header(
         ];
         // Process the extra implied directives, with a dummy line number of 0.
         for directive in extra_directives {
-            it(HeaderLine { header_revision: None, original_line: "", directive, line_number: 0 });
+            it(HeaderLine { line_number: 0, original_line: "", header_revision: None, directive });
         }
     }
 
@@ -865,7 +878,7 @@ fn iter_header(
 
         // First try to accept `ui_test` style comments
         } else if let Some((header_revision, directive)) = line_directive(comment, ln) {
-            it(HeaderLine { header_revision, original_line, directive, line_number });
+            it(HeaderLine { line_number, original_line, header_revision, directive });
         } else if mode == Mode::Ui && suite == "ui" && !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
@@ -1158,7 +1171,7 @@ pub fn make_test_description<R: Read>(
     name: test::TestName,
     path: &Path,
     src: R,
-    cfg: Option<&str>,
+    test_revision: Option<&str>,
     poisoned: &mut bool,
 ) -> test::TestDesc {
     let mut ignore = false;
@@ -1174,7 +1187,7 @@ pub fn make_test_description<R: Read>(
         path,
         src,
         &mut |HeaderLine { header_revision, original_line, directive: ln, line_number }| {
-            if header_revision.is_some() && header_revision != cfg {
+            if header_revision.is_some() && header_revision != test_revision {
                 return;
             }
 
