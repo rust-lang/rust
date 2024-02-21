@@ -195,6 +195,9 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     } else {
         env.insert("CHANNEL".to_string(), "debug".to_string());
     }
+    if args.config_info.no_default_features {
+        command.push(&"--no-default-features");
+    }
     let flags = args.flags.iter().map(|s| s.as_str()).collect::<Vec<_>>();
     for flag in &flags {
         command.push(flag);
