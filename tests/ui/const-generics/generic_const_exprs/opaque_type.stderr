@@ -1,0 +1,58 @@
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/opaque_type.rs:4:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires computing type of opaque `Foo::{opaque#0}`...
+  --> $DIR/opaque_type.rs:4:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+note: ...which requires type-checking `with_bound`...
+  --> $DIR/opaque_type.rs:11:35
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                                   ^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires evaluating type-level constant...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `with_bound::{constant#1}`...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+note: ...which requires caching mir of `with_bound::{constant#1}` for CTFE...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `with_bound::{constant#1}`...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+   = note: ...which requires normalizing `Foo`...
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking that `Foo::{opaque#0}` is well-formed
+  --> $DIR/opaque_type.rs:4:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0308]: mismatched types
+  --> $DIR/opaque_type.rs:11:35
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                                   ^^^^^^^^^^^^^^^^^^^^^ expected `(N / 2) as Foo`, found `(N / 2) as usize`
+   |
+   = note: expected constant `(N / 2) as Foo`
+              found constant `(N / 2) as usize`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0391.
+For more information about an error, try `rustc --explain E0308`.
