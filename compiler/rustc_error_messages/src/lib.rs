@@ -1,6 +1,5 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 #![allow(internal_features)]

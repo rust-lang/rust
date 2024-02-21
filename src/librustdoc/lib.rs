@@ -8,7 +8,6 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(lazy_cell)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(round_char_boundary)]

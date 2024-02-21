@@ -1316,10 +1316,8 @@ declare_lint! {
     /// * If you are trying to perform a one-time initialization of a global:
     ///     * If the value can be computed at compile-time, consider using
     ///       const-compatible values (see [Constant Evaluation]).
-    ///     * For more complex single-initialization cases, consider using a
-    ///       third-party crate, such as [`lazy_static`] or [`once_cell`].
-    ///     * If you are using the [nightly channel], consider the new
-    ///       [`lazy`] module in the standard library.
+    ///     * For more complex single-initialization cases, consider using
+    ///       [`std::sync::LazyLock`].
     /// * If you truly need a mutable global, consider using a [`static`],
     ///   which has a variety of options:
     ///   * Simple data types can be directly defined and mutated with an
@@ -1334,9 +1332,7 @@ declare_lint! {
     /// [Constant Evaluation]: https://doc.rust-lang.org/reference/const_eval.html
     /// [`static`]: https://doc.rust-lang.org/reference/items/static-items.html
     /// [mutable `static`]: https://doc.rust-lang.org/reference/items/static-items.html#mutable-statics
-    /// [`lazy`]: https://doc.rust-lang.org/nightly/std/lazy/index.html
-    /// [`lazy_static`]: https://crates.io/crates/lazy_static
-    /// [`once_cell`]: https://crates.io/crates/once_cell
+    /// [`std::sync::LazyLock`]: https://doc.rust-lang.org/stable/std/sync/struct.LazyLock.html
     /// [`atomic`]: https://doc.rust-lang.org/std/sync/atomic/index.html
     /// [`Mutex`]: https://doc.rust-lang.org/std/sync/struct.Mutex.html
     pub CONST_ITEM_MUTATION,

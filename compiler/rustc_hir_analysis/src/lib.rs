@@ -68,7 +68,6 @@ This API is completely unstable and subject to change.
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![feature(lazy_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 

@@ -31,8 +31,6 @@ union Data<T, F> {
 /// Initialize static variables with `LazyLock`.
 ///
 /// ```
-/// #![feature(lazy_cell)]
-///
 /// use std::collections::HashMap;
 ///
 /// use std::sync::LazyLock;
@@ -61,8 +59,6 @@ union Data<T, F> {
 /// ```
 /// Initialize fields with `LazyLock`.
 /// ```
-/// #![feature(lazy_cell)]
-///
 /// use std::sync::LazyLock;
 ///
 /// #[derive(Debug)]
@@ -76,8 +72,7 @@ union Data<T, F> {
 ///     println!("{}", *data.number);
 /// }
 /// ```
-
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 pub struct LazyLock<T, F = fn() -> T> {
     once: Once,
     data: UnsafeCell<Data<T, F>>,
@@ -85,8 +80,21 @@ pub struct LazyLock<T, F = fn() -> T> {
 
 impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// Creates a new lazy value with the given initializing function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::LazyLock;
+    ///
+    /// let hello = "Hello, World!".to_string();
+    ///
+    /// let lazy = LazyLock::new(|| hello.to_uppercase());
+    ///
+    /// assert_eq!(&*lazy, "HELLO, WORLD!");
+    /// ```
     #[inline]
-    #[unstable(feature = "lazy_cell", issue = "109736")]
+    #[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
     pub const fn new(f: F) -> LazyLock<T, F> {
         LazyLock { once: Once::new(), data: UnsafeCell::new(Data { f: ManuallyDrop::new(f) }) }
     }
@@ -107,7 +115,6 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_cell)]
     /// #![feature(lazy_cell_consume)]
     ///
     /// use std::sync::LazyLock;
@@ -145,8 +152,6 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_cell)]
-    ///
     /// use std::sync::LazyLock;
     ///
     /// let lazy = LazyLock::new(|| 92);
@@ -155,7 +160,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(&*lazy, &92);
     /// ```
     #[inline]
-    #[unstable(feature = "lazy_cell", issue = "109736")]
+    #[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
     pub fn force(this: &LazyLock<T, F>) -> &T {
         this.once.call_once(|| {
             // SAFETY: `call_once` only runs this closure once, ever.
@@ -191,7 +196,7 @@ impl<T, F> LazyLock<T, F> {
     }
 }
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T, F> Drop for LazyLock<T, F> {
     fn drop(&mut self) {
         match self.once.state() {
@@ -204,7 +209,7 @@ impl<T, F> Drop for LazyLock<T, F> {
     }
 }
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     type Target = T;
 
@@ -219,7 +224,7 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     }
 }
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: Default> Default for LazyLock<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
@@ -228,7 +233,7 @@ impl<T: Default> Default for LazyLock<T> {
     }
 }
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = f.debug_tuple("LazyLock");
@@ -242,13 +247,13 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
 
 // We never create a `&F` from a `&LazyLock<T, F>` so it is fine
 // to not impl `Sync` for `F`.
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 unsafe impl<T: Sync + Send, F: Send> Sync for LazyLock<T, F> {}
 // auto-derived `Send` impl is OK.
 
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: RefUnwindSafe + UnwindSafe, F: UnwindSafe> RefUnwindSafe for LazyLock<T, F> {}
-#[unstable(feature = "lazy_cell", issue = "109736")]
+#[stable(feature = "lazy_cell", since = "CURRENT_RUSTC_VERSION")]
 impl<T: UnwindSafe, F: UnwindSafe> UnwindSafe for LazyLock<T, F> {}
 
 #[cfg(test)]

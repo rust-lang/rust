@@ -395,7 +395,6 @@
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
 #![feature(get_many_mut)]
-#![feature(lazy_cell)]
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]
