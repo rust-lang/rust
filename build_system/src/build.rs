@@ -107,6 +107,9 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
     rustflags.push_str(" -Z force-unstable-if-unmarked");
+    if config.no_default_features {
+        rustflags.push_str(" -Csymbol-mangling-version=v0");
+    }
     let mut env = env.clone();
 
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
