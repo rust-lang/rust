@@ -144,16 +144,6 @@ pub const EXIT_FAILURE: i32 = 1;
 pub const DEFAULT_BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
-pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T {
-    match result {
-        Err(..) => {
-            sess.dcx().abort_if_errors();
-            panic!("error reported but abort_if_errors didn't abort???");
-        }
-        Ok(x) => x,
-    }
-}
-
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
@@ -349,27 +339,33 @@ fn run_compiler(
         },
     };
 
-    callbacks.config(&mut config);
-
-    default_early_dcx.abort_if_errors();
     drop(default_early_dcx);
+
+    callbacks.config(&mut config);
 
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
+
+        // This is used for early exits unrelated to errors. E.g. when just
+        // printing some information without compiling, or exiting immediately
+        // after parsing, etc.
+        let early_exit = || {
+            if let Some(guar) = sess.dcx().has_errors() { Err(guar) } else { Ok(()) }
+        };
 
         // This implements `-Whelp`. It should be handled very early, like
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
             describe_lints(sess);
-            return sess.compile_status();
+            return early_exit();
         }
 
         let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
 
         if print_crate_info(&early_dcx, codegen_backend, sess, has_input) == Compilation::Stop {
-            return sess.compile_status();
+            return early_exit();
         }
 
         if !has_input {
@@ -378,16 +374,16 @@ fn run_compiler(
 
         if !sess.opts.unstable_opts.ls.is_empty() {
             list_metadata(&early_dcx, sess, &*codegen_backend.metadata_loader());
-            return sess.compile_status();
+            return early_exit();
         }
 
         if sess.opts.unstable_opts.link_only {
             process_rlink(sess, compiler);
-            return sess.compile_status();
+            return early_exit();
         }
 
         let linker = compiler.enter(|queries| {
-            let early_exit = || sess.compile_status().map(|_| None);
+            let early_exit = || early_exit().map(|_| None);
             queries.parse()?;
 
             if let Some(ppm) = &sess.opts.pretty {
@@ -659,10 +655,11 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                 };
             }
         };
-        let result = compiler.codegen_backend.link(sess, codegen_results, &outputs);
-        abort_on_err(result, sess);
+        if compiler.codegen_backend.link(sess, codegen_results, &outputs).is_err() {
+            FatalError.raise();
+        }
     } else {
-        dcx.emit_fatal(RlinkNotAFile {})
+        dcx.emit_fatal(RlinkNotAFile {});
     }
 }
 

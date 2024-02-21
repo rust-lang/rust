@@ -471,9 +471,10 @@ struct DiagCtxtInner {
     emitted_diagnostics: FxHashSet<Hash128>,
 
     /// Stashed diagnostics emitted in one stage of the compiler that may be
-    /// stolen by other stages (e.g. to improve them and add more information).
-    /// The stashed diagnostics count towards the total error count.
-    /// When `.abort_if_errors()` is called, these are also emitted.
+    /// stolen and emitted/cancelled by other stages (e.g. to improve them and
+    /// add more information). All stashed diagnostics must be emitted with
+    /// `emit_stashed_diagnostics` by the time the `DiagCtxtInner` is dropped,
+    /// otherwise an assertion failure will occur.
     stashed_diagnostics: FxIndexMap<(Span, StashKey), Diagnostic>,
 
     future_breakage_diagnostics: Vec<Diagnostic>,
@@ -558,7 +559,9 @@ pub struct DiagCtxtFlags {
 
 impl Drop for DiagCtxtInner {
     fn drop(&mut self) {
-        self.emit_stashed_diagnostics();
+        // Any stashed diagnostics should have been handled by
+        // `emit_stashed_diagnostics` by now.
+        assert!(self.stashed_diagnostics.is_empty());
 
         if self.err_guars.is_empty() {
             self.flush_delayed()
@@ -750,17 +753,24 @@ impl DiagCtxt {
     }
 
     /// Emit all stashed diagnostics.
-    pub fn emit_stashed_diagnostics(&self) {
+    pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
-    /// This excludes lint errors, delayed bugs, and stashed errors.
+    /// This excludes lint errors, delayed bugs and stashed errors.
     #[inline]
-    pub fn err_count(&self) -> usize {
+    pub fn err_count_excluding_lint_errs(&self) -> usize {
         self.inner.borrow().err_guars.len()
     }
 
-    /// This excludes normal errors, lint errors and delayed bugs. Unless
+    /// This excludes delayed bugs and stashed errors.
+    #[inline]
+    pub fn err_count(&self) -> usize {
+        let inner = self.inner.borrow();
+        inner.err_guars.len() + inner.lint_err_guars.len()
+    }
+
+    /// This excludes normal errors, lint errors, and delayed bugs. Unless
     /// absolutely necessary, avoid using this. It's dubious because stashed
     /// errors can later be cancelled, so the presence of a stashed error at
     /// some point of time doesn't guarantee anything -- there are no
@@ -769,27 +779,29 @@ impl DiagCtxt {
         self.inner.borrow().stashed_err_count
     }
 
-    /// This excludes lint errors, delayed bugs, and stashed errors.
+    /// This excludes lint errors, delayed bugs, and stashed errors. Unless
+    /// absolutely necessary, prefer `has_errors` to this method.
+    pub fn has_errors_excluding_lint_errors(&self) -> Option<ErrorGuaranteed> {
+        self.inner.borrow().has_errors_excluding_lint_errors()
+    }
+
+    /// This excludes delayed bugs and stashed errors.
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.inner.borrow().has_errors()
     }
 
-    /// This excludes delayed bugs and stashed errors. Unless absolutely
-    /// necessary, prefer `has_errors` to this method.
-    pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors_or_lint_errors()
-    }
-
     /// This excludes stashed errors. Unless absolutely necessary, prefer
-    /// `has_errors` or `has_errors_or_lint_errors` to this method.
-    pub fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.inner.borrow().has_errors_or_lint_errors_or_delayed_bugs()
+    /// `has_errors` to this method.
+    pub fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.inner.borrow().has_errors_or_delayed_bugs()
     }
 
     pub fn print_error_count(&self, registry: &Registry) {
         let mut inner = self.inner.borrow_mut();
 
-        inner.emit_stashed_diagnostics();
+        // Any stashed diagnostics should have been handled by
+        // `emit_stashed_diagnostics` by now.
+        assert!(inner.stashed_diagnostics.is_empty());
 
         if inner.treat_err_as_bug() {
             return;
@@ -864,10 +876,12 @@ impl DiagCtxt {
         }
     }
 
+    /// This excludes delayed bugs and stashed errors. Used for early aborts
+    /// after errors occurred -- e.g. because continuing in the face of errors is
+    /// likely to lead to bad results, such as spurious/uninteresting
+    /// additional errors -- when returning an error `Result` is difficult.
     pub fn abort_if_errors(&self) {
-        let mut inner = self.inner.borrow_mut();
-        inner.emit_stashed_diagnostics();
-        if !inner.err_guars.is_empty() {
+        if self.has_errors().is_some() {
             FatalError.raise();
         }
     }
@@ -1268,10 +1282,10 @@ impl DiagCtxt {
 // `DiagCtxtInner::foo`.
 impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
-    fn emit_stashed_diagnostics(&mut self) {
+    fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
+        let mut guar = None;
         let has_errors = !self.err_guars.is_empty();
         for (_, diag) in std::mem::take(&mut self.stashed_diagnostics).into_iter() {
-            // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
                 if diag.is_lint.is_none() {
                     self.stashed_err_count -= 1;
@@ -1284,8 +1298,9 @@ impl DiagCtxtInner {
                     continue;
                 }
             }
-            self.emit_diagnostic(diag);
+            guar = guar.or(self.emit_diagnostic(diag));
         }
+        guar
     }
 
     // Return value is only `Some` if the level is `Error` or `DelayedBug`.
@@ -1329,7 +1344,7 @@ impl DiagCtxtInner {
             DelayedBug => {
                 // If we have already emitted at least one error, we don't need
                 // to record the delayed bug, because it'll never be used.
-                return if let Some(guar) = self.has_errors_or_lint_errors() {
+                return if let Some(guar) = self.has_errors() {
                     Some(guar)
                 } else {
                     let backtrace = std::backtrace::Backtrace::capture();
@@ -1445,17 +1460,16 @@ impl DiagCtxtInner {
             .is_some_and(|c| self.err_guars.len() + self.lint_err_guars.len() + 1 >= c.get())
     }
 
-    fn has_errors(&self) -> Option<ErrorGuaranteed> {
+    fn has_errors_excluding_lint_errors(&self) -> Option<ErrorGuaranteed> {
         self.err_guars.get(0).copied()
     }
 
-    fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
-        self.has_errors().or_else(|| self.lint_err_guars.get(0).copied())
+    fn has_errors(&self) -> Option<ErrorGuaranteed> {
+        self.has_errors_excluding_lint_errors().or_else(|| self.lint_err_guars.get(0).copied())
     }
 
-    fn has_errors_or_lint_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.has_errors_or_lint_errors()
-            .or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
+    fn has_errors_or_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
+        self.has_errors().or_else(|| self.delayed_bugs.get(0).map(|(_, guar)| guar).copied())
     }
 
     /// Translate `message` eagerly with `args` to `SubdiagnosticMessage::Eager`.
@@ -1488,6 +1502,11 @@ impl DiagCtxtInner {
     }
 
     fn flush_delayed(&mut self) {
+        // Stashed diagnostics must be emitted before delayed bugs are flushed.
+        // Otherwise, we might ICE prematurely when errors would have
+        // eventually happened.
+        assert!(self.stashed_diagnostics.is_empty());
+
         if self.delayed_bugs.is_empty() {
             return;
         }
