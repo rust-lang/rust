@@ -1,7 +1,7 @@
 // Demonstrates and records a theoretical regressions / breaking changes caused by the
-// introduction of const trait bounds.
+// introduction of async trait bounds.
 
-// Setting the edition to 2018 since we don't regress `demo! { dyn const }` in Rust <2018.
+// Setting the edition to 2018 since we don't regress `demo! { dyn async }` in Rust <2018.
 //@ edition:2018
 
 macro_rules! demo {
@@ -12,10 +12,10 @@ macro_rules! demo {
     (dyn $c:ident Trait) => {};
 }
 
-demo! { impl const Trait }
-//~^ ERROR const trait impls are experimental
+demo! { impl async Trait }
+//~^ ERROR async closures are unstable
 
-demo! { dyn const Trait }
-//~^ ERROR const trait impls are experimental
+demo! { dyn async Trait }
+//~^ ERROR async closures are unstable
 
 fn main() {}

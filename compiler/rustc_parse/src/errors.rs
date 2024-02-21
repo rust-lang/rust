@@ -2975,3 +2975,10 @@ pub(crate) struct ArrayIndexInOffsetOf(#[primary_span] pub Span);
 #[derive(Diagnostic)]
 #[diag(parse_invalid_offset_of)]
 pub(crate) struct InvalidOffsetOf(#[primary_span] pub Span);
+
+#[derive(Diagnostic)]
+#[diag(parse_async_impl)]
+pub(crate) struct AsyncImpl {
+    #[primary_span]
+    pub span: Span,
+}
