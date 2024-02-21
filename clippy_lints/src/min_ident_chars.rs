@@ -53,7 +53,7 @@ impl MinIdentChars {
             && str.len() <= self.min_ident_chars_threshold as usize
             && !str.starts_with('_')
             && !str.is_empty()
-            && self.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
+            && !self.allowed_idents_below_min_chars.contains(str)
     }
 }
 

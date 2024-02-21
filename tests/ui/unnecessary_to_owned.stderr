@@ -523,5 +523,35 @@ error: unnecessary use of `to_vec`
 LL |         IntoFuture::into_future(foo([].to_vec(), &0));
    |                                     ^^^^^^^^^^^ help: use: `[]`
 
-error: aborting due to 80 previous errors
+error: unnecessary use of `to_vec`
+  --> tests/ui/unnecessary_to_owned.rs:540:18
+   |
+LL |         s.remove(&a.to_vec());
+   |                  ^^^^^^^^^^^ help: replace it with: `a`
+
+error: unnecessary use of `to_owned`
+  --> tests/ui/unnecessary_to_owned.rs:544:14
+   |
+LL |     s.remove(&"b".to_owned());
+   |              ^^^^^^^^^^^^^^^ help: replace it with: `"b"`
+
+error: unnecessary use of `to_string`
+  --> tests/ui/unnecessary_to_owned.rs:545:14
+   |
+LL |     s.remove(&"b".to_string());
+   |              ^^^^^^^^^^^^^^^^ help: replace it with: `"b"`
+
+error: unnecessary use of `to_vec`
+  --> tests/ui/unnecessary_to_owned.rs:550:14
+   |
+LL |     s.remove(&["b"].to_vec());
+   |              ^^^^^^^^^^^^^^^ help: replace it with: `["b"].as_slice()`
+
+error: unnecessary use of `to_vec`
+  --> tests/ui/unnecessary_to_owned.rs:551:14
+   |
+LL |     s.remove(&(&["b"]).to_vec());
+   |              ^^^^^^^^^^^^^^^^^^ help: replace it with: `(&["b"]).as_slice()`
+
+error: aborting due to 85 previous errors
 
