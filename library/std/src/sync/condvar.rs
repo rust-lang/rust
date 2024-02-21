@@ -192,8 +192,11 @@ impl Condvar {
         if poisoned { Err(PoisonError::new(guard)) } else { Ok(guard) }
     }
 
-    /// Blocks the current thread until this condition variable receives a
-    /// notification and the provided condition is false.
+    /// As long as the provided condition evaluates to `true`, the current thread
+    /// will be blocked until this condition variable receives a notification.
+    /// If the provided condition evaluates to `false`, and the thread is not
+    /// blocked as a result of an evaluation to `true` by the provided condition,
+    /// then the operation is completed.
     ///
     /// This function will atomically unlock the mutex specified (represented by
     /// `guard`) and block the current thread. This means that any calls
@@ -388,8 +391,12 @@ impl Condvar {
         if poisoned { Err(PoisonError::new((guard, result))) } else { Ok((guard, result)) }
     }
 
-    /// Waits on this condition variable for a notification, timing out after a
-    /// specified duration.
+    /// As long as the provided condition evaluates to `true`, the current thread
+    /// will be blocked until this condition variable receives a notification,
+    /// timing out after the specified duration.
+    /// If the provided condition evaluates to `false`, and the thread is not
+    /// blocked as a result of an evaluation to `true` by the provided condition,
+    /// or if the operation timed out, then the operation is completed.
     ///
     /// The semantics of this function are equivalent to [`wait_while`] except
     /// that the thread will be blocked for roughly no longer than `dur`. This
