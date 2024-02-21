@@ -535,6 +535,7 @@ pub struct StableCrateIdCollision {
 pub struct DlError {
     #[primary_span]
     pub span: Span,
+    pub path: String,
     pub err: String,
 }
 

@@ -4048,7 +4048,6 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
- "libloading",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_ast",
