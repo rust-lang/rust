@@ -29,7 +29,7 @@ fn slice_of_zst() {
 
     // In a slice of zero-size elements the pointer is meaningless.
     // Ensure iteration still works even if the pointer is at the end of the address space.
-    let slice: &[()] = unsafe { slice::from_raw_parts(ptr::invalid(-5isize as usize), 10) };
+    let slice: &[()] = unsafe { slice::from_raw_parts(ptr::without_provenance(-5isize as usize), 10) };
     assert_eq!(slice.len(), 10);
     assert_eq!(slice.iter().count(), 10);
 
@@ -43,7 +43,7 @@ fn slice_of_zst() {
 
     // Test mutable iterators as well
     let slice: &mut [()] =
-        unsafe { slice::from_raw_parts_mut(ptr::invalid_mut(-5isize as usize), 10) };
+        unsafe { slice::from_raw_parts_mut(ptr::without_provenance_mut(-5isize as usize), 10) };
     assert_eq!(slice.len(), 10);
     assert_eq!(slice.iter_mut().count(), 10);
 
@@ -263,7 +263,7 @@ fn test_for_invalidated_pointers() {
 fn large_raw_slice() {
     let size = isize::MAX as usize;
     // Creating a raw slice of size isize::MAX and asking for its size is okay.
-    let s = std::ptr::slice_from_raw_parts(ptr::invalid::<u8>(1), size);
+    let s = std::ptr::slice_from_raw_parts(ptr::without_provenance::<u8>(1), size);
     assert_eq!(size, unsafe { std::mem::size_of_val_raw(s) });
 }
 

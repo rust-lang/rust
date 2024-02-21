@@ -215,7 +215,7 @@ impl Layout {
     #[inline]
     pub const fn dangling(&self) -> NonNull<u8> {
         // SAFETY: align is guaranteed to be non-zero
-        unsafe { NonNull::new_unchecked(crate::ptr::invalid_mut::<u8>(self.align())) }
+        unsafe { NonNull::new_unchecked(crate::ptr::without_provenance_mut::<u8>(self.align())) }
     }
 
     /// Creates a layout describing the record that can hold a value

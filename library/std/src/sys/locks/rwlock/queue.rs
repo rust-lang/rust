@@ -110,7 +110,7 @@
 use crate::cell::OnceCell;
 use crate::hint::spin_loop;
 use crate::mem;
-use crate::ptr::{self, invalid_mut, null_mut, NonNull};
+use crate::ptr::{self, null_mut, without_provenance_mut, NonNull};
 use crate::sync::atomic::{
     AtomicBool, AtomicPtr,
     Ordering::{AcqRel, Acquire, Relaxed, Release},
@@ -126,7 +126,7 @@ const SPIN_COUNT: usize = 7;
 type State = *mut ();
 type AtomicState = AtomicPtr<()>;
 
-const UNLOCKED: State = invalid_mut(0);
+const UNLOCKED: State = without_provenance_mut(0);
 const LOCKED: usize = 1;
 const QUEUED: usize = 2;
 const QUEUE_LOCKED: usize = 4;
@@ -144,7 +144,7 @@ fn write_lock(state: State) -> Option<State> {
 #[inline]
 fn read_lock(state: State) -> Option<State> {
     if state.addr() & QUEUED == 0 && state.addr() != LOCKED {
-        Some(invalid_mut(state.addr().checked_add(SINGLE)? | LOCKED))
+        Some(without_provenance_mut(state.addr().checked_add(SINGLE)? | LOCKED))
     } else {
         None
     }
@@ -405,7 +405,7 @@ impl RwLock {
         match self.state.fetch_update(Release, Acquire, |state| {
             if state.addr() & QUEUED == 0 {
                 let count = state.addr() - (SINGLE | LOCKED);
-                Some(if count > 0 { invalid_mut(count | LOCKED) } else { UNLOCKED })
+                Some(if count > 0 { without_provenance_mut(count | LOCKED) } else { UNLOCKED })
             } else {
                 None
             }
@@ -444,7 +444,7 @@ impl RwLock {
     #[inline]
     pub unsafe fn write_unlock(&self) {
         if let Err(state) =
-            self.state.compare_exchange(invalid_mut(LOCKED), UNLOCKED, Release, Relaxed)
+            self.state.compare_exchange(without_provenance_mut(LOCKED), UNLOCKED, Release, Relaxed)
         {
             // SAFETY:
             // Since other threads cannot acquire the lock, the state can only

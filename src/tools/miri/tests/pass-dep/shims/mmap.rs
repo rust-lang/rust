@@ -71,7 +71,7 @@ fn test_mmap<Offset: Default>(
 
     let ptr = unsafe {
         mmap(
-            ptr::invalid_mut(page_size * 64),
+            ptr::without_provenance_mut(page_size * 64),
             page_size,
             libc::PROT_READ | libc::PROT_WRITE,
             // We don't support MAP_FIXED
@@ -114,13 +114,13 @@ fn test_mmap<Offset: Default>(
     assert_eq!(ptr, libc::MAP_FAILED);
 
     // We report an error when trying to munmap an address which is not a multiple of the page size
-    let res = unsafe { libc::munmap(ptr::invalid_mut(1), page_size) };
+    let res = unsafe { libc::munmap(ptr::without_provenance_mut(1), page_size) };
     assert_eq!(res, -1);
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 
     // We report an error when trying to munmap a length that cannot be rounded up to a multiple of
     // the page size.
-    let res = unsafe { libc::munmap(ptr::invalid_mut(page_size), usize::MAX - 1) };
+    let res = unsafe { libc::munmap(ptr::without_provenance_mut(page_size), usize::MAX - 1) };
     assert_eq!(res, -1);
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 }
@@ -156,7 +156,7 @@ fn test_mremap() {
     // Test all of our error conditions
     // Not aligned
     let ptr =
-        unsafe { libc::mremap(ptr::invalid_mut(1), page_size, page_size, libc::MREMAP_MAYMOVE) };
+        unsafe { libc::mremap(ptr::without_provenance_mut(1), page_size, page_size, libc::MREMAP_MAYMOVE) };
     assert_eq!(ptr, libc::MAP_FAILED);
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 
