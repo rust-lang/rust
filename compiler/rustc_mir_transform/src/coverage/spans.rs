@@ -102,13 +102,6 @@ impl CurrCovspan {
         let Self { span, bcb, is_closure } = self;
         PrevCovspan { span, bcb, merged_spans: vec![span], is_closure }
     }
-
-    fn into_refined(self) -> RefinedCovspan {
-        // This is only called in cases where `curr` is a closure span that has
-        // been carved out of `prev`.
-        debug_assert!(self.is_closure);
-        self.into_prev().into_refined()
-    }
 }
 
 #[derive(Debug)]
@@ -138,15 +131,15 @@ impl PrevCovspan {
             self.span = self.span.with_hi(max_hi);
         }
 
-        if self.merged_spans.is_empty() { None } else { Some(self.into_refined()) }
+        if self.merged_spans.is_empty() { None } else { self.into_refined() }
     }
 
-    fn refined_copy(&self) -> RefinedCovspan {
+    fn refined_copy(&self) -> Option<RefinedCovspan> {
         let &Self { span, bcb, merged_spans: _, is_closure } = self;
-        RefinedCovspan { span, bcb, is_closure }
+        (!is_closure).then_some(RefinedCovspan { span, bcb })
     }
 
-    fn into_refined(self) -> RefinedCovspan {
+    fn into_refined(self) -> Option<RefinedCovspan> {
         // Even though we consume self, we can just reuse the copying impl.
         self.refined_copy()
     }
@@ -156,7 +149,6 @@ impl PrevCovspan {
 struct RefinedCovspan {
     span: Span,
     bcb: BasicCoverageBlock,
-    is_closure: bool,
 }
 
 /// Converts the initial set of coverage spans (one per MIR `Statement` or `Terminator`) into a
@@ -225,7 +217,7 @@ impl SpansRefiner {
                     "  different bcbs and disjoint spans, so keep curr for next iter, and add prev={prev:?}",
                 );
                 let prev = self.take_prev().into_refined();
-                self.refined_spans.push(prev);
+                self.refined_spans.extend(prev);
             } else if prev.is_closure {
                 // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
                 // next iter
@@ -244,13 +236,9 @@ impl SpansRefiner {
         // so add it to the output as well.
         if let Some(prev) = self.some_prev.take() {
             debug!("    AT END, adding last prev={prev:?}");
-            self.refined_spans.push(prev.into_refined());
+            self.refined_spans.extend(prev.into_refined());
         }
 
-        // Remove spans derived from closures, originally added to ensure the coverage
-        // regions for the current function leave room for the closure's own coverage regions
-        // (injected separately, from the closure's own MIR).
-        self.refined_spans.retain(|covspan| !covspan.is_closure);
         self.refined_spans
     }
 
@@ -313,6 +301,7 @@ impl SpansRefiner {
     fn carve_out_span_for_closure(&mut self) {
         let prev = self.prev();
         let curr = self.curr();
+        assert!(!prev.is_closure && curr.is_closure);
 
         let left_cutoff = curr.span.lo();
         let right_cutoff = curr.span.hi();
@@ -320,7 +309,7 @@ impl SpansRefiner {
         let has_post_closure_span = prev.span.hi() > right_cutoff;
 
         if has_pre_closure_span {
-            let mut pre_closure = self.prev().refined_copy();
+            let mut pre_closure = prev.refined_copy().expect("prev is not a closure span");
             pre_closure.span = pre_closure.span.with_hi(left_cutoff);
             debug!("  prev overlaps a closure. Adding span for pre_closure={:?}", pre_closure);
             self.refined_spans.push(pre_closure);
@@ -331,9 +320,9 @@ impl SpansRefiner {
             self.prev_mut().span = self.prev().span.with_lo(right_cutoff);
             debug!("  Mutated prev.span to start after the closure. prev={:?}", self.prev());
 
-            // Prevent this curr from becoming prev.
-            let closure_covspan = self.take_curr().into_refined();
-            self.refined_spans.push(closure_covspan); // since self.prev() was already updated
+            // Discard this curr, since it's a closure span.
+            let curr = self.take_curr();
+            assert!(curr.is_closure);
         }
     }
 
