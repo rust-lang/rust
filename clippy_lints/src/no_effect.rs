@@ -5,8 +5,8 @@ use clippy_utils::{any_parent_is_automatically_derived, get_parent_node, is_lint
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, Node, PatKind, Stmt,
-    StmtKind, UnsafeSource,
+    is_range_literal, BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind,
+    Stmt, StmtKind, UnsafeSource,
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -42,10 +42,6 @@ declare_clippy_lint! {
     /// Unlike dead code, these bindings are actually
     /// executed. However, as they have no effect and shouldn't be used further on, all they
     /// do is make the code less readable.
-    ///
-    /// ### Known problems
-    /// Further usage of this variable is not checked, which can lead to false positives if it is
-    /// used later in the code.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -178,6 +174,7 @@ impl NoEffect {
             }
         } else if let StmtKind::Local(local) = stmt.kind {
             if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
+                && !matches!(local.source, LocalSource::AsyncFn)
                 && let Some(init) = local.init
                 && local.els.is_none()
                 && !local.pat.span.from_expansion()
