@@ -10,7 +10,7 @@ note: lifetime parameter instantiated with the lifetime `'a` as defined here
 LL | struct Something<'a> {
    |                  ^^
    = note: but lifetime parameter must outlive the static lifetime
-note: unmet `'static` obligations introduced here
+note: `'static` requirement introduced here
   --> $SRC_DIR/core/src/any.rs:LL:COL
 
 error: aborting due to 1 previous error

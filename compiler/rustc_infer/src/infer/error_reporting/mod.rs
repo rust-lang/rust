@@ -481,7 +481,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 // couldn't be met.
                                 err.span_note(
                                     relevant_bindings,
-                                    format!("unmet `{sub}` obligations introduced here"),
+                                    format!("`{sub}` requirement introduced here"),
                                 );
                             }
                         }
