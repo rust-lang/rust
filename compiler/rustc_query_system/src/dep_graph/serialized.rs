@@ -145,7 +145,7 @@ impl SerializedDepGraph {
 
 /// A packed representation of an edge's start index and byte width.
 ///
-/// This is packed by stealing 2 bits from the start index, which means we only accomodate edge
+/// This is packed by stealing 2 bits from the start index, which means we only accommodate edge
 /// data arrays up to a quarter of our address space. Which seems fine.
 #[derive(Debug, Clone, Copy)]
 struct EdgeHeader {
