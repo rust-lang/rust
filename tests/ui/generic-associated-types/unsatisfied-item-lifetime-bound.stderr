@@ -32,10 +32,10 @@ LL |     type Y<'a> = &'a () where 'a: 'static;
    |                         +++++++++++++++++
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:14:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:14:20
    |
 LL |     f: <T as X>::Y<'a>,
-   |        ^^^^^^^^^^^^^^^
+   |                    ^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:13:10
@@ -43,12 +43,17 @@ note: lifetime parameter instantiated with the lifetime `'a` as defined here
 LL | struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
+note: `'static` requirement introduced here
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:4:16
+   |
+LL |     type Y<'a: 'static>;
+   |                ^^^^^^^
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:19:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:19:20
    |
 LL |     f: <T as X>::Y<'a>,
-   |        ^^^^^^^^^^^^^^^
+   |                    ^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:18:10
@@ -56,12 +61,17 @@ note: lifetime parameter instantiated with the lifetime `'a` as defined here
 LL | struct C<'a, T: X> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
+note: `'static` requirement introduced here
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:4:16
+   |
+LL |     type Y<'a: 'static>;
+   |                ^^^^^^^
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:24:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:24:21
    |
 LL |     f: <() as X>::Y<'a>,
-   |        ^^^^^^^^^^^^^^^^
+   |                     ^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:23:10
@@ -69,6 +79,11 @@ note: lifetime parameter instantiated with the lifetime `'a` as defined here
 LL | struct D<'a> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
+note: `'static` requirement introduced here
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:4:16
+   |
+LL |     type Y<'a: 'static>;
+   |                ^^^^^^^
 
 error: aborting due to 4 previous errors; 1 warning emitted
 

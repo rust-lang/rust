@@ -2727,38 +2727,119 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return None;
         };
         /// Collect all `hir::Ty<'_>` `Span`s for trait objects with the sup lifetime.
-        pub struct HirTraitObjectVisitor<'tcx>(
-            pub Vec<&'tcx hir::PolyTraitRef<'tcx>>,
-            pub ty::Region<'tcx>,
-            pub FxHashSet<Span>,
-        );
+        pub struct HirTraitObjectVisitor<'tcx> {
+            pub expected_region: ty::Region<'tcx>,
+            pub found_region: ty::Region<'tcx>,
+            pub lifetime_spans: FxHashSet<Span>,
+            pub pred_spans: Vec<Span>,
+            pub tcx: TyCtxt<'tcx>,
+        }
         impl<'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'tcx> {
-            fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
-                // Find all the trait objects that have the lifetime that was found.
-                if let hir::TyKind::TraitObject(poly_trait_refs, lt, _) = t.kind
-                    && match (lt.res, self.1.kind()) {
-                        (
-                            hir::LifetimeName::ImplicitObjectLifetimeDefault
-                            | hir::LifetimeName::Static,
-                            ty::RegionKind::ReStatic,
-                        ) => true,
-                        (hir::LifetimeName::Param(a), ty::RegionKind::ReEarlyParam(b)) => {
-                            a.to_def_id() == b.def_id
-                        }
-                        _ => false,
+            fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
+                if match (lt.res, self.expected_region.kind()) {
+                    (
+                        hir::LifetimeName::ImplicitObjectLifetimeDefault
+                        | hir::LifetimeName::Static,
+                        ty::RegionKind::ReStatic,
+                    ) => true,
+                    (hir::LifetimeName::Param(a), ty::RegionKind::ReEarlyParam(b)) => {
+                        a.to_def_id() == b.def_id
                     }
-                {
-                    for ptr in poly_trait_refs {
-                        // We'll filter the traits later, after collection.
-                        self.0.push(ptr);
-                    }
+                    _ => false,
+                } {
                     // We want to keep a span to the lifetime bound on the trait object.
-                    self.2.insert(lt.ident.span);
+                    self.lifetime_spans.insert(lt.ident.span);
+                }
+            }
+            fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+                match t.kind {
+                    // Find all the trait objects that have the lifetime that was found.
+                    hir::TyKind::TraitObject(poly_trait_refs, lt, _)
+                        if match (lt.res, self.expected_region.kind()) {
+                            (
+                                hir::LifetimeName::ImplicitObjectLifetimeDefault
+                                | hir::LifetimeName::Static,
+                                ty::RegionKind::ReStatic,
+                            ) => true,
+                            (hir::LifetimeName::Param(a), ty::RegionKind::ReEarlyParam(b)) => {
+                                a.to_def_id() == b.def_id
+                            }
+                            _ => false,
+                        } =>
+                    {
+                        for ptr in poly_trait_refs {
+                            if let Some(def_id) = ptr.trait_ref.trait_def_id() {
+                                // Find the bounds on the trait with the lifetime that couldn't be met.
+                                let bindings: Vec<Span> = elaborate(
+                                    self.tcx,
+                                    self.tcx
+                                        .predicates_of(def_id)
+                                        .predicates
+                                        .iter()
+                                        .map(|(p, sp)| (p.as_predicate(), *sp)),
+                                )
+                                .filter_map(|(pred, pred_span)| {
+                                    if let ty::PredicateKind::Clause(clause) =
+                                        pred.kind().skip_binder()
+                                        && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
+                                            _pred_ty,
+                                            r,
+                                        )) = clause
+                                        && r == self.found_region
+                                    {
+                                        Some(pred_span)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+                                if !bindings.is_empty() {
+                                    self.lifetime_spans.insert(ptr.span);
+                                    self.pred_spans.extend(bindings);
+                                }
+                            }
+                        }
+                    }
+                    // Detect when an associated item is given a lifetime restriction that the
+                    // definition of that associated item couldn't meet.
+                    hir::TyKind::Path(hir::QPath::Resolved(Some(_), path)) => {
+                        self.pred_spans = elaborate(
+                            self.tcx,
+                            self.tcx
+                                .predicates_of(path.res.def_id())
+                                .predicates
+                                .iter()
+                                .map(|(p, sp)| (p.as_predicate(), *sp)),
+                        )
+                        .filter_map(|(pred, pred_span)| {
+                            match pred.kind().skip_binder() {
+                                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
+                                    ty::OutlivesPredicate(
+                                        // What should I filter this with?
+                                        _pred_ty,
+                                        r,
+                                    ),
+                                )) if r == self.found_region => Some(pred_span),
+                                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
+                                    ty::OutlivesPredicate(_, r),
+                                )) if r == self.found_region => Some(pred_span),
+                                _ => None,
+                            }
+                        })
+                        .collect();
+                    }
+                    _ => {}
                 }
                 hir::intravisit::walk_ty(self, t);
             }
         }
-        let mut visitor = HirTraitObjectVisitor(vec![], sup, Default::default());
+        let mut visitor = HirTraitObjectVisitor {
+            expected_region: sup,
+            found_region: sub,
+            lifetime_spans: Default::default(),
+            pred_spans: vec![],
+            tcx: self.tcx,
+        };
         for field in item.fields() {
             if field.ty.span == *span {
                 // `span` points at the type of a field, we only want to look for trait objects in
@@ -2767,40 +2848,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        // The display of these spans will not change regardless or sorting.
         #[allow(rustc::potential_query_instability)]
-        let mut primary_spans: Vec<Span> = visitor.2.into_iter().collect();
-        let mut relevant_bindings: Vec<Span> = vec![];
-        for ptr in visitor.0 {
-            if let Some(def_id) = ptr.trait_ref.trait_def_id() {
-                // Find the bounds on the trait with the lifetime that couldn't be met.
-                let bindings: Vec<Span> = elaborate(
-                    self.tcx,
-                    self.tcx
-                        .predicates_of(def_id)
-                        .predicates
-                        .iter()
-                        .map(|(p, sp)| (p.as_predicate(), *sp)),
-                )
-                .filter_map(|(pred, pred_span)| {
-                    if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
-                        && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_pred_ty, r)) =
-                            clause
-                        && r == sub
-                    {
-                        Some(pred_span)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-                if !bindings.is_empty() {
-                    primary_spans.push(ptr.span);
-                    relevant_bindings.extend(bindings);
-                }
-            }
-        }
-        Some((primary_spans.into(), relevant_bindings.into()))
+        let primary_spans: Vec<Span> = visitor.lifetime_spans.into_iter().collect();
+        Some((primary_spans.into(), visitor.pred_spans.into()))
     }
 
     /// Determine whether an error associated with the given span and definition
