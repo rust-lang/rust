@@ -127,6 +127,7 @@ pub struct ConfigInfo {
     // Needed for the `info` command which doesn't want to actually download the lib if needed,
     // just to set the `gcc_path` field to display it.
     pub no_download: bool,
+    pub no_default_features: bool,
 }
 
 impl ConfigInfo {
@@ -177,6 +178,7 @@ impl ConfigInfo {
                     return Err("Expected a value after `--cg_gcc-path`, found nothing".to_string())
                 }
             },
+            "--no-default-features" => self.no_default_features = true,
             _ => return Ok(false),
         }
         Ok(true)
@@ -416,8 +418,9 @@ impl ConfigInfo {
             rustflags.push(linker.to_string());
         }
 
-        #[cfg(not(feature="master"))]
-        rustflags.push("-Csymbol-mangling-version=v0".to_string());
+        if self.no_default_features {
+            rustflags.push("-Csymbol-mangling-version=v0".to_string());
+        }
 
         rustflags.extend_from_slice(&[
             "-Cdebuginfo=2".to_string(),
@@ -495,7 +498,8 @@ impl ConfigInfo {
     --sysroot-panic-abort  : Build the sysroot without unwinding support
     --config-file          : Location of the config file to be used
     --cg_gcc-path          : Location of the rustc_codegen_gcc root folder (used
-                             when ran from another directory)"
+                             when ran from another directory)
+    --no-default-features  : Add `--no-default-features` flag to cargo commands"
         );
     }
 }
