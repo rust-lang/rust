@@ -2190,9 +2190,9 @@ fn main() {
             149..151 'Ok': extern "rust-call" Ok<(), ()>(()) -> Result<(), ()>
             149..155 'Ok(())': Result<(), ()>
             152..154 '()': ()
-            167..171 'test': fn test<(), (), impl Fn() -> impl Future<Output = Result<(), ()>>, impl Future<Output = Result<(), ()>>>(impl Fn() -> impl Future<Output = Result<(), ()>>)
+            167..171 'test': fn test<(), (), impl FnMut() -> impl Future<Output = Result<(), ()>>, impl Future<Output = Result<(), ()>>>(impl FnMut() -> impl Future<Output = Result<(), ()>>)
             167..228 'test(|...    })': ()
-            172..227 '|| asy...     }': impl Fn() -> impl Future<Output = Result<(), ()>>
+            172..227 '|| asy...     }': impl FnMut() -> impl Future<Output = Result<(), ()>>
             175..227 'async ...     }': impl Future<Output = Result<(), ()>>
             191..205 'return Err(())': !
             198..201 'Err': extern "rust-call" Err<(), ()>(()) -> Result<(), ()>
