@@ -159,17 +159,6 @@ struct RefinedCovspan {
     is_closure: bool,
 }
 
-impl RefinedCovspan {
-    fn is_mergeable(&self, other: &Self) -> bool {
-        self.bcb == other.bcb && !self.is_closure && !other.is_closure
-    }
-
-    fn merge_from(&mut self, other: &Self) {
-        debug_assert!(self.is_mergeable(other));
-        self.span = self.span.to(other.span);
-    }
-}
-
 /// Converts the initial set of coverage spans (one per MIR `Statement` or `Terminator`) into a
 /// minimal set of coverage spans, using the BCB CFG to determine where it is safe and useful to:
 ///
@@ -257,17 +246,6 @@ impl SpansRefiner {
             debug!("    AT END, adding last prev={prev:?}");
             self.refined_spans.push(prev.into_refined());
         }
-
-        // Do one last merge pass, to simplify the output.
-        self.refined_spans.dedup_by(|b, a| {
-            if a.is_mergeable(b) {
-                debug!(?a, ?b, "merging list-adjacent refined spans");
-                a.merge_from(b);
-                true
-            } else {
-                false
-            }
-        });
 
         // Remove spans derived from closures, originally added to ensure the coverage
         // regions for the current function leave room for the closure's own coverage regions
