@@ -1,5 +1,6 @@
 // skip-filecheck
 //@ unit-test: EarlyOtherwiseBranch
+//@ compile-flags: -Zmir-enable-passes=+UninhabitedEnumBranching
 
 // must not optimize as it does not follow the pattern of
 // left and right hand side being the same variant

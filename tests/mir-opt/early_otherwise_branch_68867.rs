@@ -1,5 +1,6 @@
 // skip-filecheck
 //@ unit-test: EarlyOtherwiseBranch
+//@ compile-flags: -Zmir-enable-passes=+UninhabitedEnumBranching
 
 // FIXME: This test was broken by the derefer change.
 

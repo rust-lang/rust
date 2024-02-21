@@ -1,5 +1,6 @@
 // skip-filecheck
 //@ unit-test: EarlyOtherwiseBranch
+//@ compile-flags: -Zmir-enable-passes=+UninhabitedEnumBranching
 
 // Tests various cases that the `early_otherwise_branch` opt should *not* optimize
 
