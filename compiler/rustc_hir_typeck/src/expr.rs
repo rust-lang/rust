@@ -44,10 +44,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
-use rustc_middle::ty::error::{
-    ExpectedFound,
-    TypeError::{FieldMisMatch, Sorts},
-};
+use rustc_middle::ty::error::{ExpectedFound, TypeError::Sorts};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeVisitableExt};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1811,7 +1808,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let target_ty = self.field_ty(base_expr.span, f, args);
                                 let cause = self.misc(base_expr.span);
                                 match self.at(&cause, self.param_env).sup(
-                                    DefineOpaqueTypes::No,
+                                    // We're already using inference variables for any params, and don't allow converting
+                                    // between different structs, so there is no way this ever actually defines an opaque type.
+                                    // Thus choosing `Yes` is fine.
+                                    DefineOpaqueTypes::Yes,
                                     target_ty,
                                     fru_ty,
                                 ) {
@@ -1819,16 +1819,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         self.register_predicates(obligations)
                                     }
                                     Err(_) => {
-                                        // This should never happen, since we're just subtyping the
-                                        // remaining_fields, but it's fine to emit this, I guess.
-                                        self.err_ctxt()
-                                            .report_mismatched_types(
-                                                &cause,
-                                                target_ty,
-                                                fru_ty,
-                                                FieldMisMatch(variant.name, ident.name),
-                                            )
-                                            .emit();
+                                        span_bug!(
+                                            cause.span(),
+                                            "subtyping remaining fields of type changing FRU failed: {target_ty} != {fru_ty}: {}::{}",
+                                            variant.name,
+                                            ident.name,
+                                        );
                                     }
                                 }
                             }
