@@ -1,19 +1,22 @@
 use crate::snippet::Style;
 use crate::{
-    CodeSuggestion, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, ErrCode, Level,
-    MultiSpan, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
+    CodeSuggestion, DiagCtxt, DiagnosticMessage, ErrCode, ErrorGuaranteed, ExplicitBug, Level,
+    MultiSpan, StashKey, SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
-use std::panic::Location;
+use std::panic;
+use std::thread::panicking;
 
 /// Error type for `Diagnostic`'s `suggestions` field, indicating that
 /// `.disable_suggestions()` was called on the `Diagnostic`.
@@ -38,6 +41,86 @@ pub enum DiagnosticArgValue {
     // to strings in `into_diagnostic_arg` and stored using the `Str` variant.
     Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
+}
+
+/// Trait for types that `DiagnosticBuilder::emit` can return as a "guarantee"
+/// (or "proof") token that the emission happened.
+pub trait EmissionGuarantee: Sized {
+    /// This exists so that bugs and fatal errors can both result in `!` (an
+    /// abort) when emitted, but have different aborting behaviour.
+    type EmitResult = Self;
+
+    /// Implementation of `DiagnosticBuilder::emit`, fully controlled by each
+    /// `impl` of `EmissionGuarantee`, to make it impossible to create a value
+    /// of `Self::EmitResult` without actually performing the emission.
+    #[track_caller]
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult;
+}
+
+impl EmissionGuarantee for ErrorGuaranteed {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_error_guaranteed()
+    }
+}
+
+impl EmissionGuarantee for () {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
+    }
+}
+
+/// Marker type which enables implementation of `create_bug` and `emit_bug` functions for
+/// bug diagnostics.
+#[derive(Copy, Clone)]
+pub struct BugAbort;
+
+impl EmissionGuarantee for BugAbort {
+    type EmitResult = !;
+
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
+        panic::panic_any(ExplicitBug);
+    }
+}
+
+/// Marker type which enables implementation of `create_fatal` and `emit_fatal` functions for
+/// fatal diagnostics.
+#[derive(Copy, Clone)]
+pub struct FatalAbort;
+
+impl EmissionGuarantee for FatalAbort {
+    type EmitResult = !;
+
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
+        crate::FatalError.raise()
+    }
+}
+
+impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        db.emit_producing_nothing();
+        rustc_span::fatal_error::FatalError
+    }
+}
+
+/// Trait implemented by error types. This is rarely implemented manually. Instead, use
+/// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
+#[rustc_diagnostic_item = "IntoDiagnostic"]
+pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
+    /// Write out as a diagnostic out of `DiagCtxt`.
+    #[must_use]
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G>;
+}
+
+impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
+where
+    T: IntoDiagnostic<'a, G>,
+    G: EmissionGuarantee,
+{
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        self.node.into_diagnostic(dcx, level).with_span(self.span)
+    }
 }
 
 /// Converts a value of a type into a `DiagnosticArg` (typically a field of an `IntoDiagnostic`
@@ -98,36 +181,6 @@ pub trait DecorateLint<'a, G: EmissionGuarantee> {
     fn msg(&self) -> DiagnosticMessage;
 }
 
-/// The main part of a diagnostic. Note that `DiagnosticBuilder`, which wraps
-/// this type, is used for most operations, and should be used instead whenever
-/// possible. This type should only be used when `DiagnosticBuilder`'s lifetime
-/// causes difficulties, e.g. when storing diagnostics within `DiagCtxt`.
-#[must_use]
-#[derive(Clone, Debug, Encodable, Decodable)]
-pub struct Diagnostic {
-    // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
-    // outside of what methods in this crate themselves allow.
-    pub(crate) level: Level,
-
-    pub messages: Vec<(DiagnosticMessage, Style)>,
-    pub code: Option<ErrCode>,
-    pub span: MultiSpan,
-    pub children: Vec<SubDiagnostic>,
-    pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-    args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>,
-
-    /// This is not used for highlighting or rendering any error message. Rather, it can be used
-    /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
-    /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
-    pub sort_span: Span,
-
-    pub is_lint: Option<IsLint>,
-
-    /// With `-Ztrack_diagnostics` enabled,
-    /// we print where in rustc this error was emitted.
-    pub(crate) emitted_at: DiagnosticLocation,
-}
-
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct DiagnosticLocation {
     file: Cow<'static, str>,
@@ -138,7 +191,7 @@ pub struct DiagnosticLocation {
 impl DiagnosticLocation {
     #[track_caller]
     fn caller() -> Self {
-        let loc = Location::caller();
+        let loc = panic::Location::caller();
         DiagnosticLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
     }
 }
@@ -155,15 +208,6 @@ pub struct IsLint {
     pub(crate) name: String,
     /// Indicates whether this lint should show up in cargo's future breakage report.
     has_future_breakage: bool,
-}
-
-/// A "sub"-diagnostic attached to a parent diagnostic.
-/// For example, a note attached to an error.
-#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
-pub struct SubDiagnostic {
-    pub level: Level,
-    pub messages: Vec<(DiagnosticMessage, Style)>,
-    pub span: MultiSpan,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -213,6 +257,36 @@ impl StringPart {
     pub fn highlighted<S: Into<String>>(content: S) -> StringPart {
         StringPart { content: content.into(), style: Style::Highlight }
     }
+}
+
+/// The main part of a diagnostic. Note that `DiagnosticBuilder`, which wraps
+/// this type, is used for most operations, and should be used instead whenever
+/// possible. This type should only be used when `DiagnosticBuilder`'s lifetime
+/// causes difficulties, e.g. when storing diagnostics within `DiagCtxt`.
+#[must_use]
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct Diagnostic {
+    // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
+    // outside of what methods in this crate themselves allow.
+    pub(crate) level: Level,
+
+    pub messages: Vec<(DiagnosticMessage, Style)>,
+    pub code: Option<ErrCode>,
+    pub span: MultiSpan,
+    pub children: Vec<SubDiagnostic>,
+    pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
+    args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>,
+
+    /// This is not used for highlighting or rendering any error message. Rather, it can be used
+    /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
+    /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
+    pub sort_span: Span,
+
+    pub is_lint: Option<IsLint>,
+
+    /// With `-Ztrack_diagnostics` enabled,
+    /// we print where in rustc this error was emitted.
+    pub(crate) emitted_at: DiagnosticLocation,
 }
 
 impl Diagnostic {
@@ -336,6 +410,118 @@ impl Diagnostic {
     pub fn replace_args(&mut self, args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>) {
         self.args = args;
     }
+
+    /// Fields used for Hash, and PartialEq trait.
+    fn keys(
+        &self,
+    ) -> (
+        &Level,
+        &[(DiagnosticMessage, Style)],
+        &Option<ErrCode>,
+        &MultiSpan,
+        &[SubDiagnostic],
+        &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
+        Vec<(&DiagnosticArgName, &DiagnosticArgValue)>,
+        &Option<IsLint>,
+    ) {
+        (
+            &self.level,
+            &self.messages,
+            &self.code,
+            &self.span,
+            &self.children,
+            &self.suggestions,
+            self.args().collect(),
+            // omit self.sort_span
+            &self.is_lint,
+            // omit self.emitted_at
+        )
+    }
+}
+
+impl Hash for Diagnostic {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.keys().hash(state);
+    }
+}
+
+impl PartialEq for Diagnostic {
+    fn eq(&self, other: &Self) -> bool {
+        self.keys() == other.keys()
+    }
+}
+
+/// A "sub"-diagnostic attached to a parent diagnostic.
+/// For example, a note attached to an error.
+#[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
+pub struct SubDiagnostic {
+    pub level: Level,
+    pub messages: Vec<(DiagnosticMessage, Style)>,
+    pub span: MultiSpan,
+}
+
+/// Used for emitting structured error messages and other diagnostic information.
+/// Wraps a `Diagnostic`, adding some useful things.
+/// - The `dcx` field, allowing it to (a) emit itself, and (b) do a drop check
+///   that it has been emitted or cancelled.
+/// - The `EmissionGuarantee`, which determines the type returned from `emit`.
+///
+/// Each constructed `DiagnosticBuilder` must be consumed by a function such as
+/// `emit`, `cancel`, `delay_as_bug`, or `into_diagnostic`. A panic occurrs if a
+/// `DiagnosticBuilder` is dropped without being consumed by one of these
+/// functions.
+///
+/// If there is some state in a downstream crate you would like to
+/// access in the methods of `DiagnosticBuilder` here, consider
+/// extending `DiagCtxtFlags`.
+#[must_use]
+pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
+    pub dcx: &'a DiagCtxt,
+
+    /// Why the `Option`? It is always `Some` until the `DiagnosticBuilder` is
+    /// consumed via `emit`, `cancel`, etc. At that point it is consumed and
+    /// replaced with `None`. Then `drop` checks that it is `None`; if not, it
+    /// panics because a diagnostic was built but not used.
+    ///
+    /// Why the Box? `Diagnostic` is a large type, and `DiagnosticBuilder` is
+    /// often used as a return value, especially within the frequently-used
+    /// `PResult` type. In theory, return value optimization (RVO) should avoid
+    /// unnecessary copying. In practice, it does not (at the time of writing).
+    diag: Option<Box<Diagnostic>>,
+
+    _marker: PhantomData<G>,
+}
+
+// Cloning a `DiagnosticBuilder` is a recipe for a diagnostic being emitted
+// twice, which would be bad.
+impl<G> !Clone for DiagnosticBuilder<'_, G> {}
+
+rustc_data_structures::static_assert_size!(
+    DiagnosticBuilder<'_, ()>,
+    2 * std::mem::size_of::<usize>()
+);
+
+impl<G: EmissionGuarantee> Deref for DiagnosticBuilder<'_, G> {
+    type Target = Diagnostic;
+
+    fn deref(&self) -> &Diagnostic {
+        self.diag.as_ref().unwrap()
+    }
+}
+
+impl<G: EmissionGuarantee> DerefMut for DiagnosticBuilder<'_, G> {
+    fn deref_mut(&mut self) -> &mut Diagnostic {
+        self.diag.as_mut().unwrap()
+    }
+}
+
+impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.diag.fmt(f)
+    }
 }
 
 /// `DiagnosticBuilder` impls many `&mut self -> &mut Self` methods. Each one
@@ -382,6 +568,20 @@ macro_rules! with_fn {
 }
 
 impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn new<M: Into<DiagnosticMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
+        Self::new_diagnostic(dcx, Diagnostic::new(level, message))
+    }
+
+    /// Creates a new `DiagnosticBuilder` with an already constructed
+    /// diagnostic.
+    #[track_caller]
+    pub(crate) fn new_diagnostic(dcx: &'a DiagCtxt, diag: Diagnostic) -> Self {
+        debug!("Created new diagnostic");
+        Self { dcx, diag: Some(Box::new(diag)), _marker: PhantomData }
+    }
+
     /// Delay emission of this diagnostic as a bug.
     ///
     /// This can be useful in contexts where an error indicates a bug but
@@ -1040,48 +1240,112 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         let sub = SubDiagnostic { level, messages, span };
         self.children.push(sub);
     }
-}
 
-impl Diagnostic {
-    /// Fields used for Hash, and PartialEq trait
-    fn keys(
-        &self,
-    ) -> (
-        &Level,
-        &[(DiagnosticMessage, Style)],
-        &Option<ErrCode>,
-        &MultiSpan,
-        &[SubDiagnostic],
-        &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-        Vec<(&DiagnosticArgName, &DiagnosticArgValue)>,
-        &Option<IsLint>,
-    ) {
-        (
-            &self.level,
-            &self.messages,
-            &self.code,
-            &self.span,
-            &self.children,
-            &self.suggestions,
-            self.args().collect(),
-            // omit self.sort_span
-            &self.is_lint,
-            // omit self.emitted_at
-        )
+    /// Takes the diagnostic. For use by methods that consume the
+    /// DiagnosticBuilder: `emit`, `cancel`, etc. Afterwards, `drop` is the
+    /// only code that will be run on `self`.
+    fn take_diag(&mut self) -> Diagnostic {
+        Box::into_inner(self.diag.take().unwrap())
+    }
+
+    /// Most `emit_producing_guarantee` functions use this as a starting point.
+    fn emit_producing_nothing(mut self) {
+        let diag = self.take_diag();
+        self.dcx.emit_diagnostic(diag);
+    }
+
+    /// `ErrorGuaranteed::emit_producing_guarantee` uses this.
+    fn emit_producing_error_guaranteed(mut self) -> ErrorGuaranteed {
+        let diag = self.take_diag();
+
+        // The only error levels that produce `ErrorGuaranteed` are
+        // `Error` and `DelayedBug`. But `DelayedBug` should never occur here
+        // because delayed bugs have their level changed to `Bug` when they are
+        // actually printed, so they produce an ICE.
+        //
+        // (Also, even though `level` isn't `pub`, the whole `Diagnostic` could
+        // be overwritten with a new one thanks to `DerefMut`. So this assert
+        // protects against that, too.)
+        assert!(
+            matches!(diag.level, Level::Error | Level::DelayedBug),
+            "invalid diagnostic level ({:?})",
+            diag.level,
+        );
+
+        let guar = self.dcx.emit_diagnostic(diag);
+        guar.unwrap()
+    }
+
+    /// Emit and consume the diagnostic.
+    #[track_caller]
+    pub fn emit(self) -> G::EmitResult {
+        G::emit_producing_guarantee(self)
+    }
+
+    /// Emit the diagnostic unless `delay` is true,
+    /// in which case the emission will be delayed as a bug.
+    ///
+    /// See `emit` and `delay_as_bug` for details.
+    #[track_caller]
+    pub fn emit_unless(mut self, delay: bool) -> G::EmitResult {
+        if delay {
+            self.downgrade_to_delayed_bug();
+        }
+        self.emit()
+    }
+
+    /// Cancel and consume the diagnostic. (A diagnostic must either be emitted or
+    /// cancelled or it will panic when dropped).
+    pub fn cancel(mut self) {
+        self.diag = None;
+        drop(self);
+    }
+
+    /// Stashes diagnostic for possible later improvement in a different,
+    /// later stage of the compiler. The diagnostic can be accessed with
+    /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
+    pub fn stash(mut self, span: Span, key: StashKey) {
+        self.dcx.stash_diagnostic(span, key, self.take_diag());
+    }
+
+    /// Delay emission of this diagnostic as a bug.
+    ///
+    /// This can be useful in contexts where an error indicates a bug but
+    /// typically this only happens when other compilation errors have already
+    /// happened. In those cases this can be used to defer emission of this
+    /// diagnostic as a bug in the compiler only if no other errors have been
+    /// emitted.
+    ///
+    /// In the meantime, though, callsites are required to deal with the "bug"
+    /// locally in whichever way makes the most sense.
+    #[track_caller]
+    pub fn delay_as_bug(mut self) -> G::EmitResult {
+        self.downgrade_to_delayed_bug();
+        self.emit()
     }
 }
 
-impl Hash for Diagnostic {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: Hasher,
-    {
-        self.keys().hash(state);
+/// Destructor bomb: every `DiagnosticBuilder` must be consumed (emitted,
+/// cancelled, etc.) or we emit a bug.
+impl<G: EmissionGuarantee> Drop for DiagnosticBuilder<'_, G> {
+    fn drop(&mut self) {
+        match self.diag.take() {
+            Some(diag) if !panicking() => {
+                self.dcx.emit_diagnostic(Diagnostic::new(
+                    Level::Bug,
+                    DiagnosticMessage::from("the following error was constructed but not emitted"),
+                ));
+                self.dcx.emit_diagnostic(*diag);
+                panic!("error was constructed but not emitted");
+            }
+            _ => {}
+        }
     }
 }
 
-impl PartialEq for Diagnostic {
-    fn eq(&self, other: &Self) -> bool {
-        self.keys() == other.keys()
-    }
+#[macro_export]
+macro_rules! struct_span_code_err {
+    ($dcx:expr, $span:expr, $code:expr, $($message:tt)*) => ({
+        $dcx.struct_span_err($span, format!($($message)*)).with_code($code)
+    })
 }
