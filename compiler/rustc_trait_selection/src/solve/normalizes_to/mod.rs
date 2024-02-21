@@ -18,8 +18,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeVisitableExt};
 use rustc_span::{sym, ErrorGuaranteed, DUMMY_SP};
 
+mod anon_const;
 mod inherent;
-mod opaques;
+mod opaque_types;
 mod weak_types;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -31,60 +32,40 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let def_id = goal.predicate.def_id();
         match self.tcx().def_kind(def_id) {
             DefKind::AssocTy | DefKind::AssocConst => {
-                // To only compute normalization once for each projection we only
-                // assemble normalization candidates if the expected term is an
-                // unconstrained inference variable.
-                //
-                // Why: For better cache hits, since if we have an unconstrained RHS then
-                // there are only as many cache keys as there are (canonicalized) alias
-                // types in each normalizes-to goal. This also weakens inference in a
-                // forwards-compatible way so we don't use the value of the RHS term to
-                // affect candidate assembly for projections.
-                //
-                // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
-                // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
-                // `U` and equate it with `u32`. This means that we don't need a separate
-                // projection cache in the solver, since we're piggybacking off of regular
-                // goal caching.
-                if self.term_is_fully_unconstrained(goal) {
-                    match self.tcx().associated_item(def_id).container {
-                        ty::AssocItemContainer::TraitContainer => {
+                match self.tcx().associated_item(def_id).container {
+                    ty::AssocItemContainer::TraitContainer => {
+                        // To only compute normalization once for each projection we only
+                        // assemble normalization candidates if the expected term is an
+                        // unconstrained inference variable.
+                        //
+                        // Why: For better cache hits, since if we have an unconstrained RHS then
+                        // there are only as many cache keys as there are (canonicalized) alias
+                        // types in each normalizes-to goal. This also weakens inference in a
+                        // forwards-compatible way so we don't use the value of the RHS term to
+                        // affect candidate assembly for projections.
+                        //
+                        // E.g. for `<T as Trait>::Assoc == u32` we recursively compute the goal
+                        // `exists<U> <T as Trait>::Assoc == U` and then take the resulting type for
+                        // `U` and equate it with `u32`. This means that we don't need a separate
+                        // projection cache in the solver, since we're piggybacking off of regular
+                        // goal caching.
+                        if self.term_is_fully_unconstrained(goal) {
                             let candidates = self.assemble_and_evaluate_candidates(goal);
                             self.merge_candidates(candidates)
-                        }
-                        ty::AssocItemContainer::ImplContainer => {
-                            self.normalize_inherent_associated_type(goal)
+                        } else {
+                            self.set_normalizes_to_hack_goal(goal);
+                            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                         }
                     }
-                } else {
-                    self.set_normalizes_to_hack_goal(goal);
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    ty::AssocItemContainer::ImplContainer => {
+                        self.normalize_inherent_associated_type(goal)
+                    }
                 }
             }
             DefKind::AnonConst => self.normalize_anon_const(goal),
             DefKind::OpaqueTy => self.normalize_opaque_type(goal),
             DefKind::TyAlias => self.normalize_weak_type(goal),
             kind => bug!("unknown DefKind {} in projection goal: {goal:#?}", kind.descr(def_id)),
-        }
-    }
-
-    #[instrument(level = "debug", skip(self), ret)]
-    fn normalize_anon_const(
-        &mut self,
-        goal: Goal<'tcx, ty::NormalizesTo<'tcx>>,
-    ) -> QueryResult<'tcx> {
-        if let Some(normalized_const) = self.try_const_eval_resolve(
-            goal.param_env,
-            ty::UnevaluatedConst::new(goal.predicate.alias.def_id, goal.predicate.alias.args),
-            self.tcx()
-                .type_of(goal.predicate.alias.def_id)
-                .no_bound_vars()
-                .expect("const ty should not rely on other generics"),
-        ) {
-            self.eq(goal.param_env, normalized_const, goal.predicate.term.ct().unwrap())?;
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        } else {
-            self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
         }
     }
 }
