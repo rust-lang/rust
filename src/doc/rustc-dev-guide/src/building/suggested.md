@@ -32,6 +32,12 @@ This will ask `rust-analyzer` to use `./x check` to check the sources, and the
 stage 0 rustfmt to format them.
 The recommended `rust-analyzer` settings live at [`src/etc/rust_analyzer_settings.json`].
 
+The default `rust-analyzer.check.overrideCommand` command line will check all the crates and tools
+in the repository. If you are working on a specific part, you can override the command to only 
+check the part you are working on to save checking time. For example, if you are working on 
+the compiler, you can override the command to `x check compiler --json-output` to only 
+check the compiler part. You can run `x check --help --verbose` to see the available parts.
+
 If you have enough free disk space and you would like to be able to run `x` commands while
 rust-analyzer runs in the background, you can also add `--build-dir build-rust-analyzer` to the
 `overrideCommand` to avoid x locking.
