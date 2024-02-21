@@ -616,6 +616,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// LL |         fn hello(&self) where Self: 'static {}
     ///    |                                     ^^^^^^^
     /// ```
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
     fn explain_impl_static_obligation(
         &self,
         diag: &mut Diag<'_>,
