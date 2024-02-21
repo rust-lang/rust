@@ -22,8 +22,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// subtyping could occur. This also does the occurs checks, detecting whether
     /// instantiating `target_vid` would result in a cyclic type. We eagerly error
     /// in this case.
+    ///
+    /// This is *not* expected to be used anywhere except for an implementation of
+    /// `TypeRelation`. Do not use this, and instead please use `At::eq`, for all
+    /// other usecases (i.e. setting the value of a type var).
     #[instrument(level = "debug", skip(self, relation, target_is_expected))]
-    pub(super) fn instantiate_ty_var<R: ObligationEmittingRelation<'tcx>>(
+    pub fn instantiate_ty_var<R: ObligationEmittingRelation<'tcx>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
