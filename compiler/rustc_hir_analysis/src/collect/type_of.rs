@@ -78,12 +78,6 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 .expect("const parameter types cannot be generic");
         }
 
-        Node::TypeBinding(&TypeBinding { hir_id, .. }) => {
-            // FIXME(fmease): Reject “escaping” early-bound generic parameters.
-            // FIXME(fmease): Reject escaping late-bound vars.
-            return tcx.type_of_assoc_const_binding(hir_id).skip_binder().skip_binder();
-        }
-
         // This match arm is for when the def_id appears in a GAT whose
         // path can't be resolved without typechecking e.g.
         //
@@ -288,18 +282,6 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
             format!("const generic parameter not found in {generics:?} at position {arg_idx:?}"),
         );
     }
-}
-
-pub(super) fn type_of_assoc_const_binding<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_id: HirId,
-) -> ty::EarlyBinder<ty::Binder<'tcx, Ty<'tcx>>> {
-    let reported = tcx.dcx().delayed_bug(format!(
-        "attempt to obtain type of assoc const binding `{hir_id}` before \
-         it was resolved by `add_predicates_for_ast_type_binding`"
-    ));
-
-    ty::EarlyBinder::bind(ty::Binder::dummy(Ty::new_error(tcx, reported)))
 }
 
 fn get_path_containing_arg_in_pat<'hir>(

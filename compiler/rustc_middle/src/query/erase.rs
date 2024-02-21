@@ -193,10 +193,6 @@ impl<T: EraseType> EraseType for ty::EarlyBinder<T> {
     type Result = T::Result;
 }
 
-impl EraseType for ty::Binder<'_, Ty<'_>> {
-    type Result = [u8; size_of::<ty::Binder<'static, Ty<'static>>>()];
-}
-
 impl EraseType for ty::Binder<'_, ty::FnSig<'_>> {
     type Result = [u8; size_of::<ty::Binder<'static, ty::FnSig<'static>>>()];
 }

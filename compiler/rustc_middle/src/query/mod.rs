@@ -248,11 +248,6 @@ rustc_queries! {
         cycle_stash
     }
 
-    query type_of_assoc_const_binding(key: hir::HirId) -> ty::EarlyBinder<ty::Binder<'tcx, Ty<'tcx>>> {
-        desc { |tcx| "getting type of associated constant binding `{key:?}`" }
-        feedable
-    }
-
     query type_alias_is_lazy(key: DefId) -> bool {
         desc { |tcx|
             "computing whether `{path}` is a lazy type alias",

@@ -434,11 +434,20 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
             // Provide the resolved type of the associated constant to `type_of(AnonConst)`.
             if !speculative && let ty::AssocKind::Const = assoc_kind {
+                let hir::TypeBindingKind::Equality { term: hir::Term::Const(anon_const) } =
+                    binding.kind
+                else {
+                    bug!()
+                };
                 let ty = alias_ty.map_bound(|ty| tcx.type_of(ty.def_id).instantiate(tcx, ty.args));
                 // Since the arguments passed to the alias type above may contain early-bound
                 // generic parameters, the instantiated type may contain some as well.
                 // Therefore wrap it in `EarlyBinder`.
-                tcx.feed_type_of_assoc_const_binding(binding.hir_id, ty::EarlyBinder::bind(ty));
+                // FIXME(fmease): Reject escaping late-bound vars.
+                tcx.feed_anon_const_type(
+                    anon_const.def_id,
+                    ty::EarlyBinder::bind(ty.skip_binder()),
+                );
             }
 
             alias_ty
