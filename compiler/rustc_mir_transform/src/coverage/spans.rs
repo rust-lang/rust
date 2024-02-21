@@ -182,10 +182,9 @@ struct SpansRefiner {
     /// dominance between the `BasicCoverageBlock`s of equal `Span`s.
     sorted_spans_iter: std::vec::IntoIter<SpanFromMir>,
 
-    /// The current coverage span to compare to its `prev`, to possibly merge, discard, force the
-    /// discard of the `prev` (and or `pending_dups`), or keep both (with `prev` moved to
-    /// `pending_dups`). If `curr` is not discarded or merged, it becomes `prev` for the next
-    /// iteration.
+    /// The current coverage span to compare to its `prev`, to possibly merge, discard,
+    /// or cause `prev` to be modified or discarded.
+    /// If `curr` is not discarded or merged, it becomes `prev` for the next iteration.
     some_curr: Option<CurrCovspan>,
 
     /// The coverage span from a prior iteration; typically assigned from that iteration's `curr`.
@@ -332,8 +331,7 @@ impl SpansRefiner {
     /// If `prev`s span extends left of the closure (`curr`), carve out the closure's span from
     /// `prev`'s span. (The closure's coverage counters will be injected when processing the
     /// closure's own MIR.) Add the portion of the span to the left of the closure; and if the span
-    /// extends to the right of the closure, update `prev` to that portion of the span. For any
-    /// `pending_dups`, repeat the same process.
+    /// extends to the right of the closure, update `prev` to that portion of the span.
     fn carve_out_span_for_closure(&mut self) {
         let prev = self.prev();
         let curr = self.curr();
