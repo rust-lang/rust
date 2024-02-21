@@ -2627,6 +2627,7 @@ dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
  "ruzstd",
+ "wasmparser",
 ]
 
 [[package]]
@@ -6127,6 +6128,16 @@ name = "wasm-bindgen-shared"
 version = "0.2.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f186bd2dcf04330886ce82d6f33dd75a7bfcf69ecf5763b89fcde53b6ac9838"
+
+[[package]]
+name = "wasmparser"
+version = "0.118.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77f1154f1ab868e2a01d9834a805faca7bf8b50d041b4ca714d005d0dab1c50c"
+dependencies = [
+ "indexmap",
+ "semver",
+]
 
 [[package]]
 name = "web-sys"
