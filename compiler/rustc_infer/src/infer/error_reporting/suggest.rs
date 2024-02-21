@@ -298,11 +298,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn suggest_for_statments_as_exp(
+    pub(super) fn suggest_turning_stmt_into_expr(
         &self,
         cause: &ObligationCause<'tcx>,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
-        diag: &mut Diagnostic,
+        diag: &mut Diag<'_>,
     ) {
         let ty::error::ExpectedFound { expected, found } = exp_found;
         if !found.peel_refs().is_unit() {
@@ -365,18 +365,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
-        err: &mut Diagnostic,
+        diag: &mut Diag<'_>,
     ) -> bool {
         if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
             if let StatementAsExpression::NeedsBoxing = boxed {
-                err.span_suggestion_verbose(
+                diag.span_suggestion_verbose(
                     span_semi,
                     "consider removing this semicolon and boxing the expression",
                     "",
                     Applicability::HasPlaceholders,
                 );
             } else {
-                err.span_suggestion_short(
+                diag.span_suggestion_short(
                     span_semi,
                     "remove this semicolon to return this value",
                     "",
