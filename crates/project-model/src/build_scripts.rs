@@ -138,7 +138,7 @@ impl WorkspaceBuildScripts {
         toolchain: &Option<Version>,
         sysroot: Option<&Sysroot>,
     ) -> io::Result<WorkspaceBuildScripts> {
-        const RUST_1_62: Version = Version::new(1, 62, 0);
+        const RUST_1_75: Version = Version::new(1, 75, 0);
 
         let current_dir = match &config.invocation_location {
             InvocationLocation::Root(root) if config.run_build_script_command.is_some() => {
@@ -162,7 +162,7 @@ impl WorkspaceBuildScripts {
             progress,
         ) {
             Ok(WorkspaceBuildScripts { error: Some(error), .. })
-                if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_62) =>
+                if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_75) =>
             {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
@@ -172,7 +172,8 @@ impl WorkspaceBuildScripts {
                     &workspace.workspace_root().to_path_buf(),
                     sysroot,
                 )?;
-                cmd.args(["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
+
+                cmd.args(["--keep-going"]);
                 let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
                 res.error = Some(error);
                 Ok(res)
