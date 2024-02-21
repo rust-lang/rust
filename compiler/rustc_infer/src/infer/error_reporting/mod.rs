@@ -1935,6 +1935,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                         "the full type name has been written to '{}'",
                                         path.display(),
                                     ));
+                                    diag.note(format!("consider using `--verbose` to print the full type name to the console"));
                                 }
                             }
                         }

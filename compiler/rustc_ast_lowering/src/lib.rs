@@ -1636,9 +1636,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     if let Some(old_def_id) = self.orig_opt_local_def_id(param) {
                         old_def_id
                     } else {
-                        self.dcx()
-                            .span_delayed_bug(lifetime.ident.span, "no def-id for fresh lifetime");
-                        continue;
+                        self.dcx().span_bug(lifetime.ident.span, "no def-id for fresh lifetime");
                     }
                 }
 

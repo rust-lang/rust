@@ -76,16 +76,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
         if ty.is_never() {
-            if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                let reported = self.dcx().span_delayed_bug(
-                    expr.span,
-                    "expression with never type wound up being adjusted",
-                );
-                return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
-                    target.to_owned()
-                } else {
-                    Ty::new_error(self.tcx(), reported)
-                };
+            if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
+                self.dcx()
+                    .span_bug(expr.span, "expression with never type wound up being adjusted");
             }
 
             let adj_ty = self.next_ty_var(TypeVariableOrigin {
@@ -1322,10 +1315,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the LUB of the breaks (possibly ! if none); else, it
         // is nil. This makes sense because infinite loops
         // (which would have type !) are only possible iff we
-        // permit break with a value [1].
+        // permit break with a value.
         if ctxt.coerce.is_none() && !ctxt.may_break {
-            // [1]
-            self.dcx().span_delayed_bug(body.span, "no coercion, but loop may not break");
+            self.dcx().span_bug(body.span, "no coercion, but loop may not break");
         }
         ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| Ty::new_unit(self.tcx))
     }

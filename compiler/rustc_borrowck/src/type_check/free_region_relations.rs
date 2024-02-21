@@ -316,6 +316,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     .and(type_op::normalize::Normalize::new(ty))
                     .fully_perform(self.infcx, span)
                 else {
+                    // Note: this path is currently not reached in any test, so
+                    // any example that triggers this would be worth minimizing
+                    // and converting into a test.
                     tcx.dcx().span_delayed_bug(span, format!("failed to normalize {ty:?}"));
                     continue;
                 };
