@@ -1,4 +1,4 @@
-//! The `wasm32-wasi-preview2` target is the next evolution of the
+//! The `wasm32-wasip2` target is the next evolution of the
 //! wasm32-wasi target. While the wasi specification is still under
 //! active development, the {review 2 iteration is considered an "island
 //! of stability" that should allow users to rely on it indefinitely.
@@ -24,7 +24,7 @@ pub fn target() -> Target {
     let mut options = base::wasm::options();
 
     options.os = "wasi".into();
-    options.env = "preview2".into();
+    options.env = "p2".into();
     options.linker = Some("wasm-component-ld".into());
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();

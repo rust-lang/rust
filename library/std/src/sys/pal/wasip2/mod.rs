@@ -49,7 +49,7 @@ pub mod time;
 
 cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
-        compile_error!("The wasm32-wasi-preview2 target does not support atomics");
+        compile_error!("The wasm32-wasip2 target does not support atomics");
     } else {
         #[path = "../unsupported/locks/mod.rs"]
         pub mod locks;
