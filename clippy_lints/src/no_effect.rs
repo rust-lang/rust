@@ -43,10 +43,6 @@ declare_clippy_lint! {
     /// executed. However, as they have no effect and shouldn't be used further on, all they
     /// do is make the code less readable.
     ///
-    /// ### Known problems
-    /// Further usage of this variable is not checked, which can lead to false positives if it is
-    /// used later in the code.
-    ///
     /// ### Example
     /// ```rust,ignore
     /// let _i_serve_no_purpose = 1;
