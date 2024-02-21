@@ -17,6 +17,7 @@ use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
+use std::borrow::Cow;
 use std::cmp;
 use std::fmt;
 use std::num::NonZero;
@@ -268,7 +269,7 @@ pub struct LayoutCx<'tcx, C> {
 impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
-    fn delayed_bug(&self, txt: String) {
+    fn delayed_bug(&self, txt: impl Into<Cow<'static, str>>) {
         self.tcx.dcx().delayed_bug(txt);
     }
 
