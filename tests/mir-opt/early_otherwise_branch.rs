@@ -1,5 +1,8 @@
 // skip-filecheck
 //@ unit-test: EarlyOtherwiseBranch
+//@ compile-flags: -Zmir-enable-passes=+UninhabitedEnumBranching
+
+// We can't optimize it because y may be an invalid value.
 // EMIT_MIR early_otherwise_branch.opt1.EarlyOtherwiseBranch.diff
 fn opt1(x: Option<u32>, y: Option<u32>) -> u32 {
     match (x, y) {
@@ -12,7 +15,7 @@ fn opt1(x: Option<u32>, y: Option<u32>) -> u32 {
 fn opt2(x: Option<u32>, y: Option<u32>) -> u32 {
     match (x, y) {
         (Some(a), Some(b)) => 0,
-        (None, None) => 0,
+        (None, None) => 2,
         _ => 1,
     }
 }
@@ -22,6 +25,7 @@ fn opt2(x: Option<u32>, y: Option<u32>) -> u32 {
 fn opt3(x: Option<u32>, y: Option<bool>) -> u32 {
     match (x, y) {
         (Some(a), Some(b)) => 0,
+        (None, None) => 2,
         _ => 1,
     }
 }

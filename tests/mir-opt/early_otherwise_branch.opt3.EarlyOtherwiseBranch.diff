@@ -10,13 +10,14 @@
       let mut _5: std::option::Option<bool>;
       let mut _6: isize;
       let mut _7: isize;
-      let _8: u32;
-      let _9: bool;
-+     let mut _10: isize;
-+     let mut _11: bool;
+      let mut _8: isize;
+      let _9: u32;
+      let _10: bool;
++     let mut _11: isize;
++     let mut _12: bool;
       scope 1 {
-          debug a => _8;
-          debug b => _9;
+          debug a => _9;
+          debug b => _10;
       }
   
       bb0: {
@@ -28,49 +29,63 @@
           _3 = (move _4, move _5);
           StorageDead(_5);
           StorageDead(_4);
-          _7 = discriminant((_3.0: std::option::Option<u32>));
--         switchInt(move _7) -> [1: bb2, otherwise: bb1];
-+         StorageLive(_10);
-+         _10 = discriminant((_3.1: std::option::Option<bool>));
+          _8 = discriminant((_3.0: std::option::Option<u32>));
+-         switchInt(move _8) -> [0: bb2, 1: bb3, otherwise: bb7];
 +         StorageLive(_11);
-+         _11 = Ne(_7, move _10);
-+         StorageDead(_10);
-+         switchInt(move _11) -> [0: bb4, otherwise: bb1];
++         _11 = discriminant((_3.1: std::option::Option<bool>));
++         StorageLive(_12);
++         _12 = Ne(_8, move _11);
++         StorageDead(_11);
++         switchInt(move _12) -> [0: bb5, otherwise: bb1];
       }
   
       bb1: {
-+         StorageDead(_11);
++         StorageDead(_12);
           _0 = const 1_u32;
--         goto -> bb4;
-+         goto -> bb3;
+-         goto -> bb6;
++         goto -> bb4;
       }
   
       bb2: {
 -         _6 = discriminant((_3.1: std::option::Option<bool>));
--         switchInt(move _6) -> [1: bb3, otherwise: bb1];
+-         switchInt(move _6) -> [0: bb5, otherwise: bb1];
 -     }
 - 
 -     bb3: {
-          StorageLive(_8);
-          _8 = (((_3.0: std::option::Option<u32>) as Some).0: u32);
+-         _7 = discriminant((_3.1: std::option::Option<bool>));
+-         switchInt(move _7) -> [1: bb4, otherwise: bb1];
+-     }
+- 
+-     bb4: {
           StorageLive(_9);
-          _9 = (((_3.1: std::option::Option<bool>) as Some).0: bool);
+          _9 = (((_3.0: std::option::Option<u32>) as Some).0: u32);
+          StorageLive(_10);
+          _10 = (((_3.1: std::option::Option<bool>) as Some).0: bool);
           _0 = const 0_u32;
+          StorageDead(_10);
           StorageDead(_9);
-          StorageDead(_8);
--         goto -> bb4;
-+         goto -> bb3;
+-         goto -> bb6;
++         goto -> bb4;
       }
   
--     bb4: {
+-     bb5: {
 +     bb3: {
+          _0 = const 2_u32;
+-         goto -> bb6;
++         goto -> bb4;
+      }
+  
+-     bb6: {
++     bb4: {
           StorageDead(_3);
           return;
-+     }
-+ 
-+     bb4: {
-+         StorageDead(_11);
-+         switchInt(_7) -> [1: bb2, otherwise: bb1];
+      }
+  
+-     bb7: {
+-         unreachable;
++     bb5: {
++         StorageDead(_12);
++         switchInt(_8) -> [0: bb3, 1: bb2, otherwise: bb1];
       }
   }
   

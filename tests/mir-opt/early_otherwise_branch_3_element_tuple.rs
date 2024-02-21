@@ -1,10 +1,12 @@
 // skip-filecheck
 //@ unit-test: EarlyOtherwiseBranch
+//@ compile-flags: -Zmir-enable-passes=+UninhabitedEnumBranching
 
 // EMIT_MIR early_otherwise_branch_3_element_tuple.opt1.EarlyOtherwiseBranch.diff
 fn opt1(x: Option<u32>, y: Option<u32>, z: Option<u32>) -> u32 {
     match (x, y, z) {
         (Some(a), Some(b), Some(c)) => 0,
+        (None, None, None) => 0,
         _ => 1,
     }
 }

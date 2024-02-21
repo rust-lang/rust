@@ -11,6 +11,7 @@ use super::simplify::simplify_cfg;
 /// let y: Option<()>;
 /// match (x,y) {
 ///     (Some(_), Some(_)) => {0},
+///     (None, None) => {2},
 ///     _ => {1}
 /// }
 /// ```
@@ -23,10 +24,10 @@ use super::simplify::simplify_cfg;
 /// if discriminant_x == discriminant_y {
 ///     match x {
 ///         Some(_) => 0,
-///         _ => 1, // <----
-///     } //               | Actually the same bb
-/// } else { //            |
-///     1 // <--------------
+///         None => 2,
+///     }
+/// } else {
+///     1
 /// }
 /// ```
 ///
@@ -47,18 +48,18 @@ use super::simplify::simplify_cfg;
 ///                         |    |    |
 ///     =================   |    |    |
 ///     |      BBU      | <-|    |    |    ============================
-///     |---------------|   |    \-------> |            BBD           |
-///     |---------------|   |         |    |--------------------------|
-///     |  unreachable  |   |         |    |   _dl = discriminant(P)  |
-///     =================   |         |    |--------------------------|
-///                         |         |    |       switchInt(_dl)     |
-///     =================   |         |    |            d             | ---> BBD.2
+///     |---------------|        \-------> |            BBD           |
+///     |---------------|             |    |--------------------------|
+///     |  unreachable  |             |    |   _dl = discriminant(P)  |
+///     =================             |    |--------------------------|
+///                                   |    |       switchInt(_dl)     |
+///     =================             |    |            d             | ---> BBD.2
 ///     |      BB9      | <--------------- |         otherwise        |
 ///     |---------------|                  ============================
 ///     |      ...      |
 ///     =================
 /// ```
-/// Where the `otherwise` branch on `BB1` is permitted to either go to `BBU` or to `BB9`. In the
+/// Where the `otherwise` branch on `BB1` is permitted to either go to `BBU`. In the
 /// code:
 ///  - `BB1` is `parent` and `BBC, BBD` are children
 ///  - `P` is `child_place`
@@ -78,7 +79,7 @@ use super::simplify::simplify_cfg;
 ///     |---------------------|         |        |       switchInt(Q)       |
 ///     |     switchInt(_t)   |         |        |            c             | ---> BBC.2
 ///     |        false        | --------/        |            d             | ---> BBD.2
-///     |       otherwise     | ---------------- |         otherwise        |
+///     |       otherwise     |       /--------- |         otherwise        |
 ///     =======================       |          ============================
 ///                                   |
 ///     =================             |
@@ -219,37 +220,6 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
 /// Returns true if computing the discriminant of `place` may be hoisted out of the branch
 fn may_hoist<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, place: Place<'tcx>) -> bool {
-    // FIXME(JakobDegen): This is unsound. Someone could write code like this:
-    // ```rust
-    // let Q = val;
-    // if discriminant(P) == otherwise {
-    //     let ptr = &mut Q as *mut _ as *mut u8;
-    //     unsafe { *ptr = 10; } // Any invalid value for the type
-    // }
-    //
-    // match P {
-    //    A => match Q {
-    //        A => {
-    //            // code
-    //        }
-    //        _ => {
-    //            // don't use Q
-    //        }
-    //    }
-    //    _ => {
-    //        // don't use Q
-    //    }
-    // };
-    // ```
-    //
-    // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
-    // invalid value, which is UB.
-    //
-    // In order to fix this, we would either need to show that the discriminant computation of
-    // `place` is computed in all branches, including the `otherwise` branch, or we would need
-    // another analysis pass to determine that the place is fully initialized. It might even be best
-    // to have the hoisting be performed in a different pass and just do the CFG changing in this
-    // pass.
     for (place, proj) in place.iter_projections() {
         match proj {
             // Dereferencing in the computation of `place` might cause issues from one of two
@@ -315,18 +285,38 @@ fn evaluate_candidate<'tcx>(
         return None;
     };
     let parent_ty = parent_discr.ty(body.local_decls(), tcx);
-    let parent_dest = {
-        let poss = targets.otherwise();
-        // If the fallthrough on the parent is trivially unreachable, we can let the
-        // children choose the destination
-        if bbs[poss].statements.len() == 0
-            && bbs[poss].terminator().kind == TerminatorKind::Unreachable
-        {
-            None
-        } else {
-            Some(poss)
-        }
-    };
+    if !bbs[targets.otherwise()].is_empty_unreachable() {
+        // Someone could write code like this:
+        // ```rust
+        // let Q = val;
+        // if discriminant(P) == otherwise {
+        //     let ptr = &mut Q as *mut _ as *mut u8;
+        //     // Any invalid value for the type. It is possible to be opaque, such as in other functions.
+        //     unsafe { *ptr = 10; }
+        // }
+        //
+        // match P {
+        //    A => match Q {
+        //        A => {
+        //            // code
+        //        }
+        //        _ => {
+        //            // don't use Q
+        //        }
+        //    }
+        //    _ => {
+        //        // don't use Q
+        //    }
+        // };
+        // ```
+        //
+        // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
+        // invalid value, which is UB.
+        // In order to fix this, we would either need to show that the discriminant computation of
+        // `place` is computed in all branches.
+        // So we need the `otherwise` branch has no statements and an unreachable terminator.
+        return None;
+    }
     let (_, child) = targets.iter().next()?;
     let child_terminator = &bbs[child].terminator();
     let TerminatorKind::SwitchInt { targets: child_targets, discr: child_discr } =
@@ -344,7 +334,7 @@ fn evaluate_candidate<'tcx>(
     let (_, Rvalue::Discriminant(child_place)) = &**boxed else {
         return None;
     };
-    let destination = parent_dest.unwrap_or(child_targets.otherwise());
+    let destination = child_targets.otherwise();
 
     // Verify that the optimization is legal in general
     // We can hoist evaluating the child discriminant out of the branch
@@ -411,5 +401,5 @@ fn verify_candidate_branch<'tcx>(
     if let Some(_) = iter.next() {
         return false;
     }
-    return true;
+    true
 }
