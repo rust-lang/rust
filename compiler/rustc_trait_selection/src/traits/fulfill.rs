@@ -429,7 +429,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 // as the cause of an overflow.
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.selcx.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        DefineOpaqueTypes::No,
+                        // Only really excercised by generic_const_exprs
+                        DefineOpaqueTypes::Yes,
                         ct.ty(),
                         ty,
                     ) {
