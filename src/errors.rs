@@ -1,6 +1,5 @@
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
-    IntoDiagnosticArg, Level,
+    DiagCtxt, DiagnosticArgValue, Diag, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -112,12 +111,8 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 pub(crate) struct MissingFeatures;
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag = DiagnosticBuilder::new(
-            dcx,
-            level,
-            fluent::codegen_gcc_target_feature_disable_or_enable
-        );
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::codegen_gcc_target_feature_disable_or_enable);
         if let Some(span) = self.span {
             diag.span(span);
         };
