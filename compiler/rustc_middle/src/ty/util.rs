@@ -1643,6 +1643,10 @@ pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute)
 pub fn intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::IntrinsicDef> {
+    match tcx.def_kind(def_id) {
+        DefKind::Fn | DefKind::AssocFn => {}
+        _ => return None,
+    }
     if matches!(tcx.fn_sig(def_id).skip_binder().abi(), Abi::RustIntrinsic)
         || tcx.has_attr(def_id, sym::rustc_intrinsic)
     {
