@@ -1,4 +1,6 @@
-//! There are four type combiners: [Equate], [Sub], [Lub], and [Glb].
+//! There are four type combiners: [TypeRelating], [Lub], and [Glb],
+//! and `NllTypeRelating` in rustc_borrowck, which is only used for NLL.
+//!
 //! Each implements the trait [TypeRelation] and contains methods for
 //! combining two instances of various things and yielding a new instance.
 //! These combiner methods always yield a `Result<T>`. To relate two
@@ -22,10 +24,9 @@
 //! [TypeRelation::a_is_expected], so when dealing with contravariance
 //! this should be correctly updated.
 
-use super::equate::Equate;
 use super::glb::Glb;
 use super::lub::Lub;
-use super::sub::Sub;
+use super::type_relating::TypeRelating;
 use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
@@ -322,12 +323,12 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         &'a mut self,
         structurally_relate_aliases: StructurallyRelateAliases,
         a_is_expected: bool,
-    ) -> Equate<'a, 'infcx, 'tcx> {
-        Equate::new(self, structurally_relate_aliases, a_is_expected)
+    ) -> TypeRelating<'a, 'infcx, 'tcx> {
+        TypeRelating::new(self, a_is_expected, structurally_relate_aliases, ty::Invariant)
     }
 
-    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'tcx> {
-        Sub::new(self, a_is_expected)
+    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> TypeRelating<'a, 'infcx, 'tcx> {
+        TypeRelating::new(self, a_is_expected, StructurallyRelateAliases::No, ty::Covariant)
     }
 
     pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'tcx> {
@@ -367,19 +368,8 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     /// be used if control over the obligation causes is required.
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>);
 
-    /// Register an obligation that both types must be related to each other according to
-    /// the [`ty::AliasRelationDirection`] given by [`ObligationEmittingRelation::alias_relate_direction`]
-    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
-            a.into(),
-            b.into(),
-            self.alias_relate_direction(),
-        ))]);
-    }
-
-    /// Relation direction emitted for `AliasRelate` predicates, corresponding to the direction
-    /// of the relation.
-    fn alias_relate_direction(&self) -> ty::AliasRelationDirection;
+    /// Register `AliasRelate` obligation(s) that both types must be related to each other.
+    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>);
 }
 
 fn int_unification_error<'tcx>(

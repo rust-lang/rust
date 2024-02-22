@@ -1,0 +1,325 @@
+use super::combine::CombineFields;
+use crate::infer::{
+    DefineOpaqueTypes, ObligationEmittingRelation, StructurallyRelateAliases, SubregionOrigin,
+};
+use crate::traits::{Obligation, PredicateObligations};
+
+use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::TyVar;
+use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
+use std::mem;
+
+/// Enforce that `a` is equal to or a subtype of `b`.
+pub struct TypeRelating<'combine, 'a, 'tcx> {
+    fields: &'combine mut CombineFields<'a, 'tcx>,
+    a_is_expected: bool,
+    structurally_relate_aliases: StructurallyRelateAliases,
+    ambient_variance: ty::Variance,
+}
+
+impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
+    pub fn new(
+        f: &'combine mut CombineFields<'infcx, 'tcx>,
+        a_is_expected: bool,
+        structurally_relate_aliases: StructurallyRelateAliases,
+        ambient_variance: ty::Variance,
+    ) -> TypeRelating<'combine, 'infcx, 'tcx> {
+        TypeRelating { fields: f, a_is_expected, structurally_relate_aliases, ambient_variance }
+    }
+}
+
+impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
+    fn tag(&self) -> &'static str {
+        "TypeRelating"
+    }
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.fields.infcx.tcx
+    }
+
+    fn a_is_expected(&self) -> bool {
+        self.a_is_expected
+    }
+
+    fn with_cause<F, R>(&mut self, cause: Cause, f: F) -> R
+    where
+        F: FnOnce(&mut Self) -> R,
+    {
+        debug!("sub with_cause={:?}", cause);
+        let old_cause = mem::replace(&mut self.fields.cause, Some(cause));
+        let r = f(self);
+        debug!("sub old_cause={:?}", old_cause);
+        self.fields.cause = old_cause;
+        r
+    }
+
+    fn relate_with_variance<T: Relate<'tcx>>(
+        &mut self,
+        variance: ty::Variance,
+        _info: ty::VarianceDiagInfo<'tcx>,
+        a: T,
+        b: T,
+    ) -> RelateResult<'tcx, T> {
+        let old_ambient_variance = self.ambient_variance;
+        self.ambient_variance = self.ambient_variance.xform(variance);
+        debug!(?self.ambient_variance, "new ambient variance");
+
+        let r = if self.ambient_variance == ty::Bivariant { Ok(a) } else { self.relate(a, b) };
+
+        self.ambient_variance = old_ambient_variance;
+        r
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        if a == b {
+            return Ok(a);
+        }
+
+        let infcx = self.fields.infcx;
+        let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
+        let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+
+        match (a.kind(), b.kind()) {
+            (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
+                // Shouldn't have any LBR here, so we can safely put
+                // this under a binder below without fear of accidental
+                // capture.
+                assert!(!a.has_escaping_bound_vars());
+                assert!(!b.has_escaping_bound_vars());
+
+                match self.ambient_variance {
+                    ty::Covariant => {
+                        // can't make progress on `A <: B` if both A and B are
+                        // type variables, so record an obligation.
+                        self.fields.obligations.push(Obligation::new(
+                            self.tcx(),
+                            self.fields.trace.cause.clone(),
+                            self.fields.param_env,
+                            ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                                a_is_expected: self.a_is_expected,
+                                a,
+                                b,
+                            })),
+                        ));
+                    }
+                    ty::Contravariant => {
+                        // can't make progress on `B <: A` if both A and B are
+                        // type variables, so record an obligation.
+                        self.fields.obligations.push(Obligation::new(
+                            self.tcx(),
+                            self.fields.trace.cause.clone(),
+                            self.fields.param_env,
+                            ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                                a_is_expected: !self.a_is_expected,
+                                a: b,
+                                b: a,
+                            })),
+                        ));
+                    }
+                    ty::Invariant => {
+                        infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
+                    }
+                    ty::Bivariant => {
+                        unreachable!("Expected bivariance to be handled in relate_with_variance")
+                    }
+                }
+            }
+
+            (&ty::Infer(TyVar(a_vid)), _) => {
+                infcx.instantiate_ty_var(
+                    self,
+                    self.a_is_expected,
+                    a_vid,
+                    self.ambient_variance,
+                    b,
+                )?;
+            }
+            (_, &ty::Infer(TyVar(b_vid))) => {
+                infcx.instantiate_ty_var(
+                    self,
+                    !self.a_is_expected,
+                    b_vid,
+                    self.ambient_variance.xform(ty::Contravariant),
+                    a,
+                )?;
+            }
+
+            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
+                infcx.set_tainted_by_errors(e);
+                return Ok(Ty::new_error(self.tcx(), e));
+            }
+
+            (
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+            ) if a_def_id == b_def_id => {
+                infcx.super_combine_tys(self, a, b)?;
+            }
+
+            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+                if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
+                    && def_id.is_local()
+                    && !infcx.next_trait_solver() =>
+            {
+                self.fields.obligations.extend(
+                    infcx
+                        .handle_opaque_type(
+                            a,
+                            b,
+                            self.a_is_expected,
+                            &self.fields.trace.cause,
+                            self.param_env(),
+                        )?
+                        .obligations,
+                );
+            }
+
+            _ => {
+                infcx.super_combine_tys(self, a, b)?;
+            }
+        }
+
+        Ok(a)
+    }
+
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        debug!("{}.regions({:?}, {:?}) self.cause={:?}", self.tag(), a, b, self.fields.cause);
+
+        // FIXME -- we have more fine-grained information available
+        // from the "cause" field, we could perhaps give more tailored
+        // error messages.
+        let origin = SubregionOrigin::Subtype(Box::new(self.fields.trace.clone()));
+
+        match self.ambient_variance {
+            // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
+            ty::Covariant => {
+                self.fields
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
+                    .make_subregion(origin, b, a);
+            }
+            // Suptype(&'a u8, &'b u8) => Outlives('b: 'a) => SubRegion('a, 'b)
+            ty::Contravariant => {
+                self.fields
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
+                    .make_subregion(origin, a, b);
+            }
+            ty::Invariant => {
+                // The order of `make_eqregion` apparently matters.
+                self.fields
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
+                    .make_eqregion(origin, a, b);
+            }
+            ty::Bivariant => {
+                unreachable!("Expected bivariance to be handled in relate_with_variance")
+            }
+        }
+
+        Ok(a)
+    }
+
+    fn consts(
+        &mut self,
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        self.fields.infcx.super_combine_consts(self, a, b)
+    }
+
+    fn binders<T>(
+        &mut self,
+        a: ty::Binder<'tcx, T>,
+        b: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
+    where
+        T: Relate<'tcx>,
+    {
+        if a == b {
+            // Do nothing
+        } else if let Some(a) = a.no_bound_vars()
+            && let Some(b) = b.no_bound_vars()
+        {
+            self.relate(a, b)?;
+        } else {
+            match self.ambient_variance {
+                ty::Covariant => {
+                    self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
+                }
+                ty::Contravariant => {
+                    self.fields.higher_ranked_sub(b, a, !self.a_is_expected)?;
+                }
+                ty::Invariant => {
+                    self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
+                    self.fields.higher_ranked_sub(b, a, !self.a_is_expected)?;
+                }
+                ty::Bivariant => {
+                    unreachable!("Expected bivariance to be handled in relate_with_variance")
+                }
+            }
+        }
+
+        Ok(a)
+    }
+}
+
+impl<'tcx> ObligationEmittingRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.fields.trace.span()
+    }
+
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.fields.param_env
+    }
+
+    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
+        self.structurally_relate_aliases
+    }
+
+    fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
+        self.fields.register_predicates(obligations);
+    }
+
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+        self.fields.register_obligations(obligations);
+    }
+
+    fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
+        self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
+            ty::Variance::Covariant => ty::PredicateKind::AliasRelate(
+                a.into(),
+                b.into(),
+                ty::AliasRelationDirection::Subtype,
+            ),
+            // a :> b is b <: a
+            ty::Variance::Contravariant => ty::PredicateKind::AliasRelate(
+                b.into(),
+                a.into(),
+                ty::AliasRelationDirection::Subtype,
+            ),
+            ty::Variance::Invariant => ty::PredicateKind::AliasRelate(
+                a.into(),
+                b.into(),
+                ty::AliasRelationDirection::Equate,
+            ),
+            ty::Variance::Bivariant => {
+                unreachable!("Expected bivariance to be handled in relate_with_variance")
+            }
+        })]);
+    }
+}

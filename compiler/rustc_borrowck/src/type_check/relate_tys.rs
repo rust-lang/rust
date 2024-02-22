@@ -349,12 +349,15 @@ impl<'bccx, 'tcx> TypeRelation<'tcx> for NllTypeRelating<'_, 'bccx, 'tcx> {
 
         debug!(?self.ambient_variance);
         // In a bivariant context this always succeeds.
-        let r =
-            if self.ambient_variance == ty::Variance::Bivariant { a } else { self.relate(a, b)? };
+        let r = if self.ambient_variance == ty::Variance::Bivariant {
+            Ok(a)
+        } else {
+            self.relate(a, b)
+        };
 
         self.ambient_variance = old_ambient_variance;
 
-        Ok(r)
+        r
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -577,10 +580,6 @@ impl<'bccx, 'tcx> ObligationEmittingRelation<'tcx> for NllTypeRelating<'_, 'bccx
                 region_constraints: None,
             },
         );
-    }
-
-    fn alias_relate_direction(&self) -> ty::AliasRelationDirection {
-        unreachable!("manually overridden to handle ty::Variance::Contravariant ambient variance")
     }
 
     fn register_type_relate_obligation(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
