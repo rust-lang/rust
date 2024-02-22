@@ -703,7 +703,71 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Ref(..)
             | ty::Never
             | ty::Tuple(..) => self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty),
+
+            ty::Bound(ty::INNERMOST, bound_ty) => {
+                // For `?i` and `?f`, assemble all inherent bounds.
+                match self_ty.variables[bound_ty.var.as_usize()].kind {
+                    ty::CanonicalVarKind::Ty(kind) => match kind {
+                        ty::CanonicalTyVarKind::Int => {
+                            self.assemble_inherent_candidates_for_int_variable()
+                        }
+                        ty::CanonicalTyVarKind::Float => {
+                            self.assemble_inherent_candidates_for_float_variable()
+                        }
+                        _ => {}
+                    },
+                    _ => {}
+                }
+            }
             _ => {}
+        }
+    }
+
+    fn assemble_inherent_candidates_for_int_variable(&mut self) {
+        // HACK: For integer variables we have to manually look at all impls
+        // which have some integer as a self type.
+        use ty::fast_reject::SimplifiedType;
+        use ty::IntTy::*;
+        use ty::UintTy::*;
+        // This causes a compiler error if any new integer kinds are added.
+        let (I8 | I16 | I32 | I64 | I128 | Isize): ty::IntTy;
+        let (U8 | U16 | U32 | U64 | U128 | Usize): ty::UintTy;
+        let possible_integers = [
+            // signed integers
+            SimplifiedType::Int(I8),
+            SimplifiedType::Int(I16),
+            SimplifiedType::Int(I32),
+            SimplifiedType::Int(I64),
+            SimplifiedType::Int(I128),
+            SimplifiedType::Int(Isize),
+            // unsigned integers
+            SimplifiedType::Uint(U8),
+            SimplifiedType::Uint(U16),
+            SimplifiedType::Uint(U32),
+            SimplifiedType::Uint(U64),
+            SimplifiedType::Uint(U128),
+            SimplifiedType::Uint(Usize),
+        ];
+        for simp in possible_integers {
+            for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
+                self.assemble_inherent_impl_probe(impl_def_id);
+            }
+        }
+    }
+
+    fn assemble_inherent_candidates_for_float_variable(&mut self) {
+        // HACK: For float variables we have to manually look at all impls
+        // which have some float as a self type.
+        use ty::fast_reject::SimplifiedType;
+        // This causes a compiler error if any new float kinds are added.
+        let (ty::FloatTy::F32 | ty::FloatTy::F64);
+        let possible_floats =
+            [SimplifiedType::Float(ty::FloatTy::F32), SimplifiedType::Float(ty::FloatTy::F64)];
+
+        for simp in possible_floats {
+            for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter().flatten() {
+                self.assemble_inherent_impl_probe(impl_def_id);
+            }
         }
     }
 
