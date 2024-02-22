@@ -845,7 +845,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         other: &Self,
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Result<DiagnosticBuilder<'tcx>, ErrorGuaranteed> {
         if let Some(diag) = tcx
             .sess
             .dcx()
@@ -853,18 +853,19 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         {
             diag.cancel();
         }
+        (self.ty, other.ty).error_reported()?;
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
             TypeMismatchReason::ConflictType { span: self.span }
         } else {
             TypeMismatchReason::PreviousUse { span: self.span }
         };
-        tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
+        Ok(tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
             self_ty: self.ty,
             other_ty: other.ty,
             other_span: other.span,
             sub: sub_diag,
-        })
+        }))
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]

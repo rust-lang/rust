@@ -37,7 +37,6 @@ mod capture_tait_complex_pass {
     use super::*;
     type Opq0<'a> = impl Sized;
     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'b>>; // <- Note 'b
-    //~^ ERROR: concrete type differs from previous defining opaque type use
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
@@ -75,7 +74,6 @@ mod constrain_pass {
     use super::*;
     type Opq0<'a, 'b> = impl Sized;
     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'a, 'b>>;
-    //~^ ERROR concrete type differs
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`

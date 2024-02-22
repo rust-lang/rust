@@ -8,7 +8,6 @@ pub trait Trait {
 
 pub type Foo = impl for<'a> Trait<Assoc<'a> = FooAssoc<'a>>;
 pub type FooAssoc<'a> = impl Sized;
-//~^ ERROR: concrete type differs from previous defining opaque type use
 
 struct Struct;
 impl Trait for Struct {

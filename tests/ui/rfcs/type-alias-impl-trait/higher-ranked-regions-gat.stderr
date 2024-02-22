@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/higher-ranked-regions-gat.rs:18:18
+  --> $DIR/higher-ranked-regions-gat.rs:17:18
    |
 LL | pub type FooAssoc<'a> = impl Sized;
    |                   -- this generic parameter must be used with a generic lifetime parameter
@@ -7,18 +7,6 @@ LL | pub type FooAssoc<'a> = impl Sized;
 LL | const FOO: Foo = Struct;
    |                  ^^^^^^
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/higher-ranked-regions-gat.rs:10:25
-   |
-LL | pub type FooAssoc<'a> = impl Sized;
-   |                         ^^^^^^^^^^ expected `&'a u32`, got `{type error}`
-   |
-note: previous use here
-  --> $DIR/higher-ranked-regions-gat.rs:9:16
-   |
-LL | pub type Foo = impl for<'a> Trait<Assoc<'a> = FooAssoc<'a>>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0792`.
