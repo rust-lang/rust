@@ -246,6 +246,27 @@ pub fn elaborate_predicates_of<'tcx>(
     )
 }
 
+pub fn filter_predicates<'tcx>(
+    region: ty::Region<'tcx>,
+    check_ty: impl Fn(Ty<'tcx>) -> bool,
+) -> impl Fn((ty::Predicate<'tcx>, Span)) -> Option<Span> {
+    move |(pred, span)| {
+        let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder() else {
+            return None;
+        };
+        match clause {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r))
+                if r == region && check_ty(pred_ty) =>
+            {
+                Some(span)
+            }
+            ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(_, r)) if r == region => {
+                Some(span)
+            }
+            _ => None,
+        }
+    }
+}
 impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
     fn extend_deduped(&mut self, obligations: impl IntoIterator<Item = O>) {
         // Only keep those bounds that we haven't already seen.

@@ -53,7 +53,7 @@ use crate::errors::{self, ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::ExpectedFound;
-use crate::traits::util::elaborate_predicates_of;
+use crate::traits::util::{elaborate_predicates_of, filter_predicates};
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
     PredicateObligation,
@@ -498,20 +498,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     self.tcx,
                                     generic_param_scope.into(),
                                 ))
-                                .filter_map(|(pred, pred_span)| {
-                                    if let ty::PredicateKind::Clause(clause) =
-                                        pred.kind().skip_binder()
-                                        && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                                            _pred_ty,
-                                            r,
-                                        )) = clause
-                                        && r.kind() == ty::ReStatic
-                                    {
-                                        Some(pred_span)
-                                    } else {
-                                        None
-                                    }
-                                })
+                                .filter_map(filter_predicates(self.tcx.lifetimes.re_static, |_| {
+                                    true
+                                }))
                                 .collect();
 
                             if !spans.is_empty() {
@@ -2761,19 +2750,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             if let Some(def_id) = ptr.trait_ref.trait_def_id() {
                                 // Find the bounds on the trait with the lifetime that couldn't be met.
                                 let bindings: Vec<Span> = elaborate_predicates_of(self.tcx, def_id)
-                                    .filter_map(|(pred, pred_span)| {
-                                        if let ty::PredicateKind::Clause(clause) =
-                                            pred.kind().skip_binder()
-                                            && let ty::ClauseKind::TypeOutlives(
-                                                ty::OutlivesPredicate(_pred_ty, r),
-                                            ) = clause
-                                            && r == self.found_region
-                                        {
-                                            Some(pred_span)
-                                        } else {
-                                            None
-                                        }
-                                    })
+                                    .filter_map(filter_predicates(self.found_region, |_| true))
                                     .collect();
                                 if !bindings.is_empty() {
                                     self.lifetime_spans.insert(ptr.span);
@@ -2786,21 +2763,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     // definition of that associated item couldn't meet.
                     hir::TyKind::Path(hir::QPath::Resolved(Some(_), path)) => {
                         self.pred_spans = elaborate_predicates_of(self.tcx, path.res.def_id())
-                            .filter_map(|(pred, pred_span)| {
-                                match pred.kind().skip_binder() {
-                                    ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                                        ty::OutlivesPredicate(
-                                            // What should I filter this with?
-                                            _pred_ty,
-                                            r,
-                                        ),
-                                    )) if r == self.found_region => Some(pred_span),
-                                    ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
-                                        ty::OutlivesPredicate(_, r),
-                                    )) if r == self.found_region => Some(pred_span),
-                                    _ => None,
-                                }
-                            })
+                            .filter_map(filter_predicates(self.found_region, |_| true))
                             .collect();
                     }
                     _ => {}

@@ -19,7 +19,7 @@ use rustc_infer::infer::{
     error_reporting::unexpected_hidden_region_diagnostic,
     BoundRegionConversionTime, NllRegionVariableOrigin, RelateParamBound,
 };
-use rustc_infer::traits::util::elaborate_predicates_of;
+use rustc_infer::traits::util::{elaborate_predicates_of, filter_predicates};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::traits::ObligationCauseCode;
@@ -691,20 +691,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut predicates: Vec<Span> = elaborate_predicates_of(tcx, def_id)
             .chain(elaborate_predicates_of(tcx, parent))
             .chain(trait_preds)
-            .filter_map(|(pred, pred_span)| {
-                if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
-                    && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r)) = clause
-                    && r.kind() == ty::ReStatic
-                    && (self.infcx.can_eq(self.param_env, ty, pred_ty)
-                        || matches!(
+            .filter_map(filter_predicates(tcx.lifetimes.re_static, |pred_ty| {
+                self.infcx.can_eq(self.param_env, ty, pred_ty)
+                    || matches!(
                         pred_ty.kind(),
-                        ty::Param(name) if name.name == kw::SelfUpper))
-                {
-                    Some(pred_span)
-                } else {
-                    None
-                }
-            })
+                        ty::Param(name) if name.name == kw::SelfUpper)
+            }))
             .collect();
         debug!(?predicates);
 
