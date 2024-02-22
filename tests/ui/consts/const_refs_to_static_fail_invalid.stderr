@@ -9,12 +9,6 @@ LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
                HEX_DUMP
            }
 
-error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:15:9
-   |
-LL |         C => {}
-   |         ^
-
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refs_to_static_fail_invalid.rs:25:5
    |
@@ -26,12 +20,6 @@ LL |     const C: &i8 = unsafe { &S };
                HEX_DUMP
            }
 
-error: could not evaluate constant pattern
-  --> $DIR/const_refs_to_static_fail_invalid.rs:31:9
-   |
-LL |         C => {}
-   |         ^
-
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refs_to_static_fail_invalid.rs:39:5
    |
@@ -42,6 +30,18 @@ LL |     const C: &i32 = unsafe { &S_MUT };
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refs_to_static_fail_invalid.rs:15:9
+   |
+LL |         C => {}
+   |         ^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refs_to_static_fail_invalid.rs:31:9
+   |
+LL |         C => {}
+   |         ^
 
 error: could not evaluate constant pattern
   --> $DIR/const_refs_to_static_fail_invalid.rs:46:9

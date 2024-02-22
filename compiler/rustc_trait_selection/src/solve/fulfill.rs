@@ -109,7 +109,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         let mut errors = Vec::new();
         for i in 0.. {
             if !infcx.tcx.recursion_limit().value_within_limit(i) {
-                unimplemented!("overflowed on pending obligations: {:?}", self.obligations);
+                // Only return true errors that we have accumulated while processing;
+                // keep ambiguities around, *including overflows*, because they shouldn't
+                // be considered true errors.
+                return errors;
             }
 
             let mut has_changed = false;

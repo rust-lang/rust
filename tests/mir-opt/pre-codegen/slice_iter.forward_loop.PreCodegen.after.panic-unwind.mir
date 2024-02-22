@@ -39,7 +39,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                         scope 8 {
                             debug end_or_len => _11;
                         }
-                        scope 14 (inlined invalid::<T>) {
+                        scope 14 (inlined without_provenance::<T>) {
                             debug addr => _3;
                             scope 15 {
                             }

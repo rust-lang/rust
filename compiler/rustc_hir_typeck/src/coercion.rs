@@ -36,9 +36,7 @@
 //! ```
 
 use crate::FnCtxt;
-use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan,
-};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -1439,7 +1437,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
-        augment_error: impl FnOnce(&mut Diagnostic),
+        augment_error: impl FnOnce(&mut DiagnosticBuilder<'_>),
         label_unit_as_expected: bool,
     ) {
         self.coerce_inner(
@@ -1462,7 +1460,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         cause: &ObligationCause<'tcx>,
         expression: Option<&'tcx hir::Expr<'tcx>>,
         mut expression_ty: Ty<'tcx>,
-        augment_error: impl FnOnce(&mut Diagnostic),
+        augment_error: impl FnOnce(&mut DiagnosticBuilder<'_>),
         label_expression_as_expected: bool,
     ) {
         // Incorporate whatever type inference information we have
@@ -1673,7 +1671,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
     fn note_unreachable_loop_return(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         tcx: TyCtxt<'tcx>,
         expr: &hir::Expr<'tcx>,
         ret_exprs: &Vec<&'tcx hir::Expr<'tcx>>,

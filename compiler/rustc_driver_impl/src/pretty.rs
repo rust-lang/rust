@@ -2,6 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust as pprust_ast;
+use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::bug;
@@ -18,7 +19,6 @@ use std::fmt::Write;
 
 pub use self::PpMode::*;
 pub use self::PpSourceMode::*;
-use crate::abort_on_err;
 
 struct AstNoAnn;
 
@@ -243,7 +243,9 @@ impl<'tcx> PrintExtra<'tcx> {
 
 pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
     if ppm.needs_analysis() {
-        abort_on_err(ex.tcx().analysis(()), sess);
+        if ex.tcx().analysis(()).is_err() {
+            FatalError.raise();
+        }
     }
 
     let (src, src_name) = get_source(sess);
@@ -334,7 +336,9 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         ThirTree => {
             let tcx = ex.tcx();
             let mut out = String::new();
-            abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
+            if rustc_hir_analysis::check_crate(tcx).is_err() {
+                FatalError.raise();
+            }
             debug!("pretty printing THIR tree");
             for did in tcx.hir().body_owners() {
                 let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_tree(did));
@@ -344,7 +348,9 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         ThirFlat => {
             let tcx = ex.tcx();
             let mut out = String::new();
-            abort_on_err(rustc_hir_analysis::check_crate(tcx), tcx.sess);
+            if rustc_hir_analysis::check_crate(tcx).is_err() {
+                FatalError.raise();
+            }
             debug!("pretty printing THIR flat");
             for did in tcx.hir().body_owners() {
                 let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_flat(did));

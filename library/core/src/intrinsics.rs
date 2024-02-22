@@ -1155,7 +1155,7 @@ extern "rust-intrinsic" {
     ///
     /// Transmuting pointers *to* integers in a `const` context is [undefined behavior][ub],
     /// unless the pointer was originally created *from* an integer.
-    /// (That includes this function specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::invalid],
+    /// (That includes this function specifically, integer-to-pointer casts, and helpers like [`invalid`][crate::ptr::dangling],
     /// but also semantically-equivalent conversions such as punning through `repr(C)` union fields.)
     /// Any attempt to use the resulting value for integer operations will abort const-evaluation.
     /// (And even outside `const`, such transmutation is touching on many unspecified aspects of the
@@ -1898,6 +1898,46 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn frem_fast<T: Copy>(a: T, b: T) -> T;
 
+    /// Float addition that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fadd_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fsub_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fmul_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float division that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn fdiv_algebraic<T: Copy>(a: T, b: T) -> T;
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    ///
+    /// This intrinsic does not have a stable counterpart.
+    #[rustc_nounwind]
+    #[rustc_safe_intrinsic]
+    #[cfg(not(bootstrap))]
+    pub fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
+
     /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
     /// (<https://github.com/rust-lang/rust/issues/10184>)
     ///
@@ -2575,6 +2615,7 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// assertions disabled. This intrinsic is primarily used by [`assert_unsafe_precondition`].
 #[rustc_const_unstable(feature = "delayed_debug_assertions", issue = "none")]
 #[unstable(feature = "core_intrinsics", issue = "none")]
+#[inline(always)]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 pub(crate) const fn debug_assertions() -> bool {
     cfg!(debug_assertions)
@@ -2659,7 +2700,13 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 macro_rules! assert_unsafe_precondition {
     ($message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
         {
-            #[inline(never)]
+            // When the standard library is compiled with debug assertions, we want the check to inline for better performance.
+            // This is important when working on the compiler, which is compiled with debug assertions locally.
+            // When not compiled with debug assertions (so the precompiled std) we outline the check to minimize the compile
+            // time impact when debug assertions are disabled.
+            // It is not clear whether that is the best solution, see #120848.
+            #[cfg_attr(debug_assertions, inline(always))]
+            #[cfg_attr(not(debug_assertions), inline(never))]
             #[rustc_nounwind]
             fn precondition_check($($name:$ty),*) {
                 if !$e {
@@ -2693,6 +2740,7 @@ pub(crate) fn is_valid_allocation_size(size: usize, len: usize) -> bool {
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size` do *not* overlap.
+#[inline]
 pub(crate) fn is_nonoverlapping(src: *const (), dst: *const (), size: usize, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();

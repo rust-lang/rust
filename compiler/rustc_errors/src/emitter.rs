@@ -599,7 +599,7 @@ impl Emitter for SilentEmitter {
 
     fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
         if diag.level == Level::Fatal {
-            diag.note(self.fatal_note.clone());
+            diag.sub(Level::Note, self.fatal_note.clone(), MultiSpan::new());
             self.fatal_dcx.emit_diagnostic(diag);
         }
     }

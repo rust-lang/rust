@@ -35,12 +35,12 @@ fn assign_overlapping() {
 fn deref_invalid() {
     unsafe {
         // `addr_of!(*ptr)` is never UB.
-        let _val = addr_of!(*ptr::invalid::<i32>(0));
-        let _val = addr_of!(*ptr::invalid::<i32>(1)); // not aligned
+        let _val = addr_of!(*ptr::without_provenance::<i32>(0));
+        let _val = addr_of!(*ptr::without_provenance::<i32>(1)); // not aligned
 
         // Similarly, just mentioning the place is fine.
-        let _ = *ptr::invalid::<i32>(0);
-        let _ = *ptr::invalid::<i32>(1);
+        let _ = *ptr::without_provenance::<i32>(0);
+        let _ = *ptr::without_provenance::<i32>(1);
     }
 }
 

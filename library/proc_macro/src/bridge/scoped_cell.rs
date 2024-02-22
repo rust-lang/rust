@@ -2,7 +2,6 @@
 
 use std::cell::Cell;
 use std::mem;
-use std::ops::{Deref, DerefMut};
 
 /// Type lambda application, with a lifetime.
 #[allow(unused_lifetimes)]
@@ -14,23 +13,6 @@ pub trait ApplyL<'a> {
 pub trait LambdaL: for<'a> ApplyL<'a> {}
 
 impl<T: for<'a> ApplyL<'a>> LambdaL for T {}
-
-// HACK(eddyb) work around projection limitations with a newtype
-// FIXME(#52812) replace with `&'a mut <T as ApplyL<'b>>::Out`
-pub struct RefMutL<'a, 'b, T: LambdaL>(&'a mut <T as ApplyL<'b>>::Out);
-
-impl<'a, 'b, T: LambdaL> Deref for RefMutL<'a, 'b, T> {
-    type Target = <T as ApplyL<'b>>::Out;
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
-
-impl<'a, 'b, T: LambdaL> DerefMut for RefMutL<'a, 'b, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.0
-    }
-}
 
 pub struct ScopedCell<T: LambdaL>(Cell<<T as ApplyL<'static>>::Out>);
 
@@ -46,7 +28,7 @@ impl<T: LambdaL> ScopedCell<T> {
     pub fn replace<'a, R>(
         &self,
         replacement: <T as ApplyL<'a>>::Out,
-        f: impl for<'b, 'c> FnOnce(RefMutL<'b, 'c, T>) -> R,
+        f: impl for<'b, 'c> FnOnce(&'b mut <T as ApplyL<'c>>::Out) -> R,
     ) -> R {
         /// Wrapper that ensures that the cell always gets filled
         /// (with the original state, optionally changed by `f`),
@@ -71,7 +53,7 @@ impl<T: LambdaL> ScopedCell<T> {
             })),
         };
 
-        f(RefMutL(put_back_on_drop.value.as_mut().unwrap()))
+        f(put_back_on_drop.value.as_mut().unwrap())
     }
 
     /// Sets the value in `self` to `value` while running `f`.

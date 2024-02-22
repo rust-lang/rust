@@ -612,6 +612,10 @@
 # Indicates whether symbols should be stripped using `-Cstrip=symbols`.
 #strip = false
 
+# Forces frame pointers to be used with `-Cforce-frame-pointers`.
+# This can be helpful for profiling at a small performance cost.
+# frame-pointers = false
+
 # Indicates whether stack protectors should be used
 # via the unstable option `-Zstack-protector`.
 #

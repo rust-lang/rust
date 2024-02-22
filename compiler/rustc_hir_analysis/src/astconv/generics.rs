@@ -6,7 +6,7 @@ use crate::astconv::{
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan,
+    codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -47,7 +47,7 @@ fn generic_arg_mismatch_err(
         }
     }
 
-    let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut Diagnostic| {
+    let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut DiagnosticBuilder<'_>| {
         let suggestions = vec![
             (arg.span().shrink_to_lo(), String::from("{ ")),
             (arg.span().shrink_to_hi(), String::from(" }")),

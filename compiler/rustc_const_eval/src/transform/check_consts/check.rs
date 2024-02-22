@@ -249,7 +249,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
             for error in secondary_errors {
-                error.emit();
+                self.error_emitted = Some(error.emit());
             }
         } else {
             assert!(self.tcx.dcx().has_errors().is_some());
@@ -329,9 +329,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
     fn check_static(&mut self, def_id: DefId, span: Span) {
         if self.tcx.is_thread_local_static(def_id) {
-            self.tcx
-                .dcx()
-                .span_delayed_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
+            self.tcx.dcx().span_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         self.check_op_spanned(ops::StaticAccess, span)
     }

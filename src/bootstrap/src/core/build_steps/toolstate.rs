@@ -346,7 +346,7 @@ fn prepare_toolstate_config(token: &str) {
 
     let credential = format!("https://{token}:x-oauth-basic@github.com\n",);
     let git_credential_path = PathBuf::from(t!(env::var("HOME"))).join(".git-credentials");
-    t!(fs::write(&git_credential_path, credential));
+    t!(fs::write(git_credential_path, credential));
 }
 
 /// Reads the latest toolstate from the toolstate repo.
@@ -389,7 +389,7 @@ fn commit_toolstate_change(current_toolstate: &ToolstateData) {
         // Upload the test results (the new commit-to-toolstate mapping) to the toolstate repo.
         // This does *not* change the "current toolstate"; that only happens post-landing
         // via `src/ci/docker/publish_toolstate.sh`.
-        publish_test_results(&current_toolstate);
+        publish_test_results(current_toolstate);
 
         // `git commit` failing means nothing to commit.
         let status = t!(Command::new("git")

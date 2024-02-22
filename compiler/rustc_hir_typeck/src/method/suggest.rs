@@ -12,8 +12,8 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
-    MultiSpan, StashKey,
+    codes::*, pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, MultiSpan,
+    StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -34,8 +34,8 @@ use rustc_middle::ty::IsSuggestable;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Symbol;
 use rustc_span::{edit_distance, ExpnKind, FileName, MacroKind, Span};
+use rustc_span::{Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
@@ -369,6 +369,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let Some(file) = file {
             err.note(format!("the full type name has been written to '{}'", file.display()));
+            err.note(format!(
+                "consider using `--verbose` to print the full type name to the console"
+            ));
         }
 
         err
@@ -493,6 +496,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some(file) = ty_file {
             err.note(format!("the full type name has been written to '{}'", file.display(),));
+            err.note(format!(
+                "consider using `--verbose` to print the full type name to the console"
+            ));
         }
         if rcvr_ty.references_error() {
             err.downgrade_to_delayed_bug();
@@ -1127,7 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let label_span_not_found = |err: &mut Diagnostic| {
+        let label_span_not_found = |err: &mut DiagnosticBuilder<'_>| {
             if unsatisfied_predicates.is_empty() {
                 err.span_label(span, format!("{item_kind} not found in `{ty_str}`"));
                 let is_string_or_ref_str = match rcvr_ty.kind() {
@@ -1438,7 +1444,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_source: SelfSource<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
         span: Span,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         sources: &mut Vec<CandidateSource>,
         sugg_span: Option<Span>,
     ) {
@@ -1584,7 +1590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Look at all the associated functions without receivers in the type's inherent impls
     /// to look for builders that return `Self`, `Option<Self>` or `Result<Self, _>`.
-    fn find_builder_fn(&self, err: &mut Diagnostic, rcvr_ty: Ty<'tcx>) {
+    fn find_builder_fn(&self, err: &mut DiagnosticBuilder<'_>, rcvr_ty: Ty<'tcx>) {
         let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
             return;
         };
@@ -1597,7 +1603,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|item| matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter)
             .filter_map(|item| {
                 // Only assoc fns that return `Self`, `Option<Self>` or `Result<Self, _>`.
-                let ret_ty = self.tcx.fn_sig(item.def_id).skip_binder().output();
+                let ret_ty = self
+                    .tcx
+                    .fn_sig(item.def_id)
+                    .instantiate(self.tcx, self.fresh_args_for_item(DUMMY_SP, item.def_id))
+                    .output();
                 let ret_ty = self.tcx.instantiate_bound_regions_with_erased(ret_ty);
                 let ty::Adt(def, args) = ret_ty.kind() else {
                     return None;
@@ -1665,7 +1675,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// doesn't take a `self` receiver.
     fn suggest_associated_call_syntax(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         static_candidates: &Vec<CandidateSource>,
         rcvr_ty: Ty<'tcx>,
         source: SelfSource<'tcx>,
@@ -1809,7 +1819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
         item_name: Ident,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
     ) -> bool {
         let tcx = self.tcx;
         let field_receiver = self.autoderef(span, rcvr_ty).find_map(|(ty, _)| match ty.kind() {
@@ -2132,7 +2142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Suggest calling a method on a field i.e. `a.field.bar()` instead of `a.bar()`
     fn suggest_calling_method_on_field(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         source: SelfSource<'tcx>,
         span: Span,
         actual: Ty<'tcx>,
@@ -2212,7 +2222,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_unwrapping_inner_self(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         source: SelfSource<'tcx>,
         actual: Ty<'tcx>,
         item_name: Ident,
@@ -2401,7 +2411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn note_unmet_impls_on_type(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         errors: Vec<FulfillmentError<'tcx>>,
         suggest_derive: bool,
     ) {
@@ -2484,7 +2494,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn note_predicate_source_and_get_derives(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         unsatisfied_predicates: &[(
             ty::Predicate<'tcx>,
             Option<ty::Predicate<'tcx>>,
@@ -2566,7 +2576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn suggest_derive(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         unsatisfied_predicates: &[(
             ty::Predicate<'tcx>,
             Option<ty::Predicate<'tcx>>,
@@ -2602,7 +2612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn note_derefed_ty_has_method(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         self_source: SelfSource<'tcx>,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
@@ -2682,7 +2692,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_await_before_method(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         item_name: Ident,
         ty: Ty<'tcx>,
         call: &hir::Expr<'_>,
@@ -2705,7 +2715,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_use_candidates(&self, err: &mut Diagnostic, msg: String, candidates: Vec<DefId>) {
+    fn suggest_use_candidates(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        msg: String,
+        candidates: Vec<DefId>,
+    ) {
         let parent_map = self.tcx.visible_parent_map(());
 
         // Separate out candidates that must be imported with a glob, because they are named `_`
@@ -2752,7 +2767,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_valid_traits(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         valid_out_of_scope_traits: Vec<DefId>,
         explain: bool,
     ) -> bool {
@@ -2793,7 +2808,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_traits_to_import(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         span: Span,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
@@ -3332,7 +3347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// FIXME: currently not working for suggesting `map_or_else`, see #102408
     pub(crate) fn suggest_else_fn_with_closure(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
         found: Ty<'tcx>,
         expected: Ty<'tcx>,
@@ -3458,7 +3473,7 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 
 fn print_disambiguation_help<'tcx>(
     tcx: TyCtxt<'tcx>,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     source: SelfSource<'tcx>,
     args: Option<&'tcx [hir::Expr<'tcx>]>,
     trait_ref: ty::TraitRef<'tcx>,

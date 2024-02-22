@@ -1,5 +1,8 @@
 #![feature(const_mut_refs)]
 
+//@ normalize-stderr-test "\(size: ., align: .\)" -> ""
+//@ normalize-stderr-test " +│ ╾─+╼" -> ""
+
 static X: i32 = 1;
 const C: i32 = 2;
 static mut M: i32 = 3;
@@ -14,5 +17,6 @@ static CONST_REF: &'static mut i32 = &mut C; //~ ERROR mutable references are no
 
 static STATIC_MUT_REF: &'static mut i32 = unsafe { &mut M };
 //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
+//~| ERROR undefined behavior
 
 fn main() {}

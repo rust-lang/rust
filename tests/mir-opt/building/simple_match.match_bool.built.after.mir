@@ -6,7 +6,7 @@ fn match_bool(_1: bool) -> usize {
 
     bb0: {
         PlaceMention(_1);
-        switchInt(_1) -> [0: bb2, otherwise: bb3];
+        switchInt(_1) -> [0: bb2, otherwise: bb4];
     }
 
     bb1: {
@@ -16,19 +16,27 @@ fn match_bool(_1: bool) -> usize {
 
     bb2: {
         _0 = const 20_usize;
-        goto -> bb5;
+        goto -> bb7;
     }
 
     bb3: {
-        falseEdge -> [real: bb4, imaginary: bb2];
+        goto -> bb1;
     }
 
     bb4: {
-        _0 = const 10_usize;
-        goto -> bb5;
+        falseEdge -> [real: bb6, imaginary: bb2];
     }
 
     bb5: {
+        goto -> bb2;
+    }
+
+    bb6: {
+        _0 = const 10_usize;
+        goto -> bb7;
+    }
+
+    bb7: {
         return;
     }
 }

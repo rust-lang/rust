@@ -12,7 +12,7 @@ use crate::iter::{
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
-use crate::ptr::{self, invalid, invalid_mut, NonNull};
+use crate::ptr::{self, without_provenance, without_provenance_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
 
@@ -67,7 +67,7 @@ pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
-    /// For ZSTs, this is `ptr::invalid(len)`.
+    /// For ZSTs, this is `ptr::dangling(len)`.
     end_or_len: *const T,
     _marker: PhantomData<&'a T>,
 }
@@ -91,7 +91,8 @@ impl<'a, T> Iter<'a, T> {
         let ptr: NonNull<T> = NonNull::from(slice).cast();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
-            let end_or_len = if T::IS_ZST { invalid(len) } else { ptr.as_ptr().add(len) };
+            let end_or_len =
+                if T::IS_ZST { without_provenance(len) } else { ptr.as_ptr().add(len) };
 
             Self { ptr, end_or_len, _marker: PhantomData }
         }
@@ -189,7 +190,7 @@ pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
     /// For non-ZSTs, the non-null pointer to the past-the-end element.
     ///
-    /// For ZSTs, this is `ptr::invalid_mut(len)`.
+    /// For ZSTs, this is `ptr::without_provenance_mut(len)`.
     end_or_len: *mut T,
     _marker: PhantomData<&'a mut T>,
 }
@@ -228,7 +229,8 @@ impl<'a, T> IterMut<'a, T> {
         // See the `next_unchecked!` and `is_empty!` macros as well as the
         // `post_inc_start` method for more information.
         unsafe {
-            let end_or_len = if T::IS_ZST { invalid_mut(len) } else { ptr.as_ptr().add(len) };
+            let end_or_len =
+                if T::IS_ZST { without_provenance_mut(len) } else { ptr.as_ptr().add(len) };
 
             Self { ptr, end_or_len, _marker: PhantomData }
         }

@@ -340,6 +340,46 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn fadd_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn fsub_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn fmul_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFMul(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn fdiv_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFDiv(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
+    fn frem_algebraic(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
+        unsafe {
+            let instr = llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, UNNAMED);
+            llvm::LLVMRustSetAlgebraicMath(instr);
+            instr
+        }
+    }
+
     fn checked_binop(
         &mut self,
         oop: OverflowOp,
@@ -1327,17 +1367,17 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fmul(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe { llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src) }
     }
-    pub fn vector_reduce_fadd_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub fn vector_reduce_fadd_algebraic(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
-            llvm::LLVMRustSetFastMath(instr);
+            llvm::LLVMRustSetAlgebraicMath(instr);
             instr
         }
     }
-    pub fn vector_reduce_fmul_fast(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
+    pub fn vector_reduce_fmul_algebraic(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
         unsafe {
             let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
-            llvm::LLVMRustSetFastMath(instr);
+            llvm::LLVMRustSetAlgebraicMath(instr);
             instr
         }
     }

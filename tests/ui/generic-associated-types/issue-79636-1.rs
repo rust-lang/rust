@@ -15,7 +15,6 @@ where
     //~^ ERROR: missing generics for associated type `Monad::Wrapped`
 {
     outer.bind(|inner| inner)
-    //~^ ERROR type annotations needed
 }
 
 fn main() {

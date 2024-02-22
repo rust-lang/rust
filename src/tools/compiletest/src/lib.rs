@@ -745,7 +745,7 @@ fn make_test(
     let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
         vec![None]
     } else {
-        early_props.revisions.iter().map(Some).collect()
+        early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
     };
 
     revisions
@@ -753,20 +753,13 @@ fn make_test(
         .map(|revision| {
             let src_file =
                 std::fs::File::open(&test_path).expect("open test file to parse ignores");
-            let cfg = revision.map(|v| &**v);
             let test_name = crate::make_test_name(&config, testpaths, revision);
             let mut desc = make_test_description(
-                &config, cache, test_name, &test_path, src_file, cfg, poisoned,
+                &config, cache, test_name, &test_path, src_file, revision, poisoned,
             );
             // Ignore tests that already run and are up to date with respect to inputs.
             if !config.force_rerun {
-                desc.ignore |= is_up_to_date(
-                    &config,
-                    testpaths,
-                    &early_props,
-                    revision.map(|s| s.as_str()),
-                    inputs,
-                );
+                desc.ignore |= is_up_to_date(&config, testpaths, &early_props, revision, inputs);
             }
             test::TestDescAndFn {
                 desc,
@@ -879,7 +872,7 @@ impl Stamp {
 fn make_test_name(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&String>,
+    revision: Option<&str>,
 ) -> test::TestName {
     // Print the name of the file, relative to the repository root.
     // `src_base` looks like `/path/to/rust/tests/ui`
@@ -907,11 +900,11 @@ fn make_test_name(
 fn make_test_closure(
     config: Arc<Config>,
     testpaths: &TestPaths,
-    revision: Option<&String>,
+    revision: Option<&str>,
 ) -> test::TestFn {
     let config = config.clone();
     let testpaths = testpaths.clone();
-    let revision = revision.cloned();
+    let revision = revision.map(str::to_owned);
     test::DynTestFn(Box::new(move || {
         runtest::run(config, &testpaths, revision.as_deref());
         Ok(())

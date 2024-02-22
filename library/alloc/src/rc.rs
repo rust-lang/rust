@@ -2804,7 +2804,9 @@ impl<T> Weak<T> {
     #[must_use]
     pub const fn new() -> Weak<T> {
         Weak {
-            ptr: unsafe { NonNull::new_unchecked(ptr::invalid_mut::<RcBox<T>>(usize::MAX)) },
+            ptr: unsafe {
+                NonNull::new_unchecked(ptr::without_provenance_mut::<RcBox<T>>(usize::MAX))
+            },
             alloc: Global,
         }
     }
@@ -2829,7 +2831,9 @@ impl<T, A: Allocator> Weak<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(alloc: A) -> Weak<T, A> {
         Weak {
-            ptr: unsafe { NonNull::new_unchecked(ptr::invalid_mut::<RcBox<T>>(usize::MAX)) },
+            ptr: unsafe {
+                NonNull::new_unchecked(ptr::without_provenance_mut::<RcBox<T>>(usize::MAX))
+            },
             alloc,
         }
     }

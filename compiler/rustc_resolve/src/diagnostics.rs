@@ -7,7 +7,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     codes::*, pluralize, report_ambiguity_error, struct_span_code_err, Applicability, DiagCtxt,
-    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
@@ -360,7 +360,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// ```
     fn add_suggestion_for_rename_of_use(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         name: Symbol,
         import: Import<'_>,
         binding_span: Span,
@@ -436,7 +436,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// as characters expected by span manipulations won't be present.
     fn add_suggestion_for_duplicate_nested_use(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         import: Import<'_>,
         binding_span: Span,
     ) {
@@ -1399,7 +1399,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn unresolved_macro_suggestions(
         &mut self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         macro_kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
@@ -1515,7 +1515,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     pub(crate) fn add_typo_suggestion(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         suggestion: Option<TypoSuggestion>,
         span: Span,
     ) -> bool {
@@ -2461,7 +2461,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Finds a cfg-ed out item inside `module` with the matching name.
     pub(crate) fn find_cfg_stripped(
         &mut self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         segment: &Symbol,
         module: DefId,
     ) {
@@ -2670,7 +2670,7 @@ pub(crate) enum DiagnosticMode {
 
 pub(crate) fn import_candidates(
     tcx: TyCtxt<'_>,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
@@ -2696,7 +2696,7 @@ pub(crate) fn import_candidates(
 /// found and suggested, returns `true`, otherwise returns `false`.
 fn show_candidates(
     tcx: TyCtxt<'_>,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],

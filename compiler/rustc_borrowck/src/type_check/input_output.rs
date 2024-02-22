@@ -154,8 +154,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if argument_index + 1 >= body.local_decls.len() {
                 self.tcx()
                     .dcx()
-                    .span_delayed_bug(body.span, "found more normalized_input_ty than local_decls");
-                break;
+                    .span_bug(body.span, "found more normalized_input_ty than local_decls");
             }
 
             // In MIR, argument N is stored in local N+1.

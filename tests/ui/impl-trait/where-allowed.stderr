@@ -17,7 +17,7 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    |                                                 outer `impl Trait`
 
 error[E0658]: `impl Trait` in associated types is unstable
-  --> $DIR/where-allowed.rs:123:16
+  --> $DIR/where-allowed.rs:122:16
    |
 LL |     type Out = impl Debug;
    |                ^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     type Out = impl Debug;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/where-allowed.rs:160:23
+  --> $DIR/where-allowed.rs:159:23
    |
 LL | type InTypeAlias<R> = impl Debug;
    |                       ^^^^^^^^^^
@@ -37,7 +37,7 @@ LL | type InTypeAlias<R> = impl Debug;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/where-allowed.rs:163:39
+  --> $DIR/where-allowed.rs:162:39
    |
 LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    |                                       ^^^^^^^^^^
@@ -127,7 +127,7 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in the parameters of `Fn` trait bounds
-  --> $DIR/where-allowed.rs:69:38
+  --> $DIR/where-allowed.rs:68:38
    |
 LL | fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
    |                                      ^^^^^^^^^^
@@ -135,7 +135,7 @@ LL | fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in the return type of `Fn` trait bounds
-  --> $DIR/where-allowed.rs:73:40
+  --> $DIR/where-allowed.rs:72:40
    |
 LL | fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
    |                                        ^^^^^^^^^^
@@ -143,7 +143,7 @@ LL | fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:87:32
+  --> $DIR/where-allowed.rs:86:32
    |
 LL | struct InBraceStructField { x: impl Debug }
    |                                ^^^^^^^^^^
@@ -151,7 +151,7 @@ LL | struct InBraceStructField { x: impl Debug }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:91:41
+  --> $DIR/where-allowed.rs:90:41
    |
 LL | struct InAdtInBraceStructField { x: Vec<impl Debug> }
    |                                         ^^^^^^^^^^
@@ -159,7 +159,7 @@ LL | struct InAdtInBraceStructField { x: Vec<impl Debug> }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:95:27
+  --> $DIR/where-allowed.rs:94:27
    |
 LL | struct InTupleStructField(impl Debug);
    |                           ^^^^^^^^^^
@@ -167,7 +167,7 @@ LL | struct InTupleStructField(impl Debug);
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:100:25
+  --> $DIR/where-allowed.rs:99:25
    |
 LL |     InBraceVariant { x: impl Debug },
    |                         ^^^^^^^^^^
@@ -175,7 +175,7 @@ LL |     InBraceVariant { x: impl Debug },
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:102:20
+  --> $DIR/where-allowed.rs:101:20
    |
 LL |     InTupleVariant(impl Debug),
    |                    ^^^^^^^^^^
@@ -183,7 +183,7 @@ LL |     InTupleVariant(impl Debug),
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in `extern fn` parameters
-  --> $DIR/where-allowed.rs:144:33
+  --> $DIR/where-allowed.rs:143:33
    |
 LL |     fn in_foreign_parameters(_: impl Debug);
    |                                 ^^^^^^^^^^
@@ -191,7 +191,7 @@ LL |     fn in_foreign_parameters(_: impl Debug);
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in `extern fn` return types
-  --> $DIR/where-allowed.rs:147:31
+  --> $DIR/where-allowed.rs:146:31
    |
 LL |     fn in_foreign_return() -> impl Debug;
    |                               ^^^^^^^^^^
@@ -199,7 +199,7 @@ LL |     fn in_foreign_return() -> impl Debug;
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in `fn` pointer return types
-  --> $DIR/where-allowed.rs:163:39
+  --> $DIR/where-allowed.rs:162:39
    |
 LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    |                                       ^^^^^^^^^^
@@ -207,7 +207,7 @@ LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in traits
-  --> $DIR/where-allowed.rs:168:16
+  --> $DIR/where-allowed.rs:167:16
    |
 LL | impl PartialEq<impl Debug> for () {
    |                ^^^^^^^^^^
@@ -215,7 +215,7 @@ LL | impl PartialEq<impl Debug> for () {
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in impl headers
-  --> $DIR/where-allowed.rs:173:24
+  --> $DIR/where-allowed.rs:172:24
    |
 LL | impl PartialEq<()> for impl Debug {
    |                        ^^^^^^^^^^
@@ -223,7 +223,7 @@ LL | impl PartialEq<()> for impl Debug {
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in impl headers
-  --> $DIR/where-allowed.rs:178:6
+  --> $DIR/where-allowed.rs:177:6
    |
 LL | impl impl Debug {
    |      ^^^^^^^^^^
@@ -231,7 +231,7 @@ LL | impl impl Debug {
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in impl headers
-  --> $DIR/where-allowed.rs:184:24
+  --> $DIR/where-allowed.rs:183:24
    |
 LL | impl InInherentImplAdt<impl Debug> {
    |                        ^^^^^^^^^^
@@ -239,7 +239,7 @@ LL | impl InInherentImplAdt<impl Debug> {
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in bounds
-  --> $DIR/where-allowed.rs:190:11
+  --> $DIR/where-allowed.rs:189:11
    |
 LL |     where impl Debug: Debug
    |           ^^^^^^^^^^
@@ -247,7 +247,7 @@ LL |     where impl Debug: Debug
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in bounds
-  --> $DIR/where-allowed.rs:197:15
+  --> $DIR/where-allowed.rs:196:15
    |
 LL |     where Vec<impl Debug>: Debug
    |               ^^^^^^^^^^
@@ -255,7 +255,7 @@ LL |     where Vec<impl Debug>: Debug
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in bounds
-  --> $DIR/where-allowed.rs:204:24
+  --> $DIR/where-allowed.rs:203:24
    |
 LL |     where T: PartialEq<impl Debug>
    |                        ^^^^^^^^^^
@@ -263,7 +263,7 @@ LL |     where T: PartialEq<impl Debug>
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in the parameters of `Fn` trait bounds
-  --> $DIR/where-allowed.rs:211:17
+  --> $DIR/where-allowed.rs:210:17
    |
 LL |     where T: Fn(impl Debug)
    |                 ^^^^^^^^^^
@@ -271,7 +271,7 @@ LL |     where T: Fn(impl Debug)
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in the return type of `Fn` trait bounds
-  --> $DIR/where-allowed.rs:218:22
+  --> $DIR/where-allowed.rs:217:22
    |
 LL |     where T: Fn() -> impl Debug
    |                      ^^^^^^^^^^
@@ -279,7 +279,7 @@ LL |     where T: Fn() -> impl Debug
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in generic parameter defaults
-  --> $DIR/where-allowed.rs:224:40
+  --> $DIR/where-allowed.rs:223:40
    |
 LL | struct InStructGenericParamDefault<T = impl Debug>(T);
    |                                        ^^^^^^^^^^
@@ -287,7 +287,7 @@ LL | struct InStructGenericParamDefault<T = impl Debug>(T);
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in generic parameter defaults
-  --> $DIR/where-allowed.rs:228:36
+  --> $DIR/where-allowed.rs:227:36
    |
 LL | enum InEnumGenericParamDefault<T = impl Debug> { Variant(T) }
    |                                    ^^^^^^^^^^
@@ -295,7 +295,7 @@ LL | enum InEnumGenericParamDefault<T = impl Debug> { Variant(T) }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in generic parameter defaults
-  --> $DIR/where-allowed.rs:232:38
+  --> $DIR/where-allowed.rs:231:38
    |
 LL | trait InTraitGenericParamDefault<T = impl Debug> {}
    |                                      ^^^^^^^^^^
@@ -303,7 +303,7 @@ LL | trait InTraitGenericParamDefault<T = impl Debug> {}
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in generic parameter defaults
-  --> $DIR/where-allowed.rs:236:41
+  --> $DIR/where-allowed.rs:235:41
    |
 LL | type InTypeAliasGenericParamDefault<T = impl Debug> = T;
    |                                         ^^^^^^^^^^
@@ -311,7 +311,7 @@ LL | type InTypeAliasGenericParamDefault<T = impl Debug> = T;
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in generic parameter defaults
-  --> $DIR/where-allowed.rs:240:11
+  --> $DIR/where-allowed.rs:239:11
    |
 LL | impl <T = impl Debug> T {}
    |           ^^^^^^^^^^
@@ -319,7 +319,7 @@ LL | impl <T = impl Debug> T {}
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in generic parameter defaults
-  --> $DIR/where-allowed.rs:247:40
+  --> $DIR/where-allowed.rs:246:40
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                        ^^^^^^^^^^
@@ -327,7 +327,7 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/where-allowed.rs:253:29
+  --> $DIR/where-allowed.rs:252:29
    |
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
@@ -335,7 +335,7 @@ LL |     let _in_local_variable: impl Fn() = || {};
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in closure return types
-  --> $DIR/where-allowed.rs:255:46
+  --> $DIR/where-allowed.rs:254:46
    |
 LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
@@ -343,7 +343,7 @@ LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:240:7
+  --> $DIR/where-allowed.rs:239:7
    |
 LL | impl <T = impl Debug> T {}
    |       ^^^^^^^^^^^^^^
@@ -353,7 +353,7 @@ LL | impl <T = impl Debug> T {}
    = note: `#[deny(invalid_type_param_default)]` on by default
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:247:36
+  --> $DIR/where-allowed.rs:246:36
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                    ^^^^^^^^^^^^^^
@@ -362,7 +362,7 @@ LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
 error[E0118]: no nominal type found for inherent implementation
-  --> $DIR/where-allowed.rs:240:1
+  --> $DIR/where-allowed.rs:239:1
    |
 LL | impl <T = impl Debug> T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^ impl requires a nominal type
@@ -377,14 +377,8 @@ LL | fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!
    |
    = note: cannot satisfy `_: Debug`
 
-error[E0282]: type annotations needed
-  --> $DIR/where-allowed.rs:59:49
-   |
-LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
-   |                                                 ^^^^^^^^^^^^^^^^^^^ cannot infer type
-
 error[E0283]: type annotations needed
-  --> $DIR/where-allowed.rs:65:46
+  --> $DIR/where-allowed.rs:64:46
    |
 LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
@@ -396,7 +390,7 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
 
 error[E0599]: no function or associated item named `into_vec` found for slice `[_]` in the current scope
-  --> $DIR/where-allowed.rs:82:5
+  --> $DIR/where-allowed.rs:81:5
    |
 LL |     vec![vec![0; 10], vec![12; 7], vec![8; 3]]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `[_]`
@@ -404,7 +398,7 @@ LL |     vec![vec![0; 10], vec![12; 7], vec![8; 3]]
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0053]: method `in_trait_impl_return` has an incompatible type for trait
-  --> $DIR/where-allowed.rs:130:34
+  --> $DIR/where-allowed.rs:129:34
    |
 LL |     type Out = impl Debug;
    |                ---------- the expected opaque type
@@ -416,7 +410,7 @@ LL |     fn in_trait_impl_return() -> impl Debug { () }
    |                                  help: change the output type to match the trait: `<() as DummyTrait>::Out`
    |
 note: type in trait
-  --> $DIR/where-allowed.rs:120:34
+  --> $DIR/where-allowed.rs:119:34
    |
 LL |     fn in_trait_impl_return() -> Self::Out;
    |                                  ^^^^^^^^^
@@ -425,14 +419,14 @@ LL |     fn in_trait_impl_return() -> Self::Out;
    = note: distinct uses of `impl Trait` result in different opaque types
 
 error: unconstrained opaque type
-  --> $DIR/where-allowed.rs:123:16
+  --> $DIR/where-allowed.rs:122:16
    |
 LL |     type Out = impl Debug;
    |                ^^^^^^^^^^
    |
    = note: `Out` must be used in combination with a concrete type within the same impl
 
-error: aborting due to 51 previous errors
+error: aborting due to 50 previous errors
 
-Some errors have detailed explanations: E0053, E0118, E0282, E0283, E0562, E0599, E0658, E0666.
+Some errors have detailed explanations: E0053, E0118, E0283, E0562, E0599, E0658, E0666.
 For more information about an error, try `rustc --explain E0053`.

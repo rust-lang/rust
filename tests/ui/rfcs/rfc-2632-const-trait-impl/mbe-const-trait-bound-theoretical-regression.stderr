@@ -1,31 +1,45 @@
-error: expected identifier, found `<eof>`
-  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:13:14
+error: ty
+  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:8:19
    |
 LL |     ($ty:ty) => { compile_error!("ty"); };
-   |      ------ while parsing argument for this `ty` macro fragment
+   |                   ^^^^^^^^^^^^^^^^^^^^
 ...
-LL | demo! { impl const }
-   |              ^^^^^ expected identifier
+LL | demo! { impl const Trait }
+   | -------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected identifier, found `<eof>`
-  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:16:13
+error: ty
+  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:8:19
    |
 LL |     ($ty:ty) => { compile_error!("ty"); };
-   |      ------ while parsing argument for this `ty` macro fragment
+   |                   ^^^^^^^^^^^^^^^^^^^^
 ...
-LL | demo! { dyn const }
-   |             ^^^^^ expected identifier
+LL | demo! { dyn const Trait }
+   | ------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `demo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:16:13
+  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:15:14
    |
-LL | demo! { dyn const }
+LL | demo! { impl const Trait }
+   |              ^^^^^
+   |
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: const trait impls are experimental
+  --> $DIR/mbe-const-trait-bound-theoretical-regression.rs:18:13
+   |
+LL | demo! { dyn const Trait }
    |             ^^^^^
    |
    = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

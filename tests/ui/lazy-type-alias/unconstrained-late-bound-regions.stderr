@@ -1,0 +1,22 @@
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/unconstrained-late-bound-regions.rs:8:47
+   |
+LL | type FnPtr0 = for<'a> fn(NotInjective<'a>) -> &'a ();
+   |                                               ^^^^^^
+
+error[E0581]: return type references lifetime `'a`, which is not constrained by the fn input types
+  --> $DIR/unconstrained-late-bound-regions.rs:10:57
+   |
+LL | type FnPtr1 = for<'a> fn(NotInjectiveEither<'a, ()>) -> NotInjectiveEither<'a, ()>;
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/unconstrained-late-bound-regions.rs:12:50
+   |
+LL | type DynCl = dyn for<'a> Fn(NotInjective<'a>) -> &'a ();
+   |                                                  ^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0581, E0582.
+For more information about an error, try `rustc --explain E0581`.

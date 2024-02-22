@@ -380,7 +380,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 LookupResult::Parent(None) => {}
                 LookupResult::Parent(Some(_)) => {
                     if !replace {
-                        self.tcx.dcx().span_delayed_bug(
+                        self.tcx.dcx().span_bug(
                             terminator.source_info.span,
                             format!("drop of untracked value {bb:?}"),
                         );

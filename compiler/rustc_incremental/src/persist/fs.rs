@@ -312,7 +312,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
 
     let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
 
-    if sess.dcx().has_errors_or_lint_errors_or_delayed_bugs().is_some() {
+    if sess.dcx().has_errors_or_delayed_bugs().is_some() {
         // If there have been any errors during compilation, we don't want to
         // publish this session directory. Rather, we'll just delete it.
 

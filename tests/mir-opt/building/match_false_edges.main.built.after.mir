@@ -39,7 +39,7 @@ fn main() -> () {
         _2 = Option::<i32>::Some(const 1_i32);
         PlaceMention(_2);
         _4 = discriminant(_2);
-        switchInt(move _4) -> [1: bb7, otherwise: bb2];
+        switchInt(move _4) -> [1: bb8, otherwise: bb2];
     }
 
     bb1: {
@@ -48,12 +48,12 @@ fn main() -> () {
     }
 
     bb2: {
-        falseEdge -> [real: bb14, imaginary: bb5];
+        falseEdge -> [real: bb15, imaginary: bb6];
     }
 
     bb3: {
         _3 = discriminant(_2);
-        switchInt(move _3) -> [1: bb5, otherwise: bb4];
+        switchInt(move _3) -> [1: bb6, otherwise: bb4];
     }
 
     bb4: {
@@ -61,38 +61,42 @@ fn main() -> () {
         _14 = _2;
         _1 = const 4_i32;
         StorageDead(_14);
-        goto -> bb20;
+        goto -> bb21;
     }
 
     bb5: {
-        falseEdge -> [real: bb15, imaginary: bb4];
+        goto -> bb1;
     }
 
     bb6: {
-        goto -> bb4;
+        falseEdge -> [real: bb16, imaginary: bb4];
     }
 
     bb7: {
-        falseEdge -> [real: bb9, imaginary: bb2];
+        goto -> bb4;
     }
 
     bb8: {
-        goto -> bb2;
+        falseEdge -> [real: bb10, imaginary: bb2];
     }
 
     bb9: {
+        goto -> bb2;
+    }
+
+    bb10: {
         StorageLive(_7);
         _7 = &((_2 as Some).0: i32);
         _5 = &fake _2;
         StorageLive(_8);
-        _8 = guard() -> [return: bb10, unwind: bb22];
-    }
-
-    bb10: {
-        switchInt(move _8) -> [0: bb12, otherwise: bb11];
+        _8 = guard() -> [return: bb11, unwind: bb24];
     }
 
     bb11: {
+        switchInt(move _8) -> [0: bb13, otherwise: bb12];
+    }
+
+    bb12: {
         StorageDead(_8);
         FakeRead(ForMatchGuard, _5);
         FakeRead(ForGuardBinding, _7);
@@ -101,42 +105,42 @@ fn main() -> () {
         _1 = const 1_i32;
         StorageDead(_6);
         StorageDead(_7);
-        goto -> bb20;
-    }
-
-    bb12: {
-        goto -> bb13;
+        goto -> bb21;
     }
 
     bb13: {
-        StorageDead(_8);
-        StorageDead(_7);
-        falseEdge -> [real: bb8, imaginary: bb2];
+        goto -> bb14;
     }
 
     bb14: {
+        StorageDead(_8);
+        StorageDead(_7);
+        falseEdge -> [real: bb9, imaginary: bb2];
+    }
+
+    bb15: {
         StorageLive(_9);
         _9 = _2;
         _1 = const 2_i32;
         StorageDead(_9);
-        goto -> bb20;
+        goto -> bb21;
     }
 
-    bb15: {
+    bb16: {
         StorageLive(_11);
         _11 = &((_2 as Some).0: i32);
         _5 = &fake _2;
         StorageLive(_12);
         StorageLive(_13);
         _13 = (*_11);
-        _12 = guard2(move _13) -> [return: bb16, unwind: bb22];
-    }
-
-    bb16: {
-        switchInt(move _12) -> [0: bb18, otherwise: bb17];
+        _12 = guard2(move _13) -> [return: bb17, unwind: bb24];
     }
 
     bb17: {
+        switchInt(move _12) -> [0: bb19, otherwise: bb18];
+    }
+
+    bb18: {
         StorageDead(_13);
         StorageDead(_12);
         FakeRead(ForMatchGuard, _5);
@@ -146,21 +150,21 @@ fn main() -> () {
         _1 = const 3_i32;
         StorageDead(_10);
         StorageDead(_11);
-        goto -> bb20;
-    }
-
-    bb18: {
-        goto -> bb19;
+        goto -> bb21;
     }
 
     bb19: {
-        StorageDead(_13);
-        StorageDead(_12);
-        StorageDead(_11);
-        falseEdge -> [real: bb6, imaginary: bb4];
+        goto -> bb20;
     }
 
     bb20: {
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageDead(_11);
+        falseEdge -> [real: bb7, imaginary: bb4];
+    }
+
+    bb21: {
         PlaceMention(_1);
         StorageDead(_2);
         StorageDead(_1);
@@ -168,12 +172,16 @@ fn main() -> () {
         return;
     }
 
-    bb21: {
+    bb22: {
         FakeRead(ForMatchedPlace(None), _1);
         unreachable;
     }
 
-    bb22 (cleanup): {
+    bb23: {
+        goto -> bb22;
+    }
+
+    bb24 (cleanup): {
         resume;
     }
 }

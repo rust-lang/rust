@@ -262,6 +262,17 @@ fn chain_bufread() {
 }
 
 #[test]
+fn chain_splitted_char() {
+    let chain = b"\xc3".chain(b"\xa9".as_slice());
+    assert_eq!(crate::io::read_to_string(chain).unwrap(), "é");
+
+    let mut chain = b"\xc3".chain(b"\xa9\n".as_slice());
+    let mut buf = String::new();
+    assert_eq!(chain.read_line(&mut buf).unwrap(), 3);
+    assert_eq!(buf, "é\n");
+}
+
+#[test]
 fn bufreader_size_hint() {
     let testdata = b"ABCDEFGHIJKL";
     let mut buf_reader = BufReader::new(&testdata[..]);

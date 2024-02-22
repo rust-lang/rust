@@ -153,8 +153,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                     collector
                 });
-                // We must include lint errors here.
-                if compiler.sess.dcx().has_errors_or_lint_errors().is_some() {
+                if compiler.sess.dcx().has_errors().is_some() {
                     FatalError.raise();
                 }
 

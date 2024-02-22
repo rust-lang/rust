@@ -1856,9 +1856,7 @@ impl SharedEmitterMain {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let dcx = sess.dcx();
                     let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msgs);
-                    if let Some(code) = diag.code {
-                        d.code(code);
-                    }
+                    d.code = diag.code; // may be `None`, that's ok
                     d.replace_args(diag.args);
                     dcx.emit_diagnostic(d);
                 }

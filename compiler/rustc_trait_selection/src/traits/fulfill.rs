@@ -1,5 +1,6 @@
 use crate::infer::{InferCtxt, TyOrConstInferVar};
 use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::normalize::normalize_with_depth_to;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
@@ -312,7 +313,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
 
         if obligation.predicate.has_projections() {
             let mut obligations = Vec::new();
-            let predicate = crate::traits::project::try_normalize_with_depth_to(
+            let predicate = normalize_with_depth_to(
                 &mut self.selcx,
                 obligation.param_env,
                 obligation.cause.clone(),

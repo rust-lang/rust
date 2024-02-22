@@ -33,7 +33,7 @@ use super::FnCtxt;
 use crate::errors;
 use crate::type_error_struct;
 use hir::ExprKind;
-use rustc_errors::{codes::*, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{codes::*, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
@@ -139,10 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
-                let guar = self
-                    .dcx()
-                    .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
-                return Err(guar);
+                self.dcx().span_bug(span, format!("`{t:?}` should be sized but is not?"));
             }
         })
     }
@@ -983,7 +980,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     /// Attempt to suggest using `.is_empty` when trying to cast from a
     /// collection type to a boolean.
-    fn try_suggest_collection_to_bool(&self, fcx: &FnCtxt<'a, 'tcx>, err: &mut Diagnostic) {
+    fn try_suggest_collection_to_bool(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
         if self.cast_ty.is_bool() {
             let derefed = fcx
                 .autoderef(self.expr_span, self.expr_ty)

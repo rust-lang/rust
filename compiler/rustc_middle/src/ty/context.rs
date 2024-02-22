@@ -153,11 +153,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::Const {
         Const::new_bound(self, debruijn, var, ty)
     }
-
-    fn expect_error_or_delayed_bug() {
-        let has_errors = ty::tls::with(|tcx| tcx.dcx().has_errors_or_lint_errors_or_delayed_bugs());
-        assert!(has_errors.is_some());
-    }
 }
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;

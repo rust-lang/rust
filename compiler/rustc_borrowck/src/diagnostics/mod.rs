@@ -5,7 +5,7 @@ use crate::session_diagnostics::{
     CaptureVarKind, CaptureVarPathUseCause, OnClosureNote,
 };
 use itertools::Itertools;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
@@ -80,7 +80,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         location: Location,
         place: PlaceRef<'tcx>,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
     ) -> bool {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
@@ -588,7 +588,7 @@ impl UseSpans<'_> {
     pub(super) fn args_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         f: impl FnOnce(Span) -> CaptureArgLabel,
     ) {
         if let UseSpans::ClosureUse { args_span, .. } = self {
@@ -601,7 +601,7 @@ impl UseSpans<'_> {
     pub(super) fn var_path_only_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         action: crate::InitializationRequiringAction,
     ) {
         use crate::InitializationRequiringAction::*;
@@ -638,7 +638,7 @@ impl UseSpans<'_> {
     pub(super) fn var_subdiag(
         self,
         dcx: &rustc_errors::DiagCtxt,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         kind: Option<rustc_middle::mir::BorrowKind>,
         f: impl FnOnce(hir::ClosureKind, Span) -> CaptureVarCause,
     ) {
@@ -1010,7 +1010,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn explain_captures(
         &mut self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         span: Span,
         move_span: Span,
         move_spans: UseSpans<'tcx>,

@@ -37,7 +37,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -220,14 +220,13 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     "opaque_type_map",
                 ),
             );
-            let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
+            let hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
-                let reported = infcx.dcx().span_delayed_bug(
+                infcx.dcx().span_bug(
                     decl.hidden_type.span,
                     format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
-                hidden_type.ty = Ty::new_error(infcx.tcx, reported);
             }
 
             (opaque_type_key, hidden_type)
@@ -1014,7 +1013,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> Self {
         let mut checker = Self {
             infcx,
-            last_span: DUMMY_SP,
+            last_span: body.span,
             body,
             user_type_annotations: &body.user_type_annotations,
             param_env,
@@ -1089,10 +1088,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         if result.is_err() {
-            self.infcx.dcx().span_delayed_bug(
-                self.body.span,
-                "failed re-defining predefined opaques in mir typeck",
-            );
+            self.infcx
+                .dcx()
+                .span_bug(self.body.span, "failed re-defining predefined opaques in mir typeck");
         }
     }
 
@@ -2766,7 +2764,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.param_env,
                 self.known_type_outlives_obligations,
                 locations,
-                DUMMY_SP,                   // irrelevant; will be overridden.
+                self.body.span,             // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 self.borrowck_context.constraints,
             )

@@ -666,12 +666,6 @@ LL |     type F: std::ops::Fn(_);
 LL | impl Qux for Struct {
    | ^^^^^^^^^^^^^^^^^^^ missing `F` in implementation
 
-error[E0515]: cannot return reference to function parameter `x`
-  --> $DIR/typeck_type_placeholder_item.rs:50:5
-   |
-LL |     &x
-   |     ^^ returns a reference to data owned by the current function
-
 error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}>` in constants
   --> $DIR/typeck_type_placeholder_item.rs:230:22
    |
@@ -689,6 +683,12 @@ LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+
+error[E0515]: cannot return reference to function parameter `x`
+  --> $DIR/typeck_type_placeholder_item.rs:50:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
 
 error: aborting due to 75 previous errors
 
