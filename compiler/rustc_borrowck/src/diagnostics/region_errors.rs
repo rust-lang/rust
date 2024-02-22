@@ -19,13 +19,13 @@ use rustc_infer::infer::{
     error_reporting::unexpected_hidden_region_diagnostic,
     BoundRegionConversionTime, NllRegionVariableOrigin, RelateParamBound,
 };
+use rustc_infer::traits::util::elaborate_predicates_of;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
-use rustc_trait_selection::traits;
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -645,10 +645,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let def_id = instance.def_id();
         let mut parent = tcx.parent(def_id);
         debug!(?def_id, ?parent);
-        let trait_preds = match tcx.def_kind(parent) {
-            hir::def::DefKind::Impl { .. } => {
-                tcx.trait_id_of_impl(parent).map_or(&[][..], |id| tcx.predicates_of(id).predicates)
-            }
+        let trait_preds: Vec<_> = match tcx.def_kind(parent) {
+            hir::def::DefKind::Impl { .. } => tcx
+                .trait_id_of_impl(parent)
+                .map_or(vec![], |id| elaborate_predicates_of(tcx, id).collect()),
             hir::def::DefKind::Trait => {
                 let Some(ty) = args.get(0).and_then(|arg| arg.as_type()) else {
                     return;
@@ -660,9 +660,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let [def_id] = impls[..] {
                     // The method we have is on the trait, but for `parent` we want to analyze the
                     // relevant impl instead.
-                    let preds = tcx.predicates_of(parent).predicates;
+                    let preds = elaborate_predicates_of(tcx, parent);
                     parent = def_id;
-                    preds
+                    preds.collect()
                 } else {
                     return;
                 }
@@ -688,30 +688,24 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         //     fn foo(&self) where Self: 'static {}
         // }
         // ```
-        let mut predicates: Vec<Span> = traits::elaborate(
-            tcx,
-            tcx.predicates_of(def_id).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
-        )
-        .chain(traits::elaborate(
-            tcx,
-            tcx.predicates_of(parent).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
-        ))
-        .chain(traits::elaborate(tcx, trait_preds.iter().map(|(p, sp)| (p.as_predicate(), *sp))))
-        .filter_map(|(pred, pred_span)| {
-            if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
-                && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r)) = clause
-                && r.kind() == ty::ReStatic
-                && (self.infcx.can_eq(self.param_env, ty, pred_ty)
-                    || matches!(
+        let mut predicates: Vec<Span> = elaborate_predicates_of(tcx, def_id)
+            .chain(elaborate_predicates_of(tcx, parent))
+            .chain(trait_preds)
+            .filter_map(|(pred, pred_span)| {
+                if let ty::PredicateKind::Clause(clause) = pred.kind().skip_binder()
+                    && let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(pred_ty, r)) = clause
+                    && r.kind() == ty::ReStatic
+                    && (self.infcx.can_eq(self.param_env, ty, pred_ty)
+                        || matches!(
                         pred_ty.kind(),
                         ty::Param(name) if name.name == kw::SelfUpper))
-            {
-                Some(pred_span)
-            } else {
-                None
-            }
-        })
-        .collect();
+                {
+                    Some(pred_span)
+                } else {
+                    None
+                }
+            })
+            .collect();
         debug!(?predicates);
 
         // Look at the receiver for `&'static self`, which introduces a `'static` obligation.

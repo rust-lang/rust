@@ -4,6 +4,7 @@ use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, PredicateObligation};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -233,6 +234,16 @@ pub fn elaborate<'tcx, O: Elaboratable<'tcx>>(
         Elaborator { stack: Vec::new(), visited: PredicateSet::new(tcx), mode: Filter::All };
     elaborator.extend_deduped(obligations);
     elaborator
+}
+
+pub fn elaborate_predicates_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> Elaborator<'tcx, (ty::Predicate<'tcx>, Span)> {
+    elaborate(
+        tcx,
+        tcx.predicates_of(def_id).predicates.iter().map(|(p, sp)| (p.as_predicate(), *sp)),
+    )
 }
 
 impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
