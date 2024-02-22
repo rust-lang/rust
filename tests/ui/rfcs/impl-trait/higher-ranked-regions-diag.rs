@@ -1,8 +1,6 @@
 // Regression test for #97099.
 // This was an ICE because `impl Sized` captures the lifetime 'a.
 
-// check-fail
-
 trait Trait<E> {
     type Assoc;
 }

@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/higher-ranked-regions-diag.rs:21:5
+  --> $DIR/higher-ranked-regions-diag.rs:19:5
    |
 LL | fn bar() -> impl for<'a> Trait<&'a (), Assoc = impl Sized> {
    |                      --                        ---------- opaque type defined here

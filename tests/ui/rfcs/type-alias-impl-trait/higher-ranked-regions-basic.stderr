@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/higher-ranked-regions-basic.rs:17:55
+  --> $DIR/higher-ranked-regions-basic.rs:15:55
    |
 LL |     type Opq<'a> = impl Sized + 'a;
    |              -- this generic parameter must be used with a generic lifetime parameter
@@ -7,7 +7,7 @@ LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq<'a>> {}
    |                                                       ^^
 
 error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
-  --> $DIR/higher-ranked-regions-basic.rs:23:58
+  --> $DIR/higher-ranked-regions-basic.rs:21:58
    |
 LL |     fn test() -> impl for<'a> Trait<'a, Ty = impl Sized> {}
    |                           --                 ----------  ^^
@@ -16,7 +16,7 @@ LL |     fn test() -> impl for<'a> Trait<'a, Ty = impl Sized> {}
    |                           hidden type `&'a ()` captures the lifetime `'a` as defined here
 
 error[E0700]: hidden type for `capture_tait::Opq0` captures lifetime that does not appear in bounds
-  --> $DIR/higher-ranked-regions-basic.rs:32:23
+  --> $DIR/higher-ranked-regions-basic.rs:30:23
    |
 LL |     type Opq0 = impl Sized;
    |                 ---------- opaque type defined here
@@ -27,7 +27,7 @@ LL |     fn test() -> Opq2 {}
    |                       ^^
 
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/higher-ranked-regions-basic.rs:41:23
+  --> $DIR/higher-ranked-regions-basic.rs:39:23
    |
 LL |     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'b>>; // <- Note 'b
    |               -- this generic parameter must be used with a generic lifetime parameter
@@ -36,7 +36,7 @@ LL |     fn test() -> Opq2 {}
    |                       ^^
 
 error[E0700]: hidden type for `capture_tait_complex_fail::Opq0<'a>` captures lifetime that does not appear in bounds
-  --> $DIR/higher-ranked-regions-basic.rs:51:23
+  --> $DIR/higher-ranked-regions-basic.rs:49:23
    |
 LL |     type Opq0<'a> = impl Sized;
    |                     ---------- opaque type defined here
@@ -47,19 +47,19 @@ LL |     fn test() -> Opq2 {}
    |                       ^^
 
 error[E0792]: non-defining opaque type use in defining scope
-  --> $DIR/higher-ranked-regions-basic.rs:59:41
+  --> $DIR/higher-ranked-regions-basic.rs:57:41
    |
 LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
    |                                         ^^^^^^^^^^^^^^^^^^^^^^ argument `'static` is not a generic parameter
    |
 note: for this opaque type
-  --> $DIR/higher-ranked-regions-basic.rs:58:25
+  --> $DIR/higher-ranked-regions-basic.rs:56:25
    |
 LL |     type Opq0<'a, 'b> = impl Sized;
    |                         ^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/higher-ranked-regions-basic.rs:59:65
+  --> $DIR/higher-ranked-regions-basic.rs:57:65
    |
 LL |     type Opq0<'a, 'b> = impl Sized;
    |               -- this generic parameter must be used with a generic lifetime parameter
@@ -67,19 +67,19 @@ LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'static>> {}
    |                                                                 ^^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/higher-ranked-regions-basic.rs:68:41
+  --> $DIR/higher-ranked-regions-basic.rs:66:41
    |
 LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'a>> {}
    |                                         ^^^^^^^^^^^^^^^^^ generic argument `'a` used twice
    |
 note: for this opaque type
-  --> $DIR/higher-ranked-regions-basic.rs:67:25
+  --> $DIR/higher-ranked-regions-basic.rs:65:25
    |
 LL |     type Opq0<'a, 'b> = impl Sized;
    |                         ^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/higher-ranked-regions-basic.rs:68:60
+  --> $DIR/higher-ranked-regions-basic.rs:66:60
    |
 LL |     type Opq0<'a, 'b> = impl Sized;
    |               -- this generic parameter must be used with a generic lifetime parameter
@@ -87,7 +87,7 @@ LL |     fn test() -> impl for<'a> Trait<'a, Ty = Opq0<'a, 'a>> {}
    |                                                            ^^
 
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/higher-ranked-regions-basic.rs:78:23
+  --> $DIR/higher-ranked-regions-basic.rs:76:23
    |
 LL |     type Opq1<'a> = impl for<'b> Trait<'b, Ty = Opq0<'a, 'b>>;
    |               -- this generic parameter must be used with a generic lifetime parameter

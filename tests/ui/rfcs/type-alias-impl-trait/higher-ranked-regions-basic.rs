@@ -1,7 +1,5 @@
 // Basic tests for opaque type inference under for<_> binders.
 
-// check-fail
-
 #![feature(type_alias_impl_trait)]
 
 trait Trait<'a> {
