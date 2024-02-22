@@ -222,8 +222,8 @@ fn main() {
     let _n = usize::MAX * 5; //~ ERROR: arithmetic operation will overflow
     let _n = &(usize::MAX * 5); //~ ERROR: arithmetic operation will overflow
 
-    let _x = -i8::MIN; //~ ERROR this arithmetic operation will overflow
-    let _x = &(-i8::MIN); //~ ERROR this arithmetic operation will overflow
+    let _n = -i8::MIN; //~ ERROR this arithmetic operation will overflow
+    let _n = &(-i8::MIN); //~ ERROR this arithmetic operation will overflow
 
 
     // Division

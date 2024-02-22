@@ -13,7 +13,7 @@ LL | #![deny(arithmetic_overflow)]
 error: this arithmetic operation will overflow
   --> $DIR/lint-overflowing-ops.rs:226:15
    |
-LL |     let _x = &(-i8::MIN);
+LL |     let _n = &(-i8::MIN);
    |               ^^^^^^^^^^ attempt to negate `i8::MIN`, which would overflow
 
 error: this arithmetic operation will overflow
@@ -775,7 +775,7 @@ LL |     let _n = usize::MAX * 5;
 error: this arithmetic operation will overflow
   --> $DIR/lint-overflowing-ops.rs:225:14
    |
-LL |     let _x = -i8::MIN;
+LL |     let _n = -i8::MIN;
    |              ^^^^^^^^ attempt to negate `i8::MIN`, which would overflow
 
 error: this operation will panic at runtime
