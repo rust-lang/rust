@@ -75,7 +75,14 @@ impl<'tcx> UnifyValue for RegionVariableValue<'tcx> {
             (
                 RegionVariableValue::Unknown { universe: a },
                 RegionVariableValue::Unknown { universe: b },
-            ) => Ok(RegionVariableValue::Unknown { universe: a.min(b) }),
+            ) => {
+                // If we unify two unconstrained regions then whatever
+                // value they wind up taking (which must be the same value) must
+                // be nameable by both universes. Therefore, the resulting
+                // universe is the minimum of the two universes, because that is
+                // the one which contains the fewest names in scope.
+                Ok(RegionVariableValue::Unknown { universe: a.min(b) })
+            }
         }
     }
 }
