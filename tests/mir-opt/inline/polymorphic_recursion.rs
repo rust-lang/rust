@@ -1,6 +1,6 @@
 // skip-filecheck
 // Make sure that the MIR inliner does not loop indefinitely on polymorphic recursion.
-// compile-flags: --crate-type lib
+//@ compile-flags: --crate-type lib
 
 // Randomize `def_path_hash` by defining them under a module with different names
 macro_rules! emit {

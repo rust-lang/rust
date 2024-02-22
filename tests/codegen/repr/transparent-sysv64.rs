@@ -1,6 +1,6 @@
-// only-x86_64
+//@ only-x86_64
 
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type="lib"]
 

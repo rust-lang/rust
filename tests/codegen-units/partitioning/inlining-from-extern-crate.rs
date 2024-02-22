@@ -1,13 +1,13 @@
 //
 // We specify incremental here because we want to test the partitioning for
-// incremental compilation
-// incremental
-// compile-flags:-Zprint-mono-items=lazy
-// compile-flags:-Zinline-in-all-cgus
+//@ incremental compilation
+//@ incremental
+//@ compile-flags:-Zprint-mono-items=lazy
+//@ compile-flags:-Zinline-in-all-cgus
 
 #![crate_type="lib"]
 
-// aux-build:cgu_explicit_inlining.rs
+//@ aux-build:cgu_explicit_inlining.rs
 extern crate cgu_explicit_inlining;
 
 // This test makes sure that items inlined from external crates are privately

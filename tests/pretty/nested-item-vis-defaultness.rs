@@ -1,6 +1,6 @@
 // Check that nested items have their visibility and `default`nesses in the right order.
 
-// pp-exact
+//@ pp-exact
 
 fn main() {}
 

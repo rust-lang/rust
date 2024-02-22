@@ -1,7 +1,7 @@
 // Verify that no column information is emitted for MSVC targets
 //
-// only-msvc
-// compile-flags: -C debuginfo=2
+//@ only-msvc
+//@ compile-flags: -C debuginfo=2
 
 // CHECK-NOT: !DILexicalBlock({{.*}}column: {{.*}})
 // CHECK-NOT: !DILocation({{.*}}column: {{.*}})

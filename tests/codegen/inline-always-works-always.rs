@@ -1,7 +1,7 @@
-// revisions: NO-OPT SIZE-OPT SPEED-OPT
-//[NO-OPT] compile-flags: -Copt-level=0
-//[SIZE-OPT] compile-flags: -Copt-level=s
-//[SPEED-OPT] compile-flags: -Copt-level=3
+//@ revisions: NO-OPT SIZE-OPT SPEED-OPT
+//@[NO-OPT] compile-flags: -Copt-level=0
+//@[SIZE-OPT] compile-flags: -Copt-level=s
+//@[SPEED-OPT] compile-flags: -Copt-level=3
 
 #![crate_type="rlib"]
 

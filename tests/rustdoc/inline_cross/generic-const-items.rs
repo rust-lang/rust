@@ -1,7 +1,7 @@
 #![crate_name = "user"]
 
-// aux-crate:generic_const_items=generic-const-items.rs
-// edition:2021
+//@ aux-crate:generic_const_items=generic-const-items.rs
+//@ edition:2021
 
 // @has 'user/constant.K.html'
 // @has - '//*[@class="rust item-decl"]//code' \

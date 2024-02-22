@@ -1,5 +1,5 @@
-// aux-build:async-trait-dep.rs
-// edition:2021
+//@ aux-build:async-trait-dep.rs
+//@ edition:2021
 
 #![allow(incomplete_features)]
 

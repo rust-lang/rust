@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 
 // EMIT_MIR mutable_variable.main.GVN.diff
 fn main() {

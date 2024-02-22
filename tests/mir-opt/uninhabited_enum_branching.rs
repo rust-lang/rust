@@ -1,4 +1,4 @@
-// unit-test: UninhabitedEnumBranching
+//@ unit-test: UninhabitedEnumBranching
 enum Empty {}
 
 // test matching an enum with uninhabited variants

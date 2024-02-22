@@ -1,5 +1,5 @@
-// edition:2018
-// aux-build: extern_crate.rs
+//@ edition:2018
+//@ aux-build: extern_crate.rs
 #![crate_name = "foo"]
 
 extern crate extern_crate;

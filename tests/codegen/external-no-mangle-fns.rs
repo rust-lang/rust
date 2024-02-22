@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 // `#[no_mangle]`d functions always have external linkage, i.e., no `internal` in their `define`s
 
 #![crate_type = "lib"]

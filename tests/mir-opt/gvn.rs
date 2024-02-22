@@ -1,6 +1,6 @@
-// unit-test: GVN
+//@ unit-test: GVN
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// only-64bit
+//@ only-64bit
 
 #![feature(raw_ref_op)]
 #![feature(rustc_attrs)]

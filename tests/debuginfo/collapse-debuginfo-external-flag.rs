@@ -1,9 +1,9 @@
-// ignore-lldb
+//@ ignore-lldb
 #![feature(collapse_debuginfo)]
 
 // Test that println macro debug info is collapsed with "collapse_macro_debuginfo=external" flag
 
-// compile-flags:-g -Z collapse_macro_debuginfo=external
+//@ compile-flags:-g -Z collapse_macro_debuginfo=external
 
 // === GDB TESTS ===================================================================================
 

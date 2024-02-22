@@ -1,4 +1,4 @@
-// compile-flags:--test
+//@ compile-flags:--test
 
 // This file tests the source-partitioning behavior of rustdoc.
 // Each test contains some code that should be put into the generated

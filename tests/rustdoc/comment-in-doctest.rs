@@ -1,4 +1,4 @@
-// compile-flags:--test
+//@ compile-flags:--test
 
 // comments, both doc comments and regular ones, used to trick rustdoc's doctest parser into
 // thinking that everything after it was part of the regular program. combined with the librustc_ast

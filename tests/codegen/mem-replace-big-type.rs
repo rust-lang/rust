@@ -3,8 +3,8 @@
 // may e.g. multiply `size_of::<T>()` with a variable "count" (which is only
 // known to be `1` after inlining).
 
-// compile-flags: -C no-prepopulate-passes -Zinline-mir=no
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -C no-prepopulate-passes -Zinline-mir=no
+//@ ignore-debug: the debug assertions get in the way
 
 #![crate_type = "lib"]
 

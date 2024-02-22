@@ -1,4 +1,4 @@
-// edition: 2021
+//@ edition: 2021
 
 #[macro_export]
 macro_rules! macro_that_defines_a_function {

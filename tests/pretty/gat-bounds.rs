@@ -1,7 +1,7 @@
 // Check that associated types print generic parameters and where clauses.
 // See issue #67509.
 
-// pretty-compare-only
+//@ pretty-compare-only
 
 trait X {
     type Y<T>: Trait where Self: Sized;

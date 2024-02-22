@@ -1,4 +1,4 @@
-// aux-build:issue-61592.rs
+//@ aux-build:issue-61592.rs
 
 extern crate foo;
 

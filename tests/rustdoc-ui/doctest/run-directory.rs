@@ -1,11 +1,11 @@
 // this test asserts that the cwd of doctest invocations is set correctly.
 
-// revisions: correct incorrect
-// check-pass
-// [correct]compile-flags:--test --test-run-directory={{src-base}}
-// [incorrect]compile-flags:--test --test-run-directory={{src-base}}/coverage
-// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ revisions: correct incorrect
+//@ check-pass
+//@ [correct]compile-flags:--test --test-run-directory={{src-base}}
+//@ [incorrect]compile-flags:--test --test-run-directory={{src-base}}/coverage
+//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 /// ```
 /// assert_eq!(

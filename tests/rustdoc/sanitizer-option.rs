@@ -1,6 +1,6 @@
-// needs-sanitizer-support
-// needs-sanitizer-address
-// compile-flags: --test -Z sanitizer=address
+//@ needs-sanitizer-support
+//@ needs-sanitizer-address
+//@ compile-flags: --test -Z sanitizer=address
 //
 // #43031: Verify that rustdoc passes `-Z` options to rustc. Use an extern
 // function that is provided by the sanitizer runtime, if flag is not passed

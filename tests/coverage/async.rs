@@ -3,8 +3,8 @@
 #![feature(noop_waker)]
 #![allow(unused_assignments, dead_code)]
 #![rustfmt::skip]
-// edition: 2018
-// compile-flags: -Copt-level=1
+//@ edition: 2018
+//@ compile-flags: -Copt-level=1
 
 async fn c(x: u8) -> u8 {
     if x == 8 {

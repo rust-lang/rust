@@ -2,11 +2,11 @@
 // the unused functions not instrumented, but it seems to be fine now.
 
 // Validates coverage now works with optimizations
-// compile-flags: -C opt-level=3
+//@ compile-flags: -C opt-level=3
 
 #![allow(unused_assignments, unused_variables)]
 
-// aux-build:used_crate.rs
+//@ aux-build:used_crate.rs
 extern crate used_crate;
 
 fn main() {

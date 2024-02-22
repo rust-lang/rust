@@ -1,4 +1,4 @@
-// aux-build: parent-crate-115718.rs
+//@ aux-build: parent-crate-115718.rs
 
 // https://github.com/rust-lang/rust/issues/115718
 #![crate_name = "foo"]

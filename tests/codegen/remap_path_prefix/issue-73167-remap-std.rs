@@ -1,6 +1,6 @@
-// ignore-windows
+//@ ignore-windows
 
-// compile-flags: -g  -C no-prepopulate-passes -Z simulate-remapped-rust-src-base=/rustc/xyz
+//@ compile-flags: -g  -C no-prepopulate-passes -Z simulate-remapped-rust-src-base=/rustc/xyz
 
 // Here we check that importing std will not cause real path to std source files
 // to leak. If rustc was compiled with remap-debuginfo = true, this should be

@@ -1,4 +1,4 @@
-// aux-build:default-trait-method.rs
+//@ aux-build:default-trait-method.rs
 
 extern crate foo;
 

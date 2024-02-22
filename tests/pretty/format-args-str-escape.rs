@@ -1,6 +1,6 @@
-// pretty-compare-only
-// pretty-mode:expanded
-// pp-exact:format-args-str-escape.pp
+//@ pretty-compare-only
+//@ pretty-mode:expanded
+//@ pp-exact:format-args-str-escape.pp
 
 fn main() {
     println!("\x1B[1mHello, world!\x1B[0m");

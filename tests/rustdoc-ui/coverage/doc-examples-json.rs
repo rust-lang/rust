@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags:-Z unstable-options --output-format json --show-coverage
+//@ check-pass
+//@ compile-flags:-Z unstable-options --output-format json --show-coverage
 
 // This check ensures that only one doc example is counted since they're "optional" on
 // certain items.

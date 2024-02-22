@@ -1,7 +1,7 @@
 // Verifies that pointer type membership tests for indirect calls are emitted.
 //
-// needs-sanitizer-cfi
-// compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Copt-level=0
+//@ needs-sanitizer-cfi
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Copt-level=0
 
 #![crate_type="lib"]
 

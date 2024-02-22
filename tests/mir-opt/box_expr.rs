@@ -1,5 +1,5 @@
-// unit-test: ElaborateDrops
-// needs-unwind
+//@ unit-test: ElaborateDrops
+//@ needs-unwind
 
 #![feature(rustc_attrs, stmt_expr_attributes)]
 

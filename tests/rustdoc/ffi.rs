@@ -1,5 +1,5 @@
-// aux-build:rustdoc-ffi.rs
-// ignore-cross-compile
+//@ aux-build:rustdoc-ffi.rs
+//@ ignore-cross-compile
 
 extern crate rustdoc_ffi as lib;
 

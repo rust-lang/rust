@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 pub trait ValidTrait {}
 /// This returns impl trait
 pub fn g() -> impl ValidTrait {

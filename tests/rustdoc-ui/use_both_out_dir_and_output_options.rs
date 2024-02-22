@@ -1,1 +1,1 @@
-// compile-flags: --output ./foo
+//@ compile-flags: --output ./foo

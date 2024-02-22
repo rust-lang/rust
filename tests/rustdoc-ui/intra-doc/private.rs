@@ -1,6 +1,6 @@
-// check-pass
-// revisions: public private
-// [private]compile-flags: --document-private-items
+//@ check-pass
+//@ revisions: public private
+//@ [private]compile-flags: --document-private-items
 
 // make sure to update `rustdoc/intra-doc/private.rs` if you update this file
 

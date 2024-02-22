@@ -1,6 +1,6 @@
-// unit-test: ScalarReplacementOfAggregates
-// compile-flags: -Cpanic=abort
-// no-prefer-dynamic
+//@ unit-test: ScalarReplacementOfAggregates
+//@ compile-flags: -Cpanic=abort
+//@ no-prefer-dynamic
 
 trait Err {
     type Err;

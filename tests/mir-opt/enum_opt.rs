@@ -1,7 +1,7 @@
 // skip-filecheck
-// unit-test: EnumSizeOpt
+//@ unit-test: EnumSizeOpt
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
-// compile-flags: -Zunsound-mir-opts
+//@ compile-flags: -Zunsound-mir-opts
 
 #![feature(arbitrary_enum_discriminant, repr128)]
 

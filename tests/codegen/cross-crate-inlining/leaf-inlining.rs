@@ -1,5 +1,5 @@
-// compile-flags: -O -Zcross-crate-inline-threshold=yes
-// aux-build:leaf.rs
+//@ compile-flags: -O -Zcross-crate-inline-threshold=yes
+//@ aux-build:leaf.rs
 
 #![crate_type = "lib"]
 

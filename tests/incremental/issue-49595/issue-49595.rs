@@ -1,6 +1,6 @@
-// revisions:cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph --test
-// build-pass
+//@ revisions:cfail1 cfail2 cfail3
+//@ compile-flags: -Z query-dep-graph --test
+//@ build-pass
 
 #![feature(rustc_attrs)]
 #![crate_type = "rlib"]

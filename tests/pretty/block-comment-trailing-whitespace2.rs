@@ -1,6 +1,6 @@
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
-// pp-exact
+//@ pp-exact
 fn f() {} /*
           The next line should not be indented.
 

@@ -1,5 +1,5 @@
 // Code generation of atomic operations.
-// compile-flags: -O
+//@ compile-flags: -O
 #![crate_type = "lib"]
 
 use std::sync::atomic::{AtomicI32, Ordering::*};

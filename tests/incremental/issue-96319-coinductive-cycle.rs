@@ -1,5 +1,5 @@
-// edition:2018
-// revisions: rpass1 rpass2
+//@ edition:2018
+//@ revisions: rpass1 rpass2
 
 pub struct Stmt {
     pub stmt_type: StmtKind,

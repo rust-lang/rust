@@ -1,4 +1,4 @@
-// aux-build:realcore.rs
+//@ aux-build:realcore.rs
 
 #![crate_name = "real_gimli"]
 #![feature(staged_api, extremely_unstable)]

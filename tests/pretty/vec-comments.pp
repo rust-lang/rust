@@ -1,6 +1,6 @@
 // Issue #679
 // Testing that comments are correctly interleaved
-// pp-exact:vec-comments.pp
+//@ pp-exact:vec-comments.pp
 fn main() {
     let _v1 =
         [

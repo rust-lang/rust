@@ -1,5 +1,5 @@
-// ignore-wasm32-bare compiled with panic=abort by default
-// compile-flags: -C no-prepopulate-passes -Copt-level=0
+//@ ignore-wasm32-bare compiled with panic=abort by default
+//@ compile-flags: -C no-prepopulate-passes -Copt-level=0
 //
 
 #![crate_type = "lib"]

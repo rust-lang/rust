@@ -1,11 +1,11 @@
 // Verifies that type metadata identifiers for trait objects are emitted correctly.
 //
-// revisions: aarch64 x86_64
-// [aarch64] compile-flags: --target aarch64-unknown-none
-// [aarch64] needs-llvm-components: aarch64
-// [x86_64] compile-flags: --target x86_64-unknown-none
-// [x86_64] needs-llvm-components:
-// compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
+//@ revisions: aarch64 x86_64
+//@ [aarch64] compile-flags: --target aarch64-unknown-none
+//@ [aarch64] needs-llvm-components: aarch64
+//@ [x86_64] compile-flags: --target x86_64-unknown-none
+//@ [x86_64] needs-llvm-components:
+//@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
 
 #![crate_type="lib"]
 #![feature(arbitrary_self_types, no_core, lang_items)]

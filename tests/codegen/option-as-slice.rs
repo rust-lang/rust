@@ -1,6 +1,6 @@
-// compile-flags: -O -Z randomize-layout=no
-// only-x86_64
-// ignore-llvm-version: 16.0.0
+//@ compile-flags: -O -Z randomize-layout=no
+//@ only-x86_64
+//@ ignore-llvm-version: 16.0.0
 // ^ needs https://reviews.llvm.org/D146149 in 16.0.1
 
 #![crate_type = "lib"]

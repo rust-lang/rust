@@ -1,4 +1,4 @@
-// aux-build:reexport-doc-aux.rs
+//@ aux-build:reexport-doc-aux.rs
 
 extern crate reexport_doc_aux as dep;
 

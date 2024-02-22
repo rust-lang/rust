@@ -1,7 +1,7 @@
 // Verifies that type metadata identifiers for trait objects are emitted correctly.
 //
-// needs-sanitizer-cfi
-// compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ needs-sanitizer-cfi
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Copt-level=0 -Ctarget-feature=-crt-static -Zsanitizer=cfi
 
 #![crate_type="lib"]
 

@@ -1,5 +1,5 @@
-// edition:2018
-// revisions: rpass1
+//@ edition:2018
+//@ revisions: rpass1
 
 
 // Regression test for #86753. The `type_implements_trait` query (since moved to a method)

@@ -1,4 +1,4 @@
-// revisions:cfail1
+//@ revisions:cfail1
 
 #![allow(unused_variables)]
 

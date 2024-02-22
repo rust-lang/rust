@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 // Regression test for <https://github.com/rust-lang/rust/issues/98006>.
 

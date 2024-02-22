@@ -4,7 +4,7 @@
 
 use std::intrinsics::mir::*;
 
-// unit-test: SimplifyCfg-after-uninhabited-enum-branching
+//@ unit-test: SimplifyCfg-after-uninhabited-enum-branching
 
 // EMIT_MIR simplify_duplicate_unreachable_blocks.assert_nonzero_nonmax.SimplifyCfg-after-uninhabited-enum-branching.diff
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]

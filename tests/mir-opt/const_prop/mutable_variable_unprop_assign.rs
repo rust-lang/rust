@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: GVN
+//@ unit-test: GVN
 
 // EMIT_MIR mutable_variable_unprop_assign.main.GVN.diff
 fn main() {

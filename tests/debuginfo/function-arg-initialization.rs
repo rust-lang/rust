@@ -1,5 +1,5 @@
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-// min-lldb-version: 310
+//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+//@ min-lldb-version: 310
 
 // This test case checks if function arguments already have the correct value
 // when breaking at the first line of the function, that is if the function
@@ -8,7 +8,7 @@
 // arguments have been properly loaded when setting the breakpoint via the
 // function name.
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

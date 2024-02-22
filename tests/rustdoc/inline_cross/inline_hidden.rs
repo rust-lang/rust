@@ -1,6 +1,6 @@
-// aux-build:rustdoc-hidden.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:rustdoc-hidden.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 extern crate rustdoc_hidden;
 

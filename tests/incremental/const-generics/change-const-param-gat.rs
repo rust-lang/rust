@@ -1,5 +1,5 @@
-// revisions: rpass1 rpass2 rpass3
-// compile-flags: -Zincremental-ignore-spans
+//@ revisions: rpass1 rpass2 rpass3
+//@ compile-flags: -Zincremental-ignore-spans
 #![feature(generic_associated_types)]
 
 // This test unsures that with_opt_const_param returns the

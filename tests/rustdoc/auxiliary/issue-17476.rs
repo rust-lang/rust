@@ -1,4 +1,4 @@
-// compile-flags: -Cmetadata=aux
+//@ compile-flags: -Cmetadata=aux
 
 #![doc(html_root_url = "http://example.com")]
 

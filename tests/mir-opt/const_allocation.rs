@@ -1,6 +1,6 @@
 // skip-filecheck
-// unit-test: GVN
-// ignore-endian-big
+//@ unit-test: GVN
+//@ ignore-endian-big
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 static FOO: &[(Option<i32>, &[&str])] =
     &[(None, &[]), (None, &["foo", "bar"]), (Some(42), &["meh", "mop", "möp"])];

@@ -1,5 +1,5 @@
-// compile-flags: -Copt-level=1
-// only-x86_64
+//@ compile-flags: -Copt-level=1
+//@ only-x86_64
 
 #![crate_type = "lib"]
 

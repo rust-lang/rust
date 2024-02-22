@@ -1,8 +1,8 @@
 // Regression test for issue #116629.
 // Check that we don't render host effect parameters & arguments.
 
-// aux-crate:const_effect_param=const-effect-param.rs
-// edition: 2021
+//@ aux-crate:const_effect_param=const-effect-param.rs
+//@ edition: 2021
 #![crate_name = "user"]
 
 // Don't render the host param on `load` and the host arg `host` passed to `Resource`.

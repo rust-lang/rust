@@ -1,17 +1,17 @@
 // Checks if the correct annotation for the efiapi ABI is passed to llvm.
 
-// revisions:x86_64 i686 aarch64 arm riscv
-//[x86_64] compile-flags: --target x86_64-unknown-uefi
-//[x86_64] needs-llvm-components: aarch64 arm riscv
-//[i686] compile-flags: --target i686-unknown-linux-musl
-//[i686] needs-llvm-components: aarch64 arm riscv
-//[aarch64] compile-flags: --target aarch64-unknown-none
-//[aarch64] needs-llvm-components: aarch64 arm riscv
-//[arm] compile-flags: --target armv7r-none-eabi
-//[arm] needs-llvm-components: aarch64 arm riscv
-//[riscv] compile-flags: --target riscv64gc-unknown-none-elf
-//[riscv] needs-llvm-components: aarch64 arm riscv
-// compile-flags: -C no-prepopulate-passes
+//@ revisions:x86_64 i686 aarch64 arm riscv
+//@[x86_64] compile-flags: --target x86_64-unknown-uefi
+//@[x86_64] needs-llvm-components: aarch64 arm riscv
+//@[i686] compile-flags: --target i686-unknown-linux-musl
+//@[i686] needs-llvm-components: aarch64 arm riscv
+//@[aarch64] compile-flags: --target aarch64-unknown-none
+//@[aarch64] needs-llvm-components: aarch64 arm riscv
+//@[arm] compile-flags: --target armv7r-none-eabi
+//@[arm] needs-llvm-components: aarch64 arm riscv
+//@[riscv] compile-flags: --target riscv64gc-unknown-none-elf
+//@[riscv] needs-llvm-components: aarch64 arm riscv
+//@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]

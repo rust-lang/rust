@@ -1,9 +1,9 @@
-// revisions:x86-linux x86-darwin
+//@ revisions:x86-linux x86-darwin
 
-//[x86-linux] compile-flags: --target i686-unknown-linux-gnu
-//[x86-linux] needs-llvm-components: x86
-//[x86-darwin] compile-flags: --target i686-apple-darwin
-//[x86-darwin] needs-llvm-components: x86
+//@[x86-linux] compile-flags: --target i686-unknown-linux-gnu
+//@[x86-linux] needs-llvm-components: x86
+//@[x86-darwin] compile-flags: --target i686-apple-darwin
+//@[x86-darwin] needs-llvm-components: x86
 
 // Tests that aggregates containing vector types get their alignment increased to 16 on Darwin.
 

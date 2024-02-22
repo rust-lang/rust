@@ -1,5 +1,5 @@
 // skip-filecheck
-// compile-flags: -Z validate-mir
+//@ compile-flags: -Z validate-mir
 #![feature(let_chains)]
 struct Droppy(u8);
 impl Drop for Droppy {

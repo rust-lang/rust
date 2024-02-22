@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 const _: () = {
     #[macro_export]

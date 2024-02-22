@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // ICE found in https://github.com/rust-lang/rust/issues/83123
 

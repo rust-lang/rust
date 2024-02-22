@@ -1,4 +1,4 @@
-// only-x86_64-unknown-linux-gnu
+//@ only-x86_64-unknown-linux-gnu
 
 #![feature(const_transmute)]
 

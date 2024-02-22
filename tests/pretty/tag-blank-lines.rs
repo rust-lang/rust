@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 enum foo {
     bar, // a bar.

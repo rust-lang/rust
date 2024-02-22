@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: NormalizeArrayLen
-// compile-flags: -Zmir-enable-passes=+LowerSliceLenCalls
+//@ unit-test: NormalizeArrayLen
+//@ compile-flags: -Zmir-enable-passes=+LowerSliceLenCalls
 
 // EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {

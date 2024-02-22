@@ -1,5 +1,5 @@
 #![feature(coverage_attribute)]
-// edition: 2021
+//@ edition: 2021
 
 // If the span extractor can't find any relevant spans for a function, the
 // refinement loop will terminate with nothing in its `prev` slot. If the

@@ -1,6 +1,6 @@
    LL|       |#![feature(coverage_attribute)]
    LL|       |#![feature(noop_waker)]
-   LL|       |// edition: 2021
+   LL|       |//@ edition: 2021
    LL|       |
    LL|      1|fn main() {
    LL|     17|    for i in 0..16 {

@@ -1,7 +1,7 @@
-   LL|       |// edition: 2021
-   LL|       |// ignore-mode-coverage-map
-   LL|       |// ignore-windows
-   LL|       |// llvm-cov-flags: --use-color
+   LL|       |//@ edition: 2021
+   LL|       |//@ ignore-mode-coverage-map
+   LL|       |//@ ignore-windows
+   LL|       |//@ llvm-cov-flags: --use-color
    LL|       |
    LL|       |// Verify that telling `llvm-cov` to use colored output actually works.
    LL|       |// Ignored on Windows because we can't tell the tool to use ANSI escapes.

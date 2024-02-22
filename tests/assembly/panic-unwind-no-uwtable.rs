@@ -1,6 +1,6 @@
-// assembly-output: emit-asm
-// only-x86_64-unknown-linux-gnu
-// compile-flags: -C panic=unwind -C force-unwind-tables=n
+//@ assembly-output: emit-asm
+//@ only-x86_64-unknown-linux-gnu
+//@ compile-flags: -C panic=unwind -C force-unwind-tables=n
 
 #![crate_type = "lib"]
 

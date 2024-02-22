@@ -1,4 +1,4 @@
-// compile-flags:--cfg feature="worricow"
+//@ compile-flags:--cfg feature="worricow"
 #![crate_name = "xenogenous"]
 
 // @has 'xenogenous/struct.Worricow.html'

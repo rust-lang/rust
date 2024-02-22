@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Test that associated item impls on primitive types don't crash rustdoc
 

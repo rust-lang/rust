@@ -1,7 +1,7 @@
 // Traits in scope are collected for doc links in field attributes.
 
-// check-pass
-// aux-build: assoc-field-dep.rs
+//@ check-pass
+//@ aux-build: assoc-field-dep.rs
 
 extern crate assoc_field_dep;
 pub use assoc_field_dep::*;

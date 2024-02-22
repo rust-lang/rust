@@ -1,5 +1,5 @@
    LL|       |#![feature(coverage_attribute)]
-   LL|       |// edition: 2021
+   LL|       |//@ edition: 2021
    LL|       |
    LL|       |// Regression test for an inconsistency between functions that return the value
    LL|       |// of their trailing expression, and functions that implicitly return `()`.

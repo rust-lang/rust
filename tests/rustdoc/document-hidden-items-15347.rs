@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options --document-hidden-items
+//@ compile-flags: -Z unstable-options --document-hidden-items
 // https://github.com/rust-lang/rust/issues/15347
 
 #![crate_name="issue_15347"]

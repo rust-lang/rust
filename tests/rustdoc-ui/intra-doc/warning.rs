@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
        //! Test with [Foo::baz], [Bar::foo], ...
 //~^ WARNING `Foo::baz`

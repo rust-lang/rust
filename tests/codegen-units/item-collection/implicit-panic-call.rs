@@ -1,4 +1,4 @@
-// compile-flags:-Zprint-mono-items=lazy
+//@ compile-flags:-Zprint-mono-items=lazy
 
 // rust-lang/rust#90405
 // Ensure implicit panic calls are collected

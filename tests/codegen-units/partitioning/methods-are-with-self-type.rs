@@ -1,13 +1,13 @@
 // Currently, all generic functions are instantiated in each codegen unit that
 // uses them, even those not marked with #[inline], so this test does not make
 // much sense at the moment.
-// ignore-test
+//@ ignore-test
 
 //
 // We specify incremental here because we want to test the partitioning for
-// incremental compilation
-// incremental
-// compile-flags:-Zprint-mono-items=lazy
+//@ incremental compilation
+//@ incremental
+//@ compile-flags:-Zprint-mono-items=lazy
 
 #![allow(dead_code)]
 #![feature(start)]

@@ -1,5 +1,5 @@
-// aux-build:hidden.rs
-// build-aux-docs
+//@ aux-build:hidden.rs
+//@ build-aux-docs
 #![deny(rustdoc::broken_intra_doc_links)]
 
 // tests https://github.com/rust-lang/rust/issues/73363

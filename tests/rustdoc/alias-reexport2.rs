@@ -1,5 +1,5 @@
 // gate-test-lazy_type_alias
-// aux-build:alias-reexport.rs
+//@ aux-build:alias-reexport.rs
 
 #![crate_name = "foo"]
 #![feature(lazy_type_alias)]

@@ -1,6 +1,6 @@
 // Tests literals in attributes.
 
-// pp-exact
+//@ pp-exact
 
 #![feature(rustc_attrs)]
 

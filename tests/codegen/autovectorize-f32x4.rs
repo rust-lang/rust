@@ -1,5 +1,5 @@
-// compile-flags: -C opt-level=3 -Z merge-functions=disabled
-// only-x86_64
+//@ compile-flags: -C opt-level=3 -Z merge-functions=disabled
+//@ only-x86_64
 #![crate_type = "lib"]
 
 // CHECK-LABEL: @auto_vectorize_direct

@@ -1,6 +1,6 @@
-// aux-build:cross-glob.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:cross-glob.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 extern crate inner;
 

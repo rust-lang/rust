@@ -2,7 +2,7 @@
 // The possibility of wrapping results in an additional branch when dropping boxed slices
 // in some situations, see https://github.com/rust-lang/rust/issues/96497#issuecomment-1112865218
 
-// compile-flags: -O
+//@ compile-flags: -O
 
 #![crate_type="lib"]
 

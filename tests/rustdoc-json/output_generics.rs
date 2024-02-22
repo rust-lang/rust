@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items --document-hidden-items
+//@ compile-flags: --document-private-items --document-hidden-items
 
 // This is a regression test for #98009.
 

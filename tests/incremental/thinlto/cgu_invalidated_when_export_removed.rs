@@ -1,5 +1,5 @@
-// revisions: cfail1 cfail2
-// build-pass
+//@ revisions: cfail1 cfail2
+//@ build-pass
 
 // rust-lang/rust#69798:
 //

@@ -1,11 +1,11 @@
-// revisions: x32 x64 sparc sparc64
-// compile-flags: -O -C no-prepopulate-passes
+//@ revisions: x32 x64 sparc sparc64
+//@ compile-flags: -O -C no-prepopulate-passes
 //
-//[x32] only-x86
-//[x64] only-x86_64
-//[sparc] only-sparc
-//[sparc64] only-sparc64
-// ignore-windows
+//@[x32] only-x86
+//@[x64] only-x86_64
+//@[sparc] only-sparc
+//@[sparc64] only-sparc64
+//@ ignore-windows
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
 // Other platforms pass large aggregates using struct pointer in LLVMIR

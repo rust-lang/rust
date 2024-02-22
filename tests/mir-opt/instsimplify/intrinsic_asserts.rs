@@ -1,4 +1,4 @@
-// unit-test: InstSimplify
+//@ unit-test: InstSimplify
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

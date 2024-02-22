@@ -1,11 +1,11 @@
-// ignore-lldb
+//@ ignore-lldb
 #![feature(collapse_debuginfo)]
 
 // Test that statement, skipped/added/reordered by macros, is correctly processed in debuginfo
 // Performed step-over and step-into debug stepping through call statements.
 // collapse_debuginfo feature enabled.
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

@@ -1,6 +1,6 @@
-// pretty-mode:expanded
-// pp-exact:asm.pp
-// only-x86_64
+//@ pretty-mode:expanded
+//@ pp-exact:asm.pp
+//@ only-x86_64
 
 use std::arch::asm;
 

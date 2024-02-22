@@ -1,5 +1,5 @@
-// aux-build:issue-48414.rs
-// check-pass
+//@ aux-build:issue-48414.rs
+//@ check-pass
 
 // https://github.com/rust-lang/rust/issues/48414
 

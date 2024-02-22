@@ -1,3 +1,3 @@
-// ignore-mode-coverage-map
+//@ ignore-mode-coverage-map
 
 fn main() {}

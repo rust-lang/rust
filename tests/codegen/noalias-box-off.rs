@@ -1,4 +1,4 @@
-// compile-flags: -O -Z box-noalias=no
+//@ compile-flags: -O -Z box-noalias=no
 
 #![crate_type = "lib"]
 

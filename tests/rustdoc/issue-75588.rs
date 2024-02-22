@@ -1,5 +1,5 @@
-// aux-build:realcore.rs
-// aux-build:real_gimli.rs
+//@ aux-build:realcore.rs
+//@ aux-build:real_gimli.rs
 
 // Ensure unstably exported traits have their Implementors sections.
 

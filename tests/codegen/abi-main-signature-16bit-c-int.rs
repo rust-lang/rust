@@ -2,9 +2,9 @@
 // entry point. It must match C's `int main(int, char **)`.
 
 // This test is for targets with 16bit c_int only.
-// revisions: avr msp
-//[avr] only-avr
-//[msp] only-msp430
+//@ revisions: avr msp
+//@[avr] only-avr
+//@[msp] only-msp430
 
 
 fn main() {

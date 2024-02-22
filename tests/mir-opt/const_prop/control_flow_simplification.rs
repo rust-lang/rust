@@ -1,7 +1,7 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: GVN
-// compile-flags: -Zmir-opt-level=1
+//@ unit-test: GVN
+//@ compile-flags: -Zmir-opt-level=1
 
 trait NeedsDrop: Sized {
     const NEEDS: bool = std::mem::needs_drop::<Self>();

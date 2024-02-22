@@ -1,6 +1,6 @@
-// aux-build:variant-struct.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:variant-struct.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/32395
 #![crate_name="issue_32395"]

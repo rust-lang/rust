@@ -1,5 +1,5 @@
-// aux-build:submodule-outer.rs
-// edition:2018
+//@ aux-build:submodule-outer.rs
+//@ edition:2018
 #![deny(rustdoc::broken_intra_doc_links)]
 
 extern crate bar as bar_;

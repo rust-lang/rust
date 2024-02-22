@@ -1,9 +1,9 @@
-// compile-flags:-Zprint-mono-items=eager
+//@ compile-flags:-Zprint-mono-items=eager
 
 #![deny(dead_code)]
 #![feature(start)]
 
-// aux-build:cgu_generic_function.rs
+//@ aux-build:cgu_generic_function.rs
 extern crate cgu_generic_function;
 
 //~ MONO_ITEM fn start

@@ -1,4 +1,4 @@
-// compile-flags:-Zpolymorphize=on -Zprint-mono-items=lazy -Copt-level=1
+//@ compile-flags:-Zpolymorphize=on -Zprint-mono-items=lazy -Copt-level=1
 
 #![crate_type = "rlib"]
 

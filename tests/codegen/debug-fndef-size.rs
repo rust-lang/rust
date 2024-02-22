@@ -1,6 +1,6 @@
 // Verify that `i32::cmp` FnDef type is declared with size 0 and align 1 in LLVM debuginfo.
-// compile-flags: -O -g -Cno-prepopulate-passes
-// ignore-msvc the types are mangled differently
+//@ compile-flags: -O -g -Cno-prepopulate-passes
+//@ ignore-msvc the types are mangled differently
 
 use std::cmp::Ordering;
 

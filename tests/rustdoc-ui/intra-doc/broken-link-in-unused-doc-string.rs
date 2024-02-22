@@ -1,7 +1,7 @@
 // Test that we don't ICE with broken links that don't show up in the docs.
 
-// check-pass
-// edition: 2021
+//@ check-pass
+//@ edition: 2021
 
 /// [1]
 //~^ WARN unresolved link to `1`

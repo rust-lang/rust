@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 // @!has const_underscore/constant._.html
 const _: () = {

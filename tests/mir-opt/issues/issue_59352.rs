@@ -9,7 +9,7 @@
 // removed.
 
 // EMIT_MIR issue_59352.num_to_digit.PreCodegen.after.mir
-// compile-flags: -Z mir-opt-level=3 -Z span_free_formats
+//@ compile-flags: -Z mir-opt-level=3 -Z span_free_formats
 
 pub fn num_to_digit(num: char) -> u32 {
     // CHECK-NOT: panic

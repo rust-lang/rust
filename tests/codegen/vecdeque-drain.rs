@@ -1,7 +1,7 @@
 // Check that draining at the front or back doesn't copy memory.
 
-// compile-flags: -O
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O
+//@ ignore-debug: the debug assertions get in the way
 
 #![crate_type = "lib"]
 

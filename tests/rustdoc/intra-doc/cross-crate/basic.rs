@@ -1,5 +1,5 @@
-// aux-build:intra-doc-basic.rs
-// build-aux-docs
+//@ aux-build:intra-doc-basic.rs
+//@ build-aux-docs
 #![deny(rustdoc::broken_intra_doc_links)]
 
 // from https://github.com/rust-lang/rust/issues/65983

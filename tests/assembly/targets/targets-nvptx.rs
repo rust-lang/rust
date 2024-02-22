@@ -1,8 +1,8 @@
-// assembly-output: emit-asm
+//@ assembly-output: emit-asm
 // ignore-tidy-linelength
-// revisions: nvptx64_nvidia_cuda
-// [nvptx64_nvidia_cuda] compile-flags: --target nvptx64-nvidia-cuda
-// [nvptx64_nvidia_cuda] needs-llvm-components: nvptx
+//@ revisions: nvptx64_nvidia_cuda
+//@ [nvptx64_nvidia_cuda] compile-flags: --target nvptx64-nvidia-cuda
+//@ [nvptx64_nvidia_cuda] needs-llvm-components: nvptx
 
 // Sanity-check that each target can produce assembly code.
 

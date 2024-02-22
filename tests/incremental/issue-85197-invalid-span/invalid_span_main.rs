@@ -1,6 +1,6 @@
-// revisions: rpass1 rpass2
-// aux-build:respan.rs
-// aux-build:invalid-span-helper-lib.rs
+//@ revisions: rpass1 rpass2
+//@ aux-build:respan.rs
+//@ aux-build:invalid-span-helper-lib.rs
 
 // This issue has several different parts. The high level idea is:
 // 1. We create an 'invalid' span with the help of the `respan` proc-macro,

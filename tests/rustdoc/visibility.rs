@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 #![crate_name = "foo"]
 #![feature(inherent_associated_types)]

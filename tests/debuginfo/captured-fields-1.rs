@@ -1,5 +1,5 @@
-// compile-flags:-g
-// edition:2021
+//@ compile-flags:-g
+//@ edition:2021
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run

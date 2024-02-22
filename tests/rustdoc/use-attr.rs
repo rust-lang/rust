@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // ICE when rustdoc encountered a use statement of a non-macro attribute (see #58054)
 

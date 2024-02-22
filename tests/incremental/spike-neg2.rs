@@ -2,11 +2,11 @@
 // `rustc_partition_reused` and `rustc_partition_codegened` tests.
 // Here we change and say that the `y` module will be codegened (when
 // in fact it will not), and then indicate that the test itself
-// should-fail (because an error will be reported, and hence the
+//@ should-fail (because an error will be reported, and hence the
 // revision rpass2 will not compile, despite being named rpass).
 
-// revisions:rpass1 rpass2
-// should-fail
+//@ revisions:rpass1 rpass2
+//@ should-fail
 
 #![feature(rustc_attrs)]
 

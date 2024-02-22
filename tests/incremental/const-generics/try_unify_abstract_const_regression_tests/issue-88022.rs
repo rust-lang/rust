@@ -1,4 +1,4 @@
-// revisions: cfail
+//@ revisions: cfail
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features, unused_braces)]
 

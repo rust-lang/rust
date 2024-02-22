@@ -1,7 +1,7 @@
 $DIR/auxiliary/used_crate.rs:
    LL|       |#![allow(unused_assignments, unused_variables)]
    LL|       |// Verify that coverage works with optimizations:
-   LL|       |// compile-flags: -C opt-level=3
+   LL|       |//@ compile-flags: -C opt-level=3
    LL|       |
    LL|       |use std::fmt::Debug;
    LL|       |
@@ -155,11 +155,11 @@ $DIR/uses_crate.rs:
    LL|       |// the unused functions not instrumented, but it seems to be fine now.
    LL|       |
    LL|       |// Validates coverage now works with optimizations
-   LL|       |// compile-flags: -C opt-level=3
+   LL|       |//@ compile-flags: -C opt-level=3
    LL|       |
    LL|       |#![allow(unused_assignments, unused_variables)]
    LL|       |
-   LL|       |// aux-build:used_crate.rs
+   LL|       |//@ aux-build:used_crate.rs
    LL|       |extern crate used_crate;
    LL|       |
    LL|      1|fn main() {

@@ -1,6 +1,6 @@
-// assembly-output: emit-asm
-// compile-flags: --target m68k-unknown-linux-gnu
-// needs-llvm-components: m68k
+//@ assembly-output: emit-asm
+//@ compile-flags: --target m68k-unknown-linux-gnu
+//@ needs-llvm-components: m68k
 
 #![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
 #![crate_type = "rlib"]

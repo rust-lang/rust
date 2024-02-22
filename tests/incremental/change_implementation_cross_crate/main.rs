@@ -1,9 +1,9 @@
 // Test that we are able to reuse `main` despite the changes in the implementation of `foo` and
 // `bar`.
 
-// revisions: rpass1 rpass2
-// aux-build: a.rs
-// compile-flags: -Zquery-dep-graph
+//@ revisions: rpass1 rpass2
+//@ aux-build: a.rs
+//@ compile-flags: -Zquery-dep-graph
 
 #![feature(rustc_attrs)]
 #![crate_type = "bin"]

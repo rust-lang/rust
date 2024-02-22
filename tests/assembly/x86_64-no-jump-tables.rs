@@ -1,12 +1,12 @@
 // Test that jump tables are (not) emitted when the `-Zno-jump-tables`
 // flag is (not) set.
 
-// revisions: unset set
-// assembly-output: emit-asm
-// compile-flags: -O
-// [set] compile-flags: -Zno-jump-tables
-// only-x86_64
-// ignore-sgx
+//@ revisions: unset set
+//@ assembly-output: emit-asm
+//@ compile-flags: -O
+//@ [set] compile-flags: -Zno-jump-tables
+//@ only-x86_64
+//@ ignore-sgx
 
 #![crate_type = "lib"]
 
