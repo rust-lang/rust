@@ -1648,7 +1648,7 @@
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.trait.item.display.on.hover": {
+                "rust-analyzer.traitItemDisplayNum": {
                     "markdownDescription": "How many trait item display on hover.",
                     "default": 7,
                     "type": [

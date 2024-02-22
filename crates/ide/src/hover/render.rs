@@ -8,7 +8,7 @@ use hir::{
 };
 use ide_db::{
     base_db::SourceDatabase,
-    defs::Definition,
+    defs::{Definition, HoverDisplayConfig},
     documentation::HasDocs,
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
@@ -406,7 +406,8 @@ pub(super) fn definition(
     config: &HoverConfig,
 ) -> Markup {
     let mod_path = definition_mod_path(db, &def);
-    let label = def.label(db, config.trait_item_display_on_hover);
+    let hover_config = HoverDisplayConfig { trait_item_display_num: config.trait_item_display_num };
+    let label = def.label(db, hover_config);
     let docs = def.docs(db, famous_defs);
     let value = (|| match def {
         Definition::Variant(it) => {

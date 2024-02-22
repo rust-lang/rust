@@ -591,7 +591,7 @@ config_data! {
         signatureInfo_documentation_enable: bool                       = "true",
 
         /// How many trait item display on hover.
-        trait_item_display_on_hover: Option<usize> = "7",
+        traitItemDisplayNum: Option<usize> = "7",
 
         /// Whether to insert closing angle brackets when typing an opening angle bracket of a generic argument list.
         typing_autoClosingAngleBrackets_enable: bool = "false",
@@ -1685,7 +1685,7 @@ impl Config {
                 }
             },
             keywords: self.data.hover_documentation_keywords_enable,
-            trait_item_display_on_hover: self.data.trait_item_display_on_hover,
+            trait_item_display_num: self.data.traitItemDisplayNum,
         }
     }
 

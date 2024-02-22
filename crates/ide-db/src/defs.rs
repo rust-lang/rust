@@ -24,6 +24,12 @@ use crate::documentation::{Documentation, HasDocs};
 use crate::famous_defs::FamousDefs;
 use crate::RootDatabase;
 
+#[derive(Default)]
+pub struct HoverDisplayConfig {
+    pub trait_item_display_num: Option<usize>,
+    // todo: add config for struct & enum
+}
+
 // FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum Definition {
@@ -213,7 +219,7 @@ impl Definition {
         })
     }
 
-    pub fn label(&self, db: &RootDatabase, max_size: Option<usize>) -> String {
+    pub fn label(&self, db: &RootDatabase, hover_display_config: HoverDisplayConfig) -> String {
         match *self {
             Definition::Macro(it) => it.display(db).to_string(),
             Definition::Field(it) => it.display(db).to_string(),
@@ -224,7 +230,9 @@ impl Definition {
             Definition::Variant(it) => it.display(db).to_string(),
             Definition::Const(it) => it.display(db).to_string(),
             Definition::Static(it) => it.display(db).to_string(),
-            Definition::Trait(it) => it.display_truncated(db, max_size).to_string(),
+            Definition::Trait(it) => {
+                it.display_truncated(db, hover_display_config.trait_item_display_num).to_string()
+            }
             Definition::TraitAlias(it) => it.display(db).to_string(),
             Definition::TypeAlias(it) => it.display(db).to_string(),
             Definition::BuiltinType(it) => it.name().display(db).to_string(),

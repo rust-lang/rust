@@ -17,7 +17,10 @@ use hir_ty::{
 };
 
 use crate::{
-    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module, SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant
+    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl,
+    Field, Function, GenericParam, HasCrate, HasVisibility, LifetimeParam, Macro, Module,
+    SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias,
+    TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -593,9 +596,9 @@ impl HirDisplay for Trait {
         write_generic_params(def_id, f)?;
         write_where_clause(def_id, f)?;
 
-        let mut display_size = 0;
-        let max_display_size = f.max_size.unwrap_or(7);
         let assoc_items = self.items(f.db);
+        let assoc_items_size = assoc_items.len();
+        let max_display_size = f.max_size.unwrap_or(assoc_items_size);
         if assoc_items.is_empty() {
             f.write_str(" {}")?;
         } else {
@@ -614,8 +617,7 @@ impl HirDisplay for Trait {
                     }
                 };
                 f.write_str(",\n")?;
-                display_size += 1;
-                if display_size == max_display_size && index != assoc_items.len() - 1{
+                if index + 1 == max_display_size && index + 1 != assoc_items_size {
                     f.write_str("    ...\n")?;
                     break;
                 }
