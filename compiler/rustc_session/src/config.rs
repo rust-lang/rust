@@ -295,7 +295,7 @@ impl LinkSelfContained {
         self.enabled_components.contains(LinkSelfContainedComponents::SANITIZERS)
     }
 
-    /// Returns whether the self-contained linker component was disabled on the CLI, using the
+    /// Returns whether the self-contained sanitizer component was disabled on the CLI, using the
     /// `-C link-self-contained=-sanitizers` syntax, or one of the `false` shortcuts.
     pub fn is_sanitizers_disabled(&self) -> bool {
         self.disabled_components.contains(LinkSelfContainedComponents::SANITIZERS)
