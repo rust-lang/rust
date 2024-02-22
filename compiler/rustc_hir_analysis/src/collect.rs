@@ -1027,7 +1027,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
     let repr = if is_anonymous {
         tcx.adt_def(tcx.local_parent(def_id)).repr()
     } else {
-        tcx.repr_options_of_def(def_id.to_def_id())
+        tcx.repr_options_of_def(def_id)
     };
     let (kind, variants) = match &item.kind {
         ItemKind::Enum(def, _) => {
