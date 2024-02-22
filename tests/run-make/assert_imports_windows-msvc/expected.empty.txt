@@ -1,0 +1,122 @@
+
+File: empty.exe
+Format: COFF-x86-64
+Arch: x86_64
+AddressSize: 64bit
+Import {
+  Name: KERNEL32.dll
+  ImportLookupTableRVA: 0x207C0
+  ImportAddressTableRVA: 0x19000
+  Symbol: GetLastError (619)
+  Symbol: AddVectoredExceptionHandler (19)
+  Symbol: SetThreadStackGuarantee (1408)
+  Symbol: WaitForSingleObject (1528)
+  Symbol: QueryPerformanceCounter (1115)
+  Symbol: AcquireSRWLockExclusive (0)
+  Symbol: RtlCaptureContext (1247)
+  Symbol: RtlVirtualUnwind (1262)
+  Symbol: RtlLookupFunctionEntry (1255)
+  Symbol: SetLastError (1357)
+  Symbol: GetCurrentDirectoryW (539)
+  Symbol: GetEnvironmentVariableW (580)
+  Symbol: GetCurrentProcess (545)
+  Symbol: GetStdHandle (737)
+  Symbol: GetCurrentProcessId (546)
+  Symbol: TryAcquireSRWLockExclusive (1477)
+  Symbol: HeapFree (862)
+  Symbol: HeapReAlloc (865)
+  Symbol: AcquireSRWLockShared (1)
+  Symbol: ReleaseSRWLockShared (1219)
+  Symbol: ReleaseMutex (1216)
+  Symbol: GetModuleHandleA (639)
+  Symbol: GetProcAddress (700)
+  Symbol: GetProcessHeap (707)
+  Symbol: GetConsoleMode (518)
+  Symbol: GetModuleHandleW (642)
+  Symbol: MultiByteToWideChar (1023)
+  Symbol: WriteConsoleW (1586)
+  Symbol: GetCurrentThread (549)
+  Symbol: GetSystemTimeAsFileTime (760)
+  Symbol: WaitForSingleObjectEx (1529)
+  Symbol: LoadLibraryA (977)
+  Symbol: CreateMutexA (218)
+  Symbol: ReleaseSRWLockExclusive (1218)
+  Symbol: HeapAlloc (858)
+  Symbol: CloseHandle (137)
+  Symbol: SetUnhandledExceptionFilter (1421)
+  Symbol: UnhandledExceptionFilter (1486)
+  Symbol: IsDebuggerPresent (910)
+  Symbol: InitializeSListHead (888)
+  Symbol: GetCurrentThreadId (550)
+  Symbol: IsProcessorFeaturePresent (917)
+}
+Import {
+  Name: ntdll.dll
+  ImportLookupTableRVA: 0x20A50
+  ImportAddressTableRVA: 0x19290
+  Symbol: RtlNtStatusToDosError (1294)
+  Symbol: NtWriteFile (665)
+}
+Import {
+  Name: VCRUNTIME140.dll
+  ImportLookupTableRVA: 0x20918
+  ImportAddressTableRVA: 0x19158
+  Symbol: __current_exception_context (28)
+  Symbol: __current_exception (27)
+  Symbol: __C_specific_handler (8)
+  Symbol: _CxxThrowException (1)
+  Symbol: memcmp (59)
+  Symbol: memmove (61)
+  Symbol: memset (62)
+  Symbol: memcpy (60)
+  Symbol: __CxxFrameHandler3 (14)
+}
+Import {
+  Name: api-ms-win-crt-runtime-l1-1-0.dll
+  ImportLookupTableRVA: 0x209A0
+  ImportAddressTableRVA: 0x191E0
+  Symbol: _initterm_e (55)
+  Symbol: exit (85)
+  Symbol: _exit (35)
+  Symbol: _initterm (54)
+  Symbol: _get_initial_narrow_environment (40)
+  Symbol: __p___argc (4)
+  Symbol: __p___argv (5)
+  Symbol: _cexit (22)
+  Symbol: _c_exit (21)
+  Symbol: _register_thread_local_exe_atexit_callback (61)
+  Symbol: _configure_narrow_argv (24)
+  Symbol: _set_app_type (66)
+  Symbol: _initialize_narrow_environment (51)
+  Symbol: _initialize_onexit_table (52)
+  Symbol: _register_onexit_function (60)
+  Symbol: _crt_atexit (30)
+  Symbol: terminate (103)
+  Symbol: _seh_filter_exe (64)
+}
+Import {
+  Name: api-ms-win-crt-math-l1-1-0.dll
+  ImportLookupTableRVA: 0x20990
+  ImportAddressTableRVA: 0x191D0
+  Symbol: __setusermatherr (9)
+}
+Import {
+  Name: api-ms-win-crt-stdio-l1-1-0.dll
+  ImportLookupTableRVA: 0x20A38
+  ImportAddressTableRVA: 0x19278
+  Symbol: _set_fmode (84)
+  Symbol: __p__commode (1)
+}
+Import {
+  Name: api-ms-win-crt-locale-l1-1-0.dll
+  ImportLookupTableRVA: 0x20980
+  ImportAddressTableRVA: 0x191C0
+  Symbol: _configthreadlocale (8)
+}
+Import {
+  Name: api-ms-win-crt-heap-l1-1-0.dll
+  ImportLookupTableRVA: 0x20968
+  ImportAddressTableRVA: 0x191A8
+  Symbol: free (24)
+  Symbol: _set_new_mode (22)
+}
