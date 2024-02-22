@@ -139,7 +139,7 @@ fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
 fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
     matches!(
         get_parent_node(cx.tcx, id),
-        Some(Node::Stmt(..) | Node::Block(Block { stmts: &[], .. }))
+        Node::Stmt(..) | Node::Block(Block { stmts: &[], .. })
     )
 }
 

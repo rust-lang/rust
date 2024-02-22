@@ -176,7 +176,7 @@ fn check_fn_inner<'tcx>(
                             _ => None,
                         });
                         for bound in lifetimes {
-                            if !bound.is_static() && !bound.is_elided() {
+                            if bound.res != LifetimeName::Static && !bound.is_elided() {
                                 return;
                             }
                         }
@@ -285,7 +285,7 @@ fn elision_suggestions(
             .iter()
             .filter(|usage| named_lifetime(usage).map_or(false, |id| elidable_lts.contains(&id)))
             .map(|usage| {
-                match cx.tcx.hir().get_parent(usage.hir_id) {
+                match cx.tcx.parent_hir_node(usage.hir_id) {
                     Node::Ty(Ty {
                         kind: TyKind::Ref(..), ..
                     }) => {

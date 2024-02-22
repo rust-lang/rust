@@ -106,7 +106,8 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<hir
             }
             if sub_pat.is_some() {
                 removed_pat.insert(value_hir_id);
-                slices.remove(&value_hir_id);
+                // FIXME(rust/#120456) - is `swap_remove` correct?
+                slices.swap_remove(&value_hir_id);
                 return;
             }
 
@@ -242,29 +243,27 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
             } = *self;
 
             if let Some(use_info) = slice_lint_info.get_mut(&local_id)
-                // Check if this is even a local we're interested in
-
-                && let map = cx.tcx.hir()
-
                 // Checking for slice indexing
-                && let parent_id = map.parent_id(expr.hir_id)
-                && let Some(hir::Node::Expr(parent_expr)) = cx.tcx.opt_hir_node(parent_id)
+                && let parent_id = cx.tcx.parent_hir_id(expr.hir_id)
+                && let hir::Node::Expr(parent_expr) = cx.tcx.hir_node(parent_id)
                 && let hir::ExprKind::Index(_, index_expr, _) = parent_expr.kind
                 && let Some(Constant::Int(index_value)) = constant(cx, cx.typeck_results(), index_expr)
                 && let Ok(index_value) = index_value.try_into()
                 && index_value < max_suggested_slice
 
                 // Make sure that this slice index is read only
-                && let maybe_addrof_id = map.parent_id(parent_id)
-                && let Some(hir::Node::Expr(maybe_addrof_expr)) = cx.tcx.opt_hir_node(maybe_addrof_id)
+                && let hir::Node::Expr(maybe_addrof_expr) = cx.tcx.parent_hir_node(parent_id)
                 && let hir::ExprKind::AddrOf(_kind, hir::Mutability::Not, _inner_expr) = maybe_addrof_expr.kind
             {
-                use_info.index_use.push((index_value, map.span(parent_expr.hir_id)));
+                use_info
+                    .index_use
+                    .push((index_value, cx.tcx.hir().span(parent_expr.hir_id)));
                 return;
             }
 
             // The slice was used for something other than indexing
-            self.slice_lint_info.remove(&local_id);
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.slice_lint_info.swap_remove(&local_id);
         }
         intravisit::walk_expr(self, expr);
     }

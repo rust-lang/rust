@@ -101,25 +101,22 @@ impl<'tcx> Visitor<'tcx> for InferVisitor {
 
 fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match get_parent_node(cx.tcx, expr.hir_id) {
-        Some(Node::Local(Local { ty: Some(ty), .. })) => {
+        Node::Local(Local { ty: Some(ty), .. }) => {
             let mut v = InferVisitor::default();
             v.visit_ty(ty);
             !v.0
         },
-        Some(
-            Node::Expr(Expr {
+        Node::Expr(Expr {
+            kind: ExprKind::Call(path, args),
+            ..
+        })
+        | Node::Block(Block {
+            expr: Some(Expr {
                 kind: ExprKind::Call(path, args),
                 ..
-            })
-            | Node::Block(Block {
-                expr:
-                    Some(Expr {
-                        kind: ExprKind::Call(path, args),
-                        ..
-                    }),
-                ..
             }),
-        ) => {
+            ..
+        }) => {
             if let Some(index) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
                 && let Some(sig) = expr_sig(cx, path)
                 && let Some(input) = sig.input(index)

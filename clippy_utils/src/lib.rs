@@ -9,7 +9,13 @@
 #![feature(assert_matches)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
-#![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::must_use_candidate,
+    rustc::diagnostic_outside_of_impl,
+    rustc::untranslatable_diagnostic
+)]
 // warn on the same lints as `clippy_lints`
 #![warn(trivial_casts, trivial_numeric_casts)]
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
@@ -176,11 +182,9 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// Note: If you have an expression that references a binding `x`, use `path_to_local` to get the
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
-    let hir = cx.tcx.hir();
-    if let Some(Node::Pat(pat)) = cx.tcx.opt_hir_node(hir_id)
+    if let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
         && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
-        && let parent = hir.parent_id(hir_id)
-        && let Some(Node::Local(local)) = cx.tcx.opt_hir_node(parent)
+        && let Node::Local(local) = cx.tcx.parent_hir_node(hir_id)
     {
         return local.init;
     }
@@ -327,7 +331,7 @@ pub fn is_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol)
 /// Checks if the `def_id` belongs to a function that is part of a trait impl.
 pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     if let Some(hir_id) = cx.tcx.opt_local_def_id_to_hir_id(def_id)
-        && let Node::Item(item) = cx.tcx.hir().get_parent(hir_id)
+        && let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
         && let ItemKind::Impl(imp) = item.kind
     {
         imp.of_trait.is_some()
@@ -1304,8 +1308,8 @@ pub fn contains_return<'tcx>(expr: impl Visitable<'tcx>) -> bool {
 }
 
 /// Gets the parent node, if any.
-pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
-    tcx.hir().find_parent(id)
+pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Node<'_> {
+    tcx.parent_hir_node(id)
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
@@ -1317,7 +1321,7 @@ pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'t
 /// constraint lints
 pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId) -> Option<&'tcx Expr<'tcx>> {
     match get_parent_node(cx.tcx, hir_id) {
-        Some(Node::Expr(parent)) => Some(parent),
+        Node::Expr(parent) => Some(parent),
         _ => None,
     }
 }
@@ -1327,7 +1331,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     let map = &cx.tcx.hir();
     let enclosing_node = map
         .get_enclosing_scope(hir_id)
-        .and_then(|enclosing_id| cx.tcx.opt_hir_node(enclosing_id));
+        .map(|enclosing_id| cx.tcx.hir_node(enclosing_id));
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
@@ -2178,7 +2182,7 @@ pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if the expression is the final expression returned from a block.
 pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
-    matches!(get_parent_node(tcx, expr.hir_id), Some(Node::Block(..)))
+    matches!(get_parent_node(tcx, expr.hir_id), Node::Block(..))
 }
 
 pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
@@ -2221,7 +2225,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 /// }
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
+    if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
         matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false
@@ -2669,10 +2673,10 @@ impl<'tcx> ExprUseNode<'tcx> {
             )),
             Self::Return(id) => {
                 let hir_id = cx.tcx.local_def_id_to_hir_id(id.def_id);
-                if let Some(Node::Expr(Expr {
+                if let Node::Expr(Expr {
                     kind: ExprKind::Closure(c),
                     ..
-                })) = cx.tcx.opt_hir_node(hir_id)
+                }) = cx.tcx.hir_node(hir_id)
                 {
                     match c.fn_decl.output {
                         FnRetTy::DefaultReturn(_) => None,
@@ -2740,7 +2744,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Optio
         {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }
-        if !cx.tcx.hir().opt_span(parent_id).is_some_and(|x| x.ctxt() == ctxt) {
+        if cx.tcx.hir().span(parent_id).ctxt() != ctxt {
             return ControlFlow::Break(());
         }
         if let Node::Expr(e) = parent {

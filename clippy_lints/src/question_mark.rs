@@ -289,7 +289,7 @@ impl QuestionMark {
         {
             let mut applicability = Applicability::MachineApplicable;
             let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
-            let requires_semi = matches!(get_parent_node(cx.tcx, expr.hir_id), Some(Node::Stmt(_)));
+            let requires_semi = matches!(get_parent_node(cx.tcx, expr.hir_id), Node::Stmt(_));
             let sugg = format!(
                 "{receiver_str}{}?{}",
                 if by_ref == ByRef::Yes { ".as_ref()" } else { "" },

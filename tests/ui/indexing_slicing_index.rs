@@ -13,8 +13,6 @@
 const ARR: [i32; 2] = [1, 2];
 const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
 //~^ ERROR: indexing may panic
-const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
-//~^ ERROR: indexing may panic
 
 const fn idx() -> usize {
     1

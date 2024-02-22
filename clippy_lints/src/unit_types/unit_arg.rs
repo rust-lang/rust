@@ -19,9 +19,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     if is_questionmark_desugar_marked_call(expr) {
         return;
     }
-    let map = &cx.tcx.hir();
-    let opt_parent_node = map.find_parent(expr.hir_id);
-    if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node
+    if let hir::Node::Expr(parent_expr) = cx.tcx.parent_hir_node(expr.hir_id)
         && is_questionmark_desugar_marked_call(parent_expr)
     {
         return;
@@ -183,8 +181,8 @@ fn fmt_stmts_and_call(
 
     let mut stmts_and_call_snippet = stmts_and_call.join(&format!("{}{}", ";\n", " ".repeat(call_expr_indent)));
     // expr is not in a block statement or result expression position, wrap in a block
-    let parent_node = cx.tcx.hir().find_parent(call_expr.hir_id);
-    if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
+    let parent_node = cx.tcx.parent_hir_node(call_expr.hir_id);
+    if !matches!(parent_node, Node::Block(_)) && !matches!(parent_node, Node::Stmt(_)) {
         let block_indent = call_expr_indent + 4;
         stmts_and_call_snippet =
             reindent_multiline(stmts_and_call_snippet.into(), true, Some(block_indent)).into_owned();

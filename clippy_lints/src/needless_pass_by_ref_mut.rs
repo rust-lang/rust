@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         };
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
+        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
@@ -236,11 +236,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         // #11182; do not lint if mutability is required elsewhere
         if let ExprKind::Path(..) = expr.kind
-            && let Some(parent) = get_parent_node(cx.tcx, expr.hir_id)
             && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(expr).kind()
             && let Some(def_id) = def_id.as_local()
         {
-            if let Node::Expr(e) = parent
+            if let Node::Expr(e) = get_parent_node(cx.tcx, expr.hir_id)
                 && let ExprKind::Call(call, _) = e.kind
                 && call.hir_id == expr.hir_id
             {
@@ -382,7 +381,8 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 self.add_mutably_used_var(*vid);
             }
             self.prev_bind = None;
-            self.prev_move_to_closure.remove(vid);
+            // FIXME(rust/#120456) - is `swap_remove` correct?
+            self.prev_move_to_closure.swap_remove(vid);
         }
     }
 

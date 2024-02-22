@@ -1,7 +1,7 @@
 use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::get_parent_expr;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::{get_parent_expr, get_parent_node};
 use hir::Param;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -200,11 +200,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             hint = hint.asyncify();
                         }
 
-                        let is_in_fn_call_arg =
-                            clippy_utils::get_parent_node(cx.tcx, expr.hir_id).is_some_and(|x| match x {
-                                Node::Expr(expr) => matches!(expr.kind, hir::ExprKind::Call(_, _)),
-                                _ => false,
-                            });
+                        let is_in_fn_call_arg = if let Node::Expr(expr) = get_parent_node(cx.tcx, expr.hir_id) {
+                            matches!(expr.kind, hir::ExprKind::Call(_, _))
+                        } else {
+                            false
+                        };
 
                         // avoid clippy::double_parens
                         if !is_in_fn_call_arg {

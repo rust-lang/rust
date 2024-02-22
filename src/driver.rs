@@ -1,3 +1,5 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
 #![feature(rustc_private)]
 #![feature(let_chains)]
 #![feature(lazy_cell)]
@@ -26,7 +28,6 @@ use std::fs::read_to_string;
 use std::ops::Deref;
 use std::path::Path;
 use std::process::exit;
-use std::string::ToString;
 
 use anstream::println;
 

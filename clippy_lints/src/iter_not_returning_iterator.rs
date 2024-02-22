@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for IterNotReturningIterator {
         if matches!(name, "iter" | "iter_mut")
             && !matches!(
                 get_parent_node(cx.tcx, item.hir_id()),
-                Some(Node::Item(Item { kind: ItemKind::Impl(i), .. })) if i.of_trait.is_some()
+                Node::Item(Item { kind: ItemKind::Impl(i), .. }) if i.of_trait.is_some()
             )
         {
             if let ImplItemKind::Fn(fn_sig, _) = &item.kind {

@@ -199,7 +199,7 @@ fn get_pat_binding<'tcx>(
             return span.map(|span| PatBindingInfo {
                 span,
                 byref_ident,
-                is_field: matches!(cx.tcx.hir().get_parent(local), Node::PatField(_)),
+                is_field: matches!(cx.tcx.parent_hir_node(local), Node::PatField(_)),
             });
         }
     }

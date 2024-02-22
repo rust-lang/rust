@@ -123,22 +123,23 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
 
 // TODO: Replace with Map::is_argument(..) when it's fixed
 fn is_argument(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    match tcx.opt_hir_node(id) {
-        Some(Node::Pat(Pat {
+    match tcx.hir_node(id) {
+        Node::Pat(Pat {
             kind: PatKind::Binding(..),
             ..
-        })) => (),
+        }) => (),
         _ => return false,
     }
 
-    matches!(tcx.hir().find_parent(id), Some(Node::Param(_)))
+    matches!(tcx.parent_hir_node(id), Node::Param(_))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
-                self.set.remove(&lid);
+                // FIXME(rust/#120456) - is `swap_remove` correct?
+                self.set.swap_remove(&lid);
             }
         }
     }
@@ -146,7 +147,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
-                self.set.remove(&lid);
+                // FIXME(rust/#120456) - is `swap_remove` correct?
+                self.set.swap_remove(&lid);
             }
         }
     }
@@ -156,8 +158,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             let map = &self.cx.tcx.hir();
             if is_argument(self.cx.tcx, cmt.hir_id) {
                 // Skip closure arguments
-                let parent_id = map.parent_id(cmt.hir_id);
-                if let Some(Node::Expr(..)) = map.find_parent(parent_id) {
+                let parent_id = self.cx.tcx.parent_hir_id(cmt.hir_id);
+                if let Node::Expr(..) = self.cx.tcx.parent_hir_node(parent_id) {
                     return;
                 }
 
