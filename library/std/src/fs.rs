@@ -1409,8 +1409,7 @@ impl Permissions {
     /// Therefore the return value of this function cannot be relied upon
     /// to predict whether attempts to read or write the file will actually succeed.
     /// The [`PermissionsExt`] trait gives direct access to the permission bits but
-    /// also does not read ACLs. If you need to accurately know whether or not a file
-    /// is writable use the `access()` function from libc.
+    /// also does not read ACLs.
     ///
     /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
     ///
