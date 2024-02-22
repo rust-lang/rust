@@ -564,6 +564,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
+                                            || is_word(lint, sym!(unused_import_braces))
+                                            || is_word(lint, sym!(unused_imports))
                                             || extract_clippy_lint(lint).map_or(false, |s| {
                                                 matches!(
                                                     s.as_str(),

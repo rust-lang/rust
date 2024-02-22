@@ -80,6 +80,14 @@ pub mod split {
 #[allow(clippy::single_component_path_imports)]
 use regex;
 
+mod module {
+    pub(crate) struct Struct;
+}
+
+#[rustfmt::skip]
+#[allow(unused_import_braces, unused_imports)]
+use module::{Struct};
+
 fn main() {
     test_indented_attr();
 }
