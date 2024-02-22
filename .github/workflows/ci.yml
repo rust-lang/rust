@@ -607,10 +607,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
+          - name: x86_64-mingw
             env:
-              CODEGEN_BACKENDS: "llvm,cranelift"
-            os: ubuntu-20.04-16core-64gb
+              SCRIPT: make ci-mingw
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            os: windows-2019-8core-32gb
     defaults:
       run:
         shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
