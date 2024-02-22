@@ -99,12 +99,12 @@ unsafe fn configure_llvm(sess: &Session) {
             }
         }
 
-        if sess.panic_strategy() == PanicStrategy::Unwind {
-            if sess.target.os == "emscripten" {
-                add("-enable-emscripten-cxx-exceptions", false);
-            } else if wants_wasm_eh(sess) {
-                add("-wasm-enable-eh", false);
-            }
+        if wants_wasm_eh(sess) {
+            add("-wasm-enable-eh", false);
+        }
+
+        if sess.target.os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
+            add("-enable-emscripten-cxx-exceptions", false);
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes

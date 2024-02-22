@@ -60,12 +60,7 @@ cfg_if::cfg_if! {
     ))] {
         #[path = "gcc.rs"]
         mod real_imp;
-    } else if #[cfg(all(target_family = "wasm", panic = "unwind"))] {
-        // for now, PanicStrategy::Unwind is not the default for wasm targets,
-        // so we need the panic = "unwind" in the cfg above. to use llvm.wasm.throw,
-        // we need to pass -wasm-enable-eh to LLVM, but that only happens if rustc
-        // is compiling with -C panic=unwind. So, this lets us -Zbuild-std with
-        // panic=unwind, while keeping the default panic=abort working.
+    } else if #[cfg(target_family = "wasm")] {
         #[path = "wasm.rs"]
         mod real_imp;
     } else {
