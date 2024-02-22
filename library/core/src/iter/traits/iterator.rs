@@ -2967,12 +2967,13 @@ pub trait Iterator {
     /// assert!(result.is_err());
     /// ```
     ///
-    /// This also supports other types which implement `Try`, not just `Result`.
+    /// This also supports other types which implement [`Try`], not just [`Result`].
+    ///
     /// ```
     /// #![feature(generic_nonzero, try_find)]
-    ///
     /// use std::num::NonZero;
-    /// let a = [3, 5, 7, 4, 9, 0, 11];
+    ///
+    /// let a = [3, 5, 7, 4, 9, 0, 11u32];
     /// let result = a.iter().try_find(|&&x| NonZero::new(x).map(|y| y.is_power_of_two()));
     /// assert_eq!(result, Some(Some(&4)));
     /// let result = a.iter().take(3).try_find(|&&x| NonZero::new(x).map(|y| y.is_power_of_two()));
