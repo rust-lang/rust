@@ -626,7 +626,7 @@ impl<'a> Linker for GccLinker<'a> {
                 // it does support --strip-all as a compatibility alias for -s.
                 // The --strip-debug case is handled by running an external
                 // `strip` utility as a separate step after linking.
-                if self.sess.target.os != "illumos" {
+                if !self.sess.target.is_like_solaris {
                     self.linker_arg("--strip-debug");
                 }
             }

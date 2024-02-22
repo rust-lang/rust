@@ -712,7 +712,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_trait_errors: Default::default(),
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
-            err_count_on_creation: tcx.dcx().err_count(),
+            err_count_on_creation: tcx.dcx().err_count_excluding_lint_errs(),
             stashed_err_count_on_creation: tcx.dcx().stashed_err_count(),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
@@ -1267,8 +1267,11 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
         if let Some(guar) = self.tainted_by_errors.get() {
             Some(guar)
-        } else if self.dcx().err_count() > self.err_count_on_creation {
-            // Errors reported since this infcx was made.
+        } else if self.dcx().err_count_excluding_lint_errs() > self.err_count_on_creation {
+            // Errors reported since this infcx was made. Lint errors are
+            // excluded to avoid some being swallowed in the presence of
+            // non-lint errors. (It's arguable whether or not this exclusion is
+            // important.)
             let guar = self.dcx().has_errors().unwrap();
             self.set_tainted_by_errors(guar);
             Some(guar)

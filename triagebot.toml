@@ -423,6 +423,10 @@ changelog-branch = "master"
 
 [shortcut]
 
+[mentions."triagebot.toml"]
+message = "`triagebot.toml` has been modified, there may have been changes to the review queue."
+cc = ["@davidtwco", "@wesleywiser"]
+
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
 
