@@ -606,9 +606,7 @@ pub fn check_platform_intrinsic_type(
         | sym::simd_reduce_or
         | sym::simd_reduce_xor
         | sym::simd_reduce_min
-        | sym::simd_reduce_max
-        | sym::simd_reduce_min_nanless
-        | sym::simd_reduce_max_nanless => (2, 0, vec![param(0)], param(1)),
+        | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
         sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
         sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {

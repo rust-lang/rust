@@ -450,6 +450,20 @@ extern "C" void LLVMRustSetAlgebraicMath(LLVMValueRef V) {
   }
 }
 
+// Enable the reassoc fast-math flag, allowing transformations that pretend
+// floating-point addition and multiplication are associative.
+//
+// Note that this does NOT enable any flags which can cause a floating-point operation on
+// well-defined inputs to return poison, and therefore this function can be used to build
+// safe Rust intrinsics (such as fadd_algebraic).
+//
+// https://llvm.org/docs/LangRef.html#fast-math-flags
+extern "C" void LLVMRustSetAllowReassoc(LLVMValueRef V) {
+  if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+    I->setHasAllowReassoc(true);
+  }
+}
+
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Source,
                         const char *Name, LLVMAtomicOrdering Order) {

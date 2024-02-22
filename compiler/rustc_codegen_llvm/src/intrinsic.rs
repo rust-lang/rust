@@ -1880,14 +1880,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, true, mul, 1.0);
     arith_red!(
         simd_reduce_add_unordered: vector_reduce_add,
-        vector_reduce_fadd_algebraic,
+        vector_reduce_fadd_reassoc,
         false,
         add,
         0.0
     );
     arith_red!(
         simd_reduce_mul_unordered: vector_reduce_mul,
-        vector_reduce_fmul_algebraic,
+        vector_reduce_fmul_reassoc,
         false,
         mul,
         1.0
@@ -1919,9 +1919,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
     minmax_red!(simd_reduce_min: vector_reduce_min, vector_reduce_fmin);
     minmax_red!(simd_reduce_max: vector_reduce_max, vector_reduce_fmax);
-
-    minmax_red!(simd_reduce_min_nanless: vector_reduce_min, vector_reduce_fmin_fast);
-    minmax_red!(simd_reduce_max_nanless: vector_reduce_max, vector_reduce_fmax_fast);
 
     macro_rules! bitwise_red {
         ($name:ident : $red:ident, $boolean:expr) => {
