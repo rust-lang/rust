@@ -275,7 +275,7 @@ pub struct DiagInner {
     pub messages: Vec<(DiagnosticMessage, Style)>,
     pub code: Option<ErrCode>,
     pub span: MultiSpan,
-    pub children: Vec<SubDiagnostic>,
+    pub children: Vec<Subdiag>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
     pub args: DiagnosticArgMap,
 
@@ -390,7 +390,7 @@ impl DiagInner {
         message: impl Into<SubdiagnosticMessage>,
         span: MultiSpan,
     ) {
-        let sub = SubDiagnostic {
+        let sub = Subdiag {
             level,
             messages: vec![(
                 self.subdiagnostic_message_to_diagnostic_message(message),
@@ -413,7 +413,7 @@ impl DiagInner {
         &[(DiagnosticMessage, Style)],
         &Option<ErrCode>,
         &MultiSpan,
-        &[SubDiagnostic],
+        &[Subdiag],
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
         Vec<(&DiagnosticArgName, &DiagnosticArgValue)>,
         &Option<IsLint>,
@@ -451,7 +451,7 @@ impl PartialEq for DiagInner {
 /// A "sub"-diagnostic attached to a parent diagnostic.
 /// For example, a note attached to an error.
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
-pub struct SubDiagnostic {
+pub struct Subdiag {
     pub level: Level,
     pub messages: Vec<(DiagnosticMessage, Style)>,
     pub span: MultiSpan,
@@ -1231,7 +1231,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
             .into_iter()
             .map(|m| (self.subdiagnostic_message_to_diagnostic_message(m.content), m.style))
             .collect();
-        let sub = SubDiagnostic { level, messages, span };
+        let sub = Subdiag { level, messages, span };
         self.children.push(sub);
     }
 

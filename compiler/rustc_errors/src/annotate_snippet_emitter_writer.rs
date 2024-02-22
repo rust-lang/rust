@@ -10,7 +10,7 @@ use crate::snippet::Line;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
     CodeSuggestion, DiagInner, DiagnosticMessage, Emitter, ErrCode, FluentBundle,
-    LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
+    LazyFallbackBundle, Level, MultiSpan, Style, Subdiag,
 };
 use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
 use rustc_data_structures::sync::Lrc;
@@ -129,7 +129,7 @@ impl AnnotateSnippetEmitter {
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         msp: &MultiSpan,
-        _children: &[SubDiagnostic],
+        _children: &[Subdiag],
         _suggestions: &[CodeSuggestion],
     ) {
         let message = self.translate_messages(messages, args);

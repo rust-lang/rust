@@ -18,8 +18,8 @@ use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
     diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage,
-    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle, TerminalUrl,
+    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
+    SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
 
@@ -303,7 +303,7 @@ pub trait Emitter: Translate {
     fn fix_multispans_in_extern_macros_and_render_macro_backtrace(
         &self,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<Subdiag>,
         level: &Level,
         backtrace: bool,
     ) {
@@ -350,7 +350,7 @@ pub trait Emitter: Translate {
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
                 );
 
-                children.push(SubDiagnostic {
+                children.push(Subdiag {
                     level: Level::Note,
                     messages: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
@@ -362,7 +362,7 @@ pub trait Emitter: Translate {
     fn render_multispans_macro_backtrace(
         &self,
         span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
+        children: &mut Vec<Subdiag>,
         backtrace: bool,
     ) {
         for span in iter::once(span).chain(children.iter_mut().map(|child| &mut child.span)) {
@@ -461,11 +461,7 @@ pub trait Emitter: Translate {
     // This does a small "fix" for multispans by looking to see if it can find any that
     // point directly at external macros. Since these are often difficult to read,
     // this will change the span to point at the use site.
-    fn fix_multispans_in_extern_macros(
-        &self,
-        span: &mut MultiSpan,
-        children: &mut Vec<SubDiagnostic>,
-    ) {
+    fn fix_multispans_in_extern_macros(&self, span: &mut MultiSpan, children: &mut Vec<Subdiag>) {
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
         self.fix_multispan_in_extern_macros(span);
         for child in children.iter_mut() {
@@ -1235,7 +1231,7 @@ impl HumanEmitter {
         max
     }
 
-    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[SubDiagnostic]) -> usize {
+    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[Subdiag]) -> usize {
         let primary = self.get_multispan_max_line_num(span);
         children
             .iter()
@@ -2098,7 +2094,7 @@ impl HumanEmitter {
         args: &FluentArgs<'_>,
         code: &Option<ErrCode>,
         span: &MultiSpan,
-        children: &[SubDiagnostic],
+        children: &[Subdiag],
         suggestions: &[CodeSuggestion],
         emitted_at: Option<&DiagnosticLocation>,
     ) {

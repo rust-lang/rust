@@ -1885,7 +1885,7 @@ impl SharedEmitterMain {
                     d.children = diag
                         .children
                         .into_iter()
-                        .map(|sub| rustc_errors::SubDiagnostic {
+                        .map(|sub| rustc_errors::Subdiag {
                             level: sub.level,
                             messages: sub.messages,
                             span: MultiSpan::new(),

@@ -39,7 +39,7 @@ pub use codes::*;
 pub use diagnostic::{
     AddToDiagnostic, BugAbort, DecorateLint, DiagInner, DiagnosticArg, DiagnosticArgMap,
     DiagnosticArgName, DiagnosticArgValue, DiagnosticBuilder, DiagnosticStyledString,
-    EmissionGuarantee, FatalAbort, IntoDiagnostic, IntoDiagnosticArg, StringPart, SubDiagnostic,
+    EmissionGuarantee, FatalAbort, IntoDiagnostic, IntoDiagnosticArg, StringPart, Subdiag,
     SubdiagnosticMessageOp,
 };
 pub use diagnostic_impls::{
@@ -1393,7 +1393,7 @@ impl DiagCtxtInner {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
 
-                let already_emitted_sub = |sub: &mut SubDiagnostic| {
+                let already_emitted_sub = |sub: &mut Subdiag| {
                     debug!(?sub);
                     if sub.level != OnceNote && sub.level != OnceHelp {
                         return false;

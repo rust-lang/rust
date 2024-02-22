@@ -17,7 +17,7 @@ use crate::registry::Registry;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
     diagnostic::IsLint, CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel,
-    SubDiagnostic, TerminalUrl,
+    Subdiag, TerminalUrl,
 };
 use rustc_lint_defs::Applicability;
 
@@ -431,16 +431,16 @@ impl Diagnostic {
     }
 
     fn from_sub_diagnostic(
-        diag: &SubDiagnostic,
+        subdiag: &Subdiag,
         args: &FluentArgs<'_>,
         je: &JsonEmitter,
     ) -> Diagnostic {
-        let translated_message = je.translate_messages(&diag.messages, args);
+        let translated_message = je.translate_messages(&subdiag.messages, args);
         Diagnostic {
             message: translated_message.to_string(),
             code: None,
-            level: diag.level.to_str(),
-            spans: DiagnosticSpan::from_multispan(&diag.span, args, je),
+            level: subdiag.level.to_str(),
+            spans: DiagnosticSpan::from_multispan(&subdiag.span, args, je),
             children: vec![],
             rendered: None,
         }
