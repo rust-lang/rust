@@ -154,8 +154,10 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         trait_m_sig.inputs_and_output,
     ));
     if !ocx.select_all_or_error().is_empty() {
-        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (selection)");
-        return;
+        // This code path is not reached in any tests, but may be reachable. If
+        // this is triggered, it should be converted to `delayed_bug` and the
+        // triggering case turned into a test.
+        tcx.dcx().bug("encountered errors when checking RPITIT refinement (selection)");
     }
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
@@ -163,13 +165,17 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (regions)");
-        return;
+        // This code path is not reached in any tests, but may be reachable. If
+        // this is triggered, it should be converted to `delayed_bug` and the
+        // triggering case turned into a test.
+        tcx.dcx().bug("encountered errors when checking RPITIT refinement (regions)");
     }
     // Resolve any lifetime variables that may have been introduced during normalization.
     let Ok((trait_bounds, impl_bounds)) = infcx.fully_resolve((trait_bounds, impl_bounds)) else {
-        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (resolution)");
-        return;
+        // This code path is not reached in any tests, but may be reachable. If
+        // this is triggered, it should be converted to `delayed_bug` and the
+        // triggering case turned into a test.
+        tcx.dcx().bug("encountered errors when checking RPITIT refinement (resolution)");
     };
 
     // For quicker lookup, use an `IndexSet` (we don't use one earlier because

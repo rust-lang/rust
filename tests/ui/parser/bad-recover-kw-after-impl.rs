@@ -1,4 +1,4 @@
-//@ check-pass
+// This is just `mbe-async-trait-bound-theoretical-regression.rs` in practice.
 
 //@ edition:2021
 // for the `impl` + keyword test
@@ -11,5 +11,7 @@ macro_rules! impl_primitive {
 }
 
 impl_primitive!(impl async);
+//~^ ERROR expected identifier, found `<eof>`
+//~| ERROR async closures are unstable
 
 fn main() {}

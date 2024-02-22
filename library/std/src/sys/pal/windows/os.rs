@@ -327,7 +327,7 @@ fn home_dir_crt() -> Option<PathBuf> {
         super::fill_utf16_buf(
             |buf, mut sz| {
                 match c::GetUserProfileDirectoryW(
-                    ptr::invalid_mut(CURRENT_PROCESS_TOKEN),
+                    ptr::without_provenance_mut(CURRENT_PROCESS_TOKEN),
                     buf,
                     &mut sz,
                 ) {

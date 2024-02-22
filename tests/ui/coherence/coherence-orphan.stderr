@@ -1,7 +1,7 @@
 error[E0117]: only traits defined in the current crate can be implemented for primitive types
   --> $DIR/coherence-orphan.rs:10:1
    |
-LL | impl TheTrait<usize> for isize { }
+LL | impl TheTrait<usize> for isize {}
    | ^^^^^---------------^^^^^-----
    | |    |                   |
    | |    |                   `isize` is not defined in the current crate
@@ -13,7 +13,7 @@ LL | impl TheTrait<usize> for isize { }
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
   --> $DIR/coherence-orphan.rs:20:1
    |
-LL | impl !Send for Vec<isize> { }
+LL | impl !Send for Vec<isize> {}
    | ^^^^^^^^^^^^^^^----------
    | |              |
    | |              `Vec` is not defined in the current crate
@@ -21,23 +21,10 @@ LL | impl !Send for Vec<isize> { }
    |
    = note: define and implement a trait or new type instead
 
-warning: cross-crate traits with a default impl, like `Send`, should not be specialized
-  --> $DIR/coherence-orphan.rs:20:1
-   |
-LL | impl !Send for Vec<isize> { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this will change its meaning in a future release!
-   = note: for more information, see issue #93367 <https://github.com/rust-lang/rust/issues/93367>
-   = note: `isize` is not a generic parameter
-note: try using the same sequence of generic parameters as the struct definition
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-   = note: `#[warn(suspicious_auto_trait_impls)]` on by default
-
 error[E0046]: not all trait items implemented, missing: `the_fn`
   --> $DIR/coherence-orphan.rs:10:1
    |
-LL | impl TheTrait<usize> for isize { }
+LL | impl TheTrait<usize> for isize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `the_fn` in implementation
    |
    = help: implement the missing item: `fn the_fn(&self) { todo!() }`
@@ -45,7 +32,7 @@ LL | impl TheTrait<usize> for isize { }
 error[E0046]: not all trait items implemented, missing: `the_fn`
   --> $DIR/coherence-orphan.rs:14:1
    |
-LL | impl TheTrait<TheType> for isize { }
+LL | impl TheTrait<TheType> for isize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `the_fn` in implementation
    |
    = help: implement the missing item: `fn the_fn(&self) { todo!() }`
@@ -53,12 +40,12 @@ LL | impl TheTrait<TheType> for isize { }
 error[E0046]: not all trait items implemented, missing: `the_fn`
   --> $DIR/coherence-orphan.rs:17:1
    |
-LL | impl TheTrait<isize> for TheType { }
+LL | impl TheTrait<isize> for TheType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `the_fn` in implementation
    |
    = help: implement the missing item: `fn the_fn(&self) { todo!() }`
 
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0046, E0117.
 For more information about an error, try `rustc --explain E0046`.

@@ -1,7 +1,7 @@
 use hir::def::CtorKind;
 use hir::intravisit::{walk_expr, walk_stmt, Visitor};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -76,7 +76,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub(super) fn suggest_boxing_for_return_impl_trait(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         return_sp: Span,
         arm_spans: impl Iterator<Item = Span>,
     ) {
@@ -100,7 +100,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
     ) {
         // Heavily inspired by `FnCtxt::suggest_compatible_variants`, with
         // some modifications due to that being in typeck and this being in infer.
@@ -177,7 +177,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: &ObligationCause<'tcx>,
         exp_span: Span,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!(
             "suggest_await_on_expect_found: exp_span={:?}, expected_ty={:?}, found_ty={:?}",
@@ -258,7 +258,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         cause: &ObligationCause<'tcx>,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!(
             "suggest_accessing_field_where_appropriate(cause={:?}, exp_found={:?})",
@@ -298,7 +298,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         cause: &ObligationCause<'tcx>,
         span: Span,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
     ) {
         debug!("suggest_function_pointers(cause={:?}, exp_found={:?})", cause, exp_found);
         let ty::error::ExpectedFound { expected, found } = exp_found;
@@ -532,7 +532,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
         hir: hir::Node<'_>,
         exp_found: &ty::error::ExpectedFound<ty::PolyTraitRef<'tcx>>,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_>,
     ) {
         // 0. Extract fn_decl from hir
         let hir::Node::Expr(hir::Expr {
@@ -818,7 +818,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
     ) -> bool {
         let diag = self.consider_returning_binding_diag(blk, expected_ty);
         match diag {

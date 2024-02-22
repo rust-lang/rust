@@ -9,12 +9,6 @@ LL | const SLICE_MUT: &[u8; 1] = {
                HEX_DUMP
            }
 
-error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:40:9
-   |
-LL |         SLICE_MUT => true,
-   |         ^^^^^^^^^
-
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refers_to_static_cross_crate.rs:17:1
    |
@@ -25,12 +19,6 @@ LL | const U8_MUT: &u8 = {
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
-
-error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:48:9
-   |
-LL |         U8_MUT => true,
-   |         ^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refers_to_static_cross_crate.rs:23:1
@@ -43,17 +31,29 @@ LL | const U8_MUT2: &u8 = {
                HEX_DUMP
            }
 
-error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:58:9
-   |
-LL |         U8_MUT2 => true,
-   |         ^^^^^^^
-
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_refers_to_static_cross_crate.rs:29:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses mutable global memory
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:40:9
+   |
+LL |         SLICE_MUT => true,
+   |         ^^^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:48:9
+   |
+LL |         U8_MUT => true,
+   |         ^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:58:9
+   |
+LL |         U8_MUT2 => true,
+   |         ^^^^^^^
 
 error: could not evaluate constant pattern
   --> $DIR/const_refers_to_static_cross_crate.rs:65:9

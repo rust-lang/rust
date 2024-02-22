@@ -159,7 +159,7 @@ impl Config {
             ";
             nix_build_succeeded = try_run(
                 self,
-                Command::new("nix-build").args(&[
+                Command::new("nix-build").args([
                     Path::new("-E"),
                     Path::new(NIX_EXPR),
                     Path::new("-o"),
@@ -188,7 +188,7 @@ impl Config {
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
             // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
             let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
-            patchelf.args(&["--set-interpreter", dynamic_linker.trim_end()]);
+            patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
         let _ = try_run(self, patchelf.arg(fname));
@@ -218,7 +218,7 @@ impl Config {
         println!("downloading {url}");
         // Try curl. If that fails and we are on windows, fallback to PowerShell.
         let mut curl = Command::new("curl");
-        curl.args(&[
+        curl.args([
             "-y",
             "30",
             "-Y",
@@ -242,7 +242,7 @@ impl Config {
             if self.build.contains("windows-msvc") {
                 eprintln!("Fallback to PowerShell");
                 for _ in 0..3 {
-                    if try_run(self, Command::new("PowerShell.exe").args(&[
+                    if try_run(self, Command::new("PowerShell.exe").args([
                         "/nologo",
                         "-Command",
                         "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
@@ -388,7 +388,7 @@ impl Config {
         let bin_root = self.out.join(host.triple).join("stage0");
         let clippy_stamp = bin_root.join(".clippy-stamp");
         let cargo_clippy = bin_root.join("bin").join(exe("cargo-clippy", host));
-        if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, &date) {
+        if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
             return cargo_clippy;
         }
 
@@ -421,14 +421,14 @@ impl Config {
             DownloadSource::Dist,
             format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
             "rustfmt-preview",
-            &date,
+            date,
             "rustfmt",
         );
         self.download_component(
             DownloadSource::Dist,
             format!("rustc-{version}-{build}.tar.xz", build = host.triple),
             "rustc",
-            &date,
+            date,
             "rustfmt",
         );
 
@@ -665,7 +665,7 @@ download-rustc = false
         }
         let llvm_root = self.ci_llvm_root();
         let llvm_stamp = llvm_root.join(".llvm-stamp");
-        let llvm_sha = detect_llvm_sha(&self, self.rust_info.is_managed_git_subrepository());
+        let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
         let key = format!("{}{}", llvm_sha, self.llvm_assertions);
         if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
@@ -685,11 +685,11 @@ download-rustc = false
             // rebuild.
             let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
             let llvm_config = llvm_root.join("bin").join(exe("llvm-config", self.build));
-            t!(filetime::set_file_times(&llvm_config, now, now));
+            t!(filetime::set_file_times(llvm_config, now, now));
 
             if self.should_fix_bins_and_dylibs() {
                 let llvm_lib = llvm_root.join("lib");
-                for entry in t!(fs::read_dir(&llvm_lib)) {
+                for entry in t!(fs::read_dir(llvm_lib)) {
                     let lib = t!(entry).path();
                     if lib.extension().map_or(false, |ext| ext == "so") {
                         self.fix_bin_or_dylib(&lib);

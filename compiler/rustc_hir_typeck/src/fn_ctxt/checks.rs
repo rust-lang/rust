@@ -13,7 +13,7 @@ use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    codes::*, pluralize, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey,
+    codes::*, pluralize, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -740,8 +740,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         // We're done if we found errors, but we already emitted them.
-        if let Some(reported) = reported {
-            assert!(errors.is_empty());
+        if let Some(reported) = reported
+            && errors.is_empty()
+        {
             return reported;
         }
         assert!(!errors.is_empty());
@@ -1935,7 +1936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn label_fn_like(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         callable_def_id: Option<DefId>,
         callee_ty: Option<Ty<'tcx>>,
         call_expr: &'tcx hir::Expr<'tcx>,

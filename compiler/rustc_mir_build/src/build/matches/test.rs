@@ -590,25 +590,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let (match_pair_index, match_pair) =
             candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == *test_place)?;
 
-        match (&test.kind, &match_pair.pattern.kind) {
+        let fully_matched;
+        let ret = match (&test.kind, &match_pair.pattern.kind) {
             // If we are performing a variant switch, then this
             // informs variant patterns, but nothing else.
             (
                 &TestKind::Switch { adt_def: tested_adt_def, .. },
-                &PatKind::Variant { adt_def, variant_index, ref subpatterns, .. },
+                &PatKind::Variant { adt_def, variant_index, .. },
             ) => {
                 assert_eq!(adt_def, tested_adt_def);
-                self.candidate_after_variant_switch(
-                    match_pair_index,
-                    adt_def,
-                    variant_index,
-                    subpatterns,
-                    candidate,
-                );
+                fully_matched = true;
                 Some(variant_index.as_usize())
             }
-
-            (&TestKind::Switch { .. }, _) => None,
+            (&TestKind::Switch { .. }, _) => {
+                fully_matched = false;
+                None
+            }
 
             // If we are performing a switch over integers, then this informs integer
             // equality, but nothing else.
@@ -618,12 +615,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (TestKind::SwitchInt { switch_ty: _, options }, PatKind::Constant { value })
                 if is_switch_ty(match_pair.pattern.ty) =>
             {
+                fully_matched = true;
                 let index = options.get_index_of(value).unwrap();
-                self.candidate_without_match_pair(match_pair_index, candidate);
                 Some(index)
             }
-
             (TestKind::SwitchInt { switch_ty: _, options }, PatKind::Range(range)) => {
+                fully_matched = false;
                 let not_contained =
                     self.values_not_contained_in_range(&*range, options).unwrap_or(false);
 
@@ -633,8 +630,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     options.len()
                 })
             }
-
-            (&TestKind::SwitchInt { .. }, _) => None,
+            (&TestKind::SwitchInt { .. }, _) => {
+                fully_matched = false;
+                None
+            }
 
             (
                 &TestKind::Len { len: test_len, op: BinOp::Eq },
@@ -645,34 +644,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     (Ordering::Equal, &None) => {
                         // on true, min_len = len = $actual_length,
                         // on false, len != $actual_length
-                        self.candidate_after_slice_test(
-                            match_pair_index,
-                            candidate,
-                            prefix,
-                            slice,
-                            suffix,
-                        );
+                        fully_matched = true;
                         Some(0)
                     }
                     (Ordering::Less, _) => {
                         // test_len < pat_len. If $actual_len = test_len,
                         // then $actual_len < pat_len and we don't have
                         // enough elements.
+                        fully_matched = false;
                         Some(1)
                     }
                     (Ordering::Equal | Ordering::Greater, &Some(_)) => {
                         // This can match both if $actual_len = test_len >= pat_len,
                         // and if $actual_len > test_len. We can't advance.
+                        fully_matched = false;
                         None
                     }
                     (Ordering::Greater, &None) => {
                         // test_len != pat_len, so if $actual_len = test_len, then
                         // $actual_len != pat_len.
+                        fully_matched = false;
                         Some(1)
                     }
                 }
             }
-
             (
                 &TestKind::Len { len: test_len, op: BinOp::Ge },
                 PatKind::Slice { prefix, slice, suffix },
@@ -683,29 +678,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     (Ordering::Equal, &Some(_)) => {
                         // $actual_len >= test_len = pat_len,
                         // so we can match.
-                        self.candidate_after_slice_test(
-                            match_pair_index,
-                            candidate,
-                            prefix,
-                            slice,
-                            suffix,
-                        );
+                        fully_matched = true;
                         Some(0)
                     }
                     (Ordering::Less, _) | (Ordering::Equal, &None) => {
                         // test_len <= pat_len. If $actual_len < test_len,
                         // then it is also < pat_len, so the test passing is
                         // necessary (but insufficient).
+                        fully_matched = false;
                         Some(0)
                     }
                     (Ordering::Greater, &None) => {
                         // test_len > pat_len. If $actual_len >= test_len > pat_len,
                         // then we know we won't have a match.
+                        fully_matched = false;
                         Some(1)
                     }
                     (Ordering::Greater, &Some(_)) => {
                         // test_len < pat_len, and is therefore less
                         // strict. This can still go both ways.
+                        fully_matched = false;
                         None
                     }
                 }
@@ -713,16 +705,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             (TestKind::Range(test), PatKind::Range(pat)) => {
                 if test == pat {
-                    self.candidate_without_match_pair(match_pair_index, candidate);
-                    return Some(0);
+                    fully_matched = true;
+                    Some(0)
+                } else {
+                    fully_matched = false;
+                    // If the testing range does not overlap with pattern range,
+                    // the pattern can be matched only if this test fails.
+                    if !test.overlaps(pat, self.tcx, self.param_env)? { Some(1) } else { None }
                 }
-
-                // If the testing range does not overlap with pattern range,
-                // the pattern can be matched only if this test fails.
-                if !test.overlaps(pat, self.tcx, self.param_env)? { Some(1) } else { None }
             }
-
             (TestKind::Range(range), &PatKind::Constant { value }) => {
+                fully_matched = false;
                 if !range.contains(value, self.tcx, self.param_env)? {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
@@ -731,8 +724,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 }
             }
-
-            (&TestKind::Range { .. }, _) => None,
+            (&TestKind::Range { .. }, _) => {
+                fully_matched = false;
+                None
+            }
 
             (&TestKind::Eq { .. } | &TestKind::Len { .. }, _) => {
                 // The call to `self.test(&match_pair)` below is not actually used to generate any
@@ -751,64 +746,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // FIXME(#29623) we can be more clever here
                 let pattern_test = self.test(match_pair);
                 if pattern_test.kind == test.kind {
-                    self.candidate_without_match_pair(match_pair_index, candidate);
+                    fully_matched = true;
                     Some(0)
                 } else {
+                    fully_matched = false;
                     None
                 }
             }
+        };
+
+        if fully_matched {
+            // Replace the match pair by its sub-pairs.
+            let match_pair = candidate.match_pairs.remove(match_pair_index);
+            candidate.match_pairs.extend(match_pair.subpairs);
+            // Move or-patterns to the end.
+            candidate
+                .match_pairs
+                .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
         }
-    }
 
-    fn candidate_without_match_pair(
-        &mut self,
-        match_pair_index: usize,
-        candidate: &mut Candidate<'_, 'tcx>,
-    ) {
-        candidate.match_pairs.remove(match_pair_index);
-    }
-
-    fn candidate_after_slice_test<'pat>(
-        &mut self,
-        match_pair_index: usize,
-        candidate: &mut Candidate<'pat, 'tcx>,
-        prefix: &'pat [Box<Pat<'tcx>>],
-        opt_slice: &'pat Option<Box<Pat<'tcx>>>,
-        suffix: &'pat [Box<Pat<'tcx>>],
-    ) {
-        let removed_place = candidate.match_pairs.remove(match_pair_index).place;
-        self.prefix_slice_suffix(
-            &mut candidate.match_pairs,
-            &removed_place,
-            prefix,
-            opt_slice,
-            suffix,
-        );
-    }
-
-    fn candidate_after_variant_switch<'pat>(
-        &mut self,
-        match_pair_index: usize,
-        adt_def: ty::AdtDef<'tcx>,
-        variant_index: VariantIdx,
-        subpatterns: &'pat [FieldPat<'tcx>],
-        candidate: &mut Candidate<'pat, 'tcx>,
-    ) {
-        let match_pair = candidate.match_pairs.remove(match_pair_index);
-
-        // So, if we have a match-pattern like `x @ Enum::Variant(P1, P2)`,
-        // we want to create a set of derived match-patterns like
-        // `(x as Variant).0 @ P1` and `(x as Variant).1 @ P1`.
-        let downcast_place = match_pair.place.downcast(adt_def, variant_index); // `(x as Variant)`
-        let consequent_match_pairs = subpatterns.iter().map(|subpattern| {
-            // e.g., `(x as Variant).0`
-            let place = downcast_place
-                .clone_project(PlaceElem::Field(subpattern.field, subpattern.pattern.ty));
-            // e.g., `(x as Variant).0 @ P1`
-            MatchPair::new(place, &subpattern.pattern, self)
-        });
-
-        candidate.match_pairs.extend(consequent_match_pairs);
+        ret
     }
 
     fn error_simplifiable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {

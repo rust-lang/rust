@@ -3,10 +3,11 @@ use either::{Left, Right};
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_target::abi::{self, Abi};
@@ -87,13 +88,16 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 }
 
 /// The `InterpCx` is only meant to be used to do field and index projections into constants for
-/// `simd_shuffle` and const patterns in match arms. It never performs alignment checks.
+/// `simd_shuffle` and const patterns in match arms.
+///
+/// This should *not* be used to do any actual interpretation. In particular, alignment checks are
+/// turned off!
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-pub(crate) fn mk_eval_cx<'mir, 'tcx>(
+pub(crate) fn mk_eval_cx_to_read_const_val<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
@@ -106,6 +110,19 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
         param_env,
         CompileTimeInterpreter::new(can_access_mut_global, CheckAlignment::No),
     )
+}
+
+/// Create an interpreter context to inspect the given `ConstValue`.
+/// Returns both the context and an `OpTy` that represents the constant.
+pub fn mk_eval_cx_for_const_val<'mir, 'tcx>(
+    tcx: TyCtxtAt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    val: mir::ConstValue<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<(CompileTimeEvalContext<'mir, 'tcx>, OpTy<'tcx>)> {
+    let ecx = mk_eval_cx_to_read_const_val(tcx.tcx, tcx.span, param_env, CanAccessMutGlobal::No);
+    let op = ecx.const_val_to_op(val, ty, None).ok()?;
+    Some((ecx, op))
 }
 
 /// This function converts an interpreter value into a MIR constant.
@@ -203,7 +220,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     let def_id = cid.instance.def.def_id();
     let is_static = tcx.is_static(def_id);
     // This is just accessing an already computed constant, so no need to check alignment here.
-    let ecx = mk_eval_cx(
+    let ecx = mk_eval_cx_to_read_const_val(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
         key.param_env,

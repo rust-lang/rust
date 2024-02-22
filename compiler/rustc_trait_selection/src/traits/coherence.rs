@@ -18,7 +18,7 @@ use crate::traits::{
     Obligation, ObligationCause, PredicateObligation, PredicateObligations, SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::Diagnostic;
+use rustc_errors::{DiagnosticBuilder, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
@@ -58,7 +58,7 @@ pub struct OverlapResult<'tcx> {
     pub involves_placeholder: bool,
 }
 
-pub fn add_placeholder_note(err: &mut Diagnostic) {
+pub fn add_placeholder_note<G: EmissionGuarantee>(err: &mut DiagnosticBuilder<'_, G>) {
     err.note(
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details",

@@ -5,7 +5,7 @@ use super::FnCtxt;
 use crate::Expectation;
 use rustc_ast as ast;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::ObligationCauseCode;
@@ -695,7 +695,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {

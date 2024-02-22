@@ -384,6 +384,7 @@ impl<'a> StripUnconfigured<'a> {
             );
 
             if attr.is_doc_comment() {
+                #[allow(rustc::untranslatable_diagnostic)]
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
             }
 

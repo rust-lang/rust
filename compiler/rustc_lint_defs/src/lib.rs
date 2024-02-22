@@ -227,8 +227,8 @@ impl Level {
     }
 
     /// Converts a lower-case string to a level. This will never construct the expect
-    /// level as that would require a [`LintExpectationId`]
-    pub fn from_str(x: &str) -> Option<Level> {
+    /// level as that would require a [`LintExpectationId`].
+    pub fn from_str(x: &str) -> Option<Self> {
         match x {
             "allow" => Some(Level::Allow),
             "warn" => Some(Level::Warn),
@@ -238,17 +238,21 @@ impl Level {
         }
     }
 
-    /// Converts a symbol to a level.
-    pub fn from_attr(attr: &Attribute) -> Option<Level> {
-        match attr.name_or_empty() {
-            sym::allow => Some(Level::Allow),
-            sym::expect => Some(Level::Expect(LintExpectationId::Unstable {
-                attr_id: attr.id,
-                lint_index: None,
-            })),
-            sym::warn => Some(Level::Warn),
-            sym::deny => Some(Level::Deny),
-            sym::forbid => Some(Level::Forbid),
+    /// Converts an `Attribute` to a level.
+    pub fn from_attr(attr: &Attribute) -> Option<Self> {
+        Self::from_symbol(attr.name_or_empty(), Some(attr.id))
+    }
+
+    /// Converts a `Symbol` to a level.
+    pub fn from_symbol(s: Symbol, id: Option<AttrId>) -> Option<Self> {
+        match (s, id) {
+            (sym::allow, _) => Some(Level::Allow),
+            (sym::expect, Some(attr_id)) => {
+                Some(Level::Expect(LintExpectationId::Unstable { attr_id, lint_index: None }))
+            }
+            (sym::warn, _) => Some(Level::Warn),
+            (sym::deny, _) => Some(Level::Deny),
+            (sym::forbid, _) => Some(Level::Forbid),
             _ => None,
         }
     }

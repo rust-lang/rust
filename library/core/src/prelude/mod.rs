@@ -49,9 +49,13 @@ pub mod rust_2021 {
 /// The 2024 edition of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2024", issue = "none")]
+#[unstable(feature = "prelude_2024", issue = "121042")]
 pub mod rust_2024 {
-    #[unstable(feature = "prelude_2024", issue = "none")]
+    #[unstable(feature = "prelude_2024", issue = "121042")]
     #[doc(no_inline)]
     pub use super::rust_2021::*;
+
+    #[unstable(feature = "prelude_2024", issue = "121042")]
+    #[doc(no_inline)]
+    pub use crate::future::{Future, IntoFuture};
 }

@@ -25,9 +25,7 @@ use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLim
 use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{
-    AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, PResult, StashKey,
-};
+use rustc_errors::{AddToDiagnostic, Applicability, DiagnosticBuilder, PResult, StashKey};
 use rustc_lexer::unescape::unescape_char;
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
@@ -865,7 +863,7 @@ impl<'a> Parser<'a> {
             );
             let mut err = self.dcx().struct_span_err(span, msg);
 
-            let suggest_parens = |err: &mut Diagnostic| {
+            let suggest_parens = |err: &mut DiagnosticBuilder<'_>| {
                 let suggestions = vec![
                     (span.shrink_to_lo(), "(".to_string()),
                     (span.shrink_to_hi(), ")".to_string()),
@@ -3437,7 +3435,7 @@ impl<'a> Parser<'a> {
         let mut recover_async = false;
         let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
 
-        let mut async_block_err = |e: &mut Diagnostic, span: Span| {
+        let mut async_block_err = |e: &mut DiagnosticBuilder<'_>, span: Span| {
             recover_async = true;
             errors::AsyncBlockIn2015 { span }.add_to_diagnostic(e);
             errors::HelpUseLatestEdition::new().add_to_diagnostic(e);

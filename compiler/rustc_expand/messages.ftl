@@ -22,6 +22,10 @@ expand_collapse_debuginfo_illegal =
 expand_count_repetition_misplaced =
     `count` can not be placed inside the inner-most repetition
 
+expand_custom_attribute_panicked =
+    custom attribute panicked
+    .help = message: {$message}
+
 expand_duplicate_matcher_binding = duplicate matcher binding
     .label = duplicate binding
     .label2 = previous binding
@@ -114,6 +118,10 @@ expand_only_one_argument =
 
 expand_only_one_word =
     must only be one word
+
+expand_proc_macro_derive_panicked =
+    proc-macro derive panicked
+    .help = message: {$message}
 
 expand_proc_macro_derive_tokens =
     proc-macro derive produced unparsable tokens

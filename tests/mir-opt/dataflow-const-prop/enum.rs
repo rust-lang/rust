@@ -62,7 +62,7 @@ fn statics() {
 
     static RC: &E = &E::V2(4);
 
-    // CHECK: [[t:_.*]] = const {alloc2: &&E};
+    // CHECK: [[t:_.*]] = const {alloc5: &&E};
     // CHECK: [[e2]] = (*[[t]]);
     let e2 = RC;
 

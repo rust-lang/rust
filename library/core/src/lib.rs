@@ -309,29 +309,41 @@ mod internal_macros;
 #[macro_use]
 mod int_macros;
 
+#[rustc_diagnostic_item = "i128_legacy_mod"]
 #[path = "num/shells/i128.rs"]
 pub mod i128;
+#[rustc_diagnostic_item = "i16_legacy_mod"]
 #[path = "num/shells/i16.rs"]
 pub mod i16;
+#[rustc_diagnostic_item = "i32_legacy_mod"]
 #[path = "num/shells/i32.rs"]
 pub mod i32;
+#[rustc_diagnostic_item = "i64_legacy_mod"]
 #[path = "num/shells/i64.rs"]
 pub mod i64;
+#[rustc_diagnostic_item = "i8_legacy_mod"]
 #[path = "num/shells/i8.rs"]
 pub mod i8;
+#[rustc_diagnostic_item = "isize_legacy_mod"]
 #[path = "num/shells/isize.rs"]
 pub mod isize;
 
+#[rustc_diagnostic_item = "u128_legacy_mod"]
 #[path = "num/shells/u128.rs"]
 pub mod u128;
+#[rustc_diagnostic_item = "u16_legacy_mod"]
 #[path = "num/shells/u16.rs"]
 pub mod u16;
+#[rustc_diagnostic_item = "u32_legacy_mod"]
 #[path = "num/shells/u32.rs"]
 pub mod u32;
+#[rustc_diagnostic_item = "u64_legacy_mod"]
 #[path = "num/shells/u64.rs"]
 pub mod u64;
+#[rustc_diagnostic_item = "u8_legacy_mod"]
 #[path = "num/shells/u8.rs"]
 pub mod u8;
+#[rustc_diagnostic_item = "usize_legacy_mod"]
 #[path = "num/shells/usize.rs"]
 pub mod usize;
 

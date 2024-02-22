@@ -2672,6 +2672,42 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         }
         self.second.read_vectored(bufs)
     }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.first.is_read_vectored() || self.second.is_read_vectored()
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+        let mut read = 0;
+        if !self.done_first {
+            read += self.first.read_to_end(buf)?;
+            self.done_first = true;
+        }
+        read += self.second.read_to_end(buf)?;
+        Ok(read)
+    }
+
+    // We don't override `read_to_string` here because an UTF-8 sequence could
+    // be split between the two parts of the chain
+
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> Result<()> {
+        if buf.capacity() == 0 {
+            return Ok(());
+        }
+
+        if !self.done_first {
+            let old_len = buf.written();
+            self.first.read_buf(buf.reborrow())?;
+
+            if buf.written() != old_len {
+                return Ok(());
+            } else {
+                self.done_first = true;
+            }
+        }
+        self.second.read_buf(buf)
+    }
 }
 
 #[stable(feature = "chain_bufread", since = "1.9.0")]
@@ -2679,9 +2715,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     fn fill_buf(&mut self) -> Result<&[u8]> {
         if !self.done_first {
             match self.first.fill_buf()? {
-                buf if buf.is_empty() => {
-                    self.done_first = true;
-                }
+                buf if buf.is_empty() => self.done_first = true,
                 buf => return Ok(buf),
             }
         }
@@ -2691,6 +2725,24 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     fn consume(&mut self, amt: usize) {
         if !self.done_first { self.first.consume(amt) } else { self.second.consume(amt) }
     }
+
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
+        let mut read = 0;
+        if !self.done_first {
+            let n = self.first.read_until(byte, buf)?;
+            read += n;
+
+            match buf.last() {
+                Some(b) if *b == byte && n != 0 => return Ok(read),
+                _ => self.done_first = true,
+            }
+        }
+        read += self.second.read_until(byte, buf)?;
+        Ok(read)
+    }
+
+    // We don't override `read_line` here because an UTF-8 sequence could be
+    // split between the two parts of the chain
 }
 
 impl<T, U> SizeHint for Chain<T, U> {

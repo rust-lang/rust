@@ -11,7 +11,6 @@ LL |     Ok(Err(123_i32)?)
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following other types implement trait `From<T>`:
              <u8 as From<bool>>
-             <u8 as From<NonZero<u8>>>
              <u8 as From<Char>>
    = note: required for `Result<u64, u8>` to implement `FromResidual<Result<Infallible, i32>>`
 

@@ -22,6 +22,9 @@ macro_rules! gate {
     }};
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+            // FIXME: make this translatable
+            #[allow(rustc::diagnostic_outside_of_impl)]
+            #[allow(rustc::untranslatable_diagnostic)]
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).with_help($help).emit();
         }
     }};

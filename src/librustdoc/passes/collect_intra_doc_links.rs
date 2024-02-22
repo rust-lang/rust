@@ -8,7 +8,7 @@ use rustc_data_structures::{
     fx::{FxHashMap, FxHashSet},
     intern::Interned,
 };
-use rustc_errors::{Applicability, Diagnostic, DiagnosticMessage};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticMessage};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
@@ -1173,21 +1173,22 @@ impl LinkCollector<'_, '_> {
     ) {
         // The resolved item did not match the disambiguator; give a better error than 'not found'
         let msg = format!("incompatible link kind for `{path_str}`");
-        let callback = |diag: &mut Diagnostic, sp: Option<rustc_span::Span>, link_range| {
-            let note = format!(
-                "this link resolved to {} {}, which is not {} {}",
-                resolved.article(),
-                resolved.descr(),
-                specified.article(),
-                specified.descr(),
-            );
-            if let Some(sp) = sp {
-                diag.span_label(sp, note);
-            } else {
-                diag.note(note);
-            }
-            suggest_disambiguator(resolved, diag, path_str, link_range, sp, diag_info);
-        };
+        let callback =
+            |diag: &mut DiagnosticBuilder<'_, ()>, sp: Option<rustc_span::Span>, link_range| {
+                let note = format!(
+                    "this link resolved to {} {}, which is not {} {}",
+                    resolved.article(),
+                    resolved.descr(),
+                    specified.article(),
+                    specified.descr(),
+                );
+                if let Some(sp) = sp {
+                    diag.span_label(sp, note);
+                } else {
+                    diag.note(note);
+                }
+                suggest_disambiguator(resolved, diag, path_str, link_range, sp, diag_info);
+            };
         report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, diag_info, callback);
     }
 
@@ -1676,7 +1677,7 @@ fn report_diagnostic(
     lint: &'static Lint,
     msg: impl Into<DiagnosticMessage> + Display,
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
-    decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>, MarkdownLinkRange),
+    decorate: impl FnOnce(&mut DiagnosticBuilder<'_, ()>, Option<rustc_span::Span>, MarkdownLinkRange),
 ) {
     let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.item_id) else {
         // If non-local, no need to check anything.
@@ -2124,7 +2125,7 @@ fn ambiguity_error(
 /// disambiguator.
 fn suggest_disambiguator(
     res: Res,
-    diag: &mut Diagnostic,
+    diag: &mut DiagnosticBuilder<'_, ()>,
     path_str: &str,
     link_range: MarkdownLinkRange,
     sp: Option<rustc_span::Span>,

@@ -318,15 +318,14 @@ where
     fn extract_for_generics(&self, pred: ty::Clause<'tcx>) -> FxHashSet<GenericParamDef> {
         let bound_predicate = pred.kind();
         let tcx = self.cx.tcx;
-        let regions = match bound_predicate.skip_binder() {
-            ty::ClauseKind::Trait(poly_trait_pred) => {
-                tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_trait_pred))
-            }
-            ty::ClauseKind::Projection(poly_proj_pred) => {
-                tcx.collect_referenced_late_bound_regions(&bound_predicate.rebind(poly_proj_pred))
-            }
-            _ => return FxHashSet::default(),
-        };
+        let regions =
+            match bound_predicate.skip_binder() {
+                ty::ClauseKind::Trait(poly_trait_pred) => tcx
+                    .collect_referenced_late_bound_regions(bound_predicate.rebind(poly_trait_pred)),
+                ty::ClauseKind::Projection(poly_proj_pred) => tcx
+                    .collect_referenced_late_bound_regions(bound_predicate.rebind(poly_proj_pred)),
+                _ => return FxHashSet::default(),
+            };
 
         regions
             .into_iter()

@@ -5,7 +5,6 @@ pub mod args;
 pub mod env;
 pub mod fs;
 pub mod io;
-pub mod locks;
 pub mod net;
 pub mod once;
 pub mod os;

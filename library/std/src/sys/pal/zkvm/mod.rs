@@ -33,8 +33,6 @@ pub mod thread_local_key;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
-#[path = "../unsupported/locks/mod.rs"]
-pub mod locks;
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
 

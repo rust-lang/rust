@@ -17,26 +17,28 @@
           scope 4 (inlined Unique::<[bool; 0]>::dangling) {
               let mut _5: std::ptr::NonNull<[bool; 0]>;
               scope 5 (inlined NonNull::<[bool; 0]>::dangling) {
-                  let mut _7: usize;
                   scope 6 {
                       let _6: *mut [bool; 0];
                       scope 7 {
                           debug ptr => _6;
-                          scope 11 (inlined NonNull::<[bool; 0]>::new_unchecked) {
+                          scope 12 (inlined NonNull::<[bool; 0]>::new_unchecked) {
                               debug ptr => _6;
                               let mut _8: bool;
                               let _9: ();
                               let mut _10: *mut ();
                               let mut _11: *const [bool; 0];
-                              scope 12 {
+                              scope 13 {
                               }
                           }
                       }
-                      scope 8 (inlined align_of::<[bool; 0]>) {
-                      }
-                      scope 9 (inlined invalid_mut::<[bool; 0]>) {
-                          debug addr => _7;
-                          scope 10 {
+                      scope 8 (inlined dangling_mut::<[bool; 0]>) {
+                          let mut _7: usize;
+                          scope 9 (inlined align_of::<[bool; 0]>) {
+                          }
+                          scope 10 (inlined without_provenance_mut::<[bool; 0]>) {
+                              debug addr => _7;
+                              scope 11 {
+                              }
                           }
                       }
                   }

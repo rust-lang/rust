@@ -6,6 +6,7 @@ mod pal;
 mod personality;
 
 pub mod cmath;
+pub mod locks;
 pub mod os_str;
 pub mod path;
 

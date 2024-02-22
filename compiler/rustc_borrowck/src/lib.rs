@@ -2497,6 +2497,8 @@ mod diags {
             }
             for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
                 if count > 10 {
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    #[allow(rustc::untranslatable_diagnostic)]
                     diag.note(format!("...and {} other attempted mutable borrows", count - 10));
                 }
                 self.diags.buffered_diags.push(BufferedDiag::Error(diag));

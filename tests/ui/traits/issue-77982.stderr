@@ -46,7 +46,6 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
    = note: multiple `impl`s satisfying `u32: From<_>` found in the `core` crate:
            - impl From<Char> for u32;
            - impl From<Ipv4Addr> for u32;
-           - impl From<NonZero<u32>> for u32;
            - impl From<bool> for u32;
            - impl From<char> for u32;
            - impl From<u16> for u32;

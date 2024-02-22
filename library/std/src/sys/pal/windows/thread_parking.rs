@@ -220,7 +220,7 @@ impl Parker {
 }
 
 fn keyed_event_handle() -> c::HANDLE {
-    const INVALID: c::HANDLE = ptr::invalid_mut(!0);
+    const INVALID: c::HANDLE = ptr::without_provenance_mut(!0);
     static HANDLE: AtomicPtr<crate::ffi::c_void> = AtomicPtr::new(INVALID);
     match HANDLE.load(Relaxed) {
         INVALID => {

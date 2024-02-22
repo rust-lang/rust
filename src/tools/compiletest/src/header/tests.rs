@@ -10,12 +10,19 @@ fn make_test_description<R: Read>(
     name: test::TestName,
     path: &Path,
     src: R,
-    cfg: Option<&str>,
+    revision: Option<&str>,
 ) -> test::TestDesc {
     let cache = HeadersCache::load(config);
     let mut poisoned = false;
-    let test =
-        crate::header::make_test_description(config, &cache, name, path, src, cfg, &mut poisoned);
+    let test = crate::header::make_test_description(
+        config,
+        &cache,
+        name,
+        path,
+        src,
+        revision,
+        &mut poisoned,
+    );
     if poisoned {
         panic!("poisoned!");
     }

@@ -190,10 +190,9 @@ where
                 }
             }
             if !progress {
-                return Err(infcx.dcx().span_delayed_bug(
-                    span,
-                    format!("ambiguity processing {obligations:?} from {self:?}"),
-                ));
+                infcx
+                    .dcx()
+                    .span_bug(span, format!("ambiguity processing {obligations:?} from {self:?}"));
             }
         }
 

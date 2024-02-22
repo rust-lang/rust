@@ -31,7 +31,7 @@ where
     R: ReturnWasmAbi,
 {
     //~^^^^^ ERROR conflicting implementation
-    //~| WARNING this was previously accepted
+    //~| WARN the behavior may change in a future release
 }
 
 fn main() {}

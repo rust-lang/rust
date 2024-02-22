@@ -26,8 +26,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic,
-    DiagnosticBuilder, ErrorGuaranteed, StashKey,
+    codes::*, pluralize, struct_span_code_err, AddToDiagnostic, Applicability, DiagnosticBuilder,
+    ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -69,23 +69,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected_ty: Ty<'tcx>,
-        extend_err: impl FnOnce(&mut Diagnostic),
+        extend_err: impl FnOnce(&mut DiagnosticBuilder<'_>),
     ) -> Ty<'tcx> {
         let mut ty = self.check_expr_with_expectation(expr, ExpectHasType(expected_ty));
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
         if ty.is_never() {
-            if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                let reported = self.dcx().span_delayed_bug(
-                    expr.span,
-                    "expression with never type wound up being adjusted",
-                );
-                return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
-                    target.to_owned()
-                } else {
-                    Ty::new_error(self.tcx(), reported)
-                };
+            if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
+                self.dcx()
+                    .span_bug(expr.span, "expression with never type wound up being adjusted");
             }
 
             let adj_ty = self.next_ty_var(TypeVariableOrigin {
@@ -958,7 +951,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs: &'tcx hir::Expr<'tcx>,
         code: ErrCode,
         op_span: Span,
-        adjust_err: impl FnOnce(&mut Diagnostic),
+        adjust_err: impl FnOnce(&mut DiagnosticBuilder<'_>),
     ) {
         if lhs.is_syntactic_place_expr() {
             return;
@@ -1223,7 +1216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let lhs_ty = self.check_expr_with_needs(lhs, Needs::MutPlace);
 
-        let suggest_deref_binop = |err: &mut Diagnostic, rhs_ty: Ty<'tcx>| {
+        let suggest_deref_binop = |err: &mut DiagnosticBuilder<'_>, rhs_ty: Ty<'tcx>| {
             if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
                 // Can only assign if the type is sized, so if `DerefMut` yields a type that is
                 // unsized, do not suggest dereferencing it.
@@ -1322,10 +1315,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the LUB of the breaks (possibly ! if none); else, it
         // is nil. This makes sense because infinite loops
         // (which would have type !) are only possible iff we
-        // permit break with a value [1].
+        // permit break with a value.
         if ctxt.coerce.is_none() && !ctxt.may_break {
-            // [1]
-            self.dcx().span_delayed_bug(body.span, "no coercion, but loop may not break");
+            self.dcx().span_bug(body.span, "no coercion, but loop may not break");
         }
         ctxt.coerce.map(|c| c.complete(self)).unwrap_or_else(|| Ty::new_unit(self.tcx))
     }
@@ -2008,7 +2000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         last_expr_field: &hir::ExprField<'tcx>,
         variant: &ty::VariantDef,
         args: GenericArgsRef<'tcx>,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
     ) {
         // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
         if let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [range_start, range_end], _) =
@@ -2524,7 +2516,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_await_on_field_access(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         field_ident: Ident,
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
@@ -2723,7 +2715,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit()
     }
 
-    fn point_at_param_definition(&self, err: &mut Diagnostic, param: ty::ParamTy) {
+    fn point_at_param_definition(&self, err: &mut DiagnosticBuilder<'_>, param: ty::ParamTy) {
         let generics = self.tcx.generics_of(self.body_id);
         let generic_param = generics.type_param(&param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
@@ -2742,7 +2734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_suggest_array_indexing(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
@@ -2766,7 +2758,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_first_deref_field(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,

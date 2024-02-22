@@ -7,7 +7,7 @@ use crate::mbe::{
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, DiagnosticMessage};
+use rustc_errors::{Applicability, DiagCtxt, DiagnosticBuilder, DiagnosticMessage};
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
@@ -285,7 +285,11 @@ pub(super) fn emit_frag_parse_err(
     e.emit();
 }
 
-pub(crate) fn annotate_err_with_kind(err: &mut Diagnostic, kind: AstFragmentKind, span: Span) {
+pub(crate) fn annotate_err_with_kind(
+    err: &mut DiagnosticBuilder<'_>,
+    kind: AstFragmentKind,
+    span: Span,
+) {
     match kind {
         AstFragmentKind::Ty => {
             err.span_label(span, "this macro call doesn't expand to a type");
@@ -313,7 +317,7 @@ enum ExplainDocComment {
 
 pub(super) fn annotate_doc_comment(
     dcx: &DiagCtxt,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     sm: &SourceMap,
     span: Span,
 ) {

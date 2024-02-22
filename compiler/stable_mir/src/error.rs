@@ -15,10 +15,8 @@ macro_rules! error {
 /// An error type used to represent an error that has already been reported by the compiler.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CompilerError<T> {
-    /// Internal compiler error (I.e.: Compiler crashed).
-    ICE,
-    /// Compilation failed.
-    CompilationFailed,
+    /// Compilation failed, either due to normal errors or ICE.
+    Failed,
     /// Compilation was interrupted.
     Interrupted(T),
     /// Compilation skipped. This happens when users invoke rustc to retrieve information such as
@@ -54,8 +52,7 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            CompilerError::ICE => write!(f, "Internal Compiler Error"),
-            CompilerError::CompilationFailed => write!(f, "Compilation Failed"),
+            CompilerError::Failed => write!(f, "Compilation Failed"),
             CompilerError::Interrupted(reason) => write!(f, "Compilation Interrupted: {reason}"),
             CompilerError::Skipped => write!(f, "Compilation Skipped"),
         }
@@ -68,8 +65,7 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            CompilerError::ICE => write!(f, "Internal Compiler Error"),
-            CompilerError::CompilationFailed => write!(f, "Compilation Failed"),
+            CompilerError::Failed => write!(f, "Compilation Failed"),
             CompilerError::Interrupted(reason) => write!(f, "Compilation Interrupted: {reason:?}"),
             CompilerError::Skipped => write!(f, "Compilation Skipped"),
         }

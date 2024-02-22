@@ -62,8 +62,7 @@ use crate::ptr;
 /// together by the buffer and will all be written out in one system call when
 /// the `stream` is flushed.
 ///
-// HACK(#78696): can't use `crate` for associated items
-/// [`TcpStream::write`]: super::super::super::net::TcpStream::write
+/// [`TcpStream::write`]: crate::net::TcpStream::write
 /// [`TcpStream`]: crate::net::TcpStream
 /// [`flush`]: BufWriter::flush
 #[stable(feature = "rust1", since = "1.0.0")]
