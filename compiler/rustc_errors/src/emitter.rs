@@ -17,7 +17,7 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticMessage,
+    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage,
     ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
     SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
@@ -194,7 +194,7 @@ pub type DynEmitter = dyn Emitter + DynSend;
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: Diagnostic);
+    fn emit_diagnostic(&mut self, diag: DiagInner);
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
@@ -202,7 +202,7 @@ pub trait Emitter: Translate {
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.
-    fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
+    fn emit_future_breakage_report(&mut self, _diags: Vec<DiagInner>) {}
 
     /// Emit list of unused externs.
     /// Currently only supported for the JSON format.
@@ -229,12 +229,12 @@ pub trait Emitter: Translate {
     ///
     /// There are a lot of conditions to this method, but in short:
     ///
-    /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
+    /// * If the current `DiagInner` has only one visible `CodeSuggestion`,
     ///   we format the `help` suggestion depending on the content of the
     ///   substitutions. In that case, we modify the span and clear the
     ///   suggestions.
     ///
-    /// * If the current `Diagnostic` has multiple suggestions,
+    /// * If the current `DiagInner` has multiple suggestions,
     ///   we leave `primary_span` and the suggestions untouched.
     fn primary_span_formatted(
         &mut self,
@@ -518,7 +518,7 @@ impl Emitter for HumanEmitter {
         self.sm.as_ref()
     }
 
-    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_or(vec![]);
@@ -597,7 +597,7 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
         if diag.level == Level::Fatal {
             diag.sub(Level::Note, self.fatal_note.clone(), MultiSpan::new());
             self.fatal_dcx.emit_diagnostic(diag);

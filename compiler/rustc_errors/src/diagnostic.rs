@@ -18,8 +18,8 @@ use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::thread::panicking;
 
-/// Error type for `Diagnostic`'s `suggestions` field, indicating that
-/// `.disable_suggestions()` was called on the `Diagnostic`.
+/// Error type for `DiagInner`'s `suggestions` field, indicating that
+/// `.disable_suggestions()` was called on the `DiagInner`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct SuggestionsDisabled;
 
@@ -267,7 +267,7 @@ impl StringPart {
 /// causes difficulties, e.g. when storing diagnostics within `DiagCtxt`.
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub struct Diagnostic {
+pub struct DiagInner {
     // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
     // outside of what methods in this crate themselves allow.
     pub(crate) level: Level,
@@ -291,15 +291,15 @@ pub struct Diagnostic {
     pub(crate) emitted_at: DiagnosticLocation,
 }
 
-impl Diagnostic {
+impl DiagInner {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
-        Diagnostic::new_with_messages(level, vec![(message.into(), Style::NoStyle)])
+        DiagInner::new_with_messages(level, vec![(message.into(), Style::NoStyle)])
     }
 
     #[track_caller]
     pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
-        Diagnostic {
+        DiagInner {
             level,
             messages,
             code: None,
@@ -433,7 +433,7 @@ impl Diagnostic {
     }
 }
 
-impl Hash for Diagnostic {
+impl Hash for DiagInner {
     fn hash<H>(&self, state: &mut H)
     where
         H: Hasher,
@@ -442,7 +442,7 @@ impl Hash for Diagnostic {
     }
 }
 
-impl PartialEq for Diagnostic {
+impl PartialEq for DiagInner {
     fn eq(&self, other: &Self) -> bool {
         self.keys() == other.keys()
     }
@@ -458,7 +458,7 @@ pub struct SubDiagnostic {
 }
 
 /// Used for emitting structured error messages and other diagnostic information.
-/// Wraps a `Diagnostic`, adding some useful things.
+/// Wraps a `DiagInner`, adding some useful things.
 /// - The `dcx` field, allowing it to (a) emit itself, and (b) do a drop check
 ///   that it has been emitted or cancelled.
 /// - The `EmissionGuarantee`, which determines the type returned from `emit`.
@@ -480,11 +480,11 @@ pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// replaced with `None`. Then `drop` checks that it is `None`; if not, it
     /// panics because a diagnostic was built but not used.
     ///
-    /// Why the Box? `Diagnostic` is a large type, and `DiagnosticBuilder` is
+    /// Why the Box? `DiagInner` is a large type, and `DiagnosticBuilder` is
     /// often used as a return value, especially within the frequently-used
     /// `PResult` type. In theory, return value optimization (RVO) should avoid
     /// unnecessary copying. In practice, it does not (at the time of writing).
-    diag: Option<Box<Diagnostic>>,
+    diag: Option<Box<DiagInner>>,
 
     _marker: PhantomData<G>,
 }
@@ -499,15 +499,15 @@ rustc_data_structures::static_assert_size!(
 );
 
 impl<G: EmissionGuarantee> Deref for DiagnosticBuilder<'_, G> {
-    type Target = Diagnostic;
+    type Target = DiagInner;
 
-    fn deref(&self) -> &Diagnostic {
+    fn deref(&self) -> &DiagInner {
         self.diag.as_ref().unwrap()
     }
 }
 
 impl<G: EmissionGuarantee> DerefMut for DiagnosticBuilder<'_, G> {
-    fn deref_mut(&mut self) -> &mut Diagnostic {
+    fn deref_mut(&mut self) -> &mut DiagInner {
         self.diag.as_mut().unwrap()
     }
 }
@@ -565,13 +565,13 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
-        Self::new_diagnostic(dcx, Diagnostic::new(level, message))
+        Self::new_diagnostic(dcx, DiagInner::new(level, message))
     }
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
     #[track_caller]
-    pub(crate) fn new_diagnostic(dcx: &'a DiagCtxt, diag: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic(dcx: &'a DiagCtxt, diag: DiagInner) -> Self {
         debug!("Created new diagnostic");
         Self { dcx, diag: Some(Box::new(diag)), _marker: PhantomData }
     }
@@ -1238,7 +1238,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Takes the diagnostic. For use by methods that consume the
     /// DiagnosticBuilder: `emit`, `cancel`, etc. Afterwards, `drop` is the
     /// only code that will be run on `self`.
-    fn take_diag(&mut self) -> Diagnostic {
+    fn take_diag(&mut self) -> DiagInner {
         Box::into_inner(self.diag.take().unwrap())
     }
 
@@ -1257,7 +1257,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         // because delayed bugs have their level changed to `Bug` when they are
         // actually printed, so they produce an ICE.
         //
-        // (Also, even though `level` isn't `pub`, the whole `Diagnostic` could
+        // (Also, even though `level` isn't `pub`, the whole `DiagInner` could
         // be overwritten with a new one thanks to `DerefMut`. So this assert
         // protects against that, too.)
         assert!(
@@ -1325,7 +1325,7 @@ impl<G: EmissionGuarantee> Drop for DiagnosticBuilder<'_, G> {
     fn drop(&mut self) {
         match self.diag.take() {
             Some(diag) if !panicking() => {
-                self.dcx.emit_diagnostic(Diagnostic::new(
+                self.dcx.emit_diagnostic(DiagInner::new(
                     Level::Bug,
                     DiagnosticMessage::from("the following error was constructed but not emitted"),
                 ));

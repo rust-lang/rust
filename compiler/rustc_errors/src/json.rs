@@ -176,7 +176,7 @@ impl Translate for JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: crate::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: crate::DiagInner) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = self.emit(EmitTyped::Diagnostic(data));
         if let Err(e) = result {
@@ -192,7 +192,7 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_future_breakage_report(&mut self, diags: Vec<crate::Diagnostic>) {
+    fn emit_future_breakage_report(&mut self, diags: Vec<crate::DiagInner>) {
         let data: Vec<FutureBreakageItem<'_>> = diags
             .into_iter()
             .map(|mut diag| {
@@ -340,7 +340,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(diag: crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_errors_diagnostic(diag: crate::DiagInner, je: &JsonEmitter) -> Diagnostic {
         let args = to_fluent_args(diag.args.iter());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
             let translated_message =

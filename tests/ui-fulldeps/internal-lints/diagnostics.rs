@@ -13,8 +13,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddToDiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, DiagCtxt,
-    IntoDiagnostic, Level, SubdiagnosticMessageOp,
+    AddToDiagnostic, DiagnosticBuilder, EmissionGuarantee, DiagCtxt, IntoDiagnostic, Level,
+    SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;

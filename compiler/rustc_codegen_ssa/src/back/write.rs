@@ -1829,9 +1829,9 @@ impl Translate for SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, mut diag: rustc_errors::Diagnostic) {
+    fn emit_diagnostic(&mut self, mut diag: rustc_errors::DiagInner) {
         // Check that we aren't missing anything interesting when converting to
-        // the cut-down local `Diagnostic`.
+        // the cut-down local `DiagInner`.
         assert_eq!(diag.span, MultiSpan::new());
         assert_eq!(diag.suggestions, Ok(vec![]));
         assert_eq!(diag.sort_span, rustc_span::DUMMY_SP);
@@ -1880,7 +1880,7 @@ impl SharedEmitterMain {
                     // Convert it back to a full `Diagnostic` and emit.
                     let dcx = sess.dcx();
                     let mut d =
-                        rustc_errors::Diagnostic::new_with_messages(diag.level, diag.messages);
+                        rustc_errors::DiagInner::new_with_messages(diag.level, diag.messages);
                     d.code = diag.code; // may be `None`, that's ok
                     d.children = diag
                         .children

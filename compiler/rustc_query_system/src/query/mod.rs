@@ -21,7 +21,7 @@ use crate::dep_graph::DepKind;
 use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::Lock;
-use rustc_errors::Diagnostic;
+use rustc_errors::DiagInner;
 use rustc_hir::def::DefKind;
 use rustc_span::def_id::DefId;
 use rustc_span::Span;
@@ -89,7 +89,7 @@ pub struct QuerySideEffects {
     /// Stores any diagnostics emitted during query execution.
     /// These diagnostics will be re-emitted if we mark
     /// the query as green.
-    pub(super) diagnostics: ThinVec<Diagnostic>,
+    pub(super) diagnostics: ThinVec<DiagInner>,
 }
 
 impl QuerySideEffects {
@@ -135,7 +135,7 @@ pub trait QueryContext: HasDepContext {
         self,
         token: QueryJobId,
         depth_limit: bool,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        diagnostics: Option<&Lock<ThinVec<DiagInner>>>,
         compute: impl FnOnce() -> R,
     ) -> R;
 
