@@ -10,7 +10,7 @@ fn main() {
     let x = return;
     let y = return;
     let mut w = (x, y);
-    //~^ ERROR overflow evaluating the requirement
+    //~^ ERROR overflow assigning `_` to `*const _`
     // Avoid creating lifetimes, `Sized` bounds or function calls.
     let a = (ptr::addr_of!(y), ptr::addr_of!(x));
     w = a;

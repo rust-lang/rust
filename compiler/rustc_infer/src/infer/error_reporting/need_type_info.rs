@@ -502,7 +502,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     parent_name,
                 });
 
-                let args = if self.infcx.tcx.get_diagnostic_item(sym::iterator_collect_fn)
+                let args = if self.tcx.get_diagnostic_item(sym::iterator_collect_fn)
                     == Some(generics_def_id)
                 {
                     "Vec<_>".to_string()
@@ -710,7 +710,7 @@ struct InsertableGenericArgs<'tcx> {
 /// While doing so, the currently best spot is stored in `infer_source`.
 /// For details on how we rank spots, see [Self::source_cost]
 struct FindInferSourceVisitor<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
+    tecx: &'a TypeErrCtxt<'a, 'tcx>,
     typeck_results: &'a TypeckResults<'tcx>,
 
     target: GenericArg<'tcx>,
@@ -722,12 +722,12 @@ struct FindInferSourceVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     fn new(
-        infcx: &'a InferCtxt<'tcx>,
+        tecx: &'a TypeErrCtxt<'a, 'tcx>,
         typeck_results: &'a TypeckResults<'tcx>,
         target: GenericArg<'tcx>,
     ) -> Self {
         FindInferSourceVisitor {
-            infcx,
+            tecx,
             typeck_results,
 
             target,
@@ -778,7 +778,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         }
 
         // The sources are listed in order of preference here.
-        let tcx = self.infcx.tcx;
+        let tcx = self.tecx.tcx;
         let ctx = CostCtxt { tcx };
         match source.kind {
             InferSourceKind::LetBinding { ty, .. } => ctx.ty_cost(ty),
@@ -829,12 +829,12 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
 
     fn node_args_opt(&self, hir_id: HirId) -> Option<GenericArgsRef<'tcx>> {
         let args = self.typeck_results.node_args_opt(hir_id);
-        self.infcx.resolve_vars_if_possible(args)
+        self.tecx.resolve_vars_if_possible(args)
     }
 
     fn opt_node_type(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
         let ty = self.typeck_results.node_type_opt(hir_id);
-        self.infcx.resolve_vars_if_possible(ty)
+        self.tecx.resolve_vars_if_possible(ty)
     }
 
     // Check whether this generic argument is the inference variable we
@@ -849,7 +849,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
                     (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                        self.infcx.inner.borrow_mut().type_variables().sub_unified(a_vid, b_vid)
+                        self.tecx.sub_relations.borrow_mut().unified(self.tecx, a_vid, b_vid)
                     }
                     _ => false,
                 }
@@ -857,12 +857,9 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
             (GenericArgKind::Const(inner_ct), GenericArgKind::Const(target_ct)) => {
                 use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
-                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => self
-                        .infcx
-                        .inner
-                        .borrow_mut()
-                        .const_unification_table()
-                        .unioned(a_vid, b_vid),
+                    (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => {
+                        self.tecx.inner.borrow_mut().const_unification_table().unioned(a_vid, b_vid)
+                    }
                     _ => false,
                 }
             }
@@ -917,7 +914,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Box<dyn Iterator<Item = InsertableGenericArgs<'tcx>> + 'a> {
-        let tcx = self.infcx.tcx;
+        let tcx = self.tecx.tcx;
         match expr.kind {
             hir::ExprKind::Path(ref path) => {
                 if let Some(args) = self.node_args_opt(expr.hir_id) {
@@ -980,7 +977,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         path: &'tcx hir::Path<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
-        let tcx = self.infcx.tcx;
+        let tcx = self.tecx.tcx;
         let have_turbofish = path.segments.iter().any(|segment| {
             segment.args.is_some_and(|args| args.args.iter().any(|arg| arg.is_ty_or_const()))
         });
@@ -1034,7 +1031,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         qpath: &'tcx hir::QPath<'tcx>,
     ) -> Box<dyn Iterator<Item = InsertableGenericArgs<'tcx>> + 'a> {
-        let tcx = self.infcx.tcx;
+        let tcx = self.tecx.tcx;
         match qpath {
             hir::QPath::Resolved(_self_ty, path) => {
                 Box::new(self.resolved_path_inferred_arg_iter(path, args))
@@ -1107,7 +1104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
-        self.infcx.tcx.hir()
+        self.tecx.tcx.hir()
     }
 
     fn visit_local(&mut self, local: &'tcx Local<'tcx>) {
@@ -1163,7 +1160,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        let tcx = self.infcx.tcx;
+        let tcx = self.tecx.tcx;
         match expr.kind {
             // When encountering `func(arg)` first look into `arg` and then `func`,
             // as `arg` is "more specific".
@@ -1194,7 +1191,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                 if generics.parent.is_none() && generics.has_self {
                     argument_index += 1;
                 }
-                let args = self.infcx.resolve_vars_if_possible(args);
+                let args = self.tecx.resolve_vars_if_possible(args);
                 let generic_args =
                     &generics.own_args_no_defaults(tcx, args)[generics.own_counts().lifetimes..];
                 let span = match expr.kind {
@@ -1224,7 +1221,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             {
                 let output = args.as_closure().sig().output().skip_binder();
                 if self.generic_arg_contains_target(output.into()) {
-                    let body = self.infcx.tcx.hir().body(body);
+                    let body = self.tecx.tcx.hir().body(body);
                     let should_wrap_expr = if matches!(body.value.kind, ExprKind::Block(..)) {
                         None
                     } else {
@@ -1252,12 +1249,12 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && let Some(args) = self.node_args_opt(expr.hir_id)
             && args.iter().any(|arg| self.generic_arg_contains_target(arg))
             && let Some(def_id) = self.typeck_results.type_dependent_def_id(expr.hir_id)
-            && self.infcx.tcx.trait_of_item(def_id).is_some()
+            && self.tecx.tcx.trait_of_item(def_id).is_some()
             && !has_impl_trait(def_id)
         {
             let successor =
                 method_args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));
-            let args = self.infcx.resolve_vars_if_possible(args);
+            let args = self.tecx.resolve_vars_if_possible(args);
             self.update_infer_source(InferSource {
                 span: path.ident.span,
                 kind: InferSourceKind::FullyQualifiedMethodCall {

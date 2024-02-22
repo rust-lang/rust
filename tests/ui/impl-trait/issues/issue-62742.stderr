@@ -2,17 +2,32 @@ error[E0277]: the trait bound `RawImpl<_>: Raw<_>` is not satisfied
   --> $DIR/issue-62742.rs:4:5
    |
 LL |     WrongImpl::foo(0i32);
+   |     ^^^^^^^^^^^^^^^^^^^^ the trait `Raw<_>` is not implemented for `RawImpl<_>`
+   |
+   = help: the trait `Raw<[_]>` is implemented for `RawImpl<_>`
+note: required by a bound in `SafeImpl::<T, A>::foo`
+  --> $DIR/issue-62742.rs:29:20
+   |
+LL | impl<T: ?Sized, A: Raw<T>> SafeImpl<T, A> {
+   |                    ^^^^^^ required by this bound in `SafeImpl::<T, A>::foo`
+LL |     pub fn foo(value: A::Value) {}
+   |            --- required by a bound in this associated function
+
+error[E0277]: the trait bound `RawImpl<_>: Raw<_>` is not satisfied
+  --> $DIR/issue-62742.rs:4:5
+   |
+LL |     WrongImpl::foo(0i32);
    |     ^^^^^^^^^ the trait `Raw<_>` is not implemented for `RawImpl<_>`
    |
    = help: the trait `Raw<[_]>` is implemented for `RawImpl<_>`
 note: required by a bound in `SafeImpl`
-  --> $DIR/issue-62742.rs:26:35
+  --> $DIR/issue-62742.rs:27:35
    |
 LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
    |                                   ^^^^^^ required by this bound in `SafeImpl`
 
 error[E0599]: the function or associated item `foo` exists for struct `SafeImpl<(), RawImpl<()>>`, but its trait bounds were not satisfied
-  --> $DIR/issue-62742.rs:6:22
+  --> $DIR/issue-62742.rs:7:22
    |
 LL |     WrongImpl::<()>::foo(0i32);
    |                      ^^^ function or associated item cannot be called on `SafeImpl<(), RawImpl<()>>` due to unsatisfied trait bounds
@@ -24,20 +39,20 @@ LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
    | ----------------------------------------- function or associated item `foo` not found for this struct
    |
 note: trait bound `RawImpl<()>: Raw<()>` was not satisfied
-  --> $DIR/issue-62742.rs:28:20
+  --> $DIR/issue-62742.rs:29:20
    |
 LL | impl<T: ?Sized, A: Raw<T>> SafeImpl<T, A> {
    |                    ^^^^^^  --------------
    |                    |
    |                    unsatisfied trait bound introduced here
 note: the trait `Raw` must be implemented
-  --> $DIR/issue-62742.rs:12:1
+  --> $DIR/issue-62742.rs:13:1
    |
 LL | pub trait Raw<T: ?Sized> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `RawImpl<()>: Raw<()>` is not satisfied
-  --> $DIR/issue-62742.rs:6:5
+  --> $DIR/issue-62742.rs:7:5
    |
 LL |     WrongImpl::<()>::foo(0i32);
    |     ^^^^^^^^^^^^^^^ the trait `Raw<()>` is not implemented for `RawImpl<()>`
@@ -45,12 +60,12 @@ LL |     WrongImpl::<()>::foo(0i32);
    = help: the trait `Raw<[()]>` is implemented for `RawImpl<()>`
    = help: for that trait implementation, expected `[()]`, found `()`
 note: required by a bound in `SafeImpl`
-  --> $DIR/issue-62742.rs:26:35
+  --> $DIR/issue-62742.rs:27:35
    |
 LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
    |                                   ^^^^^^ required by this bound in `SafeImpl`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0599.
 For more information about an error, try `rustc --explain E0277`.

@@ -217,10 +217,9 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, Generalization<T>> {
         assert!(!source_term.has_escaping_bound_vars());
         let (for_universe, root_vid) = match target_vid.into() {
-            ty::TermVid::Ty(ty_vid) => (
-                self.probe_ty_var(ty_vid).unwrap_err(),
-                ty::TermVid::Ty(self.inner.borrow_mut().type_variables().sub_root_var(ty_vid)),
-            ),
+            ty::TermVid::Ty(ty_vid) => {
+                (self.probe_ty_var(ty_vid).unwrap_err(), ty::TermVid::Ty(self.root_var(ty_vid)))
+            }
             ty::TermVid::Const(ct_vid) => (
                 self.probe_const_var(ct_vid).unwrap_err(),
                 ty::TermVid::Const(
@@ -424,9 +423,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let vid = inner.type_variables().root_var(vid);
-                let sub_vid = inner.type_variables().sub_root_var(vid);
-
-                if ty::TermVid::Ty(sub_vid) == self.root_vid {
+                if ty::TermVid::Ty(vid) == self.root_vid {
                     // If sub-roots are equal, then `root_vid` and
                     // `vid` are related via subtyping.
                     Err(self.cyclic_term_error())
@@ -461,11 +458,6 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
                             let u = Ty::new_var(self.tcx(), new_var_id);
-
-                            // Record that we replaced `vid` with `new_var_id` as part of a generalization
-                            // operation. This is needed to detect cyclic types. To see why, see the
-                            // docs in the `type_variables` module.
-                            inner.type_variables().sub(vid, new_var_id);
                             debug!("replacing original vid={:?} with new={:?}", vid, u);
                             Ok(u)
                         }

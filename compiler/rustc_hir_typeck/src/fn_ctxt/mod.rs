@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
+use rustc_infer::infer::error_reporting::sub_relations::SubRelations;
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
@@ -155,8 +156,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
+        let mut sub_relations = SubRelations::default();
+        sub_relations.add_constraints(
+            self,
+            self.fulfillment_cx.borrow_mut().pending_obligations().iter().map(|o| o.predicate),
+        );
         TypeErrCtxt {
             infcx: &self.infcx,
+            sub_relations: RefCell::new(sub_relations),
             typeck_results: Some(self.typeck_results.borrow()),
             fallback_has_occurred: self.fallback_has_occurred.get(),
             normalize_fn_sig: Box::new(|fn_sig| {

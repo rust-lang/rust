@@ -88,6 +88,7 @@ mod note_and_explain;
 mod suggest;
 
 pub(crate) mod need_type_info;
+pub mod sub_relations;
 pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
@@ -123,6 +124,8 @@ fn escape_literal(s: &str) -> String {
 /// methods which should not be used during the happy path.
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
+    pub sub_relations: std::cell::RefCell<sub_relations::SubRelations>,
+
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
     pub fallback_has_occurred: bool,
 

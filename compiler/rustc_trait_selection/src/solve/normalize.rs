@@ -1,4 +1,4 @@
-use crate::traits::error_reporting::TypeErrCtxtExt;
+use crate::traits::error_reporting::{OverflowCause, TypeErrCtxtExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -60,8 +60,12 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
+            let ty::Alias(_, data) = *alias_ty.kind() else {
+                unreachable!();
+            };
+
             self.at.infcx.err_ctxt().report_overflow_error(
-                &alias_ty,
+                OverflowCause::DeeplyNormalize(data),
                 self.at.cause.span,
                 true,
                 |_| {},
@@ -109,7 +113,7 @@ impl<'tcx> NormalizationFolder<'_, 'tcx> {
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
             self.at.infcx.err_ctxt().report_overflow_error(
-                &ty::Const::new_unevaluated(tcx, uv, ty),
+                OverflowCause::DeeplyNormalize(ty::AliasTy::new(tcx, uv.def, uv.args)),
                 self.at.cause.span,
                 true,
                 |_| {},

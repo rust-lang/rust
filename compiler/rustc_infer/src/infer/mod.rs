@@ -762,6 +762,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
         TypeErrCtxt {
             infcx: self,
+            sub_relations: Default::default(),
             typeck_results: None,
             fallback_has_occurred: false,
             normalize_fn_sig: Box::new(|fn_sig| fn_sig),
@@ -1029,7 +1030,6 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
-                self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
                 return Err((a_vid, b_vid));
             }
             _ => {}
