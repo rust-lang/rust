@@ -112,13 +112,13 @@ impl<'tcx> InferCtxt<'tcx> {
             // constrain the `generalized_ty` while using the original relation,
             // we therefore only have to flip the arguments.
             //
-            // ```ignore
+            // ```ignore (not code)
             // ?a rel B
             // instantiate_ty_var(?a, B) # expected and variance not flipped
             // B' rel B
             // ```
             // or
-            // ```ignore
+            // ```ignore (not code)
             // A rel ?b
             // instantiate_ty_var(?b, A) # expected and variance flipped
             // A rel A'
