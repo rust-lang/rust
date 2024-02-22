@@ -632,9 +632,9 @@ fn optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> &Body<'_> {
 }
 
 fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
-    if let Some(attr) = tcx.get_attr(did, sym::rustc_intrinsic_must_be_overridden) {
+    if tcx.intrinsic(did).is_some_and(|i| i.must_be_overridden) {
         span_bug!(
-            attr.span,
+            tcx.def_span(did),
             "this intrinsic must be overridden by the codegen backend, it has no meaningful body",
         )
     }

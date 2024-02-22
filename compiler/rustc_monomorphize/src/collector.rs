@@ -1019,7 +1019,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         return false;
     }
 
-    if tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden) {
+    if tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
         // These are implemented by backends directly and have no meaningful body.
         return false;
     }

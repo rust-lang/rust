@@ -23,7 +23,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
-    if tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden) {
+    if tcx.intrinsic(def_id).is_some_and(|i| i.must_be_overridden) {
         return false;
     }
 
