@@ -433,7 +433,7 @@ struct DiagCtxtInner {
     /// lint error count.
     lint_err_guars: Vec<ErrorGuaranteed>,
     /// The delayed bugs and their error guarantees.
-    delayed_bugs: Vec<(DelayedDiagnostic, ErrorGuaranteed)>,
+    delayed_bugs: Vec<(DelayedDiagInner, ErrorGuaranteed)>,
 
     /// The number of stashed errors. Unlike the other counts, this can go up
     /// and down, so it doesn't guarantee anything.
@@ -1354,7 +1354,7 @@ impl DiagCtxtInner {
                     #[allow(deprecated)]
                     let guar = ErrorGuaranteed::unchecked_error_guaranteed();
                     self.delayed_bugs
-                        .push((DelayedDiagnostic::with_backtrace(diagnostic, backtrace), guar));
+                        .push((DelayedDiagInner::with_backtrace(diagnostic, backtrace), guar));
                     Some(guar)
                 };
             }
@@ -1581,14 +1581,14 @@ impl DiagCtxtInner {
     }
 }
 
-struct DelayedDiagnostic {
+struct DelayedDiagInner {
     inner: DiagInner,
     note: Backtrace,
 }
 
-impl DelayedDiagnostic {
+impl DelayedDiagInner {
     fn with_backtrace(diagnostic: DiagInner, backtrace: Backtrace) -> Self {
-        DelayedDiagnostic { inner: diagnostic, note: backtrace }
+        DelayedDiagInner { inner: diagnostic, note: backtrace }
     }
 
     fn decorate(self, dcx: &DiagCtxtInner) -> DiagInner {
