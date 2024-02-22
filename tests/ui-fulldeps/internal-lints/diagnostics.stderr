@@ -1,8 +1,8 @@
 error: diagnostics should be created using translatable messages
   --> $DIR/diagnostics.rs:42:9
    |
-LL |         DiagnosticBuilder::new(dcx, level, "untranslatable diagnostic")
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL |         Diag::new(dcx, level, "untranslatable diagnostic")
+   |         ^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/diagnostics.rs:6:9

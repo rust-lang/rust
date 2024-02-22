@@ -1,7 +1,7 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
@@ -203,7 +203,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     // and the span which bounded to the trait for adding 'static lifetime suggestion
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         lower_bound: RegionVid,
     ) {
         let mut suggestions = vec![];
@@ -584,7 +584,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
@@ -653,10 +653,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
     #[instrument(level = "debug", skip(self))]
-    fn report_escaping_data_error(
-        &self,
-        errci: &ErrorConstraintInfo<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'tcx> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -764,7 +761,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
     ///    |                    is returning data with lifetime `'b`
     /// ```
-    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> DiagnosticBuilder<'tcx> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'tcx> {
         let ErrorConstraintInfo {
             fr,
             fr_is_local,
@@ -827,7 +824,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// ```
     fn add_static_impl_trait_suggestion(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         fr: RegionVid,
         // We need to pass `fr_name` - computing it again will label it twice.
         fr_name: RegionName,
@@ -916,7 +913,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn maybe_suggest_constrain_dyn_trait_impl(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         f: Region<'tcx>,
         o: Region<'tcx>,
         category: &ConstraintCategory<'tcx>,
@@ -978,7 +975,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     #[instrument(skip(self, err), level = "debug")]
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         found_dids: &FxIndexSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
@@ -1011,12 +1008,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         suggested
     }
 
-    fn suggest_adding_lifetime_params(
-        &self,
-        diag: &mut DiagnosticBuilder<'_>,
-        sub: RegionVid,
-        sup: RegionVid,
-    ) {
+    fn suggest_adding_lifetime_params(&self, diag: &mut Diag<'_>, sub: RegionVid, sup: RegionVid) {
         let (Some(sub), Some(sup)) = (self.to_error_region(sub), self.to_error_region(sup)) else {
             return;
         };
@@ -1042,7 +1034,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         suggest_adding_lifetime_params(self.infcx.tcx, sub, ty_sup, ty_sub, diag);
     }
 
-    fn suggest_move_on_borrowing_closure(&self, diag: &mut DiagnosticBuilder<'_>) {
+    fn suggest_move_on_borrowing_closure(&self, diag: &mut Diag<'_>) {
         let map = self.infcx.tcx.hir();
         let body_id = map.body_owned_by(self.mir_def_id());
         let expr = &map.body(body_id).value.peel_blocks();

@@ -5,8 +5,7 @@ use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ConstKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
-    IntoDiagnosticArg, Level,
+    Diag, DiagCtxt, DiagnosticArgValue, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
 };
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -1262,7 +1261,7 @@ pub enum FnAbiError<'tcx> {
 }
 
 impl<'a, 'b, G: EmissionGuarantee> IntoDiagnostic<'a, G> for FnAbiError<'b> {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         match self {
             Self::Layout(e) => e.into_diagnostic().into_diagnostic(dcx, level),
             Self::AdjustForForeignAbi(call::AdjustForForeignAbiError::Unsupported {

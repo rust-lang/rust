@@ -43,9 +43,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{
-    DecorateLint, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{DecorateLint, Diag, DiagCtxt, DiagnosticMessage, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
@@ -2117,7 +2115,7 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_id: HirId,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
@@ -2147,7 +2145,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         id: HirId,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
+        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
         lint_level(self.sess, lint, level, src, None, msg, decorate);

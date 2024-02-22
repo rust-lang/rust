@@ -683,7 +683,7 @@ pub struct BufferedEarlyLint {
     /// `rustc_lint::early::EarlyContextAndPass::check_id`.
     pub lint_id: LintId,
 
-    /// Customization of the `DiagnosticBuilder<'_>` for the lint.
+    /// Customization of the `Diag<'_>` for the lint.
     pub diagnostic: BuiltinLintDiagnostics,
 }
 

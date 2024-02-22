@@ -9,7 +9,7 @@ use clippy_utils::{eq_expr_value, hash_expr, higher};
 use rustc_ast::{LitKind, RangeLimits};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -67,7 +67,7 @@ declare_lint_pass!(MissingAssertsForIndexing => [MISSING_ASSERTS_FOR_INDEXING]);
 
 fn report_lint<F>(cx: &LateContext<'_>, full_span: Span, msg: &str, indexes: &[Span], f: F)
 where
-    F: FnOnce(&mut DiagnosticBuilder<'_, ()>),
+    F: FnOnce(&mut Diag<'_, ()>),
 {
     span_lint_and_then(cx, MISSING_ASSERTS_FOR_INDEXING, full_span, msg, |diag| {
         f(diag);

@@ -13,7 +13,7 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, Diag, DiagCtxt, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
@@ -1260,7 +1260,7 @@ pub fn expr_to_spanned_string<'a>(
     err_msg: &'static str,
 ) -> Result<
     (Symbol, ast::StrStyle, Span),
-    Result<(DiagnosticBuilder<'a>, bool /* has_suggestions */), ErrorGuaranteed>,
+    Result<(Diag<'a>, bool /* has_suggestions */), ErrorGuaranteed>,
 > {
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.

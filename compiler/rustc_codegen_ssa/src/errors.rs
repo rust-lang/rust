@@ -4,7 +4,7 @@ use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    codes::*, Diag, DiagCtxt, DiagnosticArgValue, EmissionGuarantee, IntoDiagnostic,
     IntoDiagnosticArg, Level,
 };
 use rustc_macros::Diagnostic;
@@ -216,8 +216,8 @@ pub enum LinkRlibError {
 pub struct ThorinErrorWrapper(pub thorin::Error);
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ThorinErrorWrapper {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let build = |msg| DiagnosticBuilder::new(dcx, level, msg);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let build = |msg| Diag::new(dcx, level, msg);
         match self.0 {
             thorin::Error::ReadInput(_) => build(fluent::codegen_ssa_thorin_read_input_failure),
             thorin::Error::ParseFileKind(_) => {
@@ -349,8 +349,8 @@ pub struct LinkingFailed<'a> {
 }
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::codegen_ssa_linking_failed);
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
+        let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_linking_failed);
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
 

@@ -33,7 +33,7 @@ use super::FnCtxt;
 use crate::errors;
 use crate::type_error_struct;
 use hir::ExprKind;
-use rustc_errors::{codes::*, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{codes::*, Applicability, Diag, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
@@ -182,7 +182,7 @@ fn make_invalid_casting_error<'a, 'tcx>(
     expr_ty: Ty<'tcx>,
     cast_ty: Ty<'tcx>,
     fcx: &FnCtxt<'a, 'tcx>,
-) -> DiagnosticBuilder<'a> {
+) -> Diag<'a> {
     type_error_struct!(
         fcx.dcx(),
         span,
@@ -980,11 +980,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     /// Attempt to suggest using `.is_empty` when trying to cast from a
     /// collection type to a boolean.
-    fn try_suggest_collection_to_bool(
-        &self,
-        fcx: &FnCtxt<'a, 'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
+    fn try_suggest_collection_to_bool(&self, fcx: &FnCtxt<'a, 'tcx>, err: &mut Diag<'_>) {
         if self.cast_ty.is_bool() {
             let derefed = fcx
                 .autoderef(self.expr_span, self.expr_ty)

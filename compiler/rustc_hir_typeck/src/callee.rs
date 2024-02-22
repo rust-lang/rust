@@ -4,7 +4,7 @@ use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
 use crate::errors;
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -347,7 +347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// likely intention is to call the closure, suggest `(||{})()`. (#55851)
     fn identify_bad_closure_def_and_call(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         hir_id: hir::HirId,
         callee_node: &hir::ExprKind<'_>,
         callee_span: Span,
@@ -410,7 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// likely intention is to create an array containing tuples.
     fn maybe_suggest_bad_array_definition(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         call_expr: &'tcx hir::Expr<'tcx>,
         callee_expr: &'tcx hir::Expr<'tcx>,
     ) -> bool {
@@ -601,7 +601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// and suggesting the fix if the method probe is successful.
     fn suggest_call_as_method(
         &self,
-        diag: &mut DiagnosticBuilder<'_, ()>,
+        diag: &mut Diag<'_, ()>,
         segment: &'tcx hir::PathSegment<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         call_expr: &'tcx hir::Expr<'tcx>,

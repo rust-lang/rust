@@ -4,7 +4,7 @@ use crate::query::plumbing::CycleError;
 use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagCtxt, DiagnosticBuilder};
+use rustc_errors::{Diag, DiagCtxt};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -559,7 +559,7 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
 pub fn report_cycle<'a>(
     sess: &'a Session,
     CycleError { usage, cycle: stack }: &CycleError,
-) -> DiagnosticBuilder<'a> {
+) -> Diag<'a> {
     assert!(!stack.is_empty());
 
     let span = stack[0].query.default_span(stack[1 % stack.len()].span);

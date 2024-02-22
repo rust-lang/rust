@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, EmissionGuarantee,
-    IntoDiagnostic, Level, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic,
+    Level, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1075,10 +1075,10 @@ pub(crate) struct ExpectedIdentifier {
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = DiagnosticBuilder::new(
+        let mut diag = Diag::new(
             dcx,
             level,
             match token_descr {
@@ -1135,10 +1135,10 @@ pub(crate) struct ExpectedSemi {
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> Diag<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = DiagnosticBuilder::new(
+        let mut diag = Diag::new(
             dcx,
             level,
             match token_descr {
@@ -1477,7 +1477,7 @@ pub(crate) struct FnTraitMissingParen {
 impl AddToDiagnostic for FnTraitMissingParen {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         _: F,
     ) {
         diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);

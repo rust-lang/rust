@@ -7,7 +7,7 @@ use crate::mbe::{
 use rustc_ast::token::{self, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagCtxt, DiagnosticBuilder, DiagnosticMessage};
+use rustc_errors::{Applicability, Diag, DiagCtxt, DiagnosticMessage};
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
@@ -218,7 +218,7 @@ impl<'matcher> Tracker<'matcher> for FailureForwarder {
 }
 
 pub(super) fn emit_frag_parse_err(
-    mut e: DiagnosticBuilder<'_>,
+    mut e: Diag<'_>,
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
@@ -285,11 +285,7 @@ pub(super) fn emit_frag_parse_err(
     e.emit()
 }
 
-pub(crate) fn annotate_err_with_kind(
-    err: &mut DiagnosticBuilder<'_>,
-    kind: AstFragmentKind,
-    span: Span,
-) {
+pub(crate) fn annotate_err_with_kind(err: &mut Diag<'_>, kind: AstFragmentKind, span: Span) {
     match kind {
         AstFragmentKind::Ty => {
             err.span_label(span, "this macro call doesn't expand to a type");
@@ -315,12 +311,7 @@ enum ExplainDocComment {
     },
 }
 
-pub(super) fn annotate_doc_comment(
-    dcx: &DiagCtxt,
-    err: &mut DiagnosticBuilder<'_>,
-    sm: &SourceMap,
-    span: Span,
-) {
+pub(super) fn annotate_doc_comment(dcx: &DiagCtxt, err: &mut Diag<'_>, sm: &SourceMap, span: Span) {
     if let Ok(src) = sm.span_to_snippet(span) {
         if src.starts_with("///") || src.starts_with("/**") {
             err.subdiagnostic(dcx, ExplainDocComment::Outer { span });

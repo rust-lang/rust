@@ -16,7 +16,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::BodyOwnerKind;
@@ -343,7 +343,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// that this region imposes on others. The methods in this file
     /// handle the part about dumping the inference context internal
     /// state.
-    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut DiagnosticBuilder<'_, ()>) {
+    pub(crate) fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diag<'_, ()>) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, args) => {
                 let v = with_no_trimmed_paths!(

@@ -60,7 +60,7 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, DiagCtxt, DiagnosticBuilder,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt,
     DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
@@ -158,7 +158,7 @@ impl<'tcx> Deref for TypeErrCtxt<'_, 'tcx> {
 
 pub(super) fn note_and_explain_region<'tcx>(
     tcx: TyCtxt<'tcx>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
@@ -183,7 +183,7 @@ pub(super) fn note_and_explain_region<'tcx>(
 
 fn explain_free_region<'tcx>(
     tcx: TyCtxt<'tcx>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
     prefix: &str,
     region: ty::Region<'tcx>,
     suffix: &str,
@@ -265,7 +265,7 @@ fn msg_span_from_named_region<'tcx>(
 }
 
 fn emit_msg_span(
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
     prefix: &str,
     description: String,
     span: Option<Span>,
@@ -281,7 +281,7 @@ fn emit_msg_span(
 }
 
 fn label_msg_span(
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diag<'_>,
     prefix: &str,
     description: String,
     span: Option<Span>,
@@ -303,7 +303,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
     opaque_ty_key: ty::OpaqueTypeKey<'tcx>,
-) -> DiagnosticBuilder<'tcx> {
+) -> Diag<'tcx> {
     let mut err = tcx.dcx().create_err(errors::OpaqueCapturesLifetime {
         span,
         opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.args),
@@ -582,11 +582,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     }
 
     /// Adds a note if the types come from similarly named crates
-    fn check_and_note_conflicting_crates(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        terr: TypeError<'tcx>,
-    ) {
+    fn check_and_note_conflicting_crates(&self, err: &mut Diag<'_>, terr: TypeError<'tcx>) {
         use hir::def_id::CrateNum;
         use rustc_hir::definitions::DisambiguatedDefPathData;
         use ty::print::Printer;
@@ -660,7 +656,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        let report_path_match = |err: &mut DiagnosticBuilder<'_>, did1: DefId, did2: DefId| {
+        let report_path_match = |err: &mut Diag<'_>, did1: DefId, did2: DefId| {
             // Only report definitions from different crates. If both definitions
             // are from a local module we could have false positives, e.g.
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
@@ -710,7 +706,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn note_error_origin(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
         terr: TypeError<'tcx>,
@@ -1544,7 +1540,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     )]
     pub fn note_type_err(
         &self,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diag<'_>,
         cause: &ObligationCause<'tcx>,
         secondary_span: Option<(Span, Cow<'static, str>)>,
         mut values: Option<ValuePairs<'tcx>>,
@@ -1591,14 +1587,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 types_visitor
             }
 
-            fn report(&self, err: &mut DiagnosticBuilder<'_>) {
+            fn report(&self, err: &mut Diag<'_>) {
                 self.add_labels_for_types(err, "expected", &self.expected);
                 self.add_labels_for_types(err, "found", &self.found);
             }
 
             fn add_labels_for_types(
                 &self,
-                err: &mut DiagnosticBuilder<'_>,
+                err: &mut Diag<'_>,
                 target: &str,
                 types: &FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ) {
@@ -1809,16 +1805,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // If two types mismatch but have similar names, mention that specifically.
                 TypeError::Sorts(values) if let Some(s) = similarity(values) => {
                     let diagnose_primitive =
-                        |prim: Ty<'tcx>,
-                         shadow: Ty<'tcx>,
-                         defid: DefId,
-                         diagnostic: &mut DiagnosticBuilder<'_>| {
+                        |prim: Ty<'tcx>, shadow: Ty<'tcx>, defid: DefId, diag: &mut Diag<'_>| {
                             let name = shadow.sort_string(self.tcx);
-                            diagnostic.note(format!(
-                            "{prim} and {name} have similar names, but are actually distinct types"
-                        ));
-                            diagnostic
-                                .note(format!("{prim} is a primitive defined by the language"));
+                            diag.note(format!(
+                                "{prim} and {name} have similar names, but are actually distinct types"
+                            ));
+                            diag.note(format!("{prim} is a primitive defined by the language"));
                             let def_span = self.tcx.def_span(defid);
                             let msg = if defid.is_local() {
                                 format!("{name} is defined in the current crate")
@@ -1826,20 +1818,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 let crate_name = self.tcx.crate_name(defid.krate);
                                 format!("{name} is defined in crate `{crate_name}`")
                             };
-                            diagnostic.span_note(def_span, msg);
+                            diag.span_note(def_span, msg);
                         };
 
                     let diagnose_adts =
                         |expected_adt: ty::AdtDef<'tcx>,
                          found_adt: ty::AdtDef<'tcx>,
-                         diagnostic: &mut DiagnosticBuilder<'_>| {
+                         diag: &mut Diag<'_>| {
                             let found_name = values.found.sort_string(self.tcx);
                             let expected_name = values.expected.sort_string(self.tcx);
 
                             let found_defid = found_adt.did();
                             let expected_defid = expected_adt.did();
 
-                            diagnostic.note(format!("{found_name} and {expected_name} have similar names, but are actually distinct types"));
+                            diag.note(format!("{found_name} and {expected_name} have similar names, but are actually distinct types"));
                             for (defid, name) in
                                 [(found_defid, found_name), (expected_defid, expected_name)]
                             {
@@ -1861,7 +1853,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     let crate_name = self.tcx.crate_name(defid.krate);
                                     format!("{name} is defined in crate `{crate_name}`")
                                 };
-                                diagnostic.span_note(def_span, msg);
+                                diag.span_note(def_span, msg);
                             }
                         };
 
@@ -2180,7 +2172,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trace: TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span();
@@ -2328,7 +2320,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Diag<'tcx> {
         if let Some(SubregionOrigin::CompareImplItemObligation {
             span,
             impl_item_def_id,
@@ -2741,10 +2733,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    fn report_inference_failure(
-        &self,
-        var_origin: RegionVariableOrigin,
-    ) -> DiagnosticBuilder<'tcx> {
+    fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'tcx> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
                 ty::BrNamed(_, name) => name.to_string(),

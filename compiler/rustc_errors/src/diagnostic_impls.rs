@@ -1,7 +1,7 @@
 use crate::diagnostic::DiagnosticLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{
-    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, EmissionGuarantee, ErrCode, IntoDiagnostic,
+    Diag, DiagCtxt, DiagnosticArgValue, EmissionGuarantee, ErrCode, IntoDiagnostic,
     IntoDiagnosticArg, Level, SubdiagnosticMessageOp,
 };
 use rustc_ast as ast;
@@ -250,44 +250,43 @@ impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
 }
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> {
-    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> Diag<'_, G> {
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space)
+                Diag::new(dcx, level, fluent::errors_target_invalid_address_space)
                     .with_arg("addr_space", addr_space)
                     .with_arg("cause", cause)
                     .with_arg("err", err)
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits)
+                Diag::new(dcx, level, fluent::errors_target_invalid_bits)
                     .with_arg("kind", kind)
                     .with_arg("bit", bit)
                     .with_arg("cause", cause)
                     .with_arg("err", err)
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
-                DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment)
+                Diag::new(dcx, level, fluent::errors_target_missing_alignment)
                     .with_arg("cause", cause)
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment)
+                Diag::new(dcx, level, fluent::errors_target_invalid_alignment)
                     .with_arg("cause", cause)
                     .with_arg("err_kind", err.diag_ident())
                     .with_arg("align", err.align())
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_architecture)
+                Diag::new(dcx, level, fluent::errors_target_inconsistent_architecture)
                     .with_arg("dl", dl)
                     .with_arg("target", target)
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_pointer_width)
+                Diag::new(dcx, level, fluent::errors_target_inconsistent_pointer_width)
                     .with_arg("pointer_size", pointer_size)
                     .with_arg("target", target)
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size)
-                    .with_arg("err", err)
+                Diag::new(dcx, level, fluent::errors_target_invalid_bits_size).with_arg("err", err)
             }
         }
     }
@@ -301,7 +300,7 @@ pub struct SingleLabelManySpans {
 impl AddToDiagnostic for SingleLabelManySpans {
     fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
         self,
-        diag: &mut DiagnosticBuilder<'_, G>,
+        diag: &mut Diag<'_, G>,
         _: F,
     ) {
         diag.span_labels(self.spans, self.label);

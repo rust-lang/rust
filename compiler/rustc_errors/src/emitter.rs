@@ -1,6 +1,6 @@
 //! The current rustc diagnostics emitter.
 //!
-//! An `Emitter` takes care of generating the output from a `DiagnosticBuilder` struct.
+//! An `Emitter` takes care of generating the output from a `Diag` struct.
 //!
 //! There are various `Emitter` implementations that generate different output formats such as
 //! JSON and human readable output.

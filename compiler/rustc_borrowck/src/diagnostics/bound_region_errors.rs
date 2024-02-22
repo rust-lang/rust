@@ -1,4 +1,4 @@
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
@@ -144,7 +144,7 @@ impl<'tcx> ToUniverseInfo<'tcx> for ! {
 trait TypeOpInfo<'tcx> {
     /// Returns an error to be reported if rerunning the type op fails to
     /// recover the error's cause.
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx>;
+    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx>;
 
     fn base_universe(&self) -> ty::UniverseIndex;
 
@@ -154,7 +154,7 @@ trait TypeOpInfo<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>>;
+    ) -> Option<Diag<'tcx>>;
 
     #[instrument(level = "debug", skip(self, mbcx))]
     fn report_error(
@@ -217,7 +217,7 @@ struct PredicateQuery<'tcx> {
 }
 
 impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx> {
         tcx.dcx().create_err(HigherRankedLifetimeError {
             cause: Some(HigherRankedErrorCause::CouldNotProve {
                 predicate: self.canonical_query.value.value.predicate.to_string(),
@@ -236,7 +236,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
@@ -254,7 +254,7 @@ impl<'tcx, T> TypeOpInfo<'tcx> for NormalizeQuery<'tcx, T>
 where
     T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx,
 {
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx> {
         tcx.dcx().create_err(HigherRankedLifetimeError {
             cause: Some(HigherRankedErrorCause::CouldNotNormalize {
                 value: self.canonical_query.value.value.value.to_string(),
@@ -273,7 +273,7 @@ where
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
@@ -297,7 +297,7 @@ struct AscribeUserTypeQuery<'tcx> {
 }
 
 impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
         tcx.dcx().create_err(HigherRankedLifetimeError { cause: None, span })
@@ -313,7 +313,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
@@ -323,7 +323,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
 }
 
 impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
         tcx.dcx().create_err(HigherRankedLifetimeError { cause: None, span })
@@ -339,7 +339,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
         _cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<Diag<'tcx>> {
         try_extract_error_from_region_constraints(
             mbcx.infcx,
             placeholder_region,
@@ -360,7 +360,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
-) -> Option<DiagnosticBuilder<'tcx>> {
+) -> Option<Diag<'tcx>> {
     // We generally shouldn't have errors here because the query was
     // already run, but there's no point using `span_delayed_bug`
     // when we're going to emit an error here anyway.
@@ -384,7 +384,7 @@ fn try_extract_error_from_region_constraints<'tcx>(
     region_constraints: &RegionConstraintData<'tcx>,
     mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin,
     mut universe_of_region: impl FnMut(RegionVid) -> UniverseIndex,
-) -> Option<DiagnosticBuilder<'tcx>> {
+) -> Option<Diag<'tcx>> {
     let placeholder_universe = match placeholder_region.kind() {
         ty::RePlaceholder(p) => p.universe,
         ty::ReVar(vid) => universe_of_region(vid),

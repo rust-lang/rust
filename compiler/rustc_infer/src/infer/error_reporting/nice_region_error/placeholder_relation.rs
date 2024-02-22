@@ -5,12 +5,12 @@ use crate::{
     },
 };
 use rustc_data_structures::intern::Interned;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diag;
 use rustc_middle::ty::{self, RePlaceholder, Region};
 
 impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// Emitted wwhen given a `ConcreteFailure` when relating two placeholders.
-    pub(super) fn try_report_placeholder_relation(&self) -> Option<DiagnosticBuilder<'tcx>> {
+    pub(super) fn try_report_placeholder_relation(&self) -> Option<Diag<'tcx>> {
         match &self.error {
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::RelateRegionParamBound(span),

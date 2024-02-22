@@ -2,7 +2,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 use hir::ExprKind;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
@@ -540,12 +540,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_map_index_mut_alternatives(
-        &self,
-        ty: Ty<'tcx>,
-        err: &mut DiagnosticBuilder<'tcx>,
-        span: Span,
-    ) {
+    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'tcx>, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
@@ -553,7 +548,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         {
             struct V<'a, 'tcx> {
                 assign_span: Span,
-                err: &'a mut DiagnosticBuilder<'tcx>,
+                err: &'a mut Diag<'tcx>,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
@@ -717,7 +712,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn construct_mut_suggestion_for_local_binding_patterns(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         local: Local,
     ) {
         let local_decl = &self.body.local_decls[local];
@@ -795,7 +790,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         tcx: TyCtxt<'_>,
         closure_local_def_id: hir::def_id::LocalDefId,
         the_place_err: PlaceRef<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
     ) {
         let tables = tcx.typeck(closure_local_def_id);
         if let Some((span, closure_kind_origin)) = tcx.closure_kind_origin(closure_local_def_id) {
@@ -857,7 +852,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
-    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut DiagnosticBuilder<'_>, span: Span) {
+    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diag<'_>, span: Span) {
         use hir::{
             BorrowKind, Expr,
             ExprKind::{AddrOf, Block, Call, MethodCall},
@@ -941,7 +936,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
-    fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
+    fn expected_fn_found_fn_mut_call(&self, err: &mut Diag<'_>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {act}"));
 
         let hir = self.infcx.tcx.hir();
@@ -1031,7 +1026,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_using_iter_mut(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_using_iter_mut(&self, err: &mut Diag<'_>) {
         let source = self.body.source;
         let hir = self.infcx.tcx.hir();
         if let InstanceDef::Item(def_id) = source.instance
@@ -1072,7 +1067,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_make_local_mut(&self, err: &mut DiagnosticBuilder<'_>, local: Local, name: Symbol) {
+    fn suggest_make_local_mut(&self, err: &mut Diag<'_>, local: Local, name: Symbol) {
         let local_decl = &self.body.local_decls[local];
 
         let (pointer_sigil, pointer_desc) =

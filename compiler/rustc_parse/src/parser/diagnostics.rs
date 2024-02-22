@@ -36,8 +36,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed,
-    FatalError, PErr, PResult,
+    pluralize, AddToDiagnostic, Applicability, Diag, DiagCtxt, ErrorGuaranteed, FatalError, PErr,
+    PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -210,11 +210,11 @@ struct MultiSugg {
 }
 
 impl MultiSugg {
-    fn emit(self, err: &mut DiagnosticBuilder<'_>) {
+    fn emit(self, err: &mut Diag<'_>) {
         err.multipart_suggestion(self.msg, self.patches, self.applicability);
     }
 
-    fn emit_verbose(self, err: &mut DiagnosticBuilder<'_>) {
+    fn emit_verbose(self, err: &mut Diag<'_>) {
         err.multipart_suggestion_verbose(self.msg, self.patches, self.applicability);
     }
 }
@@ -401,7 +401,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_ident_found_err(&mut self) -> Diag<'a> {
         self.expected_ident_found(false).unwrap_err()
     }
 
@@ -849,7 +849,7 @@ impl<'a> Parser<'a> {
         err.emit()
     }
 
-    fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut Diag<'_>) -> bool {
         let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
             (
@@ -983,7 +983,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_closure_body(
         &mut self,
-        mut err: DiagnosticBuilder<'a>,
+        mut err: Diag<'a>,
         before: token::Token,
         prev: token::Token,
         token: token::Token,
@@ -1214,7 +1214,7 @@ impl<'a> Parser<'a> {
     /// encounter a parse error when encountering the first `,`.
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
-        mut e: DiagnosticBuilder<'a>,
+        mut e: Diag<'a>,
         expr: &mut P<Expr>,
     ) -> PResult<'a, ErrorGuaranteed> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
@@ -1262,7 +1262,7 @@ impl<'a> Parser<'a> {
 
     /// Suggest add the missing `let` before the identifier in stmt
     /// `a: Ty = 1` -> `let a: Ty = 1`
-    pub(super) fn suggest_add_missing_let_for_stmt(&mut self, err: &mut DiagnosticBuilder<'a>) {
+    pub(super) fn suggest_add_missing_let_for_stmt(&mut self, err: &mut Diag<'a>) {
         if self.token == token::Colon {
             let prev_span = self.prev_token.span.shrink_to_lo();
             let snapshot = self.create_snapshot_for_diagnostic();
@@ -1683,7 +1683,7 @@ impl<'a> Parser<'a> {
         );
         err.span_label(op_span, format!("not a valid {} operator", kind.fixity));
 
-        let help_base_case = |mut err: DiagnosticBuilder<'_, _>, base| {
+        let help_base_case = |mut err: Diag<'_, _>, base| {
             err.help(format!("use `{}= 1` instead", kind.op.chr()));
             err.emit();
             Ok(base)
@@ -1844,7 +1844,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Creates a `DiagnosticBuilder` for an unexpected token `t` and tries to recover if it is a
+    /// Creates a `Diag` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
     pub(super) fn unexpected_try_recover(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
         let token_str = pprust::token_kind_to_string(t);
@@ -2188,7 +2188,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parameter_without_type(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diag<'_>,
         pat: P<ast::Pat>,
         require_name: bool,
         first_param: bool,
@@ -2345,7 +2345,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_expression_found(&self) -> Diag<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.prev_token.span.shrink_to_hi();
@@ -2595,11 +2595,7 @@ impl<'a> Parser<'a> {
     /// When encountering code like `foo::< bar + 3 >` or `foo::< bar - baz >` we suggest
     /// `foo::<{ bar + 3 }>` and `foo::<{ bar - baz }>`, respectively. We only provide a suggestion
     /// if we think that the resulting expression would be well formed.
-    pub fn recover_const_arg(
-        &mut self,
-        start: Span,
-        mut err: DiagnosticBuilder<'a>,
-    ) -> PResult<'a, GenericArg> {
+    pub fn recover_const_arg(&mut self, start: Span, mut err: Diag<'a>) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
                 if let AssocOp::Greater
@@ -2700,11 +2696,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
-    pub fn dummy_const_arg_needs_braces(
-        &self,
-        mut err: DiagnosticBuilder<'a>,
-        span: Span,
-    ) -> GenericArg {
+    pub fn dummy_const_arg_needs_braces(&self, mut err: Diag<'a>, span: Span) -> GenericArg {
         err.multipart_suggestion(
             "expressions must be enclosed in braces to be used as const generic \
              arguments",

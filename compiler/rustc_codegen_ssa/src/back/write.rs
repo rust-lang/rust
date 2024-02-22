@@ -16,8 +16,8 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgMap, DiagnosticBuilder, DiagnosticMessage, ErrCode, FatalError,
-    FluentBundle, Level, MultiSpan, Style,
+    Diag, DiagCtxt, DiagnosticArgMap, DiagnosticMessage, ErrCode, FatalError, FluentBundle, Level,
+    MultiSpan, Style,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -1898,7 +1898,7 @@ impl SharedEmitterMain {
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     assert!(matches!(level, Level::Error | Level::Warning | Level::Note));
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
-                    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, msg);
+                    let mut err = Diag::<()>::new(sess.dcx(), level, msg);
 
                     // If the cookie is 0 then we don't have span information.
                     if cookie != 0 {

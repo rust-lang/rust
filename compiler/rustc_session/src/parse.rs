@@ -15,8 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
 use rustc_errors::{
-    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, MultiSpan,
-    StashKey,
+    fallback_fluent_bundle, Diag, DiagnosticMessage, EmissionGuarantee, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -86,7 +85,7 @@ pub fn feature_err(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'_> {
+) -> Diag<'_> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
@@ -101,7 +100,7 @@ pub fn feature_err_issue(
     span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'_> {
+) -> Diag<'_> {
     let span = span.into();
 
     // Cancel an earlier warning for this same error, if it exists.
@@ -158,7 +157,7 @@ pub fn feature_warn_issue(
 
 /// Adds the diagnostics for a feature to an existing error.
 pub fn add_feature_diagnostics<G: EmissionGuarantee>(
-    err: &mut DiagnosticBuilder<'_, G>,
+    err: &mut Diag<'_, G>,
     sess: &Session,
     feature: Symbol,
 ) {
@@ -171,7 +170,7 @@ pub fn add_feature_diagnostics<G: EmissionGuarantee>(
 /// Almost always, you want to use this for a language feature. If so, prefer
 /// `add_feature_diagnostics`.
 pub fn add_feature_diagnostics_for_issue<G: EmissionGuarantee>(
-    err: &mut DiagnosticBuilder<'_, G>,
+    err: &mut Diag<'_, G>,
     sess: &Session,
     feature: Symbol,
     issue: GateIssue,
