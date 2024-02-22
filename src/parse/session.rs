@@ -6,7 +6,7 @@ use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter};
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    ColorConfig, DiagCtxt, DiagInner, DiagnosticBuilder, ErrorGuaranteed, Level as DiagnosticLevel,
+    ColorConfig, Diag, DiagCtxt, DiagInner, ErrorGuaranteed, Level as DiagnosticLevel,
 };
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
@@ -300,7 +300,7 @@ impl ParseSess {
 
 // Methods that should be restricted within the parse module.
 impl ParseSess {
-    pub(super) fn emit_diagnostics(&self, diagnostics: Vec<DiagnosticBuilder<'_>>) {
+    pub(super) fn emit_diagnostics(&self, diagnostics: Vec<Diag<'_>>) {
         for diagnostic in diagnostics {
             diagnostic.emit();
         }
