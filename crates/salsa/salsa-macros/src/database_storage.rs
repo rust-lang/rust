@@ -154,8 +154,8 @@ pub(crate) fn database(args: TokenStream, input: TokenStream) -> TokenStream {
                 self.#db_storage_field.salsa_runtime()
             }
 
-            fn ops_salsa_runtime_mut(&mut self) -> &mut salsa::Runtime {
-                self.#db_storage_field.salsa_runtime_mut()
+            fn synthetic_write(&mut self, durability: salsa::Durability) {
+                self.#db_storage_field.salsa_runtime_mut().synthetic_write(durability)
             }
 
             fn fmt_index(

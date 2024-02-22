@@ -96,11 +96,16 @@ pub trait Database: plumbing::DatabaseOps {
         self.ops_salsa_runtime()
     }
 
-    /// Gives access to the underlying salsa runtime.
+    /// A "synthetic write" causes the system to act *as though* some
+    /// input of durability `durability` has changed. This is mostly
+    /// useful for profiling scenarios.
     ///
-    /// This method should not be overridden by `Database` implementors.
-    fn salsa_runtime_mut(&mut self) -> &mut Runtime {
-        self.ops_salsa_runtime_mut()
+    /// **WARNING:** Just like an ordinary write, this method triggers
+    /// cancellation. If you invoke it while a snapshot exists, it
+    /// will block until that snapshot is dropped -- if that snapshot
+    /// is owned by the current thread, this could trigger deadlock.
+    fn synthetic_write(&mut self, durability: Durability) {
+        plumbing::DatabaseOps::synthetic_write(self, durability)
     }
 }
 
