@@ -1,4 +1,4 @@
-error[E0275]: overflow setting `Box<_>` to a subtype of `_`
+error[E0275]: overflow assigning `Box<_>` to `_`
   --> $DIR/infinite-autoderef.rs:16:13
    |
 LL |         x = Box::new(x);

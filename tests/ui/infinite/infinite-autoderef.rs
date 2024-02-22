@@ -14,7 +14,7 @@ pub fn main() {
     let mut x;
     loop {
         x = Box::new(x);
-        //~^ ERROR overflow setting `Box<_>` to a subtype of `_`
+        //~^ ERROR overflow assigning `Box<_>` to `_`
         x.foo;
         x.bar();
     }

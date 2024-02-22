@@ -1,4 +1,4 @@
-error[E0275]: overflow setting `Box<_>` to a subtype of `_`
+error[E0275]: overflow assigning `Box<_>` to `_`
   --> $DIR/occurs-check.rs:3:9
    |
 LL |     f = Box::new(f);

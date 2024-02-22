@@ -246,7 +246,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             self.dcx(),
                             span,
                             E0275,
-                            "overflow setting `{a}` to a subtype of `{b}`",
+                            "overflow assigning `{a}` to `{b}`",
                         )
                     }
                     _ => {

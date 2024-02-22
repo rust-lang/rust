@@ -5,5 +5,5 @@ fn main() {
 
     g = f;
     f = Box::new(g);
-    //~^ ERROR  overflow setting `Box<_>` to a subtype of `_`
+    //~^ ERROR overflow assigning `Box<_>` to `_`
 }
