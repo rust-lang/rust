@@ -160,7 +160,7 @@ the current revision name.
 For example, this will run twice, simulating changing a function:
 
 ```rust,ignore
-// revisions: rpass1 rpass2
+//@ revisions: rpass1 rpass2
 
 #[cfg(rpass1)]
 fn foo() {
@@ -224,11 +224,11 @@ breakpoint, launch the program, inspect a value, and check what the debugger
 prints:
 
 ```rust,ignore
-// compile-flags: -g
+//@ compile-flags: -g
 
-// lldb-command: run
-// lldb-command: print foo
-// lldb-check: $0 = 123
+//@ lldb-command: run
+//@ lldb-command: print foo
+//@ lldb-check: $0 = 123
 
 fn main() {
     let foo = 123;
@@ -480,7 +480,7 @@ There are two [headers](headers.md) to assist with that:
 The source file should be in a directory called `auxiliary` beside the test file.
 
 ```rust,ignore
-// aux-build: my-helper.rs
+//@ aux-build: my-helper.rs
 
 extern crate my_helper;
 // ... You can use my_helper.
@@ -507,8 +507,8 @@ Place the proc-macro itself in a file like `auxiliary/my-proc-macro.rs`
 with the following structure:
 
 ```rust,ignore
-// force-host
-// no-prefer-dynamic
+//@ force-host
+//@ no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
 
@@ -529,7 +529,7 @@ The `#![crate_type]` attribute is needed to specify the correct crate-type.
 Then in your test, you can build with `aux-build`:
 
 ```rust,ignore
-// aux-build: my-proc-macro.rs
+//@ aux-build: my-proc-macro.rs
 
 extern crate my_proc_macro;
 
@@ -545,7 +545,7 @@ Revisions allow a single test file to be used for multiple tests.
 This is done by adding a special header at the top of the file:
 
 ```rust,ignore
-// revisions: foo bar baz
+//@ revisions: foo bar baz
 ```
 
 This will result in the test being compiled (and tested) three times,
@@ -560,7 +560,7 @@ comment, like so:
 
 ```rust,ignore
 // A flag to pass in only for cfg `foo`:
-//[foo]compile-flags: -Z verbose
+//@[foo]compile-flags: -Z verbose
 
 #[cfg(foo)]
 fn test_foo() {

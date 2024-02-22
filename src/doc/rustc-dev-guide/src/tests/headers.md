@@ -8,15 +8,14 @@ They must appear before the Rust source in the test.
 They may also appear in Makefiles for [run-make tests](compiletest.md#run-make-tests).
 
 They are normally put after the short comment that explains the point of this test.
-Some test suites use `//@` to signal that a comment is a header, but most are still
-just using plain comments.
-For example, this test uses the `// compile-flags` command to specify a custom
+Compiletest test suites use `//@` to signal that a comment is a header.
+For example, this test uses the `//@ compile-flags` command to specify a custom
 flag to give to rustc when the test is compiled:
 
 ```rust,ignore
 // Test the behavior of `0 - 1` when overflow checks are disabled.
 
-// compile-flags: -C overflow-checks=off
+//@ compile-flags: -C overflow-checks=off
 
 fn main() {
     let x = 0 - 1;
@@ -24,8 +23,8 @@ fn main() {
 }
 ```
 
-Header commands can be standalone (like `// run-pass`) or take a value (like
-`// compile-flags: -C overflow-checks=off`).
+Header commands can be standalone (like `//@ run-pass`) or take a value (like
+`//@ compile-flags: -C overflow-checks=off`).
 
 ## Header commands
 
@@ -192,10 +191,10 @@ The following headers are generally available, and not specific to particular
 test suites.
 
 * `compile-flags` passes extra command-line args to the compiler,
-  e.g. `// compile-flags: -g` which forces debuginfo to be enabled.
+  e.g. `//@ compile-flags: -g` which forces debuginfo to be enabled.
 * `run-flags` passes extra args to the test if the test is to be executed.
 * `edition` controls the edition the test should be compiled with
-  (defaults to 2015). Example usage: `// edition:2018`.
+  (defaults to 2015). Example usage: `//@ edition:2018`.
 * `failure-status` specifies the numeric exit code that should be expected for
   tests that expect an error.
   If this is not set, the default is 1.
@@ -239,7 +238,7 @@ For example, if you need to pass a compiler flag with a path to a specific
 file, something like the following could work:
 
 ```rust,ignore
-// compile-flags: --remap-path-prefix={{src-base}}=/the/src
+//@ compile-flags: --remap-path-prefix={{src-base}}=/the/src
 ```
 
 Where the sentinel `{{src-base}}` will be replaced with the appropriate path
@@ -285,8 +284,8 @@ also in [`src/tools/compiletest/src/header.rs`] (note that the `Config`
 struct's declaration block is found in [`src/tools/compiletest/src/common.rs`]).
 `TestProps`'s `load_from()` method will try passing the current line of text to
 each parser, which, in turn typically checks to see if the line begins with a
-particular commented (`//`) header command such as `// must-compile-successfully`
-or `// failure-status`. Whitespace after the comment marker is optional.
+particular commented (`//@`) header command such as `//@ must-compile-successfully`
+or `//@ failure-status`. Whitespace after the comment marker is optional.
 
 Parsers will override a given header command property's default value merely by
 being specified in the test file as a header command or by having a parameter
