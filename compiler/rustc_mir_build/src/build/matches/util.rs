@@ -1,9 +1,9 @@
-use crate::build::expr::as_place::PlaceBase;
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::matches::MatchPair;
+use crate::build::expr::as_place::{PlaceBase, PlaceBuilder};
+use crate::build::matches::{MatchPair, TestCase};
 use crate::build::Builder;
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::mir::*;
-use rustc_middle::thir::*;
+use rustc_middle::thir::{self, *};
 use rustc_middle::ty;
 use rustc_middle::ty::TypeVisitableExt;
 
@@ -117,50 +117,144 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
             place = place.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
 
+        let default_irrefutable = || TestCase::Irrefutable { binding: None, ascription: None };
         let mut subpairs = Vec::new();
-        match pattern.kind {
-            PatKind::Constant { .. }
-            | PatKind::Range(_)
-            | PatKind::Or { .. }
-            | PatKind::Never
-            | PatKind::Wild
-            | PatKind::Error(_) => {}
+        let test_case = match pattern.kind {
+            PatKind::Never | PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
+            PatKind::Or { .. } => TestCase::Or,
 
-            PatKind::AscribeUserType { ref subpattern, .. } => {
-                subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
+            PatKind::Range(ref range) => {
+                if range.is_full_range(cx.tcx) == Some(true) {
+                    default_irrefutable()
+                } else {
+                    TestCase::Range(range)
+                }
             }
 
-            PatKind::Binding { ref subpattern, .. } => {
+            PatKind::Constant { value } => TestCase::Constant { value },
+
+            PatKind::AscribeUserType {
+                ascription: thir::Ascription { ref annotation, variance },
+                ref subpattern,
+                ..
+            } => {
+                // Apply the type ascription to the value at `match_pair.place`
+                let ascription = place.try_to_place(cx).map(|source| super::Ascription {
+                    annotation: annotation.clone(),
+                    source,
+                    variance,
+                });
+
+                subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
+                TestCase::Irrefutable { ascription, binding: None }
+            }
+
+            PatKind::Binding {
+                name: _,
+                mutability: _,
+                mode,
+                var,
+                ty: _,
+                ref subpattern,
+                is_primary: _,
+            } => {
+                let binding = place.try_to_place(cx).map(|source| super::Binding {
+                    span: pattern.span,
+                    source,
+                    var_id: var,
+                    binding_mode: mode,
+                });
+
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
                     subpairs.push(MatchPair::new(place.clone(), subpattern, cx));
                 }
+                TestCase::Irrefutable { ascription: None, binding }
             }
 
-            PatKind::InlineConstant { subpattern: ref pattern, .. } => {
+            PatKind::InlineConstant { subpattern: ref pattern, def, .. } => {
+                // Apply a type ascription for the inline constant to the value at `match_pair.place`
+                let ascription = place.try_to_place(cx).map(|source| {
+                    let span = pattern.span;
+                    let parent_id = cx.tcx.typeck_root_def_id(cx.def_id.to_def_id());
+                    let args = ty::InlineConstArgs::new(
+                        cx.tcx,
+                        ty::InlineConstArgsParts {
+                            parent_args: ty::GenericArgs::identity_for_item(cx.tcx, parent_id),
+                            ty: cx.infcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            }),
+                        },
+                    )
+                    .args;
+                    let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
+                        def.to_def_id(),
+                        ty::UserArgs { args, user_self_ty: None },
+                    ));
+                    let annotation = ty::CanonicalUserTypeAnnotation {
+                        inferred_ty: pattern.ty,
+                        span,
+                        user_ty: Box::new(user_ty),
+                    };
+                    super::Ascription { annotation, source, variance: ty::Contravariant }
+                });
+
                 subpairs.push(MatchPair::new(place.clone(), pattern, cx));
+                TestCase::Irrefutable { ascription, binding: None }
             }
 
-            PatKind::Slice { ref prefix, ref slice, ref suffix }
-            | PatKind::Array { ref prefix, ref slice, ref suffix } => {
+            PatKind::Array { ref prefix, ref slice, ref suffix } => {
                 cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+                default_irrefutable()
+            }
+            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
+                cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+
+                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                    default_irrefutable()
+                } else {
+                    TestCase::Slice {
+                        len: prefix.len() + suffix.len(),
+                        variable_length: slice.is_some(),
+                    }
+                }
             }
 
-            PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
+            PatKind::Variant { adt_def, variant_index, args, ref subpatterns } => {
                 let downcast_place = place.clone().downcast(adt_def, variant_index); // `(x as Variant)`
                 subpairs = cx.field_match_pairs(downcast_place, subpatterns);
+
+                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
+                    i == variant_index || {
+                        (cx.tcx.features().exhaustive_patterns
+                            || cx.tcx.features().min_exhaustive_patterns)
+                            && !v
+                                .inhabited_predicate(cx.tcx, adt_def)
+                                .instantiate(cx.tcx, args)
+                                .apply_ignore_module(cx.tcx, cx.param_env)
+                    }
+                }) && (adt_def.did().is_local()
+                    || !adt_def.is_variant_list_non_exhaustive());
+                if irrefutable {
+                    default_irrefutable()
+                } else {
+                    TestCase::Variant { adt_def, variant_index }
+                }
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 subpairs = cx.field_match_pairs(place.clone(), subpatterns);
+                default_irrefutable()
             }
 
             PatKind::Deref { ref subpattern } => {
                 let place_builder = place.clone().deref();
                 subpairs.push(MatchPair::new(place_builder, subpattern, cx));
+                default_irrefutable()
             }
-        }
+        };
 
-        MatchPair { place, pattern, subpairs }
+        MatchPair { place, test_case, subpairs, pattern }
     }
 }

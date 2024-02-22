@@ -16,7 +16,7 @@ use rustc_data_structures::{
 };
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
-use rustc_middle::mir::*;
+use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::symbol::Symbol;
@@ -1053,17 +1053,30 @@ struct Ascription<'tcx> {
 }
 
 #[derive(Debug, Clone)]
+enum TestCase<'pat, 'tcx> {
+    Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
+    Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
+    Constant { value: mir::Const<'tcx> },
+    Range(&'pat PatRange<'tcx>),
+    Slice { len: usize, variable_length: bool },
+    Or,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct MatchPair<'pat, 'tcx> {
-    // This place...
+    /// This place...
     place: PlaceBuilder<'tcx>,
 
-    // ... must match this pattern.
-    // Invariant: after creation and simplification in `Candidate::new()`, all match pairs must be
-    // simplified, i.e. require a test.
-    pattern: &'pat Pat<'tcx>,
+    /// ... must pass this test...
+    // Invariant: after creation and simplification in `Candidate::new()`, this must not be
+    // `Irrefutable`.
+    test_case: TestCase<'pat, 'tcx>,
 
-    /// Precomputed sub-match pairs of `pattern`.
+    /// ... and these subpairs must match.
     subpairs: Vec<Self>,
+
+    /// The pattern this was created from.
+    pattern: &'pat Pat<'tcx>,
 }
 
 /// See [`Test`] for more.
