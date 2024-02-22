@@ -840,7 +840,7 @@ pub struct OpaqueHiddenType<'tcx> {
 }
 
 impl<'tcx> OpaqueHiddenType<'tcx> {
-    pub fn report_mismatch(
+    pub fn build_mismatch_error(
         &self,
         other: &Self,
         opaque_def_id: LocalDefId,

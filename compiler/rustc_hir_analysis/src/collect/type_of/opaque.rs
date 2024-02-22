@@ -59,7 +59,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
                 if concrete_type.ty != tcx.erase_regions(hidden.ty) {
-                    if let Ok(d) = hidden.report_mismatch(&concrete_type, def_id, tcx) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
                         d.emit();
                     }
                 }
@@ -135,7 +135,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
                 if concrete_type.ty != tcx.erase_regions(hidden.ty) {
-                    if let Ok(d) = hidden.report_mismatch(&concrete_type, def_id, tcx) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
                         d.emit();
                     }
                 }
@@ -289,7 +289,7 @@ impl TaitConstraintLocator<'_> {
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty {
                     let (Ok(guar) | Err(guar)) = prev
-                        .report_mismatch(&concrete_type, self.def_id, self.tcx)
+                        .build_mismatch_error(&concrete_type, self.def_id, self.tcx)
                         .map(|d| d.emit());
                     prev.ty = Ty::new_error(self.tcx, guar);
                 }
@@ -364,7 +364,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             );
             if let Some(prev) = &mut hir_opaque_ty {
                 if concrete_type.ty != prev.ty {
-                    if let Ok(d) = prev.report_mismatch(&concrete_type, def_id, tcx) {
+                    if let Ok(d) = prev.build_mismatch_error(&concrete_type, def_id, tcx) {
                         d.stash(
                             tcx.def_span(opaque_type_key.def_id),
                             StashKey::OpaqueHiddenTypeMismatch,
@@ -441,7 +441,9 @@ impl RpitConstraintChecker<'_> {
             debug!(?concrete_type, "found constraint");
 
             if concrete_type.ty != self.found.ty {
-                if let Ok(d) = self.found.report_mismatch(&concrete_type, self.def_id, self.tcx) {
+                if let Ok(d) =
+                    self.found.build_mismatch_error(&concrete_type, self.def_id, self.tcx)
+                {
                     d.emit();
                 }
             }

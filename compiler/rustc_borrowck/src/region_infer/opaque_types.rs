@@ -154,7 +154,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 if prev.ty != ty {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
                         let (Ok(e) | Err(e)) = prev
-                            .report_mismatch(
+                            .build_mismatch_error(
                                 &OpaqueHiddenType { ty, span: concrete_type.span },
                                 opaque_type_key.def_id,
                                 infcx.tcx,
