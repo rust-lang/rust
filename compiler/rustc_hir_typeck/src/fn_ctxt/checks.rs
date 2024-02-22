@@ -562,7 +562,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None
         };
 
-        let suggest_confusable = |err: &mut Diagnostic| {
+        let suggest_confusable = |err: &mut DiagnosticBuilder<'_>| {
             let Some(call_name) = call_ident else {
                 return;
             };

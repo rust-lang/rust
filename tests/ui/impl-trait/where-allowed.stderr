@@ -395,6 +395,8 @@ error[E0599]: no function or associated item named `into_vec` found for slice `[
 LL |     vec![vec![0; 10], vec![12; 7], vec![8; 3]]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `[_]`
    |
+help: there is an associated function `to_vec` with a similar name
+  --> $SRC_DIR/alloc/src/slice.rs:LL:COL
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0053]: method `in_trait_impl_return` has an incompatible type for trait

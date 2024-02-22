@@ -1418,7 +1418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn find_likely_intended_associated_item(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         similar_candidate: ty::AssocItem,
         span: Span,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
@@ -1496,7 +1496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn confusable_method_name(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
         call_args: Option<Vec<Ty<'tcx>>>,
