@@ -1,5 +1,5 @@
 warning: method `dummy` is never used
-  --> $DIR/enum-null-pointer-opt.rs:10:18
+  --> $DIR/enum-null-pointer-opt.rs:11:18
    |
 LL | trait Trait { fn dummy(&self) { } }
    |       -----      ^^^^^

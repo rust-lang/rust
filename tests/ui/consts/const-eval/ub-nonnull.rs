@@ -1,12 +1,12 @@
 // Strip out raw byte dumps to make comparison platform-independent:
 //@ normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?─*╼ )+ *│.*" -> "HEX_DUMP"
-#![feature(rustc_attrs, ptr_metadata)]
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
+#![feature(generic_nonzero, rustc_attrs, ptr_metadata)]
 
 use std::mem;
 use std::ptr::NonNull;
-use std::num::{NonZeroU8, NonZeroUsize};
+use std::num::NonZero;
 
 const NON_NULL: NonNull<u8> = unsafe { mem::transmute(1usize) };
 const NON_NULL_PTR: NonNull<u8> = unsafe { mem::transmute(&1) };
@@ -21,9 +21,9 @@ const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
     mem::transmute(out_of_bounds_ptr)
 } };
 
-const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
+const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
 //~^ ERROR it is undefined behavior to use this value
-const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
+const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 
 #[repr(C)]
@@ -31,7 +31,7 @@ union MaybeUninit<T: Copy> {
     uninit: (),
     init: T,
 }
-const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
+const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
 //~| uninitialized
 

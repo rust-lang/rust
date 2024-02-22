@@ -1,7 +1,7 @@
 //@ compile-flags: -O -Z merge-functions=disabled
 //@ only-x86_64
-
 #![crate_type = "lib"]
+#![feature(generic_nonzero)]
 
 // CHECK-LABEL: @array_eq_value
 #[no_mangle]
@@ -63,7 +63,7 @@ pub fn array_eq_zero_short(x: [u16; 3]) -> bool {
 
 // CHECK-LABEL: @array_eq_none_short(i40
 #[no_mangle]
-pub fn array_eq_none_short(x: [Option<std::num::NonZeroU8>; 5]) -> bool {
+pub fn array_eq_none_short(x: [Option<std::num::NonZero<u8>>; 5]) -> bool {
     // CHECK-NEXT: start:
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i40 %0, 0
     // CHECK-NEXT: ret i1 %[[EQ]]

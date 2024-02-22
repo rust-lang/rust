@@ -2,12 +2,13 @@
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
+#![feature(generic_nonzero)]
 #![feature(never_type)]
 #![feature(pointer_is_aligned)]
 #![feature(strict_provenance)]
 
 use std::mem::size_of;
-use std::num::{NonZeroU8, NonZeroU16};
+use std::num::NonZero;
 use std::ptr;
 use std::ptr::NonNull;
 use std::borrow::Cow;
@@ -110,14 +111,14 @@ enum Option2<A, B> {
 
 // Two layouts are considered for `CanBeNicheFilledButShouldnt`:
 //   Niche-filling:
-//     { u32 (4 bytes), NonZeroU8 + tag in niche (1 byte), padding (3 bytes) }
+//     { u32 (4 bytes), NonZero<u8> + tag in niche (1 byte), padding (3 bytes) }
 //   Tagged:
-//     { tag (1 byte), NonZeroU8 (1 byte), padding (2 bytes), u32 (4 bytes) }
+//     { tag (1 byte), NonZero<u8> (1 byte), padding (2 bytes), u32 (4 bytes) }
 // Both are the same size (due to padding),
 // but the tagged layout is better as the tag creates a niche with 254 invalid values,
 // allowing types like `Option<Option<CanBeNicheFilledButShouldnt>>` to fit into 8 bytes.
 pub enum CanBeNicheFilledButShouldnt {
-    A(NonZeroU8, u32),
+    A(NonZero<u8>, u32),
     B
 }
 pub enum AlwaysTaggedBecauseItHasNoNiche {
@@ -135,7 +136,7 @@ pub enum NicheFilledMultipleFields {
     G,
 }
 
-struct BoolInTheMiddle(std::num::NonZeroU16, bool, u8);
+struct BoolInTheMiddle(NonZero<u16>, bool, u8);
 
 enum NicheWithData {
     A,
@@ -275,7 +276,7 @@ pub fn main() {
     assert_eq!(size_of::<Option<NicheFilledMultipleFields>>(), 2);
     assert_eq!(size_of::<Option<Option<NicheFilledMultipleFields>>>(), 2);
 
-    struct S1{ a: u16, b: std::num::NonZeroU16, c: u16, d: u8, e: u32, f: u64, g:[u8;2] }
+    struct S1{ a: u16, b: NonZero<u16>, c: u16, d: u8, e: u32, f: u64, g:[u8;2] }
     assert_eq!(size_of::<S1>(), 24);
     assert_eq!(size_of::<Option<S1>>(), 24);
 
@@ -287,14 +288,14 @@ pub fn main() {
         size_of::<(&(), NicheWithData)>()
     );
 
-    pub enum FillPadding { A(std::num::NonZeroU8, u32), B }
+    pub enum FillPadding { A(NonZero<u8>, u32), B }
     assert_eq!(size_of::<FillPadding>(), 8);
     assert_eq!(size_of::<Option<FillPadding>>(), 8);
     assert_eq!(size_of::<Option<Option<FillPadding>>>(), 8);
 
-    assert_eq!(size_of::<Result<(std::num::NonZeroU8, u8, u8), u16>>(), 4);
-    assert_eq!(size_of::<Option<Result<(std::num::NonZeroU8, u8, u8), u16>>>(), 4);
-    assert_eq!(size_of::<Result<(std::num::NonZeroU8, u8, u8, u8), u16>>(), 4);
+    assert_eq!(size_of::<Result<(NonZero<u8>, u8, u8), u16>>(), 4);
+    assert_eq!(size_of::<Option<Result<(NonZero<u8>, u8, u8), u16>>>(), 4);
+    assert_eq!(size_of::<Result<(NonZero<u8>, u8, u8, u8), u16>>(), 4);
 
     assert_eq!(size_of::<EnumManyVariant<u16>>(), 6);
     assert_eq!(size_of::<EnumManyVariant<NicheU16>>(), 4);
@@ -314,10 +315,10 @@ pub fn main() {
     assert_eq!(ptr::from_ref(&v), ptr::from_ref(&v.r.ptr).cast(),
                "sort niches to the front where possible");
 
-    // Ideal layouts: (bool, u8, NonZeroU16) or (NonZeroU16, u8, bool)
+    // Ideal layouts: (bool, u8, NonZero<u16>) or (NonZero<u16>, u8, bool)
     // Currently the layout algorithm will choose the latter because it doesn't attempt
     // to aggregate multiple smaller fields to move a niche before a higher-alignment one.
-    let b = BoolInTheMiddle( NonZeroU16::new(1).unwrap(), true, 0);
+    let b = BoolInTheMiddle(NonZero::new(1).unwrap(), true, 0);
     assert!(ptr::from_ref(&b.1).addr() > ptr::from_ref(&b.2).addr());
 
     assert_eq!(size_of::<Cow<'static, str>>(), size_of::<String>());

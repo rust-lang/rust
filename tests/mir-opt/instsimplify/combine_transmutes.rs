@@ -1,9 +1,9 @@
 //@ unit-test: InstSimplify
 //@ compile-flags: -C panic=abort
-
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
+#![feature(generic_nonzero)]
 
 use std::intrinsics::mir::*;
 use std::mem::{MaybeUninit, ManuallyDrop, transmute};
@@ -54,7 +54,7 @@ pub unsafe fn adt_transmutes() {
     // CHECK: as i32 (Transmute);
     // CHECK: ({{_.*}}.1: std::mem::ManuallyDrop<std::string::String>);
 
-    let _a: u8 = transmute(Some(std::num::NonZeroU8::MAX));
+    let _a: u8 = transmute(Some(std::num::NonZero::<u8>::MAX));
     let _a: i16 = transmute(std::num::Wrapping(0_i16));
     let _a: u16 = transmute(std::num::Wrapping(0_i16));
     let _a: u32 = transmute(Union32 { i32: 0 });

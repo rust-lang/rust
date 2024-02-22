@@ -4,11 +4,11 @@
 // ignore-tidy-linelength
 //@ ignore-emscripten spawning processes is not supported
 //@ ignore-sgx no processes
-
+//
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
-
-#![feature(never_type)]
 #![allow(deprecated, invalid_value)]
+#![feature(generic_nonzero)]
+#![feature(never_type)]
 
 use std::{
     mem::{self, MaybeUninit, ManuallyDrop},
@@ -29,7 +29,7 @@ enum OneVariant { Variant(i32) }
 
 #[allow(dead_code, non_camel_case_types)]
 enum OneVariant_NonZero {
-    Variant(i32, i32, num::NonZeroI32),
+    Variant(i32, i32, num::NonZero<i32>),
     DeadVariant(Bar),
 }
 
@@ -55,8 +55,8 @@ enum LR {
 }
 #[allow(dead_code, non_camel_case_types)]
 enum LR_NonZero {
-    Left(num::NonZeroI64),
-    Right(num::NonZeroI64),
+    Left(num::NonZero<i64>),
+    Right(num::NonZero<i64>),
 }
 
 struct ZeroSized;
