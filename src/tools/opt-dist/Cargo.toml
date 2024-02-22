@@ -23,4 +23,4 @@ glob = "0.3"
 tempfile = "3.5"
 derive_builder = "0.20"
 clap = { version = "4", features = ["derive"] }
-tabled = { version = "0.13", default-features = false, features = ["std"] }
+tabled = { version = "0.15", default-features = false, features = ["std"] }
