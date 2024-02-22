@@ -323,6 +323,25 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 }
 
+fn fmt_instance_def(f: &mut fmt::Formatter<'_>, instance_def: &InstanceDef<'_>) -> fmt::Result {
+    match instance_def {
+        InstanceDef::Item(_) => Ok(()),
+        InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
+        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+        InstanceDef::ThreadLocalShim(_) => write!(f, " - shim(tls)"),
+        InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
+        InstanceDef::Virtual(_, num) => write!(f, " - virtual#{num}"),
+        InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+        InstanceDef::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
+        InstanceDef::CoroutineKindShim { .. } => write!(f, " - shim"),
+        InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
+        InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
+        InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
+        InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
+    }
+}
+
 fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
     instance: &Instance<'_>,
@@ -341,22 +360,7 @@ fn fmt_instance(
         f.write_str(&s)
     })?;
 
-    match instance.def {
-        InstanceDef::Item(_) => Ok(()),
-        InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
-        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
-        InstanceDef::ThreadLocalShim(_) => write!(f, " - shim(tls)"),
-        InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
-        InstanceDef::Virtual(_, num) => write!(f, " - virtual#{num}"),
-        InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({ty})"),
-        InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
-        InstanceDef::ConstructCoroutineInClosureShim { .. } => write!(f, " - shim"),
-        InstanceDef::CoroutineKindShim { .. } => write!(f, " - shim"),
-        InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
-        InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({ty}))"),
-        InstanceDef::CloneShim(_, ty) => write!(f, " - shim({ty})"),
-        InstanceDef::FnPtrAddrShim(_, ty) => write!(f, " - shim({ty})"),
-    }
+    fmt_instance_def(f, &instance.def)
 }
 
 pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
