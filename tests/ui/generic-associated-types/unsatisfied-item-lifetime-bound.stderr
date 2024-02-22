@@ -35,7 +35,7 @@ error[E0478]: lifetime bound not satisfied
   --> $DIR/unsatisfied-item-lifetime-bound.rs:14:20
    |
 LL |     f: <T as X>::Y<'a>,
-   |                    ^^
+   |                    ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:13:10
@@ -53,7 +53,7 @@ error[E0478]: lifetime bound not satisfied
   --> $DIR/unsatisfied-item-lifetime-bound.rs:19:20
    |
 LL |     f: <T as X>::Y<'a>,
-   |                    ^^
+   |                    ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:18:10
@@ -71,7 +71,7 @@ error[E0478]: lifetime bound not satisfied
   --> $DIR/unsatisfied-item-lifetime-bound.rs:24:21
    |
 LL |     f: <() as X>::Y<'a>,
-   |                     ^^
+   |                     ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/unsatisfied-item-lifetime-bound.rs:23:10

@@ -1,8 +1,10 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/point-at-lifetime-obligation-from-trait-in-trait-object.rs:4:21
+  --> $DIR/point-at-lifetime-obligation-from-trait-in-trait-object.rs:4:27
    |
 LL |     broken: Box<dyn Any + 'a>
-   |                     ^^^   ^^
+   |                     ---   ^^ lifetime bound not satisfied
+   |                     |
+   |                     this requires `'static`
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/point-at-lifetime-obligation-from-trait-in-trait-object.rs:3:18

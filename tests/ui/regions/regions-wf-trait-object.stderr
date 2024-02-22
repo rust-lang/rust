@@ -2,7 +2,7 @@ error[E0478]: lifetime bound not satisfied
   --> $DIR/regions-wf-trait-object.rs:7:29
    |
 LL |     x: Box<dyn TheTrait<'a>+'b>
-   |                             ^^
+   |                             ^^ lifetime bound not satisfied
    |
 note: lifetime parameter instantiated with the lifetime `'b` as defined here
   --> $DIR/regions-wf-trait-object.rs:6:15

@@ -59,7 +59,7 @@ use crate::traits::{
     PredicateObligation,
 };
 
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
     ErrorGuaranteed, IntoDiagArg, MultiSpan,
@@ -2709,7 +2709,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         pub struct HirTraitObjectVisitor<'tcx> {
             pub expected_region: ty::Region<'tcx>,
             pub found_region: ty::Region<'tcx>,
-            pub lifetime_spans: FxHashSet<Span>,
+            pub primary_spans: Vec<Span>,
+            pub secondary_spans: Vec<Span>,
             pub pred_spans: Vec<Span>,
             pub tcx: TyCtxt<'tcx>,
         }
@@ -2727,7 +2728,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     _ => false,
                 } {
                     // We want to keep a span to the lifetime bound on the trait object.
-                    self.lifetime_spans.insert(lt.ident.span);
+                    self.primary_spans.push(lt.ident.span);
                 }
             }
             fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
@@ -2753,7 +2754,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     .filter_map(filter_predicates(self.found_region, |_| true))
                                     .collect();
                                 if !bindings.is_empty() {
-                                    self.lifetime_spans.insert(ptr.span);
+                                    self.secondary_spans.push(ptr.span);
                                     self.pred_spans.extend(bindings);
                                 }
                             }
@@ -2761,10 +2762,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     // Detect when an associated item is given a lifetime restriction that the
                     // definition of that associated item couldn't meet.
-                    hir::TyKind::Path(hir::QPath::Resolved(Some(_), path)) => {
-                        self.pred_spans = elaborate_predicates_of(self.tcx, path.res.def_id())
-                            .filter_map(filter_predicates(self.found_region, |_| true))
-                            .collect();
+                    hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
+                        self.pred_spans.extend(
+                            elaborate_predicates_of(self.tcx, path.res.def_id())
+                                .filter_map(filter_predicates(self.found_region, |_| true))
+                                .collect::<Vec<_>>(),
+                        );
                     }
                     _ => {}
                 }
@@ -2774,7 +2777,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let mut visitor = HirTraitObjectVisitor {
             expected_region: sup,
             found_region: sub,
-            lifetime_spans: Default::default(),
+            primary_spans: vec![],
+            secondary_spans: vec![],
             pred_spans: vec![],
             tcx: self.tcx,
         };
@@ -2786,9 +2790,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        #[allow(rustc::potential_query_instability)]
-        let primary_spans: Vec<Span> = visitor.lifetime_spans.into_iter().collect();
-        Some((primary_spans.into(), visitor.pred_spans.into()))
+        visitor.primary_spans.sort();
+        let mut primary_span: MultiSpan = visitor.primary_spans.clone().into();
+        if let Some(last) = visitor.primary_spans.iter().rev().next() {
+            primary_span.push_span_label(
+                *last,
+                format!(
+                    "lifetime bound{s} not satisfied",
+                    s = pluralize!(visitor.primary_spans.len())
+                ),
+            );
+        }
+
+        for span in visitor.secondary_spans {
+            primary_span.push_span_label(span, format!("this requires `{sub}`"));
+        }
+        Some((primary_span, visitor.pred_spans.into()))
     }
 
     /// Determine whether an error associated with the given span and definition
