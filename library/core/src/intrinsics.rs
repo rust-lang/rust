@@ -953,6 +953,7 @@ extern "rust-intrinsic" {
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
 pub const unsafe fn assume(b: bool) {
     if !b {
         // SAFETY: the caller must guarantee the argument is never `false`
@@ -975,6 +976,7 @@ pub const unsafe fn assume(b: bool) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 #[rustc_nounwind]
+#[cfg_attr(bootstrap, inline)]
 pub const fn likely(b: bool) -> bool {
     b
 }
@@ -994,6 +996,7 @@ pub const fn likely(b: bool) -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
 #[rustc_nounwind]
+#[cfg_attr(bootstrap, inline)]
 pub const fn unlikely(b: bool) -> bool {
     b
 }
@@ -2596,6 +2599,7 @@ extern "rust-intrinsic" {
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
 pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
@@ -2633,6 +2637,7 @@ pub(crate) const fn debug_assertions() -> bool {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
 pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
     // const eval overrides this function, but runtime code should always just return null pointers.
     crate::ptr::null_mut()
@@ -2652,6 +2657,7 @@ pub const unsafe fn const_allocate(_size: usize, _align: usize) -> *mut u8 {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_nounwind]
 #[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(bootstrap, inline)]
 pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 
 // Some functions are defined here because they accidentally got made
