@@ -437,7 +437,7 @@ pub trait ReportErrorExt {
             let mut diag = dcx.struct_allow(DiagnosticMessage::Str(String::new().into()));
             let message = self.diagnostic_message();
             self.add_args(&mut diag);
-            let s = dcx.eagerly_translate_to_string(message, diag.args());
+            let s = dcx.eagerly_translate_to_string(message, diag.args.iter());
             diag.cancel();
             s
         })
@@ -864,7 +864,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
                 let dummy_level = Level::Bug;
                 let dummy_diag: DiagnosticBuilder<'_, ()> =
                     e.into_diagnostic().into_diagnostic(diag.dcx, dummy_level);
-                for (name, val) in dummy_diag.args() {
+                for (name, val) in dummy_diag.args.iter() {
                     diag.arg(name.clone(), val.clone());
                 }
                 dummy_diag.cancel();
