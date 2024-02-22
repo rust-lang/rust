@@ -16,10 +16,6 @@
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
-#![cfg_attr(
-    all(target_family = "wasm", not(target_os = "emscripten")),
-    feature(link_llvm_intrinsics)
-)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(std_internals)]
@@ -57,11 +53,9 @@ cfg_if::cfg_if! {
         target_os = "solid_asp3",
         all(target_family = "unix", not(target_os = "espidf")),
         all(target_vendor = "fortanix", target_env = "sgx"),
+        target_family = "wasm",
     ))] {
         #[path = "gcc.rs"]
-        mod real_imp;
-    } else if #[cfg(target_family = "wasm")] {
-        #[path = "wasm.rs"]
         mod real_imp;
     } else {
         // Targets that don't support unwinding.
