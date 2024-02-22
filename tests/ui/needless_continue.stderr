@@ -1,5 +1,5 @@
 error: this `else` block is redundant
-  --> $DIR/needless_continue.rs:30:16
+  --> tests/ui/needless_continue.rs:30:16
    |
 LL |           } else {
    |  ________________^
@@ -38,7 +38,7 @@ LL | |         }
    = help: to override `-D warnings` add `#[allow(clippy::needless_continue)]`
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> $DIR/needless_continue.rs:46:9
+  --> tests/ui/needless_continue.rs:46:9
    |
 LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 LL | |
@@ -60,7 +60,7 @@ LL | |         }
                    }
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:60:9
+  --> tests/ui/needless_continue.rs:60:9
    |
 LL |         continue;
    |         ^^^^^^^^^
@@ -68,7 +68,7 @@ LL |         continue;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:68:9
+  --> tests/ui/needless_continue.rs:68:9
    |
 LL |         continue;
    |         ^^^^^^^^^
@@ -76,7 +76,7 @@ LL |         continue;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:76:9
+  --> tests/ui/needless_continue.rs:76:9
    |
 LL |         continue
    |         ^^^^^^^^
@@ -84,7 +84,7 @@ LL |         continue
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> $DIR/needless_continue.rs:85:9
+  --> tests/ui/needless_continue.rs:85:9
    |
 LL |         continue
    |         ^^^^^^^^
@@ -92,7 +92,7 @@ LL |         continue
    = help: consider dropping the `continue` expression
 
 error: this `else` block is redundant
-  --> $DIR/needless_continue.rs:136:24
+  --> tests/ui/needless_continue.rs:136:24
    |
 LL |                   } else {
    |  ________________________^
@@ -117,7 +117,7 @@ LL | |                 }
                            }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> $DIR/needless_continue.rs:143:17
+  --> tests/ui/needless_continue.rs:143:17
    |
 LL | /                 if condition() {
 LL | |

@@ -1,5 +1,5 @@
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_enum.rs:5:1
+  --> tests/ui/manual_non_exhaustive_enum.rs:5:1
    |
 LL |   enum E {
    |   ^-----
@@ -15,7 +15,7 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> $DIR/manual_non_exhaustive_enum.rs:10:5
+  --> tests/ui/manual_non_exhaustive_enum.rs:10:5
    |
 LL |     _C,
    |     ^^
@@ -23,7 +23,7 @@ LL |     _C,
    = help: to override `-D warnings` add `#[allow(clippy::manual_non_exhaustive)]`
 
 error: this seems like a manual implementation of the non-exhaustive pattern
-  --> $DIR/manual_non_exhaustive_enum.rs:30:1
+  --> tests/ui/manual_non_exhaustive_enum.rs:30:1
    |
 LL |   enum NoUnderscore {
    |   ^----------------
@@ -38,7 +38,7 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> $DIR/manual_non_exhaustive_enum.rs:34:5
+  --> tests/ui/manual_non_exhaustive_enum.rs:34:5
    |
 LL |     C,
    |     ^

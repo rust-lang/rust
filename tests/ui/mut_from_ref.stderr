@@ -1,11 +1,11 @@
 error: mutable borrow from immutable input(s)
-  --> $DIR/mut_from_ref.rs:7:39
+  --> tests/ui/mut_from_ref.rs:7:39
    |
 LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
    |                                       ^^^^^^^^
    |
 note: immutable borrow here
-  --> $DIR/mut_from_ref.rs:7:29
+  --> tests/ui/mut_from_ref.rs:7:29
    |
 LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
    |                             ^^^^^
@@ -13,61 +13,61 @@ LL |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
    = help: to override `-D warnings` add `#[allow(clippy::mut_from_ref)]`
 
 error: mutable borrow from immutable input(s)
-  --> $DIR/mut_from_ref.rs:14:25
+  --> tests/ui/mut_from_ref.rs:14:25
    |
 LL |     fn ouch(x: &Foo) -> &mut Foo;
    |                         ^^^^^^^^
    |
 note: immutable borrow here
-  --> $DIR/mut_from_ref.rs:14:16
+  --> tests/ui/mut_from_ref.rs:14:16
    |
 LL |     fn ouch(x: &Foo) -> &mut Foo;
    |                ^^^^
 
 error: mutable borrow from immutable input(s)
-  --> $DIR/mut_from_ref.rs:24:21
+  --> tests/ui/mut_from_ref.rs:24:21
    |
 LL | fn fail(x: &u32) -> &mut u16 {
    |                     ^^^^^^^^
    |
 note: immutable borrow here
-  --> $DIR/mut_from_ref.rs:24:12
+  --> tests/ui/mut_from_ref.rs:24:12
    |
 LL | fn fail(x: &u32) -> &mut u16 {
    |            ^^^^
 
 error: mutable borrow from immutable input(s)
-  --> $DIR/mut_from_ref.rs:29:50
+  --> tests/ui/mut_from_ref.rs:29:50
    |
 LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
    |                                                  ^^^^^^^^^^^
    |
 note: immutable borrow here
-  --> $DIR/mut_from_ref.rs:29:25
+  --> tests/ui/mut_from_ref.rs:29:25
    |
 LL | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
    |                         ^^^^^^^
 
 error: mutable borrow from immutable input(s)
-  --> $DIR/mut_from_ref.rs:34:67
+  --> tests/ui/mut_from_ref.rs:34:67
    |
 LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                                                                   ^^^^^^^^^^^
    |
 note: immutable borrow here
-  --> $DIR/mut_from_ref.rs:34:27
+  --> tests/ui/mut_from_ref.rs:34:27
    |
 LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                           ^^^^^^^     ^^^^^^^
 
 error: mutable borrow from immutable input(s)
-  --> $DIR/mut_from_ref.rs:49:35
+  --> tests/ui/mut_from_ref.rs:49:35
    |
 LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
    |                                   ^^^^^^^^
    |
 note: immutable borrow here
-  --> $DIR/mut_from_ref.rs:49:26
+  --> tests/ui/mut_from_ref.rs:49:26
    |
 LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
    |                          ^^^^

@@ -1,5 +1,5 @@
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> $DIR/manual_is_variant_and.rs:13:17
+  --> tests/ui/manual_is_variant_and.rs:13:17
    |
 LL |       let _ = opt.map(|x| x > 1)
    |  _________________^
@@ -11,7 +11,7 @@ LL | |         .unwrap_or_default();
    = help: to override `-D warnings` add `#[allow(clippy::manual_is_variant_and)]`
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> $DIR/manual_is_variant_and.rs:17:17
+  --> tests/ui/manual_is_variant_and.rs:17:17
    |
 LL |       let _ = opt.map(|x| {
    |  _________________^
@@ -28,13 +28,13 @@ LL ~     });
    |
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> $DIR/manual_is_variant_and.rs:21:17
+  --> tests/ui/manual_is_variant_and.rs:21:17
    |
 LL |     let _ = opt.map(|x| x > 1).unwrap_or_default();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_some_and(|x| x > 1)`
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> $DIR/manual_is_variant_and.rs:23:10
+  --> tests/ui/manual_is_variant_and.rs:23:10
    |
 LL |           .map(|x| x > 1)
    |  __________^
@@ -42,13 +42,13 @@ LL | |         .unwrap_or_default();
    | |____________________________^ help: use: `is_some_and(|x| x > 1)`
 
 error: called `map(<f>).unwrap_or_default()` on an `Option` value
-  --> $DIR/manual_is_variant_and.rs:30:18
+  --> tests/ui/manual_is_variant_and.rs:30:18
    |
 LL |     let _ = opt2.map(char::is_alphanumeric).unwrap_or_default(); // should lint
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_some_and(char::is_alphanumeric)`
 
 error: called `map(<f>).unwrap_or_default()` on a `Result` value
-  --> $DIR/manual_is_variant_and.rs:39:17
+  --> tests/ui/manual_is_variant_and.rs:39:17
    |
 LL |       let _ = res.map(|x| {
    |  _________________^
@@ -65,7 +65,7 @@ LL ~     });
    |
 
 error: called `map(<f>).unwrap_or_default()` on a `Result` value
-  --> $DIR/manual_is_variant_and.rs:43:17
+  --> tests/ui/manual_is_variant_and.rs:43:17
    |
 LL |       let _ = res.map(|x| x > 1)
    |  _________________^
@@ -73,7 +73,7 @@ LL | |         .unwrap_or_default();
    | |____________________________^ help: use: `is_ok_and(|x| x > 1)`
 
 error: called `map(<f>).unwrap_or_default()` on a `Result` value
-  --> $DIR/manual_is_variant_and.rs:50:18
+  --> tests/ui/manual_is_variant_and.rs:50:18
    |
 LL |     let _ = res2.map(char::is_alphanumeric).unwrap_or_default(); // should lint
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `is_ok_and(char::is_alphanumeric)`

@@ -38,6 +38,7 @@ pub(super) fn check<'tcx>(
         && ext_str.starts_with('.')
         && (ext_str.chars().skip(1).all(|c| c.is_uppercase() || c.is_ascii_digit())
             || ext_str.chars().skip(1).all(|c| c.is_lowercase() || c.is_ascii_digit()))
+        && !ext_str.chars().skip(1).all(|c| c.is_ascii_digit())
         && let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs()
         && (recv_ty.is_str() || is_type_lang_item(cx, recv_ty, LangItem::String))
     {

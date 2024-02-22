@@ -1,5 +1,5 @@
 error: items after a test module
-  --> $DIR/root_module.rs:12:1
+  --> tests/ui/items_after_test_module/root_module.rs:12:1
    |
 LL | mod tests {
    | ^^^^^^^^^

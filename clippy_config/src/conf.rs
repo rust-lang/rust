@@ -325,7 +325,7 @@ define_Conf! {
     ///
     /// The minimum number of enum variants for the lints about variant names to trigger
     (enum_variant_name_threshold: u64 = 3),
-    /// Lint: STRUCT_VARIANT_NAMES.
+    /// Lint: STRUCT_FIELD_NAMES.
     ///
     /// The minimum number of struct fields for the lints about field names to trigger
     (struct_field_name_threshold: u64 = 3),
@@ -648,7 +648,7 @@ fn deserialize(file: &SourceFile) -> TryConf {
             extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
             extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
             // TODO: THIS SHOULD BE TESTED, this comment will be gone soon
-            if conf.conf.allowed_idents_below_min_chars.contains(&"..".to_owned()) {
+            if conf.conf.allowed_idents_below_min_chars.contains("..") {
                 conf.conf
                     .allowed_idents_below_min_chars
                     .extend(DEFAULT_ALLOWED_IDENTS_BELOW_MIN_CHARS.iter().map(ToString::to_string));

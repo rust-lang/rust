@@ -1,5 +1,5 @@
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/rc.rs:10:13
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:10:13
    |
 LL |     let v = vec![Rc::new("x".to_string()); 2];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/rc.rs:20:21
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:20:21
    |
 LL |             let v = vec![Rc::new("x".to_string()); 2];
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL ~             };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/rc.rs:28:13
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:28:13
    |
 LL |       let v = vec![
    |  _____________^
@@ -77,7 +77,7 @@ LL ~     };
    |
 
 error: initializing a reference-counted pointer in `vec![elem; len]`
-  --> $DIR/rc.rs:39:14
+  --> tests/ui/rc_clone_in_vec_init/rc.rs:39:14
    |
 LL |       let v1 = vec![
    |  ______________^

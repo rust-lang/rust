@@ -49,7 +49,7 @@ pub(super) fn check(
 
     if is_copy(cx, ty) {
         let parent_is_suffix_expr = match get_parent_node(cx.tcx, expr.hir_id) {
-            Some(Node::Expr(parent)) => match parent.kind {
+            Node::Expr(parent) => match parent.kind {
                 // &*x is a nop, &x.clone() is not
                 ExprKind::AddrOf(..) => return,
                 // (*x).func() is useless, x.clone().func() can work in case func borrows self
@@ -70,7 +70,7 @@ pub(super) fn check(
                 _ => false,
             },
             // local binding capturing a reference
-            Some(Node::Local(l)) if matches!(l.pat.kind, PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..)) => {
+            Node::Local(l) if matches!(l.pat.kind, PatKind::Binding(BindingAnnotation(ByRef::Yes, _), ..)) => {
                 return;
             },
             _ => false,

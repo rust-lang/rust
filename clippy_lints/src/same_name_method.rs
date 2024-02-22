@@ -47,7 +47,6 @@ struct ExistingName {
 }
 
 impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
-    #[expect(clippy::too_many_lines)]
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
@@ -75,24 +74,23 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
 
                 match of_trait {
                     Some(trait_ref) => {
-                        let mut methods_in_trait: BTreeSet<Symbol> =
-                            if let Node::TraitRef(TraitRef { path, .. }) =
-                                cx.tcx.hir_node(trait_ref.hir_ref_id)
-                                && let Res::Def(DefKind::Trait, did) = path.res
-                            {
-                                // FIXME: if
-                                // `rustc_middle::ty::assoc::AssocItems::items` is public,
-                                // we can iterate its keys instead of `in_definition_order`,
-                                // which's more efficient
-                                cx.tcx
-                                    .associated_items(did)
-                                    .in_definition_order()
-                                    .filter(|assoc_item| matches!(assoc_item.kind, AssocKind::Fn))
-                                    .map(|assoc_item| assoc_item.name)
-                                    .collect()
-                            } else {
-                                BTreeSet::new()
-                            };
+                        let mut methods_in_trait: BTreeSet<Symbol> = if let Node::TraitRef(TraitRef { path, .. }) =
+                            cx.tcx.hir_node(trait_ref.hir_ref_id)
+                            && let Res::Def(DefKind::Trait, did) = path.res
+                        {
+                            // FIXME: if
+                            // `rustc_middle::ty::assoc::AssocItems::items` is public,
+                            // we can iterate its keys instead of `in_definition_order`,
+                            // which's more efficient
+                            cx.tcx
+                                .associated_items(did)
+                                .in_definition_order()
+                                .filter(|assoc_item| matches!(assoc_item.kind, AssocKind::Fn))
+                                .map(|assoc_item| assoc_item.name)
+                                .collect()
+                        } else {
+                            BTreeSet::new()
+                        };
 
                         let mut check_trait_method = |method_name: Symbol, trait_method_span: Span| {
                             if let Some((impl_span, hir_id)) = existing_name.impl_methods.get(&method_name) {

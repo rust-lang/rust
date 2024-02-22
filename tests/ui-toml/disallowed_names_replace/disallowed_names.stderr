@@ -1,5 +1,5 @@
 error: use of a disallowed/placeholder name `ducks`
-  --> $DIR/disallowed_names.rs:7:9
+  --> tests/ui-toml/disallowed_names_replace/disallowed_names.rs:7:9
    |
 LL |     let ducks = ["quack", "quack"];
    |         ^^^^^

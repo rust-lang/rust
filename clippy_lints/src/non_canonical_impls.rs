@@ -112,7 +112,7 @@ declare_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL
 impl LateLintPass<'_> for NonCanonicalImpls {
     #[expect(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
-        let Some(Node::Item(item)) = get_parent_node(cx.tcx, impl_item.hir_id()) else {
+        let Node::Item(item) = get_parent_node(cx.tcx, impl_item.hir_id()) else {
             return;
         };
         let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder) else {

@@ -1,5 +1,5 @@
 error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
-  --> $DIR/blocks_in_conditions_closure.rs:23:17
+  --> tests/ui/blocks_in_conditions_closure.rs:23:17
    |
 LL |               |x| {
    |  _________________^
@@ -14,7 +14,7 @@ LL | |             },
    = help: to override `-D warnings` add `#[allow(clippy::blocks_in_conditions)]`
 
 error: in an `if` condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
-  --> $DIR/blocks_in_conditions_closure.rs:34:13
+  --> tests/ui/blocks_in_conditions_closure.rs:34:13
    |
 LL |           |x| {
    |  _____________^
@@ -25,7 +25,7 @@ LL | |         },
    | |_________^
 
 error: in a `match` scrutinee, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a `let`
-  --> $DIR/blocks_in_conditions_closure.rs:67:13
+  --> tests/ui/blocks_in_conditions_closure.rs:67:13
    |
 LL |           |x| {
    |  _____________^

@@ -1,11 +1,11 @@
 warning: future cannot be sent between threads safely
-  --> $DIR/ice-10645.rs:5:1
+  --> tests/ui/crashes/ice-10645.rs:5:1
    |
 LL | pub async fn bar<'a, T: 'a>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `bar` is not `Send`
    |
 note: captured value is not `Send`
-  --> $DIR/ice-10645.rs:5:29
+  --> tests/ui/crashes/ice-10645.rs:5:29
    |
 LL | pub async fn bar<'a, T: 'a>(_: T) {}
    |                             ^ has type `T` which is not `Send`

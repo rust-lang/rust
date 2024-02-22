@@ -1009,7 +1009,7 @@ fn report<'tcx>(
                 state.msg,
                 |diag| {
                     let (precedence, calls_field) = match get_parent_node(cx.tcx, data.first_expr.hir_id) {
-                        Some(Node::Expr(e)) => match e.kind {
+                        Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => (0, false),
                             ExprKind::Call(..) => (PREC_POSTFIX, matches!(expr.kind, ExprKind::Field(..))),
                             _ => (e.precedence().order(), false),

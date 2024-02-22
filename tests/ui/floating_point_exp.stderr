@@ -1,5 +1,5 @@
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_exp.rs:6:13
+  --> tests/ui/floating_point_exp.rs:6:13
    |
 LL |     let _ = x.exp() - 1.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
@@ -8,25 +8,25 @@ LL |     let _ = x.exp() - 1.0;
    = help: to override `-D warnings` add `#[allow(clippy::imprecise_flops)]`
 
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_exp.rs:7:13
+  --> tests/ui/floating_point_exp.rs:7:13
    |
 LL |     let _ = x.exp() - 1.0 + 2.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
 
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_exp.rs:8:13
+  --> tests/ui/floating_point_exp.rs:8:13
    |
 LL |     let _ = (x as f32).exp() - 1.0 + 2.0;
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x as f32).exp_m1()`
 
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_exp.rs:14:13
+  --> tests/ui/floating_point_exp.rs:14:13
    |
 LL |     let _ = x.exp() - 1.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`
 
 error: (e.pow(x) - 1) can be computed more accurately
-  --> $DIR/floating_point_exp.rs:15:13
+  --> tests/ui/floating_point_exp.rs:15:13
    |
 LL |     let _ = x.exp() - 1.0 + 2.0;
    |             ^^^^^^^^^^^^^ help: consider using: `x.exp_m1()`

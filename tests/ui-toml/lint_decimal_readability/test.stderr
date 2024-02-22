@@ -1,5 +1,5 @@
 error: digits grouped inconsistently by underscores
-  --> $DIR/test.rs:19:18
+  --> tests/ui-toml/lint_decimal_readability/test.rs:19:18
    |
 LL |     let _fail1 = 100_200_300.123456789;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider: `100_200_300.123_456_789`
@@ -8,7 +8,7 @@ LL |     let _fail1 = 100_200_300.123456789;
    = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
 
 error: long literal lacking separators
-  --> $DIR/test.rs:22:18
+  --> tests/ui-toml/lint_decimal_readability/test.rs:22:18
    |
 LL |     let _fail2 = 100200300.300200100;
    |                  ^^^^^^^^^^^^^^^^^^^ help: consider: `100_200_300.300_200_100`

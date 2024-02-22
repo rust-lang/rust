@@ -144,8 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
 // }
 fn is_single_call_in_arm<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'_>, drop_expr: &'tcx Expr<'_>) -> bool {
     if matches!(arg.kind, ExprKind::Call(..) | ExprKind::MethodCall(..)) {
-        let parent_node = get_parent_node(cx.tcx, drop_expr.hir_id);
-        if let Some(Node::Arm(Arm { body, .. })) = &parent_node {
+        if let Node::Arm(Arm { body, .. }) = get_parent_node(cx.tcx, drop_expr.hir_id) {
             return body.hir_id == drop_expr.hir_id;
         }
     }

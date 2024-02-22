@@ -37,7 +37,12 @@ pub(super) fn check<'tcx>(
     }
 }
 
-fn set_diagnostic<'tcx>(diag: &mut DiagnosticBuilder<'_, ()>, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, found: FoundSigDrop) {
+fn set_diagnostic<'tcx>(
+    diag: &mut DiagnosticBuilder<'_, ()>,
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    found: FoundSigDrop,
+) {
     if found.lint_suggestion == LintSuggestion::MoveAndClone {
         // If our suggestion is to move and clone, then we want to leave it to the user to
         // decide how to address this lint, since it may be that cloning is inappropriate.

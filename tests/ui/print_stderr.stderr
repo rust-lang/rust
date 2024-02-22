@@ -1,5 +1,5 @@
 error: use of `eprintln!`
-  --> $DIR/print_stderr.rs:4:5
+  --> tests/ui/print_stderr.rs:4:5
    |
 LL |     eprintln!("Hello");
    |     ^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     eprintln!("Hello");
    = help: to override `-D warnings` add `#[allow(clippy::print_stderr)]`
 
 error: use of `eprint!`
-  --> $DIR/print_stderr.rs:8:5
+  --> tests/ui/print_stderr.rs:8:5
    |
 LL |     eprint!("World");
    |     ^^^^^^^^^^^^^^^^

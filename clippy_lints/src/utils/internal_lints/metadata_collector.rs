@@ -1005,8 +1005,6 @@ fn get_parent_local<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -
 }
 
 fn get_parent_local_hir_id<'hir>(cx: &LateContext<'hir>, hir_id: hir::HirId) -> Option<&'hir hir::Local<'hir>> {
-    let map = cx.tcx.hir();
-
     match cx.tcx.parent_hir_node(hir_id) {
         hir::Node::Local(local) => Some(local),
         hir::Node::Pat(pattern) => get_parent_local_hir_id(cx, pattern.hir_id),

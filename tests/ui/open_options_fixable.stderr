@@ -1,5 +1,5 @@
 error: file opened with `create`, but `truncate` behavior not defined
-  --> $DIR/open_options_fixable.rs:5:24
+  --> tests/ui/open_options_fixable.rs:5:24
    |
 LL |     OpenOptions::new().create(true).open("foo.txt");
    |                        ^^^^^^^^^^^^- help: add: `.truncate(true)`

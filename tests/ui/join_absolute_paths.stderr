@@ -1,5 +1,5 @@
 error: argument to `Path::join` starts with a path separator
-  --> $DIR/join_absolute_paths.rs:10:15
+  --> tests/ui/join_absolute_paths.rs:10:15
    |
 LL |     path.join("/sh");
    |               ^^^^^
@@ -17,7 +17,7 @@ LL |     PathBuf::from("/sh");
    |     ~~~~~~~~~~~~~~~~~~~~
 
 error: argument to `Path::join` starts with a path separator
-  --> $DIR/join_absolute_paths.rs:14:15
+  --> tests/ui/join_absolute_paths.rs:14:15
    |
 LL |     path.join("\\user");
    |               ^^^^^^^^
@@ -33,7 +33,7 @@ LL |     PathBuf::from("\\user");
    |     ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: argument to `Path::join` starts with a path separator
-  --> $DIR/join_absolute_paths.rs:18:15
+  --> tests/ui/join_absolute_paths.rs:18:15
    |
 LL |     path.join("/sh");
    |               ^^^^^
@@ -49,7 +49,7 @@ LL |     PathBuf::from("/sh");
    |     ~~~~~~~~~~~~~~~~~~~~
 
 error: argument to `Path::join` starts with a path separator
-  --> $DIR/join_absolute_paths.rs:22:15
+  --> tests/ui/join_absolute_paths.rs:22:15
    |
 LL |     path.join(r#"/sh"#);
    |               ^^^^^^^^

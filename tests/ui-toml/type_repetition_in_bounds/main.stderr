@@ -1,5 +1,5 @@
 error: this type has already been used as a bound predicate
-  --> $DIR/main.rs:13:5
+  --> tests/ui-toml/type_repetition_in_bounds/main.rs:13:5
    |
 LL |     T: Unpin + PartialEq,
    |     ^^^^^^^^^^^^^^^^^^^^

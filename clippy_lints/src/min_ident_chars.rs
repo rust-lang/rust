@@ -2,8 +2,8 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_from_proc_macro;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_item, Visitor};
-use rustc_hir::{GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind};
+use rustc_hir::intravisit::{walk_item, walk_trait_item, Visitor};
+use rustc_hir::{GenericParamKind, HirId, Item, ItemKind, ItemLocalId, Node, Pat, PatKind, TraitItem, UsePath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
@@ -53,7 +53,7 @@ impl MinIdentChars {
             && str.len() <= self.min_ident_chars_threshold as usize
             && !str.starts_with('_')
             && !str.is_empty()
-            && self.allowed_idents_below_min_chars.get(&str.to_owned()).is_none()
+            && !self.allowed_idents_below_min_chars.contains(str)
     }
 }
 
@@ -64,6 +64,14 @@ impl LateLintPass<'_> for MinIdentChars {
         }
 
         walk_item(&mut IdentVisitor { conf: self, cx }, item);
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
+        if self.min_ident_chars_threshold == 0 {
+            return;
+        }
+
+        walk_trait_item(&mut IdentVisitor { conf: self, cx }, item);
     }
 
     // This is necessary as `Node::Pat`s are not visited in `visit_id`. :/
@@ -105,11 +113,26 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
 
         let str = ident.as_str();
         if conf.is_ident_too_short(cx, str, ident.span) {
-            if let Node::Item(item) = node
-                && let ItemKind::Use(..) = item.kind
+            // Check whether the node is part of a `use` statement. We don't want to emit a warning if the user
+            // has no control over the type.
+            let usenode = opt_as_use_node(node).or_else(|| {
+                cx.tcx
+                    .hir()
+                    .parent_iter(hir_id)
+                    .find_map(|(_, node)| opt_as_use_node(node))
+            });
+
+            // If the name of the identifier is the same as the one of the imported item, this means that we
+            // found a `use foo::bar`. We can early-return to not emit the warning.
+            // If however the identifier is different, this means it is an alias (`use foo::bar as baz`). In
+            // this case, we need to emit the warning for `baz`.
+            if let Some(imported_item_path) = usenode
+                && let Some(Res::Def(_, imported_item_defid)) = imported_item_path.res.first()
+                && cx.tcx.item_name(*imported_item_defid).as_str() == str
             {
                 return;
             }
+
             // `struct Awa<T>(T)`
             //                ^
             if let Node::PathSegment(path) = node {
@@ -159,4 +182,17 @@ fn emit_min_ident_chars(conf: &MinIdentChars, cx: &impl LintContext, ident: &str
         ))
     };
     span_lint(cx, MIN_IDENT_CHARS, span, &help);
+}
+
+/// Attempt to convert the node to an [`ItemKind::Use`] node.
+///
+/// If it is, return the [`UsePath`] contained within.
+fn opt_as_use_node(node: Node<'_>) -> Option<&'_ UsePath<'_>> {
+    if let Node::Item(item) = node
+        && let ItemKind::Use(path, _) = item.kind
+    {
+        Some(path)
+    } else {
+        None
+    }
 }

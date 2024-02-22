@@ -1,11 +1,11 @@
 error: exported type named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:7:16
+  --> tests/ui/error_impl_error.rs:7:16
    |
 LL |     pub struct Error;
    |                ^^^^^
    |
 note: `Error` was implemented here
-  --> $DIR/error_impl_error.rs:16:5
+  --> tests/ui/error_impl_error.rs:16:5
    |
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,31 +13,31 @@ LL |     impl std::error::Error for Error {}
    = help: to override `-D warnings` add `#[allow(clippy::error_impl_error)]`
 
 error: exported type named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:21:21
+  --> tests/ui/error_impl_error.rs:21:21
    |
 LL |     pub(super) enum Error {}
    |                     ^^^^^
    |
 note: `Error` was implemented here
-  --> $DIR/error_impl_error.rs:30:5
+  --> tests/ui/error_impl_error.rs:30:5
    |
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: exported type named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:34:15
+  --> tests/ui/error_impl_error.rs:34:15
    |
 LL |     pub union Error {
    |               ^^^^^
    |
 note: `Error` was implemented here
-  --> $DIR/error_impl_error.rs:52:5
+  --> tests/ui/error_impl_error.rs:52:5
    |
 LL |     impl std::error::Error for Error {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: exported type alias named `Error` that implements `Error`
-  --> $DIR/error_impl_error.rs:56:14
+  --> tests/ui/error_impl_error.rs:56:14
    |
 LL |     pub type Error = std::fmt::Error;
    |              ^^^^^

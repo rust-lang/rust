@@ -113,17 +113,14 @@ found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
 
 Very rarely, you may wish to prevent Clippy from evaluating certain sections of code entirely. You can do this with
 [conditional compilation](https://doc.rust-lang.org/reference/conditional-compilation.html) by checking that the
-`cargo-clippy` feature is not set. You may need to provide a stub so that the code compiles:
+`clippy` cfg is not set. You may need to provide a stub so that the code compiles:
 
 ```rust
-#[cfg(not(feature = "cargo-clippy"))]
+#[cfg(not(clippy)]
 include!(concat!(env!("OUT_DIR"), "/my_big_function-generated.rs"));
 
-#[cfg(feature = "cargo-clippy")]
+#[cfg(clippy)]
 fn my_big_function(_input: &str) -> Option<MyStruct> {
     None
 }
 ```
-
-This feature is not actually part of your crate, so specifying `--all-features` to other tools, e.g. `cargo test
---all-features`, will not disable it.

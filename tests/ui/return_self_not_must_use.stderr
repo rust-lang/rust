@@ -1,5 +1,5 @@
 error: missing `#[must_use]` attribute on a method returning `Self`
-  --> $DIR/return_self_not_must_use.rs:8:5
+  --> tests/ui/return_self_not_must_use.rs:8:5
    |
 LL |     fn what(&self) -> Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     fn what(&self) -> Self;
    = help: to override `-D warnings` add `#[allow(clippy::return_self_not_must_use)]`
 
 error: missing `#[must_use]` attribute on a method returning `Self`
-  --> $DIR/return_self_not_must_use.rs:19:5
+  --> tests/ui/return_self_not_must_use.rs:19:5
    |
 LL | /     pub fn foo(&self) -> Self {
 LL | |
@@ -20,7 +20,7 @@ LL | |     }
    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
 
 error: missing `#[must_use]` attribute on a method returning `Self`
-  --> $DIR/return_self_not_must_use.rs:23:5
+  --> tests/ui/return_self_not_must_use.rs:23:5
    |
 LL | /     pub fn bar(self) -> Self {
 LL | |

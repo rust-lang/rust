@@ -1,5 +1,5 @@
 error: large size difference between variants
-  --> $DIR/enum_variant_size.rs:5:1
+  --> tests/ui-toml/enum_variant_size/enum_variant_size.rs:5:1
    |
 LL | / enum Bad {
 LL | |

@@ -1,5 +1,5 @@
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:21:5
+  --> tests/ui/implicit_saturating_add.rs:21:5
    |
 LL | /     if u_8 != u8::MAX {
 LL | |         u_8 += 1;
@@ -10,7 +10,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::implicit_saturating_add)]`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:25:5
+  --> tests/ui/implicit_saturating_add.rs:25:5
    |
 LL | /     if u_8 < u8::MAX {
 LL | |         u_8 += 1;
@@ -18,7 +18,7 @@ LL | |     }
    | |_____^ help: use instead: `u_8 = u_8.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:33:5
+  --> tests/ui/implicit_saturating_add.rs:33:5
    |
 LL | /     if u_16 != u16::MAX {
 LL | |         u_16 += 1;
@@ -26,7 +26,7 @@ LL | |     }
    | |_____^ help: use instead: `u_16 = u_16.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:37:5
+  --> tests/ui/implicit_saturating_add.rs:37:5
    |
 LL | /     if u_16 < u16::MAX {
 LL | |         u_16 += 1;
@@ -34,7 +34,7 @@ LL | |     }
    | |_____^ help: use instead: `u_16 = u_16.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:41:5
+  --> tests/ui/implicit_saturating_add.rs:41:5
    |
 LL | /     if u16::MAX > u_16 {
 LL | |         u_16 += 1;
@@ -42,7 +42,7 @@ LL | |     }
    | |_____^ help: use instead: `u_16 = u_16.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:45:5
+  --> tests/ui/implicit_saturating_add.rs:45:5
    |
 LL | /     if u_32 != u32::MAX {
 LL | |         u_32 += 1;
@@ -50,7 +50,7 @@ LL | |     }
    | |_____^ help: use instead: `u_32 = u_32.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:49:5
+  --> tests/ui/implicit_saturating_add.rs:49:5
    |
 LL | /     if u_32 < u32::MAX {
 LL | |         u_32 += 1;
@@ -58,7 +58,7 @@ LL | |     }
    | |_____^ help: use instead: `u_32 = u_32.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:53:5
+  --> tests/ui/implicit_saturating_add.rs:53:5
    |
 LL | /     if u32::MAX > u_32 {
 LL | |         u_32 += 1;
@@ -66,7 +66,7 @@ LL | |     }
    | |_____^ help: use instead: `u_32 = u_32.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:57:5
+  --> tests/ui/implicit_saturating_add.rs:57:5
    |
 LL | /     if u_64 != u64::MAX {
 LL | |         u_64 += 1;
@@ -74,7 +74,7 @@ LL | |     }
    | |_____^ help: use instead: `u_64 = u_64.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:61:5
+  --> tests/ui/implicit_saturating_add.rs:61:5
    |
 LL | /     if u_64 < u64::MAX {
 LL | |         u_64 += 1;
@@ -82,7 +82,7 @@ LL | |     }
    | |_____^ help: use instead: `u_64 = u_64.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:65:5
+  --> tests/ui/implicit_saturating_add.rs:65:5
    |
 LL | /     if u64::MAX > u_64 {
 LL | |         u_64 += 1;
@@ -90,7 +90,7 @@ LL | |     }
    | |_____^ help: use instead: `u_64 = u_64.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:69:5
+  --> tests/ui/implicit_saturating_add.rs:69:5
    |
 LL | /     if i_8 != i8::MAX {
 LL | |         i_8 += 1;
@@ -98,7 +98,7 @@ LL | |     }
    | |_____^ help: use instead: `i_8 = i_8.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:73:5
+  --> tests/ui/implicit_saturating_add.rs:73:5
    |
 LL | /     if i_8 < i8::MAX {
 LL | |         i_8 += 1;
@@ -106,7 +106,7 @@ LL | |     }
    | |_____^ help: use instead: `i_8 = i_8.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:77:5
+  --> tests/ui/implicit_saturating_add.rs:77:5
    |
 LL | /     if i8::MAX > i_8 {
 LL | |         i_8 += 1;
@@ -114,7 +114,7 @@ LL | |     }
    | |_____^ help: use instead: `i_8 = i_8.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:81:5
+  --> tests/ui/implicit_saturating_add.rs:81:5
    |
 LL | /     if i_16 != i16::MAX {
 LL | |         i_16 += 1;
@@ -122,7 +122,7 @@ LL | |     }
    | |_____^ help: use instead: `i_16 = i_16.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:85:5
+  --> tests/ui/implicit_saturating_add.rs:85:5
    |
 LL | /     if i_16 < i16::MAX {
 LL | |         i_16 += 1;
@@ -130,7 +130,7 @@ LL | |     }
    | |_____^ help: use instead: `i_16 = i_16.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:89:5
+  --> tests/ui/implicit_saturating_add.rs:89:5
    |
 LL | /     if i16::MAX > i_16 {
 LL | |         i_16 += 1;
@@ -138,7 +138,7 @@ LL | |     }
    | |_____^ help: use instead: `i_16 = i_16.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:93:5
+  --> tests/ui/implicit_saturating_add.rs:93:5
    |
 LL | /     if i_32 != i32::MAX {
 LL | |         i_32 += 1;
@@ -146,7 +146,7 @@ LL | |     }
    | |_____^ help: use instead: `i_32 = i_32.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:97:5
+  --> tests/ui/implicit_saturating_add.rs:97:5
    |
 LL | /     if i_32 < i32::MAX {
 LL | |         i_32 += 1;
@@ -154,7 +154,7 @@ LL | |     }
    | |_____^ help: use instead: `i_32 = i_32.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:101:5
+  --> tests/ui/implicit_saturating_add.rs:101:5
    |
 LL | /     if i32::MAX > i_32 {
 LL | |         i_32 += 1;
@@ -162,7 +162,7 @@ LL | |     }
    | |_____^ help: use instead: `i_32 = i_32.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:105:5
+  --> tests/ui/implicit_saturating_add.rs:105:5
    |
 LL | /     if i_64 != i64::MAX {
 LL | |         i_64 += 1;
@@ -170,7 +170,7 @@ LL | |     }
    | |_____^ help: use instead: `i_64 = i_64.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:109:5
+  --> tests/ui/implicit_saturating_add.rs:109:5
    |
 LL | /     if i_64 < i64::MAX {
 LL | |         i_64 += 1;
@@ -178,7 +178,7 @@ LL | |     }
    | |_____^ help: use instead: `i_64 = i_64.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:113:5
+  --> tests/ui/implicit_saturating_add.rs:113:5
    |
 LL | /     if i64::MAX > i_64 {
 LL | |         i_64 += 1;
@@ -186,7 +186,7 @@ LL | |     }
    | |_____^ help: use instead: `i_64 = i_64.saturating_add(1);`
 
 error: manual saturating add detected
-  --> $DIR/implicit_saturating_add.rs:149:12
+  --> tests/ui/implicit_saturating_add.rs:149:12
    |
 LL |       } else if u_32 < u32::MAX {
    |  ____________^

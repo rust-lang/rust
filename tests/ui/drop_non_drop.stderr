@@ -1,11 +1,11 @@
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
-  --> $DIR/drop_non_drop.rs:22:5
+  --> tests/ui/drop_non_drop.rs:22:5
    |
 LL |     drop(Foo);
    |     ^^^^^^^^^
    |
 note: argument has type `main::Foo`
-  --> $DIR/drop_non_drop.rs:22:10
+  --> tests/ui/drop_non_drop.rs:22:10
    |
 LL |     drop(Foo);
    |          ^^^
@@ -13,13 +13,13 @@ LL |     drop(Foo);
    = help: to override `-D warnings` add `#[allow(clippy::drop_non_drop)]`
 
 error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
-  --> $DIR/drop_non_drop.rs:38:5
+  --> tests/ui/drop_non_drop.rs:38:5
    |
 LL |     drop(Baz(Foo));
    |     ^^^^^^^^^^^^^^
    |
 note: argument has type `main::Baz<main::Foo>`
-  --> $DIR/drop_non_drop.rs:38:10
+  --> tests/ui/drop_non_drop.rs:38:10
    |
 LL |     drop(Baz(Foo));
    |          ^^^^^^^^

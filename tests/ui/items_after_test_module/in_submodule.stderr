@@ -1,5 +1,5 @@
 error: items after a test module
-  --> $DIR/auxiliary/submodule.rs:2:1
+  --> tests/ui/items_after_test_module/auxiliary/submodule.rs:2:1
    |
 LL | mod tests {}
    | ^^^^^^^^^

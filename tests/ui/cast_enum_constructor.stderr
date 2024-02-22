@@ -1,5 +1,5 @@
 error: cast of an enum tuple constructor to an integer
-  --> $DIR/cast_enum_constructor.rs:13:13
+  --> tests/ui/cast_enum_constructor.rs:13:13
    |
 LL |     let _ = Foo::Y as usize;
    |             ^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = Foo::Y as usize;
    = help: to override `-D warnings` add `#[allow(clippy::cast_enum_constructor)]`
 
 error: cast of an enum tuple constructor to an integer
-  --> $DIR/cast_enum_constructor.rs:16:13
+  --> tests/ui/cast_enum_constructor.rs:16:13
    |
 LL |     let _ = Foo::Y as isize;
    |             ^^^^^^^^^^^^^^^

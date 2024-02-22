@@ -1,5 +1,5 @@
 error: more than 0 bools in a struct
-  --> $DIR/test.rs:3:1
+  --> tests/ui-toml/struct_excessive_bools/test.rs:3:1
    |
 LL | / struct S {
 LL | |     a: bool,

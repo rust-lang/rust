@@ -1,5 +1,5 @@
 error: the `Err`-variant returned from this function is very large
-  --> $DIR/result_large_err.rs:6:12
+  --> tests/ui-toml/result_large_err/result_large_err.rs:6:12
    |
 LL | fn f2() -> Result<(), [u8; 512]> {
    |            ^^^^^^^^^^^^^^^^^^^^^ the `Err`-variant is at least 512 bytes

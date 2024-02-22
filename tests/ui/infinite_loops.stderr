@@ -1,5 +1,5 @@
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:8:5
+  --> tests/ui/infinite_loops.rs:13:5
    |
 LL | /     loop {
 LL | |
@@ -15,7 +15,7 @@ LL | fn no_break() -> ! {
    |               ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:15:5
+  --> tests/ui/infinite_loops.rs:20:5
    |
 LL | /     loop {
 LL | |
@@ -32,7 +32,7 @@ LL | fn all_inf() -> ! {
    |              ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:17:9
+  --> tests/ui/infinite_loops.rs:22:9
    |
 LL | /         loop {
 LL | |
@@ -49,7 +49,7 @@ LL | fn all_inf() -> ! {
    |              ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:19:13
+  --> tests/ui/infinite_loops.rs:24:13
    |
 LL | /             loop {
 LL | |
@@ -63,7 +63,7 @@ LL | fn all_inf() -> ! {
    |              ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:33:5
+  --> tests/ui/infinite_loops.rs:38:5
    |
 LL | /     loop {
 LL | |
@@ -74,7 +74,7 @@ LL | |     }
    = help: if this is not intended, try adding a `break` or `return` condition in the loop
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:46:5
+  --> tests/ui/infinite_loops.rs:51:5
    |
 LL | /     loop {
 LL | |         fn inner_fn() -> ! {
@@ -90,7 +90,7 @@ LL | fn no_break_never_ret_noise() -> ! {
    |                               ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:89:5
+  --> tests/ui/infinite_loops.rs:94:5
    |
 LL | /     loop {
 LL | |
@@ -107,7 +107,7 @@ LL | fn break_inner_but_not_outer_1(cond: bool) -> ! {
    |                                            ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:100:5
+  --> tests/ui/infinite_loops.rs:105:5
    |
 LL | /     loop {
 LL | |
@@ -124,7 +124,7 @@ LL | fn break_inner_but_not_outer_2(cond: bool) -> ! {
    |                                            ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:114:9
+  --> tests/ui/infinite_loops.rs:119:9
    |
 LL | /         loop {
 LL | |
@@ -138,7 +138,7 @@ LL | fn break_outer_but_not_inner() -> ! {
    |                                ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:137:9
+  --> tests/ui/infinite_loops.rs:142:9
    |
 LL | /         loop {
 LL | |
@@ -155,7 +155,7 @@ LL | fn break_wrong_loop(cond: bool) -> ! {
    |                                 ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:177:5
+  --> tests/ui/infinite_loops.rs:182:5
    |
 LL | /     loop {
 LL | |
@@ -172,7 +172,7 @@ LL | fn match_like() -> ! {
    |                 ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:218:5
+  --> tests/ui/infinite_loops.rs:223:5
    |
 LL | /     loop {
 LL | |
@@ -186,7 +186,7 @@ LL | fn match_like() -> ! {
    |                 ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:223:5
+  --> tests/ui/infinite_loops.rs:228:5
    |
 LL | /     loop {
 LL | |
@@ -203,7 +203,7 @@ LL | fn match_like() -> ! {
    |                 ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:328:9
+  --> tests/ui/infinite_loops.rs:333:9
    |
 LL | /         loop {
 LL | |
@@ -217,7 +217,7 @@ LL |     fn problematic_trait_method() -> ! {
    |                                   ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:338:9
+  --> tests/ui/infinite_loops.rs:343:9
    |
 LL | /         loop {
 LL | |
@@ -231,7 +231,7 @@ LL |     fn could_be_problematic() -> ! {
    |                               ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:347:9
+  --> tests/ui/infinite_loops.rs:352:9
    |
 LL | /         loop {
 LL | |
@@ -245,7 +245,7 @@ LL |     let _loop_forever = || -> ! {
    |                            ++++
 
 error: infinite loop detected
-  --> $DIR/infinite_loops.rs:361:8
+  --> tests/ui/infinite_loops.rs:366:8
    |
 LL |       Ok(loop {
    |  ________^

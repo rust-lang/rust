@@ -1,5 +1,5 @@
 error: type of pattern does not match the expression type
-  --> $DIR/mutability.rs:9:9
+  --> tests/ui/pattern_type_mismatch/mutability.rs:9:9
    |
 LL |         Some(_) => (),
    |         ^^^^^^^
@@ -9,7 +9,7 @@ LL |         Some(_) => (),
    = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
 
 error: type of pattern does not match the expression type
-  --> $DIR/mutability.rs:16:9
+  --> tests/ui/pattern_type_mismatch/mutability.rs:16:9
    |
 LL |         Some(_) => (),
    |         ^^^^^^^

@@ -1,5 +1,5 @@
 error: import ending with `::{self}`
-  --> $DIR/unnecessary_self_imports.rs:5:1
+  --> tests/ui/unnecessary_self_imports.rs:5:1
    |
 LL | use std::fs::{self as alias};
    | ^^^^^^^^^--------------------
@@ -11,7 +11,7 @@ LL | use std::fs::{self as alias};
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_self_imports)]`
 
 error: import ending with `::{self}`
-  --> $DIR/unnecessary_self_imports.rs:7:1
+  --> tests/ui/unnecessary_self_imports.rs:7:1
    |
 LL | use std::rc::{self};
    | ^^^^^^^^^-----------

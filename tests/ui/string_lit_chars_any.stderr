@@ -1,5 +1,5 @@
 error: usage of `.chars().any(...)` to check if a char matches any from a string literal
-  --> $DIR/string_lit_chars_any.rs:18:5
+  --> tests/ui/string_lit_chars_any.rs:18:5
    |
 LL |     "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     matches!(c, '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' 
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: usage of `.chars().any(...)` to check if a char matches any from a string literal
-  --> $DIR/string_lit_chars_any.rs:19:5
+  --> tests/ui/string_lit_chars_any.rs:19:5
    |
 LL |     r#"\.+*?()|[]{}^$#&-~"#.chars().any(|x| x == c);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     matches!(c, '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' 
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: usage of `.chars().any(...)` to check if a char matches any from a string literal
-  --> $DIR/string_lit_chars_any.rs:20:5
+  --> tests/ui/string_lit_chars_any.rs:20:5
    |
 LL |     "\\.+*?()|[]{}^$#&-~".chars().any(|x| c == x);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     matches!(c, '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' 
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: usage of `.chars().any(...)` to check if a char matches any from a string literal
-  --> $DIR/string_lit_chars_any.rs:21:5
+  --> tests/ui/string_lit_chars_any.rs:21:5
    |
 LL |     r#"\.+*?()|[]{}^$#&-~"#.chars().any(|x| c == x);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     matches!(c, '\\' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' 
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: usage of `.chars().any(...)` to check if a char matches any from a string literal
-  --> $DIR/string_lit_chars_any.rs:23:5
+  --> tests/ui/string_lit_chars_any.rs:23:5
    |
 LL |     "\\.+*?()|[]{}^$#&-~".chars().any(|x| { x == c });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

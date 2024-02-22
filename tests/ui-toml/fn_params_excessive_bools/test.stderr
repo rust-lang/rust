@@ -1,5 +1,5 @@
 error: more than 1 bools in function parameters
-  --> $DIR/test.rs:4:1
+  --> tests/ui-toml/fn_params_excessive_bools/test.rs:4:1
    |
 LL | fn g(_: bool, _: bool) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

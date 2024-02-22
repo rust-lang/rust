@@ -82,7 +82,7 @@ The output looks something like this (from the example earlier):
 
 ```text
 error: an inclusive range would be more readable
-  --> $DIR/range_plus_minus_one.rs:37:14
+  --> tests/ui/range_plus_minus_one.rs:37:14
    |
 LL |     for _ in 1..1 + 1 {}
    |              ^^^^^^^^ help: use: `1..=1`
@@ -135,14 +135,14 @@ Examples:
 
 ```text
 error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
-  --> $DIR/drop_forget_ref.rs:10:5
+  --> tests/ui/drop_forget_ref.rs:10:5
    |
 10 |     forget(&SomeStruct);
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::forget-ref` implied by `-D warnings`
 note: argument has type &SomeStruct
-  --> $DIR/drop_forget_ref.rs:10:12
+  --> tests/ui/drop_forget_ref.rs:10:12
    |
 10 |     forget(&SomeStruct);
    |            ^^^^^^^^^^^
@@ -158,7 +158,7 @@ Example:
 
 ```text
 error: constant division of 0.0 with 0.0 will always result in NaN
-  --> $DIR/zero_div_zero.rs:6:25
+  --> tests/ui/zero_div_zero.rs:6:25
    |
 6  |     let other_f64_nan = 0.0f64 / 0.0;
    |                         ^^^^^^^^^^^^
@@ -176,7 +176,7 @@ Example:
 
 ```text
 error: This `.fold` can be more succinctly expressed as `.any`
---> $DIR/methods.rs:390:13
+--> tests/ui/methods.rs:390:13
     |
 390 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`

@@ -1,5 +1,5 @@
 warning: multiple lines skipped by escaped newline
-  --> $DIR/ice-9405.rs:6:10
+  --> tests/ui/crashes/ice-9405.rs:6:10
    |
 LL |           "\
    |  __________^

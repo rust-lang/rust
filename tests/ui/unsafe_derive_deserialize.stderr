@@ -1,5 +1,5 @@
 error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
-  --> $DIR/unsafe_derive_deserialize.rs:8:10
+  --> tests/ui/unsafe_derive_deserialize.rs:8:10
    |
 LL | #[derive(Deserialize)]
    |          ^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | #[derive(Deserialize)]
    = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
-  --> $DIR/unsafe_derive_deserialize.rs:17:10
+  --> tests/ui/unsafe_derive_deserialize.rs:17:10
    |
 LL | #[derive(Deserialize)]
    |          ^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | #[derive(Deserialize)]
    = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
-  --> $DIR/unsafe_derive_deserialize.rs:24:10
+  --> tests/ui/unsafe_derive_deserialize.rs:24:10
    |
 LL | #[derive(Deserialize)]
    |          ^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL | #[derive(Deserialize)]
    = note: this error originates in the derive macro `Deserialize` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `serde::Deserialize` on a type that has methods using `unsafe`
-  --> $DIR/unsafe_derive_deserialize.rs:33:10
+  --> tests/ui/unsafe_derive_deserialize.rs:33:10
    |
 LL | #[derive(Deserialize)]
    |          ^^^^^^^^^^^

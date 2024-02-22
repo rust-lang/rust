@@ -1,5 +1,5 @@
 error: comparing with null is better expressed by the `.is_null()` method
-  --> $DIR/cmp_null.rs:9:8
+  --> tests/ui/cmp_null.rs:9:8
    |
 LL |     if p == ptr::null() {
    |        ^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     if p == ptr::null() {
    = help: to override `-D warnings` add `#[allow(clippy::cmp_null)]`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> $DIR/cmp_null.rs:16:8
+  --> tests/ui/cmp_null.rs:16:8
    |
 LL |     if m == ptr::null_mut() {
    |        ^^^^^^^^^^^^^^^^^^^^

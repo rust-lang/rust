@@ -1,5 +1,5 @@
 error: you are using an explicit closure for copying elements
-  --> $DIR/map_clone.rs:13:22
+  --> tests/ui/map_clone.rs:13:22
    |
 LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![5_i8; 6].iter().copied()`
@@ -8,85 +8,85 @@ LL |     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
    = help: to override `-D warnings` add `#[allow(clippy::map_clone)]`
 
 error: you are using an explicit closure for cloning elements
-  --> $DIR/map_clone.rs:14:26
+  --> tests/ui/map_clone.rs:14:26
    |
 LL |     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `vec![String::new()].iter().cloned()`
 
 error: you are using an explicit closure for copying elements
-  --> $DIR/map_clone.rs:15:23
+  --> tests/ui/map_clone.rs:15:23
    |
 LL |     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `vec![42, 43].iter().copied()`
 
 error: you are using an explicit closure for copying elements
-  --> $DIR/map_clone.rs:17:26
+  --> tests/ui/map_clone.rs:17:26
    |
 LL |     let _: Option<u64> = Some(&16).map(|b| *b);
    |                          ^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `Some(&16).copied()`
 
 error: you are using an explicit closure for copying elements
-  --> $DIR/map_clone.rs:18:25
+  --> tests/ui/map_clone.rs:18:25
    |
 LL |     let _: Option<u8> = Some(&1).map(|x| x.clone());
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `Some(&1).copied()`
 
 error: you are needlessly cloning iterator elements
-  --> $DIR/map_clone.rs:29:29
+  --> tests/ui/map_clone.rs:29:29
    |
 LL |     let _ = std::env::args().map(|v| v.clone());
    |                             ^^^^^^^^^^^^^^^^^^^ help: remove the `map` call
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:68:13
+  --> tests/ui/map_clone.rs:68:13
    |
 LL |     let y = x.map(|x| String::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:70:13
+  --> tests/ui/map_clone.rs:70:13
    |
 LL |     let y = x.map(Clone::clone);
    |             ^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:73:13
+  --> tests/ui/map_clone.rs:73:13
    |
 LL |     let y = x.map(String::clone);
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:79:13
+  --> tests/ui/map_clone.rs:79:13
    |
 LL |     let y = x.map(|x| u32::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:82:13
+  --> tests/ui/map_clone.rs:82:13
    |
 LL |     let y = x.map(|x| Clone::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:94:13
+  --> tests/ui/map_clone.rs:94:13
    |
 LL |     let y = x.map(|x| String::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:97:13
+  --> tests/ui/map_clone.rs:97:13
    |
 LL |     let y = x.map(|x| Clone::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:103:13
+  --> tests/ui/map_clone.rs:103:13
    |
 LL |     let y = x.map(|x| u32::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:106:13
+  --> tests/ui/map_clone.rs:106:13
    |
 LL |     let y = x.map(|x| Clone::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`

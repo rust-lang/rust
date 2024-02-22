@@ -7,6 +7,6 @@ use proc_macros::{external, inline_macros};
 #[inline_macros]
 fn main() {
     let s = &mut String::from("foo");
-    inline!(std::mem::replace($s, Default::default()));
-    external!(std::mem::replace($s, Default::default()));
+    let _ = inline!(std::mem::replace($s, Default::default()));
+    let _ = external!(std::mem::replace($s, Default::default()));
 }

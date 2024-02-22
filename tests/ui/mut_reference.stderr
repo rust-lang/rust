@@ -1,5 +1,5 @@
 error: the function `takes_an_immutable_reference` doesn't need a mutable reference
-  --> $DIR/mut_reference.rs:30:34
+  --> tests/ui/mut_reference.rs:30:34
    |
 LL |     takes_an_immutable_reference(&mut 42);
    |                                  ^^^^^^^
@@ -8,13 +8,13 @@ LL |     takes_an_immutable_reference(&mut 42);
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_mut_passed)]`
 
 error: the function `as_ptr` doesn't need a mutable reference
-  --> $DIR/mut_reference.rs:34:12
+  --> tests/ui/mut_reference.rs:34:12
    |
 LL |     as_ptr(&mut 42);
    |            ^^^^^^^
 
 error: the method `takes_an_immutable_reference` doesn't need a mutable reference
-  --> $DIR/mut_reference.rs:39:44
+  --> tests/ui/mut_reference.rs:39:44
    |
 LL |     my_struct.takes_an_immutable_reference(&mut 42);
    |                                            ^^^^^^^

@@ -1,5 +1,5 @@
 error: empty string literal in `println!`
-  --> $DIR/ice-10148.rs:8:5
+  --> tests/ui/crashes/ice-10148.rs:8:5
    |
 LL |     println!(with_span!(""something ""));
    |     ^^^^^^^^^^^^^^^^^^^^-----------^^^^^

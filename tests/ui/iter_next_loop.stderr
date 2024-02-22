@@ -1,5 +1,5 @@
 error[E0423]: expected value, found macro `vec`
-  --> $DIR/iter_next_loop.rs:6:14
+  --> tests/ui/iter_next_loop.rs:6:14
    |
 LL |     for _ in vec.iter().next() {}
    |              ^^^ not a value

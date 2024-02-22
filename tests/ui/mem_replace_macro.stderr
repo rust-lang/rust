@@ -1,8 +1,8 @@
 error: replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`
-  --> $DIR/mem_replace_macro.rs:10:13
+  --> tests/ui/mem_replace_macro.rs:10:21
    |
-LL |     inline!(std::mem::replace($s, Default::default()));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _ = inline!(std::mem::replace($s, Default::default()));
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::mem-replace-with-default` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`

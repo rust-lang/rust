@@ -64,38 +64,50 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
         let min_index = usize::min(lindex, rindex);
         let max_index = usize::max(lindex, rindex);
 
-        let mut local_map: HirIdMap<HirId> = HirIdMap::default();
-        let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
-            if let Some(a_id) = path_to_local(a)
-                && let Some(b_id) = path_to_local(b)
-                && let entry = match local_map.entry(a_id) {
-                    HirIdMapEntry::Vacant(entry) => entry,
-                    // check if using the same bindings as before
-                    HirIdMapEntry::Occupied(entry) => return *entry.get() == b_id,
-                }
+        let check_eq_with_pat = |expr_a: &Expr<'_>, expr_b: &Expr<'_>| {
+            let mut local_map: HirIdMap<HirId> = HirIdMap::default();
+            let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
+                if let Some(a_id) = path_to_local(a)
+                    && let Some(b_id) = path_to_local(b)
+                    && let entry = match local_map.entry(a_id) {
+                        HirIdMapEntry::Vacant(entry) => entry,
+                        // check if using the same bindings as before
+                        HirIdMapEntry::Occupied(entry) => return *entry.get() == b_id,
+                    }
                 // the names technically don't have to match; this makes the lint more conservative
                 && cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id)
-                && cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b)
-                && pat_contains_local(lhs.pat, a_id)
-                && pat_contains_local(rhs.pat, b_id)
-            {
-                entry.insert(b_id);
-                true
-            } else {
-                false
-            }
-        };
-        // Arms with a guard are ignored, those can’t always be merged together
-        // If both arms overlap with an arm in between then these can't be merged either.
-        !(backwards_blocking_idxs[max_index] > min_index && forwards_blocking_idxs[min_index] < max_index)
-                && lhs.guard.is_none()
-                && rhs.guard.is_none()
-                && SpanlessEq::new(cx)
-                    .expr_fallback(eq_fallback)
-                    .eq_expr(lhs.body, rhs.body)
+                    && cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b)
+                    && pat_contains_local(lhs.pat, a_id)
+                    && pat_contains_local(rhs.pat, b_id)
+                {
+                    entry.insert(b_id);
+                    true
+                } else {
+                    false
+                }
+            };
+
+            SpanlessEq::new(cx)
+                .expr_fallback(eq_fallback)
+                .eq_expr(expr_a, expr_b)
                 // these checks could be removed to allow unused bindings
                 && bindings_eq(lhs.pat, local_map.keys().copied().collect())
                 && bindings_eq(rhs.pat, local_map.values().copied().collect())
+        };
+
+        let check_same_guard = || match (&lhs.guard, &rhs.guard) {
+            (None, None) => true,
+            (Some(lhs_guard), Some(rhs_guard)) => check_eq_with_pat(lhs_guard, rhs_guard),
+            _ => false,
+        };
+
+        let check_same_body = || check_eq_with_pat(lhs.body, rhs.body);
+
+        // Arms with different guard are ignored, those can’t always be merged together
+        // If both arms overlap with an arm in between then these can't be merged either.
+        !(backwards_blocking_idxs[max_index] > min_index && forwards_blocking_idxs[min_index] < max_index)
+            && check_same_guard()
+            && check_same_body()
     };
 
     let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();

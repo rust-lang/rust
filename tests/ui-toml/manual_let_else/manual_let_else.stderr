@@ -1,5 +1,5 @@
 error: this could be rewritten as `let...else`
-  --> $DIR/manual_let_else.rs:9:5
+  --> tests/ui-toml/manual_let_else/manual_let_else.rs:9:5
    |
 LL | /     let x = match Foo::A(1) {
 LL | |

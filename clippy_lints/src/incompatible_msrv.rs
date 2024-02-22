@@ -1,14 +1,15 @@
 use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_in_test_function;
 use rustc_attr::{StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_semver::RustcVersion;
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::DefId;
-use rustc_span::Span;
+use rustc_span::{ExpnKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -81,13 +82,18 @@ impl IncompatibleMsrv {
         version
     }
 
-    fn emit_lint_if_under_msrv(&mut self, cx: &LateContext<'_>, def_id: DefId, span: Span) {
+    fn emit_lint_if_under_msrv(&mut self, cx: &LateContext<'_>, def_id: DefId, node: HirId, span: Span) {
         if def_id.is_local() {
             // We don't check local items since their MSRV is supposed to always be valid.
             return;
         }
         let version = self.get_def_id_version(cx.tcx, def_id);
-        if self.msrv.meets(version) {
+        if self.msrv.meets(version) || is_in_test_function(cx.tcx, node) {
+            return;
+        }
+        if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = span.ctxt().outer_expn_data().kind {
+            // Desugared expressions get to cheat and stability is ignored.
+            // Intentionally not using `.from_expansion()`, since we do still care about macro expansions
             return;
         }
         self.emit_lint_for(cx, span, version);
@@ -117,14 +123,14 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
         match expr.kind {
             ExprKind::MethodCall(_, _, _, span) => {
                 if let Some(method_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    self.emit_lint_if_under_msrv(cx, method_did, span);
+                    self.emit_lint_if_under_msrv(cx, method_did, expr.hir_id, span);
                 }
             },
             ExprKind::Call(call, [_]) => {
                 if let ExprKind::Path(qpath) = call.kind
                     && let Some(path_def_id) = cx.qpath_res(&qpath, call.hir_id).opt_def_id()
                 {
-                    self.emit_lint_if_under_msrv(cx, path_def_id, call.span);
+                    self.emit_lint_if_under_msrv(cx, path_def_id, expr.hir_id, call.span);
                 }
             },
             _ => {},

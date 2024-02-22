@@ -1,0 +1,61 @@
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:13:1
+   |
+LL | #[cfg_attr(clippy, deny(clippy::non_minimal_cfg))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#[deny(clippy::non_minimal_cfg)]`
+   |
+   = note: `-D clippy::unnecessary-clippy-cfg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_clippy_cfg)]`
+
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:15:36
+   |
+LL | #[cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg))]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: write instead: `#[deny(clippy::non_minimal_cfg)]`
+
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:17:36
+   |
+LL | #[cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: write instead: `#[deny(clippy::non_minimal_cfg,clippy::maybe_misused_cfg)]`
+
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:19:1
+   |
+LL | #[cfg_attr(clippy, deny(clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#[deny(clippy::non_minimal_cfg, clippy::maybe_misused_cfg)]`
+
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:4:1
+   |
+LL | #![cfg_attr(clippy, deny(clippy::non_minimal_cfg))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#![deny(clippy::non_minimal_cfg)]`
+
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:6:37
+   |
+LL | #![cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg))]
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: write instead: `#![deny(clippy::non_minimal_cfg)]`
+
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:8:37
+   |
+LL | #![cfg_attr(clippy, deny(dead_code, clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: write instead: `#![deny(clippy::non_minimal_cfg,clippy::maybe_misused_cfg)]`
+
+error: no need to put clippy lints behind a `clippy` cfg
+  --> tests/ui/unnecessary_clippy_cfg.rs:10:1
+   |
+LL | #![cfg_attr(clippy, deny(clippy::non_minimal_cfg, clippy::maybe_misused_cfg))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `#![deny(clippy::non_minimal_cfg, clippy::maybe_misused_cfg)]`
+
+error: aborting due to 8 previous errors
+

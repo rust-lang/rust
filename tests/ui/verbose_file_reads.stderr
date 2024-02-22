@@ -1,5 +1,5 @@
 error: use of `File::read_to_end`
-  --> $DIR/verbose_file_reads.rs:23:5
+  --> tests/ui/verbose_file_reads.rs:23:5
    |
 LL |     f.read_to_end(&mut buffer)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     f.read_to_end(&mut buffer)?;
    = help: to override `-D warnings` add `#[allow(clippy::verbose_file_reads)]`
 
 error: use of `File::read_to_string`
-  --> $DIR/verbose_file_reads.rs:27:5
+  --> tests/ui/verbose_file_reads.rs:27:5
    |
 LL |     f.read_to_string(&mut string_buffer)?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

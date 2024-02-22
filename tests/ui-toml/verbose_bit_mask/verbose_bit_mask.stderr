@@ -1,5 +1,5 @@
 error: bit mask could be simplified with a call to `trailing_zeros`
-  --> $DIR/verbose_bit_mask.rs:5:13
+  --> tests/ui-toml/verbose_bit_mask/verbose_bit_mask.rs:5:13
    |
 LL |     let _ = v & 0b111111 == 0;
    |             ^^^^^^^^^^^^^^^^^ help: try: `v.trailing_zeros() >= 6`

@@ -1,5 +1,5 @@
 error: `impl Trait` used as a function parameter
-  --> $DIR/impl_trait_in_params.rs:14:13
+  --> tests/ui-toml/impl_trait_in_params/impl_trait_in_params.rs:14:13
    |
 LL |     fn t(_: impl Trait);
    |             ^^^^^^^^^^

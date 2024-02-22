@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::{for_each_expr, Descend};
-use clippy_utils::{get_parent_expr, higher};
+use clippy_utils::{get_parent_expr, higher, is_from_proc_macro};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource};
@@ -13,7 +13,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `if` conditions that use blocks containing an
+    /// Checks for `if` and `match` conditions that use blocks containing an
     /// expression, statements or conditions that use closures with blocks.
     ///
     /// ### Why is this bad?
@@ -25,6 +25,11 @@ declare_clippy_lint! {
     /// if { true } { /* ... */ }
     ///
     /// if { let x = somefunc(); x } { /* ... */ }
+    ///
+    /// match { let e = somefunc(); e } {
+    ///     // ...
+    /// #   _ => {}
+    /// }
     /// ```
     ///
     /// Use instead:
@@ -34,6 +39,12 @@ declare_clippy_lint! {
     ///
     /// let res = { let x = somefunc(); x };
     /// if res { /* ... */ }
+    ///
+    /// let res = { let e = somefunc(); e };
+    /// match res {
+    ///     // ...
+    /// #   _ => {}
+    /// }
     /// ```
     #[clippy::version = "1.45.0"]
     pub BLOCKS_IN_CONDITIONS,
@@ -94,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                     }
                 } else {
                     let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
-                    if span.from_expansion() || expr.span.from_expansion() {
+                    if span.from_expansion() || expr.span.from_expansion() || is_from_proc_macro(cx, cond) {
                         return;
                     }
                     // move block higher

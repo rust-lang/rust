@@ -10,4 +10,5 @@ disallowed-macros = [
     "macros::item",
     "macros::binop",
     "macros::attr",
+    "proc_macros::Derive",
 ]

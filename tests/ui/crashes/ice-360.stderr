@@ -1,5 +1,5 @@
 error: this loop never actually loops
-  --> $DIR/ice-360.rs:5:5
+  --> tests/ui/crashes/ice-360.rs:5:5
    |
 LL | /     loop {
 LL | |
@@ -13,7 +13,7 @@ LL | |     }
    = note: `#[deny(clippy::never_loop)]` on by default
 
 error: this loop could be written as a `while let` loop
-  --> $DIR/ice-360.rs:5:5
+  --> tests/ui/crashes/ice-360.rs:5:5
    |
 LL | /     loop {
 LL | |
@@ -28,7 +28,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::while_let_loop)]`
 
 error: empty `loop {}` wastes CPU cycles
-  --> $DIR/ice-360.rs:13:9
+  --> tests/ui/crashes/ice-360.rs:13:9
    |
 LL |         loop {}
    |         ^^^^^^^

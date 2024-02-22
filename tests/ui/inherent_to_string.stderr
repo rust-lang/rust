@@ -1,5 +1,5 @@
 error: implementation of inherent method `to_string(&self) -> String` for type `A`
-  --> $DIR/inherent_to_string.rs:22:5
+  --> tests/ui/inherent_to_string.rs:22:5
    |
 LL | /     fn to_string(&self) -> String {
 LL | |
@@ -12,7 +12,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::inherent_to_string)]`
 
 error: type `C` implements inherent method `to_string(&self) -> String` which shadows the implementation of `Display`
-  --> $DIR/inherent_to_string.rs:47:5
+  --> tests/ui/inherent_to_string.rs:47:5
    |
 LL | /     fn to_string(&self) -> String {
 LL | |

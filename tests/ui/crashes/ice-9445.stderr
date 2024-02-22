@@ -1,5 +1,5 @@
 error: a `const` item should never be interior mutable
-  --> $DIR/ice-9445.rs:1:1
+  --> tests/ui/crashes/ice-9445.rs:1:1
    |
 LL | const UNINIT: core::mem::MaybeUninit<core::cell::Cell<&'static ()>> = core::mem::MaybeUninit::uninit();
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

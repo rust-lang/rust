@@ -1,5 +1,5 @@
 error: unnecessary `pub(self)`
-  --> $DIR/needless_pub_self.rs:13:1
+  --> tests/ui/needless_pub_self.rs:13:1
    |
 LL | pub(self) fn a() {}
    | ^^^^^^^^^ help: remove it
@@ -8,13 +8,13 @@ LL | pub(self) fn a() {}
    = help: to override `-D warnings` add `#[allow(clippy::needless_pub_self)]`
 
 error: unnecessary `pub(in self)`
-  --> $DIR/needless_pub_self.rs:14:1
+  --> tests/ui/needless_pub_self.rs:14:1
    |
 LL | pub(in self) fn b() {}
    | ^^^^^^^^^^^^ help: remove it
 
 error: unnecessary `pub(self)`
-  --> $DIR/needless_pub_self.rs:20:5
+  --> tests/ui/needless_pub_self.rs:20:5
    |
 LL |     pub(self) fn f() {}
    |     ^^^^^^^^^ help: remove it

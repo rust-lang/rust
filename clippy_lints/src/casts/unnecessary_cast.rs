@@ -264,8 +264,7 @@ fn is_cast_from_ty_alias<'tcx>(cx: &LateContext<'tcx>, expr: impl Visitable<'tcx
                 }
             // Local usage
             } else if let Res::Local(hir_id) = res
-                && let Some(parent) = get_parent_node(cx.tcx, hir_id)
-                && let Node::Local(l) = parent
+                && let Node::Local(l) = get_parent_node(cx.tcx, hir_id)
             {
                 if let Some(e) = l.init
                     && is_cast_from_ty_alias(cx, e, cast_from)

@@ -1,5 +1,5 @@
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:5:5
+  --> tests/ui/eprint_with_newline.rs:5:5
    |
 LL |     eprint!("Hello\n");
    |     ^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     eprintln!("Hello");
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:8:5
+  --> tests/ui/eprint_with_newline.rs:8:5
    |
 LL |     eprint!("Hello {}\n", "world");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     eprintln!("Hello {}", "world");
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:10:5
+  --> tests/ui/eprint_with_newline.rs:10:5
    |
 LL |     eprint!("Hello {} {}\n", "world", "#2");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     eprintln!("Hello {} {}", "world", "#2");
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:12:5
+  --> tests/ui/eprint_with_newline.rs:12:5
    |
 LL |     eprint!("{}\n", 1265);
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     eprintln!("{}", 1265);
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:14:5
+  --> tests/ui/eprint_with_newline.rs:14:5
    |
 LL |     eprint!("\n");
    |     ^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     eprintln!();
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:37:5
+  --> tests/ui/eprint_with_newline.rs:37:5
    |
 LL |     eprint!("\\\n");
    |     ^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     eprintln!("\\");
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:46:5
+  --> tests/ui/eprint_with_newline.rs:46:5
    |
 LL | /     eprint!(
 LL | |
@@ -90,7 +90,7 @@ LL ~
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:51:5
+  --> tests/ui/eprint_with_newline.rs:51:5
    |
 LL | /     eprint!(
 LL | |
@@ -107,7 +107,7 @@ LL ~
    |
 
 error: using `eprint!()` with a format string that ends in a single newline
-  --> $DIR/eprint_with_newline.rs:60:5
+  --> tests/ui/eprint_with_newline.rs:60:5
    |
 LL |     eprint!("\\r\n");
    |     ^^^^^^^^^^^^^^^^

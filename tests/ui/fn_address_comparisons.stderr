@@ -1,5 +1,5 @@
 error: comparing with a non-unique address of a function item
-  --> $DIR/fn_address_comparisons.rs:15:13
+  --> tests/ui/fn_address_comparisons.rs:15:13
    |
 LL |     let _ = f == a;
    |             ^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = f == a;
    = help: to override `-D warnings` add `#[allow(clippy::fn_address_comparisons)]`
 
 error: comparing with a non-unique address of a function item
-  --> $DIR/fn_address_comparisons.rs:18:13
+  --> tests/ui/fn_address_comparisons.rs:18:13
    |
 LL |     let _ = f != a;
    |             ^^^^^^
