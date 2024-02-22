@@ -3938,15 +3938,10 @@ impl<'test> TestCx<'test> {
                 self.props.compare_output_lines_by_subset,
             );
         } else if !expected_fixed.is_empty() {
-            if self.config.suite == "ui" {
-                panic!(
-                    "the `//@ run-rustfix` directive wasn't found but a `*.fixed` file was found"
-                );
-            } else {
-                panic!(
-                    "the `// run-rustfix` directive wasn't found but a `*.fixed` file was found"
-                );
-            }
+            panic!(
+                "the `//@ run-rustfix` directive wasn't found but a `*.fixed` \
+                 file was found"
+            );
         }
 
         if errors > 0 {

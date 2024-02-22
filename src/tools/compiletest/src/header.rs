@@ -869,7 +869,7 @@ struct HeaderLine<'ln> {
 
 fn iter_header(
     mode: Mode,
-    suite: &str,
+    _suite: &str,
     poisoned: &mut bool,
     testfile: &Path,
     rdr: impl Read,
@@ -900,11 +900,7 @@ fn iter_header(
         }
     }
 
-    let comment = if testfile.extension().is_some_and(|e| e == "rs") {
-        if mode == Mode::Ui && suite == "ui" { "//@" } else { "//" }
-    } else {
-        "#"
-    };
+    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
 
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
@@ -931,7 +927,7 @@ fn iter_header(
         // First try to accept `ui_test` style comments
         } else if let Some((header_revision, directive)) = line_directive(comment, ln) {
             it(HeaderLine { line_number, original_line, header_revision, directive });
-        } else if mode == Mode::Ui && suite == "ui" && !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
+        } else if !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
             };
@@ -951,7 +947,7 @@ fn iter_header(
                         // directive. We emit an error here to warn the user.
                         *poisoned = true;
                         eprintln!(
-                            "error: detected legacy-style directives in ui test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
+                            "error: detected legacy-style directives in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
                             testfile.display(),
                             line_number,
                             line_directive("//", ln),
@@ -964,7 +960,7 @@ fn iter_header(
                         // directive. We emit an error here to warn the user.
                         *poisoned = true;
                         eprintln!(
-                            "error: detected legacy-style directives in ui test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
+                            "error: detected legacy-style directives in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
                             testfile.display(),
                             line_number,
                             line_directive("//", ln),
@@ -1265,11 +1261,8 @@ pub fn make_test_description<R: Read>(
 
             if let Some((_, post)) = original_line.trim_start().split_once("//") {
                 let post = post.trim_start();
-                if post.starts_with("ignore-tidy")
-                    && config.mode == Mode::Ui
-                    && config.suite == "ui"
-                {
-                    // not handled by compiletest under the ui test mode and ui test suite.
+                if post.starts_with("ignore-tidy") {
+                    // Not handled by compiletest.
                 } else {
                     decision!(cfg::handle_ignore(config, ln));
                 }
