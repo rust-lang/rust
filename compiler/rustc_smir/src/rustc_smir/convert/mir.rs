@@ -417,6 +417,18 @@ impl<'tcx> Stable<'tcx> for mir::NonDivergingIntrinsic<'tcx> {
             NonDivergingIntrinsic::Assume(op) => {
                 stable_mir::mir::NonDivergingIntrinsic::Assume(op.stable(tables))
             }
+            NonDivergingIntrinsic::Expect(op, kind) => {
+                stable_mir::mir::NonDivergingIntrinsic::Expect(
+                    op.stable(tables),
+                    match kind {
+                        mir::ExpectKind::True => stable_mir::mir::ExpectKind::True,
+                        mir::ExpectKind::False => stable_mir::mir::ExpectKind::False,
+                        mir::ExpectKind::Unpredictable => {
+                            stable_mir::mir::ExpectKind::Unpredictable
+                        }
+                    },
+                )
+            }
             NonDivergingIntrinsic::CopyNonOverlapping(copy_non_overlapping) => {
                 stable_mir::mir::NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
                     src: copy_non_overlapping.src.stable(tables),

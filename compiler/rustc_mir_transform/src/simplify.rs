@@ -487,6 +487,9 @@ impl UsedLocals {
 impl<'tcx> Visitor<'tcx> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
+            // Don't count the call to 'Expect' as a use of the argument.
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(..)) => {}
+
             StatementKind::Intrinsic(..)
             | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
@@ -545,6 +548,11 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                         used_locals.is_used(*local)
                     }
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
+
+                    StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(
+                        Operand::Copy(place),
+                        ..,
+                    )) => used_locals.is_used(place.local),
 
                     StatementKind::SetDiscriminant { ref place, .. }
                     | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),

@@ -410,6 +410,28 @@ impl StatementKind<'_> {
     }
 }
 
+#[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, PartialEq)]
+#[derive(Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub enum ExpectKind {
+    /// condition is probably true
+    True,
+    /// condition is probably false
+    False,
+    /// condition is unpredictable by hardware
+    Unpredictable,
+}
+
+impl ExpectKind {
+    #[inline]
+    pub fn not(&self) -> Self {
+        match self {
+            ExpectKind::True => ExpectKind::False,
+            ExpectKind::False => ExpectKind::True,
+            ExpectKind::Unpredictable => ExpectKind::Unpredictable,
+        }
+    }
+}
+
 #[derive(
     Clone,
     TyEncodable,
@@ -429,6 +451,9 @@ pub enum NonDivergingIntrinsic<'tcx> {
     /// `x < y` operation, subsequent operations on `x` and `y` could elide various bound checks.
     /// If the argument is `false`, this operation is equivalent to `TerminatorKind::Unreachable`.
     Assume(Operand<'tcx>),
+
+    // Denotes a call to the intrinsic functions `likely`, `unlikely` and `unpredictable`.
+    Expect(Operand<'tcx>, ExpectKind),
 
     /// Denotes a call to the intrinsic function `copy_nonoverlapping`.
     ///

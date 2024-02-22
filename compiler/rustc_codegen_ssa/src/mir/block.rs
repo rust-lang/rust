@@ -11,6 +11,7 @@ use crate::MemFlags;
 
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{self, AssertKind, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
@@ -311,14 +312,83 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    fn get_expectation(
+        &mut self,
+        bb: mir::BasicBlock,
+        discr: &mir::Operand<'tcx>,
+    ) -> Option<mir::ExpectKind> {
+        // First do a quick test if there are any `expect` intrinsics in the BB.
+        if let Some(ref blocks) = self.blocks_with_expect {
+            if !blocks.contains(bb) {
+                return None;
+            }
+        } else {
+            return None;
+        }
+
+        let Some(discr) = discr.place() else {
+            return None;
+        };
+
+        // There are `expect` intrinsics in the BB, so we need to do the full analysis.
+
+        // Groups of variables which have the same value
+        let mut groups = Vec::new();
+        // Map from variable to group index
+        let mut map = FxHashMap::<mir::Place<'tcx>, usize>::default();
+
+        for stmt in &self.mir[bb].statements {
+            match stmt.kind {
+                // For `expect` intrinsic, mark the entire group as having the expected value.
+                mir::StatementKind::Intrinsic(box mir::NonDivergingIntrinsic::Expect(
+                    mir::Operand::Copy(ref place),
+                    expect_kind,
+                )) => {
+                    if let Some(index) = map.get(place) {
+                        groups[*index] = Some(expect_kind);
+                    } else {
+                        map.insert(*place, groups.len());
+                        groups.push(Some(expect_kind));
+                    }
+                }
+
+                // For assignments:
+                // - if we understand the RHS, add LHS to the same group
+                // - if we don't understand the RHS, remove LHS from any group,
+                //   so that it doesn't have any expected value
+                mir::StatementKind::Assign(box (ref lhs, mir::Rvalue::Use(ref op))) => {
+                    let Some(rhs) = op.place() else {
+                        map.remove(lhs);
+                        continue;
+                    };
+
+                    if let Some(index) = map.get(&rhs) {
+                        map.insert(*lhs, *index);
+                    } else {
+                        map.insert(rhs, groups.len());
+                        map.insert(*lhs, groups.len());
+                        groups.push(None);
+                    }
+                }
+
+                // Ignore all other statements
+                _ => {}
+            }
+        }
+
+        // Return the expected value for the group that the discriminant belongs to.
+        map.get(&discr).and_then(|index| groups[*index])
+    }
+
     fn codegen_switchint_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
-        discr: &mir::Operand<'tcx>,
+        bb: mir::BasicBlock,
+        mir_discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
     ) {
-        let discr = self.codegen_operand(bx, discr);
+        let discr = self.codegen_operand(bx, mir_discr);
         let switch_ty = discr.layout.ty;
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
@@ -328,10 +398,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let lltrue = helper.llbb_with_cleanup(self, target);
             let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
             if switch_ty == bx.tcx().types.bool {
+                let expect = self.get_expectation(bb, mir_discr);
+
                 // Don't generate trivial icmps when switching on bool.
                 match test_value {
-                    0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
-                    1 => bx.cond_br(discr.immediate(), lltrue, llfalse),
+                    0 => bx.cond_br_with_expect(discr.immediate(), llfalse, lltrue, expect),
+                    1 => {
+                        let expect = expect.and_then(|k| Some(k.not()));
+                        bx.cond_br_with_expect(discr.immediate(), lltrue, llfalse, expect);
+                    }
                     _ => bug!(),
                 }
             } else {
@@ -1155,7 +1230,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             debug!("codegen_block({:?}={:?})", bb, data);
 
             for statement in &data.statements {
-                self.codegen_statement(bx, statement);
+                self.codegen_statement(bx, bb, statement);
             }
 
             let merging_succ = self.codegen_terminator(bx, bb, data.terminator());
@@ -1222,7 +1297,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, targets);
+                self.codegen_switchint_terminator(helper, bx, bb, discr, targets);
                 MergingSucc::False
             }
 

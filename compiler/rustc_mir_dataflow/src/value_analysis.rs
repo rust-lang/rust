@@ -126,7 +126,7 @@ pub trait ValueAnalysis<'tcx> {
         _state: &mut State<Self::Value>,
     ) {
         match intrinsic {
-            NonDivergingIntrinsic::Assume(..) => {
+            NonDivergingIntrinsic::Assume(..) | NonDivergingIntrinsic::Expect(..) => {
                 // Could use this, but ignoring it is sound.
             }
             NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {

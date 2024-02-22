@@ -216,7 +216,8 @@ pub trait MirVisitor {
             }
             StatementKind::Coverage(coverage) => visit_opaque(coverage),
             StatementKind::Intrinsic(intrisic) => match intrisic {
-                NonDivergingIntrinsic::Assume(operand) => {
+                NonDivergingIntrinsic::Assume(operand)
+                | NonDivergingIntrinsic::Expect(operand, ..) => {
                     self.visit_operand(operand, location);
                 }
                 NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {

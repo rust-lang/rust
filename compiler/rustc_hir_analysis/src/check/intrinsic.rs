@@ -111,6 +111,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::type_id
         | sym::likely
         | sym::unlikely
+        | sym::unpredictable
         | sym::ptr_guaranteed_cmp
         | sym::minnumf32
         | sym::minnumf64
@@ -420,6 +421,7 @@ pub fn check_intrinsic_type(
             sym::assume => (0, 1, vec![tcx.types.bool], Ty::new_unit(tcx)),
             sym::likely => (0, 1, vec![tcx.types.bool], tcx.types.bool),
             sym::unlikely => (0, 1, vec![tcx.types.bool], tcx.types.bool),
+            sym::unpredictable => (0, 1, vec![tcx.types.bool], tcx.types.bool),
 
             sym::read_via_copy => (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0)),
             sym::write_via_move => {

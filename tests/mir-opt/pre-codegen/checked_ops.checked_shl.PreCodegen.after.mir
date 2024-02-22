@@ -7,7 +7,6 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     scope 1 (inlined core::num::<impl u32>::checked_shl) {
         debug self => _1;
         debug rhs => _2;
-        let mut _6: bool;
         scope 2 {
             debug a => _4;
             debug b => _5;
@@ -41,26 +40,21 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
         _4 = ShlUnchecked(_1, _3);
         StorageDead(_3);
         _5 = Ge(_2, const _);
-        StorageLive(_6);
-        _6 = unlikely(move _5) -> [return: bb1, unwind unreachable];
+        unlikely(_5);
+        switchInt(_5) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        switchInt(move _6) -> [0: bb2, otherwise: bb3];
+        _0 = Option::<u32>::Some(_4);
+        goto -> bb3;
     }
 
     bb2: {
-        _0 = Option::<u32>::Some(_4);
-        goto -> bb4;
+        _0 = const Option::<u32>::None;
+        goto -> bb3;
     }
 
     bb3: {
-        _0 = const Option::<u32>::None;
-        goto -> bb4;
-    }
-
-    bb4: {
-        StorageDead(_6);
         StorageDead(_5);
         StorageDead(_4);
         return;

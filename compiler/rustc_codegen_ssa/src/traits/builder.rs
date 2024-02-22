@@ -15,6 +15,7 @@ use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::mir::ExpectKind;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -64,6 +65,22 @@ pub trait BuilderMethods<'a, 'tcx>:
         then_llbb: Self::BasicBlock,
         else_llbb: Self::BasicBlock,
     );
+
+    // Conditional with expectation.
+    //
+    // This function is opt-in for back ends.
+    //
+    // The default implementation calls `cond_br`, i.e., it ignores the expectation.
+    fn cond_br_with_expect(
+        &mut self,
+        cond: Self::Value,
+        then_llbb: Self::BasicBlock,
+        else_llbb: Self::BasicBlock,
+        _expect: Option<ExpectKind>,
+    ) {
+        self.cond_br(cond, then_llbb, else_llbb)
+    }
+
     fn switch(
         &mut self,
         v: Self::Value,

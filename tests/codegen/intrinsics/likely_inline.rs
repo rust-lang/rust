@@ -14,9 +14,14 @@ pub fn path_b() {
     println!("slow_path");
 }
 
+#[inline(always)]
+fn likely(b: bool) -> bool {
+    std::intrinsics::likely(b)
+}
+
 #[no_mangle]
 pub fn f(x: bool) {
-    if std::intrinsics::likely(x) {
+    if likely(x) {
         path_a();
     } else {
         path_b();

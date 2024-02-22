@@ -14,9 +14,14 @@ pub fn path_b() {
     println!("slow_path");
 }
 
+#[inline(always)]
+fn unpredictable(b: bool) -> bool {
+    std::intrinsics::unpredictable(b)
+}
+
 #[no_mangle]
 pub fn f(x: bool) {
-    if std::intrinsics::likely(x) {
+    if unpredictable(x) {
         path_a();
     } else {
         path_b();
@@ -24,9 +29,8 @@ pub fn f(x: bool) {
 }
 
 // CHECK-LABEL: @f(
-// CHECK: br i1 %x, label %bb1, label %bb2, !prof ![[NUM:[0-9]+]]
+// CHECK: br i1 %x, label %bb1, label %bb2, !unpredictable
 // CHECK: bb2:
 // CHECK: path_b
 // CHECK: bb1:
 // CHECK: path_a
-// CHECK: ![[NUM]] = !{!"branch_weights", i32 2000, i32 1}

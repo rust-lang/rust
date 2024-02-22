@@ -1206,13 +1206,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
+            StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op))
+            | StatementKind::Intrinsic(box NonDivergingIntrinsic::Expect(op, ..)) => {
                 let ty = op.ty(&self.body.local_decls, self.tcx);
                 if !ty.is_bool() {
-                    self.fail(
-                        location,
-                        format!("`assume` argument must be `bool`, but got: `{ty}`"),
-                    );
+                    self.fail(location, format!("argument must be `bool`, but got: `{ty}`"));
                 }
             }
             StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(

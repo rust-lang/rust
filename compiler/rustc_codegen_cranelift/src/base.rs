@@ -823,7 +823,7 @@ fn codegen_stmt<'tcx>(
         StatementKind::Coverage { .. } => fx.tcx.dcx().fatal("-Zcoverage is unimplemented"),
         StatementKind::Intrinsic(ref intrinsic) => match &**intrinsic {
             // We ignore `assume` intrinsics, they are only useful for optimizations
-            NonDivergingIntrinsic::Assume(_) => {}
+            NonDivergingIntrinsic::Assume(_) | NonDivergingIntrinsic::Expect(..) => {}
             NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
                 src,
                 dst,

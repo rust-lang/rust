@@ -452,6 +452,13 @@ pub enum Variance {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ExpectKind {
+    True,
+    False,
+    Unpredictable,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CopyNonOverlapping {
     pub src: Operand,
     pub dst: Operand,
@@ -461,6 +468,7 @@ pub struct CopyNonOverlapping {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum NonDivergingIntrinsic {
     Assume(Operand),
+    Expect(Operand, ExpectKind),
     CopyNonOverlapping(CopyNonOverlapping),
 }
 

@@ -694,6 +694,9 @@ impl Display for NonDivergingIntrinsic<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Assume(op) => write!(f, "assume({op:?})"),
+            Self::Expect(op, ExpectKind::True) => write!(f, "likely({op:?})"),
+            Self::Expect(op, ExpectKind::False) => write!(f, "unlikely({op:?})"),
+            Self::Expect(op, ExpectKind::Unpredictable) => write!(f, "unpredictable({op:?})"),
             Self::CopyNonOverlapping(CopyNonOverlapping { src, dst, count }) => {
                 write!(f, "copy_nonoverlapping(dst = {dst:?}, src = {src:?}, count = {count:?})")
             }

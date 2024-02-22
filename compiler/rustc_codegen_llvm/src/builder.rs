@@ -16,6 +16,7 @@ use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::mir::ExpectKind;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
 };
@@ -194,6 +195,51 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     ) {
         unsafe {
             llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
+        }
+    }
+
+    fn cond_br_with_expect(
+        &mut self,
+        cond: &'ll Value,
+        then_llbb: &'ll BasicBlock,
+        else_llbb: &'ll BasicBlock,
+        expect: Option<ExpectKind>,
+    ) {
+        // emit the branch instruction
+        let n = unsafe { llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb) };
+
+        // emit expectation metadata
+        match expect {
+            Some(ExpectKind::True) | Some(ExpectKind::False) => unsafe {
+                // Use weights 2000 and 1, which is what Clang uses
+                let s = "branch_weights";
+                let e = expect.unwrap() == ExpectKind::True;
+                let v = [
+                    llvm::LLVMMDStringInContext(
+                        self.cx.llcx,
+                        s.as_ptr() as *const c_char,
+                        s.len() as c_uint,
+                    ),
+                    // 'then' branch weight
+                    self.cx.const_u32(if e { 2000 } else { 1 }),
+                    // 'else' branch weight
+                    self.cx.const_u32(if e { 1 } else { 2000 }),
+                ];
+                llvm::LLVMSetMetadata(
+                    n,
+                    llvm::MD_prof as c_uint,
+                    llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
+                );
+            },
+            Some(ExpectKind::Unpredictable) => unsafe {
+                let v: [&Value; 0] = [];
+                llvm::LLVMSetMetadata(
+                    n,
+                    llvm::MD_unpredictable as c_uint,
+                    llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
+                );
+            },
+            None => {}
         }
     }
 
