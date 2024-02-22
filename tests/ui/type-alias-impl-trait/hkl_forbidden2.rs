@@ -1,5 +1,4 @@
 #![feature(type_alias_impl_trait)]
-//~^ ERROR: expected generic lifetime parameter, found `'a`
 
 type Opaque<'a> = impl Sized + 'a;
 
@@ -13,6 +12,7 @@ impl<'a> Trait<'a> for () {
 
 fn test() -> &'static dyn for<'a> Trait<'a, Assoc = Opaque<'a>> {
     &()
+    //~^ ERROR: expected generic lifetime parameter, found `'a`
 }
 
 fn main() {}
