@@ -1314,6 +1314,12 @@ pub struct NoopMethodCallDiag<'a> {
     pub trait_: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub label: Span,
+    #[suggestion(
+        lint_derive_suggestion,
+        code = "#[derive(Clone)]\n",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggest_derive: Option<Span>,
 }
 
 #[derive(LintDiagnostic)]
