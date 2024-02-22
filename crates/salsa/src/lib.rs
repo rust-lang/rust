@@ -54,7 +54,7 @@ pub trait Database: plumbing::DatabaseOps {
     /// runtime. It permits the database to be customized and to
     /// inject logging or other custom behavior.
     fn salsa_event(&self, event_fn: Event) {
-        #![allow(unused_variables)]
+        _ = event_fn;
     }
 
     /// Starts unwinding the stack if the current revision is cancelled.

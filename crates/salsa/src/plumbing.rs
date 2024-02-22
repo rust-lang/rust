@@ -173,7 +173,7 @@ where
     fn fmt_index(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        index: DatabaseKeyIndex,
+        index: u32,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result;
 
@@ -186,7 +186,7 @@ where
     fn maybe_changed_after(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        input: DatabaseKeyIndex,
+        index: u32,
         revision: Revision,
     ) -> bool;
     // ANCHOR_END:maybe_changed_after
