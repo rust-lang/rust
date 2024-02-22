@@ -153,12 +153,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
                     let guar = ty.error_reported().err().unwrap_or_else(|| {
-                        prev.report_mismatch(
-                            &OpaqueHiddenType { ty, span: concrete_type.span },
-                            opaque_type_key.def_id,
-                            infcx.tcx,
-                        )
-                        .emit()
+                        let (Ok(e) | Err(e)) = prev
+                            .build_mismatch_error(
+                                &OpaqueHiddenType { ty, span: concrete_type.span },
+                                opaque_type_key.def_id,
+                                infcx.tcx,
+                            )
+                            .map(|d| d.emit());
+                        e
                     });
                     prev.ty = Ty::new_error(infcx.tcx, guar);
                 }

@@ -42,20 +42,7 @@ error: the type `<dyn Setup<From = T> as Setup>::From` is not well-formed
 LL |     copy::<dyn Setup<From=T>>(t)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the size for values of type `<dyn Setup<From = T> as Setup>::From` cannot be known at compilation time
-  --> $DIR/object-unsafety.rs:12:5
-   |
-LL |     copy::<dyn Setup<From=T>>(t)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `<dyn Setup<From = T> as Setup>::From`
-   = note: the return type of a function must have a statically known size
-help: consider further restricting the associated type
-   |
-LL | pub fn copy_any<T>(t: &T) -> T where <dyn Setup<From = T> as Setup>::From: Sized {
-   |                                +++++++++++++++++++++++++++++++++++++++++++++++++
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

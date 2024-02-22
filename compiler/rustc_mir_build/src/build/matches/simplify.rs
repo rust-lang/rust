@@ -13,11 +13,9 @@
 //! testing a value against a constant.
 
 use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::matches::{Ascription, Binding, Candidate, MatchPair};
+use crate::build::matches::{Ascription, Binding, Candidate, MatchPair, TestCase};
 use crate::build::Builder;
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::thir::{self, *};
-use rustc_middle::ty;
+use rustc_middle::thir::{Pat, PatKind};
 
 use std::mem;
 
@@ -62,13 +60,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut simplified_match_pairs = Vec::new();
         // Repeatedly simplify match pairs until we're left with only unsimplifiable ones.
         loop {
-            for match_pair in mem::take(match_pairs) {
-                if let Err(match_pair) = self.simplify_match_pair(
-                    match_pair,
-                    candidate_bindings,
-                    candidate_ascriptions,
-                    match_pairs,
-                ) {
+            for mut match_pair in mem::take(match_pairs) {
+                if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
+                    if let Some(binding) = binding {
+                        candidate_bindings.push(binding);
+                    }
+                    if let Some(ascription) = ascription {
+                        candidate_ascriptions.push(ascription);
+                    }
+                    // Simplifiable pattern; we replace it with its subpairs and simplify further.
+                    match_pairs.append(&mut match_pair.subpairs);
+                } else {
+                    // Unsimplifiable pattern; we recursively simplify its subpairs and don't
+                    // process it further.
+                    self.simplify_match_pairs(
+                        &mut match_pair.subpairs,
+                        candidate_bindings,
+                        candidate_ascriptions,
+                    );
                     simplified_match_pairs.push(match_pair);
                 }
             }
@@ -116,134 +125,5 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate
             })
             .collect()
-    }
-
-    /// Tries to simplify `match_pair`, returning `Ok(())` if successful. If successful, new match
-    /// pairs and bindings will have been pushed into the respective `Vec`s. If no simplification is
-    /// possible, `Err` is returned.
-    fn simplify_match_pair<'pat>(
-        &mut self,
-        mut match_pair: MatchPair<'pat, 'tcx>,
-        bindings: &mut Vec<Binding<'tcx>>,
-        ascriptions: &mut Vec<Ascription<'tcx>>,
-        match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
-    ) -> Result<(), MatchPair<'pat, 'tcx>> {
-        match match_pair.pattern.kind {
-            PatKind::Leaf { .. }
-            | PatKind::Deref { .. }
-            | PatKind::Array { .. }
-            | PatKind::Never
-            | PatKind::Wild
-            | PatKind::Error(_) => {}
-
-            PatKind::AscribeUserType {
-                ascription: thir::Ascription { ref annotation, variance },
-                ..
-            } => {
-                // Apply the type ascription to the value at `match_pair.place`
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    ascriptions.push(Ascription {
-                        annotation: annotation.clone(),
-                        source,
-                        variance,
-                    });
-                }
-            }
-
-            PatKind::Binding {
-                name: _,
-                mutability: _,
-                mode,
-                var,
-                ty: _,
-                subpattern: _,
-                is_primary: _,
-            } => {
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    bindings.push(Binding {
-                        span: match_pair.pattern.span,
-                        source,
-                        var_id: var,
-                        binding_mode: mode,
-                    });
-                }
-            }
-
-            PatKind::InlineConstant { subpattern: ref pattern, def } => {
-                // Apply a type ascription for the inline constant to the value at `match_pair.place`
-                if let Some(source) = match_pair.place.try_to_place(self) {
-                    let span = match_pair.pattern.span;
-                    let parent_id = self.tcx.typeck_root_def_id(self.def_id.to_def_id());
-                    let args = ty::InlineConstArgs::new(
-                        self.tcx,
-                        ty::InlineConstArgsParts {
-                            parent_args: ty::GenericArgs::identity_for_item(self.tcx, parent_id),
-                            ty: self.infcx.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            }),
-                        },
-                    )
-                    .args;
-                    let user_ty =
-                        self.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
-                            def.to_def_id(),
-                            ty::UserArgs { args, user_self_ty: None },
-                        ));
-                    let annotation = ty::CanonicalUserTypeAnnotation {
-                        inferred_ty: pattern.ty,
-                        span,
-                        user_ty: Box::new(user_ty),
-                    };
-                    ascriptions.push(Ascription {
-                        annotation,
-                        source,
-                        variance: ty::Contravariant,
-                    });
-                }
-            }
-
-            PatKind::Constant { .. } => {
-                // FIXME normalize patterns when possible
-                return Err(match_pair);
-            }
-
-            PatKind::Range(ref range) => {
-                if range.is_full_range(self.tcx) != Some(true) {
-                    return Err(match_pair);
-                }
-            }
-
-            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                if !(prefix.is_empty() && slice.is_some() && suffix.is_empty()) {
-                    self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
-                    return Err(match_pair);
-                }
-            }
-
-            PatKind::Variant { adt_def, args, variant_index, subpatterns: _ } => {
-                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
-                    i == variant_index || {
-                        (self.tcx.features().exhaustive_patterns
-                            || self.tcx.features().min_exhaustive_patterns)
-                            && !v
-                                .inhabited_predicate(self.tcx, adt_def)
-                                .instantiate(self.tcx, args)
-                                .apply_ignore_module(self.tcx, self.param_env)
-                    }
-                }) && (adt_def.did().is_local()
-                    || !adt_def.is_variant_list_non_exhaustive());
-                if !irrefutable {
-                    self.simplify_match_pairs(&mut match_pair.subpairs, bindings, ascriptions);
-                    return Err(match_pair);
-                }
-            }
-
-            PatKind::Or { .. } => return Err(match_pair),
-        }
-
-        // Simplifiable pattern; we replace it with its subpairs.
-        match_pairs.append(&mut match_pair.subpairs);
-        Ok(())
     }
 }

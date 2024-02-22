@@ -13,6 +13,8 @@ and [Blackberry QNX][BlackBerry].
 
 - Florian Bartels, `Florian.Bartels@elektrobit.com`, https://github.com/flba-eb
 - Tristan Roach, `TRoach@blackberry.com`, https://github.com/gh-tr
+- Jonathan Pallant `Jonathan.Pallant@ferrous-systems.com`, https://github.com/jonathanpallant
+- Jorge Aparicio `Jorge.Aparicio@ferrous-systems.com`, https://github.com/japaric
 
 ## Requirements
 

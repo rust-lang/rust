@@ -5,7 +5,6 @@ use crate::solve::GoalSource;
 use crate::traits::coherence;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::Reveal;
 use rustc_middle::traits::solve::inspect::ProbeKind;
 use rustc_middle::traits::solve::{
     CandidateSource, CanonicalResponse, Certainty, Goal, MaybeCause, QueryResult,
@@ -67,20 +66,6 @@ pub(super) trait GoalKind<'tcx>:
             // `GoalSource::ImplWhereBound` for any caller.
             ecx.add_goals(GoalSource::Misc, requirements);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
-    }
-
-    /// Consider a bound originating from the item bounds of an alias. For this we
-    /// require that the well-formed requirements of the self type of the goal
-    /// are "satisfied from the param-env".
-    /// See [`EvalCtxt::validate_alias_bound_self_from_param_env`].
-    fn consider_alias_bound_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-        assumption: ty::Clause<'tcx>,
-    ) -> QueryResult<'tcx> {
-        Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
-            ecx.validate_alias_bound_self_from_param_env(goal)
         })
     }
 
@@ -636,7 +621,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         for assumption in
             self.tcx().item_bounds(alias_ty.def_id).instantiate(self.tcx(), alias_ty.args)
         {
-            match G::consider_alias_bound_candidate(self, goal, assumption) {
+            match G::consider_implied_clause(self, goal, assumption, []) {
                 Ok(result) => {
                     candidates.push(Candidate { source: CandidateSource::AliasBound, result });
                 }
@@ -654,105 +639,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 self.assemble_alias_bound_candidates_recur(next_self_ty, goal, candidates)
             }
             Err(NoSolution) => {}
-        }
-    }
-
-    /// Check that we are allowed to use an alias bound originating from the self
-    /// type of this goal. This means something different depending on the self type's
-    /// alias kind.
-    ///
-    /// * Projection: Given a goal with a self type such as `<Ty as Trait>::Assoc`,
-    /// we require that the bound `Ty: Trait` can be proven using either a nested alias
-    /// bound candidate, or a param-env candidate.
-    ///
-    /// * Opaque: The param-env must be in `Reveal::UserFacing` mode. Otherwise,
-    /// the goal should be proven by using the hidden type instead.
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn validate_alias_bound_self_from_param_env<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-    ) -> QueryResult<'tcx> {
-        match *goal.predicate.self_ty().kind() {
-            ty::Alias(ty::Projection, projection_ty) => {
-                let mut param_env_candidates = vec![];
-                let self_trait_ref = projection_ty.trait_ref(self.tcx());
-
-                if self_trait_ref.self_ty().is_ty_var() {
-                    return self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-                }
-
-                let trait_goal: Goal<'_, ty::TraitPredicate<'tcx>> = goal.with(
-                    self.tcx(),
-                    ty::TraitPredicate {
-                        trait_ref: self_trait_ref,
-                        polarity: ty::ImplPolarity::Positive,
-                    },
-                );
-
-                self.assemble_param_env_candidates(trait_goal, &mut param_env_candidates);
-                // FIXME: We probably need some sort of recursion depth check here.
-                // Can't come up with an example yet, though, and the worst case
-                // we can have is a compiler stack overflow...
-                self.assemble_alias_bound_candidates(trait_goal, &mut param_env_candidates);
-
-                // FIXME: We must also consider alias-bound candidates for a peculiar
-                // class of built-in candidates that I'll call "defaulted" built-ins.
-                //
-                // For example, we always know that `T: Pointee` is implemented, but
-                // we do not always know what `<T as Pointee>::Metadata` actually is,
-                // similar to if we had a user-defined impl with a `default type ...`.
-                // For these traits, since we're not able to always normalize their
-                // associated types to a concrete type, we must consider their alias bounds
-                // instead, so we can prove bounds such as `<T as Pointee>::Metadata: Copy`.
-                self.assemble_alias_bound_candidates_for_builtin_impl_default_items(
-                    trait_goal,
-                    &mut param_env_candidates,
-                );
-
-                self.merge_candidates(param_env_candidates)
-            }
-            ty::Alias(ty::Opaque, _opaque_ty) => match goal.param_env.reveal() {
-                Reveal::UserFacing => {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                }
-                Reveal::All => return Err(NoSolution),
-            },
-            _ => bug!("only expected to be called on alias tys"),
-        }
-    }
-
-    /// Assemble a subset of builtin impl candidates for a class of candidates called
-    /// "defaulted" built-in traits.
-    ///
-    /// For example, we always know that `T: Pointee` is implemented, but we do not
-    /// always know what `<T as Pointee>::Metadata` actually is! See the comment in
-    /// [`EvalCtxt::validate_alias_bound_self_from_param_env`] for more detail.
-    #[instrument(level = "debug", skip_all)]
-    fn assemble_alias_bound_candidates_for_builtin_impl_default_items<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-        candidates: &mut Vec<Candidate<'tcx>>,
-    ) {
-        let lang_items = self.tcx().lang_items();
-        let trait_def_id = goal.predicate.trait_def_id(self.tcx());
-
-        // You probably shouldn't add anything to this list unless you
-        // know what you're doing.
-        let result = if lang_items.pointee_trait() == Some(trait_def_id) {
-            G::consider_builtin_pointee_candidate(self, goal)
-        } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
-            G::consider_builtin_discriminant_kind_candidate(self, goal)
-        } else {
-            Err(NoSolution)
-        };
-
-        match result {
-            Ok(result) => candidates.push(Candidate {
-                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-                result,
-            }),
-            Err(NoSolution) => (),
         }
     }
 

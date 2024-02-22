@@ -510,7 +510,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
 
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let message = rustc_errors::DiagnosticMessage::from(diagnostic.message);
-        let mut diag: DiagnosticBuilder<'_, rustc_errors::ErrorGuaranteed> =
+        let mut diag: DiagnosticBuilder<'_, ()> =
             DiagnosticBuilder::new(&self.sess().dcx, diagnostic.level.to_internal(), message);
         diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
