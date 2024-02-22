@@ -155,8 +155,9 @@ fn test_mremap() {
 
     // Test all of our error conditions
     // Not aligned
-    let ptr =
-        unsafe { libc::mremap(ptr::without_provenance_mut(1), page_size, page_size, libc::MREMAP_MAYMOVE) };
+    let ptr = unsafe {
+        libc::mremap(ptr::without_provenance_mut(1), page_size, page_size, libc::MREMAP_MAYMOVE)
+    };
     assert_eq!(ptr, libc::MAP_FAILED);
     assert_eq!(Error::last_os_error().raw_os_error().unwrap(), libc::EINVAL);
 

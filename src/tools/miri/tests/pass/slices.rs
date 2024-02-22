@@ -29,7 +29,8 @@ fn slice_of_zst() {
 
     // In a slice of zero-size elements the pointer is meaningless.
     // Ensure iteration still works even if the pointer is at the end of the address space.
-    let slice: &[()] = unsafe { slice::from_raw_parts(ptr::without_provenance(-5isize as usize), 10) };
+    let slice: &[()] =
+        unsafe { slice::from_raw_parts(ptr::without_provenance(-5isize as usize), 10) };
     assert_eq!(slice.len(), 10);
     assert_eq!(slice.iter().count(), 10);
 
