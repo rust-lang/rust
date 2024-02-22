@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 build_helper = { path = "../build_helper" }
-env_logger = "0.10"
+env_logger = "0.11"
 log = "0.4"
 anyhow = { version = "1", features = ["backtrace"] }
 humantime = "2"
