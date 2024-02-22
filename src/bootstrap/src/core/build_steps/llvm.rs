@@ -98,9 +98,6 @@ pub fn prebuilt_llvm_config(
     let out_dir = builder.llvm_out(target);
 
     let mut llvm_config_ret_dir = builder.llvm_out(builder.config.build);
-    if (!builder.config.build.is_msvc() || builder.ninja()) && !builder.config.llvm_from_ci {
-        llvm_config_ret_dir.push("build");
-    }
     llvm_config_ret_dir.push("bin");
     let build_llvm_config = llvm_config_ret_dir.join(exe("llvm-config", builder.config.build));
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");

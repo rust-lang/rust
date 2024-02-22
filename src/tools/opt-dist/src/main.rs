@@ -270,7 +270,8 @@ fn execute_pipeline(
             })?;
 
             let libdir = env.build_artifacts().join("stage2").join("lib");
-            let llvm_lib = io::find_file_in_dir(&libdir, "libLLVM", ".so")?;
+            // The actual name will be something like libLLVM.so.18.1-rust-dev.
+            let llvm_lib = io::find_file_in_dir(&libdir, "libLLVM.so", "")?;
 
             log::info!("Optimizing {llvm_lib} with BOLT");
 
