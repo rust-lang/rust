@@ -1,5 +1,5 @@
-// aux-build:alias-reexport.rs
-// aux-build:alias-reexport2.rs
+//@ aux-build:alias-reexport.rs
+//@ aux-build:alias-reexport2.rs
 
 #![crate_name = "foo"]
 #![feature(lazy_type_alias)]

@@ -1,8 +1,8 @@
-// compile-flags: -g -Zmir-opt-level=0 -Zmir-enable-passes=+ScalarReplacementOfAggregates
-// compile-flags: -Cno-prepopulate-passes
+//@ compile-flags: -g -Zmir-opt-level=0 -Zmir-enable-passes=+ScalarReplacementOfAggregates
+//@ compile-flags: -Cno-prepopulate-passes
 //
 // Tested offsets are only correct for x86_64.
-// only-x86_64
+//@ only-x86_64
 
 #![crate_type = "lib"]
 

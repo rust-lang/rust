@@ -1,5 +1,5 @@
    LL|       |#![allow(unused_assignments, unused_variables)]
-   LL|       |// compile-flags: -C opt-level=2
+   LL|       |//@ compile-flags: -C opt-level=2
    LL|       |
    LL|       |// This test used to be sensitive to certain coverage-specific hacks in
    LL|       |// `rustc_middle/mir/mono.rs`, but those hacks were later cleaned up by

@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // Minimization of issue #59502
 

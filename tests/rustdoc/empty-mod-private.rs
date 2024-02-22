@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 // @has 'empty_mod_private/index.html' '//a[@href="foo/index.html"]' 'foo'
 // @hasraw 'empty_mod_private/sidebar-items.js' 'foo'

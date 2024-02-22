@@ -1,7 +1,7 @@
 // Guards against regression for optimization discussed in issue #80836
 
-// compile-flags: -O
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O
+//@ ignore-debug: the debug assertions get in the way
 
 #![crate_type = "lib"]
 

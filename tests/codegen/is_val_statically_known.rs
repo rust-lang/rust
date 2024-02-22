@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib -Zmerge-functions=disabled -O
+//@ compile-flags: --crate-type=lib -Zmerge-functions=disabled -O
 
 #![feature(core_intrinsics)]
 

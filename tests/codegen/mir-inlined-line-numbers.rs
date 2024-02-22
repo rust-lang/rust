@@ -1,4 +1,4 @@
-// compile-flags: -O -g
+//@ compile-flags: -O -g
 
 #![crate_type = "lib"]
 

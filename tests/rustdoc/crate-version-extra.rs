@@ -1,4 +1,4 @@
-// compile-flags: '--crate-version=1.3.37-nightly (203c57dbe 2023-09-17)'
+//@ compile-flags: '--crate-version=1.3.37-nightly (203c57dbe 2023-09-17)'
 
 #![crate_name="foo"]
 

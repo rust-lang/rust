@@ -1,4 +1,4 @@
-// aux-build: color.rs
+//@ aux-build: color.rs
 
 //! The purpose of this test it to have a link to [a foreign variant](Red).
 

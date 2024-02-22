@@ -1,14 +1,14 @@
-// assembly-output: ptx-linker
-// compile-flags: --crate-type cdylib
-// only-nvptx64
-// ignore-nvptx64
+//@ assembly-output: ptx-linker
+//@ compile-flags: --crate-type cdylib
+//@ only-nvptx64
+//@ ignore-nvptx64
 
 #![feature(abi_ptx, core_intrinsics)]
 #![no_std]
 
 use core::intrinsics::*;
 
-// aux-build: breakpoint-panic-handler.rs
+//@ aux-build: breakpoint-panic-handler.rs
 extern crate breakpoint_panic_handler;
 
 // Currently, LLVM NVPTX backend can only emit atomic instructions with

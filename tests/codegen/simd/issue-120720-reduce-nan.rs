@@ -1,5 +1,5 @@
-// compile-flags: -C opt-level=3 -C target-cpu=cannonlake
-// only-x86_64
+//@ compile-flags: -C opt-level=3 -C target-cpu=cannonlake
+//@ only-x86_64
 
 // In a previous implementation, _mm512_reduce_add_pd did the reduction with all fast-math flags
 // enabled, making it UB to reduce a vector containing a NaN.

@@ -1,7 +1,7 @@
 // Test that `-Cprofile-generate` creates expected instrumentation artifacts in LLVM IR.
 
-// needs-profiler-support
-// compile-flags: -Cprofile-generate -Ccodegen-units=1
+//@ needs-profiler-support
+//@ compile-flags: -Cprofile-generate -Ccodegen-units=1
 
 // CHECK: @__llvm_profile_raw_version =
 // CHECK-DAG: @__profc_{{.*}}pgo_instrumentation{{.*}}some_function{{.*}} = {{.*}}global

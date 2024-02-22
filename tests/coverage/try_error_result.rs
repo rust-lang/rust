@@ -1,5 +1,5 @@
 #![allow(unused_assignments)]
-// failure-status: 1
+//@ failure-status: 1
 
 fn call(return_error: bool) -> Result<(), ()> {
     if return_error {

@@ -1,4 +1,4 @@
-// compile-flags: -O --crate-type=rlib
+//@ compile-flags: -O --crate-type=rlib
 #![feature(platform_intrinsics, repr_simd)]
 
 extern "platform-intrinsic" {

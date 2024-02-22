@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-// compile-flags:-g
+//@ compile-flags:-g
 
 pub use private::P;
 

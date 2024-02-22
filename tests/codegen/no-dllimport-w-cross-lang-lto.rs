@@ -1,9 +1,9 @@
 // This test makes sure that functions get annotated with the proper
 // "target-cpu" attribute in LLVM.
 
-// no-prefer-dynamic
-// only-msvc
-// compile-flags: -C linker-plugin-lto
+//@ no-prefer-dynamic
+//@ only-msvc
+//@ compile-flags: -C linker-plugin-lto
 
 #![crate_type = "rlib"]
 

@@ -1,7 +1,7 @@
 //
-// compile-flags: -C no-prepopulate-passes
-// only-riscv64
-// only-linux
+//@ compile-flags: -C no-prepopulate-passes
+//@ only-riscv64
+//@ only-linux
 #![crate_type = "lib"]
 
 // CHECK: define void @f_fpr_tracking(float %0, float %1, float %2, float %3, float %4, float %5, float %6, float %7, i8 zeroext %i)

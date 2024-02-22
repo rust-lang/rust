@@ -1,9 +1,9 @@
 // This test makes sure that different expansions of the file!(), line!(),
 // column!() macros get picked up by the incr. comp. hash.
 
-// revisions:rpass1 rpass2
+//@ revisions:rpass1 rpass2
 
-// compile-flags: -Z query-dep-graph
+//@ compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 

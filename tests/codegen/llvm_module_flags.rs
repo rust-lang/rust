@@ -1,5 +1,5 @@
 // Test for -Z llvm_module_flags
-// compile-flags: -Z llvm_module_flag=foo:u32:123:error -Z llvm_module_flag=bar:u32:42:max
+//@ compile-flags: -Z llvm_module_flag=foo:u32:123:error -Z llvm_module_flag=bar:u32:42:max
 
 fn main() {}
 

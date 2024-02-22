@@ -3,7 +3,7 @@
 // The outcome of optimization is not verfied, just the absence of the cycle.
 // Regression test for #76181.
 //
-// edition:2018
+//@ edition:2018
 
 #![crate_type = "lib"]
 

@@ -1,21 +1,21 @@
-// compile-flags: -Cno-prepopulate-passes -Copt-level=0
+//@ compile-flags: -Cno-prepopulate-passes -Copt-level=0
 
-// revisions:x86_64 i686 aarch64-apple aarch64-windows aarch64-linux arm riscv
+//@ revisions:x86_64 i686 aarch64-apple aarch64-windows aarch64-linux arm riscv
 
-//[x86_64] compile-flags: --target x86_64-unknown-uefi
-//[x86_64] needs-llvm-components: x86
-//[i686] compile-flags: --target i686-unknown-linux-musl
-//[i686] needs-llvm-components: x86
-//[aarch64-windows] compile-flags: --target aarch64-pc-windows-msvc
-//[aarch64-windows] needs-llvm-components: aarch64
-//[aarch64-linux] compile-flags: --target aarch64-unknown-linux-gnu
-//[aarch64-linux] needs-llvm-components: aarch64
-//[aarch64-apple] compile-flags: --target aarch64-apple-darwin
-//[aarch64-apple] needs-llvm-components: aarch64
-//[arm] compile-flags: --target armv7r-none-eabi
-//[arm] needs-llvm-components: arm
-//[riscv] compile-flags: --target riscv64gc-unknown-none-elf
-//[riscv] needs-llvm-components: riscv
+//@[x86_64] compile-flags: --target x86_64-unknown-uefi
+//@[x86_64] needs-llvm-components: x86
+//@[i686] compile-flags: --target i686-unknown-linux-musl
+//@[i686] needs-llvm-components: x86
+//@[aarch64-windows] compile-flags: --target aarch64-pc-windows-msvc
+//@[aarch64-windows] needs-llvm-components: aarch64
+//@[aarch64-linux] compile-flags: --target aarch64-unknown-linux-gnu
+//@[aarch64-linux] needs-llvm-components: aarch64
+//@[aarch64-apple] compile-flags: --target aarch64-apple-darwin
+//@[aarch64-apple] needs-llvm-components: aarch64
+//@[arm] compile-flags: --target armv7r-none-eabi
+//@[arm] needs-llvm-components: arm
+//@[riscv] compile-flags: --target riscv64gc-unknown-none-elf
+//@[riscv] needs-llvm-components: riscv
 
 // See bottom of file for a corresponding C source file that is meant to yield
 // equivalent declarations.

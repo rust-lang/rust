@@ -1,6 +1,6 @@
-// pretty-compare-only
-// pretty-mode:hir,typed
-// pp-exact:issue-4264.pp
+//@ pretty-compare-only
+//@ pretty-mode:hir,typed
+//@ pp-exact:issue-4264.pp
 
 // #4264 fixed-length vector types
 

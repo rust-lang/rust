@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: GVN
-// compile-flags: -C overflow-checks=on
+//@ unit-test: GVN
+//@ compile-flags: -C overflow-checks=on
 
 // EMIT_MIR checked_add.main.GVN.diff
 fn main() {

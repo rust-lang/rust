@@ -1,7 +1,7 @@
 // Issue #86448: test for cross-crate `doc(hidden)`
 #![crate_name = "foo"]
 
-// aux-build:cross-crate-hidden-impl-parameter.rs
+//@ aux-build:cross-crate-hidden-impl-parameter.rs
 extern crate cross_crate_hidden_impl_parameter;
 
 pub use ::cross_crate_hidden_impl_parameter::{HiddenType, HiddenTrait}; // OK, not re-exported

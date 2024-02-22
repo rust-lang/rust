@@ -1,6 +1,6 @@
-// aux-build:issue-26606-macro.rs
-// ignore-cross-compile
-// build-aux-docs
+//@ aux-build:issue-26606-macro.rs
+//@ ignore-cross-compile
+//@ build-aux-docs
 
 // https://github.com/rust-lang/rust/issues/26606
 #![crate_name="issue_26606"]

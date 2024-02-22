@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// compile-flags: -Zmir-opt-level=1
+//@ compile-flags: -Zmir-opt-level=1
 
 fn foo<T>() {
     if let (Some(a), None) = (Option::<u8>::None, Option::<T>::None) {

@@ -1,5 +1,5 @@
-// compile-flags: -O
-// ignore-debug (these add extra checks that make it hard to verify)
+//@ compile-flags: -O
+//@ ignore-debug (these add extra checks that make it hard to verify)
 #![crate_type = "lib"]
 #![feature(exact_size_is_empty)]
 

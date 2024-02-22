@@ -1,4 +1,4 @@
-// aux-build:masked.rs
+//@ aux-build:masked.rs
 
 #![feature(doc_masked)]
 

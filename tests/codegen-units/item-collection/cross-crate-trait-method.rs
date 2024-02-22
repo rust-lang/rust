@@ -1,9 +1,9 @@
-// compile-flags:-Zprint-mono-items=eager -Zinline-mir=no -Copt-level=0
+//@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no -Copt-level=0
 
 #![deny(dead_code)]
 #![feature(start)]
 
-// aux-build:cgu_export_trait_method.rs
+//@ aux-build:cgu_export_trait_method.rs
 extern crate cgu_export_trait_method;
 
 use cgu_export_trait_method::Trait;

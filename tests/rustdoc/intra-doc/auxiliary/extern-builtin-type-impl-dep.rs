@@ -1,4 +1,4 @@
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 
 #![feature(lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

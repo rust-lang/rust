@@ -1,4 +1,4 @@
-// revisions:rpass1 rpass2
+//@ revisions:rpass1 rpass2
 
 #![cfg_attr(rpass2, warn(dead_code))]
 

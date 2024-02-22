@@ -1,5 +1,5 @@
-// compile-flags: -C no-prepopulate-passes
-// only-64bit (because the LLVM type of i64 for usize shows up)
+//@ compile-flags: -C no-prepopulate-passes
+//@ only-64bit (because the LLVM type of i64 for usize shows up)
 //
 
 #![crate_type = "lib"]

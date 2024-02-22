@@ -1,4 +1,4 @@
-// compile-flags: -O
+//@ compile-flags: -O
 
 // On x86 the closure is inlined in foo() producing something like
 // define i32 @foo() [...] {
@@ -7,11 +7,11 @@
 // }
 // On riscv the closure is another function, placed before fn foo so CHECK can't
 // find it
-// ignore-riscv64 FIXME
+//@ ignore-riscv64 FIXME
 // On s390x the closure is also in another function
-// ignore-s390x FIXME
+//@ ignore-s390x FIXME
 // On loongarch64 the closure is also in another function
-// ignore-loongarch64 FIXME
+//@ ignore-loongarch64 FIXME
 
 #![crate_type = "lib"]
 #![feature(c_unwind)]

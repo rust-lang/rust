@@ -1,12 +1,12 @@
-// revisions: x64 A64 ppc64le
-// assembly-output: emit-asm
-// [x64] compile-flags: --target x86_64-unknown-linux-gnu -Crelocation-model=static
-// [x64] needs-llvm-components: x86
-// [A64] compile-flags: --target aarch64-unknown-linux-gnu -Crelocation-model=static
-// [A64] needs-llvm-components: aarch64
-// [ppc64le] compile-flags: --target powerpc64le-unknown-linux-gnu -Crelocation-model=static
-// [ppc64le] needs-llvm-components: powerpc
-// ignore-debug: alignment checks insert panics that we don't have a lang item for
+//@ revisions: x64 A64 ppc64le
+//@ assembly-output: emit-asm
+//@ [x64] compile-flags: --target x86_64-unknown-linux-gnu -Crelocation-model=static
+//@ [x64] needs-llvm-components: x86
+//@ [A64] compile-flags: --target aarch64-unknown-linux-gnu -Crelocation-model=static
+//@ [A64] needs-llvm-components: aarch64
+//@ [ppc64le] compile-flags: --target powerpc64le-unknown-linux-gnu -Crelocation-model=static
+//@ [ppc64le] needs-llvm-components: powerpc
+//@ ignore-debug: alignment checks insert panics that we don't have a lang item for
 
 #![feature(no_core, lang_items)]
 #![no_core]

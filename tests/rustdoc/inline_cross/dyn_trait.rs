@@ -3,8 +3,8 @@
 // In each test case, we include the trailing semicolon to ensure that nothing extra comes
 // after the type like an unwanted outlives-bound.
 
-// aux-crate:dyn_trait=dyn_trait.rs
-// edition:2021
+//@ aux-crate:dyn_trait=dyn_trait.rs
+//@ edition:2021
 
 // @has user/type.Ty0.html
 // @has - '//*[@class="rust item-decl"]//code' "dyn for<'any> FnOnce(&'any str) -> bool;"

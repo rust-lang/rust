@@ -1,6 +1,6 @@
 #![feature(negative_impls)]
 
-// pp-exact
+//@ pp-exact
 
 struct Test;
 

@@ -1,8 +1,8 @@
 // GDB got support for DW_ATE_UTF in 11.2, see
 // https://sourceware.org/bugzilla/show_bug.cgi?id=28637.
 
-// min-gdb-version: 11.2
-// compile-flags: -g
+//@ min-gdb-version: 11.2
+//@ compile-flags: -g
 
 // === GDB TESTS ===================================================================================
 

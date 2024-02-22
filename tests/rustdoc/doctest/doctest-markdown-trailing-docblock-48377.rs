@@ -1,4 +1,4 @@
-// compile-flags:--test
+//@ compile-flags:--test
 
 // https://github.com/rust-lang/rust/issues/48377
 

@@ -1,5 +1,5 @@
-// compile-flags: -g
-// ignore-android: FIXME(#10381)
+//@ compile-flags: -g
+//@ ignore-android: FIXME(#10381)
 
 // === GDB TESTS ==============================================================
 

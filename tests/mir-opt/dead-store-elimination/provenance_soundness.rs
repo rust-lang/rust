@@ -1,6 +1,6 @@
 // Test that we don't remove pointer to int casts or retags
-// unit-test: DeadStoreElimination-initial
-// compile-flags: -Zmir-emit-retag
+//@ unit-test: DeadStoreElimination-initial
+//@ compile-flags: -Zmir-emit-retag
 
 // EMIT_MIR provenance_soundness.pointer_to_int.DeadStoreElimination-initial.diff
 fn pointer_to_int(p: *mut i32) {

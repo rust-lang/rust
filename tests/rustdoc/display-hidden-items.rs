@@ -1,5 +1,5 @@
 // Test to ensure that the `--document-hidden-items` option is working as expected.
-// compile-flags: -Z unstable-options --document-hidden-items
+//@ compile-flags: -Z unstable-options --document-hidden-items
 // ignore-tidy-linelength
 
 #![crate_name = "foo"]

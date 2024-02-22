@@ -1,10 +1,10 @@
 // This test case checks if function arguments already have the correct value when breaking at the
 // beginning of a function.
 
-// min-lldb-version: 310
-// ignore-gdb
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-// compile-flags:-g
+//@ min-lldb-version: 310
+//@ ignore-gdb
+//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+//@ compile-flags:-g
 
 // lldb-command:breakpoint set --name immediate_args
 // lldb-command:breakpoint set --name non_immediate_args

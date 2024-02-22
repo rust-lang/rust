@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![deny(rustdoc::redundant_explicit_links)]
 

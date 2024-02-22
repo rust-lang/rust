@@ -1,6 +1,6 @@
-// compile-flags: -C no-prepopulate-passes -Copt-level=0
-// needs-asm-support
-// only-x86_64
+//@ compile-flags: -C no-prepopulate-passes -Copt-level=0
+//@ needs-asm-support
+//@ only-x86_64
 
 #![crate_type = "lib"]
 #![feature(naked_functions)]

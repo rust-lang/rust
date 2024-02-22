@@ -1,4 +1,4 @@
-// aux-build:unit-return.rs
+//@ aux-build:unit-return.rs
 
 #![crate_name = "foo"]
 

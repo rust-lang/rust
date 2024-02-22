@@ -1,9 +1,9 @@
-// edition:2018
-// aux-build:extern_macros.rs
-// compile-flags:--test --test-args=--test-threads=1
-// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
-// check-pass
+//@ edition:2018
+//@ aux-build:extern_macros.rs
+//@ compile-flags:--test --test-args=--test-threads=1
+//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ check-pass
 
 //! ```
 //! assert_eq!(1 + 1, 2);

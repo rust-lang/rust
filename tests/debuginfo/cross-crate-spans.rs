@@ -1,16 +1,16 @@
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
-// min-lldb-version: 310
+//@ min-lldb-version: 310
 
 // This fails on lldb 6.0.1 on x86-64 Fedora 28; so mark it macOS-only
 // for now.
-// only-macos
+//@ only-macos
 
-// aux-build:cross_crate_spans.rs
+//@ aux-build:cross_crate_spans.rs
 extern crate cross_crate_spans;
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 
 // === GDB TESTS ===================================================================================

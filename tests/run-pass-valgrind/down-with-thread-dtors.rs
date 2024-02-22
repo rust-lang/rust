@@ -1,4 +1,4 @@
-// ignore-emscripten
+//@ ignore-emscripten
 
 thread_local!(static FOO: Foo = Foo);
 thread_local!(static BAR: Bar = Bar(1));

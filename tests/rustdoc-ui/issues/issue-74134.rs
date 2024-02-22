@@ -1,6 +1,6 @@
-// revisions: public private
-// [private]compile-flags: --document-private-items
-// check-pass
+//@ revisions: public private
+//@ [private]compile-flags: --document-private-items
+//@ check-pass
 
 // There are 4 cases here:
 // 1. public item  -> public type:  no warning

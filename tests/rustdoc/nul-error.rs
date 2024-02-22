@@ -1,5 +1,5 @@
-// build-aux-docs
-// ignore-cross-compile
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #![crate_name = "foo"]
 

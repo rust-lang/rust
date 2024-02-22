@@ -1,10 +1,10 @@
 //
-// ignore-windows
-// ignore-macos
-// ignore-wasm
-// ignore-emscripten
+//@ ignore-windows
+//@ ignore-macos
+//@ ignore-wasm
+//@ ignore-emscripten
 
-// compile-flags: -g -C no-prepopulate-passes
+//@ compile-flags: -g -C no-prepopulate-passes
 
 #![feature(start)]
 

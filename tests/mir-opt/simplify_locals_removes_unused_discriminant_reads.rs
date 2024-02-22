@@ -1,5 +1,5 @@
 // skip-filecheck
-// unit-test: SimplifyLocals-before-const-prop
+//@ unit-test: SimplifyLocals-before-const-prop
 
 fn map(x: Option<Box<()>>) -> Option<Box<()>> {
     match x {

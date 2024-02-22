@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 #![feature(decl_macro)]
 

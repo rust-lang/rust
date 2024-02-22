@@ -1,5 +1,5 @@
-// compile-flags: -O -C no-prepopulate-passes
-// only-64bit (so I don't need to worry about usize)
+//@ compile-flags: -O -C no-prepopulate-passes
+//@ only-64bit (so I don't need to worry about usize)
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

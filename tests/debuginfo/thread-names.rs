@@ -1,10 +1,10 @@
-// compile-flags:-g
-// revisions: macos windows
+//@ compile-flags:-g
+//@ revisions: macos windows
 // We can't set the main thread name on Linux because it renames the process (#97191)
-//[macos] only-macos
-//[windows] only-windows
-// ignore-sgx
-// ignore-windows-gnu
+//@[macos] only-macos
+//@[windows] only-windows
+//@ ignore-sgx
+//@ ignore-windows-gnu
 
 // === GDB TESTS ==================================================================================
 //

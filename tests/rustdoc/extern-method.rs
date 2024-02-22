@@ -1,5 +1,5 @@
-// aux-build:rustdoc-extern-method.rs
-// ignore-cross-compile
+//@ aux-build:rustdoc-extern-method.rs
+//@ ignore-cross-compile
 
 #![feature(unboxed_closures)]
 

@@ -1,7 +1,7 @@
-// revisions: s390x
-// assembly-output: emit-asm
-//[s390x] compile-flags: --target s390x-unknown-linux-gnu
-//[s390x] needs-llvm-components: systemz
+//@ revisions: s390x
+//@ assembly-output: emit-asm
+//@[s390x] compile-flags: --target s390x-unknown-linux-gnu
+//@[s390x] needs-llvm-components: systemz
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]

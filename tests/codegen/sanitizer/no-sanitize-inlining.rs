@@ -1,12 +1,12 @@
 // Verifies that no_sanitize attribute prevents inlining when
 // given sanitizer is enabled, but has no effect on inlining otherwise.
 //
-// needs-sanitizer-address
-// needs-sanitizer-leak
-// revisions: ASAN LSAN
-//       compile-flags: -Copt-level=3 -Zmir-opt-level=4 -Ctarget-feature=-crt-static
-//[ASAN] compile-flags: -Zsanitizer=address
-//[LSAN] compile-flags: -Zsanitizer=leak
+//@ needs-sanitizer-address
+//@ needs-sanitizer-leak
+//@ revisions: ASAN LSAN
+//@       compile-flags: -Copt-level=3 -Zmir-opt-level=4 -Ctarget-feature=-crt-static
+//@[ASAN] compile-flags: -Zsanitizer=address
+//@[LSAN] compile-flags: -Zsanitizer=leak
 
 #![crate_type="lib"]
 #![feature(no_sanitize)]

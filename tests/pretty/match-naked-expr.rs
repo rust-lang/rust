@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 fn main() {
     let x = Some(3);

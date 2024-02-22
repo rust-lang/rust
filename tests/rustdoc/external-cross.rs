@@ -1,5 +1,5 @@
-// aux-build:external-cross.rs
-// ignore-cross-compile
+//@ aux-build:external-cross.rs
+//@ ignore-cross-compile
 
 #![crate_name="host"]
 

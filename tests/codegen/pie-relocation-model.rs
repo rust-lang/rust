@@ -1,5 +1,5 @@
-// compile-flags: -C relocation-model=pie -Copt-level=0
-// only-x86_64-unknown-linux-gnu
+//@ compile-flags: -C relocation-model=pie -Copt-level=0
+//@ only-x86_64-unknown-linux-gnu
 
 #![crate_type = "rlib"]
 

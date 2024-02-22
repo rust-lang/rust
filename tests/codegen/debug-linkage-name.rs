@@ -1,8 +1,8 @@
 // Verifies that linkage name is omitted when it is
 // the same as variable / function name.
 //
-// compile-flags: -C no-prepopulate-passes -Copt-level=0
-// compile-flags: -C debuginfo=2 -Copt-level=0
+//@ compile-flags: -C no-prepopulate-passes -Copt-level=0
+//@ compile-flags: -C debuginfo=2 -Copt-level=0
 #![crate_type = "lib"]
 
 pub mod xyz {

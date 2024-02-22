@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 #[cfg(FALSE)]
 fn simple_attr() {

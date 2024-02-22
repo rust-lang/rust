@@ -3,7 +3,7 @@
 // Test that `include!` in a doc test searches relative to the directory in
 // which the test is declared.
 
-// compile-flags:--test
+//@ compile-flags:--test
 
 /// ```rust
 /// include!("auxiliary/empty.rs");

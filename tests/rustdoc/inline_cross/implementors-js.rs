@@ -1,6 +1,6 @@
-// aux-build:implementors_inline.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:implementors_inline.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 extern crate implementors_inline;
 

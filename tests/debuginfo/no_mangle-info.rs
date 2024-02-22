@@ -1,5 +1,5 @@
-// compile-flags:-g
-// min-gdb-version: 10.1
+//@ compile-flags:-g
+//@ min-gdb-version: 10.1
 
 // === GDB TESTS ===================================================================================
 // gdb-command:run

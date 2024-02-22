@@ -1,6 +1,6 @@
 // Check that coercions are propagated through match and if expressions.
 
-// pretty-expanded FIXME #23616
+//@ pretty-expanded FIXME #23616
 
 pub fn main() {
     let _: Box<[isize]> = if true {

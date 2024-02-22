@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 pub fn extern_fn<const N: usize>() -> impl Iterator<Item = [u8; N]> {
     [[0; N]; N].iter().copied()
 }

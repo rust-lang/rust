@@ -1,7 +1,7 @@
 // This test checks that `VecDeque::front[_mut]()` and `VecDeque::back[_mut]()` can't panic.
 
-// compile-flags: -O
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O
+//@ ignore-debug: the debug assertions get in the way
 
 #![crate_type = "lib"]
 

@@ -1,6 +1,6 @@
    LL|       |// This demonstrated Issue #84561: function-like macros produce unintuitive coverage results.
    LL|       |
-   LL|       |// failure-status: 101
+   LL|       |//@ failure-status: 101
    LL|       |#[derive(PartialEq, Eq)]
    LL|       |struct Foo(u32);
    LL|       |

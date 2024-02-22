@@ -1,5 +1,5 @@
-// aux-build:intra-doc-broken.rs
-// check-pass
+//@ aux-build:intra-doc-broken.rs
+//@ check-pass
 
 #![deny(rustdoc::broken_intra_doc_links)]
 

@@ -1,10 +1,10 @@
 // skip-filecheck
-// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
-// only-64bit
+//@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+//@ only-64bit
 
 // Checks that we do not have any branches in the MIR for the two tested functions.
 
-// compile-flags: -Cpanic=abort
+//@ compile-flags: -Cpanic=abort
 #![feature(core_intrinsics)]
 #![crate_type = "lib"]
 

@@ -1,9 +1,9 @@
 // Tests inlining of `may_unwind` inline assembly.
 //
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// needs-asm-support
-// needs-unwind
-// compile-flags: -Zinline-mir-hint-threshold=1000
+//@ needs-asm-support
+//@ needs-unwind
+//@ compile-flags: -Zinline-mir-hint-threshold=1000
 #![feature(asm_unwind)]
 
 struct D;

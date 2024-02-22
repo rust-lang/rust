@@ -1,3 +1,3 @@
-// compile-flags: --crate-name foo
+//@ compile-flags: --crate-name foo
 
 pub fn foo() {}

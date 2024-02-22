@@ -2,7 +2,7 @@
 // gets inlined by MIR inlining. Without function argument indexes, `info args` in gdb won't show
 // arguments and their values for the current function.
 
-// compile-flags: -Zinline-mir=yes -Cdebuginfo=2 --edition=2021
+//@ compile-flags: -Zinline-mir=yes -Cdebuginfo=2 --edition=2021
 
 #![crate_type = "lib"]
 

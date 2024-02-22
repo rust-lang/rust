@@ -1,5 +1,5 @@
-// compile-flags:-Z unstable-options --show-coverage
-// check-pass
+//@ compile-flags:-Z unstable-options --show-coverage
+//@ check-pass
 
 //! Make sure to have some docs on your crate root
 

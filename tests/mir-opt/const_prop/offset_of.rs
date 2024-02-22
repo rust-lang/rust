@@ -1,5 +1,5 @@
 // skip-filecheck
-// unit-test: GVN
+//@ unit-test: GVN
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(offset_of_enum, offset_of_nested)]

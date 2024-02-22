@@ -1,4 +1,4 @@
-// compile-flags:--test
+//@ compile-flags:--test
 
 /// ```rust,edition2018
 /// #![feature(try_blocks)]

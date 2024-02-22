@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]

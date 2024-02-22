@@ -1,4 +1,4 @@
-// aux-build:reexport-check.rs
+//@ aux-build:reexport-check.rs
 #![crate_name = "foo"]
 
 extern crate reexport_check;

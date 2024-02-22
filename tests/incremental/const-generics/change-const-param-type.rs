@@ -1,5 +1,5 @@
-// revisions: rpass1 rpass2 rpass3
-// compile-flags: -Zincremental-ignore-spans
+//@ revisions: rpass1 rpass2 rpass3
+//@ compile-flags: -Zincremental-ignore-spans
 
 enum Foo<const N: usize> {
     Variant,

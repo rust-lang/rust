@@ -1,7 +1,7 @@
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 //
 
-// only-mips64
+//@ only-mips64
 // See ./transparent.rs
 
 #![feature(transparent_unions)]

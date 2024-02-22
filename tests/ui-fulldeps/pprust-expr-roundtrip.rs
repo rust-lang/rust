@@ -1,5 +1,5 @@
-// run-pass
-// ignore-cross-compile
+//@ run-pass
+//@ ignore-cross-compile
 
 // The general idea of this test is to enumerate all "interesting" expressions and check that
 // `parse(print(e)) == e` for all `e`. Here's what's interesting, for the purposes of this test:

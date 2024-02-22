@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![deny(rustdoc::invalid_html_tags)]
 
 /// This Vec<i32> thing!

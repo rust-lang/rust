@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This test purpose is to check that unused_imports lint isn't fired
 // by rustdoc. Why would it? Because when rustdoc is running, it uses
