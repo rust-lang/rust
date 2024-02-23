@@ -15,8 +15,10 @@ impl<'a, T> Struct<T> for Trait<'a, T> {}
 
 impl<'a, T> Enum<T> for Trait<'a, T> {}
 //~^ ERROR expected trait, found enum `Enum`
+//~| ERROR trait objects must include the `dyn` keyword
 
 impl<'a, T> Union<T> for Trait<'a, T> {}
 //~^ ERROR expected trait, found union `Union`
+//~| ERROR trait objects must include the `dyn` keyword
 
 fn main() {}

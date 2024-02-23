@@ -21,7 +21,7 @@ LL | impl<'a, T> Trait<'a, T> for Enum<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~
 
 error[E0404]: expected trait, found union `Union`
-  --> $DIR/suggest-swapping-self-ty-and-trait.rs:18:13
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:20:13
    |
 LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |             ^^^^^^^^ not a trait
@@ -45,6 +45,32 @@ help: if this is an object-safe trait, use `dyn`
 LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
    |                           +++
 
-error: aborting due to 3 previous errors; 1 warning emitted
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:15:25
+   |
+LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
+   |                         ^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | impl<'a, T> Enum<T> for dyn Trait<'a, T> {}
+   |                         +++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/suggest-swapping-self-ty-and-trait.rs:20:26
+   |
+LL | impl<'a, T> Union<T> for Trait<'a, T> {}
+   |                          ^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is an object-safe trait, use `dyn`
+   |
+LL | impl<'a, T> Union<T> for dyn Trait<'a, T> {}
+   |                          +++
+
+error: aborting due to 3 previous errors; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0404`.

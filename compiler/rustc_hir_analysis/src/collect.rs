@@ -55,7 +55,18 @@ mod type_of;
 // Main entry point
 
 fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut CollectItemTypesVisitor { tcx });
+    let items = tcx.hir_module_items(module_def_id);
+    let hir = tcx.hir();
+    let _ = items.par_items(|item| Ok(CollectItemTypesVisitor { tcx }.visit_item(hir.item(item))));
+    let _ = items.par_trait_items(|item| {
+        Ok(CollectItemTypesVisitor { tcx }.visit_trait_item(hir.trait_item(item)))
+    });
+    let _ = items.par_impl_items(|item| {
+        Ok(CollectItemTypesVisitor { tcx }.visit_impl_item(hir.impl_item(item)))
+    });
+    let _ = items.par_foreign_items(|item| {
+        Ok(CollectItemTypesVisitor { tcx }.visit_foreign_item(hir.foreign_item(item)))
+    });
 }
 
 pub fn provide(providers: &mut Providers) {

@@ -21,7 +21,7 @@ LL | impl<'a, T> Trait<'a, T> for Enum<T> {}
    |             ~~~~~~~~~~~~     ~~~~~~~
 
 error[E0404]: expected trait, found union `Union`
-  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:19:13
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:20:13
    |
 LL | impl<'a, T> Union<T> for Trait<'a, T> {}
    |             ^^^^^^^^ not a trait
@@ -42,7 +42,29 @@ help: add `dyn` keyword before this trait
 LL | impl<'a, T> Struct<T> for dyn Trait<'a, T> {}
    |                           +++
 
-error: aborting due to 4 previous errors
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:16:25
+   |
+LL | impl<'a, T> Enum<T> for Trait<'a, T> {}
+   |                         ^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl<'a, T> Enum<T> for dyn Trait<'a, T> {}
+   |                         +++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/suggest-swapping-self-ty-and-trait-edition-2021.rs:20:26
+   |
+LL | impl<'a, T> Union<T> for Trait<'a, T> {}
+   |                          ^^^^^^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | impl<'a, T> Union<T> for dyn Trait<'a, T> {}
+   |                          +++
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0404, E0782.
 For more information about an error, try `rustc --explain E0404`.
