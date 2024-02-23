@@ -1,0 +1,20 @@
+error[E0261]: use of undeclared lifetime name `'f`
+  --> $DIR/span-bug-issue-121414.rs:5:22
+   |
+LL | impl<'a> Bar for Foo<'f> {
+   |      -               ^^ undeclared lifetime
+   |      |
+   |      help: consider introducing lifetime `'f` here: `'f,`
+
+error: implementation of `Bar` is not general enough
+  --> $DIR/span-bug-issue-121414.rs:9:4
+   |
+LL | fn test()
+   |    ^^^^ implementation of `Bar` is not general enough
+   |
+   = note: `Bar` would have to be implemented for the type `Foo<'0>`, for any lifetime `'0`...
+   = note: ...but `Bar` is actually implemented for the type `Foo<'1>`, for some specific lifetime `'1`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.
