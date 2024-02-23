@@ -2916,7 +2916,7 @@ impl<'a, K, V> Cursor<'a, K, V> {
         }
     }
 
-    /// Returns a reference to the the key and value of the next element without
+    /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
     /// If the cursor is at the end of the map then `None` is returned
@@ -2925,7 +2925,7 @@ impl<'a, K, V> Cursor<'a, K, V> {
         self.clone().next()
     }
 
-    /// Returns a reference to the the key and value of the previous element
+    /// Returns a reference to the key and value of the previous element
     /// without moving the cursor.
     ///
     /// If the cursor is at the start of the map then `None` is returned.
@@ -2958,7 +2958,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
         Some((&*k, v))
     }
 
-    /// Returns a reference to the the key and value of the next element without
+    /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
     /// If the cursor is at the end of the map then `None` is returned
@@ -2968,7 +2968,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
         Some((&*k, v))
     }
 
-    /// Returns a reference to the the key and value of the previous element
+    /// Returns a reference to the key and value of the previous element
     /// without moving the cursor.
     ///
     /// If the cursor is at the start of the map then `None` is returned.
@@ -3056,7 +3056,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
         }
     }
 
-    /// Returns a reference to the the key and value of the next element without
+    /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
     /// If the cursor is at the end of the map then `None` is returned
@@ -3068,7 +3068,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
         Some(kv)
     }
 
-    /// Returns a reference to the the key and value of the previous element
+    /// Returns a reference to the key and value of the previous element
     /// without moving the cursor.
     ///
     /// If the cursor is at the start of the map then `None` is returned.
