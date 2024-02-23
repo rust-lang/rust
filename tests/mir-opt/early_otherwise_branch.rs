@@ -170,10 +170,13 @@ fn opt10(x: E8, y: E16) -> u32 {
     // CHECK: bb0: {
     // CHECK: [[LOCAL1:_.*]] = discriminant({{.*}});
     // CHECK: [[LOCAL2:_.*]] = discriminant({{.*}});
-    // CHECK: switchInt(move [[LOCAL2]]) -> [0: [[SWITCH_BB:bb.*]], otherwise: [[OTHERWISE:bb.*]]];
+    // CHECK: switchInt(move [[LOCAL2]]) -> [0: [[SWITCH_BB:bb.*]], otherwise: {{bb.*}}];
+    // CHECK-NEXT: }
+    // CHECK: [[UNREACHABLE:bb6]]: {
+    // CHECK-NEXT: unreachable;
     // CHECK-NEXT: }
     // CHECK: [[SWITCH_BB]]:
-    // CHECK:  switchInt([[LOCAL1]]) -> [0: bb{{.*}}, 1: bb{{.*}}, 2: bb{{.*}}, otherwise: [[OTHERWISE]]];
+    // CHECK:  switchInt([[LOCAL1]]) -> [0: bb{{.*}}, 1: bb{{.*}}, 2: bb{{.*}}, otherwise: [[UNREACHABLE]]];
     // CHECK-NEXT: }
     match (x, y) {
         (E8::A, E16::A) => 1,

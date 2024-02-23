@@ -36,7 +36,7 @@
 +         StorageLive(_12);
 +         _12 = Ne(_8, move _11);
 +         StorageDead(_11);
-+         switchInt(move _12) -> [0: bb5, otherwise: bb1];
++         switchInt(move _12) -> [0: bb6, otherwise: bb1];
       }
   
       bb1: {
@@ -82,10 +82,13 @@
       }
   
 -     bb7: {
--         unreachable;
 +     bb5: {
+          unreachable;
++     }
++ 
++     bb6: {
 +         StorageDead(_12);
-+         switchInt(_8) -> [0: bb3, 1: bb2, otherwise: bb1];
++         switchInt(_8) -> [0: bb3, 1: bb2, otherwise: bb5];
       }
   }
   
