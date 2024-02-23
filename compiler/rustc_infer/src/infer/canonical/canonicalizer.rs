@@ -175,8 +175,12 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
             ),
 
             ty::ReVar(vid) => {
-                let universe =
-                    infcx.inner.borrow_mut().unwrap_region_constraints().var_universe(vid);
+                let universe = infcx
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
+                    .probe_value(vid)
+                    .unwrap_err();
                 canonicalizer.canonical_var_for_region(
                     CanonicalVarInfo { kind: CanonicalVarKind::Region(universe) },
                     r,

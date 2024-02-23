@@ -374,7 +374,10 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
-        Some(self.universe_of_region_vid(lt))
+        match self.inner.borrow_mut().unwrap_region_constraints().probe_value(lt) {
+            Err(universe) => Some(universe),
+            Ok(_) => None,
+        }
     }
 
     fn root_ty_var(&self, vid: TyVid) -> TyVid {
@@ -1153,11 +1156,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// are associated.
     pub fn universe_of_region(&self, r: ty::Region<'tcx>) -> ty::UniverseIndex {
         self.inner.borrow_mut().unwrap_region_constraints().universe(r)
-    }
-
-    /// Return the universe that the region variable `r` was created in.
-    pub fn universe_of_region_vid(&self, vid: ty::RegionVid) -> ty::UniverseIndex {
-        self.inner.borrow_mut().unwrap_region_constraints().var_universe(vid)
     }
 
     /// Number of region variables created so far.
