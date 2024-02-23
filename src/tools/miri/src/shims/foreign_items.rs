@@ -158,6 +158,81 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         Ok(())
     }
 
+    fn lookup_init_array(&mut self) -> InterpResult<'tcx, Vec<ty::Instance<'tcx>>> {
+        let this = self.eval_context_mut();
+        let tcx = this.tcx.tcx;
+
+        let mut init_arrays = vec![];
+
+        let dependency_formats = tcx.dependency_formats(());
+        let dependency_format = dependency_formats
+            .iter()
+            .find(|(crate_type, _)| *crate_type == CrateType::Executable)
+            .expect("interpreting a non-executable crate");
+        for cnum in iter::once(LOCAL_CRATE).chain(
+            dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
+                // We add 1 to the number because that's what rustc also does everywhere it
+                // calls `CrateNum::new`...
+                #[allow(clippy::arithmetic_side_effects)]
+                (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
+            }),
+        ) {
+            for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
+                if let ExportedSymbol::NonGeneric(def_id) = symbol {
+                    let attrs = tcx.codegen_fn_attrs(def_id);
+                    let link_section = if let Some(link_section) = attrs.link_section {
+                        if !link_section.as_str().starts_with(".init_array") {
+                            continue;
+                        }
+                        link_section
+                    } else {
+                        continue;
+                    };
+
+                    init_arrays.push((link_section, def_id));
+                }
+            }
+        }
+
+        init_arrays.sort_by(|(a, _), (b, _)| a.as_str().cmp(b.as_str()));
+
+        let endianness = tcx.data_layout.endian;
+        let ptr_size = tcx.data_layout.pointer_size;
+
+        let mut init_array = vec![];
+
+        for (_, def_id) in init_arrays {
+            let alloc = tcx.eval_static_initializer(def_id)?.inner();
+            let mut expected_offset = Size::ZERO;
+            for &(offset, prov) in alloc.provenance().ptrs().iter() {
+                if offset != expected_offset {
+                    throw_ub_format!(".init_array.* may not contain any non-function pointer data");
+                }
+                expected_offset += ptr_size;
+
+                let alloc_id = prov.alloc_id();
+
+                let reloc_target_alloc = tcx.global_alloc(alloc_id);
+                match reloc_target_alloc {
+                    GlobalAlloc::Function(instance) => {
+                        let addend = {
+                            let offset = offset.bytes() as usize;
+                            let bytes = &alloc.inspect_with_uninit_and_ptr_outside_interpreter(
+                                offset..offset + ptr_size.bytes() as usize,
+                            );
+                            read_target_uint(endianness, bytes).unwrap()
+                        };
+                        assert_eq!(addend, 0);
+                        init_array.push(instance);
+                    }
+                    _ => throw_ub_format!(".init_array.* member is not a function pointer"),
+                }
+            }
+        }
+
+        Ok(init_array)
+    }
+
     /// Lookup the body of a function that has `link_name` as the symbol name.
     fn lookup_exported_symbol(
         &mut self,
