@@ -8,24 +8,6 @@ LL | #![feature(fn_delegation)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: delegation with early bound generics is not supported yet
-  --> $DIR/not-supported.rs:16:29
-   |
-LL |         fn bar(&self, x: T) -> T { x }
-   |         ------------------------ callee defined here
-...
-LL |         reuse GenericTrait::bar;
-   |                             ^^^
-
-error: delegation with early bound generics is not supported yet
-  --> $DIR/not-supported.rs:18:29
-   |
-LL |         fn bar1() {}
-   |         --------- callee defined here
-...
-LL |         reuse GenericTrait::bar1;
-   |                             ^^^^
-
-error: delegation with early bound generics is not supported yet
   --> $DIR/not-supported.rs:29:39
    |
 LL |         fn bar(&self, x: T) -> T { x }
@@ -96,6 +78,24 @@ LL |         fn foo(&self, x: i32) -> i32 { x }
 ...
 LL |         reuse Trait::foo { &self.0 }
    |                      ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:16:29
+   |
+LL |         fn bar(&self, x: T) -> T { x }
+   |         ------------------------ callee defined here
+...
+LL |         reuse GenericTrait::bar;
+   |                             ^^^
+
+error: delegation with early bound generics is not supported yet
+  --> $DIR/not-supported.rs:18:29
+   |
+LL |         fn bar1() {}
+   |         --------- callee defined here
+...
+LL |         reuse GenericTrait::bar1;
+   |                             ^^^^
 
 error: delegation with early bound generics is not supported yet
   --> $DIR/not-supported.rs:74:21

@@ -449,103 +449,6 @@ note: however, the inferred type `Map<Filter<Range<i32>, {closure@typeck_type_pl
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/typeck_type_placeholder_item.rs:140:31
-   |
-LL |     fn method_test1(&self, x: _);
-   |                               ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn method_test1<T>(&self, x: T);
-   |                    +++           ~
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/typeck_type_placeholder_item.rs:142:31
-   |
-LL |     fn method_test2(&self, x: _) -> _;
-   |                               ^     ^ not allowed in type signatures
-   |                               |
-   |                               not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn method_test2<T>(&self, x: T) -> T;
-   |                    +++           ~     ~
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/typeck_type_placeholder_item.rs:144:31
-   |
-LL |     fn method_test3(&self) -> _;
-   |                               ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn method_test3<T>(&self) -> T;
-   |                    +++           ~
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/typeck_type_placeholder_item.rs:146:26
-   |
-LL |     fn assoc_fn_test1(x: _);
-   |                          ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn assoc_fn_test1<T>(x: T);
-   |                      +++    ~
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/typeck_type_placeholder_item.rs:148:26
-   |
-LL |     fn assoc_fn_test2(x: _) -> _;
-   |                          ^     ^ not allowed in type signatures
-   |                          |
-   |                          not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn assoc_fn_test2<T>(x: T) -> T;
-   |                      +++    ~     ~
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/typeck_type_placeholder_item.rs:150:28
-   |
-LL |     fn assoc_fn_test3() -> _;
-   |                            ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     fn assoc_fn_test3<T>() -> T;
-   |                      +++      ~
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:190:14
-   |
-LL |     type B = _;
-   |              ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:192:14
-   |
-LL |     const C: _;
-   |              ^ not allowed in type signatures
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:194:14
-   |
-LL |     const D: _ = 42;
-   |              ^
-   |              |
-   |              not allowed in type signatures
-   |              help: replace with the correct type: `i32`
-
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:197:26
-   |
-LL |     type F: std::ops::Fn(_);
-   |                          ^ not allowed in type signatures
-
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:41:24
    |
@@ -656,6 +559,103 @@ LL |     const D: _ = 42;
    |              |
    |              not allowed in type signatures
    |              help: replace with the correct type: `i32`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/typeck_type_placeholder_item.rs:140:31
+   |
+LL |     fn method_test1(&self, x: _);
+   |                               ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn method_test1<T>(&self, x: T);
+   |                    +++           ~
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/typeck_type_placeholder_item.rs:142:31
+   |
+LL |     fn method_test2(&self, x: _) -> _;
+   |                               ^     ^ not allowed in type signatures
+   |                               |
+   |                               not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn method_test2<T>(&self, x: T) -> T;
+   |                    +++           ~     ~
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/typeck_type_placeholder_item.rs:144:31
+   |
+LL |     fn method_test3(&self) -> _;
+   |                               ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn method_test3<T>(&self) -> T;
+   |                    +++           ~
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/typeck_type_placeholder_item.rs:146:26
+   |
+LL |     fn assoc_fn_test1(x: _);
+   |                          ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn assoc_fn_test1<T>(x: T);
+   |                      +++    ~
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/typeck_type_placeholder_item.rs:148:26
+   |
+LL |     fn assoc_fn_test2(x: _) -> _;
+   |                          ^     ^ not allowed in type signatures
+   |                          |
+   |                          not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn assoc_fn_test2<T>(x: T) -> T;
+   |                      +++    ~     ~
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/typeck_type_placeholder_item.rs:150:28
+   |
+LL |     fn assoc_fn_test3() -> _;
+   |                            ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn assoc_fn_test3<T>() -> T;
+   |                      +++      ~
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/typeck_type_placeholder_item.rs:190:14
+   |
+LL |     type B = _;
+   |              ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/typeck_type_placeholder_item.rs:192:14
+   |
+LL |     const C: _;
+   |              ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
+  --> $DIR/typeck_type_placeholder_item.rs:194:14
+   |
+LL |     const D: _ = 42;
+   |              ^
+   |              |
+   |              not allowed in type signatures
+   |              help: replace with the correct type: `i32`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/typeck_type_placeholder_item.rs:197:26
+   |
+LL |     type F: std::ops::Fn(_);
+   |                          ^ not allowed in type signatures
 
 error[E0046]: not all trait items implemented, missing: `F`
   --> $DIR/typeck_type_placeholder_item.rs:200:1
