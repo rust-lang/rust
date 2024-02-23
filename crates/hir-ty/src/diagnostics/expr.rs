@@ -160,7 +160,7 @@ impl ExprValidator {
                 });
             }
 
-            let receiver_ty = self.infer[receiver.clone()].strip_references().clone();
+            let receiver_ty = self.infer[*receiver].strip_references().clone();
             checker.prev_receiver_ty = Some(receiver_ty);
         }
     }
