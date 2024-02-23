@@ -6,8 +6,8 @@ use std::{
 use crate::fluent_generated as fluent;
 use rustc_ast::Label;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, DiagnosticSymbolList,
-    EmissionGuarantee, IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, DiagSymbolList, EmissionGuarantee,
+    IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessageOp,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -1565,7 +1565,7 @@ pub enum MultipleDeadCodes<'tcx> {
         num: usize,
         descr: &'tcx str,
         participle: &'tcx str,
-        name_list: DiagnosticSymbolList,
+        name_list: DiagSymbolList,
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
         #[subdiagnostic]
@@ -1577,7 +1577,7 @@ pub enum MultipleDeadCodes<'tcx> {
         num: usize,
         descr: &'tcx str,
         participle: &'tcx str,
-        name_list: DiagnosticSymbolList,
+        name_list: DiagSymbolList,
         #[subdiagnostic]
         change_fields_suggestion: ChangeFieldsToBeOfUnitType,
         #[subdiagnostic]
@@ -1601,7 +1601,7 @@ pub struct ParentInfo<'tcx> {
 #[note(passes_ignored_derived_impls)]
 pub struct IgnoredDerivedImpls {
     pub name: Symbol,
-    pub trait_list: DiagnosticSymbolList,
+    pub trait_list: DiagSymbolList,
     pub trait_list_len: usize,
 }
 

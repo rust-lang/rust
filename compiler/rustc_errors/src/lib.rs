@@ -42,7 +42,7 @@ pub use diagnostic::{
     IntoDiagnosticArg, StringPart, Subdiag, SubdiagnosticMessageOp,
 };
 pub use diagnostic_impls::{
-    DiagArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,
+    DiagArgFromDisplay, DiagSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,
     SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;

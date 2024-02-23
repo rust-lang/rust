@@ -227,15 +227,15 @@ impl IntoDiagnosticArg for rustc_lint_defs::Level {
 }
 
 #[derive(Clone)]
-pub struct DiagnosticSymbolList(Vec<Symbol>);
+pub struct DiagSymbolList(Vec<Symbol>);
 
-impl From<Vec<Symbol>> for DiagnosticSymbolList {
+impl From<Vec<Symbol>> for DiagSymbolList {
     fn from(v: Vec<Symbol>) -> Self {
-        DiagnosticSymbolList(v)
+        DiagSymbolList(v)
     }
 }
 
-impl IntoDiagnosticArg for DiagnosticSymbolList {
+impl IntoDiagnosticArg for DiagSymbolList {
     fn into_diagnostic_arg(self) -> DiagArgValue {
         DiagArgValue::StrListSepByAnd(
             self.0.into_iter().map(|sym| Cow::Owned(format!("`{sym}`"))).collect(),
