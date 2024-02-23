@@ -115,6 +115,74 @@ fn opt7(x: Option<u32>, y: Option<u32>) -> u32 {
     }
 }
 
+// EMIT_MIR early_otherwise_branch.opt8.EarlyOtherwiseBranch.diff
+fn opt8(x: u32, y: u64) -> u32 {
+    // CHECK-LABEL: fn opt8(
+    // CHECK: bb0: {
+    // CHECK: switchInt((_{{.*}}: u64)) -> [10: [[SWITCH_BB:bb.*]], otherwise: [[OTHERWISE:bb.*]]];
+    // CHECK-NEXT: }
+    // CHECK: [[SWITCH_BB]]:
+    // CHECK:  switchInt((_{{.*}}: u32)) -> [1: bb{{.*}}, 2: bb{{.*}}, 3: bb{{.*}}, otherwise: [[OTHERWISE]]];
+    // CHECK-NEXT: }
+    match (x, y) {
+        (1, 10) => 4,
+        (2, 10) => 5,
+        (3, 10) => 6,
+        _ => 0,
+    }
+}
+
+#[repr(u8)]
+enum E8 {
+    A,
+    B,
+    C,
+}
+
+#[repr(u16)]
+enum E16 {
+    A,
+    B,
+    C,
+}
+
+// Can we add a cast instruction for transformation?
+// EMIT_MIR early_otherwise_branch.opt9.EarlyOtherwiseBranch.diff
+fn opt9(x: E8, y: E16) -> u32 {
+    // CHECK-LABEL: fn opt9(
+    // CHECK: bb0: {
+    // CHECK: [[LOCAL1:_.*]] = discriminant({{.*}});
+    // CHECK-NOT: discriminant
+    // CHECK: switchInt(move [[LOCAL1]]) -> [
+    // CHECK-NEXT: }
+    match (x, y) {
+        (E8::A, E16::A) => 1,
+        (E8::B, E16::B) => 2,
+        (E8::C, E16::C) => 3,
+        _ => 0,
+    }
+}
+
+// Since the target values are the same, we can optimize.
+// EMIT_MIR early_otherwise_branch.opt10.EarlyOtherwiseBranch.diff
+fn opt10(x: E8, y: E16) -> u32 {
+    // CHECK-LABEL: fn opt10(
+    // CHECK: bb0: {
+    // CHECK: [[LOCAL1:_.*]] = discriminant({{.*}});
+    // CHECK: [[LOCAL2:_.*]] = discriminant({{.*}});
+    // CHECK: switchInt(move [[LOCAL2]]) -> [0: [[SWITCH_BB:bb.*]], otherwise: [[OTHERWISE:bb.*]]];
+    // CHECK-NEXT: }
+    // CHECK: [[SWITCH_BB]]:
+    // CHECK:  switchInt([[LOCAL1]]) -> [0: bb{{.*}}, 1: bb{{.*}}, 2: bb{{.*}}, otherwise: [[OTHERWISE]]];
+    // CHECK-NEXT: }
+    match (x, y) {
+        (E8::A, E16::A) => 1,
+        (E8::B, E16::A) => 2,
+        (E8::C, E16::A) => 3,
+        _ => 0,
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
@@ -123,4 +191,7 @@ fn main() {
     opt5(0, 0);
     opt6(0, 0);
     opt7(None, Some(0));
+    opt8(0, 0);
+    opt9(E8::A, E16::A);
+    opt10(E8::A, E16::A);
 }

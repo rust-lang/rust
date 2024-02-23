@@ -334,9 +334,6 @@ fn evaluate_candidate<'tcx>(
         return None;
     };
     let child_ty = child_discr.ty(body.local_decls(), tcx);
-    if child_ty != parent_ty {
-        return None;
-    }
     if bbs[child].statements.len() > 1 {
         return None;
     }
@@ -424,6 +421,9 @@ fn evaluate_candidate<'tcx>(
         }
     }
     if same_target_value.is_none() {
+        if child_ty != parent_ty {
+            return None;
+        }
         for (value, child) in targets.iter() {
             if !verify_candidate_branch(
                 &bbs[child],
