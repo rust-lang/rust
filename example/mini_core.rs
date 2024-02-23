@@ -8,6 +8,7 @@
     rustc_attrs,
     transparent_unions,
     auto_traits,
+    freeze_impls,
     thread_local
 )]
 #![no_core]
