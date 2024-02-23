@@ -115,7 +115,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // with more relevant type information and hide redundant E0282 errors.
         errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
-                if Some(pred.def_id()) == self.tcx.lang_items().sized_trait() =>
+                if self.tcx.is_default_trait(pred.def_id()) =>
             {
                 1
             }
@@ -2344,7 +2344,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
-                if self.tcx.lang_items().sized_trait() == Some(trait_ref.def_id()) {
+                if self.tcx.is_default_trait(trait_ref.def_id()) {
                     match self.tainted_by_errors() {
                         None => {
                             let err = self.emit_inference_failure_err(

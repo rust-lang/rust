@@ -709,7 +709,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         associated_types: FxIndexMap<Span, FxIndexSet<DefId>>,
         potential_assoc_types: Vec<Span>,
-        trait_bounds: &[hir::PolyTraitRef<'_>],
+        trait_bounds: &[(hir::PolyTraitRef<'_>, hir::TraitBoundModifier)],
     ) {
         if associated_types.values().all(|v| v.is_empty()) {
             return;
@@ -751,7 +751,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if object_safety_violations {
             return;
         }
-        if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
+        if let ([], [(bound, _)]) = (&potential_assoc_types[..], &trait_bounds) {
             match bound.trait_ref.path.segments {
                 // FIXME: `trait_ref.path.span` can point to a full path with multiple
                 // segments, even though `trait_ref.path.segments` is of length `1`. Work
@@ -793,7 +793,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // and we can then use their span to indicate this to the user.
         let bound_names = trait_bounds
             .iter()
-            .filter_map(|poly_trait_ref| {
+            .filter_map(|(poly_trait_ref, _)| {
                 let path = poly_trait_ref.trait_ref.path.segments.last()?;
                 let args = path.args?;
 

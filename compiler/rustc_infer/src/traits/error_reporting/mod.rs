@@ -62,7 +62,7 @@ pub fn report_object_safety_error<'tcx>(
 
     if let Some(hir_id) = hir_id
         && let hir::Node::Ty(ty) = tcx.hir_node(hir_id)
-        && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
+        && let hir::TyKind::TraitObject([(trait_ref, _), ..], ..) = ty.kind
     {
         let mut hir_id = hir_id;
         while let hir::Node::Ty(ty) = tcx.parent_hir_node(hir_id) {

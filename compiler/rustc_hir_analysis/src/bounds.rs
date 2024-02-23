@@ -72,11 +72,27 @@ impl<'tcx> Bounds<'tcx> {
         ));
     }
 
-    pub fn push_sized(&mut self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) {
-        let sized_def_id = tcx.require_lang_item(LangItem::Sized, Some(span));
-        let trait_ref = ty::TraitRef::new(tcx, sized_def_id, [ty]);
-        // Preferable to put this obligation first, since we report better errors for sized ambiguity.
-        self.clauses.insert(0, (trait_ref.to_predicate(tcx), span));
+    pub fn push_lang_item_trait(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        lang_item: LangItem,
+        span: Span,
+    ) {
+        assert_eq!(lang_item.target(), rustc_hir::Target::Trait);
+        if lang_item == LangItem::Sized {
+            let sized_trait = tcx.require_lang_item(lang_item, Some(span));
+            let trait_ref = ty::TraitRef::new(tcx, sized_trait, [ty]);
+            // Preferable to put this obligation first, since we report better errors for sized ambiguity.
+            self.clauses.insert(0, (trait_ref.to_predicate(tcx), span));
+        } else {
+            // Do not generate default bounds if lang item was not defined
+            let Some(trait_def_id) = tcx.lang_items().get(lang_item) else {
+                return;
+            };
+            let trait_ref = ty::TraitRef::new(tcx, trait_def_id, [ty]);
+            self.clauses.push((trait_ref.to_predicate(tcx), span));
+        }
     }
 
     pub fn clauses(&self) -> impl Iterator<Item = (ty::Clause<'tcx>, Span)> + '_ {

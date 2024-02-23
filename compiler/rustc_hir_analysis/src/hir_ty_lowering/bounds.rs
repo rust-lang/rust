@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{sym, ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
@@ -16,26 +16,178 @@ use crate::bounds::Bounds;
 use crate::errors;
 use crate::hir_ty_lowering::{HirTyLowerer, OnlySelfBounds, PredicateFilter};
 
-impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Add a `Sized` bound to the `bounds` if appropriate.
+impl<'tcx, 'a> dyn HirTyLowerer<'tcx> + '_
+where
+    'tcx: 'a,
+{
+    /// Add a `Sized` or default auto traits bounds to the `bounds` if appropriate.
     ///
-    /// Doesn't add the bound if the HIR bounds contain any of `Sized`, `?Sized` or `!Sized`.
-    pub(crate) fn add_sized_bound(
+    /// Doesn't add the bound if the HIR bounds contain any of `Trait`, `?Trait` or `!Trait`.
+    pub(crate) fn add_implicit_traits(
         &self,
         bounds: &mut Bounds<'tcx>,
         self_ty: Ty<'tcx>,
-        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
+        hir_bounds: &'a [hir::GenericBound<'a>],
+        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+        span: Span,
+    ) {
+        self.add_implicit_traits_with_filter(
+            bounds,
+            self_ty,
+            hir_bounds,
+            self_ty_where_predicates,
+            span,
+            |_| true,
+        );
+    }
+
+    /// Lazily sets `experimental_default_bounds` to true on trait super bounds.
+    /// For optimization purposes instead of adding default supertraits, bounds
+    /// are added to the associative items:
+    ///
+    /// ```ignore(illustrative)
+    /// // Default bounds are generated in the following way:
+    /// trait Trait {
+    ///     fn foo(&self) where Self: Leak {}
+    /// }
+    ///
+    /// // instead of this:
+    /// trait Trait: Leak {
+    ///     fn foo(&self) {}
+    /// }
+    /// ```
+    /// It is not always possible to do this because of backward compatibility:
+    ///
+    /// ```ignore(illustrative)
+    /// pub trait Trait<Rhs = Self> {}
+    /// pub trait Trait1 : Trait {}
+    /// ```
+    ///
+    /// or:
+    ///
+    /// ```ignore(illustrative)
+    /// trait Trait {
+    ///     type Type where Self: Sized;
+    /// }
+    /// trait Trait2<T> : Trait<Type = T> {}
+    /// ```
+    ///
+    /// Therefore, `experimental_default_bounds` are still being added to supertraits if
+    /// the `SelfTyParam` or `TypeBinding` was found in a trait header.
+    pub(crate) fn add_implicit_super_traits(
+        &self,
+        trait_def_id: LocalDefId,
+        bounds: &mut Bounds<'tcx>,
+        hir_bounds: &'a [hir::GenericBound<'a>],
+        hir_generics: &'tcx hir::Generics<'tcx>,
+        span: Span,
+    ) {
+        assert!(matches!(self.tcx().def_kind(trait_def_id), DefKind::Trait | DefKind::TraitAlias));
+
+        struct TraitInfoCollector {
+            found: bool,
+        }
+
+        impl<'tcx> hir::intravisit::Visitor<'tcx> for TraitInfoCollector {
+            fn visit_assoc_type_binding(&mut self, _: &'tcx hir::TypeBinding<'tcx>) {
+                self.found = true;
+            }
+
+            fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+                if matches!(
+                    &t.kind,
+                    hir::TyKind::Path(hir::QPath::Resolved(
+                        _,
+                        hir::Path { res: hir::def::Res::SelfTyParam { .. }, .. },
+                    ))
+                ) {
+                    self.found = true;
+                    return;
+                }
+                hir::intravisit::walk_ty(self, t);
+            }
+        }
+
+        let mut visitor = TraitInfoCollector { found: false };
+        for bound in hir_bounds {
+            hir::intravisit::walk_param_bound(&mut visitor, bound);
+        }
+        hir::intravisit::walk_generics(&mut visitor, hir_generics);
+
+        if visitor.found {
+            let self_ty_where_predicates = (trait_def_id, hir_generics.predicates);
+            self.add_implicit_traits_with_filter(
+                bounds,
+                self.tcx().types.self_param,
+                hir_bounds,
+                Some(self_ty_where_predicates),
+                span,
+                |default_trait| {
+                    default_trait != hir::LangItem::Sized
+                        && !self.tcx().is_default_trait(trait_def_id.to_def_id())
+                },
+            );
+        }
+    }
+
+    pub(crate) fn add_implicit_traits_with_filter(
+        &self,
+        bounds: &mut Bounds<'tcx>,
+        self_ty: Ty<'tcx>,
+        hir_bounds: &'a [hir::GenericBound<'a>],
+        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+        span: Span,
+        f: impl Fn(hir::LangItem) -> bool,
+    ) {
+        self.tcx().default_traits().iter().filter(|&&default_trait| f(default_trait)).for_each(
+            |default_trait| {
+                self.add_implicit_trait(
+                    *default_trait,
+                    bounds,
+                    self_ty,
+                    hir_bounds,
+                    self_ty_where_predicates,
+                    span,
+                );
+            },
+        );
+    }
+
+    pub(crate) fn add_implicit_trait(
+        &self,
+        trait_: hir::LangItem,
+        bounds: &mut Bounds<'tcx>,
+        self_ty: Ty<'tcx>,
+        hir_bounds: &'a [hir::GenericBound<'a>],
         self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
         span: Span,
     ) {
         let tcx = self.tcx();
-        let sized_def_id = tcx.lang_items().sized_trait();
-        let mut seen_negative_sized_bound = false;
-        let mut seen_positive_sized_bound = false;
+        let trait_id = tcx.lang_items().get(trait_);
+
+        if self.check_for_implicit_trait(trait_id, hir_bounds, self_ty_where_predicates) {
+            // There was no `?Trait` or `!Trait` bound;
+            // add `Trait` if it's available.
+            bounds.push_lang_item_trait(tcx, self_ty, trait_, span);
+        }
+    }
+
+    fn check_for_implicit_trait(
+        &self,
+        trait_def_id: Option<DefId>,
+        hir_bounds: &'a [hir::GenericBound<'a>],
+        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+    ) -> bool {
+        let Some(trait_def_id) = trait_def_id else {
+            return false;
+        };
+        let tcx = self.tcx();
+        let mut seen_negative_bound = false;
+        let mut seen_positive_bound = false;
 
         // Try to find an unbound in bounds.
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
-        let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
+        let mut search_bounds = |hir_bounds: &'a [hir::GenericBound<'a>]| {
             for hir_bound in hir_bounds {
                 let hir::GenericBound::Trait(ptr, modifier) = hir_bound else {
                     continue;
@@ -43,17 +195,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 match modifier {
                     hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
                     hir::TraitBoundModifier::Negative => {
-                        if let Some(sized_def_id) = sized_def_id
-                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
-                        {
-                            seen_negative_sized_bound = true;
+                        if ptr.trait_ref.path.res == Res::Def(DefKind::Trait, trait_def_id) {
+                            seen_negative_bound = true;
                         }
                     }
                     hir::TraitBoundModifier::None => {
-                        if let Some(sized_def_id) = sized_def_id
-                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
-                        {
-                            seen_positive_sized_bound = true;
+                        if ptr.trait_ref.path.res == Res::Def(DefKind::Trait, trait_def_id) {
+                            seen_positive_bound = true;
                         }
                     }
                     _ => {}
@@ -71,36 +219,49 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        if unbounds.len() > 1 {
-            tcx.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
-                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
-            });
+        if unbounds.len() > 1 && !tcx.features().more_maybe_bounds {
+            self.tcx()
+                .sess
+                .create_feature_err(
+                    errors::MultipleRelaxedDefaultBounds {
+                        spans: unbounds.iter().map(|ptr| ptr.span).collect(),
+                    },
+                    sym::more_maybe_bounds,
+                )
+                .emit();
         }
 
-        let mut seen_sized_unbound = false;
+        let mut seen_unbound = false;
         for unbound in unbounds {
-            if let Some(sized_def_id) = sized_def_id
-                && unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
-            {
-                seen_sized_unbound = true;
-                continue;
+            let unbound_def_id = unbound.trait_ref.trait_def_id();
+            if unbound_def_id == Some(trait_def_id) {
+                seen_unbound = true;
             }
-            // There was a `?Trait` bound, but it was not `?Sized`; warn.
-            tcx.dcx().span_warn(
-                unbound.span,
-                "relaxing a default bound only does something for `?Sized`; \
-                all other traits are not bound by default",
-            );
+
+            let emit_relax_warn = || {
+                let unbound_traits =
+                    match self.tcx().sess.opts.unstable_opts.experimental_default_bounds {
+                        true => "`?Sized` and `experimental_default_bounds`",
+                        false => "`?Sized`",
+                    };
+                tcx.dcx().span_warn(
+                    unbound.span,
+                    format!(
+                        "relaxing a default bound only does something for {}; \
+                    all other traits are not bound by default",
+                        unbound_traits
+                    ),
+                );
+            };
+
+            match unbound_def_id {
+                Some(def_id) if !tcx.is_default_trait(def_id) => emit_relax_warn(),
+                None => emit_relax_warn(),
+                _ => {}
+            }
         }
 
-        if seen_sized_unbound || seen_negative_sized_bound || seen_positive_sized_bound {
-            // There was in fact a `?Sized`, `!Sized` or explicit `Sized` bound;
-            // we don't need to do anything.
-        } else if sized_def_id.is_some() {
-            // There was no `?Sized`, `!Sized` or explicit `Sized` bound;
-            // add `Sized` if it's available.
-            bounds.push_sized(tcx, self_ty, span);
-        }
+        !(seen_unbound || seen_negative_bound || seen_positive_bound)
     }
 
     /// Lower HIR bounds into `bounds` given the self type `param_ty` and the overarching late-bound vars if any.
