@@ -7,9 +7,7 @@ mod generated;
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub use self::generated::*;
 
-use crate::{
-    core_arch::simd::*, core_arch::simd_llvm::*, hint::unreachable_unchecked, mem::transmute,
-};
+use crate::{core_arch::simd::*, hint::unreachable_unchecked, intrinsics::simd::*, mem::transmute};
 #[cfg(test)]
 use stdarch_test::assert_instr;
 

@@ -13,7 +13,6 @@ use crate::core_arch::simd::i32x8;
 use crate::core_arch::simd::i64x2;
 use crate::core_arch::simd::i64x4;
 use crate::core_arch::simd::i64x8;
-use crate::core_arch::simd_llvm::simd_select_bitmask;
 use crate::core_arch::x86::__m128i;
 use crate::core_arch::x86::__m256i;
 use crate::core_arch::x86::__m512i;
@@ -25,6 +24,7 @@ use crate::core_arch::x86::_mm_setzero_si128;
 use crate::core_arch::x86::m128iExt;
 use crate::core_arch::x86::m256iExt;
 use crate::core_arch::x86::m512iExt;
+use crate::intrinsics::simd::simd_select_bitmask;
 use crate::mem::transmute;
 
 #[cfg(test)]

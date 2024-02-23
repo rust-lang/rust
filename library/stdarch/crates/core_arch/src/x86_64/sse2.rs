@@ -1,8 +1,8 @@
 //! `x86_64`'s Streaming SIMD Extensions 2 (SSE2)
 
 use crate::{
-    core_arch::{simd_llvm::*, x86::*},
-    intrinsics,
+    core_arch::x86::*,
+    intrinsics::{self, simd::*},
 };
 
 #[cfg(test)]

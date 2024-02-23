@@ -1,9 +1,6 @@
 //! `i686`'s Streaming SIMD Extensions 4.1 (SSE4.1)
 
-use crate::{
-    core_arch::{simd_llvm::*, x86::*},
-    mem::transmute,
-};
+use crate::{core_arch::x86::*, intrinsics::simd::*, mem::transmute};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

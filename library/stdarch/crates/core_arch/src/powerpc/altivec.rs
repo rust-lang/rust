@@ -13,11 +13,7 @@
 
 #![allow(non_camel_case_types)]
 
-use crate::{
-    core_arch::{simd::*, simd_llvm::*},
-    mem,
-    mem::transmute,
-};
+use crate::{core_arch::simd::*, intrinsics::simd::*, mem, mem::transmute};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

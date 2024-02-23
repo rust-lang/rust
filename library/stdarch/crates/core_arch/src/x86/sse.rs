@@ -1,7 +1,8 @@
 //! Streaming SIMD Extensions (SSE)
 
 use crate::{
-    core_arch::{simd::*, simd_llvm::*, x86::*},
+    core_arch::{simd::*, x86::*},
+    intrinsics::simd::*,
     mem, ptr,
 };
 

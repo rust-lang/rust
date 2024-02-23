@@ -18,7 +18,8 @@
 //! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
-use crate::core_arch::{simd_llvm::*, x86::*};
+use crate::core_arch::x86::*;
+use crate::intrinsics::simd::*;
 
 /// Extracts a 64-bit integer from `a`, selected with `INDEX`.
 ///

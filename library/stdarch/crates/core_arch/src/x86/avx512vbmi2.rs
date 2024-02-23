@@ -1,6 +1,7 @@
 use crate::{
     arch::asm,
-    core_arch::{simd::*, simd_llvm::*, x86::*},
+    core_arch::{simd::*, x86::*},
+    intrinsics::simd::*,
 };
 
 #[cfg(test)]

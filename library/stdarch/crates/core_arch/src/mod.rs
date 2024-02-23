@@ -265,8 +265,6 @@ pub mod arch {
     }
 }
 
-mod simd_llvm;
-
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", doc))]
 #[doc(cfg(any(target_arch = "x86", target_arch = "x86_64")))]
 mod x86;

@@ -7,7 +7,6 @@
 #![feature(
     custom_inner_attributes,
     link_llvm_intrinsics,
-    platform_intrinsics,
     repr_simd,
     simd_ffi,
     proc_macro_hygiene,

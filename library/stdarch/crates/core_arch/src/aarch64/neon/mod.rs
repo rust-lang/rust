@@ -11,8 +11,9 @@ pub use self::generated::*;
 // FIXME: replace neon with asimd
 
 use crate::{
-    core_arch::{arm_shared::*, simd::*, simd_llvm::*},
+    core_arch::{arm_shared::*, simd::*},
     hint::unreachable_unchecked,
+    intrinsics::simd::*,
     mem::{transmute, zeroed},
     ptr::{read_unaligned, write_unaligned},
 };

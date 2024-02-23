@@ -2,7 +2,7 @@
 
 use crate::prelude::v1::*;
 
-use crate::core_arch::simd_llvm::*;
+use crate::intrinsics::simd::*;
 
 define_ty_doc! {
     f32x2, f32, f32 |

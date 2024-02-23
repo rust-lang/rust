@@ -6,11 +6,7 @@
 #![allow(non_camel_case_types)]
 #![allow(unused_imports)]
 
-use crate::{
-    core_arch::{simd, simd_llvm::*},
-    marker::Sized,
-    mem, ptr,
-};
+use crate::{core_arch::simd, intrinsics::simd::*, marker::Sized, mem, ptr};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

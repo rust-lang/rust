@@ -14,7 +14,8 @@
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
 use crate::{
-    core_arch::{simd::*, simd_llvm::*, x86::*},
+    core_arch::{simd::*, x86::*},
+    intrinsics::simd::*,
     mem, ptr,
 };
 
