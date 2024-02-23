@@ -142,7 +142,7 @@ fn get_owner_return_paths(
 /// as they must always be defined by the compiler.
 // FIXME: Move this to a more appropriate place.
 pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
-    if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
+    if let Abi::RustIntrinsic = abi {
         tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
     }
 }

@@ -312,7 +312,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
     use rustc_target::spec::abi::Abi::*;
     match tcx.sess.target.adjust_abi(abi, c_variadic) {
-        RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
+        RustIntrinsic | Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
         // even SIMD registers, which is generally not a good trade-off.
@@ -605,7 +605,7 @@ fn fn_abi_new_uncached<'tcx>(
     let linux_powerpc_gnu_like =
         target.os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
     use SpecAbi::*;
-    let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
+    let rust_abi = matches!(sig.abi, RustIntrinsic | Rust | RustCall);
 
     let is_drop_in_place =
         fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
@@ -713,11 +713,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
         return Ok(());
     }
 
-    if abi == SpecAbi::Rust
-        || abi == SpecAbi::RustCall
-        || abi == SpecAbi::RustIntrinsic
-        || abi == SpecAbi::PlatformIntrinsic
-    {
+    if abi == SpecAbi::Rust || abi == SpecAbi::RustCall || abi == SpecAbi::RustIntrinsic {
         // Look up the deduced parameter attributes for this function, if we have its def ID and
         // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
         // as appropriate.
@@ -753,12 +749,11 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // target feature sets. Some more information about this
                 // issue can be found in #44367.
                 //
-                // Note that the platform intrinsic ABI is exempt here as
+                // Note that the intrinsic ABI is exempt here as
                 // that's how we connect up to LLVM and it's unstable
                 // anyway, we control all calls to it in libstd.
                 Abi::Vector { .. }
-                    if abi != SpecAbi::PlatformIntrinsic
-                        && cx.tcx.sess.target.simd_types_indirect =>
+                    if abi != SpecAbi::RustIntrinsic && cx.tcx.sess.target.simd_types_indirect =>
                 {
                     arg.make_indirect();
                     return;

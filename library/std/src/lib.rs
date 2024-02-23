@@ -270,6 +270,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(platform_intrinsics))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -301,7 +302,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(no_sanitize)]
-#![feature(platform_intrinsics)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]

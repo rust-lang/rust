@@ -4,14 +4,14 @@
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
-extern "platform-intrinsic" {
+extern "intrinsic" {
     fn simd_fmin<T>(x: T, y: T) -> T;
     fn simd_fmax<T>(x: T, y: T) -> T;
 }

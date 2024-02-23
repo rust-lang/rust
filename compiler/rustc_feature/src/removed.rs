@@ -156,6 +156,9 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     (removed, panic_implementation, "1.28.0", Some(44489),
      Some("subsumed by `#[panic_handler]`")),
+    /// Allows `extern "platform-intrinsic" { ... }`.
+    (removed, platform_intrinsics, "1.4.0", Some(27731),
+     Some("SIMD intrinsics use the regular intrinsics ABI now")),
     /// Allows using `#![plugin(myplugin)]`.
     (removed, plugin, "1.75.0", Some(29597),
      Some("plugins are no longer supported")),

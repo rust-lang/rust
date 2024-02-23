@@ -833,7 +833,6 @@ impl<'tcx> Stable<'tcx> for rustc_target::spec::abi::Abi {
             abi::Abi::System { unwind } => Abi::System { unwind },
             abi::Abi::RustIntrinsic => Abi::RustIntrinsic,
             abi::Abi::RustCall => Abi::RustCall,
-            abi::Abi::PlatformIntrinsic => Abi::PlatformIntrinsic,
             abi::Abi::Unadjusted => Abi::Unadjusted,
             abi::Abi::RustCold => Abi::RustCold,
             abi::Abi::RiscvInterruptM => Abi::RiscvInterruptM,

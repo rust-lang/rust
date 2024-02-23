@@ -1389,7 +1389,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if target == Target::ForeignMod
             && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
-            && !matches!(abi, Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic)
+            && !matches!(abi, Abi::Rust | Abi::RustIntrinsic)
         {
             return;
         }
@@ -2071,7 +2071,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     ) -> bool {
         if let Target::ForeignFn = target
             && let hir::Node::Item(Item {
-                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic | Abi::PlatformIntrinsic, .. },
+                kind: ItemKind::ForeignMod { abi: Abi::RustIntrinsic, .. },
                 ..
             }) = self.tcx.parent_hir_node(hir_id)
         {

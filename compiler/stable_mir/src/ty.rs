@@ -906,7 +906,6 @@ pub enum Abi {
     System { unwind: bool },
     RustIntrinsic,
     RustCall,
-    PlatformIntrinsic,
     Unadjusted,
     RustCold,
     RiscvInterruptM,

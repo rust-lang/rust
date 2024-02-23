@@ -612,17 +612,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     }
                 }
 
-                Abi::PlatformIntrinsic => {
-                    for item in items {
-                        intrinsic::check_platform_intrinsic_type(
-                            tcx,
-                            item.id.owner_id.def_id,
-                            item.span,
-                            item.ident.name,
-                        );
-                    }
-                }
-
                 _ => {
                     for item in items {
                         let def_id = item.id.owner_id.def_id;
