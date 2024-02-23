@@ -522,13 +522,14 @@ impl GlobalState {
     }
 
     fn recreate_crate_graph(&mut self, cause: String) {
-        {
+        // crate graph construction relies on these paths, record them so when one of them gets
+        // deleted or created we trigger a reconstruction of the crate graph
+        let mut crate_graph_file_dependencies = FxHashSet::default();
+
+        let (crate_graph, proc_macro_paths, layouts, toolchains) = {
             // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
-            // crate graph construction relies on these paths, record them so when one of them gets
-            // deleted or created we trigger a reconstruction of the crate graph
-            let mut crate_graph_file_dependencies = FxHashSet::default();
 
             let load = |path: &AbsPath| {
                 let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
@@ -545,25 +546,24 @@ impl GlobalState {
                 }
             };
 
-            let (crate_graph, proc_macro_paths, layouts, toolchains) =
-                ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load);
-
-            let mut change = Change::new();
-            if self.config.expand_proc_macros() {
-                change.set_proc_macros(
-                    crate_graph
-                        .iter()
-                        .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
-                        .collect(),
-                );
-                self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
-            }
-            change.set_crate_graph(crate_graph);
-            change.set_target_data_layouts(layouts);
-            change.set_toolchains(toolchains);
-            self.analysis_host.apply_change(change);
-            self.crate_graph_file_dependencies = crate_graph_file_dependencies;
+            ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load)
+        };
+        let mut change = Change::new();
+        if self.config.expand_proc_macros() {
+            change.set_proc_macros(
+                crate_graph
+                    .iter()
+                    .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
+                    .collect(),
+            );
+            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
         }
+        change.set_crate_graph(crate_graph);
+        change.set_target_data_layouts(layouts);
+        change.set_toolchains(toolchains);
+        self.analysis_host.apply_change(change);
+        self.crate_graph_file_dependencies = crate_graph_file_dependencies;
+
         self.process_changes();
         self.reload_flycheck();
     }
