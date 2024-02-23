@@ -1858,7 +1858,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Path(_) => clean_qpath(ty, cx),
         TyKind::TraitObject(bounds, ref lifetime, _) => {
-            let bounds = bounds.iter().map(|bound| clean_poly_trait_ref(bound, cx)).collect();
+            let bounds = bounds.iter().map(|(bound, _)| clean_poly_trait_ref(bound, cx)).collect();
             let lifetime =
                 if !lifetime.is_elided() { Some(clean_lifetime(*lifetime, cx)) } else { None };
             DynTrait(bounds, lifetime)

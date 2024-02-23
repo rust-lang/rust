@@ -31,6 +31,7 @@ where
         | ty::Float(_)
         | ty::FnDef(..)
         | ty::FnPtr(_)
+        | ty::Foreign(..)
         | ty::Error(_)
         | ty::Never
         | ty::Char => Ok(vec![]),
@@ -40,7 +41,6 @@ where
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Foreign(..)
         | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
         | ty::Placeholder(..)
         | ty::Bound(..)

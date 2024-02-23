@@ -16,6 +16,7 @@ use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeSuperVisitable,
@@ -23,8 +24,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArg, GenericArgs};
 use rustc_middle::ty::{TypeVisitableExt, Upcast};
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_target::abi::Abi;
 use smallvec::SmallVec;
 
@@ -692,8 +692,26 @@ fn receiver_is_dispatchable<'tcx>(
             ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
-        let caller_bounds =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
+        // U: `experimental_default_bounds`
+        let default_auto_trait_predicates = {
+            let mut predicates = vec![];
+            for default_trait in tcx.default_traits().iter() {
+                if *default_trait != LangItem::Sized
+                    && let Some(trait_def_id) = tcx.lang_items().get(*default_trait)
+                {
+                    let predicate =
+                        ty::TraitRef::new(tcx, trait_def_id, [unsized_self_ty]).upcast(tcx);
+                    predicates.push(predicate);
+                }
+            }
+            predicates
+        };
+
+        let caller_bounds = param_env
+            .caller_bounds()
+            .iter()
+            .chain([unsize_predicate, trait_predicate])
+            .chain(default_auto_trait_predicates);
 
         ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds), param_env.reveal())
     };

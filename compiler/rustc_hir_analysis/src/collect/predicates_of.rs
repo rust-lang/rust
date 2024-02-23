@@ -141,11 +141,39 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
 
             ItemKind::Trait(_, _, _, self_bounds, ..) | ItemKind::TraitAlias(_, self_bounds) => {
-                is_trait = Some(self_bounds);
+                is_trait = Some((self_bounds, item.span));
             }
             _ => {}
         }
     };
+    if let Node::TraitItem(item) = node {
+        let parent = tcx.local_parent(item.hir_id().owner.def_id);
+        let Node::Item(parent_trait) = tcx.hir_node_by_def_id(parent) else {
+            unreachable!();
+        };
+
+        let (trait_generics, trait_bounds) = match parent_trait.kind {
+            hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
+            hir::ItemKind::TraitAlias(generics, supertraits) => (generics, supertraits),
+            _ => unreachable!(),
+        };
+
+        // Implicitly add `Self: Trait` clauses on trait associated items.
+        // See comment on `add_implicit_super_traits` for more details.
+        if !icx.lowerer().requires_implicit_supertraits(parent, trait_bounds, trait_generics) {
+            let mut bounds = Bounds::default();
+            let self_ty_where_predicates = (parent, item.generics.predicates);
+            icx.lowerer().add_implicit_traits_with_filter(
+                &mut bounds,
+                tcx.types.self_param,
+                &[],
+                Some(self_ty_where_predicates),
+                item.span,
+                |tr| tr != hir::LangItem::Sized,
+            );
+            predicates.extend(bounds.clauses(tcx));
+        }
+    }
 
     let generics = tcx.generics_of(def_id);
 
@@ -154,10 +182,17 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
     if let Some(self_bounds) = is_trait {
-        let bounds = icx.lowerer().lower_mono_bounds(
+        let mut bounds = icx.lowerer().lower_mono_bounds(
             tcx.types.self_param,
-            self_bounds,
+            self_bounds.0,
             PredicateFilter::All,
+        );
+        icx.lowerer().add_implicit_super_traits(
+            def_id,
+            &mut bounds,
+            self_bounds.0,
+            hir_generics,
+            self_bounds.1,
         );
         predicates.extend(bounds.clauses(tcx));
         effects_min_tys.extend(bounds.effects_min_tys());
@@ -184,8 +219,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             GenericParamKind::Type { .. } => {
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Bounds::default();
-                // Params are implicitly sized unless a `?Sized` bound is found
-                icx.lowerer().add_sized_bound(
+                // Implicit bounds are added to type params unless a `?Trait` bound is found
+                icx.lowerer().add_implicit_traits(
                     &mut bounds,
                     param_ty,
                     &[],
@@ -607,7 +642,14 @@ pub(super) fn implied_predicates_with_filter(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let superbounds = icx.lowerer().lower_mono_bounds(self_param_ty, bounds, filter);
+    let mut superbounds = icx.lowerer().lower_mono_bounds(self_param_ty, bounds, filter);
+    icx.lowerer().add_implicit_super_traits(
+        trait_def_id,
+        &mut superbounds,
+        bounds,
+        generics,
+        item.span,
+    );
 
     let where_bounds_that_match = icx.probe_ty_param_bounds_in_generics(
         generics,
