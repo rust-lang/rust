@@ -459,7 +459,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         assert!(self.ecx.tcx.is_static(did));
                         let is_mut = matches!(
                             self.ecx.tcx.def_kind(did),
-                            DefKind::Static { mt: Mutability::Mut }
+                            DefKind::Static { mt: Mutability::Mut, .. }
                         ) || !self
                             .ecx
                             .tcx
