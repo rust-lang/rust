@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Diag, DiagCtxt, DiagnosticArgValue, DiagnosticMessage, EmissionGuarantee,
-    IntoDiagnostic, Level,
+    codes::*, Diag, DiagArgValue, DiagCtxt, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic,
+    Level,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -683,7 +683,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         let message = if let Some(path) = self.path {
             err.dcx.eagerly_translate_to_string(
                 fluent::const_eval_validation_front_matter_invalid_value_with_path,
-                [("path".into(), DiagnosticArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
+                [("path".into(), DiagArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
             err.dcx.eagerly_translate_to_string(
@@ -716,8 +716,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             };
 
             let args = [
-                ("lo".into(), DiagnosticArgValue::Str(lo.to_string().into())),
-                ("hi".into(), DiagnosticArgValue::Str(hi.to_string().into())),
+                ("lo".into(), DiagArgValue::Str(lo.to_string().into())),
+                ("hi".into(), DiagArgValue::Str(hi.to_string().into())),
             ];
             let args = args.iter().map(|(a, b)| (a, b));
             let message = err.dcx.eagerly_translate_to_string(msg, args);
@@ -892,8 +892,8 @@ impl ReportErrorExt for ResourceExhaustionInfo {
 }
 
 impl rustc_errors::IntoDiagnosticArg for InternKind {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
-        DiagnosticArgValue::Str(Cow::Borrowed(match self {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(match self {
             InternKind::Static(Mutability::Not) => "static",
             InternKind::Static(Mutability::Mut) => "static_mut",
             InternKind::Constant => "const",

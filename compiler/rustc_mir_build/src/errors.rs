@@ -1,5 +1,5 @@
 use crate::fluent_generated as fluent;
-use rustc_errors::DiagnosticArgValue;
+use rustc_errors::DiagArgValue;
 use rustc_errors::{
     codes::*, AddToDiagnostic, Applicability, Diag, DiagCtxt, EmissionGuarantee, IntoDiagnostic,
     Level, MultiSpan, SubdiagnosticMessageOp,
@@ -127,11 +127,11 @@ pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
     #[label]
     pub span: Span,
     pub function: String,
-    pub missing_target_features: DiagnosticArgValue,
+    pub missing_target_features: DiagArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue,
+    pub build_target_features: DiagArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
@@ -379,11 +379,11 @@ pub struct CallToFunctionWithRequiresUnsafe {
     #[label]
     pub span: Span,
     pub function: String,
-    pub missing_target_features: DiagnosticArgValue,
+    pub missing_target_features: DiagArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue,
+    pub build_target_features: DiagArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,
@@ -397,11 +397,11 @@ pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
     #[label]
     pub span: Span,
     pub function: String,
-    pub missing_target_features: DiagnosticArgValue,
+    pub missing_target_features: DiagArgValue,
     pub missing_target_features_count: usize,
     #[note]
     pub note: Option<()>,
-    pub build_target_features: DiagnosticArgValue,
+    pub build_target_features: DiagArgValue,
     pub build_target_features_count: usize,
     #[subdiagnostic]
     pub unsafe_not_inherited_note: Option<UnsafeNotInheritedNote>,

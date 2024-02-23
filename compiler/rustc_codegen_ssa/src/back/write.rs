@@ -16,7 +16,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagnosticArgMap, DiagnosticMessage, ErrCode, FatalError, FluentBundle, Level,
+    Diag, DiagArgMap, DiagCtxt, DiagnosticMessage, ErrCode, FatalError, FluentBundle, Level,
     MultiSpan, Style,
 };
 use rustc_fs_util::link_or_copy;
@@ -1013,7 +1013,7 @@ struct Diagnostic {
     messages: Vec<(DiagnosticMessage, Style)>,
     code: Option<ErrCode>,
     children: Vec<Subdiagnostic>,
-    args: DiagnosticArgMap,
+    args: DiagArgMap,
 }
 
 // A cut-down version of `rustc_errors::SubDiagnostic` that impls `Send`. It's
@@ -1838,7 +1838,7 @@ impl Emitter for SharedEmitter {
         assert_eq!(diag.is_lint, None);
         // No sensible check for `diag.emitted_at`.
 
-        let args = mem::replace(&mut diag.args, DiagnosticArgMap::default());
+        let args = mem::replace(&mut diag.args, DiagArgMap::default());
         drop(
             self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
                 level: diag.level(),

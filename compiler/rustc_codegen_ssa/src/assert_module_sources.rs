@@ -27,7 +27,7 @@ use crate::errors;
 use rustc_ast as ast;
 use rustc_data_structures::unord::UnordMap;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{DiagArgValue, IntoDiagnosticArg};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
@@ -206,8 +206,8 @@ impl fmt::Display for CguReuse {
 }
 
 impl IntoDiagnosticArg for CguReuse {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
-        DiagnosticArgValue::Str(Cow::Owned(self.to_string()))
+    fn into_diagnostic_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
 

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    codes::*, Applicability, DecorateLint, Diag, DiagCtxt, DiagnosticArgValue, DiagnosticMessage,
+    codes::*, Applicability, DecorateLint, Diag, DiagArgValue, DiagCtxt, DiagnosticMessage,
     EmissionGuarantee, IntoDiagnostic, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -127,7 +127,7 @@ impl RequiresUnsafeDetail {
                 diag.help(fluent::mir_transform_target_feature_call_help);
                 diag.arg(
                     "missing_target_features",
-                    DiagnosticArgValue::StrListSepByAnd(
+                    DiagArgValue::StrListSepByAnd(
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                 );
@@ -136,7 +136,7 @@ impl RequiresUnsafeDetail {
                     diag.note(fluent::mir_transform_target_feature_call_note);
                     diag.arg(
                         "build_target_features",
-                        DiagnosticArgValue::StrListSepByAnd(
+                        DiagArgValue::StrListSepByAnd(
                             build_enabled
                                 .iter()
                                 .map(|feature| Cow::from(feature.to_string()))

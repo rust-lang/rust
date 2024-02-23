@@ -134,13 +134,13 @@ impl InferenceDiagnosticsParentData {
 }
 
 impl IntoDiagnosticArg for UnderspecifiedArgKind {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Type { .. } => "type",
             Self::Const { is_parameter: true } => "const_with_param",
             Self::Const { is_parameter: false } => "const",
         };
-        rustc_errors::DiagnosticArgValue::Str(kind.into())
+        rustc_errors::DiagArgValue::Str(kind.into())
     }
 }
 

@@ -192,7 +192,7 @@ impl Display for RegionName {
 }
 
 impl rustc_errors::IntoDiagnosticArg for RegionName {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         self.to_string().into_diagnostic_arg()
     }
 }

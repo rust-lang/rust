@@ -2899,7 +2899,7 @@ impl<'tcx> ObligationCause<'tcx> {
 pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 
 impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
-    fn into_diagnostic_arg(self) -> rustc_errors::DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> rustc_errors::DiagArgValue {
         use crate::traits::ObligationCauseCode::*;
         let kind = match self.0.code() {
             CompareImplItemObligation { kind: ty::AssocKind::Fn, .. } => "method_compat",
@@ -2913,7 +2913,7 @@ impl IntoDiagnosticArg for ObligationCauseAsDiagArg<'_> {
             _ => "other",
         }
         .into();
-        rustc_errors::DiagnosticArgValue::Str(kind)
+        rustc_errors::DiagArgValue::Str(kind)
     }
 }
 

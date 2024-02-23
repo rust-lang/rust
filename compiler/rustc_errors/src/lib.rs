@@ -37,9 +37,9 @@ extern crate self as rustc_errors;
 
 pub use codes::*;
 pub use diagnostic::{
-    AddToDiagnostic, BugAbort, DecorateLint, Diag, DiagInner, DiagnosticArg, DiagnosticArgMap,
-    DiagnosticArgName, DiagnosticArgValue, DiagnosticStyledString, EmissionGuarantee, FatalAbort,
-    IntoDiagnostic, IntoDiagnosticArg, StringPart, Subdiag, SubdiagnosticMessageOp,
+    AddToDiagnostic, BugAbort, DecorateLint, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue,
+    DiagInner, DiagnosticStyledString, EmissionGuarantee, FatalAbort, IntoDiagnostic,
+    IntoDiagnosticArg, StringPart, Subdiag, SubdiagnosticMessageOp,
 };
 pub use diagnostic_impls::{
     DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
@@ -639,7 +639,7 @@ impl DiagCtxt {
     pub fn eagerly_translate<'a>(
         &self,
         message: DiagnosticMessage,
-        args: impl Iterator<Item = DiagnosticArg<'a>>,
+        args: impl Iterator<Item = DiagArg<'a>>,
     ) -> SubdiagnosticMessage {
         let inner = self.inner.borrow();
         inner.eagerly_translate(message, args)
@@ -649,7 +649,7 @@ impl DiagCtxt {
     pub fn eagerly_translate_to_string<'a>(
         &self,
         message: DiagnosticMessage,
-        args: impl Iterator<Item = DiagnosticArg<'a>>,
+        args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let inner = self.inner.borrow();
         inner.eagerly_translate_to_string(message, args)
@@ -1461,7 +1461,7 @@ impl DiagCtxtInner {
     pub fn eagerly_translate<'a>(
         &self,
         message: DiagnosticMessage,
-        args: impl Iterator<Item = DiagnosticArg<'a>>,
+        args: impl Iterator<Item = DiagArg<'a>>,
     ) -> SubdiagnosticMessage {
         SubdiagnosticMessage::Translated(Cow::from(self.eagerly_translate_to_string(message, args)))
     }
@@ -1470,7 +1470,7 @@ impl DiagCtxtInner {
     pub fn eagerly_translate_to_string<'a>(
         &self,
         message: DiagnosticMessage,
-        args: impl Iterator<Item = DiagnosticArg<'a>>,
+        args: impl Iterator<Item = DiagArg<'a>>,
     ) -> String {
         let args = crate::translation::to_fluent_args(args);
         self.emitter.translate_message(&message, &args).map_err(Report::new).unwrap().to_string()

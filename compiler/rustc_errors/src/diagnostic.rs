@@ -24,17 +24,17 @@ use std::thread::panicking;
 pub struct SuggestionsDisabled;
 
 /// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
-/// `DiagnosticArg` are converted to `FluentArgs` (consuming the collection) at the start of
-/// diagnostic emission.
-pub type DiagnosticArg<'iter> = (&'iter DiagnosticArgName, &'iter DiagnosticArgValue);
+/// `DiagArg` are converted to `FluentArgs` (consuming the collection) at the start of diagnostic
+/// emission.
+pub type DiagArg<'iter> = (&'iter DiagArgName, &'iter DiagArgValue);
 
 /// Name of a diagnostic argument.
-pub type DiagnosticArgName = Cow<'static, str>;
+pub type DiagArgName = Cow<'static, str>;
 
 /// Simplified version of `FluentValue` that can implement `Encodable` and `Decodable`. Converted
 /// to a `FluentValue` by the emitter to be used in diagnostic translation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub enum DiagnosticArgValue {
+pub enum DiagArgValue {
     Str(Cow<'static, str>),
     // This gets converted to a `FluentNumber`, which is an `f64`. An `i32`
     // safely fits in an `f64`. Any integers bigger than that will be converted
@@ -43,7 +43,7 @@ pub enum DiagnosticArgValue {
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
 
-pub type DiagnosticArgMap = FxIndexMap<DiagnosticArgName, DiagnosticArgValue>;
+pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
 
 /// Trait for types that `Diag::emit` can return as a "guarantee" (or "proof")
 /// token that the emission happened.
@@ -125,26 +125,26 @@ where
     }
 }
 
-/// Converts a value of a type into a `DiagnosticArg` (typically a field of an `IntoDiagnostic`
-/// struct). Implemented as a custom trait rather than `From` so that it is implemented on the type
-/// being converted rather than on `DiagnosticArgValue`, which enables types from other `rustc_*`
-/// crates to implement this.
+/// Converts a value of a type into a `DiagArg` (typically a field of an `IntoDiagnostic` struct).
+/// Implemented as a custom trait rather than `From` so that it is implemented on the type being
+/// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
+/// implement this.
 pub trait IntoDiagnosticArg {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue;
+    fn into_diagnostic_arg(self) -> DiagArgValue;
 }
 
-impl IntoDiagnosticArg for DiagnosticArgValue {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+impl IntoDiagnosticArg for DiagArgValue {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         self
     }
 }
 
-impl Into<FluentValue<'static>> for DiagnosticArgValue {
+impl Into<FluentValue<'static>> for DiagArgValue {
     fn into(self) -> FluentValue<'static> {
         match self {
-            DiagnosticArgValue::Str(s) => From::from(s),
-            DiagnosticArgValue::Number(n) => From::from(n),
-            DiagnosticArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
+            DiagArgValue::Str(s) => From::from(s),
+            DiagArgValue::Number(n) => From::from(n),
+            DiagArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
         }
     }
 }
@@ -277,7 +277,7 @@ pub struct DiagInner {
     pub span: MultiSpan,
     pub children: Vec<Subdiag>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-    pub args: DiagnosticArgMap,
+    pub args: DiagArgMap,
 
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
@@ -401,7 +401,7 @@ impl DiagInner {
         self.children.push(sub);
     }
 
-    pub(crate) fn arg(&mut self, name: impl Into<DiagnosticArgName>, arg: impl IntoDiagnosticArg) {
+    pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagnosticArg) {
         self.args.insert(name.into(), arg.into_diagnostic_arg());
     }
 
@@ -415,7 +415,7 @@ impl DiagInner {
         &MultiSpan,
         &[Subdiag],
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-        Vec<(&DiagnosticArgName, &DiagnosticArgValue)>,
+        Vec<(&DiagArgName, &DiagArgValue)>,
         &Option<IsLint>,
     ) {
         (
@@ -1193,7 +1193,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// Add an argument.
     pub fn arg(
         &mut self,
-        name: impl Into<DiagnosticArgName>,
+        name: impl Into<DiagArgName>,
         arg: impl IntoDiagnosticArg,
     ) -> &mut Self {
         self.deref_mut().arg(name, arg);

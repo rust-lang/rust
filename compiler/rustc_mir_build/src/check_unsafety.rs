@@ -4,7 +4,7 @@ use crate::build::ExprCategory;
 use crate::errors::*;
 use rustc_middle::thir::visit::Visitor;
 
-use rustc_errors::DiagnosticArgValue;
+use rustc_errors::DiagArgValue;
 use rustc_hir as hir;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::thir::*;
@@ -703,12 +703,12 @@ impl UnsafeOpKind {
                 UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
                     span,
                     function: with_no_trimmed_paths!(tcx.def_path_str(*function)),
-                    missing_target_features: DiagnosticArgValue::StrListSepByAnd(
+                    missing_target_features: DiagArgValue::StrListSepByAnd(
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
-                    build_target_features: DiagnosticArgValue::StrListSepByAnd(
+                    build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
                             .map(|feature| Cow::from(feature.to_string()))
@@ -868,12 +868,12 @@ impl UnsafeOpKind {
             {
                 dcx.emit_err(CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
-                    missing_target_features: DiagnosticArgValue::StrListSepByAnd(
+                    missing_target_features: DiagArgValue::StrListSepByAnd(
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
-                    build_target_features: DiagnosticArgValue::StrListSepByAnd(
+                    build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
                             .map(|feature| Cow::from(feature.to_string()))
@@ -887,12 +887,12 @@ impl UnsafeOpKind {
             CallToFunctionWith { function, missing, build_enabled } => {
                 dcx.emit_err(CallToFunctionWithRequiresUnsafe {
                     span,
-                    missing_target_features: DiagnosticArgValue::StrListSepByAnd(
+                    missing_target_features: DiagArgValue::StrListSepByAnd(
                         missing.iter().map(|feature| Cow::from(feature.to_string())).collect(),
                     ),
                     missing_target_features_count: missing.len(),
                     note: if build_enabled.is_empty() { None } else { Some(()) },
-                    build_target_features: DiagnosticArgValue::StrListSepByAnd(
+                    build_target_features: DiagArgValue::StrListSepByAnd(
                         build_enabled
                             .iter()
                             .map(|feature| Cow::from(feature.to_string()))
