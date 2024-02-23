@@ -1171,6 +1171,7 @@ symbols! {
         modifiers,
         module,
         module_path,
+        more_maybe_bounds,
         more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,

@@ -22,7 +22,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
+        hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
         lifetime: &hir::Lifetime,
         borrowed: bool,
         representation: DynKind,
@@ -32,7 +32,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        for trait_bound in hir_trait_bounds.iter().rev() {
+        for (trait_bound, modifier) in hir_trait_bounds.iter().rev() {
+            if *modifier == hir::TraitBoundModifier::Maybe {
+                continue;
+            }
             if let GenericArgCountResult {
                 correct:
                     Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
@@ -277,7 +280,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
-                let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
+                let empty_generic_args = hir_trait_bounds.iter().any(|(hir_bound, _)| {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });

@@ -1469,8 +1469,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     continue;
                 }
                 let is_param = *is_param.get_or_insert_with(compute_is_param);
-                if !is_param {
-                    self.dcx().emit_err(MisplacedRelaxTraitBound { span: bound.span() });
+                if !is_param && !self.tcx.features().more_maybe_bounds {
+                    self.tcx
+                        .sess
+                        .create_feature_err(
+                            MisplacedRelaxTraitBound { span: bound.span() },
+                            sym::more_maybe_bounds,
+                        )
+                        .emit();
                 }
             }
         }
