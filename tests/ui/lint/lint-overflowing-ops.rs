@@ -21,6 +21,8 @@ const BITS: usize = 32;
 #[cfg(target_pointer_width = "64")]
 const BITS: usize = 64;
 
+use std::thread;
+
 fn main() {
     // Shift left
     let _n = 1u8 << 8;   //~ ERROR: arithmetic operation will overflow
@@ -59,8 +61,15 @@ fn main() {
     let _n = 1_usize << BITS; //~ ERROR: arithmetic operation will overflow
     let _n = &(1_usize << BITS); //~ ERROR: arithmetic operation will overflow
 
+    let _n = 1 << -1; //~ ERROR: arithmetic operation will overflow
+    let _n = &(1 << -1); //~ ERROR: arithmetic operation will overflow
 
     // Shift right
+
+    let _n = -1_i64 >> 64;  //~ ERROR: arithmetic operation will overflow
+    let _n = -1_i32 >> 32;  //~ ERROR: arithmetic operation will overflow
+    let _n = -1_i32 >> -1;  //~ ERROR: arithmetic operation will overflow
+
     let _n = 1u8 >> 8;   //~ ERROR: arithmetic operation will overflow
     let _n = &(1u8 >> 8);   //~ ERROR: arithmetic operation will overflow
 
@@ -97,6 +106,8 @@ fn main() {
     let _n = 1_usize >> BITS; //~ ERROR: arithmetic operation will overflow
     let _n = &(1_usize >> BITS); //~ ERROR: arithmetic operation will overflow
 
+    let _n = 1i64 >> [64][0];  //~ ERROR: arithmetic operation will overflow
+    let _n = &(1i64 >> [64][0]);  //~ ERROR: arithmetic operation will overflow
 
     // Addition
     let _n = 1u8 + u8::MAX;   //~ ERROR: arithmetic operation will overflow
@@ -211,6 +222,9 @@ fn main() {
     let _n = usize::MAX * 5; //~ ERROR: arithmetic operation will overflow
     let _n = &(usize::MAX * 5); //~ ERROR: arithmetic operation will overflow
 
+    let _n = -i8::MIN; //~ ERROR this arithmetic operation will overflow
+    let _n = &(-i8::MIN); //~ ERROR this arithmetic operation will overflow
+
 
     // Division
     let _n = 1u8 / 0; //~ ERROR: this operation will panic at runtime
@@ -291,4 +305,55 @@ fn main() {
     // Out of bounds access
     let _n = [1, 2, 3][4]; //~ ERROR: this operation will panic at runtime
     let _n = &([1, 2, 3][4]); //~ ERROR: this operation will panic at runtime
+
+
+    // issue-8460-const
+    assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i8::MIN / -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i16::MIN / -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i32::MIN / -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i64::MIN / -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i128::MIN / -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i8 / 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i16 / 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i32 / 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i64 / 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i128 / 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { isize::MIN % -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i8::MIN % -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i16::MIN % -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i32::MIN % -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i64::MIN % -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { i128::MIN % -1; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1isize % 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i8 % 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i16 % 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i32 % 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i64 % 0; }).join().is_err());
+    //~^ ERROR operation will panic
+    assert!(thread::spawn(move|| { 1i128 % 0; }).join().is_err());
+    //~^ ERROR operation will panic
 }
