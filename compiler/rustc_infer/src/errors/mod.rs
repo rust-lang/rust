@@ -1,6 +1,6 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, Diag, DiagnosticMessage, DiagnosticStyledString,
+    codes::*, AddToDiagnostic, Applicability, Diag, DiagStyledString, DiagnosticMessage,
     EmissionGuarantee, IntoDiagnosticArg, MultiSpan, SubdiagnosticMessageOp,
 };
 use rustc_hir as hir;
@@ -220,7 +220,7 @@ pub enum RegionOriginNote<'a> {
     WithRequirement {
         span: Span,
         requirement: ObligationCauseAsDiagArg<'a>,
-        expected_found: Option<(DiagnosticStyledString, DiagnosticStyledString)>,
+        expected_found: Option<(DiagStyledString, DiagStyledString)>,
     },
 }
 

@@ -213,11 +213,11 @@ pub struct IsLint {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct DiagnosticStyledString(pub Vec<StringPart>);
+pub struct DiagStyledString(pub Vec<StringPart>);
 
-impl DiagnosticStyledString {
-    pub fn new() -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![])
+impl DiagStyledString {
+    pub fn new() -> DiagStyledString {
+        DiagStyledString(vec![])
     }
     pub fn push_normal<S: Into<String>>(&mut self, t: S) {
         self.0.push(StringPart::normal(t));
@@ -232,12 +232,12 @@ impl DiagnosticStyledString {
             self.push_normal(t);
         }
     }
-    pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::normal(t)])
+    pub fn normal<S: Into<String>>(t: S) -> DiagStyledString {
+        DiagStyledString(vec![StringPart::normal(t)])
     }
 
-    pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
-        DiagnosticStyledString(vec![StringPart::highlighted(t)])
+    pub fn highlighted<S: Into<String>>(t: S) -> DiagStyledString {
+        DiagStyledString(vec![StringPart::highlighted(t)])
     }
 
     pub fn content(&self) -> String {
@@ -638,9 +638,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn note_expected_found(
         &mut self,
         expected_label: &dyn fmt::Display,
-        expected: DiagnosticStyledString,
+        expected: DiagStyledString,
         found_label: &dyn fmt::Display,
-        found: DiagnosticStyledString,
+        found: DiagStyledString,
     ) -> &mut Self {
         self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
@@ -648,9 +648,9 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn note_expected_found_extra(
         &mut self,
         expected_label: &dyn fmt::Display,
-        expected: DiagnosticStyledString,
+        expected: DiagStyledString,
         found_label: &dyn fmt::Display,
-        found: DiagnosticStyledString,
+        found: DiagStyledString,
         expected_extra: &dyn fmt::Display,
         found_extra: &dyn fmt::Display,
     ) -> &mut Self {

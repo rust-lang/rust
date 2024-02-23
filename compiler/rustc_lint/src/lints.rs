@@ -5,8 +5,8 @@ use std::num::NonZero;
 use crate::errors::RequestedLevel;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diag, DiagnosticMessage,
-    DiagnosticStyledString, EmissionGuarantee, SubdiagnosticMessageOp, SuggestionStyle,
+    codes::*, AddToDiagnostic, Applicability, DecorateLint, Diag, DiagStyledString,
+    DiagnosticMessage, EmissionGuarantee, SubdiagnosticMessageOp, SuggestionStyle,
 };
 use rustc_hir::def_id::DefId;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -508,9 +508,9 @@ impl AddToDiagnostic for BuiltinClashingExternSub<'_> {
         diag: &mut Diag<'_, G>,
         _f: F,
     ) {
-        let mut expected_str = DiagnosticStyledString::new();
+        let mut expected_str = DiagStyledString::new();
         expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
-        let mut found_str = DiagnosticStyledString::new();
+        let mut found_str = DiagStyledString::new();
         found_str.push(self.found.fn_sig(self.tcx).to_string(), true);
         diag.note_expected_found(&"", expected_str, &"", found_str);
     }

@@ -60,8 +60,8 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt,
-    DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diag, DiagCtxt, DiagStyledString,
+    ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -945,8 +945,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// ```
     fn highlight_outer(
         &self,
-        value: &mut DiagnosticStyledString,
-        other_value: &mut DiagnosticStyledString,
+        value: &mut DiagStyledString,
+        other_value: &mut DiagStyledString,
         name: String,
         sub: ty::GenericArgsRef<'tcx>,
         pos: usize,
@@ -1019,8 +1019,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// ```
     fn cmp_type_arg(
         &self,
-        t1_out: &mut DiagnosticStyledString,
-        t2_out: &mut DiagnosticStyledString,
+        t1_out: &mut DiagStyledString,
+        t2_out: &mut DiagStyledString,
         path: String,
         sub: &'tcx [ty::GenericArg<'tcx>],
         other_path: String,
@@ -1048,8 +1048,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Adds a `,` to the type representation only if it is appropriate.
     fn push_comma(
         &self,
-        value: &mut DiagnosticStyledString,
-        other_value: &mut DiagnosticStyledString,
+        value: &mut DiagStyledString,
+        other_value: &mut DiagStyledString,
         len: usize,
         pos: usize,
     ) {
@@ -1064,7 +1064,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         sig1: &ty::PolyFnSig<'tcx>,
         sig2: &ty::PolyFnSig<'tcx>,
-    ) -> (DiagnosticStyledString, DiagnosticStyledString) {
+    ) -> (DiagStyledString, DiagStyledString) {
         let sig1 = &(self.normalize_fn_sig)(*sig1);
         let sig2 = &(self.normalize_fn_sig)(*sig2);
 
@@ -1081,10 +1081,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let (lt2, sig2) = get_lifetimes(sig2);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
-        let mut values = (
-            DiagnosticStyledString::normal("".to_string()),
-            DiagnosticStyledString::normal("".to_string()),
-        );
+        let mut values =
+            (DiagStyledString::normal("".to_string()), DiagStyledString::normal("".to_string()));
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
@@ -1173,15 +1171,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
-    pub fn cmp(
-        &self,
-        t1: Ty<'tcx>,
-        t2: Ty<'tcx>,
-    ) -> (DiagnosticStyledString, DiagnosticStyledString) {
+    pub fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagStyledString, DiagStyledString) {
         debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind(), t2, t2.kind());
 
         // helper functions
-        let recurse = |t1, t2, values: &mut (DiagnosticStyledString, DiagnosticStyledString)| {
+        let recurse = |t1, t2, values: &mut (DiagStyledString, DiagStyledString)| {
             let (x1, x2) = self.cmp(t1, t2);
             (values.0).0.extend(x1.0);
             (values.1).0.extend(x2.0);
@@ -1200,7 +1194,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         fn push_ref<'tcx>(
             region: ty::Region<'tcx>,
             mutbl: hir::Mutability,
-            s: &mut DiagnosticStyledString,
+            s: &mut DiagStyledString,
         ) {
             s.push_highlighted(fmt_region(region));
             s.push_highlighted(mutbl.prefix_str());
@@ -1209,7 +1203,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         fn maybe_highlight<T: Eq + ToString>(
             t1: T,
             t2: T,
-            (buf1, buf2): &mut (DiagnosticStyledString, DiagnosticStyledString),
+            (buf1, buf2): &mut (DiagStyledString, DiagStyledString),
             tcx: TyCtxt<'_>,
         ) {
             let highlight = t1 != t2;
@@ -1228,7 +1222,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             mut1: hir::Mutability,
             r2: ty::Region<'tcx>,
             mut2: hir::Mutability,
-            ss: &mut (DiagnosticStyledString, DiagnosticStyledString),
+            ss: &mut (DiagStyledString, DiagStyledString),
         ) {
             let (r1, r2) = (fmt_region(r1), fmt_region(r2));
             if r1 != r2 {
@@ -1257,7 +1251,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self.tcx.generics_of(did1).own_args_no_defaults(self.tcx, sub1);
                 let sub_no_defaults_2 =
                     self.tcx.generics_of(did2).own_args_no_defaults(self.tcx, sub2);
-                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 let path1 = self.tcx.def_path_str(did1);
                 let path2 = self.tcx.def_path_str(did2);
                 if did1 == did2 {
@@ -1426,8 +1420,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     if split_idx >= min_len {
                         // paths are identical, highlight everything
                         (
-                            DiagnosticStyledString::highlighted(t1_str),
-                            DiagnosticStyledString::highlighted(t2_str),
+                            DiagStyledString::highlighted(t1_str),
+                            DiagStyledString::highlighted(t2_str),
                         )
                     } else {
                         let (common, uniq1) = t1_str.split_at(split_idx);
@@ -1446,20 +1440,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             // When finding `&T != &T`, compare the references, then recurse into pointee type
             (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2)) => {
-                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 cmp_ty_refs(r1, mutbl1, r2, mutbl2, &mut values);
                 recurse(ref_ty1, ref_ty2, &mut values);
                 values
             }
             // When finding T != &T, highlight the borrow
             (&ty::Ref(r1, ref_ty1, mutbl1), _) => {
-                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r1, mutbl1, &mut values.0);
                 recurse(ref_ty1, t2, &mut values);
                 values
             }
             (_, &ty::Ref(r2, ref_ty2, mutbl2)) => {
-                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r2, mutbl2, &mut values.1);
                 recurse(t1, ref_ty2, &mut values);
                 values
@@ -1467,8 +1461,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
             // When encountering tuples of the same size, highlight only the differing types
             (&ty::Tuple(args1), &ty::Tuple(args2)) if args1.len() == args2.len() => {
-                let mut values =
-                    (DiagnosticStyledString::normal("("), DiagnosticStyledString::normal("("));
+                let mut values = (DiagStyledString::normal("("), DiagStyledString::normal("("));
                 let len = args1.len();
                 for (i, (left, right)) in args1.iter().zip(args2).enumerate() {
                     recurse(left, right, &mut values);
@@ -1518,7 +1511,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
 
             _ => {
-                let mut strs = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let mut strs = (DiagStyledString::new(), DiagStyledString::new());
                 maybe_highlight(t1, t2, &mut strs, self.tcx);
                 strs
             }
@@ -2217,7 +2210,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn values_str(
         &self,
         values: ValuePairs<'tcx>,
-    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>)> {
+    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
         match values {
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
             infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
@@ -2250,7 +2243,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn expected_found_str_term(
         &self,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
-    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>)> {
+    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
@@ -2268,17 +2261,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let mut path = None;
                 if exp_s.len() > len {
                     let exp_s = self.tcx.short_ty_string(expected, &mut path);
-                    exp = DiagnosticStyledString::highlighted(exp_s);
+                    exp = DiagStyledString::highlighted(exp_s);
                 }
                 if fnd_s.len() > len {
                     let fnd_s = self.tcx.short_ty_string(found, &mut path);
-                    fnd = DiagnosticStyledString::highlighted(fnd_s);
+                    fnd = DiagStyledString::highlighted(fnd_s);
                 }
                 (exp, fnd, path)
             }
             _ => (
-                DiagnosticStyledString::highlighted(exp_found.expected.to_string()),
-                DiagnosticStyledString::highlighted(exp_found.found.to_string()),
+                DiagStyledString::highlighted(exp_found.expected.to_string()),
+                DiagStyledString::highlighted(exp_found.found.to_string()),
                 None,
             ),
         })
@@ -2288,15 +2281,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn expected_found_str<T: fmt::Display + TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         exp_found: ty::error::ExpectedFound<T>,
-    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString, Option<PathBuf>)> {
+    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
         }
 
         Some((
-            DiagnosticStyledString::highlighted(exp_found.expected.to_string()),
-            DiagnosticStyledString::highlighted(exp_found.found.to_string()),
+            DiagStyledString::highlighted(exp_found.expected.to_string()),
+            DiagStyledString::highlighted(exp_found.found.to_string()),
             None,
         ))
     }
