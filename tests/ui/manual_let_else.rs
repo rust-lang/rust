@@ -1,3 +1,4 @@
+#![feature(try_blocks)]
 #![allow(unused_braces, unused_variables, dead_code)]
 #![allow(
     clippy::collapsible_else_if,
@@ -445,4 +446,13 @@ struct U<T> {
     v: T,
     w: T,
     x: T,
+}
+
+fn issue12337() {
+    // We want to generally silence question_mark lints within try blocks, since `?` has different
+    // behavior to `return`, and question_mark calls into manual_let_else logic, so make sure that
+    // we still emit a lint for manual_let_else
+    let _: Option<()> = try {
+        let v = if let Some(v_some) = g() { v_some } else { return };
+    };
 }
