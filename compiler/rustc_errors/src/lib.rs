@@ -42,8 +42,8 @@ pub use diagnostic::{
     IntoDiagnosticArg, StringPart, Subdiag, SubdiagnosticMessageOp,
 };
 pub use diagnostic_impls::{
-    DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
-    IndicateAnonymousLifetime, SingleLabelManySpans,
+    DiagArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter, IndicateAnonymousLifetime,
+    SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{

@@ -20,23 +20,23 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
-pub struct DiagnosticArgFromDisplay<'a>(pub &'a dyn fmt::Display);
+pub struct DiagArgFromDisplay<'a>(pub &'a dyn fmt::Display);
 
-impl IntoDiagnosticArg for DiagnosticArgFromDisplay<'_> {
+impl IntoDiagnosticArg for DiagArgFromDisplay<'_> {
     fn into_diagnostic_arg(self) -> DiagArgValue {
         self.0.to_string().into_diagnostic_arg()
     }
 }
 
-impl<'a> From<&'a dyn fmt::Display> for DiagnosticArgFromDisplay<'a> {
+impl<'a> From<&'a dyn fmt::Display> for DiagArgFromDisplay<'a> {
     fn from(t: &'a dyn fmt::Display) -> Self {
-        DiagnosticArgFromDisplay(t)
+        DiagArgFromDisplay(t)
     }
 }
 
-impl<'a, T: fmt::Display> From<&'a T> for DiagnosticArgFromDisplay<'a> {
+impl<'a, T: fmt::Display> From<&'a T> for DiagArgFromDisplay<'a> {
     fn from(t: &'a T) -> Self {
-        DiagnosticArgFromDisplay(t)
+        DiagArgFromDisplay(t)
     }
 }
 

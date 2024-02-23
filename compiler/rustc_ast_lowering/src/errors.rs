@@ -1,6 +1,5 @@
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Diag, DiagnosticArgFromDisplay, EmissionGuarantee,
-    SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -95,7 +94,7 @@ pub enum AssocTyParenthesesSub {
 pub struct MisplacedImplTrait<'a> {
     #[primary_span]
     pub span: Span,
-    pub position: DiagnosticArgFromDisplay<'a>,
+    pub position: DiagArgFromDisplay<'a>,
 }
 
 #[derive(Diagnostic)]
