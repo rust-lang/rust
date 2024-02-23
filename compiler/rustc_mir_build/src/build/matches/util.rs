@@ -5,7 +5,8 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty;
-use rustc_middle::ty::TypeVisitableExt;
+use rustc_middle::ty::{Ty, TypeVisitableExt};
+use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn field_match_pairs<'pat>(
@@ -25,6 +26,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     pub(crate) fn prefix_slice_suffix<'pat>(
         &mut self,
+        base_pat: &'pat Pat<'tcx>,
         match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
         place: &PlaceBuilder<'tcx>,
         prefix: &'pat [Box<Pat<'tcx>>],
@@ -41,11 +43,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ((prefix.len() + suffix.len()).try_into().unwrap(), false)
         };
 
-        match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
-            let elem =
-                ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
-            MatchPair::new(place.clone_project(elem), subpattern, self)
-        }));
+        // Here we try to special-case constant pattern subslices into valtrees to generate
+        // nicer MIR.
+
+        // Try to perform simplification of a constant pattern slice `prefix` sequence into
+        // a valtree.
+        if self.is_constant_pattern_subslice(prefix) {
+            let elem_ty = prefix[0].ty;
+            let prefix_valtree = self.simplify_const_pattern_slice_into_valtree(prefix);
+            // FIXME(jieyouxu): triple check these place calculations!
+            let match_pair = self.valtree_to_match_pair(
+                base_pat.ty,
+                base_pat.span,
+                prefix.len() as u64,
+                prefix_valtree,
+                place.base().into(),
+                elem_ty,
+            );
+            match_pairs.push(match_pair);
+        } else {
+            match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
+                let elem = ProjectionElem::ConstantIndex {
+                    offset: idx as u64,
+                    min_length,
+                    from_end: false,
+                };
+                MatchPair::new(place.clone_project(elem), subpattern, self)
+            }));
+        }
 
         if let Some(subslice_pat) = opt_slice {
             let suffix_len = suffix.len() as u64;
@@ -57,16 +82,115 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             match_pairs.push(MatchPair::new(subslice, subslice_pat, self));
         }
 
-        match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
-            let end_offset = (idx + 1) as u64;
-            let elem = ProjectionElem::ConstantIndex {
-                offset: if exact_size { min_length - end_offset } else { end_offset },
-                min_length,
+        // Try to perform simplification of a constant pattern slice `suffix` sequence into
+        // a valtree.
+        if self.is_constant_pattern_subslice(suffix) {
+            let elem_ty = suffix[0].ty;
+            let suffix_valtree = self.simplify_const_pattern_slice_into_valtree(suffix);
+            let suffix_len = suffix.len() as u64;
+            // FIXME(jieyouxu): triple check these place calculations.
+            let place = place.clone_project(PlaceElem::Subslice {
+                from: prefix.len() as u64,
+                to: if exact_size { min_length } else { suffix_len },
                 from_end: !exact_size,
-            };
-            let place = place.clone_project(elem);
-            MatchPair::new(place, subpattern, self)
-        }));
+            });
+            let match_pair = self.valtree_to_match_pair(
+                base_pat.ty,
+                base_pat.span,
+                suffix.len() as u64,
+                suffix_valtree,
+                place,
+                elem_ty,
+            );
+            match_pairs.push(match_pair);
+        } else {
+            match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
+                let end_offset = (idx + 1) as u64;
+                let elem = ProjectionElem::ConstantIndex {
+                    offset: if exact_size { min_length - end_offset } else { end_offset },
+                    min_length,
+                    from_end: !exact_size,
+                };
+                let place = place.clone_project(elem);
+                MatchPair::new(place, subpattern, self)
+            }));
+        }
+    }
+
+    // We don't consider an empty subslice as a constant pattern subslice.
+    fn is_constant_pattern_subslice(&self, subslice: &[Box<Pat<'tcx>>]) -> bool {
+        !subslice.is_empty() && subslice.iter().all(|p| self.is_constant_pattern(p))
+    }
+
+    fn is_constant_pattern(&self, pat: &Pat<'tcx>) -> bool {
+        if let PatKind::Constant { value } = pat.kind
+            && let Const::Ty(const_) = value
+            && let ty::ConstKind::Value(valtree) = const_.kind()
+            && matches!(valtree, ty::ValTree::Leaf(_))
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    // This must only be called after ensuring that the subslice consists of only constant
+    // patterns, or it will panic.
+    fn simplify_const_pattern_slice_into_valtree(
+        &self,
+        subslice: &[Box<Pat<'tcx>>],
+    ) -> ty::ValTree<'tcx> {
+        let leaves = subslice.iter().map(|p| self.extract_leaf(p));
+        let interned = self.tcx.arena.alloc_from_iter(leaves);
+        ty::ValTree::Branch(interned)
+    }
+
+    // Must only be called by `try_simplify_const_pattern_slice_into_valtree`.
+    fn extract_leaf(&self, pat: &Pat<'tcx>) -> ty::ValTree<'tcx> {
+        if let PatKind::Constant { value } = pat.kind
+            && let Const::Ty(const_) = value
+            && let valtree = const_.to_valtree()
+            && matches!(valtree, ty::ValTree::Leaf(_))
+        {
+            valtree
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn valtree_to_match_pair<'pat>(
+        &mut self,
+        base_pat_ty: Ty<'tcx>,
+        span: Span,
+        subslice_len: u64,
+        valtree: ty::ValTree<'tcx>,
+        place: PlaceBuilder<'tcx>,
+        elem_ty: Ty<'tcx>,
+    ) -> MatchPair<'pat, 'tcx> {
+        let tcx = self.tcx;
+        let (const_ty, pat_ty) = if base_pat_ty.is_slice() {
+            (
+                Ty::new_imm_ref(
+                    tcx,
+                    tcx.lifetimes.re_erased,
+                    Ty::new_array(tcx, elem_ty, subslice_len),
+                ),
+                Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, Ty::new_slice(tcx, elem_ty)),
+            )
+        } else {
+            let arr_ty = Ty::new_array(tcx, elem_ty, subslice_len);
+            (arr_ty, arr_ty)
+        };
+
+        let r#const = ty::Const::new(tcx, ty::ConstKind::Value(valtree), const_ty);
+
+        let replacement_pat = tcx.arena.alloc(Pat {
+            ty: pat_ty,
+            span,
+            kind: PatKind::Constant { value: Const::Ty(r#const) },
+        });
+
+        MatchPair::new(place, replacement_pat, self)
     }
 
     /// Creates a false edge to `imaginary_target` and a real edge to
@@ -205,11 +329,11 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
             }
 
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+                cx.prefix_slice_suffix(pattern, &mut subpairs, &place, prefix, slice, suffix);
                 default_irrefutable()
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(&mut subpairs, &place, prefix, slice, suffix);
+                cx.prefix_slice_suffix(pattern, &mut subpairs, &place, prefix, slice, suffix);
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     default_irrefutable()
