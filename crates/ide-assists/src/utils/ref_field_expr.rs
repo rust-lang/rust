@@ -1,7 +1,7 @@
 //! This module contains a helper for converting a field access expression into a
 //! path expression. This is used when destructuring a tuple or struct.
 //!
-//! It determines whether to wrap the new expression in a deref and/or parentheses,
+//! It determines whether to deref the new expression and/or wrap it in parentheses,
 //! based on the parent of the existing expression.
 use syntax::{
     ast::{self, make, FieldExpr, MethodCallExpr},
@@ -10,9 +10,9 @@ use syntax::{
 
 use crate::AssistContext;
 
-/// Decides whether the new path expression needs to be wrapped in parentheses and dereferenced.
+/// Decides whether the new path expression needs to be dereferenced and/or wrapped in parens.
 /// Returns the relevant parent expression to replace and the [RefData].
-pub fn determine_ref_and_parens(
+pub(crate) fn determine_ref_and_parens(
     ctx: &AssistContext<'_>,
     field_expr: &FieldExpr,
 ) -> (ast::Expr, RefData) {
@@ -111,15 +111,15 @@ pub fn determine_ref_and_parens(
     (target_node, ref_data)
 }
 
-/// Indicates whether to wrap the new expression in a deref and/or parentheses.
-pub struct RefData {
+/// Indicates whether to deref an expression or wrap it in parens
+pub(crate) struct RefData {
     needs_deref: bool,
     needs_parentheses: bool,
 }
 
 impl RefData {
-    /// Wraps the given `expr` in parentheses and/or dereferences it if necessary.
-    pub fn wrap_expr(&self, mut expr: ast::Expr) -> ast::Expr {
+    /// Derefs `expr` and wraps it in parens if necessary
+    pub(crate) fn wrap_expr(&self, mut expr: ast::Expr) -> ast::Expr {
         if self.needs_deref {
             expr = make::expr_prefix(T![*], expr);
         }

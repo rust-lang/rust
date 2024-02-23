@@ -3,11 +3,11 @@ use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
     helpers::mod_path_to_ast,
-    search::{FileReference, SearchScope, UsageSearchResult},
+    search::{FileReference, SearchScope},
     FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, SmolStr};
+use syntax::{ast, ted, AstNode, SmolStr, SyntaxNode};
 use text_edit::TextRange;
 
 use crate::{
@@ -66,7 +66,7 @@ fn destructure_struct_binding_impl(
     let usage_edits = build_usage_edits(ctx, builder, data, &field_names.into_iter().collect());
 
     assignment_edit.apply();
-    for edit in usage_edits.into_iter().flatten() {
+    for edit in usage_edits {
         edit.apply(builder);
     }
 }
@@ -76,8 +76,8 @@ struct StructEditData {
     kind: hir::StructKind,
     struct_def_path: hir::ModPath,
     visible_fields: Vec<hir::Field>,
-    usages: Option<UsageSearchResult>,
-    names_in_scope: FxHashSet<SmolStr>, // TODO currently always empty
+    usages: Vec<FileReference>,
+    names_in_scope: FxHashSet<SmolStr>,
     has_private_members: bool,
     is_nested: bool,
     is_ref: bool,
@@ -85,13 +85,17 @@ struct StructEditData {
 
 fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<StructEditData> {
     let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
-    let is_ref = ty.is_reference();
-
     let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
 
     let module = ctx.sema.scope(ident_pat.syntax())?.module();
     let struct_def = hir::ModuleDef::from(struct_type);
     let kind = struct_type.kind(ctx.db());
+    let struct_def_path = module.find_use_path(
+        ctx.db(),
+        struct_def,
+        ctx.config.prefer_no_std,
+        ctx.config.prefer_prelude,
+    )?;
 
     let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key("non_exhaustive").exists();
     let is_foreign_crate =
@@ -105,25 +109,30 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
 
     let has_private_members =
         (is_non_exhaustive && is_foreign_crate) || visible_fields.len() < n_fields;
+
+    // If private members are present, we can only destructure records
     if !matches!(kind, hir::StructKind::Record) && has_private_members {
         return None;
     }
 
+    let is_ref = ty.is_reference();
     let is_nested = ident_pat.syntax().parent().and_then(ast::RecordPatField::cast).is_some();
 
-    let usages = ctx.sema.to_def(&ident_pat).map(|def| {
-        Definition::Local(def)
-            .usages(&ctx.sema)
-            .in_scope(&SearchScope::single_file(ctx.file_id()))
-            .all()
-    });
+    let usages = ctx
+        .sema
+        .to_def(&ident_pat)
+        .and_then(|def| {
+            Definition::Local(def)
+                .usages(&ctx.sema)
+                .in_scope(&SearchScope::single_file(ctx.file_id()))
+                .all()
+                .iter()
+                .next()
+                .map(|(_, refs)| refs.to_vec())
+        })
+        .unwrap_or_default();
 
-    let struct_def_path = module.find_use_path(
-        ctx.db(),
-        struct_def,
-        ctx.config.prefer_no_std,
-        ctx.config.prefer_prelude,
-    )?;
+    let names_in_scope = get_names_in_scope(ctx, &ident_pat, &usages).unwrap_or_default();
 
     Some(StructEditData {
         ident_pat,
@@ -132,10 +141,34 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
         usages,
         has_private_members,
         visible_fields,
-        names_in_scope: FxHashSet::default(), // TODO
+        names_in_scope,
         is_nested,
         is_ref,
     })
+}
+
+fn get_names_in_scope(
+    ctx: &AssistContext<'_>,
+    ident_pat: &ast::IdentPat,
+    usages: &[FileReference],
+) -> Option<FxHashSet<SmolStr>> {
+    fn last_usage(usages: &[FileReference]) -> Option<SyntaxNode> {
+        usages.last()?.name.syntax().into_node()
+    }
+
+    // If available, find names visible to the last usage of the binding
+    // else, find names visible to the binding itself
+    let last_usage = last_usage(usages);
+    let node = last_usage.as_ref().unwrap_or(ident_pat.syntax());
+    let scope = ctx.sema.scope(node)?;
+
+    let mut names = FxHashSet::default();
+    scope.process_all_names(&mut |name, scope| {
+        if let (Some(name), hir::ScopeDef::Local(_)) = (name.as_text(), scope) {
+            names.insert(name);
+        }
+    });
+    Some(names)
 }
 
 fn build_assignment_edit(
@@ -160,6 +193,7 @@ fn build_assignment_edit(
         }
         hir::StructKind::Record => {
             let fields = field_names.iter().map(|(old_name, new_name)| {
+                // Use shorthand syntax if possible
                 if old_name == new_name && !is_mut {
                     ast::make::record_pat_field_shorthand(ast::make::name_ref(old_name))
                 } else {
@@ -183,6 +217,8 @@ fn build_assignment_edit(
         hir::StructKind::Unit => ast::make::path_pat(struct_path),
     };
 
+    // If the binding is nested inside a record, we need to wrap the new
+    // destructured pattern in a non-shorthand record field
     let new_pat = if data.is_nested {
         let record_pat_field =
             ast::make::record_pat_field(ast::make::name_ref(&ident_pat.to_string()), new_pat)
@@ -192,7 +228,7 @@ fn build_assignment_edit(
         NewPat::Pat(new_pat.clone_for_update())
     };
 
-    AssignmentEdit { ident_pat, new_pat }
+    AssignmentEdit { old_pat: ident_pat, new_pat }
 }
 
 fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
@@ -220,17 +256,17 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
 }
 
 fn new_field_name(base_name: SmolStr, names_in_scope: &FxHashSet<SmolStr>) -> SmolStr {
-    let mut name = base_name;
+    let mut name = base_name.clone();
     let mut i = 1;
     while names_in_scope.contains(&name) {
-        name = format!("{name}_{i}").into();
+        name = format!("{base_name}_{i}").into();
         i += 1;
     }
     name
 }
 
 struct AssignmentEdit {
-    ident_pat: ast::IdentPat,
+    old_pat: ast::IdentPat,
     new_pat: NewPat,
 }
 
@@ -242,34 +278,24 @@ enum NewPat {
 impl AssignmentEdit {
     fn apply(self) {
         match self.new_pat {
-            NewPat::Pat(pat) => ted::replace(self.ident_pat.syntax(), pat.syntax()),
+            NewPat::Pat(pat) => ted::replace(self.old_pat.syntax(), pat.syntax()),
             NewPat::RecordPatField(record_pat_field) => {
-                ted::replace(self.ident_pat.syntax(), record_pat_field.syntax())
+                ted::replace(self.old_pat.syntax(), record_pat_field.syntax())
             }
         }
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Usage edits
-////////////////////////////////////////////////////////////////////////////////
 
 fn build_usage_edits(
     ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
-) -> Option<Vec<StructUsageEdit>> {
-    let usages = data.usages.as_ref()?;
-
-    let edits = usages
-        .iter()
-        .find_map(|(file_id, refs)| (*file_id == ctx.file_id()).then_some(refs))?
+) -> Vec<StructUsageEdit> {
+    data.usages
         .iter()
         .filter_map(|r| build_usage_edit(ctx, builder, data, r, field_names))
-        .collect_vec();
-
-    Some(edits)
+        .collect_vec()
 }
 
 fn build_usage_edit(
@@ -285,6 +311,7 @@ fn build_usage_edit(
             let new_field_name = field_names.get(&field_name)?;
             let new_expr = ast::make::expr_path(ast::make::ext::ident_path(new_field_name));
 
+            // If struct binding is a reference, we might need to deref field usages
             if data.is_ref {
                 let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &field_expr);
                 StructUsageEdit::IndexField(
@@ -331,10 +358,7 @@ mod tests {
         check_assist(
             destructure_struct_binding,
             r#"
-            struct Foo {
-                bar: i32,
-                baz: i32
-            }
+            struct Foo { bar: i32, baz: i32 }
 
             fn main() {
                 let $0foo = Foo { bar: 1, baz: 2 };
@@ -345,10 +369,7 @@ mod tests {
             }
             "#,
             r#"
-            struct Foo {
-                bar: i32,
-                baz: i32
-            }
+            struct Foo { bar: i32, baz: i32 }
 
             fn main() {
                 let Foo { bar, baz } = Foo { bar: 1, baz: 2 };
@@ -417,9 +438,7 @@ mod tests {
             destructure_struct_binding,
             r#"
             //- /lib.rs crate:dep
-            pub struct Foo {
-                pub bar: i32,
-            };
+            pub struct Foo { pub bar: i32 };
 
             //- /main.rs crate:main deps:dep
             fn main() {
@@ -443,9 +462,7 @@ mod tests {
             r#"
             //- /lib.rs crate:dep
             #[non_exhaustive]
-            pub struct Foo {
-                pub bar: i32,
-            };
+            pub struct Foo { pub bar: i32 };
 
             //- /main.rs crate:main deps:dep
             fn main($0foo: dep::Foo) {
@@ -502,10 +519,7 @@ mod tests {
             destructure_struct_binding,
             r#"
             //- /lib.rs crate:dep
-            pub struct Foo {
-                pub bar: i32,
-                baz: i32,
-            };
+            pub struct Foo { pub bar: i32, baz: i32 };
 
             //- /main.rs crate:main deps:dep
             fn main(foo: dep::Foo) {
@@ -594,10 +608,7 @@ mod tests {
         check_assist(
             destructure_struct_binding,
             r#"
-            struct Foo {
-                bar: i32,
-                baz: i32
-            }
+            struct Foo { bar: i32, baz: i32 }
 
             fn main() {
                 let mut $0foo = Foo { bar: 1, baz: 2 };
@@ -606,10 +617,7 @@ mod tests {
             }
             "#,
             r#"
-            struct Foo {
-                bar: i32,
-                baz: i32
-            }
+            struct Foo { bar: i32, baz: i32 }
 
             fn main() {
                 let Foo { bar: mut bar, baz: mut baz } = Foo { bar: 1, baz: 2 };
@@ -625,10 +633,7 @@ mod tests {
         check_assist(
             destructure_struct_binding,
             r#"
-            struct Foo {
-                bar: i32,
-                baz: i32
-            }
+            struct Foo { bar: i32, baz: i32 }
 
             fn main() {
                 let $0foo = &mut Foo { bar: 1, baz: 2 };
@@ -636,14 +641,100 @@ mod tests {
             }
             "#,
             r#"
-            struct Foo {
-                bar: i32,
-                baz: i32
-            }
+            struct Foo { bar: i32, baz: i32 }
 
             fn main() {
                 let Foo { bar, baz } = &mut Foo { bar: 1, baz: 2 };
                 *bar = 5;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_name_collision() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main(baz: i32) {
+                let bar = true;
+                let $0foo = Foo { bar: 1, baz: 2 };
+                let baz_1 = 7;
+                let bar_usage = foo.bar;
+                let baz_usage = foo.baz;
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32, baz: i32 }
+
+            fn main(baz: i32) {
+                let bar = true;
+                let Foo { bar: bar_1, baz: baz_2 } = Foo { bar: 1, baz: 2 };
+                let baz_1 = 7;
+                let bar_usage = bar_1;
+                let baz_usage = baz_2;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn tuple_struct_name_collision() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let _0 = true;
+                let $0foo = Foo(1, 2);
+                let bar = foo.0;
+                let baz = foo.1;
+            }
+            "#,
+            r#"
+            struct Foo(i32, i32);
+
+            fn main() {
+                let _0 = true;
+                let Foo(_0_1, _1) = Foo(1, 2);
+                let bar = _0_1;
+                let baz = _1;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn record_struct_name_collision_nested_scope() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo { bar: i32 }
+
+            fn main(foo: Foo) {
+                let bar = 5;
+
+                let new_bar = {
+                    let $0foo2 = foo;
+                    let bar_1 = 5;
+                    foo2.bar
+                };
+            }
+            "#,
+            r#"
+            struct Foo { bar: i32 }
+
+            fn main(foo: Foo) {
+                let bar = 5;
+
+                let new_bar = {
+                    let Foo { bar: bar_2 } = foo;
+                    let bar_1 = 5;
+                    bar_2
+                };
             }
             "#,
         )
