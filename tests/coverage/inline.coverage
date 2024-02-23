@@ -48,7 +48,7 @@
    LL|      6|}
    LL|       |
    LL|       |#[inline(always)]
-   LL|      0|fn error() {
-   LL|      0|    panic!("error");
+   LL|       |fn error() {
+   LL|       |    panic!("error");
    LL|       |}
 

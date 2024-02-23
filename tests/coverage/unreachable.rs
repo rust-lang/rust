@@ -1,5 +1,4 @@
 #![feature(core_intrinsics)]
-#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // <https://github.com/rust-lang/rust/issues/116171>
@@ -23,7 +22,6 @@ fn unreachable_intrinsic() {
     unsafe { std::intrinsics::unreachable() }
 }
 
-#[coverage(off)]
 fn main() {
     if black_box(false) {
         UNREACHABLE_CLOSURE();

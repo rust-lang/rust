@@ -1,24 +1,39 @@
-Function name: unreachable::UNREACHABLE_CLOSURE::{closure#0}
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 0f, 27, 00, 47]
+Function name: unreachable::main
+Raw bytes (86): 0x[01, 01, 10, 01, 05, 05, 02, 3f, 09, 05, 02, 09, 3a, 3f, 09, 05, 02, 37, 0d, 09, 3a, 3f, 09, 05, 02, 0d, 32, 37, 0d, 09, 3a, 3f, 09, 05, 02, 0a, 01, 19, 01, 01, 18, 05, 01, 19, 02, 06, 02, 02, 06, 00, 07, 3f, 01, 08, 00, 18, 09, 00, 19, 02, 06, 3a, 02, 06, 00, 07, 37, 01, 08, 00, 18, 0d, 00, 19, 02, 06, 32, 02, 06, 00, 07, 2f, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 15, 39) to (start + 0, 71)
-
-Function name: unreachable::unreachable_function
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 11, 01, 01, 25]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 17, 1) to (start + 1, 37)
-
-Function name: unreachable::unreachable_intrinsic
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 16, 01, 01, 2c]
-Number of files: 1
-- file 0 => global file 1
-Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 22, 1) to (start + 1, 44)
+Number of expressions: 16
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 2 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 3 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 4 operands: lhs = Counter(2), rhs = Expression(14, Sub)
+- expression 5 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 6 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 7 operands: lhs = Expression(13, Add), rhs = Counter(3)
+- expression 8 operands: lhs = Counter(2), rhs = Expression(14, Sub)
+- expression 9 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 10 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+- expression 11 operands: lhs = Counter(3), rhs = Expression(12, Sub)
+- expression 12 operands: lhs = Expression(13, Add), rhs = Counter(3)
+- expression 13 operands: lhs = Counter(2), rhs = Expression(14, Sub)
+- expression 14 operands: lhs = Expression(15, Add), rhs = Counter(2)
+- expression 15 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 10
+- Code(Counter(0)) at (prev + 25, 1) to (start + 1, 24)
+- Code(Counter(1)) at (prev + 1, 25) to (start + 2, 6)
+- Code(Expression(0, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = (c0 - c1)
+- Code(Expression(15, Add)) at (prev + 1, 8) to (start + 0, 24)
+    = (c1 + (c0 - c1))
+- Code(Counter(2)) at (prev + 0, 25) to (start + 2, 6)
+- Code(Expression(14, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = ((c1 + (c0 - c1)) - c2)
+- Code(Expression(13, Add)) at (prev + 1, 8) to (start + 0, 24)
+    = (c2 + ((c1 + (c0 - c1)) - c2))
+- Code(Counter(3)) at (prev + 0, 25) to (start + 2, 6)
+- Code(Expression(12, Sub)) at (prev + 2, 6) to (start + 0, 7)
+    = ((c2 + ((c1 + (c0 - c1)) - c2)) - c3)
+- Code(Expression(11, Add)) at (prev + 1, 1) to (start + 0, 2)
+    = (c3 + ((c2 + ((c1 + (c0 - c1)) - c2)) - c3))
 

@@ -25,11 +25,11 @@
    LL|       |
    LL|      1|    match Pin::new(&mut coroutine).resume(()) {
    LL|      1|        CoroutineState::Yielded(Ok(1)) => {}
-   LL|      0|        _ => panic!("unexpected return from resume"),
+   LL|       |        _ => panic!("unexpected return from resume"),
    LL|       |    }
    LL|      1|    match Pin::new(&mut coroutine).resume(()) {
    LL|      1|        CoroutineState::Complete("foo") => {}
-   LL|      0|        _ => panic!("unexpected return from resume"),
+   LL|       |        _ => panic!("unexpected return from resume"),
    LL|       |    }
    LL|      1|}
 

@@ -62,10 +62,17 @@ pub(super) fn generate_coverage_spans(
             basic_coverage_blocks,
         );
         let coverage_spans = SpansRefiner::refine_sorted_spans(sorted_spans);
-        mappings.extend(coverage_spans.into_iter().map(|RefinedCovspan { bcb, span, .. }| {
-            // Each span produced by the generator represents an ordinary code region.
-            BcbMapping { kind: BcbMappingKind::Code(bcb), span }
-        }));
+        mappings.extend(coverage_spans.into_iter().filter_map(
+            |RefinedCovspan { bcb, span, .. }| {
+                if basic_coverage_blocks[bcb].must_diverge {
+                    // After refinement, discard spans associated with BCBs that must panic/diverge.
+                    None
+                } else {
+                    // Each span produced by the generator represents an ordinary code region.
+                    Some(BcbMapping { kind: BcbMappingKind::Code(bcb), span })
+                }
+            },
+        ));
     }
 
     if mappings.is_empty() {
