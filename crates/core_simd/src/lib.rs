@@ -17,7 +17,7 @@
 )]
 #![cfg_attr(
     all(
-        any(target_arch = "aarch64", target_arch = "arm",),
+        any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm",),
         any(
             all(target_feature = "v6", not(target_feature = "mclass")),
             all(target_feature = "mclass", target_feature = "dsp"),
