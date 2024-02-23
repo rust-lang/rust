@@ -372,17 +372,14 @@ impl<'tcx> Generics {
     ) -> bool {
         let mut default_param_seen = false;
         for param in self.params.iter() {
-            if param
-                .default_value(tcx)
-                .is_some_and(|default| default.instantiate(tcx, args) == args[param.index as usize])
+            if let Some(inst) =
+                param.default_value(tcx).map(|default| default.instantiate(tcx, args))
             {
-                default_param_seen = true;
-            } else if default_param_seen
-                && param.default_value(tcx).is_some_and(|default| {
-                    default.instantiate(tcx, args) != args[param.index as usize]
-                })
-            {
-                return true;
+                if inst == args[param.index as usize] {
+                    default_param_seen = true;
+                } else if default_param_seen {
+                    return true;
+                }
             }
         }
         false
