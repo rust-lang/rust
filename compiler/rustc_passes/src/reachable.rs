@@ -73,7 +73,7 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
                 match res {
                     // Reachable constants and reachable statics can have their contents inlined
                     // into other crates. Mark them as reachable and recurse into their body.
-                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static(_), _) => {
+                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static { .. }, _) => {
                         self.worklist.push(def_id);
                     }
                     _ => {

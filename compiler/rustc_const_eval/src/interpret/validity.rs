@@ -457,15 +457,16 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // Special handling for pointers to statics (irrespective of their type).
                         assert!(!self.ecx.tcx.is_thread_local_static(did));
                         assert!(self.ecx.tcx.is_static(did));
-                        let is_mut =
-                            matches!(self.ecx.tcx.def_kind(did), DefKind::Static(Mutability::Mut))
-                                || !self
-                                    .ecx
-                                    .tcx
-                                    .type_of(did)
-                                    .no_bound_vars()
-                                    .expect("statics should not have generic parameters")
-                                    .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all());
+                        let is_mut = matches!(
+                            self.ecx.tcx.def_kind(did),
+                            DefKind::Static { mt: Mutability::Mut }
+                        ) || !self
+                            .ecx
+                            .tcx
+                            .type_of(did)
+                            .no_bound_vars()
+                            .expect("statics should not have generic parameters")
+                            .is_freeze(*self.ecx.tcx, ty::ParamEnv::reveal_all());
                         // Mode-specific checks
                         match self.ctfe_mode {
                             Some(

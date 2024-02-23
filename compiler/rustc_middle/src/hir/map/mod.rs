@@ -343,7 +343,7 @@ impl<'hir> Map<'hir> {
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure => BodyOwnerKind::Closure,
-            DefKind::Static(mt) => BodyOwnerKind::Static(mt),
+            DefKind::Static { mt } => BodyOwnerKind::Static(mt),
             dk => bug!("{:?} is not a body node: {:?}", def_id, dk),
         }
     }

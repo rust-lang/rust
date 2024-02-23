@@ -318,7 +318,7 @@ fn opaque_types_defined_by<'tcx>(
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
-        | DefKind::Static(_)
+        | DefKind::Static { .. }
         | DefKind::Const
         | DefKind::AssocConst
         | DefKind::AnonConst => {

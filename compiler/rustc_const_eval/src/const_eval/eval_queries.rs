@@ -37,7 +37,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             || matches!(
                 ecx.tcx.def_kind(cid.instance.def_id()),
                 DefKind::Const
-                    | DefKind::Static(_)
+                    | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
                     | DefKind::InlineConst
