@@ -910,6 +910,27 @@ fn main() {
 }
 
 #[test]
+fn doctest_fill_record_pattern_fields() {
+    check_doc_test(
+        "fill_record_pattern_fields",
+        r#####"
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { ..$0 } = bar;
+}
+"#####,
+        r#####"
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { y, z  } = bar;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_fix_visibility() {
     check_doc_test(
         "fix_visibility",
