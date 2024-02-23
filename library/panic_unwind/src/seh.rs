@@ -49,7 +49,7 @@
 use alloc::boxed::Box;
 use core::any::Any;
 use core::mem::{self, ManuallyDrop};
-use core::ptr;
+use core::ptr::{addr_of, addr_of_mut};
 use libc::{c_int, c_uint, c_void};
 
 // NOTE(nbdd0121): The `canary` field is part of stable ABI.
@@ -135,7 +135,7 @@ mod imp {
     macro_rules! ptr {
         (0) => (0);
         ($e:expr) => {
-            (($e as usize) - (&imp::__ImageBase as *const _ as usize)) as u32
+            (($e as usize) - (addr_of!(imp::__ImageBase) as usize)) as u32
         }
     }
 }
@@ -220,7 +220,7 @@ extern "C" {
 // This is fine since the MSVC runtime uses string comparison on the type name
 // to match TypeDescriptors rather than pointer equality.
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
-    pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
+    pVFTable: unsafe { addr_of!(TYPE_INFO_VTABLE) } as *const _,
     spare: core::ptr::null_mut(),
     name: TYPE_NAME,
 };
@@ -261,9 +261,6 @@ cfg_if::cfg_if! {
    }
 }
 
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
-#[cfg_attr(bootstrap, allow(static_mut_ref))]
-#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     use core::intrinsics::atomic_store_seqcst;
 
@@ -274,8 +271,9 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // The ManuallyDrop is needed here since we don't want Exception to be
     // dropped when unwinding. Instead it will be dropped by exception_cleanup
     // which is invoked by the C++ runtime.
-    let mut exception = ManuallyDrop::new(Exception { canary: &TYPE_DESCRIPTOR, data: Some(data) });
-    let throw_ptr = &mut exception as *mut _ as *mut _;
+    let mut exception =
+        ManuallyDrop::new(Exception { canary: addr_of!(TYPE_DESCRIPTOR), data: Some(data) });
+    let throw_ptr = addr_of_mut!(exception) as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
     // pointers between these structure are just that, pointers. On 64-bit MSVC,
@@ -298,23 +296,23 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
     atomic_store_seqcst(
-        &mut THROW_INFO.pmfnUnwind as *mut _ as *mut u32,
+        addr_of_mut!(THROW_INFO.pmfnUnwind) as *mut u32,
         ptr!(exception_cleanup) as u32,
     );
     atomic_store_seqcst(
-        &mut THROW_INFO.pCatchableTypeArray as *mut _ as *mut u32,
-        ptr!(&CATCHABLE_TYPE_ARRAY as *const _) as u32,
+        addr_of_mut!(THROW_INFO.pCatchableTypeArray) as *mut u32,
+        ptr!(addr_of!(CATCHABLE_TYPE_ARRAY)) as u32,
     );
     atomic_store_seqcst(
-        &mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0] as *mut _ as *mut u32,
-        ptr!(&CATCHABLE_TYPE as *const _) as u32,
+        addr_of_mut!(CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]) as *mut u32,
+        ptr!(addr_of!(CATCHABLE_TYPE)) as u32,
     );
     atomic_store_seqcst(
-        &mut CATCHABLE_TYPE.pType as *mut _ as *mut u32,
-        ptr!(&TYPE_DESCRIPTOR as *const _) as u32,
+        addr_of_mut!(CATCHABLE_TYPE.pType) as *mut u32,
+        ptr!(addr_of!(TYPE_DESCRIPTOR)) as u32,
     );
     atomic_store_seqcst(
-        &mut CATCHABLE_TYPE.copyFunction as *mut _ as *mut u32,
+        addr_of_mut!(CATCHABLE_TYPE.copyFunction) as *mut u32,
         ptr!(exception_copy) as u32,
     );
 
@@ -322,12 +320,9 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
         fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
-    _CxxThrowException(throw_ptr, &mut THROW_INFO as *mut _ as *mut _);
+    _CxxThrowException(throw_ptr, addr_of_mut!(THROW_INFO) as *mut _);
 }
 
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
-#[cfg_attr(bootstrap, allow(static_mut_ref))]
-#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
     // A null payload here means that we got here from the catch (...) of
     // __rust_try. This happens when a non-Rust foreign exception is caught.
@@ -335,8 +330,8 @@ pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
         super::__rust_foreign_exception();
     }
     let exception = payload as *mut Exception;
-    let canary = ptr::addr_of!((*exception).canary).read();
-    if !ptr::eq(canary, &TYPE_DESCRIPTOR) {
+    let canary = addr_of!((*exception).canary).read();
+    if !core::ptr::eq(canary, addr_of!(TYPE_DESCRIPTOR)) {
         // A foreign Rust exception.
         super::__rust_foreign_exception();
     }
