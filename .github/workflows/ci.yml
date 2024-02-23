@@ -585,10 +585,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
+          - name: dist-aarch64-linux
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04-8core-32gb
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
