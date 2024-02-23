@@ -159,27 +159,12 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 (None, Operand::Copy(opt_data.child_place))
             };
 
-            // create temp to store inequality comparison between the two discriminants, `_t` in
-            // example above
-            let nequal = BinOp::Ne;
-            let comp_res_type = nequal.ty(tcx, parent_ty, opt_data.child_ty);
-            let comp_temp = patch.new_temp(comp_res_type, opt_data.child_source.span);
-            patch.add_statement(parent_end, StatementKind::StorageLive(comp_temp));
-
-            // create inequality comparison between the two discriminants
-            let comp_rvalue =
-                Rvalue::BinaryOp(nequal, Box::new((parent_op.clone(), second_operand)));
-            patch.add_statement(
-                parent_end,
-                StatementKind::Assign(Box::new((Place::from(comp_temp), comp_rvalue))),
-            );
-
             let eq_new_targets = parent_targets.iter().map(|(value, child)| {
                 let TerminatorKind::SwitchInt { targets, .. } = &bbs[child].terminator().kind
                 else {
                     unreachable!()
                 };
-                (value, targets.target_for_value(value))
+                (value, targets.all_targets()[0])
             });
             let eq_targets = SwitchTargets::new(eq_new_targets, opt_data.destination);
 
@@ -188,36 +173,77 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 source_info: bbs[parent].terminator().source_info,
                 kind: TerminatorKind::SwitchInt {
                     // switch on the first discriminant, so we can mark the second one as dead
-                    discr: parent_op,
+                    discr: parent_op.clone(),
                     targets: eq_targets,
                 },
             }));
 
             let eq_bb = patch.new_block(eq_switch);
 
-            // Jump to it on the basis of the inequality comparison
-            let true_case = opt_data.destination;
-            let false_case = eq_bb;
-            patch.patch_terminator(
-                parent,
-                TerminatorKind::if_(Operand::Move(Place::from(comp_temp)), true_case, false_case),
-            );
+            if let Some(same_target_value) = opt_data.same_target_value {
+                let t = TerminatorKind::SwitchInt {
+                    discr: second_operand,
+                    targets: SwitchTargets::static_if(
+                        same_target_value,
+                        eq_bb,
+                        opt_data.destination,
+                    ),
+                };
+                patch.patch_terminator(parent, t);
 
-            if let Some(second_discriminant_temp) = second_discriminant_temp {
-                // generate StorageDead for the second_discriminant_temp not in use anymore
+                if let Some(second_discriminant_temp) = second_discriminant_temp {
+                    // Generate a StorageDead for second_discriminant_temp in each of the targets, since we moved it into
+                    // the switch
+                    for bb in [eq_bb, opt_data.destination].iter() {
+                        patch.add_statement(
+                            Location { block: *bb, statement_index: 0 },
+                            StatementKind::StorageDead(second_discriminant_temp),
+                        );
+                    }
+                }
+            } else {
+                // create temp to store inequality comparison between the two discriminants, `_t` in
+                // example above
+                let nequal = BinOp::Ne;
+                let comp_res_type = nequal.ty(tcx, parent_ty, opt_data.child_ty);
+                let comp_temp = patch.new_temp(comp_res_type, opt_data.child_source.span);
+                patch.add_statement(parent_end, StatementKind::StorageLive(comp_temp));
+
+                // create inequality comparison between the two discriminants
+                let comp_rvalue = Rvalue::BinaryOp(nequal, Box::new((parent_op, second_operand)));
                 patch.add_statement(
                     parent_end,
-                    StatementKind::StorageDead(second_discriminant_temp),
+                    StatementKind::Assign(Box::new((Place::from(comp_temp), comp_rvalue))),
                 );
-            }
 
-            // Generate a StorageDead for comp_temp in each of the targets, since we moved it into
-            // the switch
-            for bb in [false_case, true_case].iter() {
-                patch.add_statement(
-                    Location { block: *bb, statement_index: 0 },
-                    StatementKind::StorageDead(comp_temp),
+                // Jump to it on the basis of the inequality comparison
+                let true_case = opt_data.destination;
+                let false_case = eq_bb;
+                patch.patch_terminator(
+                    parent,
+                    TerminatorKind::if_(
+                        Operand::Move(Place::from(comp_temp)),
+                        true_case,
+                        false_case,
+                    ),
                 );
+
+                // Generate a StorageDead for comp_temp in each of the targets, since we moved it into
+                // the switch
+                for bb in [false_case, true_case].iter() {
+                    patch.add_statement(
+                        Location { block: *bb, statement_index: 0 },
+                        StatementKind::StorageDead(comp_temp),
+                    );
+                }
+
+                if let Some(second_discriminant_temp) = second_discriminant_temp {
+                    // generate StorageDead for the second_discriminant_temp not in use anymore
+                    patch.add_statement(
+                        parent_end,
+                        StatementKind::StorageDead(second_discriminant_temp),
+                    );
+                }
             }
 
             patch.apply(body);
@@ -286,6 +312,7 @@ struct OptimizationData<'tcx> {
     child_ty: Ty<'tcx>,
     child_source: SourceInfo,
     hoist_discriminant: bool,
+    same_target_value: Option<u128>,
 }
 
 fn evaluate_candidate<'tcx>(
@@ -375,16 +402,38 @@ fn evaluate_candidate<'tcx>(
         targets.otherwise()
     };
 
+    let TerminatorKind::SwitchInt { targets: child_targets, .. } = &bbs[child].terminator().kind
+    else {
+        return None;
+    };
     // Verify that the optimization is legal for each branch
-    for (value, child) in targets.iter() {
+    let Some((may_same_target_value, _)) = child_targets.iter().next() else {
+        return None;
+    };
+    let mut same_target_value = Some(may_same_target_value);
+    for (_, child) in targets.iter() {
         if !verify_candidate_branch(
             &bbs[child],
-            value,
+            may_same_target_value,
             child_place,
             destination,
             hoist_discriminant,
         ) {
-            return None;
+            same_target_value = None;
+            break;
+        }
+    }
+    if same_target_value.is_none() {
+        for (value, child) in targets.iter() {
+            if !verify_candidate_branch(
+                &bbs[child],
+                value,
+                child_place,
+                destination,
+                hoist_discriminant,
+            ) {
+                return None;
+            }
         }
     }
     Some(OptimizationData {
@@ -393,6 +442,7 @@ fn evaluate_candidate<'tcx>(
         child_ty,
         child_source: child_terminator.source_info,
         hoist_discriminant,
+        same_target_value,
     })
 }
 

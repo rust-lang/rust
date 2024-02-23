@@ -83,10 +83,44 @@ fn opt5(x: u32, y: u32) -> u32 {
     }
 }
 
+// EMIT_MIR early_otherwise_branch.opt6.EarlyOtherwiseBranch.diff
+fn opt6(x: u32, y: u32) -> u32 {
+    // CHECK-LABEL: fn opt6(
+    // CHECK: bb0: {
+    // CHECK: switchInt((_{{.*}}: u32)) -> [10: [[SWITCH_BB:bb.*]], otherwise: [[OTHERWISE:bb.*]]];
+    // CHECK-NEXT: }
+    // CHECK: [[SWITCH_BB]]:
+    // CHECK:  switchInt((_{{.*}}: u32)) -> [1: bb{{.*}}, 2: bb{{.*}}, 3: bb{{.*}}, otherwise: [[OTHERWISE]]];
+    // CHECK-NEXT: }
+    match (x, y) {
+        (1, 10) => 4,
+        (2, 10) => 5,
+        (3, 10) => 6,
+        _ => 0,
+    }
+}
+
+// EMIT_MIR early_otherwise_branch.opt7.EarlyOtherwiseBranch.diff
+fn opt7(x: Option<u32>, y: Option<u32>) -> u32 {
+    // CHECK-LABEL: fn opt7(
+    // CHECK: bb0: {
+    // CHECK: [[LOCAL1:_.*]] = discriminant({{.*}});
+    // CHECK: [[LOCAL2:_.*]] = discriminant({{.*}});
+    // CHECK: switchInt(move [[LOCAL2]]) -> [
+    // CHECK-NEXT: }
+    match (x, y) {
+        (Some(a), Some(b)) => 0,
+        (None, Some(b)) => 2,
+        _ => 1,
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
     opt3(None, Some(false));
     opt4(0, 0);
     opt5(0, 0);
+    opt6(0, 0);
+    opt7(None, Some(0));
 }
