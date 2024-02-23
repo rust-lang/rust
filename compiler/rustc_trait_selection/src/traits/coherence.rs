@@ -22,7 +22,7 @@ use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::{util, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::{util, FulfillmentErrorCode, TraitEngine, TraitEngineExt};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{CandidateSource, Certainty, Goal};
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -34,6 +34,8 @@ use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
+
+use super::error_reporting::suggest_new_overflow_limit;
 
 /// Whether we do the orphan check relative to this crate or
 /// to some remote crate.
@@ -56,6 +58,9 @@ pub struct OverlapResult<'tcx> {
     /// `true` if the overlap might've been permitted before the shift
     /// to universes.
     pub involves_placeholder: bool,
+
+    /// Used in the new solver to suggest increasing the recursion limit.
+    pub overflowing_predicates: Vec<ty::Predicate<'tcx>>,
 }
 
 pub fn add_placeholder_note<G: EmissionGuarantee>(err: &mut Diag<'_, G>) {
@@ -63,6 +68,18 @@ pub fn add_placeholder_note<G: EmissionGuarantee>(err: &mut Diag<'_, G>) {
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details",
     );
+}
+
+pub fn suggest_increasing_recursion_limit<'tcx, G: EmissionGuarantee>(
+    tcx: TyCtxt<'tcx>,
+    err: &mut Diag<'_, G>,
+    overflowing_predicates: &[ty::Predicate<'tcx>],
+) {
+    for pred in overflowing_predicates {
+        err.note(format!("overflow evaluating the requirement `{}`", pred));
+    }
+
+    suggest_new_overflow_limit(tcx, err);
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -221,11 +238,13 @@ fn overlap<'tcx>(
         ),
     );
 
+    let mut overflowing_predicates = Vec::new();
     if overlap_mode.use_implicit_negative() {
-        if let Some(_failing_obligation) =
-            impl_intersection_has_impossible_obligation(selcx, &obligations)
-        {
-            return None;
+        match impl_intersection_has_impossible_obligation(selcx, &obligations) {
+            IntersectionHasImpossibleObligations::Yes => return None,
+            IntersectionHasImpossibleObligations::No { overflowing_predicates: p } => {
+                overflowing_predicates = p
+            }
         }
     }
 
@@ -261,7 +280,12 @@ fn overlap<'tcx>(
         impl_header = deeply_normalize_for_diagnostics(&infcx, param_env, impl_header);
     }
 
-    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
+    Some(OverlapResult {
+        impl_header,
+        intercrate_ambiguity_causes,
+        involves_placeholder,
+        overflowing_predicates,
+    })
 }
 
 #[instrument(level = "debug", skip(infcx), ret)]
@@ -287,6 +311,19 @@ fn equate_impl_headers<'tcx>(
     result.map(|infer_ok| infer_ok.obligations).ok()
 }
 
+/// The result of [fn impl_intersection_has_impossible_obligation].
+enum IntersectionHasImpossibleObligations<'tcx> {
+    Yes,
+    No {
+        /// With `-Znext-solver=coherence`, some obligations may
+        /// fail if only the user increased the recursion limit.
+        ///
+        /// We return those obligations here and mention them in the
+        /// error message.
+        overflowing_predicates: Vec<ty::Predicate<'tcx>>,
+    },
+}
+
 /// Check if both impls can be satisfied by a common type by considering whether
 /// any of either impl's obligations is not known to hold.
 ///
@@ -308,7 +345,7 @@ fn equate_impl_headers<'tcx>(
 fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligations: &'a [PredicateObligation<'tcx>],
-) -> Option<PredicateObligation<'tcx>> {
+) -> IntersectionHasImpossibleObligations<'tcx> {
     let infcx = selcx.infcx;
 
     if infcx.next_trait_solver() {
@@ -317,28 +354,42 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
 
         // We only care about the obligations that are *definitely* true errors.
         // Ambiguities do not prove the disjointness of two impls.
-        let mut errors = fulfill_cx.select_where_possible(infcx);
-        errors.pop().map(|err| err.obligation)
+        let errors = fulfill_cx.select_where_possible(infcx);
+        if errors.is_empty() {
+            let overflow_errors = fulfill_cx.collect_remaining_errors(infcx);
+            let overflowing_predicates = overflow_errors
+                .into_iter()
+                .filter(|e| match e.code {
+                    FulfillmentErrorCode::Ambiguity { overflow: Some(true) } => true,
+                    _ => false,
+                })
+                .map(|e| infcx.resolve_vars_if_possible(e.obligation.predicate))
+                .collect();
+            IntersectionHasImpossibleObligations::No { overflowing_predicates }
+        } else {
+            IntersectionHasImpossibleObligations::Yes
+        }
     } else {
-        obligations
-            .iter()
-            .find(|obligation| {
-                // We use `evaluate_root_obligation` to correctly track intercrate
-                // ambiguity clauses. We cannot use this in the new solver.
-                let evaluation_result = selcx.evaluate_root_obligation(obligation);
+        for obligation in obligations {
+            // We use `evaluate_root_obligation` to correctly track intercrate
+            // ambiguity clauses.
+            let evaluation_result = selcx.evaluate_root_obligation(obligation);
 
-                match evaluation_result {
-                    Ok(result) => !result.may_apply(),
-                    // If overflow occurs, we need to conservatively treat the goal as possibly holding,
-                    // since there can be instantiations of this goal that don't overflow and result in
-                    // success. This isn't much of a problem in the old solver, since we treat overflow
-                    // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
-                    // but in the new solver, this is very important for correctness, since overflow
-                    // *must* be treated as ambiguity for completeness.
-                    Err(_overflow) => false,
+            match evaluation_result {
+                Ok(result) => {
+                    if !result.may_apply() {
+                        return IntersectionHasImpossibleObligations::Yes;
+                    }
                 }
-            })
-            .cloned()
+                // If overflow occurs, we need to conservatively treat the goal as possibly holding,
+                // since there can be instantiations of this goal that don't overflow and result in
+                // success. While this isn't much of a problem in the old solver, since we treat overflow
+                // fatally, this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>.
+                Err(_overflow) => {}
+            }
+        }
+
+        IntersectionHasImpossibleObligations::No { overflowing_predicates: Vec::new() }
     }
 }
 

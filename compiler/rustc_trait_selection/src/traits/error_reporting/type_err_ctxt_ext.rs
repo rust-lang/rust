@@ -20,10 +20,9 @@ use crate::traits::{
     SelectionError, SignatureMismatch, TraitNotObjectSafe,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{
-    codes::*, pluralize, struct_span_code_err, Applicability, Diag, ErrorGuaranteed, FatalError,
-    MultiSpan, StashKey, StringPart,
-};
+use rustc_errors::codes::*;
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan, StringPart};
+use rustc_errors::{Diag, EmissionGuarantee, ErrorGuaranteed, FatalError, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -60,6 +59,22 @@ pub use rustc_infer::traits::error_reporting::*;
 pub enum OverflowCause<'tcx> {
     DeeplyNormalize(ty::AliasTy<'tcx>),
     TraitSolver(ty::Predicate<'tcx>),
+}
+
+pub fn suggest_new_overflow_limit<'tcx, G: EmissionGuarantee>(
+    tcx: TyCtxt<'tcx>,
+    err: &mut Diag<'_, G>,
+) {
+    let suggested_limit = match tcx.recursion_limit() {
+        Limit(0) => Limit(2),
+        limit => limit * 2,
+    };
+    err.help(format!(
+        "consider increasing the recursion limit by adding a \
+         `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
+        suggested_limit,
+        tcx.crate_name(LOCAL_CRATE),
+    ));
 }
 
 #[extension(pub trait TypeErrCtxtExt<'tcx>)]
@@ -263,7 +278,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
 
         if suggest_increasing_limit {
-            self.suggest_new_overflow_limit(&mut err);
+            suggest_new_overflow_limit(self.tcx, &mut err);
         }
 
         err
@@ -301,19 +316,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 );
             },
         );
-    }
-
-    fn suggest_new_overflow_limit(&self, err: &mut Diag<'_>) {
-        let suggested_limit = match self.tcx.recursion_limit() {
-            Limit(0) => Limit(2),
-            limit => limit * 2,
-        };
-        err.help(format!(
-            "consider increasing the recursion limit by adding a \
-             `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
-            suggested_limit,
-            self.tcx.crate_name(LOCAL_CRATE),
-        ));
     }
 
     /// Reports that a cycle was detected which led to overflow and halts

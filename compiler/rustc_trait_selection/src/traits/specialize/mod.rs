@@ -39,6 +39,7 @@ pub struct OverlapError<'tcx> {
     pub self_ty: Option<Ty<'tcx>>,
     pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
     pub involves_placeholder: bool,
+    pub overflowing_predicates: Vec<ty::Predicate<'tcx>>,
 }
 
 /// Given the generic parameters for the requested impl, translate it to the generic parameters
@@ -434,6 +435,14 @@ fn report_conflicting_impls<'tcx>(
 
         if overlap.involves_placeholder {
             coherence::add_placeholder_note(err);
+        }
+
+        if !overlap.overflowing_predicates.is_empty() {
+            coherence::suggest_increasing_recursion_limit(
+                tcx,
+                err,
+                &overlap.overflowing_predicates,
+            );
         }
     }
 
