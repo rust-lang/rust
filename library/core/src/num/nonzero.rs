@@ -23,7 +23,7 @@ mod private {
 
 /// A marker trait for primitive types which can be zero.
 ///
-/// This is an implementation detail for [`NonZero<T>`](NonZero) which may disappear or be replaced at any time.
+/// This is an implementation detail for <code>[NonZero]\<T></code> which may disappear or be replaced at any time.
 #[unstable(
     feature = "nonzero_internals",
     reason = "implementation detail which may disappear or be replaced at any time",
@@ -507,18 +507,16 @@ macro_rules! nonzero_integer {
             /// Basic usage:
             ///
             /// ```
-            /// #![feature(non_zero_count_ones)]
+            /// #![feature(generic_nonzero, non_zero_count_ones)]
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
             /// # use std::num::*;
             /// #
-            /// let one = NonZeroU32::new(1)?;
-            /// let three = NonZeroU32::new(3)?;
-            #[doc = concat!("let a = ", stringify!($Ty), "::new(0b100_0000)?;")]
-            #[doc = concat!("let b = ", stringify!($Ty), "::new(0b100_0011)?;")]
+            #[doc = concat!("let a = NonZero::<", stringify!($Int), ">::new(0b100_0000)?;")]
+            #[doc = concat!("let b = NonZero::<", stringify!($Int), ">::new(0b100_0011)?;")]
             ///
-            /// assert_eq!(a.count_ones(), one);
-            /// assert_eq!(b.count_ones(), three);
+            /// assert_eq!(a.count_ones(), NonZero::new(1)?);
+            /// assert_eq!(b.count_ones(), NonZero::new(3)?);
             /// # Some(())
             /// # }
             /// ```
@@ -530,7 +528,7 @@ macro_rules! nonzero_integer {
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
-            pub const fn count_ones(self) -> NonZeroU32 {
+            pub const fn count_ones(self) -> NonZero<u32> {
                 // SAFETY:
                 // `self` is non-zero, which means it has at least one bit set, which means
                 // that the result of `count_ones` is non-zero.

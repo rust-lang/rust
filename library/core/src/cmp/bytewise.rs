@@ -1,5 +1,4 @@
-use crate::num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
-use crate::num::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
+use crate::num::NonZero;
 
 /// Types where `==` & `!=` are equivalent to comparing their underlying bytes.
 ///
@@ -36,18 +35,18 @@ is_bytewise_comparable!(bool, char, super::Ordering);
 // SAFETY: Similarly, the `NonZero` type has a niche, but no undef and no pointers,
 // and they compare like their underlying numeric type.
 is_bytewise_comparable!(
-    NonZeroU8,
-    NonZeroU16,
-    NonZeroU32,
-    NonZeroU64,
-    NonZeroU128,
-    NonZeroUsize,
-    NonZeroI8,
-    NonZeroI16,
-    NonZeroI32,
-    NonZeroI64,
-    NonZeroI128,
-    NonZeroIsize,
+    NonZero<u8>,
+    NonZero<u16>,
+    NonZero<u32>,
+    NonZero<u64>,
+    NonZero<u128>,
+    NonZero<usize>,
+    NonZero<i8>,
+    NonZero<i16>,
+    NonZero<i32>,
+    NonZero<i64>,
+    NonZero<i128>,
+    NonZero<isize>,
 );
 
 // SAFETY: The `NonZero` type has the "null" optimization guaranteed, and thus
@@ -55,18 +54,18 @@ is_bytewise_comparable!(
 // The way `PartialOrd` is defined for `Option` means that this wouldn't work
 // for `<` or `>` on the signed types, but since we only do `==` it's fine.
 is_bytewise_comparable!(
-    Option<NonZeroU8>,
-    Option<NonZeroU16>,
-    Option<NonZeroU32>,
-    Option<NonZeroU64>,
-    Option<NonZeroU128>,
-    Option<NonZeroUsize>,
-    Option<NonZeroI8>,
-    Option<NonZeroI16>,
-    Option<NonZeroI32>,
-    Option<NonZeroI64>,
-    Option<NonZeroI128>,
-    Option<NonZeroIsize>,
+    Option<NonZero<u8>>,
+    Option<NonZero<u16>>,
+    Option<NonZero<u32>>,
+    Option<NonZero<u64>>,
+    Option<NonZero<u128>>,
+    Option<NonZero<usize>>,
+    Option<NonZero<i8>>,
+    Option<NonZero<i16>>,
+    Option<NonZero<i32>>,
+    Option<NonZero<i64>>,
+    Option<NonZero<i128>>,
+    Option<NonZero<isize>>,
 );
 
 macro_rules! is_bytewise_comparable_array_length {

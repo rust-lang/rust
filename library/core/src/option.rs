@@ -558,6 +558,7 @@ use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
     cmp, convert, hint, mem,
+    num::NonZero,
     ops::{self, ControlFlow, Deref, DerefMut},
     slice,
 };
@@ -2194,18 +2195,18 @@ macro_rules! non_zero_option {
 }
 
 non_zero_option! {
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU8;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU16;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU32;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU64;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU128;
-    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroUsize;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI8;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI16;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI32;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI64;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI128;
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroIsize;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u8>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u16>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u32>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u64>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<u128>;
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZero<usize>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i8>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i16>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i32>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i64>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<i128>;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZero<isize>;
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]

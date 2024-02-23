@@ -5,10 +5,10 @@ use crate::fmt::{self, Write};
 use crate::iter::{Chain, FlatMap, Flatten};
 use crate::iter::{Copied, Filter, FusedIterator, Map, TrustedLen};
 use crate::iter::{TrustedRandomAccess, TrustedRandomAccessNoCoerce};
+use crate::num::NonZero;
 use crate::ops::Try;
 use crate::option;
 use crate::slice::{self, Split as SliceSplit};
-use core::num::{NonZero, NonZeroUsize};
 
 use super::from_utf8_unchecked;
 use super::pattern::Pattern;
@@ -51,7 +51,7 @@ impl<'a> Iterator for Chars<'a> {
     }
 
     #[inline]
-    fn advance_by(&mut self, mut remainder: usize) -> Result<(), NonZeroUsize> {
+    fn advance_by(&mut self, mut remainder: usize) -> Result<(), NonZero<usize>> {
         const CHUNK_SIZE: usize = 32;
 
         if remainder >= CHUNK_SIZE {
