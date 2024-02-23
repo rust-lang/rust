@@ -224,8 +224,7 @@ impl QuestionMark {
     ///
     /// If it matches, it will suggest to use the question mark operator instead
     fn check_is_none_or_err_and_early_return<'tcx>(&self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if !self.inside_try_block()
-            && let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
+        if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
             && !is_else_clause(cx.tcx, expr)
             && let ExprKind::MethodCall(segment, caller, ..) = &cond.kind
             && let caller_ty = cx.typeck_results().expr_ty(caller)
@@ -259,8 +258,7 @@ impl QuestionMark {
     }
 
     fn check_if_let_some_or_err_and_early_return<'tcx>(&self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if !self.inside_try_block()
-            && let Some(higher::IfLet {
+        if let Some(higher::IfLet {
                 let_pat,
                 let_expr,
                 if_then,
@@ -324,13 +322,13 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
             return;
         }
 
-        if !in_constant(cx, stmt.hir_id) {
+        if !self.inside_try_block() && !in_constant(cx, stmt.hir_id) {
             check_let_some_else_return_none(cx, stmt);
         }
         self.check_manual_let_else(cx, stmt);
     }
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !in_constant(cx, expr.hir_id) && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id) {
+        if !self.inside_try_block() && !in_constant(cx, expr.hir_id) && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id) {
             self.check_is_none_or_err_and_early_return(cx, expr);
             self.check_if_let_some_or_err_and_early_return(cx, expr);
         }
