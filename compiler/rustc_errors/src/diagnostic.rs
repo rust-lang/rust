@@ -184,21 +184,21 @@ pub trait DecorateLint<'a, G: EmissionGuarantee> {
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
-pub struct DiagnosticLocation {
+pub struct DiagLocation {
     file: Cow<'static, str>,
     line: u32,
     col: u32,
 }
 
-impl DiagnosticLocation {
+impl DiagLocation {
     #[track_caller]
     fn caller() -> Self {
         let loc = panic::Location::caller();
-        DiagnosticLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
+        DiagLocation { file: loc.file().into(), line: loc.line(), col: loc.column() }
     }
 }
 
-impl fmt::Display for DiagnosticLocation {
+impl fmt::Display for DiagLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}:{}", self.file, self.line, self.col)
     }
@@ -288,7 +288,7 @@ pub struct DiagInner {
 
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
-    pub(crate) emitted_at: DiagnosticLocation,
+    pub(crate) emitted_at: DiagLocation,
 }
 
 impl DiagInner {
@@ -309,7 +309,7 @@ impl DiagInner {
             args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
-            emitted_at: DiagnosticLocation::caller(),
+            emitted_at: DiagLocation::caller(),
         }
     }
 

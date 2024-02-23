@@ -1,4 +1,4 @@
-use crate::diagnostic::DiagnosticLocation;
+use crate::diagnostic::DiagLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{
     Diag, DiagArgValue, DiagCtxt, EmissionGuarantee, ErrCode, IntoDiagnostic, IntoDiagnosticArg,
@@ -315,7 +315,7 @@ pub struct ExpectedLifetimeParameter {
     pub count: usize,
 }
 
-impl IntoDiagnosticArg for DiagnosticLocation {
+impl IntoDiagnosticArg for DiagLocation {
     fn into_diagnostic_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::from(self.to_string()))
     }

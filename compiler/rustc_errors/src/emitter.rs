@@ -17,8 +17,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage,
-    ErrCode, FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
+    diagnostic::DiagLocation, CodeSuggestion, DiagCtxt, DiagInner, DiagnosticMessage, ErrCode,
+    FluentBundle, LazyFallbackBundle, Level, MultiSpan, Subdiag, SubstitutionHighlight,
     SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
@@ -1327,7 +1327,7 @@ impl HumanEmitter {
         level: &Level,
         max_line_num_len: usize,
         is_secondary: bool,
-        emitted_at: Option<&DiagnosticLocation>,
+        emitted_at: Option<&DiagLocation>,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
 
@@ -2096,7 +2096,7 @@ impl HumanEmitter {
         span: &MultiSpan,
         children: &[Subdiag],
         suggestions: &[CodeSuggestion],
-        emitted_at: Option<&DiagnosticLocation>,
+        emitted_at: Option<&DiagLocation>,
     ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
