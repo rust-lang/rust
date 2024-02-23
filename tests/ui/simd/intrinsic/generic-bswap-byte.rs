@@ -1,5 +1,5 @@
 //@ run-pass
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -10,7 +10,7 @@ struct i8x4([i8; 4]);
 #[derive(Copy, Clone)]
 struct u8x4([u8; 4]);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_bswap<T>(x: T) -> T;
 }
 

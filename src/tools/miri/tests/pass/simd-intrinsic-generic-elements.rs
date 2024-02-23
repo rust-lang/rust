@@ -1,4 +1,4 @@
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]

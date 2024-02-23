@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd, packed)]
@@ -25,7 +25,7 @@ fn check_ty<T>() {
     check_size_align::<T, 15>();
 }
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_add<T>(a: T, b: T) -> T;
 }
 

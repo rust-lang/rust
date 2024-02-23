@@ -1,5 +1,5 @@
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:15:8
+  --> $DIR/feature-gate-abi.rs:14:8
    |
 LL | extern "rust-intrinsic" fn f1() {}
    |        ^^^^^^^^^^^^^^^^
@@ -7,18 +7,17 @@ LL | extern "rust-intrinsic" fn f1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:18:8
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gate-abi.rs:17:8
    |
-LL | extern "platform-intrinsic" fn f2() {}
-   |        ^^^^^^^^^^^^^^^^^^^^
+LL | extern "rust-intrinsic" fn f2() {}
+   |        ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
-   = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:21:8
+  --> $DIR/feature-gate-abi.rs:20:8
    |
 LL | extern "rust-call" fn f4(_: ()) {}
    |        ^^^^^^^^^^^
@@ -28,7 +27,7 @@ LL | extern "rust-call" fn f4(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:25:12
+  --> $DIR/feature-gate-abi.rs:24:12
    |
 LL |     extern "rust-intrinsic" fn m1();
    |            ^^^^^^^^^^^^^^^^
@@ -36,18 +35,17 @@ LL |     extern "rust-intrinsic" fn m1();
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:27:12
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gate-abi.rs:26:12
    |
-LL |     extern "platform-intrinsic" fn m2();
-   |            ^^^^^^^^^^^^^^^^^^^^
+LL |     extern "rust-intrinsic" fn m2();
+   |            ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
-   = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:29:12
+  --> $DIR/feature-gate-abi.rs:28:12
    |
 LL |     extern "rust-call" fn m4(_: ());
    |            ^^^^^^^^^^^
@@ -57,7 +55,7 @@ LL |     extern "rust-call" fn m4(_: ());
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:31:12
+  --> $DIR/feature-gate-abi.rs:30:12
    |
 LL |     extern "rust-call" fn dm4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -67,7 +65,7 @@ LL |     extern "rust-call" fn dm4(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:38:12
+  --> $DIR/feature-gate-abi.rs:37:12
    |
 LL |     extern "rust-intrinsic" fn m1() {}
    |            ^^^^^^^^^^^^^^^^
@@ -75,18 +73,17 @@ LL |     extern "rust-intrinsic" fn m1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:40:12
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gate-abi.rs:39:12
    |
-LL |     extern "platform-intrinsic" fn m2() {}
-   |            ^^^^^^^^^^^^^^^^^^^^
+LL |     extern "rust-intrinsic" fn m2() {}
+   |            ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
-   = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:42:12
+  --> $DIR/feature-gate-abi.rs:41:12
    |
 LL |     extern "rust-call" fn m4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -96,7 +93,7 @@ LL |     extern "rust-call" fn m4(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:47:12
+  --> $DIR/feature-gate-abi.rs:46:12
    |
 LL |     extern "rust-intrinsic" fn im1() {}
    |            ^^^^^^^^^^^^^^^^
@@ -104,18 +101,17 @@ LL |     extern "rust-intrinsic" fn im1() {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:49:12
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gate-abi.rs:48:12
    |
-LL |     extern "platform-intrinsic" fn im2() {}
-   |            ^^^^^^^^^^^^^^^^^^^^
+LL |     extern "rust-intrinsic" fn im2() {}
+   |            ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
-   = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:51:12
+  --> $DIR/feature-gate-abi.rs:50:12
    |
 LL |     extern "rust-call" fn im4(_: ()) {}
    |            ^^^^^^^^^^^
@@ -125,7 +121,7 @@ LL |     extern "rust-call" fn im4(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: intrinsics are subject to change
-  --> $DIR/feature-gate-abi.rs:55:18
+  --> $DIR/feature-gate-abi.rs:54:18
    |
 LL | type A1 = extern "rust-intrinsic" fn();
    |                  ^^^^^^^^^^^^^^^^
@@ -133,24 +129,32 @@ LL | type A1 = extern "rust-intrinsic" fn();
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:56:18
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gate-abi.rs:55:18
    |
-LL | type A2 = extern "platform-intrinsic" fn();
-   |                  ^^^^^^^^^^^^^^^^^^^^
+LL | type A2 = extern "rust-intrinsic" fn();
+   |                  ^^^^^^^^^^^^^^^^
    |
-   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
-   = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:57:18
+  --> $DIR/feature-gate-abi.rs:56:18
    |
 LL | type A4 = extern "rust-call" fn(_: ());
    |                  ^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: intrinsics are subject to change
+  --> $DIR/feature-gate-abi.rs:59:8
+   |
+LL | extern "rust-intrinsic" {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: intrinsics are subject to change
@@ -162,18 +166,8 @@ LL | extern "rust-intrinsic" {}
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: platform intrinsics are experimental and possibly buggy
-  --> $DIR/feature-gate-abi.rs:61:8
-   |
-LL | extern "platform-intrinsic" {}
-   |        ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
-   = help: add `#![feature(platform_intrinsics)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: rust-call ABI is subject to change
-  --> $DIR/feature-gate-abi.rs:62:8
+  --> $DIR/feature-gate-abi.rs:61:8
    |
 LL | extern "rust-call" {}
    |        ^^^^^^^^^^^
@@ -183,7 +177,7 @@ LL | extern "rust-call" {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0093]: unrecognized intrinsic function: `f1`
-  --> $DIR/feature-gate-abi.rs:15:28
+  --> $DIR/feature-gate-abi.rs:14:28
    |
 LL | extern "rust-intrinsic" fn f1() {}
    |                            ^^ unrecognized intrinsic
@@ -191,60 +185,60 @@ LL | extern "rust-intrinsic" fn f1() {}
    = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error[E0093]: unrecognized intrinsic function: `f2`
-  --> $DIR/feature-gate-abi.rs:18:32
+  --> $DIR/feature-gate-abi.rs:17:28
    |
-LL | extern "platform-intrinsic" fn f2() {}
-   |                                ^^ unrecognized intrinsic
+LL | extern "rust-intrinsic" fn f2() {}
+   |                            ^^ unrecognized intrinsic
    |
    = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:25:32
+  --> $DIR/feature-gate-abi.rs:24:32
    |
 LL |     extern "rust-intrinsic" fn m1();
    |                                ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:27:36
+  --> $DIR/feature-gate-abi.rs:26:32
    |
-LL |     extern "platform-intrinsic" fn m2();
-   |                                    ^^
+LL |     extern "rust-intrinsic" fn m2();
+   |                                ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:15:33
+  --> $DIR/feature-gate-abi.rs:14:33
    |
 LL | extern "rust-intrinsic" fn f1() {}
    |                                 ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:18:37
+  --> $DIR/feature-gate-abi.rs:17:33
    |
-LL | extern "platform-intrinsic" fn f2() {}
-   |                                     ^^
+LL | extern "rust-intrinsic" fn f2() {}
+   |                                 ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:38:37
+  --> $DIR/feature-gate-abi.rs:37:37
    |
 LL |     extern "rust-intrinsic" fn m1() {}
    |                                     ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:40:41
+  --> $DIR/feature-gate-abi.rs:39:37
    |
-LL |     extern "platform-intrinsic" fn m2() {}
-   |                                         ^^
+LL |     extern "rust-intrinsic" fn m2() {}
+   |                                     ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:47:38
+  --> $DIR/feature-gate-abi.rs:46:38
    |
 LL |     extern "rust-intrinsic" fn im1() {}
    |                                      ^^
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
-  --> $DIR/feature-gate-abi.rs:49:42
+  --> $DIR/feature-gate-abi.rs:48:38
    |
-LL |     extern "platform-intrinsic" fn im2() {}
-   |                                          ^^
+LL |     extern "rust-intrinsic" fn im2() {}
+   |                                      ^^
 
 error: aborting due to 29 previous errors
 

@@ -3,13 +3,13 @@
 // Test that the simd_shuffle intrinsic produces ok-ish error
 // messages when misused.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct Simd<T, const N: usize>([T; N]);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
 }
 

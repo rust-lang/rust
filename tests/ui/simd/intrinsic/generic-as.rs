@@ -1,8 +1,8 @@
 //@ run-pass
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_as<T, U>(x: T) -> U;
 }
 

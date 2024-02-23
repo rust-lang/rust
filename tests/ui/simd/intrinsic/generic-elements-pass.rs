@@ -1,7 +1,7 @@
 //@ run-pass
 //@ ignore-emscripten FIXME(#45351) hits an LLVM assert
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![feature(inline_const)]
 
 #[repr(simd)]
@@ -18,7 +18,7 @@ struct i32x4(i32, i32, i32, i32);
 struct i32x8(i32, i32, i32, i32,
              i32, i32, i32, i32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
     fn simd_extract<T, E>(x: T, idx: u32) -> E;
 

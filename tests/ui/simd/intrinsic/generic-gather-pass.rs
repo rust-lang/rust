@@ -3,14 +3,14 @@
 
 // Test that the simd_{gather,scatter} intrinsics produce the correct results.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct x4<T>(pub T, pub T, pub T, pub T);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
     fn simd_scatter<T, U, V>(x: T, y: U, z: V) -> ();
 }

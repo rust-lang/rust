@@ -1,13 +1,13 @@
 //@ build-fail
 
-#![feature(repr_simd, platform_intrinsics, core_intrinsics)]
+#![feature(repr_simd, intrinsics, core_intrinsics)]
 #![allow(warnings)]
 #![crate_type = "rlib"]
 
 // Bad monomorphizations could previously cause LLVM asserts even though the
 // error was caught in the compiler.
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_add<T>(x: T, y: T) -> T;
 }
 

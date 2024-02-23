@@ -1,8 +1,6 @@
-#![feature(platform_intrinsics, repr_simd)]
+#![feature(core_intrinsics, repr_simd)]
 
-extern "platform-intrinsic" {
-    fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;
-}
+use std::intrinsics::simd::simd_select_bitmask;
 
 #[repr(simd)]
 #[allow(non_camel_case_types)]

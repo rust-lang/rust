@@ -1,8 +1,8 @@
 //@ build-fail
 
-#![feature(platform_intrinsics)]
+#![feature(intrinsics)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_add<T>(a: T, b: T) -> T;
 }
 

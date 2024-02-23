@@ -1,6 +1,6 @@
 //@ build-fail
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -12,7 +12,7 @@ struct i32x4(i32, i32, i32, i32);
 struct i16x8(i16, i16, i16, i16,
              i16, i16, i16, i16);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_eq<T, U>(x: T, y: T) -> U;
     fn simd_ne<T, U>(x: T, y: T) -> U;
     fn simd_lt<T, U>(x: T, y: T) -> U;

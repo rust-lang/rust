@@ -1,7 +1,7 @@
 //@ run-pass
 //@ ignore-emscripten FIXME(#45351)
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug)]
@@ -11,7 +11,7 @@ pub struct Char3(pub i8, pub i8, pub i8);
 #[derive(Copy, Clone, Debug)]
 pub struct Short3(pub i16, pub i16, pub i16);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_cast<T, U>(x: T) -> U;
 }
 

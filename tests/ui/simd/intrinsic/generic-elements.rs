@@ -1,6 +1,6 @@
 //@ build-fail
 
-#![feature(repr_simd, platform_intrinsics, rustc_attrs, adt_const_params)]
+#![feature(repr_simd, intrinsics, rustc_attrs, adt_const_params)]
 #![allow(incomplete_features)]
 
 #[repr(simd)]
@@ -31,7 +31,7 @@ struct f32x4(f32, f32, f32, f32);
 struct f32x8(f32, f32, f32, f32,
              f32, f32, f32, f32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
     fn simd_extract<T, E>(x: T, idx: u32) -> E;
 

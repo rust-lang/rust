@@ -3,17 +3,14 @@
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
-extern "platform-intrinsic" {
-    fn simd_fmin<T>(x: T, y: T) -> T;
-    fn simd_fmax<T>(x: T, y: T) -> T;
-}
+use std::intrinsics::simd::*;
 
 fn main() {
     let x = f32x4(1.0, 2.0, 3.0, 4.0);

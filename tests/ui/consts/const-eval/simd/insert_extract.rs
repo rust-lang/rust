@@ -1,6 +1,6 @@
 //@ run-pass
 #![feature(repr_simd)]
-#![feature(platform_intrinsics)]
+#![feature(intrinsics)]
 #![feature(staged_api)]
 #![stable(feature = "foo", since = "1.3.37")]
 #![allow(non_camel_case_types)]
@@ -11,7 +11,7 @@
 #[repr(simd)] struct i8x1_arr([i8; 1]);
 #[repr(simd)] struct f32x4([f32; 4]);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     #[rustc_const_stable(feature = "foo", since = "1.3.37")]
     fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;
     #[rustc_const_stable(feature = "foo", since = "1.3.37")]

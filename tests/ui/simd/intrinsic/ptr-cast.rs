@@ -1,8 +1,8 @@
 //@ run-pass
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_cast_ptr<T, U>(x: T) -> U;
     fn simd_expose_addr<T, U>(x: T) -> U;
     fn simd_from_exposed_addr<T, U>(x: T) -> U;

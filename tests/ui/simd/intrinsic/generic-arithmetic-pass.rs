@@ -1,7 +1,7 @@
 //@ run-pass
 #![allow(non_camel_case_types)]
 //@ ignore-emscripten FIXME(#45351) hits an LLVM assert
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -31,7 +31,7 @@ macro_rules! all_eq_ {
     }};
 }
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_add<T>(x: T, y: T) -> T;
     fn simd_sub<T>(x: T, y: T) -> T;
     fn simd_mul<T>(x: T, y: T) -> T;

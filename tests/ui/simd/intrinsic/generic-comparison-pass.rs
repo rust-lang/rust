@@ -1,7 +1,7 @@
 //@ run-pass
 //@ ignore-emscripten FIXME(#45351) hits an LLVM assert
 
-#![feature(repr_simd, platform_intrinsics, concat_idents)]
+#![feature(repr_simd, intrinsics, concat_idents)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -14,7 +14,7 @@ struct u32x4(pub u32, pub u32, pub u32, pub u32);
 #[derive(Copy, Clone)]
 struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_eq<T, U>(x: T, y: T) -> U;
     fn simd_ne<T, U>(x: T, y: T) -> U;
     fn simd_lt<T, U>(x: T, y: T) -> U;

@@ -1,6 +1,6 @@
 //@ run-pass
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 use std::ops;
 
@@ -21,7 +21,7 @@ struct B<T>([T; 4]);
 struct C<T, const N: usize>([T; N]);
 
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_add<T>(x: T, y: T) -> T;
 }
 

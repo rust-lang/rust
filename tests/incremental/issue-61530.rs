@@ -1,11 +1,11 @@
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 //@ revisions:rpass1 rpass2
 
 #[repr(simd)]
 struct I32x2(i32, i32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 }
 

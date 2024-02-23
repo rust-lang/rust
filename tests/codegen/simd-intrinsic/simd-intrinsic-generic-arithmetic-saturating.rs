@@ -3,7 +3,7 @@
 
 #![crate_type = "lib"]
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 #![deny(unused)]
 
@@ -111,7 +111,7 @@
 #[repr(simd)] #[derive(Copy, Clone)] pub struct u128x2(u128, u128);
 #[repr(simd)] #[derive(Copy, Clone)] pub struct u128x4(u128, u128, u128, u128);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_saturating_add<T>(x: T, y: T) -> T;
     fn simd_saturating_sub<T>(x: T, y: T) -> T;
 }

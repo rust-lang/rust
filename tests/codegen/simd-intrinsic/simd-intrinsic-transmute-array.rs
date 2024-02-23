@@ -3,7 +3,7 @@
 
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![feature(inline_const)]
 
 #[repr(simd)]

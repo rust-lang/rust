@@ -1,6 +1,6 @@
 //@ build-fail
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -23,7 +23,7 @@ struct f32x8(f32, f32, f32, f32,
              f32, f32, f32, f32);
 
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_cast<T, U>(x: T) -> U;
 }
 

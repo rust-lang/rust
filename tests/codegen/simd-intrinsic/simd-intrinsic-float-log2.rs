@@ -2,7 +2,7 @@
 
 #![crate_type = "lib"]
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -25,7 +25,7 @@ pub struct f32x16(pub f32, pub f32, pub f32, pub f32,
                   pub f32, pub f32, pub f32, pub f32,
                   pub f32, pub f32, pub f32, pub f32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_flog2<T>(x: T) -> T;
 }
 

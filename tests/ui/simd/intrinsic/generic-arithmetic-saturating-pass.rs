@@ -2,7 +2,7 @@
 //@ ignore-emscripten
 
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -12,7 +12,7 @@ struct u32x4(pub u32, pub u32, pub u32, pub u32);
 #[derive(Copy, Clone)]
 struct I32<const N: usize>([i32; N]);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_saturating_add<T>(x: T, y: T) -> T;
     fn simd_saturating_sub<T>(x: T, y: T) -> T;
 }

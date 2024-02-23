@@ -5,7 +5,7 @@
 
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #[allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -24,7 +24,7 @@ struct f32x4(pub f32, pub f32, pub f32, pub f32);
 #[derive(Copy, Clone)]
 struct b8x4(pub i8, pub i8, pub i8, pub i8);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_reduce_add_unordered<T, U>(x: T) -> U;
     fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
     fn simd_reduce_add_ordered<T, U>(x: T, acc: U) -> U;

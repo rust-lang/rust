@@ -2,7 +2,7 @@
 
 #![crate_type = "lib"]
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
@@ -13,7 +13,7 @@ pub struct Vec2<T>(pub T, pub T);
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec4<T>(pub T, pub T, pub T, pub T);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_masked_store<M, P, T>(mask: M, pointer: P, values: T) -> ();
 }
 
