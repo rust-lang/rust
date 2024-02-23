@@ -2399,7 +2399,7 @@ impl Config {
                     .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
                     .is_none()
             {
-                // there are some untracked changes in the the given paths.
+                // there are some untracked changes in the given paths.
                 false
             } else {
                 llvm::is_ci_llvm_available(self, asserts)

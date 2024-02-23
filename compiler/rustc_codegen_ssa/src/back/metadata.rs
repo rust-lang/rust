@@ -623,7 +623,7 @@ pub fn create_compressed_metadata_file_for_xcoff(
 /// that contains a custom section of the name `section_name` with contents
 /// `data`.
 ///
-/// NB: the `object` crate does not yet have support for writing the the wasm
+/// NB: the `object` crate does not yet have support for writing the wasm
 /// object file format. The format is simple enough that for now an extra crate
 /// from crates.io (such as `wasm-encoder`). The file format is:
 ///
