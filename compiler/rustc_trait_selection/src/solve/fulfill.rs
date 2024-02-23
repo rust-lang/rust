@@ -73,36 +73,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
         self.obligations
             .drain(..)
-            .map(|obligation| {
-                let code = infcx.probe(|_| {
-                    match infcx
-                        .evaluate_root_goal(obligation.clone().into(), GenerateProofTree::IfEnabled)
-                        .0
-                    {
-                        Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
-                            FulfillmentErrorCode::Ambiguity { overflow: None }
-                        }
-                        Ok((
-                            _,
-                            Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }),
-                        )) => FulfillmentErrorCode::Ambiguity {
-                            overflow: Some(suggest_increasing_limit),
-                        },
-                        Ok((_, Certainty::Yes)) => {
-                            bug!("did not expect successful goal when collecting ambiguity errors")
-                        }
-                        Err(_) => {
-                            bug!("did not expect selection error when collecting ambiguity errors")
-                        }
-                    }
-                });
-
-                FulfillmentError {
-                    obligation: obligation.clone(),
-                    code,
-                    root_obligation: obligation,
-                }
-            })
+            .map(|obligation| fulfillment_error_for_stalled(infcx, obligation))
             .collect()
     }
 
@@ -125,58 +96,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                 let (changed, certainty) = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
-                        errors.push(FulfillmentError {
-                            obligation: obligation.clone(),
-                            code: match goal.predicate.kind().skip_binder() {
-                                ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
-                                    FulfillmentErrorCode::ProjectionError(
-                                        // FIXME: This could be a `Sorts` if the term is a type
-                                        MismatchedProjectionTypes { err: TypeError::Mismatch },
-                                    )
-                                }
-                                ty::PredicateKind::NormalizesTo(..) => {
-                                    FulfillmentErrorCode::ProjectionError(
-                                        MismatchedProjectionTypes { err: TypeError::Mismatch },
-                                    )
-                                }
-                                ty::PredicateKind::AliasRelate(_, _, _) => {
-                                    FulfillmentErrorCode::ProjectionError(
-                                        MismatchedProjectionTypes { err: TypeError::Mismatch },
-                                    )
-                                }
-                                ty::PredicateKind::Subtype(pred) => {
-                                    let (a, b) = infcx.enter_forall_and_leak_universe(
-                                        goal.predicate.kind().rebind((pred.a, pred.b)),
-                                    );
-                                    let expected_found = ExpectedFound::new(true, a, b);
-                                    FulfillmentErrorCode::SubtypeError(
-                                        expected_found,
-                                        TypeError::Sorts(expected_found),
-                                    )
-                                }
-                                ty::PredicateKind::Coerce(pred) => {
-                                    let (a, b) = infcx.enter_forall_and_leak_universe(
-                                        goal.predicate.kind().rebind((pred.a, pred.b)),
-                                    );
-                                    let expected_found = ExpectedFound::new(false, a, b);
-                                    FulfillmentErrorCode::SubtypeError(
-                                        expected_found,
-                                        TypeError::Sorts(expected_found),
-                                    )
-                                }
-                                ty::PredicateKind::Clause(_)
-                                | ty::PredicateKind::ObjectSafe(_)
-                                | ty::PredicateKind::Ambiguous => {
-                                    FulfillmentErrorCode::SelectionError(
-                                        SelectionError::Unimplemented,
-                                    )
-                                }
-                                ty::PredicateKind::ConstEquate(..) => {
-                                    bug!("unexpected goal: {goal:?}")
-                                }
-                            },
-                            root_obligation: obligation,
-                        });
+                        errors.push(fulfillment_error_for_no_solution(infcx, obligation));
                         continue;
                     }
                 };
@@ -205,4 +125,75 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
     ) -> Vec<PredicateObligation<'tcx>> {
         std::mem::take(&mut self.obligations)
     }
+}
+
+fn fulfillment_error_for_no_solution<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: PredicateObligation<'tcx>,
+) -> FulfillmentError<'tcx> {
+    let code = match obligation.predicate.kind().skip_binder() {
+        ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
+            FulfillmentErrorCode::ProjectionError(
+                // FIXME: This could be a `Sorts` if the term is a type
+                MismatchedProjectionTypes { err: TypeError::Mismatch },
+            )
+        }
+        ty::PredicateKind::NormalizesTo(..) => {
+            FulfillmentErrorCode::ProjectionError(MismatchedProjectionTypes {
+                err: TypeError::Mismatch,
+            })
+        }
+        ty::PredicateKind::AliasRelate(_, _, _) => {
+            FulfillmentErrorCode::ProjectionError(MismatchedProjectionTypes {
+                err: TypeError::Mismatch,
+            })
+        }
+        ty::PredicateKind::Subtype(pred) => {
+            let (a, b) = infcx.enter_forall_and_leak_universe(
+                obligation.predicate.kind().rebind((pred.a, pred.b)),
+            );
+            let expected_found = ExpectedFound::new(true, a, b);
+            FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
+        }
+        ty::PredicateKind::Coerce(pred) => {
+            let (a, b) = infcx.enter_forall_and_leak_universe(
+                obligation.predicate.kind().rebind((pred.a, pred.b)),
+            );
+            let expected_found = ExpectedFound::new(false, a, b);
+            FulfillmentErrorCode::SubtypeError(expected_found, TypeError::Sorts(expected_found))
+        }
+        ty::PredicateKind::Clause(_)
+        | ty::PredicateKind::ObjectSafe(_)
+        | ty::PredicateKind::Ambiguous => {
+            FulfillmentErrorCode::SelectionError(SelectionError::Unimplemented)
+        }
+        ty::PredicateKind::ConstEquate(..) => {
+            bug!("unexpected goal: {obligation:?}")
+        }
+    };
+    FulfillmentError { root_obligation: obligation.clone(), code, obligation }
+}
+
+fn fulfillment_error_for_stalled<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: PredicateObligation<'tcx>,
+) -> FulfillmentError<'tcx> {
+    let code = infcx.probe(|_| {
+        match infcx.evaluate_root_goal(obligation.clone().into(), GenerateProofTree::Never).0 {
+            Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
+                FulfillmentErrorCode::Ambiguity { overflow: None }
+            }
+            Ok((_, Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }))) => {
+                FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) }
+            }
+            Ok((_, Certainty::Yes)) => {
+                bug!("did not expect successful goal when collecting ambiguity errors")
+            }
+            Err(_) => {
+                bug!("did not expect selection error when collecting ambiguity errors")
+            }
+        }
+    });
+
+    FulfillmentError { obligation: obligation.clone(), code, root_obligation: obligation }
 }
