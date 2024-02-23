@@ -24,13 +24,64 @@ use super::{Certainty, InferCtxtEvalExt};
 /// It is also likely that we want to use slightly different datastructures
 /// here as this will have to deal with far more root goals than `evaluate_all`.
 pub struct FulfillmentCtxt<'tcx> {
-    obligations: Vec<PredicateObligation<'tcx>>,
+    obligations: ObligationStorage<'tcx>,
 
     /// The snapshot in which this context was created. Using the context
     /// outside of this snapshot leads to subtle bugs if the snapshot
     /// gets rolled back. Because of this we explicitly check that we only
     /// use the context in exactly this snapshot.
     usable_in_snapshot: usize,
+}
+
+#[derive(Default)]
+struct ObligationStorage<'tcx> {
+    /// Obligations which resulted in an overflow in fulfillment itself.
+    ///
+    /// We cannot eagerly return these as error so we instead store them here
+    /// to avoid recomputing them each time `select_where_possible` is called.
+    /// This also allows us to return the correct `FulfillmentError` for them.
+    overflowed: Vec<PredicateObligation<'tcx>>,
+    pending: Vec<PredicateObligation<'tcx>>,
+}
+
+impl<'tcx> ObligationStorage<'tcx> {
+    fn register(&mut self, obligation: PredicateObligation<'tcx>) {
+        self.pending.push(obligation);
+    }
+
+    fn clone_pending(&self) -> Vec<PredicateObligation<'tcx>> {
+        let mut obligations = self.pending.clone();
+        obligations.extend(self.overflowed.iter().cloned());
+        obligations
+    }
+
+    fn take_pending(&mut self) -> Vec<PredicateObligation<'tcx>> {
+        let mut obligations = mem::take(&mut self.pending);
+        obligations.extend(self.overflowed.drain(..));
+        obligations
+    }
+
+    fn unstalled_for_select(&mut self) -> impl Iterator<Item = PredicateObligation<'tcx>> {
+        mem::take(&mut self.pending).into_iter()
+    }
+
+    fn on_fulfillment_overflow(&mut self, infcx: &InferCtxt<'tcx>) {
+        infcx.probe(|_| {
+            // IMPORTANT: we must not use solve any inference variables in the obligations
+            // as this is all happening inside of a probe. We use a probe to make sure
+            // we get all obligations involved in the overflow. We pretty much check: if
+            // we were to do another step of `select_where_possible`, which goals would
+            // change.
+            self.overflowed.extend(self.pending.extract_if(|o| {
+                let goal = o.clone().into();
+                let result = infcx.evaluate_root_goal(goal, GenerateProofTree::Never).0;
+                match result {
+                    Ok((has_changed, _)) => has_changed,
+                    _ => false,
+                }
+            }));
+        })
+    }
 }
 
 impl<'tcx> FulfillmentCtxt<'tcx> {
@@ -40,7 +91,10 @@ impl<'tcx> FulfillmentCtxt<'tcx> {
             "new trait solver fulfillment context created when \
             infcx is set up for old trait solver"
         );
-        FulfillmentCtxt { obligations: Vec::new(), usable_in_snapshot: infcx.num_open_snapshots() }
+        FulfillmentCtxt {
+            obligations: Default::default(),
+            usable_in_snapshot: infcx.num_open_snapshots(),
+        }
     }
 
     fn inspect_evaluated_obligation(
@@ -67,14 +121,24 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         obligation: PredicateObligation<'tcx>,
     ) {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        self.obligations.push(obligation);
+        self.obligations.register(obligation);
     }
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
-        self.obligations
+        let mut errors: Vec<_> = self
+            .obligations
+            .pending
             .drain(..)
             .map(|obligation| fulfillment_error_for_stalled(infcx, obligation))
-            .collect()
+            .collect();
+
+        errors.extend(self.obligations.overflowed.drain(..).map(|obligation| FulfillmentError {
+            root_obligation: obligation.clone(),
+            code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
+            obligation,
+        }));
+
+        errors
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>> {
@@ -82,14 +146,13 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
         let mut errors = Vec::new();
         for i in 0.. {
             if !infcx.tcx.recursion_limit().value_within_limit(i) {
-                // Only return true errors that we have accumulated while processing;
-                // keep ambiguities around, *including overflows*, because they shouldn't
-                // be considered true errors.
+                self.obligations.on_fulfillment_overflow(infcx);
+                // Only return true errors that we have accumulated while processing.
                 return errors;
             }
 
             let mut has_changed = false;
-            for obligation in mem::take(&mut self.obligations) {
+            for obligation in self.obligations.unstalled_for_select() {
                 let goal = obligation.clone().into();
                 let result = infcx.evaluate_root_goal(goal, GenerateProofTree::IfEnabled).0;
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
@@ -103,7 +166,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                 has_changed |= changed;
                 match certainty {
                     Certainty::Yes => {}
-                    Certainty::Maybe(_) => self.obligations.push(obligation),
+                    Certainty::Maybe(_) => self.obligations.register(obligation),
                 }
             }
 
@@ -116,14 +179,14 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
     }
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
-        self.obligations.clone()
+        self.obligations.clone_pending()
     }
 
     fn drain_unstalled_obligations(
         &mut self,
         _: &InferCtxt<'tcx>,
     ) -> Vec<PredicateObligation<'tcx>> {
-        std::mem::take(&mut self.obligations)
+        self.obligations.take_pending()
     }
 }
 
