@@ -318,12 +318,12 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         assert!(err.is_error());
 
         match op.importance() {
-            ops::DiagnosticImportance::Primary => {
+            ops::DiagImportance::Primary => {
                 let reported = err.emit();
                 self.error_emitted = Some(reported);
             }
 
-            ops::DiagnosticImportance::Secondary => self.secondary_errors.push(err),
+            ops::DiagImportance::Secondary => self.secondary_errors.push(err),
         }
     }
 

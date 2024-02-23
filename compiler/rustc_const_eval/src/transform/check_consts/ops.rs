@@ -29,7 +29,7 @@ pub enum Status {
 }
 
 #[derive(Clone, Copy)]
-pub enum DiagnosticImportance {
+pub enum DiagImportance {
     /// An operation that must be removed for const-checking to pass.
     Primary,
 
@@ -44,8 +44,8 @@ pub trait NonConstOp<'tcx>: std::fmt::Debug {
         Status::Forbidden
     }
 
-    fn importance(&self) -> DiagnosticImportance {
-        DiagnosticImportance::Primary
+    fn importance(&self) -> DiagImportance {
+        DiagImportance::Primary
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx>;
@@ -427,10 +427,10 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
 /// it in the future for static items.
 pub struct CellBorrow;
 impl<'tcx> NonConstOp<'tcx> for CellBorrow {
-    fn importance(&self) -> DiagnosticImportance {
+    fn importance(&self) -> DiagImportance {
         // Most likely the code will try to do mutation with these borrows, which
         // triggers its own errors. Only show this one if that does not happen.
-        DiagnosticImportance::Secondary
+        DiagImportance::Secondary
     }
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
         // FIXME: Maybe a more elegant solution to this if else case
@@ -463,10 +463,10 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
         Status::Forbidden
     }
 
-    fn importance(&self) -> DiagnosticImportance {
+    fn importance(&self) -> DiagImportance {
         // Most likely the code will try to do mutation with these borrows, which
         // triggers its own errors. Only show this one if that does not happen.
-        DiagnosticImportance::Secondary
+        DiagImportance::Secondary
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
@@ -515,9 +515,9 @@ impl<'tcx> NonConstOp<'tcx> for MutDeref {
         Status::Unstable(sym::const_mut_refs)
     }
 
-    fn importance(&self) -> DiagnosticImportance {
+    fn importance(&self) -> DiagImportance {
         // Usually a side-effect of a `TransientMutBorrow` somewhere.
-        DiagnosticImportance::Secondary
+        DiagImportance::Secondary
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
@@ -625,12 +625,10 @@ pub mod ty {
             Status::Unstable(sym::const_mut_refs)
         }
 
-        fn importance(&self) -> DiagnosticImportance {
+        fn importance(&self) -> DiagImportance {
             match self.0 {
-                mir::LocalKind::Temp => DiagnosticImportance::Secondary,
-                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
-                    DiagnosticImportance::Primary
-                }
+                mir::LocalKind::Temp => DiagImportance::Secondary,
+                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => DiagImportance::Primary,
             }
         }
 
