@@ -13,14 +13,14 @@ LL |     b = c;
 error[E0308]: mismatched types
   --> $DIR/clarify-error-for-generics-with-default-issue-120785.rs:10:9
    |
-LL |     let mut e: What<usize> = What(5, vec![1, 2, 3]);
-   |                ----------- expected due to this type
-LL |     let f: What<usize, Vec<String>> = What(1, vec![String::from("meow")]);
-LL |     e = f;
-   |         ^ expected `What`, found `What<usize, Vec<String>>`
+LL |     let mut f: What<usize, Vec<String>> = What(1, vec![String::from("meow")]);
+   |                ------------------------ expected due to this type
+LL |     let e: What<usize> = What(5, vec![1, 2, 3]);
+LL |     f = e;
+   |         ^ expected `What<usize, Vec<String>>`, found `What`
    |
-   = note: expected struct `What<_, Vec<usize>>`
-              found struct `What<_, Vec<String>>`
+   = note: expected struct `What<_, Vec<String>>`
+              found struct `What<_, Vec<usize>>`
 
 error: aborting due to 2 previous errors
 
