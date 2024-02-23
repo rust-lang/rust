@@ -276,6 +276,7 @@ impl flags::RustcTests {
     pub fn run(self) -> Result<()> {
         let mut tester = Tester::new()?;
         let walk_dir = WalkDir::new(self.rustc_repo.join("tests/ui"));
+        eprintln!("Running tests for tests/ui");
         for i in walk_dir {
             let i = i?;
             let p = i.into_path();
