@@ -1,6 +1,5 @@
 //@ compile-flags: -Zvirtual-function-elimination -Clto -O -Csymbol-mangling-version=v0
 //@ ignore-32bit
-//@ ignore-debug
 
 // CHECK: @vtable.0 = {{.*}}, !type ![[TYPE0:[0-9]+]], !vcall_visibility ![[VCALL_VIS0:[0-9]+]]
 // CHECK: @vtable.1 = {{.*}}, !type ![[TYPE1:[0-9]+]], !vcall_visibility ![[VCALL_VIS0:[0-9]+]]
