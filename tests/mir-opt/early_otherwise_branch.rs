@@ -52,8 +52,41 @@ fn opt3(x: Option<u32>, y: Option<bool>) -> u32 {
     }
 }
 
+// EMIT_MIR early_otherwise_branch.opt4.EarlyOtherwiseBranch.diff
+fn opt4(x: u32, y: u32) -> u32 {
+    // CHECK-LABEL: fn opt4(
+    // CHECK: let mut [[CMP_LOCAL:_.*]]: bool;
+    // CHECK: bb0: {
+    // CHECK: [[CMP_LOCAL]] = Ne(
+    // CHECK: switchInt(move [[CMP_LOCAL]]) -> [
+    // CHECK-NEXT: }
+    match (x, y) {
+        (1, 1) => 4,
+        (2, 2) => 5,
+        (3, 3) => 6,
+        _ => 0,
+    }
+}
+
+// EMIT_MIR early_otherwise_branch.opt5.EarlyOtherwiseBranch.diff
+fn opt5(x: u32, y: u32) -> u32 {
+    // CHECK-LABEL: fn opt5(
+    // CHECK: bb0: {
+    // CHECK-NOT: Ne(
+    // CHECK: switchInt(
+    // CHECK-NEXT: }
+    match (x, y) {
+        (1, 1) => 4,
+        (2, 2) => 5,
+        (3, 2) => 6,
+        _ => 0,
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
     opt3(None, Some(false));
+    opt4(0, 0);
+    opt5(0, 0);
 }
