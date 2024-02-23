@@ -167,5 +167,5 @@ render differently in this case:
 [f]: g
 ```
 
-`1.` and `2.` will will be displayed as is in the rendered documentation (ie, `[a]` and `[b][c]`)
+`1.` and `2.` will be displayed as is in the rendered documentation (ie, `[a]` and `[b][c]`)
 whereas `3.` and `4.` will be replaced by a link targetting `e` for `[d](e)` and `g` for `[f]`.

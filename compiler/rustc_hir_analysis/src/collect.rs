@@ -1025,7 +1025,15 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 
     let is_anonymous = item.ident.name == kw::Empty;
     let repr = if is_anonymous {
-        tcx.adt_def(tcx.local_parent(def_id)).repr()
+        let parent = tcx.local_parent(def_id);
+        if let Node::Item(item) = tcx.hir_node_by_def_id(parent)
+            && item.is_struct_or_union()
+        {
+            tcx.adt_def(parent).repr()
+        } else {
+            tcx.dcx().span_delayed_bug(item.span, "anonymous field inside non struct/union");
+            ty::ReprOptions::default()
+        }
     } else {
         tcx.repr_options_of_def(def_id)
     };

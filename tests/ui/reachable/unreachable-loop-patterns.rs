@@ -1,5 +1,5 @@
 #![feature(never_type, never_type_fallback)]
-#![feature(exhaustive_patterns)]
+#![feature(min_exhaustive_patterns)]
 
 #![allow(unreachable_code)]
 #![deny(unreachable_patterns)]

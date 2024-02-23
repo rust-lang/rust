@@ -1,5 +1,5 @@
 error[E0005]: refutable pattern in local binding
-  --> $DIR/uninhabited-irrefutable.rs:32:9
+  --> $DIR/uninhabited-irrefutable.rs:31:9
    |
 LL |     let Foo::D(_y, _z) = x;
    |         ^^^^^^^^^^^^^^ pattern `Foo::A(_)` not covered
@@ -7,7 +7,7 @@ LL |     let Foo::D(_y, _z) = x;
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
 note: `Foo` defined here
-  --> $DIR/uninhabited-irrefutable.rs:21:6
+  --> $DIR/uninhabited-irrefutable.rs:20:6
    |
 LL | enum Foo {
    |      ^^^

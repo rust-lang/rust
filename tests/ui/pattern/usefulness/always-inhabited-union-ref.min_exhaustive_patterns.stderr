@@ -1,14 +1,5 @@
-warning: the feature `min_exhaustive_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/always-inhabited-union-ref.rs:7:46
-   |
-LL | #![cfg_attr(min_exhaustive_patterns, feature(min_exhaustive_patterns))]
-   |                                              ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #119612 <https://github.com/rust-lang/rust/issues/119612> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0004]: non-exhaustive patterns: type `&!` is non-empty
-  --> $DIR/always-inhabited-union-ref.rs:26:11
+  --> $DIR/always-inhabited-union-ref.rs:25:11
    |
 LL |     match uninhab_ref() {
    |           ^^^^^^^^^^^^^
@@ -23,13 +14,13 @@ LL +     }
    |
 
 error[E0004]: non-exhaustive patterns: type `Foo` is non-empty
-  --> $DIR/always-inhabited-union-ref.rs:30:11
+  --> $DIR/always-inhabited-union-ref.rs:29:11
    |
 LL |     match uninhab_union() {
    |           ^^^^^^^^^^^^^^^
    |
 note: `Foo` defined here
-  --> $DIR/always-inhabited-union-ref.rs:13:11
+  --> $DIR/always-inhabited-union-ref.rs:12:11
    |
 LL | pub union Foo {
    |           ^^^
@@ -41,6 +32,6 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
