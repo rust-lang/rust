@@ -195,7 +195,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         if (self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type)) || (a_type.is_vector() && b_type.is_vector()) {
-            self.context.new_binary_op(None, operation, a_type, a, b)
+            self.context.new_binary_op(self.loc, operation, a_type, a, b)
         }
         else {
             debug_assert!(a_type.dyncast_array().is_some());
@@ -208,10 +208,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     "u"
                 };
             let func_name = format!("__{}{}ti3", sign, operation_name);
-            let param_a = self.context.new_parameter(None, a_type, "a");
-            let param_b = self.context.new_parameter(None, b_type, "b");
-            let func = self.context.new_function(None, FunctionType::Extern, a_type, &[param_a, param_b], func_name, false);
-            self.context.new_call(None, func, &[a, b])
+            let param_a = self.context.new_parameter(self.loc, a_type, "a");
+            let param_b = self.context.new_parameter(self.loc, b_type, "b");
+            let func = self.context.new_function(self.loc, FunctionType::Extern, a_type, &[param_a, param_b], func_name, false);
+            self.context.new_call(self.loc, func, &[a, b])
         }
     }
 

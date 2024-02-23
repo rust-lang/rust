@@ -184,8 +184,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
             // wrapper here
             maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx);
 
-            // Finalize debuginfo
-            if cx.sess().opts.debuginfo != DebugInfo::None {
+            // FINALIZE debuginfo
+            if cx.sess().opts.debuginfo != DebugInfo::None  {
                 cx.debuginfo_finalize();
             }
         }
