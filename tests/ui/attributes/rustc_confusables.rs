@@ -11,7 +11,7 @@ fn main() {
     let x = BTreeSet {};
     x.inser();
     //~^ ERROR no method named
-    //~| HELP there is a method with a similar name
+    //~| HELP there is a method `insert` with a similar name
     x.foo();
     //~^ ERROR no method named
     x.push();
@@ -21,7 +21,7 @@ fn main() {
     //~^ ERROR no method named
     x.pulled();
     //~^ ERROR no method named
-    //~| HELP there is a method with a similar name
+    //~| HELP you might have meant to use `pull`
 }
 
 struct Bar;

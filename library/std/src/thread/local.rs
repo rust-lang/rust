@@ -435,6 +435,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// assert_eq!(X.replace(3), 2);
     /// ```
     #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
+    #[rustc_confusables("swap")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }
@@ -606,6 +607,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// X.with_borrow(|v| assert_eq!(*v, vec![1, 2, 3]));
     /// ```
     #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
+    #[rustc_confusables("swap")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }

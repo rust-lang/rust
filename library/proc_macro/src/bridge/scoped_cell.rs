@@ -25,6 +25,7 @@ impl<T: LambdaL> ScopedCell<T> {
     /// running `f`, which gets the old value, mutably.
     /// The old value will be restored after `f` exits, even
     /// by panic, including modifications made to it by `f`.
+    #[rustc_confusables("swap")]
     pub fn replace<'a, R>(
         &self,
         replacement: <T as ApplyL<'a>>::Out,

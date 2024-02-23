@@ -1,7 +1,11 @@
 use crate::coercion::CoerceMany;
 use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
+use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
+use crate::method::probe::IsSuggestion;
+use crate::method::probe::Mode::MethodCall;
+use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::method::MethodCallee;
 use crate::TupleArgumentsFlag::*;
 use crate::{errors, Expectation::*};
@@ -451,7 +455,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
     ) -> ErrorGuaranteed {
         // Next, let's construct the error
-        let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
+        let (error_span, call_ident, full_call_span, call_name, is_method) = match &call_expr.kind {
             hir::ExprKind::Call(
                 hir::Expr { hir_id, span, kind: hir::ExprKind::Path(qpath), .. },
                 _,
@@ -463,12 +467,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         CtorOf::Struct => "struct",
                         CtorOf::Variant => "enum variant",
                     };
-                    (call_span, *span, name, false)
+                    (call_span, None, *span, name, false)
                 } else {
-                    (call_span, *span, "function", false)
+                    (call_span, None, *span, "function", false)
                 }
             }
-            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, "function", false),
+            hir::ExprKind::Call(hir::Expr { span, .. }, _) => {
+                (call_span, None, *span, "function", false)
+            }
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
@@ -476,7 +482,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     ident_span
                 };
-                (*span, ident_span, "method", true)
+                (*span, Some(path_segment.ident), ident_span, "method", true)
             }
             k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
         };
@@ -530,6 +536,104 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let callee_ty = callee_expr
             .and_then(|callee_expr| self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr));
 
+        // Obtain another method on `Self` that have similar name.
+        let similar_assoc = |call_name: Ident| -> Option<(ty::AssocItem, ty::FnSig<'_>)> {
+            if let Some(callee_ty) = callee_ty
+                && let Ok(Some(assoc)) = self.probe_op(
+                    call_name.span,
+                    MethodCall,
+                    Some(call_name),
+                    None,
+                    IsSuggestion(true),
+                    callee_ty.peel_refs(),
+                    callee_expr.unwrap().hir_id,
+                    TraitsInScope,
+                    |mut ctxt| ctxt.probe_for_similar_candidate(),
+                )
+                && let ty::AssocKind::Fn = assoc.kind
+                && assoc.fn_has_self_parameter
+            {
+                let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
+                let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
+                let fn_sig =
+                    self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
+                Some((assoc, fn_sig));
+            }
+            None
+        };
+
+        let suggest_confusable = |err: &mut DiagnosticBuilder<'_>| {
+            let Some(call_name) = call_ident else {
+                return;
+            };
+            let Some(callee_ty) = callee_ty else {
+                return;
+            };
+            let input_types: Vec<Ty<'_>> = provided_arg_tys.iter().map(|(ty, _)| *ty).collect();
+            // Check for other methods in the following order
+            //  - methods marked as `rustc_confusables` with the provided arguments
+            //  - methods with the same argument type/count and short levenshtein distance
+            //  - methods marked as `rustc_confusables` (done)
+            //  - methods with short levenshtein distance
+
+            // Look for commonly confusable method names considering arguments.
+            if let Some(_name) = self.confusable_method_name(
+                err,
+                callee_ty.peel_refs(),
+                call_name,
+                Some(input_types.clone()),
+            ) {
+                return;
+            }
+            // Look for method names with short levenshtein distance, considering arguments.
+            if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                && fn_sig.inputs()[1..]
+                    .iter()
+                    .zip(input_types.iter())
+                    .all(|(expected, found)| self.can_coerce(*expected, *found))
+                && fn_sig.inputs()[1..].len() == input_types.len()
+            {
+                err.span_suggestion_verbose(
+                    call_name.span,
+                    format!("you might have meant to use `{}`", assoc.name),
+                    assoc.name,
+                    Applicability::MaybeIncorrect,
+                );
+                return;
+            }
+            // Look for commonly confusable method names disregarding arguments.
+            if let Some(_name) =
+                self.confusable_method_name(err, callee_ty.peel_refs(), call_name, None)
+            {
+                return;
+            }
+            // Look for similarly named methods with levenshtein distance with the right
+            // number of arguments.
+            if let Some((assoc, fn_sig)) = similar_assoc(call_name)
+                && fn_sig.inputs()[1..].len() == input_types.len()
+            {
+                err.span_note(
+                    tcx.def_span(assoc.def_id),
+                    format!(
+                        "there's is a method with similar name `{}`, but the arguments don't match",
+                        assoc.name,
+                    ),
+                );
+                return;
+            }
+            // Fallthrough: look for similarly named methods with levenshtein distance.
+            if let Some((assoc, _)) = similar_assoc(call_name) {
+                err.span_note(
+                    tcx.def_span(assoc.def_id),
+                    format!(
+                        "there's is a method with similar name `{}`, but their argument count \
+                         doesn't match",
+                        assoc.name,
+                    ),
+                );
+                return;
+            }
+        };
         // A "softer" version of the `demand_compatible`, which checks types without persisting them,
         // and treats error types differently
         // This will allow us to "probe" for other argument orders that would likely have been correct
@@ -694,6 +798,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Some(mismatch_idx),
                         is_method,
                     );
+                    suggest_confusable(&mut err);
                     return err.emit();
                 }
             }
@@ -718,7 +823,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                return tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
+                let mut err =
+                    tcx.dcx().create_err(errors::ArgMismatchIndeterminate { span: error_span });
+                suggest_confusable(&mut err);
+                return err.emit();
             }
         }
 
@@ -733,7 +841,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let trace =
                 mk_trace(provided_span, formal_and_expected_inputs[*expected_idx], provided_ty);
             if !matches!(trace.cause.as_failure_code(*e), FailureCode::Error0308) {
-                reported = Some(self.err_ctxt().report_and_explain_type_error(trace, *e).emit());
+                let mut err = self.err_ctxt().report_and_explain_type_error(trace, *e);
+                suggest_confusable(&mut err);
+                reported = Some(err.emit());
                 return false;
             }
             true
@@ -802,6 +912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(expected_idx.as_usize()),
                 is_method,
             );
+            suggest_confusable(&mut err);
             return err.emit();
         }
 
@@ -829,6 +940,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .with_code(err_code.to_owned())
         };
 
+        suggest_confusable(&mut err);
         // As we encounter issues, keep track of what we want to provide for the suggestion
         let mut labels = vec![];
         // If there is a single error, we give a specific suggestion; otherwise, we change to

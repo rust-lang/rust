@@ -5,7 +5,6 @@
 fn test() {
     let _i: i16 = 0_i32.try_into().unwrap();
     //~^ ERROR no method named `try_into` found for type `i32` in the current scope
-    //~| NOTE method not found in `i32`
     //~| NOTE 'std::convert::TryInto' is included in the prelude starting in Edition 2021
 
     let _i: i16 = TryFrom::try_from(0_i32).unwrap();

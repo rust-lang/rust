@@ -10,7 +10,7 @@ LL |     pub trait Tr { fn method(&self); }
    |                       ------ the method is available for `S` here
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Tr` which provides `method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use unnamed_pub_trait_source::prelude::*; // trait Tr
    |
