@@ -324,11 +324,6 @@ pub(crate) fn run_global_ctxt(
     let _ = tcx.sess.time("wf_checking", || {
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     });
-    tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| {
-            let _ = tcx.ensure().check_mod_type_wf(module);
-        });
-    });
 
     if let Some(guar) = tcx.dcx().has_errors() {
         return Err(guar);
