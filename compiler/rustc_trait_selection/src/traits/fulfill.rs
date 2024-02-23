@@ -138,7 +138,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         _infcx: &InferCtxt<'tcx>,
     ) -> Vec<FulfillmentError<'tcx>> {
         self.predicates
-            .to_errors(FulfillmentErrorCode::Ambiguity { overflow: false })
+            .to_errors(FulfillmentErrorCode::Ambiguity { overflow: None })
             .into_iter()
             .map(to_fulfillment_error)
             .collect()

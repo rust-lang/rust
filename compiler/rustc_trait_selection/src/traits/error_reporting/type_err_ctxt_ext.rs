@@ -335,12 +335,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         );
     }
 
-    fn report_overflow_no_abort(&self, obligation: PredicateObligation<'tcx>) -> ErrorGuaranteed {
+    fn report_overflow_no_abort(
+        &self,
+        obligation: PredicateObligation<'tcx>,
+        suggest_increasing_limit: bool,
+    ) -> ErrorGuaranteed {
         let obligation = self.resolve_vars_if_possible(obligation);
         let mut err = self.build_overflow_error(
             OverflowCause::TraitSolver(obligation.predicate),
             obligation.cause.span,
-            true,
+            suggest_increasing_limit,
         );
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
@@ -1422,11 +1426,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             FulfillmentErrorCode::ProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e)
             }
-            FulfillmentErrorCode::Ambiguity { overflow: false } => {
+            FulfillmentErrorCode::Ambiguity { overflow: None } => {
                 self.maybe_report_ambiguity(&error.obligation)
             }
-            FulfillmentErrorCode::Ambiguity { overflow: true } => {
-                self.report_overflow_no_abort(error.obligation.clone())
+            FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) } => {
+                self.report_overflow_no_abort(error.obligation.clone(), suggest_increasing_limit)
             }
             FulfillmentErrorCode::SubtypeError(ref expected_found, ref err) => self
                 .report_mismatched_types(

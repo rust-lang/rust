@@ -1,3 +1,5 @@
+use crate::solve::FIXPOINT_STEP_LIMIT;
+
 use super::inspect;
 use super::inspect::ProofTreeBuilder;
 use super::SolverMode;
@@ -99,7 +101,6 @@ impl<'tcx> ProvisionalCacheEntry<'tcx> {
 
 pub(super) struct SearchGraph<'tcx> {
     mode: SolverMode,
-    local_overflow_limit: usize,
     /// The stack of goals currently being computed.
     ///
     /// An element is *deeper* in the stack if its index is *lower*.
@@ -116,10 +117,9 @@ pub(super) struct SearchGraph<'tcx> {
 }
 
 impl<'tcx> SearchGraph<'tcx> {
-    pub(super) fn new(tcx: TyCtxt<'tcx>, mode: SolverMode) -> SearchGraph<'tcx> {
+    pub(super) fn new(mode: SolverMode) -> SearchGraph<'tcx> {
         Self {
             mode,
-            local_overflow_limit: tcx.recursion_limit().0.checked_ilog2().unwrap_or(0) as usize,
             stack: Default::default(),
             provisional_cache: Default::default(),
             cycle_participants: Default::default(),
@@ -128,10 +128,6 @@ impl<'tcx> SearchGraph<'tcx> {
 
     pub(super) fn solver_mode(&self) -> SolverMode {
         self.mode
-    }
-
-    pub(super) fn local_overflow_limit(&self) -> usize {
-        self.local_overflow_limit
     }
 
     /// Update the stack and reached depths on cache hits.
@@ -277,7 +273,7 @@ impl<'tcx> SearchGraph<'tcx> {
             }
 
             inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::Overflow);
-            return Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
+            return Self::response_no_constraints(tcx, input, Certainty::overflow(true));
         };
 
         // Try to fetch the goal from the global cache.
@@ -370,7 +366,7 @@ impl<'tcx> SearchGraph<'tcx> {
             } else if is_coinductive_cycle {
                 Self::response_no_constraints(tcx, input, Certainty::Yes)
             } else {
-                Self::response_no_constraints(tcx, input, Certainty::OVERFLOW)
+                Self::response_no_constraints(tcx, input, Certainty::overflow(false))
             };
         } else {
             // No entry, we push this goal on the stack and try to prove it.
@@ -398,7 +394,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 // of this we continuously recompute the cycle until the result
                 // of the previous iteration is equal to the final result, at which
                 // point we are done.
-                for _ in 0..self.local_overflow_limit() {
+                for _ in 0..FIXPOINT_STEP_LIMIT {
                     let result = prove_goal(self, inspect);
                     let stack_entry = self.pop_stack();
                     debug_assert_eq!(stack_entry.input, input);
@@ -431,7 +427,8 @@ impl<'tcx> SearchGraph<'tcx> {
                     } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
                         Self::response_no_constraints(tcx, input, Certainty::Yes) == result
                     } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
-                        Self::response_no_constraints(tcx, input, Certainty::OVERFLOW) == result
+                        Self::response_no_constraints(tcx, input, Certainty::overflow(false))
+                            == result
                     } else {
                         false
                     };
@@ -452,7 +449,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 debug!("canonical cycle overflow");
                 let current_entry = self.pop_stack();
                 debug_assert!(current_entry.has_been_used.is_empty());
-                let result = Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
+                let result = Self::response_no_constraints(tcx, input, Certainty::overflow(false));
                 (current_entry, result)
             });
 

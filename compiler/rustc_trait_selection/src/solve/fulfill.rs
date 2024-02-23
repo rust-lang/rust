@@ -80,11 +80,14 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                         .0
                     {
                         Ok((_, Certainty::Maybe(MaybeCause::Ambiguity))) => {
-                            FulfillmentErrorCode::Ambiguity { overflow: false }
+                            FulfillmentErrorCode::Ambiguity { overflow: None }
                         }
-                        Ok((_, Certainty::Maybe(MaybeCause::Overflow))) => {
-                            FulfillmentErrorCode::Ambiguity { overflow: true }
-                        }
+                        Ok((
+                            _,
+                            Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit }),
+                        )) => FulfillmentErrorCode::Ambiguity {
+                            overflow: Some(suggest_increasing_limit),
+                        },
                         Ok((_, Certainty::Yes)) => {
                             bug!("did not expect successful goal when collecting ambiguity errors")
                         }
