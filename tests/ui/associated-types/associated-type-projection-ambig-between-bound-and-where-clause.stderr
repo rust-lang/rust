@@ -62,27 +62,6 @@ LL | fn c<C>(_: <C as Vehicle>::Color) where C : Vehicle, C : Box {
    |            ~~~~~~~~~~~~~~~~
 
 error[E0221]: ambiguous associated type `Color` in bounds of `X`
-  --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:30:20
-   |
-LL |     type Color;
-   |     ---------- ambiguous `Color` from `Vehicle`
-...
-LL |     type Color;
-   |     ---------- ambiguous `Color` from `Box`
-...
-LL |     fn d(&self, _: X::Color) where X : Box { }
-   |                    ^^^^^^^^ ambiguous associated type `Color`
-   |
-help: use fully-qualified syntax to disambiguate
-   |
-LL |     fn d(&self, _: <X as Box>::Color) where X : Box { }
-   |                    ~~~~~~~~~~~~
-help: use fully-qualified syntax to disambiguate
-   |
-LL |     fn d(&self, _: <X as Vehicle>::Color) where X : Box { }
-   |                    ~~~~~~~~~~~~~~~~
-
-error[E0221]: ambiguous associated type `Color` in bounds of `X`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:35:20
    |
 LL |     type Color;
@@ -122,6 +101,27 @@ LL |     fn f(&self, _: <X as Box>::Color) where X : Box { }
 help: use fully-qualified syntax to disambiguate
    |
 LL |     fn f(&self, _: <X as Vehicle>::Color) where X : Box { }
+   |                    ~~~~~~~~~~~~~~~~
+
+error[E0221]: ambiguous associated type `Color` in bounds of `X`
+  --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:30:20
+   |
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Vehicle`
+...
+LL |     type Color;
+   |     ---------- ambiguous `Color` from `Box`
+...
+LL |     fn d(&self, _: X::Color) where X : Box { }
+   |                    ^^^^^^^^ ambiguous associated type `Color`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL |     fn d(&self, _: <X as Box>::Color) where X : Box { }
+   |                    ~~~~~~~~~~~~
+help: use fully-qualified syntax to disambiguate
+   |
+LL |     fn d(&self, _: <X as Vehicle>::Color) where X : Box { }
    |                    ~~~~~~~~~~~~~~~~
 
 error: aborting due to 6 previous errors

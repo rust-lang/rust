@@ -22,18 +22,6 @@ note: lifetime declared here
 LL | fn make_weird_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
    |                                               ^^
 
-error: higher kinded lifetime bounds on nested opaque types are not supported yet
-  --> $DIR/issue-88236-2.rs:25:78
-   |
-LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
-   |                                                                              ^^
-   |
-note: lifetime declared here
-  --> $DIR/issue-88236-2.rs:25:45
-   |
-LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
-   |                                             ^^
-
 error: implementation of `Hrtb` is not general enough
   --> $DIR/issue-88236-2.rs:20:5
    |
@@ -51,6 +39,18 @@ LL |     &()
    |
    = note: `Hrtb<'a>` would have to be implemented for the type `&()`
    = note: ...but `Hrtb<'0>` is actually implemented for the type `&'0 ()`, for some specific lifetime `'0`
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/issue-88236-2.rs:25:78
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                                                              ^^
+   |
+note: lifetime declared here
+  --> $DIR/issue-88236-2.rs:25:45
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                                             ^^
 
 error: lifetime may not live long enough
   --> $DIR/issue-88236-2.rs:27:5

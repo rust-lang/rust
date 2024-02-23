@@ -22,6 +22,15 @@ note: lifetime declared here
 LL | fn a() -> impl Fn(&u8) -> (impl Debug + '_) {
    |                   ^
 
+error: lifetime may not live long enough
+  --> $DIR/impl-fn-hrtb-bounds.rs:6:9
+   |
+LL |     |x| x
+   |      -- ^ returning this value requires that `'1` must outlive `'2`
+   |      ||
+   |      |return type of closure is impl Debug + '2
+   |      has type `&'1 u8`
+
 error: higher kinded lifetime bounds on nested opaque types are not supported yet
   --> $DIR/impl-fn-hrtb-bounds.rs:10:52
    |
@@ -34,6 +43,15 @@ note: lifetime declared here
 LL | fn b() -> impl for<'a> Fn(&'a u8) -> (impl Debug + 'a) {
    |                    ^^
 
+error: lifetime may not live long enough
+  --> $DIR/impl-fn-hrtb-bounds.rs:12:9
+   |
+LL |     |x| x
+   |      -- ^ returning this value requires that `'1` must outlive `'2`
+   |      ||
+   |      |return type of closure is impl Debug + '2
+   |      has type `&'1 u8`
+
 error: higher kinded lifetime bounds on nested opaque types are not supported yet
   --> $DIR/impl-fn-hrtb-bounds.rs:16:52
    |
@@ -45,24 +63,6 @@ note: lifetime declared here
    |
 LL | fn c() -> impl for<'a> Fn(&'a u8) -> (impl Debug + '_) {
    |                    ^^
-
-error: lifetime may not live long enough
-  --> $DIR/impl-fn-hrtb-bounds.rs:6:9
-   |
-LL |     |x| x
-   |      -- ^ returning this value requires that `'1` must outlive `'2`
-   |      ||
-   |      |return type of closure is impl Debug + '2
-   |      has type `&'1 u8`
-
-error: lifetime may not live long enough
-  --> $DIR/impl-fn-hrtb-bounds.rs:12:9
-   |
-LL |     |x| x
-   |      -- ^ returning this value requires that `'1` must outlive `'2`
-   |      ||
-   |      |return type of closure is impl Debug + '2
-   |      has type `&'1 u8`
 
 error: lifetime may not live long enough
   --> $DIR/impl-fn-hrtb-bounds.rs:18:9

@@ -20,7 +20,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -52,22 +52,6 @@ mod resolve_bound_vars;
 mod type_of;
 
 ///////////////////////////////////////////////////////////////////////////
-// Main entry point
-
-fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    let items = tcx.hir_module_items(module_def_id);
-    let hir = tcx.hir();
-    let _ = items.par_items(|item| Ok(CollectItemTypesVisitor { tcx }.visit_item(hir.item(item))));
-    let _ = items.par_impl_items(|item| {
-        Ok(CollectItemTypesVisitor { tcx }.visit_impl_item(hir.impl_item(item)))
-    });
-    let _ = items.par_trait_items(|item| {
-        Ok(CollectItemTypesVisitor { tcx }.visit_trait_item(hir.trait_item(item)))
-    });
-    let _ = items.par_foreign_items(|item| {
-        Ok(CollectItemTypesVisitor { tcx }.visit_foreign_item(hir.foreign_item(item)))
-    });
-}
 
 pub fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
@@ -93,7 +77,6 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_header,
         coroutine_kind,
         coroutine_for_closure,
-        collect_mod_item_types,
         is_type_alias_impl_trait,
         find_field,
         ..*providers
@@ -166,8 +149,8 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
     }
 }
 
-struct CollectItemTypesVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
+pub struct CollectItemTypesVisitor<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
 }
 
 /// If there are any placeholder types (`_`), emit an error explaining that this is not allowed

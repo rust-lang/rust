@@ -1,3 +1,14 @@
+error: missing required bound on `Output`
+  --> $DIR/issue-80433.rs:7:5
+   |
+LL |     type Output<'a>;
+   |     ^^^^^^^^^^^^^^^-
+   |                    |
+   |                    help: add the required where clause: `where Self: 'a`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
 error[E0107]: missing generics for associated type `TestMut::Output`
   --> $DIR/issue-80433.rs:21:47
    |
@@ -13,17 +24,6 @@ help: add missing lifetime argument
    |
 LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output<'a> = &'a mut f32>)
    |                                                     ++++
-
-error: missing required bound on `Output`
-  --> $DIR/issue-80433.rs:7:5
-   |
-LL |     type Output<'a>;
-   |     ^^^^^^^^^^^^^^^-
-   |                    |
-   |                    help: add the required where clause: `where Self: 'a`
-   |
-   = note: this bound is currently required to ensure that impls have maximum flexibility
-   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error[E0499]: cannot borrow `*dst` as mutable more than once at a time
   --> $DIR/issue-80433.rs:25:10

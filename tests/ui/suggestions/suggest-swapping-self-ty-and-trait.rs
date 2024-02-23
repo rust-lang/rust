@@ -1,9 +1,12 @@
 pub trait Trait<'a, T> {}
 
 pub struct Struct<T>;
+//~^ ERROR `T` is never used
 pub enum Enum<T> {}
+//~^ ERROR `T` is never used
 
 pub union Union<T> {
+    //~^ ERROR `T` is never used
     f1: usize,
 }
 
