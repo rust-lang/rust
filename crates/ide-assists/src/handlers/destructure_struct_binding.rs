@@ -10,7 +10,10 @@ use itertools::Itertools;
 use syntax::{ast, ted, AstNode, SmolStr};
 use text_edit::TextRange;
 
-use crate::assist_context::{AssistContext, Assists, SourceChangeBuilder};
+use crate::{
+    assist_context::{AssistContext, Assists, SourceChangeBuilder},
+    utils::ref_field_expr::determine_ref_and_parens,
+};
 
 // Assist: destructure_struct_binding
 //
@@ -58,11 +61,12 @@ fn destructure_struct_binding_impl(
     builder: &mut SourceChangeBuilder,
     data: &StructEditData,
 ) {
-    let assignment_edit = build_assignment_edit(ctx, builder, data);
-    let usage_edits = build_usage_edits(ctx, builder, data, &assignment_edit.field_name_map);
+    let field_names = generate_field_names(ctx, data);
+    let assignment_edit = build_assignment_edit(ctx, builder, data, &field_names);
+    let usage_edits = build_usage_edits(ctx, builder, data, &field_names.into_iter().collect());
 
     assignment_edit.apply();
-    for edit in usage_edits.unwrap_or_default() {
+    for edit in usage_edits.into_iter().flatten() {
         edit.apply(builder);
     }
 }
@@ -74,14 +78,16 @@ struct StructEditData {
     visible_fields: Vec<hir::Field>,
     usages: Option<UsageSearchResult>,
     names_in_scope: FxHashSet<SmolStr>, // TODO currently always empty
-    add_rest: bool,
+    has_private_members: bool,
     is_nested: bool,
+    is_ref: bool,
 }
 
 fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<StructEditData> {
-    let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?.strip_references().as_adt()?;
+    let ty = ctx.sema.type_of_binding_in_pat(&ident_pat)?;
+    let is_ref = ty.is_reference();
 
-    let hir::Adt::Struct(struct_type) = ty else { return None };
+    let hir::Adt::Struct(struct_type) = ty.strip_references().as_adt()? else { return None };
 
     let module = ctx.sema.scope(ident_pat.syntax())?.module();
     let struct_def = hir::ModuleDef::from(struct_type);
@@ -97,8 +103,9 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let visible_fields =
         fields.into_iter().filter(|field| field.is_visible_from(ctx.db(), module)).collect_vec();
 
-    let add_rest = (is_non_exhaustive && is_foreign_crate) || visible_fields.len() < n_fields;
-    if !matches!(kind, hir::StructKind::Record) && add_rest {
+    let has_private_members =
+        (is_non_exhaustive && is_foreign_crate) || visible_fields.len() < n_fields;
+    if !matches!(kind, hir::StructKind::Record) && has_private_members {
         return None;
     }
 
@@ -123,25 +130,25 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
         kind,
         struct_def_path,
         usages,
-        add_rest,
+        has_private_members,
         visible_fields,
         names_in_scope: FxHashSet::default(), // TODO
         is_nested,
+        is_ref,
     })
 }
 
 fn build_assignment_edit(
-    ctx: &AssistContext<'_>,
+    _ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
     data: &StructEditData,
+    field_names: &[(SmolStr, SmolStr)],
 ) -> AssignmentEdit {
     let ident_pat = builder.make_mut(data.ident_pat.clone());
 
     let struct_path = mod_path_to_ast(&data.struct_def_path);
     let is_ref = ident_pat.ref_token().is_some();
     let is_mut = ident_pat.mut_token().is_some();
-
-    let field_names = generate_field_names(ctx, data);
 
     let new_pat = match data.kind {
         hir::StructKind::Tuple => {
@@ -169,7 +176,7 @@ fn build_assignment_edit(
 
             let field_list = ast::make::record_pat_field_list(
                 fields,
-                data.add_rest.then_some(ast::make::rest_pat()),
+                data.has_private_members.then_some(ast::make::rest_pat()),
             );
             ast::Pat::RecordPat(ast::make::record_pat_with_fields(struct_path, field_list))
         }
@@ -185,7 +192,7 @@ fn build_assignment_edit(
         NewPat::Pat(new_pat.clone_for_update())
     };
 
-    AssignmentEdit { ident_pat, new_pat, field_name_map: field_names.into_iter().collect() }
+    AssignmentEdit { ident_pat, new_pat }
 }
 
 fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
@@ -195,8 +202,8 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
             .iter()
             .enumerate()
             .map(|(index, _)| {
-                let new_name = format!("_{}", index);
-                (index.to_string().into(), new_name.into())
+                let new_name = new_field_name((format!("_{}", index)).into(), &data.names_in_scope);
+                (index.to_string().into(), new_name)
             })
             .collect(),
         hir::StructKind::Record => data
@@ -204,8 +211,8 @@ fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(
             .iter()
             .map(|field| {
                 let field_name = field.name(ctx.db()).to_smol_str();
-                let new_field_name = new_field_name(field_name.clone(), &data.names_in_scope);
-                (field_name, new_field_name)
+                let new_name = new_field_name(field_name.clone(), &data.names_in_scope);
+                (field_name, new_name)
             })
             .collect(),
         hir::StructKind::Unit => Vec::new(),
@@ -225,7 +232,6 @@ fn new_field_name(base_name: SmolStr, names_in_scope: &FxHashSet<SmolStr>) -> Sm
 struct AssignmentEdit {
     ident_pat: ast::IdentPat,
     new_pat: NewPat,
-    field_name_map: FxHashMap<SmolStr, SmolStr>,
 }
 
 enum NewPat {
@@ -260,14 +266,16 @@ fn build_usage_edits(
         .iter()
         .find_map(|(file_id, refs)| (*file_id == ctx.file_id()).then_some(refs))?
         .iter()
-        .filter_map(|r| build_usage_edit(builder, r, field_names))
+        .filter_map(|r| build_usage_edit(ctx, builder, data, r, field_names))
         .collect_vec();
 
     Some(edits)
 }
 
 fn build_usage_edit(
+    ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
+    data: &StructEditData,
     usage: &FileReference,
     field_names: &FxHashMap<SmolStr, SmolStr>,
 ) -> Option<StructUsageEdit> {
@@ -275,11 +283,20 @@ fn build_usage_edit(
         Some(field_expr) => Some({
             let field_name: SmolStr = field_expr.name_ref()?.to_string().into();
             let new_field_name = field_names.get(&field_name)?;
+            let new_expr = ast::make::expr_path(ast::make::ext::ident_path(new_field_name));
 
-            let expr = builder.make_mut(field_expr).into();
-            let new_expr =
-                ast::make::expr_path(ast::make::ext::ident_path(new_field_name)).clone_for_update();
-            StructUsageEdit::IndexField(expr, new_expr)
+            if data.is_ref {
+                let (replace_expr, ref_data) = determine_ref_and_parens(ctx, &field_expr);
+                StructUsageEdit::IndexField(
+                    builder.make_mut(replace_expr),
+                    ref_data.wrap_expr(new_expr).clone_for_update(),
+                )
+            } else {
+                StructUsageEdit::IndexField(
+                    builder.make_mut(field_expr).into(),
+                    new_expr.clone_for_update(),
+                )
+            }
         }),
         None => Some(StructUsageEdit::Path(usage.range)),
     }
@@ -598,6 +615,35 @@ mod tests {
                 let Foo { bar: mut bar, baz: mut baz } = Foo { bar: 1, baz: 2 };
                 let bar2 = bar;
                 let baz2 = &baz;
+            }
+            "#,
+        )
+    }
+
+    #[test]
+    fn mut_ref() {
+        check_assist(
+            destructure_struct_binding,
+            r#"
+            struct Foo {
+                bar: i32,
+                baz: i32
+            }
+
+            fn main() {
+                let $0foo = &mut Foo { bar: 1, baz: 2 };
+                foo.bar = 5;
+            }
+            "#,
+            r#"
+            struct Foo {
+                bar: i32,
+                baz: i32
+            }
+
+            fn main() {
+                let Foo { bar, baz } = &mut Foo { bar: 1, baz: 2 };
+                *bar = 5;
             }
             "#,
         )
