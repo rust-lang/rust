@@ -217,3 +217,7 @@ fn issue_11958() {
     // should not lint, `String` is not `Copy`
     f(&vec!["test".to_owned(); 2]);
 }
+
+fn issue_12101() {
+    for a in &(vec![1, 2]) {}
+}

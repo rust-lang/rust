@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{get_parent_expr, higher, is_trait_method};
@@ -57,6 +57,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows()) else {
             return;
         };
+        // the parent callsite of this `vec!` expression, or span to the borrowed one such as `&vec!`
+        let callsite = expr.span.parent_callsite().unwrap_or(expr.span);
 
         match cx.tcx.parent_hir_node(expr.hir_id) {
             // search for `let foo = vec![_]` expressions where all uses of `foo`
@@ -84,41 +86,31 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 })
                 .is_continue();
 
-                let span = expr.span.ctxt().outer_expn_data().call_site;
                 if only_slice_uses {
-                    self.check_vec_macro(cx, &vec_args, span, expr.hir_id, SuggestedType::Array);
+                    self.check_vec_macro(cx, &vec_args, callsite, expr.hir_id, SuggestedType::Array);
                 } else {
-                    self.span_to_lint_map.insert(span, None);
+                    self.span_to_lint_map.insert(callsite, None);
                 }
             },
             // if the local pattern has a specified type, do not lint.
             Node::Local(Local { ty: Some(_), .. }) if higher::VecArgs::hir(cx, expr).is_some() => {
-                let span = expr.span.ctxt().outer_expn_data().call_site;
-                self.span_to_lint_map.insert(span, None);
+                self.span_to_lint_map.insert(callsite, None);
             },
             // search for `for _ in vec![...]`
             Node::Expr(Expr { span, .. })
                 if span.is_desugaring(DesugaringKind::ForLoop) && self.msrv.meets(msrvs::ARRAY_INTO_ITERATOR) =>
             {
-                // report the error around the `vec!` not inside `<std macros>:`
-                let span = expr.span.ctxt().outer_expn_data().call_site;
-                self.check_vec_macro(cx, &vec_args, span, expr.hir_id, SuggestedType::Array);
+                let suggest_slice = suggest_type(expr);
+                self.check_vec_macro(cx, &vec_args, callsite, expr.hir_id, suggest_slice);
             },
             // search for `&vec![_]` or `vec![_]` expressions where the adjusted type is `&[_]`
             _ => {
-                let (suggest_slice, span) = if let ExprKind::AddrOf(BorrowKind::Ref, mutability, _) = expr.kind {
-                    // `expr` is `&vec![_]`, so suggest `&[_]` (or `&mut[_]` resp.)
-                    (SuggestedType::SliceRef(mutability), expr.span)
-                } else {
-                    // `expr` is the `vec![_]` expansion, so suggest `[_]`
-                    // and also use the span of the actual `vec![_]` expression
-                    (SuggestedType::Array, expr.span.ctxt().outer_expn_data().call_site)
-                };
+                let suggest_slice = suggest_type(expr);
 
                 if adjusts_to_slice(cx, expr) {
-                    self.check_vec_macro(cx, &vec_args, span, expr.hir_id, suggest_slice);
+                    self.check_vec_macro(cx, &vec_args, callsite, expr.hir_id, suggest_slice);
                 } else {
-                    self.span_to_lint_map.insert(span, None);
+                    self.span_to_lint_map.insert(callsite, None);
                 }
             },
         }
@@ -151,8 +143,6 @@ impl UselessVec {
             return;
         }
 
-        let mut applicability = Applicability::MachineApplicable;
-
         let snippet = match *vec_args {
             higher::VecArgs::Repeat(elem, len) => {
                 if let Some(Constant::Int(len_constant)) = constant(cx, cx.typeck_results(), len) {
@@ -166,7 +156,7 @@ impl UselessVec {
                         return;
                     }
 
-                    suggest_slice.snippet(cx, Some(elem.span), Some(len.span), &mut applicability)
+                    suggest_slice.snippet(cx, Some(elem.span), Some(len.span))
                 } else {
                     return;
                 }
@@ -180,13 +170,16 @@ impl UselessVec {
                 } else {
                     None
                 };
-                suggest_slice.snippet(cx, args_span, None, &mut applicability)
+                suggest_slice.snippet(cx, args_span, None)
             },
         };
 
-        self.span_to_lint_map
-            .entry(span)
-            .or_insert(Some((hir_id, suggest_slice, snippet, applicability)));
+        self.span_to_lint_map.entry(span).or_insert(Some((
+            hir_id,
+            suggest_slice,
+            snippet,
+            Applicability::MachineApplicable,
+        )));
     }
 }
 
@@ -206,24 +199,16 @@ impl SuggestedType {
         }
     }
 
-    fn snippet(
-        self,
-        cx: &LateContext<'_>,
-        args_span: Option<Span>,
-        len_span: Option<Span>,
-        app: &mut Applicability,
-    ) -> String {
-        let args = args_span
-            .map(|sp| snippet_with_applicability(cx, sp, "..", app))
-            .unwrap_or_default();
+    fn snippet(self, cx: &LateContext<'_>, args_span: Option<Span>, len_span: Option<Span>) -> String {
+        let maybe_args = args_span.and_then(|sp| snippet_opt(cx, sp)).unwrap_or_default();
         let maybe_len = len_span
-            .map(|sp| format!("; {}", snippet_with_applicability(cx, sp, "len", app)))
+            .and_then(|sp| snippet_opt(cx, sp).map(|s| format!("; {s}")))
             .unwrap_or_default();
 
         match self {
-            Self::SliceRef(Mutability::Mut) => format!("&mut [{args}{maybe_len}]"),
-            Self::SliceRef(Mutability::Not) => format!("&[{args}{maybe_len}]"),
-            Self::Array => format!("[{args}{maybe_len}]"),
+            Self::SliceRef(Mutability::Mut) => format!("&mut [{maybe_args}{maybe_len}]"),
+            Self::SliceRef(Mutability::Not) => format!("&[{maybe_args}{maybe_len}]"),
+            Self::Array => format!("[{maybe_args}{maybe_len}]"),
         }
     }
 }
@@ -247,5 +232,15 @@ pub fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         ALLOWED_METHOD_NAMES.contains(&path.ident.name.as_str())
     } else {
         is_trait_method(cx, e, sym::IntoIterator)
+    }
+}
+
+fn suggest_type(expr: &Expr<'_>) -> SuggestedType {
+    if let ExprKind::AddrOf(BorrowKind::Ref, mutability, _) = expr.kind {
+        // `expr` is `&vec![_]`, so suggest `&[_]` (or `&mut[_]` resp.)
+        SuggestedType::SliceRef(mutability)
+    } else {
+        // `expr` is the `vec![_]` expansion, so suggest `[_]`
+        SuggestedType::Array
     }
 }

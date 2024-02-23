@@ -121,5 +121,11 @@ error: useless use of `vec!`
 LL |     this_macro_doesnt_need_vec!(vec![1]);
    |                                 ^^^^^^^ help: you can use an array directly: `[1]`
 
-error: aborting due to 20 previous errors
+error: useless use of `vec!`
+  --> tests/ui/vec.rs:222:14
+   |
+LL |     for a in &(vec![1, 2]) {}
+   |              ^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: aborting due to 21 previous errors
 
