@@ -88,7 +88,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     //   results in `ast::ExprKind::Err`. In that case we delay
                     //   the error because an earlier error will have already
                     //   been reported.
-                    let msg = format!("attribute value must be a literal");
+                    let msg = "attribute value must be a literal";
                     let mut err = sess.dcx.struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err = expr.kind {
                         err.downgrade_to_delayed_bug();

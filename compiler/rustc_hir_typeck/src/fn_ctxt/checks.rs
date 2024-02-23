@@ -555,9 +555,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
                 let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
-                let fn_sig =
-                    self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
-                Some((assoc, fn_sig));
+
+                self.instantiate_binder_with_fresh_vars(call_name.span, FnCall, fn_sig);
             }
             None
         };

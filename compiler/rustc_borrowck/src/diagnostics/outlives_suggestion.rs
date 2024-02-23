@@ -134,14 +134,13 @@ impl OutlivesSuggestionBuilder {
 
                 for (r, bound) in unified.into_iter() {
                     if !unified_already.contains(fr) {
-                        suggested.push(SuggestedConstraint::Equal(fr_name.clone(), bound));
+                        suggested.push(SuggestedConstraint::Equal(fr_name, bound));
                         unified_already.insert(r);
                     }
                 }
 
                 if !other.is_empty() {
-                    let other =
-                        other.iter().map(|(_, rname)| rname.clone()).collect::<SmallVec<_>>();
+                    let other = other.iter().map(|(_, rname)| *rname).collect::<SmallVec<_>>();
                     suggested.push(SuggestedConstraint::Outlives(fr_name, other))
                 }
             }

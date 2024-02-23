@@ -846,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_name = item_segment.ident;
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
-            .and_then(|r| {
+            .map(|r| {
                 // lint bare trait if the method is found in the trait
                 if span.edition().at_least_rust_2021()
                     && let Some(diag) =
@@ -854,7 +854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     diag.emit();
                 }
-                Ok(r)
+                r
             })
             .or_else(|error| {
                 let guar = self

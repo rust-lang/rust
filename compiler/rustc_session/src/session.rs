@@ -1264,7 +1264,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // LLVM CFI using rustc LTO requires a single codegen unit.
     if sess.is_sanitizer_cfi_enabled()
         && sess.lto() == config::Lto::Fat
-        && !(sess.codegen_units().as_usize() == 1)
+        && (sess.codegen_units().as_usize() != 1)
     {
         sess.dcx().emit_err(errors::SanitizerCfiRequiresSingleCodegenUnit);
     }
