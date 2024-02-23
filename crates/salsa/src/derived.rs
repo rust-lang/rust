@@ -146,11 +146,14 @@ where
         revision: Revision,
     ) -> bool {
         debug_assert!(revision < db.salsa_runtime().current_revision());
-        let read = &self.slot_map.read();
+        let read = self.slot_map.read();
         let Some((key, slot)) = read.get_index(index as usize) else {
             return false;
         };
-        slot.maybe_changed_after(db, revision, key)
+        let (key, slot) = (key.clone(), slot.clone());
+        // note: this drop is load-bearing. removing it would causes deadlocks.
+        drop(read);
+        slot.maybe_changed_after(db, revision, &key)
     }
 
     fn fetch(&self, db: &<Q as QueryDb<'_>>::DynDb, key: &Q::Key) -> Q::Value {
