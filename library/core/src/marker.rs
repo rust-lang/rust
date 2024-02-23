@@ -818,13 +818,13 @@ pub trait DiscriminantKind {
 /// will not contain interior mutability, and subsequently allow
 /// placing the constant behind references.
 #[lang = "freeze"]
-#[unstable(feature = "freeze", issue = "60715")]
+#[unstable(feature = "freeze", issue = "121675")]
 pub unsafe auto trait Freeze {}
 
-#[unstable(feature = "freeze", issue = "60715")]
+#[unstable(feature = "freeze", issue = "121675")]
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 marker_impls! {
-    #[unstable(feature = "freeze", issue = "60715")]
+    #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
         {T: ?Sized} PhantomData<T>,
         {T: ?Sized} *const T,
