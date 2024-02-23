@@ -1,5 +1,5 @@
 use rustc_errors::{
-    DiagCtxt, DiagnosticArgValue, Diag, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
+    DiagCtxt, DiagArgValue, Diag, EmissionGuarantee, IntoDiagnostic, IntoDiagnosticArg, Level,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -34,11 +34,11 @@ pub(crate) enum PossibleFeature<'a> {
 struct ExitCode(Option<i32>);
 
 impl IntoDiagnosticArg for ExitCode {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue {
+    fn into_diagnostic_arg(self) -> DiagArgValue {
         let ExitCode(exit_code) = self;
         match exit_code {
             Some(t) => t.into_diagnostic_arg(),
-            None => DiagnosticArgValue::Str(Cow::Borrowed("<signal>")),
+            None => DiagArgValue::Str(Cow::Borrowed("<signal>")),
         }
     }
 }
