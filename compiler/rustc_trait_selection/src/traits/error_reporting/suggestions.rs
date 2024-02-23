@@ -2983,11 +2983,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     match ty.kind {
                         hir::TyKind::TraitObject(traits, _, _) => {
                             let (span, kw) = match traits {
-                                [first, ..] if first.span.lo() == ty.span.lo() => {
+                                [(first, _), ..] if first.span.lo() == ty.span.lo() => {
                                     // Missing `dyn` in front of trait object.
                                     (ty.span.shrink_to_lo(), "dyn ")
                                 }
-                                [first, ..] => (ty.span.until(first.span), ""),
+                                [(first, _), ..] => (ty.span.until(first.span), ""),
                                 [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
                             };
                             let needs_parens = traits.len() != 1;

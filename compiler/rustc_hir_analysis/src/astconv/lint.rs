@@ -97,7 +97,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut is_downgradable = true;
         let is_object_safe = match self_ty.kind {
             hir::TyKind::TraitObject(objects, ..) => {
-                objects.iter().all(|o| match o.trait_ref.path.res {
+                objects.iter().all(|(o, _)| match o.trait_ref.path.res {
                     Res::Def(DefKind::Trait, id) => {
                         if Some(id) == owner {
                             // For recursive traits, don't downgrade the error. (#119652)
@@ -188,7 +188,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     pub(super) fn maybe_lint_bare_trait(&self, self_ty: &hir::Ty<'_>, in_path: bool) {
         let tcx = self.tcx();
-        if let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
+        if let hir::TyKind::TraitObject([(poly_trait_ref, _), ..], _, TraitObjectSyntax::None) =
             self_ty.kind
         {
             let needs_bracket = in_path

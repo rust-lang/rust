@@ -606,7 +606,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 debug!(?bounds, ?lifetime, "TraitObject");
                 let scope = Scope::TraitRefBoundary { s: self.scope };
                 self.with(scope, |this| {
-                    for bound in bounds {
+                    for (bound, _) in bounds {
                         this.visit_poly_trait_ref_inner(
                             bound,
                             NonLifetimeBinderAllowed::Deny("trait object types"),
