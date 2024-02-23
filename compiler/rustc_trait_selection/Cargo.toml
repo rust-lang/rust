@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
-itertools = "0.11.0"
+itertools = "0.12"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_attr = { path = "../rustc_attr" }

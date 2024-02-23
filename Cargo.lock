@@ -3497,7 +3497,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3517,7 +3517,7 @@ dependencies = [
 name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_ast",
  "rustc_lexer",
  "rustc_span",
@@ -3558,7 +3558,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "polonius-engine",
  "rustc_data_structures",
  "rustc_errors",
@@ -3611,7 +3611,7 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "libc",
  "measureme",
  "object",
@@ -3647,7 +3647,7 @@ dependencies = [
  "ar_archive_writer",
  "bitflags 2.4.2",
  "cc",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "jobserver",
  "libc",
  "object",
@@ -3929,7 +3929,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -3968,7 +3968,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_ast",
  "rustc_ast_ir",
  "rustc_attr",
@@ -4255,7 +4255,7 @@ name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
@@ -4302,7 +4302,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -4382,7 +4382,6 @@ dependencies = [
 name = "rustc_passes"
 version = "0.0.0"
 dependencies = [
- "itertools 0.11.0",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -4632,7 +4631,7 @@ name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
  "bitflags 2.4.2",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_ast",
  "rustc_ast_ir",
  "rustc_attr",
@@ -4672,7 +4671,7 @@ dependencies = [
 name = "rustc_transmute"
 version = "0.0.0"
 dependencies = [
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_hir",
@@ -4688,7 +4687,7 @@ dependencies = [
 name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_errors",
@@ -4738,7 +4737,7 @@ dependencies = [
  "askama",
  "expect-test",
  "indexmap",
- "itertools 0.11.0",
+ "itertools 0.12.1",
  "minifier",
  "once_cell",
  "regex",
