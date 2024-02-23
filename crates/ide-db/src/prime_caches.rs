@@ -82,6 +82,7 @@ pub fn parallel_prime_caches(
 
             stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
                 .allow_leak(true)
+                .name("PrimeCaches".to_owned())
                 .spawn(move || Cancelled::catch(|| worker(db)))
                 .expect("failed to spawn thread");
         }
