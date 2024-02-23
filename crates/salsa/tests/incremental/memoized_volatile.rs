@@ -58,7 +58,7 @@ fn revalidate() {
 
     // Second generation: volatile will change (to 1) but memoized1
     // will not (still 0, as 1/2 = 0)
-    query.salsa_runtime_mut().synthetic_write(Durability::LOW);
+    query.synthetic_write(Durability::LOW);
     query.memoized2();
     query.assert_log(&["Volatile invoked", "Memoized1 invoked"]);
     query.memoized2();
@@ -67,7 +67,7 @@ fn revalidate() {
     // Third generation: volatile will change (to 2) and memoized1
     // will too (to 1).  Therefore, after validating that Memoized1
     // changed, we now invoke Memoized2.
-    query.salsa_runtime_mut().synthetic_write(Durability::LOW);
+    query.synthetic_write(Durability::LOW);
 
     query.memoized2();
     query.assert_log(&["Volatile invoked", "Memoized1 invoked", "Memoized2 invoked"]);

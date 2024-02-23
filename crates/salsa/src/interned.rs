@@ -265,12 +265,10 @@ where
     fn fmt_index(
         &self,
         _db: &<Q as QueryDb<'_>>::DynDb,
-        index: DatabaseKeyIndex,
+        index: u32,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        assert_eq!(index.group_index, self.group_index);
-        assert_eq!(index.query_index, Q::QUERY_INDEX);
-        let intern_id = InternId::from(index.key_index);
+        let intern_id = InternId::from(index);
         let slot = self.lookup_value(intern_id);
         write!(fmt, "{}({:?})", Q::QUERY_NAME, slot.value)
     }
@@ -278,13 +276,11 @@ where
     fn maybe_changed_after(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        input: DatabaseKeyIndex,
+        input: u32,
         revision: Revision,
     ) -> bool {
-        assert_eq!(input.group_index, self.group_index);
-        assert_eq!(input.query_index, Q::QUERY_INDEX);
         debug_assert!(revision < db.salsa_runtime().current_revision());
-        let intern_id = InternId::from(input.key_index);
+        let intern_id = InternId::from(input);
         let slot = self.lookup_value(intern_id);
         slot.maybe_changed_after(revision)
     }
@@ -388,7 +384,7 @@ where
     fn fmt_index(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        index: DatabaseKeyIndex,
+        index: u32,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         let group_storage =
@@ -400,7 +396,7 @@ where
     fn maybe_changed_after(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        input: DatabaseKeyIndex,
+        input: u32,
         revision: Revision,
     ) -> bool {
         let group_storage =
