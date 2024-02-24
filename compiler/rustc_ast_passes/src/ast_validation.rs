@@ -1527,6 +1527,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     generics,
                     body.as_deref(),
                 );
+                walk_list!(self, visit_attribute, &item.attrs);
                 self.visit_fn(kind, item.span, item.id);
             }
             AssocItemKind::Type(_) => {
