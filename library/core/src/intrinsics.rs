@@ -44,6 +44,15 @@
 //! * Sequentially consistent - sequentially consistent operations are
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
+//!
+//! # Unwinding
+//!
+//! Rust intrinsics may, in general, unwind. If an intrinsic can never unwind, add the
+//! `#[rustc_nounwind]` attribute so that the compiler can make use of this fact.
+//!
+//! However, even for intrinsics that may unwind, rustc assumes that a Rust intrinsics will never
+//! initiate a foreign (non-Rust) unwind, and thus for panic=abort we can always assume that these
+//! intrinsics cannot unwind.
 
 #![unstable(
     feature = "core_intrinsics",
@@ -692,6 +701,7 @@ extern "rust-intrinsic" {
     /// The stabilized version of this intrinsic is available on the
     /// [`atomic`] signed integer types via the `fetch_min` method by passing
     /// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicI32::fetch_min`].
+    #[rustc_nounwind]
     pub fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
     /// Minimum with the current value using a signed comparison.
     ///
