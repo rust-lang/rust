@@ -612,7 +612,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
         F: FnOnce(&mut T) -> &mut U,
         U: ?Sized,
     {
-        // SAFETY: the conditions of `MutedGuard::new` were satisfied when the original guard
+        // SAFETY: the conditions of `MutexGuard::new` were satisfied when the original guard
         // was created, and have been upheld throughout `map` and/or `try_map`.
         // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
         // passed to it. If the closure panics, the guard will be dropped.
@@ -720,7 +720,7 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
         F: FnOnce(&mut T) -> &mut U,
         U: ?Sized,
     {
-        // SAFETY: the conditions of `MutedGuard::new` were satisfied when the original guard
+        // SAFETY: the conditions of `MutexGuard::new` were satisfied when the original guard
         // was created, and have been upheld throughout `map` and/or `try_map`.
         // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
         // passed to it. If the closure panics, the guard will be dropped.
@@ -751,7 +751,7 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
         F: FnOnce(&mut T) -> Option<&mut U>,
         U: ?Sized,
     {
-        // SAFETY: the conditions of `MutedGuard::new` were satisfied when the original guard
+        // SAFETY: the conditions of `MutexGuard::new` were satisfied when the original guard
         // was created, and have been upheld throughout `map` and/or `try_map`.
         // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
         // passed to it. If the closure panics, the guard will be dropped.
