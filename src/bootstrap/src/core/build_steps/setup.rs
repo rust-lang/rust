@@ -233,7 +233,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
 }
 
 /// Creates a toolchain link for stage1 using `rustup`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Link;
 impl Step for Link {
     type Output = ();
@@ -444,7 +444,7 @@ fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
 }
 
 /// Installs `src/etc/pre-push.sh` as a Git hook
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Hook;
 
 impl Step for Hook {
@@ -516,7 +516,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 }
 
 /// Sets up or displays `src/etc/rust_analyzer_settings.json`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Vscode;
 
 impl Step for Vscode {

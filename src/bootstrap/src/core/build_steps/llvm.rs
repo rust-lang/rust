@@ -242,7 +242,7 @@ pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: TargetSelection,
 }
@@ -815,7 +815,7 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
         .or_else(|| env::var_os(var_base))
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Lld {
     pub target: TargetSelection,
 }
@@ -937,7 +937,7 @@ impl Step for Lld {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Sanitizers {
     pub target: TargetSelection,
 }
@@ -1147,7 +1147,7 @@ impl HashStamp {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrtBeginEnd {
     pub target: TargetSelection,
 }
@@ -1215,7 +1215,7 @@ impl Step for CrtBeginEnd {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Libunwind {
     pub target: TargetSelection,
 }

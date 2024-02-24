@@ -727,7 +727,7 @@ fn apple_darwin_sign_file(file_path: &Path) {
     assert!(status.success());
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StartupObjects {
     pub compiler: Compiler,
     pub target: TargetSelection,
@@ -1491,7 +1491,7 @@ pub fn compiler_file(
     PathBuf::from(out.trim())
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Sysroot {
     pub compiler: Compiler,
     /// See [`Std::force_recompile`].
@@ -1653,7 +1653,7 @@ impl Step for Sysroot {
     }
 }
 
-#[derive(Debug, Copy, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
 pub struct Assemble {
     /// The compiler which we will produce in this step. Assemble itself will
     /// take care of ensuring that the necessary prerequisites to do so exist,

@@ -159,7 +159,7 @@ macro_rules! install {
        only_hosts: $only_hosts:expr,
        $run_item:block $(, $c:ident)*;)+) => {
         $(
-            #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+            #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
             pub target: TargetSelection,
@@ -303,7 +303,7 @@ install!((self, builder, _config),
     };
 );
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Src {
     pub stage: u32,
 }
