@@ -437,8 +437,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 let align = dest.align;
                 bx.store_with_flags(val, dest.llval, align, flags);
 
-                let llptr =
-                    bx.inbounds_gep(bx.type_i8(), dest.llval, &[bx.const_usize(b_offset.bytes())]);
+                let llptr = bx.inbounds_ptradd(dest.llval, bx.const_usize(b_offset.bytes()));
                 let val = bx.from_immediate(b);
                 let align = dest.align.restrict_for_offset(b_offset);
                 bx.store_with_flags(val, llptr, align, flags);
@@ -476,7 +475,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
         let address = bx.ptrtoint(alloca, bx.type_isize());
         let neg_address = bx.neg(address);
         let offset = bx.and(neg_address, align_minus_1);
-        let dst = bx.inbounds_gep(bx.type_i8(), alloca, &[offset]);
+        let dst = bx.inbounds_ptradd(alloca, offset);
         bx.memcpy(dst, min_align, llptr, min_align, size, MemFlags::empty());
 
         // Store the allocated region and the extra to the indirect place.

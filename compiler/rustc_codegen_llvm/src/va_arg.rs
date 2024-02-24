@@ -44,12 +44,12 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
 
     let aligned_size = size.align_to(slot_size).bytes() as i32;
     let full_direct_size = bx.cx().const_i32(aligned_size);
-    let next = bx.inbounds_gep(bx.type_i8(), addr, &[full_direct_size]);
+    let next = bx.inbounds_ptradd(addr, full_direct_size);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
     if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
-        let adjusted = bx.inbounds_gep(bx.type_i8(), addr, &[adjusted_size]);
+        let adjusted = bx.inbounds_ptradd(addr, adjusted_size);
         (adjusted, addr_align)
     } else {
         (addr, addr_align)
@@ -109,14 +109,10 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     // Table 3, Mapping of C & C++ built-in data types
     let ptr_offset = 8;
     let i32_offset = 4;
-    let gr_top = bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(ptr_offset)]);
-    let vr_top = bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(2 * ptr_offset)]);
-    let gr_offs = bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(3 * ptr_offset)]);
-    let vr_offs = bx.inbounds_gep(
-        bx.type_i8(),
-        va_list_addr,
-        &[bx.cx.const_usize(3 * ptr_offset + i32_offset)],
-    );
+    let gr_top = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(ptr_offset));
+    let vr_top = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * ptr_offset));
+    let gr_offs = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(3 * ptr_offset));
+    let vr_offs = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(3 * ptr_offset + i32_offset));
 
     let layout = bx.cx.layout_of(target_ty);
 
@@ -164,11 +160,11 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     let top = bx.load(top_type, reg_top, dl.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
-    let mut reg_addr = bx.gep(bx.type_i8(), top, &[reg_off_v]);
+    let mut reg_addr = bx.ptradd(top, reg_off_v);
     if bx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
         // On big-endian systems the value is right-aligned in its slot.
         let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
-        reg_addr = bx.gep(bx.type_i8(), reg_addr, &[offset]);
+        reg_addr = bx.ptradd(reg_addr, offset);
     }
     let reg_type = layout.llvm_type(bx);
     let reg_value = bx.load(reg_type, reg_addr, layout.align.abi);
@@ -210,14 +206,10 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let i64_offset = 8;
     let ptr_offset = 8;
     let gpr = va_list_addr;
-    let fpr = bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(i64_offset)]);
-    let overflow_arg_area =
-        bx.inbounds_gep(bx.type_i8(), va_list_addr, &[bx.cx.const_usize(2 * i64_offset)]);
-    let reg_save_area = bx.inbounds_gep(
-        bx.type_i8(),
-        va_list_addr,
-        &[bx.cx.const_usize(2 * i64_offset + ptr_offset)],
-    );
+    let fpr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(i64_offset));
+    let overflow_arg_area = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * i64_offset));
+    let reg_save_area =
+        bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(2 * i64_offset + ptr_offset));
 
     let layout = bx.cx.layout_of(target_ty);
 
@@ -248,7 +240,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let reg_ptr_v = bx.load(bx.type_ptr(), reg_save_area, dl.pointer_align.abi);
     let scaled_reg_count = bx.mul(reg_count_v, bx.const_u64(8));
     let reg_off = bx.add(scaled_reg_count, bx.const_u64(reg_save_index * 8 + reg_padding));
-    let reg_addr = bx.gep(bx.type_i8(), reg_ptr_v, &[reg_off]);
+    let reg_addr = bx.ptradd(reg_ptr_v, reg_off);
 
     // Update the register count.
     let new_reg_count_v = bx.add(reg_count_v, bx.const_u64(1));
@@ -262,11 +254,11 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     let arg_ptr_v =
         bx.load(bx.type_ptr(), overflow_arg_area, bx.tcx().data_layout.pointer_align.abi);
     let arg_off = bx.const_u64(padding);
-    let mem_addr = bx.gep(bx.type_i8(), arg_ptr_v, &[arg_off]);
+    let mem_addr = bx.ptradd(arg_ptr_v, arg_off);
 
     // Update the argument overflow area pointer.
     let arg_size = bx.cx().const_u64(padded_size);
-    let new_arg_ptr_v = bx.inbounds_gep(bx.type_i8(), arg_ptr_v, &[arg_size]);
+    let new_arg_ptr_v = bx.inbounds_ptradd(arg_ptr_v, arg_size);
     bx.store(new_arg_ptr_v, overflow_arg_area, dl.pointer_align.abi);
     bx.br(end);
 

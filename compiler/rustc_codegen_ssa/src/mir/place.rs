@@ -105,7 +105,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             let llval = if offset.bytes() == 0 {
                 self.llval
             } else {
-                bx.inbounds_gep(bx.type_i8(), self.llval, &[bx.const_usize(offset.bytes())])
+                bx.inbounds_ptradd(self.llval, bx.const_usize(offset.bytes()))
             };
             PlaceRef {
                 llval,
@@ -164,7 +164,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         debug!("struct_field_ptr: DST field offset: {:?}", offset);
 
         // Adjust pointer.
-        let ptr = bx.gep(bx.cx().type_i8(), self.llval, &[offset]);
+        let ptr = bx.ptradd(self.llval, offset);
 
         PlaceRef { llval: ptr, llextra: self.llextra, layout: field, align: effective_field_align }
     }
