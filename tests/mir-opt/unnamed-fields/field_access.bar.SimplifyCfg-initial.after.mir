@@ -44,7 +44,7 @@ fn bar(_1: Bar) -> () {
         StorageDead(_6);
         StorageLive(_8);
         StorageLive(_9);
-        _9 = (((_1.2: Bar::{anon_adt#1}).0: Bar::{anon_adt#1}::{anon_adt#0}).0: [u8; 1]);
+        _9 = (((_1.2: Bar::{anon_adt#1}).0: Nested).0: [u8; 1]);
         _8 = access::<[u8; 1]>(move _9) -> [return: bb4, unwind: bb5];
     }
 

@@ -2363,39 +2363,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did(), body_hir_id);
-                    let mut adt_def = *base_def;
-                    let mut last_ty = None;
-                    let mut nested_fields = Vec::new();
-                    let mut index = None;
-                    while let Some(idx) = self.tcx.find_field((adt_def.did(), ident)) {
-                        let &mut first_idx = index.get_or_insert(idx);
-                        let field = &adt_def.non_enum_variant().fields[idx];
-                        let field_ty = self.field_ty(expr.span, field, args);
-                        if let Some(ty) = last_ty {
-                            nested_fields.push((ty, idx));
-                        }
-                        if field.ident(self.tcx).normalize_to_macros_2_0() == ident {
-                            // Save the index of all fields regardless of their visibility in case
-                            // of error recovery.
-                            self.write_field_index(expr.hir_id, first_idx, nested_fields);
-                            let adjustments = self.adjust_steps(&autoderef);
-                            if field.vis.is_accessible_from(def_scope, self.tcx) {
-                                self.apply_adjustments(base, adjustments);
-                                self.register_predicates(autoderef.into_obligations());
+                    if let Some((first_idx, nested_fields, field, field_ty)) =
+                        self.lookup_ident(base_def.non_enum_variant(), ident, args, expr.span)
+                    {
+                        // Save the index of all fields regardless of their visibility in case
+                        // of error recovery.
+                        self.write_field_index(expr.hir_id, first_idx, nested_fields);
+                        let adjustments = self.adjust_steps(&autoderef);
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
+                            self.apply_adjustments(base, adjustments);
+                            self.register_predicates(autoderef.into_obligations());
 
-                                self.tcx.check_stability(
-                                    field.did,
-                                    Some(expr.hir_id),
-                                    expr.span,
-                                    None,
-                                );
-                                return field_ty;
-                            }
-                            private_candidate = Some((adjustments, base_def.did()));
-                            break;
+                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
+                            return field_ty;
                         }
-                        last_ty = Some(field_ty);
-                        adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
+                        private_candidate = Some((adjustments, base_def.did()));
                     }
                 }
                 ty::Tuple(tys) => {

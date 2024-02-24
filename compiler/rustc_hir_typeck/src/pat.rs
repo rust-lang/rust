@@ -1,5 +1,5 @@
 use crate::gather_locals::DeclOrigin;
-use crate::{errors, FnCtxt, LoweredTy};
+use crate::{errors, FnCtxt, LoweredTy, TyCtxt};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
@@ -1359,13 +1359,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span_bug!(pat.span, "struct pattern is not an ADT");
         };
 
-        // Index the struct fields' types.
-        let field_map = variant
-            .fields
-            .iter_enumerated()
-            .map(|(i, field)| (field.ident(self.tcx).normalize_to_macros_2_0(), (i, field)))
-            .collect::<FxHashMap<_, _>>();
-
         // Keep track of which fields have already appeared in the pattern.
         let mut used_fields = FxHashMap::default();
         let mut no_field_errors = true;
@@ -1383,13 +1376,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Vacant(vacant) => {
                     vacant.insert(span);
-                    field_map
-                        .get(&ident)
-                        .map(|(i, f)| {
-                            // FIXME: handle nested fields
-                            self.write_field_index(field.hir_id, *i, Vec::new());
+                    self.lookup_ident(variant, ident, args, span)
+                        .map(|(idx, nested_fields, f, field_ty)| {
+                            self.write_field_index(field.hir_id, idx, nested_fields);
                             self.tcx.check_stability(f.did, Some(pat.hir_id), span, None);
-                            self.field_ty(span, f, args)
+                            field_ty
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
@@ -1402,12 +1393,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_pat(field.pat, field_ty, pat_info);
         }
 
-        let mut unmentioned_fields = variant
-            .fields
-            .iter()
-            .map(|field| (field, field.ident(self.tcx).normalize_to_macros_2_0()))
-            .filter(|(_, ident)| !used_fields.contains_key(ident))
-            .collect::<Vec<_>>();
+        let (has_union, mut unmentioned_fields) =
+            PatFieldCheckCtxt::new(self.tcx, &used_fields, pat.span).do_check(*adt, variant);
 
         let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered())
             && !inexistent_fields.iter().any(|field| field.ident.name == kw::Underscore)
@@ -1431,14 +1418,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut unmentioned_err = None;
-        // Report an error if an incorrect number of fields was specified.
-        if adt.is_union() {
-            if fields.len() != 1 {
-                tcx.dcx().emit_err(errors::UnionPatMultipleFields { span: pat.span });
-            }
-            if has_rest_pat {
-                tcx.dcx().emit_err(errors::UnionPatDotDot { span: pat.span });
-            }
+        // Report an error if `..` is not allowed.
+        if has_union && has_rest_pat {
+            tcx.dcx().emit_err(errors::UnionPatDotDot { span: pat.span });
         } else if !unmentioned_fields.is_empty() {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
                 .iter()
@@ -2332,5 +2314,188 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Slice(..) | ty::Array(..) => (true, ty),
             _ => (false, ty),
         }
+    }
+}
+
+struct PatFieldCheckCtxt<'tcx, 'a> {
+    tcx: TyCtxt<'tcx>,
+    pat_span: Span,
+    pat_fields: &'a FxHashMap<Ident, Span>,
+    unmentioned_fields: Vec<(&'tcx ty::FieldDef, Ident)>,
+    conflict_set: Vec<errors::UnionPatConflict>,
+    absent_set: Vec<errors::UnionPatAbsent>,
+    has_union: bool,
+}
+
+type FieldIter<'tcx> = std::iter::Take<std::iter::Skip<std::slice::Iter<'tcx, ty::FieldDef>>>;
+
+impl<'tcx, 'a> PatFieldCheckCtxt<'tcx, 'a> {
+    pub fn new(tcx: TyCtxt<'tcx>, pat_fields: &'a FxHashMap<Ident, Span>, pat_span: Span) -> Self {
+        Self {
+            tcx,
+            pat_span,
+            pat_fields,
+            unmentioned_fields: Vec::new(),
+            conflict_set: Vec::new(),
+            absent_set: Vec::new(),
+            has_union: false,
+        }
+    }
+
+    #[inline]
+    fn field_mentioned(&self, field: &'tcx ty::FieldDef) -> Result<Ident, Ident> {
+        let ident = field.ident(self.tcx).normalize_to_macros_2_0();
+        self.pat_fields.get_key_value(&ident).map(|(&ident, _)| ident).ok_or(ident)
+    }
+
+    pub fn do_check(
+        mut self,
+        adt_def: ty::AdtDef<'tcx>,
+        variant: &'tcx ty::VariantDef,
+    ) -> (/* has_union */ bool, Vec<(&'tcx ty::FieldDef, Ident)>) {
+        match adt_def.adt_kind() {
+            ty::AdtKind::Enum | ty::AdtKind::Struct => self.check_struct_variant(variant, true),
+            ty::AdtKind::Union => self.check_union_variant(adt_def),
+        };
+        if !self.conflict_set.is_empty() || !self.absent_set.is_empty() {
+            self.tcx.dcx().emit_err(errors::UnionPatMultipleFields {
+                span: self.pat_span,
+                conflict_set: self.conflict_set,
+                absent_set: self.absent_set,
+            });
+        }
+        (self.has_union, self.unmentioned_fields)
+    }
+
+    fn check_struct_variant(
+        &mut self,
+        variant: &'tcx ty::VariantDef,
+        collect_unmentioned: bool,
+    ) -> bool {
+        let mut has_mentioned = false;
+        for (idx, field) in variant.fields.iter_enumerated() {
+            if field.is_unnamed() {
+                let nested_adt_def = field.nested_adt_def(self.tcx);
+                has_mentioned |= if nested_adt_def.is_union() {
+                    self.check_union_variant(nested_adt_def)
+                } else {
+                    self.check_struct_variant(
+                        nested_adt_def.non_enum_variant(),
+                        collect_unmentioned,
+                    )
+                };
+            } else if self.field_mentioned(field).is_ok() {
+                has_mentioned = true;
+            } else {
+                return self.collect_unmentioned(
+                    variant.fields.iter().skip(idx.index()).take(usize::MAX),
+                    collect_unmentioned,
+                ) || has_mentioned;
+            }
+        }
+        has_mentioned
+    }
+
+    fn check_union_variant(&mut self, adt_def: ty::AdtDef<'tcx>) -> bool {
+        self.has_union = true;
+        let variant = adt_def.non_enum_variant();
+        let mut mentioned = None;
+        for (idx, field) in variant.fields.iter_enumerated() {
+            let current_mentioned = if field.is_unnamed() {
+                let nested_adt_def = field.nested_adt_def(self.tcx);
+                if nested_adt_def.is_union() {
+                    self.check_union_variant(nested_adt_def)
+                        .then_some((idx, /* need_recheck */ false))
+                } else {
+                    // dummy check, does not collect the unmentioned fields.
+                    // In case of the multiple fields from the union are used,
+                    // we do not collect those fields to report unmentioned errors.
+                    self.check_struct_variant(nested_adt_def.non_enum_variant(), false)
+                        .then_some((idx, /* need_recheck */ true))
+                }
+            } else {
+                self.field_mentioned(field).is_ok().then_some((idx, /* need_recheck */ false))
+            };
+            match (mentioned, current_mentioned) {
+                (None, Some(_)) => mentioned = current_mentioned,
+                (Some((idx, _)), Some(_)) => {
+                    let mut span = MultiSpan::from_spans(self.collect_mentioned(
+                        variant.fields.iter().skip(idx.index()).take(usize::MAX),
+                    ));
+                    span.push_span_label(self.tcx.def_span(adt_def.did()), "union defined here");
+
+                    self.conflict_set.push(errors::UnionPatConflict { span });
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        match mentioned {
+            Some((idx, _need_recheck @ true)) => {
+                // Check the only mentioned field of the union again,
+                // really collecting the unamed fields.
+                let field = &variant.fields[idx];
+                if field.is_unnamed() {
+                    self.check_struct_variant(
+                        field.nested_adt_def(self.tcx).non_enum_variant(),
+                        true,
+                    );
+                }
+            }
+            None if !variant.fields.is_empty() => {
+                let mut span = MultiSpan::new();
+                span.push_span_label(self.tcx.def_span(adt_def.did()), "union defined here");
+                self.absent_set.push(errors::UnionPatAbsent { span });
+            }
+            _ => {}
+        }
+        mentioned.is_some()
+    }
+
+    fn traverse_fields(
+        &mut self,
+        fields: FieldIter<'tcx>,
+        union_traverse_single: bool,
+        f: &mut impl FnMut(&mut Self, &'tcx ty::FieldDef),
+    ) {
+        for field in fields {
+            if field.is_unnamed() {
+                let nested_adt_def = field.nested_adt_def(self.tcx);
+                let nested_fields = &nested_adt_def.non_enum_variant().fields;
+                // For unions, we only traverse the first field
+                // to report the unmentioned fields.
+                let n =
+                    if union_traverse_single && nested_adt_def.is_union() { 1 } else { usize::MAX };
+                self.traverse_fields(
+                    nested_fields.iter().skip(0).take(n),
+                    union_traverse_single,
+                    &mut *f,
+                );
+            } else {
+                f(self, field);
+            }
+        }
+    }
+
+    fn collect_mentioned(&mut self, fields: FieldIter<'tcx>) -> Vec<Span> {
+        let mut mentioned = Vec::new();
+        self.traverse_fields(fields, false, &mut |this, field| {
+            if let Ok(pat_ident) = this.field_mentioned(field) {
+                mentioned.push(pat_ident.span);
+            }
+        });
+        mentioned
+    }
+
+    fn collect_unmentioned(&mut self, fields: FieldIter<'tcx>, do_collect: bool) -> bool {
+        let mut has_mentioned = false;
+        // For unions, we only collect all the nested fields in the first field
+        // to report the unmentioned fields.
+        self.traverse_fields(fields, true, &mut |this, field| match this.field_mentioned(field) {
+            Ok(_) => has_mentioned = true,
+            Err(def_ident) if do_collect => this.unmentioned_fields.push((field, def_ident)),
+            Err(_) => {}
+        });
+        has_mentioned
     }
 }

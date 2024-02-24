@@ -1409,6 +1409,17 @@ impl<'tcx> FieldDef {
     pub fn is_unnamed(&self) -> bool {
         self.name == rustc_span::symbol::kw::Underscore
     }
+
+    /// Returns the definition of an anonymous ADT of this unnamed field.
+    pub fn nested_adt_def(&self, tcx: TyCtxt<'tcx>) -> ty::AdtDef<'tcx> {
+        assert!(self.is_unnamed(), "Expect an unnamed field to evaluate the nested ADT");
+        match tcx.type_of(self.did).instantiate_identity().kind() {
+            ty::Adt(adt_def, ..) => *adt_def,
+            ty_kind => {
+                span_bug!(tcx.def_span(self.did), "Expect anonymous ADT but found: {ty_kind:?}")
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

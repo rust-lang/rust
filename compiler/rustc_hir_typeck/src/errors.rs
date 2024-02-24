@@ -412,11 +412,29 @@ pub struct ConstSelectMustBeFn<'a> {
     pub ty: Ty<'a>,
 }
 
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_union_pat_absent)]
+pub struct UnionPatAbsent {
+    #[primary_span]
+    pub span: MultiSpan,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_union_pat_conflict)]
+pub struct UnionPatConflict {
+    #[primary_span]
+    pub span: MultiSpan,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_union_pat_multiple_fields)]
 pub struct UnionPatMultipleFields {
     #[primary_span]
     pub span: Span,
+    #[subdiagnostic]
+    pub conflict_set: Vec<UnionPatConflict>,
+    #[subdiagnostic]
+    pub absent_set: Vec<UnionPatAbsent>,
 }
 
 #[derive(Diagnostic)]

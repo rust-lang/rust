@@ -31,7 +31,6 @@ use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
@@ -84,7 +83,6 @@ pub fn provide(providers: &mut Providers) {
         coroutine_for_closure,
         collect_mod_item_types,
         is_type_alias_impl_trait,
-        find_field,
         ..*providers
     };
 }
@@ -790,18 +788,6 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 }
 
-fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldIdx> {
-    tcx.adt_def(def_id).non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
-        if field.is_unnamed() {
-            let field_ty = tcx.type_of(field.did).instantiate_identity();
-            let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
-            tcx.find_field((adt_def.did(), ident)).map(|_| idx)
-        } else {
-            (field.ident(tcx).normalize_to_macros_2_0() == ident).then_some(idx)
-        }
-    })
-}
-
 #[derive(Clone, Copy)]
 struct NestedSpan {
     span: Span,
@@ -899,15 +885,8 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
         for field in adt_def.all_fields() {
             if field.is_unnamed() {
                 // Here we don't care about the generic parameters, so `instantiate_identity` is enough.
-                match self.tcx.type_of(field.did).instantiate_identity().kind() {
-                    ty::Adt(adt_def, _) => {
-                        self.check_field_in_nested_adt(*adt_def, unnamed_field_span);
-                    }
-                    ty_kind => span_bug!(
-                        self.tcx.def_span(field.did),
-                        "Unexpected TyKind in FieldUniquenessCheckContext::check_field_in_nested_adt(): {ty_kind:?}"
-                    ),
-                }
+                let adt_def = field.nested_adt_def(self.tcx);
+                self.check_field_in_nested_adt(adt_def, unnamed_field_span);
             } else {
                 self.check_field_decl(
                     field.ident(self.tcx),
