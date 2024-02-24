@@ -61,19 +61,42 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
             }
         }
 
+        let all_args = std::env::args().collect::<Vec<_>>();
+
         args.extend(strings(&["--", "--cap-lints", "warn"]));
         args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
-        let mut clippy_lint_levels: Vec<String> = Vec::new();
-        allow.iter().for_each(|v| clippy_lint_levels.push(format!("-A{}", v)));
-        deny.iter().for_each(|v| clippy_lint_levels.push(format!("-D{}", v)));
-        warn.iter().for_each(|v| clippy_lint_levels.push(format!("-W{}", v)));
-        forbid.iter().for_each(|v| clippy_lint_levels.push(format!("-F{}", v)));
-        args.extend(clippy_lint_levels);
+        args.extend(get_clippy_rules_in_order(&all_args, allow, deny, warn, forbid));
         args.extend(builder.config.free_args.clone());
         args
     } else {
         builder.config.free_args.clone()
     }
+}
+
+/// We need to keep the order of the given clippy lint rules before passing them.
+/// Since clap doesn't offer any useful interface for this purpose out of the box,
+/// we have to handle it manually.
+pub(crate) fn get_clippy_rules_in_order(
+    all_args: &[String],
+    allow_rules: &[String],
+    deny_rules: &[String],
+    warn_rules: &[String],
+    forbid_rules: &[String],
+) -> Vec<String> {
+    let mut result = vec![];
+
+    for (prefix, item) in
+        [("-A", allow_rules), ("-D", deny_rules), ("-W", warn_rules), ("-F", forbid_rules)]
+    {
+        item.iter().for_each(|v| {
+            let rule = format!("{prefix}{v}");
+            let position = all_args.iter().position(|t| t == &rule).unwrap();
+            result.push((position, rule));
+        });
+    }
+
+    result.sort_by_key(|&(position, _)| position);
+    result.into_iter().map(|v| v.1).collect()
 }
 
 fn cargo_subcommand(kind: Kind) -> &'static str {
