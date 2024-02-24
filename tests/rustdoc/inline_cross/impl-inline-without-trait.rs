@@ -1,6 +1,6 @@
-// aux-build:impl-inline-without-trait.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:impl-inline-without-trait.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #![crate_name = "foo"]
 

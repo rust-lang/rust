@@ -23,19 +23,6 @@ LL | const fn answer<F: ~const Fn() -> u8>(f: &F) -> u8 {
    |                           ^^^^^^^^^^
 
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/const-closures.rs:12:5
-   |
-LL |     f() * 7
-   |     ^^^
-   |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-   = help: add `#![feature(effects)]` to the crate attributes to enable
-help: consider further restricting this bound
-   |
-LL |         F: ~const FnOnce() -> u8 + ~const std::ops::Fn<()>,
-   |                                  +++++++++++++++++++++++++
-
-error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/const-closures.rs:24:5
    |
 LL |     f() + f()
@@ -60,6 +47,19 @@ help: consider further restricting this bound
    |
 LL | const fn answer<F: ~const Fn() -> u8 + ~const std::ops::Fn<()>>(f: &F) -> u8 {
    |                                      +++++++++++++++++++++++++
+
+error[E0015]: cannot call non-const closure in constant functions
+  --> $DIR/const-closures.rs:12:5
+   |
+LL |     f() * 7
+   |     ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
+help: consider further restricting this bound
+   |
+LL |         F: ~const FnOnce() -> u8 + ~const std::ops::Fn<()>,
+   |                                  +++++++++++++++++++++++++
 
 error: aborting due to 7 previous errors
 

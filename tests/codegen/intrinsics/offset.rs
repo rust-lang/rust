@@ -1,4 +1,4 @@
-// compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

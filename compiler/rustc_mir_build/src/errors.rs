@@ -1,7 +1,7 @@
 use crate::fluent_generated as fluent;
 use rustc_errors::DiagnosticArgValue;
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    codes::*, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, EmissionGuarantee,
     IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -420,7 +420,11 @@ pub struct UnsafeNotInheritedLintNote {
 }
 
 impl AddToDiagnostic for UnsafeNotInheritedLintNote {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+        self,
+        diag: &mut DiagnosticBuilder<'_, G>,
+        _f: F,
+    ) {
         diag.span_note(self.signature_span, fluent::mir_build_unsafe_fn_safe_body);
         let body_start = self.body_span.shrink_to_lo();
         let body_end = self.body_span.shrink_to_hi();
@@ -457,8 +461,10 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
     pub ty: Ty<'tcx>,
 }
 
-impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'_> {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G>
+    for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_>
+{
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag = DiagnosticBuilder::new(
             dcx,
             level,
@@ -863,7 +869,11 @@ pub struct Variant {
 }
 
 impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+        self,
+        diag: &mut DiagnosticBuilder<'_, G>,
+        _f: F,
+    ) {
         diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);
 

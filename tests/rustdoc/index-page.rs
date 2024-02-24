@@ -1,6 +1,6 @@
-// aux-build:all-item-types.rs
-// build-aux-docs
-// compile-flags: -Z unstable-options --enable-index-page
+//@ aux-build:all-item-types.rs
+//@ build-aux-docs
+//@ compile-flags: -Z unstable-options --enable-index-page
 
 #![crate_name = "foo"]
 

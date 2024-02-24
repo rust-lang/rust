@@ -8,6 +8,7 @@
 //@[no-compat] check-fail
 //@[no-compat] known-bug: #80409
 //@[no-compat] failure-status: 101
+//@[no-compat] normalize-stderr-test "delayed at.*" -> ""
 //@[no-compat] normalize-stderr-test "note: .*\n\n" -> ""
 //@[no-compat] normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
 //@[no-compat] normalize-stderr-test "(error: internal compiler error: [^:]+):\d+:\d+: " -> "$1:LL:CC: "

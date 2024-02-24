@@ -1,5 +1,5 @@
-// compile-flags: -C control-flow-guard=no
-// only-msvc
+//@ compile-flags: -C control-flow-guard=no
+//@ only-msvc
 
 #![crate_type = "lib"]
 

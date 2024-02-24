@@ -1,6 +1,6 @@
 #![crate_name = "user"]
-// aux-crate:default_generic_args=default-generic-args.rs
-// edition:2021
+//@ aux-crate:default_generic_args=default-generic-args.rs
+//@ edition:2021
 
 // @has user/type.BoxedStr.html
 // @has - '//*[@class="rust item-decl"]//code' "Box<str>"

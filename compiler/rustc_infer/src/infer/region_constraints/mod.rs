@@ -8,12 +8,11 @@ use super::{
 };
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
-use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
+use rustc_middle::infer::unify_key::{RegionVariableValue, RegionVidKey};
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReBound, ReVar};
@@ -292,6 +291,18 @@ type CombineMap<'tcx> = FxHashMap<TwoRegions<'tcx>, RegionVid>;
 #[derive(Debug, Clone, Copy)]
 pub struct RegionVariableInfo {
     pub origin: RegionVariableOrigin,
+    // FIXME: This is only necessary for `fn take_and_reset_data` and
+    // `lexical_region_resolve`. We should rework `lexical_region_resolve`
+    // in the near/medium future anyways and could move the unverse info
+    // for `fn take_and_reset_data` into a separate table which is
+    // only populated when needed.
+    //
+    // For both of these cases it is fine that this can diverge from the
+    // actual universe of the variable, which is directly stored in the
+    // unification table for unknown region variables. At some point we could
+    // stop emitting bidirectional outlives constraints if equate succeeds.
+    // This would be currently unsound as it would cause us to drop the universe
+    // changes in `lexical_region_resolve`.
     pub universe: ty::UniverseIndex,
 }
 
@@ -395,7 +406,11 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // `RegionConstraintData` contains the relationship here.
         if *any_unifications {
             *any_unifications = false;
-            self.unification_table_mut().reset_unifications(|_| UnifiedRegion::new(None));
+            // Manually inlined `self.unification_table_mut()` as `self` is used in the closure.
+            ut::UnificationTable::with_log(&mut self.storage.unification_table, &mut self.undo_log)
+                .reset_unifications(|key| RegionVariableValue::Unknown {
+                    universe: self.storage.var_infos[key.vid].universe,
+                });
         }
 
         data
@@ -422,16 +437,11 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self.unification_table_mut().new_key(UnifiedRegion::new(None));
+        let u_vid = self.unification_table_mut().new_key(RegionVariableValue::Unknown { universe });
         assert_eq!(vid, u_vid.vid);
         self.undo_log.push(AddVar(vid));
         debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
         vid
-    }
-
-    /// Returns the universe for the given variable.
-    pub(super) fn var_universe(&self, vid: RegionVid) -> ty::UniverseIndex {
-        self.var_infos[vid].universe
     }
 
     /// Returns the origin for the given variable.
@@ -467,26 +477,41 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     pub(super) fn make_eqregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
-        sub: Region<'tcx>,
-        sup: Region<'tcx>,
+        a: Region<'tcx>,
+        b: Region<'tcx>,
     ) {
-        if sub != sup {
+        if a != b {
             // Eventually, it would be nice to add direct support for
             // equating regions.
-            self.make_subregion(origin.clone(), sub, sup);
-            self.make_subregion(origin, sup, sub);
+            self.make_subregion(origin.clone(), a, b);
+            self.make_subregion(origin, b, a);
 
-            match (sub, sup) {
-                (Region(Interned(ReVar(sub), _)), Region(Interned(ReVar(sup), _))) => {
-                    debug!("make_eqregion: unifying {:?} with {:?}", sub, sup);
-                    self.unification_table_mut().union(*sub, *sup);
-                    self.any_unifications = true;
+            match (a.kind(), b.kind()) {
+                (ty::ReVar(a), ty::ReVar(b)) => {
+                    debug!("make_eqregion: unifying {:?} with {:?}", a, b);
+                    if self.unification_table_mut().unify_var_var(a, b).is_ok() {
+                        self.any_unifications = true;
+                    }
                 }
-                (Region(Interned(ReVar(vid), _)), value)
-                | (value, Region(Interned(ReVar(vid), _))) => {
-                    debug!("make_eqregion: unifying {:?} with {:?}", vid, value);
-                    self.unification_table_mut().union_value(*vid, UnifiedRegion::new(Some(value)));
-                    self.any_unifications = true;
+                (ty::ReVar(vid), _) => {
+                    debug!("make_eqregion: unifying {:?} with {:?}", vid, b);
+                    if self
+                        .unification_table_mut()
+                        .unify_var_value(vid, RegionVariableValue::Known { value: b })
+                        .is_ok()
+                    {
+                        self.any_unifications = true;
+                    };
+                }
+                (_, ty::ReVar(vid)) => {
+                    debug!("make_eqregion: unifying {:?} with {:?}", a, vid);
+                    if self
+                        .unification_table_mut()
+                        .unify_var_value(vid, RegionVariableValue::Known { value: a })
+                        .is_ok()
+                    {
+                        self.any_unifications = true;
+                    };
                 }
                 (_, _) => {}
             }
@@ -603,18 +628,21 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         tcx: TyCtxt<'tcx>,
         vid: ty::RegionVid,
     ) -> ty::Region<'tcx> {
-        let mut ut = self.unification_table_mut(); // FIXME(rust-lang/ena#42): unnecessary mut
+        let mut ut = self.unification_table_mut();
         let root_vid = ut.find(vid).vid;
-        let resolved = ut
-            .probe_value(root_vid)
-            .get_value_ignoring_universes()
-            .unwrap_or_else(|| ty::Region::new_var(tcx, root_vid));
+        match ut.probe_value(root_vid) {
+            RegionVariableValue::Known { value } => value,
+            RegionVariableValue::Unknown { .. } => ty::Region::new_var(tcx, root_vid),
+        }
+    }
 
-        // Don't resolve a variable to a region that it cannot name.
-        if self.var_universe(vid).can_name(self.universe(resolved)) {
-            resolved
-        } else {
-            ty::Region::new_var(tcx, vid)
+    pub fn probe_value(
+        &mut self,
+        vid: ty::RegionVid,
+    ) -> Result<ty::Region<'tcx>, ty::UniverseIndex> {
+        match self.unification_table_mut().probe_value(vid) {
+            RegionVariableValue::Known { value } => Ok(value),
+            RegionVariableValue::Unknown { universe } => Err(universe),
         }
     }
 
@@ -654,7 +682,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         new_r
     }
 
-    pub fn universe(&self, region: Region<'tcx>) -> ty::UniverseIndex {
+    pub fn universe(&mut self, region: Region<'tcx>) -> ty::UniverseIndex {
         match *region {
             ty::ReStatic
             | ty::ReErased
@@ -662,7 +690,10 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             | ty::ReEarlyParam(..)
             | ty::ReError(_) => ty::UniverseIndex::ROOT,
             ty::RePlaceholder(placeholder) => placeholder.universe,
-            ty::ReVar(vid) => self.var_universe(vid),
+            ty::ReVar(vid) => match self.probe_value(vid) {
+                Ok(value) => self.universe(value),
+                Err(universe) => universe,
+            },
             ty::ReBound(..) => bug!("universe(): encountered bound region {:?}", region),
         }
     }

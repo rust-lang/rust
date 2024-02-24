@@ -114,6 +114,14 @@ impl FamousDefs<'_, '_> {
         self.find_function("core:mem:drop")
     }
 
+    pub fn core_macros_todo(&self) -> Option<Macro> {
+        self.find_macro("core:todo")
+    }
+
+    pub fn core_macros_unimplemented(&self) -> Option<Macro> {
+        self.find_macro("core:unimplemented")
+    }
+
     pub fn builtin_crates(&self) -> impl Iterator<Item = Crate> {
         IntoIterator::into_iter([
             self.std(),

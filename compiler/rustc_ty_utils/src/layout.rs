@@ -90,8 +90,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.dcx().delayed_bug("struct cannot be packed and aligned");
-        return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
+        cx.tcx.dcx().bug("struct cannot be packed and aligned");
     }
 
     cx.univariant(dl, fields, repr, kind).ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))

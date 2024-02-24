@@ -1,11 +1,11 @@
-// revisions: arm mips thumb wasm32
-// compile-flags: -C no-prepopulate-passes
+//@ revisions: arm mips thumb wasm32
+//@ compile-flags: -C no-prepopulate-passes
 //
-//[arm] only-arm
-//[mips] only-mips
-//[thumb] only-thumb
-//[wasm32] only-wasm32
-// ignore-emscripten
+//@[arm] only-arm
+//@[mips] only-mips
+//@[thumb] only-thumb
+//@[wasm32] only-wasm32
+//@ ignore-emscripten
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
 // Other platforms pass large aggregates using struct pointer in LLVMIR

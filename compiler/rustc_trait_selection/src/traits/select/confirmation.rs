@@ -18,7 +18,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::DefId;
 
-use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
+use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::util::{self, closure_trait_ref_and_return_type};
 use crate::traits::vtable::{
     count_own_vtable_entries, prepare_vtable_segments, vtable_trait_first_method_offset,

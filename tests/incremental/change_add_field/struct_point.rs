@@ -3,9 +3,9 @@
 // Fns with that type used only in their body are also recompiled, but
 // their callers are not.
 
-// revisions:cfail1 cfail2
-// compile-flags: -Z query-dep-graph
-// build-pass
+//@ revisions:cfail1 cfail2
+//@ compile-flags: -Z query-dep-graph
+//@ build-pass
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]

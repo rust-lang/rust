@@ -1,17 +1,17 @@
-// ignore-windows
-// ignore-android
-// ignore-aarch64
-// min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+//@ ignore-windows
+//@ ignore-android
+//@ ignore-aarch64
+//@ min-lldb-version: 310
+//@ ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
-// aux-build:macro-stepping.rs
+//@ aux-build:macro-stepping.rs
 
 #![allow(unused)]
 
 #[macro_use]
 extern crate macro_stepping; // exports new_scope!()
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

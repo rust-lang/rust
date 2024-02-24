@@ -1,6 +1,3 @@
-//@ error-pattern: reached the recursion limit while auto-dereferencing
-//@ compile-flags: -Zdeduplicate-diagnostics=yes
-
 use std::ops::Deref;
 
 struct Foo;
@@ -17,6 +14,7 @@ pub fn main() {
     let mut x;
     loop {
         x = Box::new(x);
+        //~^ ERROR overflow assigning `Box<_>` to `_`
         x.foo;
         x.bar();
     }

@@ -1,3 +1,4 @@
+use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
@@ -60,11 +61,11 @@ pub(super) fn parse(
                     Some(&tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
-                                Some((frag, _)) => {
+                                Some((fragment, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
 
                                     let kind =
-                                        token::NonterminalKind::from_symbol(frag.name, || {
+                                        token::NonterminalKind::from_symbol(fragment.name, || {
                                             // FIXME(#85708) - once we properly decode a foreign
                                             // crate's `SyntaxContext::root`, then we can replace
                                             // this with just `span.edition()`. A
@@ -81,14 +82,13 @@ pub(super) fn parse(
                                         })
                                         .unwrap_or_else(
                                             || {
-                                                let msg = format!(
-                                                    "invalid fragment specifier `{}`",
-                                                    frag.name
+                                                sess.dcx().emit_err(
+                                                    errors::InvalidFragmentSpecifier {
+                                                        span,
+                                                        fragment,
+                                                        help: VALID_FRAGMENT_NAMES_MSG.into(),
+                                                    },
                                                 );
-                                                sess.dcx()
-                                                    .struct_span_err(span, msg)
-                                                    .with_help(VALID_FRAGMENT_NAMES_MSG)
-                                                    .emit();
                                                 token::NonterminalKind::Ident
                                             },
                                         );

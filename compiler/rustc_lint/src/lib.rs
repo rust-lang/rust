@@ -213,8 +213,6 @@ late_lint_methods!(
             ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
             InvalidValue: InvalidValue,
             DerefNullPtr: DerefNullPtr,
-            // May Depend on constants elsewhere
-            UnusedBrokenConst: UnusedBrokenConst,
             UnstableFeatures: UnstableFeatures,
             UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
             ArrayIntoIter: ArrayIntoIter::default(),
@@ -523,6 +521,11 @@ fn register_builtins(store: &mut LintStore) {
         "nontrivial_structural_match",
         "no longer needed, see RFC #3535 \
          <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
+    );
+    store.register_removed(
+        "suspicious_auto_trait_impls",
+        "no longer needed, see #93367 \
+         <https://github.com/rust-lang/rust/issues/93367> for more information",
     );
 }
 

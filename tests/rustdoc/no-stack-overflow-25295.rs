@@ -1,5 +1,5 @@
 // Ensure this code doesn't stack overflow.
-// aux-build:enum-primitive.rs
+//@ aux-build:enum-primitive.rs
 
 #[macro_use] extern crate enum_primitive;
 

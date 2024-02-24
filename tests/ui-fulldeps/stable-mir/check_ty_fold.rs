@@ -1,12 +1,12 @@
-// run-pass
+//@ run-pass
 //! Test that users are able to use stable mir APIs to retrieve monomorphized types, and that
 //! we have an error handling for trying to instantiate types with incorrect arguments.
 
-// ignore-stage1
-// ignore-cross-compile
-// ignore-remote
-// ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
-// edition: 2021
+//@ ignore-stage1
+//@ ignore-cross-compile
+//@ ignore-remote
+//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
+//@ edition: 2021
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]

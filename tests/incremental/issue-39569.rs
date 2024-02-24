@@ -3,8 +3,8 @@
 // don't end up with an edge to any HIR nodes, but it still gets
 // preserved in the dep graph.
 
-// revisions:rpass1 rpass2
-// compile-flags: -Z query-dep-graph
+//@ revisions:rpass1 rpass2
+//@ compile-flags: -Z query-dep-graph
 
 use std::sync::Arc;
 

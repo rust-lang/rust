@@ -31,7 +31,7 @@ use crate::query::plumbing::{
 };
 use crate::thir;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalAliasGoal, CanonicalPredicateGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
@@ -1872,6 +1872,13 @@ rustc_queries! {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
+    // Crates that are loaded non-speculatively (not for diagnostics or doc links).
+    // FIXME: This is currently only used for collecting lang items, but should be used instead of
+    // `crates` in most other cases too.
+    query used_crates(_: ()) -> &'tcx [CrateNum] {
+        eval_always
+        desc { "fetching `CrateNum`s for all crates loaded non-speculatively" }
+    }
 
     /// A list of all traits in a crate, used by rustdoc and error reporting.
     query traits(_: CrateNum) -> &'tcx [DefId] {
@@ -1931,9 +1938,13 @@ rustc_queries! {
         arena_cache
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_projection_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_projection_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
@@ -1941,9 +1952,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value.value }
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_weak_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_weak_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,
@@ -1951,9 +1966,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value.value }
     }
 
-    /// Do not call this query directly: invoke `normalize` instead.
-    query normalize_inherent_projection_ty(
-        goal: CanonicalProjectionGoal<'tcx>
+    /// <div class="warning">
+    ///
+    /// Do not call this query directly: Invoke `normalize` instead.
+    ///
+    /// </div>
+    query normalize_canonicalized_inherent_projection_ty(
+        goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
         NoSolution,

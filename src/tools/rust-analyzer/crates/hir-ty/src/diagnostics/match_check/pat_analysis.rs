@@ -1,6 +1,7 @@
 //! Interface with `rustc_pattern_analysis`.
 
 use std::fmt;
+use tracing::debug;
 
 use hir_def::{DefWithBodyId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use rustc_hash::FxHashMap;
@@ -11,7 +12,6 @@ use rustc_pattern_analysis::{
 };
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
-use typed_arena::Arena;
 
 use crate::{
     db::HirDatabase,
@@ -26,7 +26,7 @@ use Constructor::*;
 
 // Re-export r-a-specific versions of all these types.
 pub(crate) type DeconstructedPat<'p> =
-    rustc_pattern_analysis::pat::DeconstructedPat<'p, MatchCheckCtx<'p>>;
+    rustc_pattern_analysis::pat::DeconstructedPat<MatchCheckCtx<'p>>;
 pub(crate) type MatchArm<'p> = rustc_pattern_analysis::MatchArm<'p, MatchCheckCtx<'p>>;
 pub(crate) type WitnessPat<'p> = rustc_pattern_analysis::pat::WitnessPat<MatchCheckCtx<'p>>;
 
@@ -40,7 +40,6 @@ pub(crate) struct MatchCheckCtx<'p> {
     module: ModuleId,
     body: DefWithBodyId,
     pub(crate) db: &'p dyn HirDatabase,
-    pub(crate) pattern_arena: &'p Arena<DeconstructedPat<'p>>,
     exhaustive_patterns: bool,
     min_exhaustive_patterns: bool,
 }
@@ -52,17 +51,12 @@ pub(crate) struct PatData<'p> {
 }
 
 impl<'p> MatchCheckCtx<'p> {
-    pub(crate) fn new(
-        module: ModuleId,
-        body: DefWithBodyId,
-        db: &'p dyn HirDatabase,
-        pattern_arena: &'p Arena<DeconstructedPat<'p>>,
-    ) -> Self {
+    pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'p dyn HirDatabase) -> Self {
         let def_map = db.crate_def_map(module.krate());
         let exhaustive_patterns = def_map.is_unstable_feature_enabled("exhaustive_patterns");
         let min_exhaustive_patterns =
             def_map.is_unstable_feature_enabled("min_exhaustive_patterns");
-        Self { module, body, db, pattern_arena, exhaustive_patterns, min_exhaustive_patterns }
+        Self { module, body, db, exhaustive_patterns, min_exhaustive_patterns }
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
@@ -131,15 +125,15 @@ impl<'p> MatchCheckCtx<'p> {
     }
 
     pub(crate) fn lower_pat(&self, pat: &Pat) -> DeconstructedPat<'p> {
-        let singleton = |pat| std::slice::from_ref(self.pattern_arena.alloc(pat));
+        let singleton = |pat| vec![pat];
         let ctor;
-        let fields: &[_];
+        let fields: Vec<_>;
 
         match pat.kind.as_ref() {
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
-                fields = &[];
+                fields = Vec::new();
             }
             PatKind::Deref { subpattern } => {
                 ctor = match pat.ty.kind(Interner) {
@@ -157,7 +151,7 @@ impl<'p> MatchCheckCtx<'p> {
                 match pat.ty.kind(Interner) {
                     TyKind::Tuple(_, substs) => {
                         ctor = Struct;
-                        let mut wilds: SmallVec<[_; 2]> = substs
+                        let mut wilds: Vec<_> = substs
                             .iter(Interner)
                             .map(|arg| arg.assert_ty_ref(Interner).clone())
                             .map(DeconstructedPat::wildcard)
@@ -166,7 +160,7 @@ impl<'p> MatchCheckCtx<'p> {
                             let idx: u32 = pat.field.into_raw().into();
                             wilds[idx as usize] = self.lower_pat(&pat.pattern);
                         }
-                        fields = self.pattern_arena.alloc_extend(wilds)
+                        fields = wilds
                     }
                     TyKind::Adt(adt, substs) if is_box(self.db, adt.0) => {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
@@ -216,33 +210,29 @@ impl<'p> MatchCheckCtx<'p> {
                                 field_id_to_id[field_idx as usize] = Some(i);
                                 ty
                             });
-                        let mut wilds: SmallVec<[_; 2]> =
-                            tys.map(DeconstructedPat::wildcard).collect();
+                        let mut wilds: Vec<_> = tys.map(DeconstructedPat::wildcard).collect();
                         for pat in subpatterns {
                             let field_idx: u32 = pat.field.into_raw().into();
                             if let Some(i) = field_id_to_id[field_idx as usize] {
                                 wilds[i] = self.lower_pat(&pat.pattern);
                             }
                         }
-                        fields = self.pattern_arena.alloc_extend(wilds);
+                        fields = wilds;
                     }
                     _ => {
                         never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
                         ctor = Wildcard;
-                        fields = &[];
+                        fields = Vec::new();
                     }
                 }
             }
             &PatKind::LiteralBool { value } => {
                 ctor = Bool(value);
-                fields = &[];
+                fields = Vec::new();
             }
             PatKind::Or { pats } => {
                 ctor = Or;
-                // Collect here because `Arena::alloc_extend` panics on reentrancy.
-                let subpats: SmallVec<[_; 2]> =
-                    pats.iter().map(|pat| self.lower_pat(pat)).collect();
-                fields = self.pattern_arena.alloc_extend(subpats);
+                fields = pats.iter().map(|pat| self.lower_pat(pat)).collect();
             }
         }
         let data = PatData { db: self.db };
@@ -307,7 +297,7 @@ impl<'p> MatchCheckCtx<'p> {
 }
 
 impl<'p> TypeCx for MatchCheckCtx<'p> {
-    type Error = Void;
+    type Error = ();
     type Ty = Ty;
     type VariantIdx = EnumVariantId;
     type StrLit = Void;
@@ -463,7 +453,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
 
     fn write_variant_name(
         f: &mut fmt::Formatter<'_>,
-        pat: &rustc_pattern_analysis::pat::DeconstructedPat<'_, Self>,
+        pat: &rustc_pattern_analysis::pat::DeconstructedPat<Self>,
     ) -> fmt::Result {
         let variant =
             pat.ty().as_adt().and_then(|(adt, _)| Self::variant_id_for_adt(pat.ctor(), adt));
@@ -485,8 +475,8 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         Ok(())
     }
 
-    fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
-        panic!("{}", fmt)
+    fn bug(&self, fmt: fmt::Arguments<'_>) {
+        debug!("{}", fmt)
     }
 }
 

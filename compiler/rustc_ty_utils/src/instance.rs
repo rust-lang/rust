@@ -246,7 +246,7 @@ fn resolve_associated_item<'tcx>(
                         span: tcx.def_span(trait_item_id),
                     })
                 }
-            } else if tcx.fn_trait_kind_from_def_id(trait_ref.def_id).is_some() {
+            } else if let Some(target_kind) = tcx.fn_trait_kind_from_def_id(trait_ref.def_id) {
                 // FIXME: This doesn't check for malformed libcore that defines, e.g.,
                 // `trait Fn { fn call_once(&self) { .. } }`. This is mostly for extension
                 // methods.
@@ -265,13 +265,7 @@ fn resolve_associated_item<'tcx>(
                 }
                 match *rcvr_args.type_at(0).kind() {
                     ty::Closure(closure_def_id, args) => {
-                        let trait_closure_kind = tcx.fn_trait_kind_from_def_id(trait_id).unwrap();
-                        Some(Instance::resolve_closure(
-                            tcx,
-                            closure_def_id,
-                            args,
-                            trait_closure_kind,
-                        ))
+                        Some(Instance::resolve_closure(tcx, closure_def_id, args, target_kind))
                     }
                     ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
                         def: ty::InstanceDef::FnPtrShim(trait_item_id, rcvr_args.type_at(0)),
@@ -324,13 +318,7 @@ fn resolve_associated_item<'tcx>(
                         }
                     }
                     ty::Closure(closure_def_id, args) => {
-                        let trait_closure_kind = tcx.fn_trait_kind_from_def_id(trait_id).unwrap();
-                        Some(Instance::resolve_closure(
-                            tcx,
-                            closure_def_id,
-                            args,
-                            trait_closure_kind,
-                        ))
+                        Some(Instance::resolve_closure(tcx, closure_def_id, args, target_kind))
                     }
                     ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
                         def: ty::InstanceDef::FnPtrShim(trait_item_id, rcvr_args.type_at(0)),

@@ -8,13 +8,13 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
 use rustc_span::Span;
 use std::env;
 
-fn docs_link(diag: &mut Diagnostic, lint: &'static Lint) {
+fn docs_link(diag: &mut DiagnosticBuilder<'_, ()>, lint: &'static Lint) {
     if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
         if let Some(lint) = lint.name_lower().strip_prefix("clippy::") {
             diag.help(format!(
@@ -143,7 +143,7 @@ pub fn span_lint_and_then<C, S, F>(cx: &C, lint: &'static Lint, sp: S, msg: &str
 where
     C: LintContext,
     S: Into<MultiSpan>,
-    F: FnOnce(&mut Diagnostic),
+    F: FnOnce(&mut DiagnosticBuilder<'_, ()>),
 {
     #[expect(clippy::disallowed_methods)]
     cx.span_lint(lint, sp, msg.to_string(), |diag| {
@@ -165,7 +165,7 @@ pub fn span_lint_hir_and_then(
     hir_id: HirId,
     sp: impl Into<MultiSpan>,
     msg: &str,
-    f: impl FnOnce(&mut Diagnostic),
+    f: impl FnOnce(&mut DiagnosticBuilder<'_, ()>),
 ) {
     #[expect(clippy::disallowed_methods)]
     cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
@@ -214,7 +214,7 @@ pub fn span_lint_and_sugg<T: LintContext>(
 /// appear once per
 /// replacement. In human-readable format though, it only appears once before
 /// the whole suggestion.
-pub fn multispan_sugg<I>(diag: &mut Diagnostic, help_msg: &str, sugg: I)
+pub fn multispan_sugg<I>(diag: &mut DiagnosticBuilder<'_, ()>, help_msg: &str, sugg: I)
 where
     I: IntoIterator<Item = (Span, String)>,
 {
@@ -227,7 +227,7 @@ where
 /// multiple spans. This is tracked in issue [rustfix#141](https://github.com/rust-lang/rustfix/issues/141).
 /// Suggestions with multiple spans will be silently ignored.
 pub fn multispan_sugg_with_applicability<I>(
-    diag: &mut Diagnostic,
+    diag: &mut DiagnosticBuilder<'_, ()>,
     help_msg: &str,
     applicability: Applicability,
     sugg: I,

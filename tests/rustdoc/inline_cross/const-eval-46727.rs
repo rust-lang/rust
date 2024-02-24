@@ -1,7 +1,7 @@
 // https://github.com/rust-lang/rust/issues/46727
 #![crate_name="foo"]
 
-// aux-build:issue-46727.rs
+//@ aux-build:issue-46727.rs
 
 extern crate issue_46727;
 

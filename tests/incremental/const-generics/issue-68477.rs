@@ -1,5 +1,5 @@
-// edition:2018
-// revisions:rpass1
+//@ edition:2018
+//@ revisions:rpass1
 
 // Needed to supply generic arguments to the anon const in `[(); FOO]`.
 #![feature(generic_const_exprs)]

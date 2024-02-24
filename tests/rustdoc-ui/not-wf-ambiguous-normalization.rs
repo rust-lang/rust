@@ -1,4 +1,4 @@
-// compile-flags: -Znormalize-docs
+//@ compile-flags: -Znormalize-docs
 
 #![feature(type_alias_impl_trait)]
 

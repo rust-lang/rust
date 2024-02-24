@@ -138,7 +138,7 @@ impl SnippetEdit {
             .into_iter()
             .zip(1..)
             .with_position()
-            .map(|pos| {
+            .flat_map(|pos| {
                 let (snippet, index) = match pos {
                     (itertools::Position::First, it) | (itertools::Position::Middle, it) => it,
                     // last/only snippet gets index 0
@@ -146,11 +146,13 @@ impl SnippetEdit {
                     | (itertools::Position::Only, (snippet, _)) => (snippet, 0),
                 };
 
-                let range = match snippet {
-                    Snippet::Tabstop(pos) => TextRange::empty(pos),
-                    Snippet::Placeholder(range) => range,
-                };
-                (index, range)
+                match snippet {
+                    Snippet::Tabstop(pos) => vec![(index, TextRange::empty(pos))],
+                    Snippet::Placeholder(range) => vec![(index, range)],
+                    Snippet::PlaceholderGroup(ranges) => {
+                        ranges.into_iter().map(|range| (index, range)).collect()
+                    }
+                }
             })
             .collect_vec();
 
@@ -248,7 +250,7 @@ impl SourceChangeBuilder {
     fn commit(&mut self) {
         let snippet_edit = self.snippet_builder.take().map(|builder| {
             SnippetEdit::new(
-                builder.places.into_iter().map(PlaceSnippet::finalize_position).collect_vec(),
+                builder.places.into_iter().flat_map(PlaceSnippet::finalize_position).collect(),
             )
         });
 
@@ -287,29 +289,9 @@ impl SourceChangeBuilder {
     pub fn insert(&mut self, offset: TextSize, text: impl Into<String>) {
         self.edit.insert(offset, text.into())
     }
-    /// Append specified `snippet` at the given `offset`
-    pub fn insert_snippet(
-        &mut self,
-        _cap: SnippetCap,
-        offset: TextSize,
-        snippet: impl Into<String>,
-    ) {
-        self.source_change.is_snippet = true;
-        self.insert(offset, snippet);
-    }
     /// Replaces specified `range` of text with a given string.
     pub fn replace(&mut self, range: TextRange, replace_with: impl Into<String>) {
         self.edit.replace(range, replace_with.into())
-    }
-    /// Replaces specified `range` of text with a given `snippet`.
-    pub fn replace_snippet(
-        &mut self,
-        _cap: SnippetCap,
-        range: TextRange,
-        snippet: impl Into<String>,
-    ) {
-        self.source_change.is_snippet = true;
-        self.replace(range, snippet);
     }
     pub fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
@@ -356,6 +338,17 @@ impl SourceChangeBuilder {
         self.add_snippet(PlaceSnippet::Over(node.syntax().clone().into()))
     }
 
+    /// Adds a snippet to move the cursor selected over `nodes`
+    ///
+    /// This allows for renaming newly generated items without having to go
+    /// through a separate rename step.
+    pub fn add_placeholder_snippet_group(&mut self, _cap: SnippetCap, nodes: Vec<SyntaxNode>) {
+        assert!(nodes.iter().all(|node| node.parent().is_some()));
+        self.add_snippet(PlaceSnippet::OverGroup(
+            nodes.into_iter().map(|node| node.into()).collect(),
+        ))
+    }
+
     fn add_snippet(&mut self, snippet: PlaceSnippet) {
         let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
         snippet_builder.places.push(snippet);
@@ -400,6 +393,13 @@ pub enum Snippet {
     Tabstop(TextSize),
     /// A placeholder snippet (e.g. `${0:placeholder}`).
     Placeholder(TextRange),
+    /// A group of placeholder snippets, e.g.
+    ///
+    /// ```no_run
+    /// let ${0:new_var} = 4;
+    /// fun(1, 2, 3, ${0:new_var});
+    /// ```
+    PlaceholderGroup(Vec<TextRange>),
 }
 
 enum PlaceSnippet {
@@ -409,14 +409,20 @@ enum PlaceSnippet {
     After(SyntaxElement),
     /// Place a placeholder snippet in place of the element
     Over(SyntaxElement),
+    /// Place a group of placeholder snippets which are linked together
+    /// in place of the elements
+    OverGroup(Vec<SyntaxElement>),
 }
 
 impl PlaceSnippet {
-    fn finalize_position(self) -> Snippet {
+    fn finalize_position(self) -> Vec<Snippet> {
         match self {
-            PlaceSnippet::Before(it) => Snippet::Tabstop(it.text_range().start()),
-            PlaceSnippet::After(it) => Snippet::Tabstop(it.text_range().end()),
-            PlaceSnippet::Over(it) => Snippet::Placeholder(it.text_range()),
+            PlaceSnippet::Before(it) => vec![Snippet::Tabstop(it.text_range().start())],
+            PlaceSnippet::After(it) => vec![Snippet::Tabstop(it.text_range().end())],
+            PlaceSnippet::Over(it) => vec![Snippet::Placeholder(it.text_range())],
+            PlaceSnippet::OverGroup(it) => {
+                vec![Snippet::PlaceholderGroup(it.into_iter().map(|it| it.text_range()).collect())]
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
    LL|       |#![feature(test)]
-   LL|       |// edition: 2021
-   LL|       |// compile-flags: --test
+   LL|       |//@ edition: 2021
+   LL|       |//@ compile-flags: --test
    LL|       |
    LL|       |extern crate test;
    LL|       |

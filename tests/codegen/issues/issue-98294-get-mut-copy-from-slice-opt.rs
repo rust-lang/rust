@@ -1,5 +1,5 @@
-// ignore-debug: The debug assertions get in the way
-// compile-flags: -O
+//@ ignore-debug: The debug assertions get in the way
+//@ compile-flags: -O
 
 #![crate_type = "lib"]
 

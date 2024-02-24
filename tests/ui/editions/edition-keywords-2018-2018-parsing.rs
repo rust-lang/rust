@@ -16,7 +16,7 @@ macro_rules! local_passes_ident {
     ($i: ident) => ($i) //~ ERROR macro expansion ends with an incomplete expression
 }
 macro_rules! local_passes_tt {
-    ($i: tt) => ($i) //~ ERROR macro expansion ends with an incomplete expression
+    ($i: tt) => ($i)
 }
 
 pub fn check_async() {
@@ -34,7 +34,7 @@ pub fn check_async() {
     if passes_tt!(r#async) == 1 {} // OK
     if local_passes_ident!(async) == 1 {} // Error reported above in the macro
     if local_passes_ident!(r#async) == 1 {} // OK
-    if local_passes_tt!(async) == 1 {} // Error reported above in the macro
+    if local_passes_tt!(async) == 1 {} //~ ERROR macro expansion ends with an incomplete expression
     if local_passes_tt!(r#async) == 1 {} // OK
     module::async(); //~ ERROR expected identifier, found keyword `async`
     module::r#async(); // OK

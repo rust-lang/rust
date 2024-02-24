@@ -28,7 +28,6 @@ use std::fs::read_to_string;
 use std::ops::Deref;
 use std::path::Path;
 use std::process::exit;
-use std::string::ToString;
 
 use anstream::println;
 

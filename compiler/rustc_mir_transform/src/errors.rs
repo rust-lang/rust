@@ -87,6 +87,9 @@ pub(crate) struct RequiresUnsafeDetail {
 }
 
 impl RequiresUnsafeDetail {
+    // FIXME: make this translatable
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
     fn add_subdiagnostics<G: EmissionGuarantee>(&self, diag: &mut DiagnosticBuilder<'_, G>) {
         use UnsafetyViolationDetails::*;
         match self.violation {

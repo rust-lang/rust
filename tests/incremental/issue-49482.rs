@@ -1,6 +1,6 @@
-// aux-build:issue-49482-macro-def.rs
-// aux-build:issue-49482-reexport.rs
-// revisions: rpass1
+//@ aux-build:issue-49482-macro-def.rs
+//@ aux-build:issue-49482-reexport.rs
+//@ revisions: rpass1
 
 extern crate issue_49482_reexport;
 

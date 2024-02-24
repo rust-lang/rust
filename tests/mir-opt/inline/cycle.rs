@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// compile-flags: -Zinline-mir-hint-threshold=1000
+//@ compile-flags: -Zinline-mir-hint-threshold=1000
 
 // EMIT_MIR cycle.f.Inline.diff
 #[inline(always)]

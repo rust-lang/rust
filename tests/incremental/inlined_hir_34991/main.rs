@@ -4,7 +4,7 @@
 // error because the `X` is remapped to the original def-id (in
 // libstd), and we can't hash a HIR node from std.
 
-// revisions:rpass1 rpass2
+//@ revisions:rpass1 rpass2
 
 #![feature(rustc_attrs)]
 

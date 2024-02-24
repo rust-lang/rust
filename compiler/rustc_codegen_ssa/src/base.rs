@@ -449,10 +449,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
             let span = cx.tcx().def_span(rust_main_def_id);
-            let dcx = cx.tcx().dcx();
-            dcx.emit_err(errors::MultipleMainFunctions { span });
-            dcx.abort_if_errors();
-            bug!();
+            cx.tcx().dcx().emit_fatal(errors::MultipleMainFunctions { span });
         };
 
         // `main` should respect same config for frame pointer elimination as rest of code

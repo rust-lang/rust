@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 // @!has issue_67851_private/struct.Hidden.html
 #[doc(hidden)]

@@ -1,6 +1,6 @@
-// aux-build:rustdoc-trait-object-impl.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:rustdoc-trait-object-impl.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 extern crate rustdoc_trait_object_impl;
 

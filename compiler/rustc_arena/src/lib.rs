@@ -95,7 +95,7 @@ impl<T> ArenaChunk<T> {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 // A pointer as large as possible for zero-sized elements.
-                ptr::invalid_mut(!0)
+                ptr::without_provenance_mut(!0)
             } else {
                 self.start().add(self.storage.len())
             }

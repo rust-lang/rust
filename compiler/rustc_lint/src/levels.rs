@@ -1062,6 +1062,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 if self.lint_added_lints {
                     let lint = builtin::UNKNOWN_LINTS;
                     let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
+                    // FIXME: make this translatable
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    #[allow(rustc::untranslatable_diagnostic)]
                     lint_level(
                         self.sess,
                         lint,

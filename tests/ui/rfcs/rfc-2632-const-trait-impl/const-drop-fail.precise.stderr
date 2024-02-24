@@ -4,6 +4,57 @@ error[E0493]: destructor of `T` cannot be evaluated at compile-time
 LL | const fn check<T: ~const Destruct>(_: T) {}
    |                                    ^ the destructor for this type cannot be evaluated in constant functions
 
-error: aborting due to 1 previous error
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: calling non-const function `<NonTrivialDrop as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<NonTrivialDrop> - shim(Some(NonTrivialDrop))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `check::<NonTrivialDrop>`
+  --> $DIR/const-drop-fail.rs:24:43
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                                           ^
+note: inside `_`
+  --> $DIR/const-drop-fail.rs:28:23
+   |
+LL |           const _: () = check($exp);
+   |                         ^^^^^^^^^^^
+...
+LL | / check_all! {
+LL | |     NonTrivialDrop,
+LL | |     ConstImplWithDropGlue(NonTrivialDrop),
+LL | | }
+   | |_- in this macro invocation
+   = note: this error originates in the macro `check_all` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-For more information about this error, try `rustc --explain E0493`.
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |
+   = note: calling non-const function `<ConstImplWithDropGlue as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<ConstImplWithDropGlue> - shim(Some(ConstImplWithDropGlue))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `check::<ConstImplWithDropGlue>`
+  --> $DIR/const-drop-fail.rs:24:43
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                                           ^
+note: inside `_`
+  --> $DIR/const-drop-fail.rs:28:23
+   |
+LL |           const _: () = check($exp);
+   |                         ^^^^^^^^^^^
+...
+LL | / check_all! {
+LL | |     NonTrivialDrop,
+LL | |     ConstImplWithDropGlue(NonTrivialDrop),
+LL | | }
+   | |_- in this macro invocation
+   = note: this error originates in the macro `check_all` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0080, E0493.
+For more information about an error, try `rustc --explain E0080`.

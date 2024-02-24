@@ -175,7 +175,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> Result<PatKind<'tcx>, ErrorGuaranteed> {
         if lo_expr.is_none() && hi_expr.is_none() {
             let msg = "found twice-open range pattern (`..`) outside of error recovery";
-            return Err(self.tcx.dcx().span_delayed_bug(span, msg));
+            self.tcx.dcx().span_bug(span, msg);
         }
 
         let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;

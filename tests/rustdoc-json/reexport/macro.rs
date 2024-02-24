@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // @set repro_id = "$.index[*][?(@.name=='repro')].id"
 #[macro_export]

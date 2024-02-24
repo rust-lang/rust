@@ -1,15 +1,15 @@
 // Verifies that MemorySanitizer track-origins level can be controlled
 // with -Zsanitizer-memory-track-origins option.
 //
-// needs-sanitizer-memory
-// revisions:MSAN-0 MSAN-1 MSAN-2 MSAN-1-LTO MSAN-2-LTO
+//@ needs-sanitizer-memory
+//@ revisions:MSAN-0 MSAN-1 MSAN-2 MSAN-1-LTO MSAN-2-LTO
 //
-// compile-flags: -Zsanitizer=memory -Ctarget-feature=-crt-static
-//[MSAN-0] compile-flags:
-//[MSAN-1] compile-flags: -Zsanitizer-memory-track-origins=1
-//[MSAN-2] compile-flags: -Zsanitizer-memory-track-origins
-//[MSAN-1-LTO] compile-flags: -Zsanitizer-memory-track-origins=1 -C lto=fat
-//[MSAN-2-LTO] compile-flags: -Zsanitizer-memory-track-origins -C lto=fat
+//@ compile-flags: -Zsanitizer=memory -Ctarget-feature=-crt-static
+//@[MSAN-0] compile-flags:
+//@[MSAN-1] compile-flags: -Zsanitizer-memory-track-origins=1
+//@[MSAN-2] compile-flags: -Zsanitizer-memory-track-origins
+//@[MSAN-1-LTO] compile-flags: -Zsanitizer-memory-track-origins=1 -C lto=fat
+//@[MSAN-2-LTO] compile-flags: -Zsanitizer-memory-track-origins -C lto=fat
 
 #![crate_type="lib"]
 

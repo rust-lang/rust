@@ -44,7 +44,7 @@ where
                 ))]
                 8 => transize(vtbl1_u8, self, idxs),
                 #[cfg(target_feature = "ssse3")]
-                16 => transize(x86::_mm_shuffle_epi8, self, idxs),
+                16 => transize(x86::_mm_shuffle_epi8, self, zeroing_idxs(idxs)),
                 #[cfg(target_feature = "simd128")]
                 16 => transize(wasm::i8x16_swizzle, self, idxs),
                 #[cfg(all(
@@ -54,9 +54,9 @@ where
                 ))]
                 16 => transize(vqtbl1q_u8, self, idxs),
                 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
-                32 => transize_raw(avx2_pshufb, self, idxs),
+                32 => transize(avx2_pshufb, self, idxs),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
-                32 => transize(x86::_mm256_permutexvar_epi8, self, idxs),
+                32 => transize(x86::_mm256_permutexvar_epi8, zeroing_idxs(idxs), self),
                 // Notable absence: avx512bw shuffle
                 // If avx512bw is available, odds of avx512vbmi are good
                 // FIXME: initial AVX512VBMI variant didn't actually pass muster
@@ -129,45 +129,25 @@ unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
 #[inline(always)]
 unsafe fn transize<T, const N: usize>(
     f: unsafe fn(T, T) -> T,
-    bytes: Simd<u8, N>,
-    idxs: Simd<u8, N>,
+    a: Simd<u8, N>,
+    b: Simd<u8, N>,
 ) -> Simd<u8, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    let idxs = zeroing_idxs(idxs);
     // SAFETY: Same obligation to use this function as to use mem::transmute_copy.
-    unsafe { mem::transmute_copy(&f(mem::transmute_copy(&bytes), mem::transmute_copy(&idxs))) }
+    unsafe { mem::transmute_copy(&f(mem::transmute_copy(&a), mem::transmute_copy(&b))) }
 }
 
-/// Make indices that yield 0 for this architecture
+/// Make indices that yield 0 for x86
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[allow(unused)]
 #[inline(always)]
 fn zeroing_idxs<const N: usize>(idxs: Simd<u8, N>) -> Simd<u8, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    // On x86, make sure the top bit is set.
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    let idxs = {
-        use crate::simd::cmp::SimdPartialOrd;
-        idxs.simd_lt(Simd::splat(N as u8))
-            .select(idxs, Simd::splat(u8::MAX))
-    };
-    // Simply do nothing on most architectures.
-    idxs
-}
-
-/// As transize but no implicit call to `zeroing_idxs`.
-#[allow(dead_code)]
-#[inline(always)]
-unsafe fn transize_raw<T, const N: usize>(
-    f: unsafe fn(T, T) -> T,
-    bytes: Simd<u8, N>,
-    idxs: Simd<u8, N>,
-) -> Simd<u8, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
-    // SAFETY: Same obligation to use this function as to use mem::transmute_copy.
-    unsafe { mem::transmute_copy(&f(mem::transmute_copy(&bytes), mem::transmute_copy(&idxs))) }
+    use crate::simd::cmp::SimdPartialOrd;
+    idxs.simd_lt(Simd::splat(N as u8))
+        .select(idxs, Simd::splat(u8::MAX))
 }

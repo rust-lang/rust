@@ -1,8 +1,8 @@
 // This file tests that we don't generate any code for saturation when using the
 // unchecked intrinsics.
 
-// compile-flags: -C opt-level=3
-// ignore-wasm32 the wasm target is tested in `wasm_casts_*`
+//@ compile-flags: -C opt-level=3
+//@ ignore-wasm32 the wasm target is tested in `wasm_casts_*`
 
 #![crate_type = "lib"]
 

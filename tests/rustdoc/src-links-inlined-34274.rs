@@ -1,6 +1,6 @@
-// aux-build:issue-34274.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:issue-34274.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/34274
 #![crate_name = "foo"]

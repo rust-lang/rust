@@ -24,26 +24,26 @@ SOURCE_FILE
             RECORD_EXPR_FIELD
               NAME_REF
                 IDENT "field"
-              WHITESPACE " "
-              RANGE_EXPR
-                DOT2 ".."
-                CALL_EXPR
-                  PATH_EXPR
-                    PATH
-                      PATH
-                        PATH_SEGMENT
-                          NAME_REF
-                            IDENT "S"
-                      COLON2 "::"
-                      PATH_SEGMENT
-                        NAME_REF
-                          IDENT "default"
-                  ARG_LIST
-                    L_PAREN "("
-                    R_PAREN ")"
+            WHITESPACE " "
+            DOT2 ".."
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "S"
+                  COLON2 "::"
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "default"
+              ARG_LIST
+                L_PAREN "("
+                R_PAREN ")"
             WHITESPACE " "
             R_CURLY "}"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 25: expected COLON
+error 25: expected `:`
+error 25: expected COMMA

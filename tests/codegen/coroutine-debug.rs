@@ -4,8 +4,8 @@
 //  - Other fields are not marked artificial
 //
 //
-// compile-flags: -C debuginfo=2 --edition=2018
-// ignore-msvc
+//@ compile-flags: -C debuginfo=2 --edition=2018
+//@ ignore-msvc
 
 #![feature(coroutines, coroutine_trait)]
 use std::ops::Coroutine;

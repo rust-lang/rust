@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 // EMIT_MIR while_let_loops.change_loop_body.GVN.diff
 
 pub fn change_loop_body() {

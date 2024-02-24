@@ -1,5 +1,35 @@
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:7:1
+   |
+LL | static FOO: &&mut u32 = &&mut 42;
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:10:1
+   |
+LL | static BAR: &mut () = &mut ();
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:15:1
+   |
+LL | static BOO: &mut Foo<()> = &mut Foo(());
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:22:1
+   |
+LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
+   | ^^^^^^^^^^^^^^^
+
+error: encountered mutable pointer in final value of static
+  --> $DIR/mutable_references.rs:25:1
+   |
+LL | static OH_YES: &mut i32 = &mut 42;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
-  --> $DIR/mutable_references.rs:35:5
+  --> $DIR/mutable_references.rs:32:5
    |
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign
@@ -7,31 +37,31 @@ LL |     *OH_YES = 99;
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:8:26
+  --> $DIR/mutable_references.rs:7:26
    |
 LL | static FOO: &&mut u32 = &&mut 42;
    |                          ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:12:23
+  --> $DIR/mutable_references.rs:10:23
    |
 LL | static BAR: &mut () = &mut ();
    |                       ^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:17:28
+  --> $DIR/mutable_references.rs:15:28
    |
 LL | static BOO: &mut Foo<()> = &mut Foo(());
    |                            ^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:25:8
+  --> $DIR/mutable_references.rs:22:28
    |
-LL |     x: &UnsafeCell::new(42),
-   |        ^^^^^^^^^^^^^^^^^^^^
+LL | static MEH: Meh = Meh { x: &UnsafeCell::new(42) };
+   |                            ^^^^^^^^^^^^^^^^^^^^
 help: skipping check that does not even have a feature gate
-  --> $DIR/mutable_references.rs:29:27
+  --> $DIR/mutable_references.rs:25:27
    |
 LL | static OH_YES: &mut i32 = &mut 42;
    |                           ^^^^^^^
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 6 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0594`.

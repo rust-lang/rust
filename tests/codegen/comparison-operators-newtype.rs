@@ -2,7 +2,7 @@
 // This double-checks that the `Option<Ordering>` intermediate values used
 // in the operators for such a type all optimize away.
 
-// compile-flags: -C opt-level=1
+//@ compile-flags: -C opt-level=1
 
 #![crate_type = "lib"]
 

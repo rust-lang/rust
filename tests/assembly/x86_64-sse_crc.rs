@@ -1,6 +1,6 @@
-// only-x86_64
-// assembly-output: emit-asm
-// compile-flags: --crate-type staticlib -Ctarget-feature=+sse4.2
+//@ only-x86_64
+//@ assembly-output: emit-asm
+//@ compile-flags: --crate-type staticlib -Ctarget-feature=+sse4.2
 
 // CHECK-LABEL: banana
 // CHECK: crc32

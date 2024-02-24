@@ -13,6 +13,7 @@ mod version;
 
 use indexmap::IndexSet;
 use paths::AbsPathBuf;
+use rustc_hash::FxHashMap;
 use span::Span;
 use std::{
     fmt, io,
@@ -107,8 +108,11 @@ pub struct MacroPanic {
 
 impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
-    pub fn spawn(process_path: AbsPathBuf) -> io::Result<ProcMacroServer> {
-        let process = ProcMacroProcessSrv::run(process_path)?;
+    pub fn spawn(
+        process_path: AbsPathBuf,
+        env: &FxHashMap<String, String>,
+    ) -> io::Result<ProcMacroServer> {
+        let process = ProcMacroProcessSrv::run(process_path, env)?;
         Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
     }
 

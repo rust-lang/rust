@@ -773,7 +773,7 @@ pub(super) fn expand_global_asm<'cx>(
                         kind: ast::VisibilityKind::Inherited,
                         tokens: None,
                     },
-                    span: ecx.with_def_site_ctxt(sp),
+                    span: sp,
                     tokens: None,
                 })])
             } else {

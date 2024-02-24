@@ -2,7 +2,7 @@ use crate::FxHashSet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::{get_attr, is_lint_allowed};
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(
     }
 }
 
-fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, found: FoundSigDrop) {
+fn set_diagnostic<'tcx>(diag: &mut DiagnosticBuilder<'_, ()>, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, found: FoundSigDrop) {
     if found.lint_suggestion == LintSuggestion::MoveAndClone {
         // If our suggestion is to move and clone, then we want to leave it to the user to
         // decide how to address this lint, since it may be that cloning is inappropriate.

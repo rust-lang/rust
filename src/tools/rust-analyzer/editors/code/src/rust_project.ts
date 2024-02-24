@@ -1,6 +1,25 @@
 export interface JsonProject {
+    /// Path to the sysroot directory.
+    ///
+    /// The sysroot is where rustc looks for the
+    /// crates that are built-in to rust, such as
+    /// std.
+    ///
+    /// https://doc.rust-lang.org/rustc/command-line-arguments.html#--sysroot-override-the-system-root
+    ///
+    /// To see the current value of sysroot, you
+    /// can query rustc:
+    ///
+    /// ```
+    /// $ rustc --print sysroot
+    /// /Users/yourname/.rustup/toolchains/stable-x86_64-apple-darwin
+    /// ```
+    sysroot?: string;
     /// Path to the directory with *source code* of
     /// sysroot crates.
+    ///
+    /// By default, this is `lib/rustlib/src/rust/library`
+    /// relative to the sysroot.
     ///
     /// It should point to the directory where std,
     /// core, and friends can be found:

@@ -1,11 +1,11 @@
-// run-pass
+//@ run-pass
 // Test StableMIR behavior when different results are given
 
-// ignore-stage1
-// ignore-cross-compile
-// ignore-remote
-// ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
-// edition: 2021
+//@ ignore-stage1
+//@ ignore-cross-compile
+//@ ignore-remote
+//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
+//@ edition: 2021
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
@@ -55,7 +55,7 @@ fn test_skipped(mut args: Vec<String>) {
 fn test_failed(mut args: Vec<String>) {
     args.push("--cfg=broken".to_string());
     let result = run!(args, || unreachable!() as ControlFlow<()>);
-    assert_eq!(result, Err(stable_mir::CompilerError::CompilationFailed));
+    assert_eq!(result, Err(stable_mir::CompilerError::Failed));
 }
 
 /// Test that we are able to pass a closure and set the return according to the captured value.

@@ -1,7 +1,7 @@
 // This test ensures that the variant value is displayed with underscores but without
 // a type name at the end.
 
-// aux-build:enum-variant.rs
+//@ aux-build:enum-variant.rs
 
 #![crate_name = "foo"]
 

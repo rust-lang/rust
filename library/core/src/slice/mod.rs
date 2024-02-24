@@ -938,7 +938,7 @@ impl<T> [T] {
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         debug_assert_nounwind!(
             a < self.len() && b < self.len(),
-            "slice::swap_unchecked requires that the indices are within the slice",
+            "slice::swap_unchecked requires that the indices are within the slice"
         );
 
         let ptr = self.as_mut_ptr();
@@ -1278,7 +1278,7 @@ impl<T> [T] {
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
         debug_assert_nounwind!(
             N != 0 && self.len() % N == 0,
-            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks"
         );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe { exact_div(self.len(), N) };
@@ -1432,7 +1432,7 @@ impl<T> [T] {
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
         debug_assert_nounwind!(
             N != 0 && self.len() % N == 0,
-            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks"
         );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
         let new_len = unsafe { exact_div(self.len(), N) };
@@ -1964,7 +1964,7 @@ impl<T> [T] {
 
         debug_assert_nounwind!(
             mid <= len,
-            "slice::split_at_unchecked requires the index to be within the slice",
+            "slice::split_at_unchecked requires the index to be within the slice"
         );
 
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
@@ -2014,7 +2014,7 @@ impl<T> [T] {
 
         debug_assert_nounwind!(
             mid <= len,
-            "slice::split_at_mut_unchecked requires the index to be within the slice",
+            "slice::split_at_mut_unchecked requires the index to be within the slice"
         );
 
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`.

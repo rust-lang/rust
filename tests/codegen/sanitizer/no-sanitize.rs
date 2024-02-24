@@ -1,8 +1,8 @@
 // Verifies that no_sanitize attribute can be used to
 // selectively disable sanitizer instrumentation.
 //
-// needs-sanitizer-address
-// compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static -Copt-level=0
+//@ needs-sanitizer-address
+//@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static -Copt-level=0
 
 #![crate_type="lib"]
 #![feature(no_sanitize)]

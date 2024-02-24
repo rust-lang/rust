@@ -1,5 +1,5 @@
-// unit-test: GVN
-// compile-flags: -O
+//@ unit-test: GVN
+//@ compile-flags: -O
 
 // Regression test for https://github.com/rust-lang/rust/issues/118328
 

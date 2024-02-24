@@ -1,5 +1,5 @@
 // ignore-tidy-trailing-newlines
-// pretty-compare-only
+//@ pretty-compare-only
 
 /*
 */

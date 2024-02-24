@@ -1,7 +1,7 @@
-// assembly-output: emit-asm
-// compile-flags: --crate-type=lib
-// only-x86_64
-// ignore-sgx
+//@ assembly-output: emit-asm
+//@ compile-flags: --crate-type=lib
+//@ only-x86_64
+//@ ignore-sgx
 
 #![feature(portable_simd)]
 

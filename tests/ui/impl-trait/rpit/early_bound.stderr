@@ -1,14 +1,3 @@
-error[E0700]: hidden type for `impl Sized + 'a` captures lifetime that does not appear in bounds
-  --> $DIR/early_bound.rs:7:17
-   |
-LL | fn test<'a: 'a>(n: bool) -> impl Sized + 'a {
-   |         --                  --------------- opaque type defined here
-   |         |
-   |         hidden type `&'a ()` captures the lifetime `'a` as defined here
-...
-LL |         let _ = identity::<&'a ()>(test(false));
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: concrete type differs from previous defining opaque type use
   --> $DIR/early_bound.rs:3:29
    |
@@ -21,6 +10,5 @@ note: previous use here
 LL |         let _ = identity::<&'a ()>(test(false));
    |                                    ^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0700`.

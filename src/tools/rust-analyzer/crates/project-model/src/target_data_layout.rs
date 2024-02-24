@@ -3,38 +3,58 @@ use std::process::Command;
 
 use rustc_hash::FxHashMap;
 
-use crate::{utf8_stdout, ManifestPath};
+use crate::{utf8_stdout, ManifestPath, Sysroot};
+
+/// Determines how `rustc --print target-spec-json` is discovered and invoked.
+pub enum RustcDataLayoutConfig<'a> {
+    /// Use `rustc --print target-spec-json`, either from with the binary from the sysroot or by discovering via
+    /// [`toolchain::rustc`].
+    Rustc(Option<&'a Sysroot>),
+    /// Use `cargo --print target-spec-json`, either from with the binary from the sysroot or by discovering via
+    /// [`toolchain::cargo`].
+    Cargo(Option<&'a Sysroot>, &'a ManifestPath),
+}
 
 pub fn get(
-    cargo_toml: Option<&ManifestPath>,
+    config: RustcDataLayoutConfig<'_>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
 ) -> anyhow::Result<String> {
-    let output = (|| {
-        if let Some(cargo_toml) = cargo_toml {
-            let mut cmd = Command::new(toolchain::rustc());
+    let process = |output: String| {
+        (|| Some(output.split_once(r#""data-layout": ""#)?.1.split_once('"')?.0.to_owned()))()
+            .ok_or_else(|| {
+                anyhow::format_err!("could not fetch target-spec-json from command output")
+            })
+    };
+    let sysroot = match config {
+        RustcDataLayoutConfig::Cargo(sysroot, cargo_toml) => {
+            let mut cmd = Command::new(toolchain::Tool::Cargo.path());
+            Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
-                .args(["-Z", "unstable-options", "--print", "target-spec-json"])
+                .args(["rustc", "--", "-Z", "unstable-options", "--print", "target-spec-json"])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
                 cmd.args(["--target", target]);
             }
             match utf8_stdout(cmd) {
-                Ok(it) => return Ok(it),
-                Err(e) => tracing::debug!("{e:?}: falling back to querying rustc for cfgs"),
+                Ok(output) => return process(output),
+                Err(e) => {
+                    tracing::warn!("failed to run `cargo rustc --print target-spec-json`, falling back to invoking rustc directly: {e}");
+                    sysroot
+                }
             }
         }
-        // using unstable cargo features failed, fall back to using plain rustc
-        let mut cmd = Command::new(toolchain::rustc());
-        cmd.envs(extra_env)
-            .args(["-Z", "unstable-options", "--print", "target-spec-json"])
-            .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(target) = target {
-            cmd.args(["--target", target]);
-        }
-        utf8_stdout(cmd)
-    })()?;
-    (|| Some(output.split_once(r#""data-layout": ""#)?.1.split_once('"')?.0.to_owned()))()
-        .ok_or_else(|| anyhow::format_err!("could not fetch target-spec-json from command output"))
+        RustcDataLayoutConfig::Rustc(sysroot) => sysroot,
+    };
+
+    let mut cmd = Command::new(toolchain::Tool::Rustc.path());
+    Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
+    cmd.envs(extra_env)
+        .args(["-Z", "unstable-options", "--print", "target-spec-json"])
+        .env("RUSTC_BOOTSTRAP", "1");
+    if let Some(target) = target {
+        cmd.args(["--target", target]);
+    }
+    process(utf8_stdout(cmd)?)
 }

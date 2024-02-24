@@ -1,4 +1,4 @@
-// normalize-stderr-test "could not open Fluent resource:.*" -> "could not open Fluent resource: os-specific message"
+//@ normalize-stderr-test "could not open Fluent resource:.*" -> "could not open Fluent resource: os-specific message"
 
 #![feature(rustc_private)]
 #![crate_type = "lib"]

@@ -423,18 +423,43 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 Compiler { sess, codegen_backend, override_queries: config.override_queries };
 
             rustc_span::set_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
-                let r = {
-                    let _sess_abort_error = defer(|| {
-                        compiler.sess.finish_diagnostics(&config.registry);
+                // There are two paths out of `f`.
+                // - Normal exit.
+                // - Panic, e.g. triggered by `abort_if_errors`.
+                //
+                // We must run `finish_diagnostics` in both cases.
+                let res = {
+                    // If `f` panics, `finish_diagnostics` will run during
+                    // unwinding because of the `defer`.
+                    let mut guar = None;
+                    let sess_abort_guard = defer(|| {
+                        guar = compiler.sess.finish_diagnostics(&config.registry);
                     });
 
-                    f(&compiler)
+                    let res = f(&compiler);
+
+                    // If `f` doesn't panic, `finish_diagnostics` will run
+                    // normally when `sess_abort_guard` is dropped.
+                    drop(sess_abort_guard);
+
+                    // If `finish_diagnostics` emits errors (e.g. stashed
+                    // errors) we can't return an error directly, because the
+                    // return type of this function is `R`, not `Result<R, E>`.
+                    // But we need to communicate the errors' existence to the
+                    // caller, otherwise the caller might mistakenly think that
+                    // no errors occurred and return a zero exit code. So we
+                    // abort (panic) instead, similar to if `f` had panicked.
+                    if guar.is_some() {
+                        compiler.sess.dcx().abort_if_errors();
+                    }
+
+                    res
                 };
 
                 let prof = compiler.sess.prof.clone();
-
                 prof.generic_activity("drop_compiler").run(move || drop(compiler));
-                r
+
+                res
             })
         },
     )

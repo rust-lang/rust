@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 
 #![deny(rustdoc::invalid_rust_codeblocks)]
 //~^ NOTE lint level is defined here

@@ -1,6 +1,6 @@
-// check-pass
-// aux-build:through-proc-macro-aux.rs
-// build-aux-docs
+//@ check-pass
+//@ aux-build:through-proc-macro-aux.rs
+//@ build-aux-docs
 
 // Ensure rustdoc doesn't panic on this code.
 

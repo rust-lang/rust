@@ -10,7 +10,7 @@ $DIR/auxiliary/doctest_crate.rs:
    LL|      3|}
 
 $DIR/doctest.rs:
-   LL|       |// aux-build:doctest_crate.rs
+   LL|       |//@ aux-build:doctest_crate.rs
    LL|       |
    LL|       |//! This test ensures that code from doctests is properly re-mapped.
    LL|       |//! See <https://github.com/rust-lang/rust/issues/79417> for more info.

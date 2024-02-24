@@ -26,7 +26,7 @@ use std::{convert::identity, ops::Index};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, DebruijnIndex, Mutability, Safety,
-    Scalar, TyKind, TypeFlags,
+    Scalar, TyKind, TypeFlags, Variance,
 };
 use either::Either;
 use hir_def::{
@@ -58,8 +58,9 @@ use crate::{
     static_lifetime, to_assoc_type_id,
     traits::FnTrait,
     utils::{InTypeConstIdMetadata, UnevaluatedConstEvaluatorFolder},
-    AliasEq, AliasTy, ClosureId, DomainGoal, GenericArg, Goal, ImplTraitId, InEnvironment,
-    Interner, ProjectionTy, RpitId, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt,
+    AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
+    InEnvironment, Interner, Lifetime, ProjectionTy, RpitId, Substitution, TraitEnvironment,
+    TraitRef, Ty, TyBuilder, TyExt,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -68,7 +69,7 @@ use crate::{
 #[allow(unreachable_pub)]
 pub use coerce::could_coerce;
 #[allow(unreachable_pub)]
-pub use unify::could_unify;
+pub use unify::{could_unify, could_unify_deeply};
 
 use cast::CastCheck;
 pub(crate) use closure::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
@@ -688,10 +689,17 @@ impl<'a> InferenceContext<'a> {
         for ty in type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
         }
-        for mismatch in type_mismatches.values_mut() {
+        type_mismatches.retain(|_, mismatch| {
             mismatch.expected = table.resolve_completely(mismatch.expected.clone());
             mismatch.actual = table.resolve_completely(mismatch.actual.clone());
-        }
+            chalk_ir::zip::Zip::zip_with(
+                &mut UnknownMismatch(self.db),
+                Variance::Invariant,
+                &mismatch.expected,
+                &mismatch.actual,
+            )
+            .is_ok()
+        });
         diagnostics.retain_mut(|diagnostic| {
             use InferenceDiagnostic::*;
             match diagnostic {
@@ -1500,5 +1508,118 @@ impl std::ops::BitAndAssign for Diverges {
 impl std::ops::BitOrAssign for Diverges {
     fn bitor_assign(&mut self, other: Self) {
         *self = *self | other;
+    }
+}
+/// A zipper that checks for unequal `{unknown}` occurrences in the two types. Used to filter out
+/// mismatch diagnostics that only differ in `{unknown}`. These mismatches are usually not helpful.
+/// As the cause is usually an underlying name resolution problem.
+struct UnknownMismatch<'db>(&'db dyn HirDatabase);
+impl chalk_ir::zip::Zipper<Interner> for UnknownMismatch<'_> {
+    fn zip_tys(&mut self, variance: Variance, a: &Ty, b: &Ty) -> chalk_ir::Fallible<()> {
+        let zip_substs = |this: &mut Self,
+                          variances,
+                          sub_a: &Substitution,
+                          sub_b: &Substitution| {
+            this.zip_substs(variance, variances, sub_a.as_slice(Interner), sub_b.as_slice(Interner))
+        };
+        match (a.kind(Interner), b.kind(Interner)) {
+            (TyKind::Adt(id_a, sub_a), TyKind::Adt(id_b, sub_b)) if id_a == id_b => zip_substs(
+                self,
+                Some(self.unification_database().adt_variance(*id_a)),
+                sub_a,
+                sub_b,
+            )?,
+            (
+                TyKind::AssociatedType(assoc_ty_a, sub_a),
+                TyKind::AssociatedType(assoc_ty_b, sub_b),
+            ) if assoc_ty_a == assoc_ty_b => zip_substs(self, None, sub_a, sub_b)?,
+            (TyKind::Tuple(arity_a, sub_a), TyKind::Tuple(arity_b, sub_b))
+                if arity_a == arity_b =>
+            {
+                zip_substs(self, None, sub_a, sub_b)?
+            }
+            (TyKind::OpaqueType(opaque_ty_a, sub_a), TyKind::OpaqueType(opaque_ty_b, sub_b))
+                if opaque_ty_a == opaque_ty_b =>
+            {
+                zip_substs(self, None, sub_a, sub_b)?
+            }
+            (TyKind::Slice(ty_a), TyKind::Slice(ty_b)) => self.zip_tys(variance, ty_a, ty_b)?,
+            (TyKind::FnDef(fn_def_a, sub_a), TyKind::FnDef(fn_def_b, sub_b))
+                if fn_def_a == fn_def_b =>
+            {
+                zip_substs(
+                    self,
+                    Some(self.unification_database().fn_def_variance(*fn_def_a)),
+                    sub_a,
+                    sub_b,
+                )?
+            }
+            (TyKind::Ref(mutability_a, _, ty_a), TyKind::Ref(mutability_b, _, ty_b))
+                if mutability_a == mutability_b =>
+            {
+                self.zip_tys(variance, ty_a, ty_b)?
+            }
+            (TyKind::Raw(mutability_a, ty_a), TyKind::Raw(mutability_b, ty_b))
+                if mutability_a == mutability_b =>
+            {
+                self.zip_tys(variance, ty_a, ty_b)?
+            }
+            (TyKind::Array(ty_a, const_a), TyKind::Array(ty_b, const_b)) if const_a == const_b => {
+                self.zip_tys(variance, ty_a, ty_b)?
+            }
+            (TyKind::Closure(id_a, sub_a), TyKind::Closure(id_b, sub_b)) if id_a == id_b => {
+                zip_substs(self, None, sub_a, sub_b)?
+            }
+            (TyKind::Coroutine(coroutine_a, sub_a), TyKind::Coroutine(coroutine_b, sub_b))
+                if coroutine_a == coroutine_b =>
+            {
+                zip_substs(self, None, sub_a, sub_b)?
+            }
+            (
+                TyKind::CoroutineWitness(coroutine_a, sub_a),
+                TyKind::CoroutineWitness(coroutine_b, sub_b),
+            ) if coroutine_a == coroutine_b => zip_substs(self, None, sub_a, sub_b)?,
+            (TyKind::Function(fn_ptr_a), TyKind::Function(fn_ptr_b))
+                if fn_ptr_a.sig == fn_ptr_b.sig && fn_ptr_a.num_binders == fn_ptr_b.num_binders =>
+            {
+                zip_substs(self, None, &fn_ptr_a.substitution.0, &fn_ptr_b.substitution.0)?
+            }
+            (TyKind::Error, TyKind::Error) => (),
+            (TyKind::Error, _) | (_, TyKind::Error) => return Err(chalk_ir::NoSolution),
+            _ => (),
+        }
+
+        Ok(())
+    }
+
+    fn zip_lifetimes(&mut self, _: Variance, _: &Lifetime, _: &Lifetime) -> chalk_ir::Fallible<()> {
+        Ok(())
+    }
+
+    fn zip_consts(&mut self, _: Variance, _: &Const, _: &Const) -> chalk_ir::Fallible<()> {
+        Ok(())
+    }
+
+    fn zip_binders<T>(
+        &mut self,
+        variance: Variance,
+        a: &Binders<T>,
+        b: &Binders<T>,
+    ) -> chalk_ir::Fallible<()>
+    where
+        T: Clone
+            + HasInterner<Interner = Interner>
+            + chalk_ir::zip::Zip<Interner>
+            + TypeFoldable<Interner>,
+    {
+        chalk_ir::zip::Zip::zip_with(self, variance, a.skip_binders(), b.skip_binders())
+    }
+
+    fn interner(&self) -> Interner {
+        Interner
+    }
+
+    fn unification_database(&self) -> &dyn chalk_ir::UnificationDatabase<Interner> {
+        &self.0
     }
 }

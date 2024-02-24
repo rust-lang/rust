@@ -446,7 +446,7 @@ fn compile_error_expand(
 ) -> ExpandResult<tt::Subtree> {
     let err = match &*tt.token_trees {
         [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => match unquote_str(it) {
-            Some(unquoted) => ExpandError::other(unquoted),
+            Some(unquoted) => ExpandError::other(unquoted.into_boxed_str()),
             None => ExpandError::other("`compile_error!` argument must be a string"),
         },
         _ => ExpandError::other("`compile_error!` argument must be a string"),

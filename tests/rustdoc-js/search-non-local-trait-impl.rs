@@ -1,6 +1,6 @@
-// aux-crate:priv:equivalent=equivalent.rs
-// compile-flags: -Zunstable-options --extern equivalent
-// edition:2018
+//@ aux-crate:priv:equivalent=equivalent.rs
+//@ compile-flags: -Zunstable-options --extern equivalent
+//@ edition:2018
 
 extern crate equivalent;
 

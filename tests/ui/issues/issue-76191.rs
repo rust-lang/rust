@@ -6,6 +6,7 @@ use std::ops::RangeInclusive;
 const RANGE: RangeInclusive<i32> = 0..=255;
 
 const RANGE2: RangeInclusive<i32> = panic!();
+//~^ ERROR evaluation of constant value failed
 
 fn main() {
     let n: i32 = 1;

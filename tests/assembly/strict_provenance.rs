@@ -1,7 +1,7 @@
-// assembly-output: emit-asm
-// compile-flags: -Copt-level=1
-// only-x86_64
-// ignore-sgx
+//@ assembly-output: emit-asm
+//@ compile-flags: -Copt-level=1
+//@ only-x86_64
+//@ ignore-sgx
 #![crate_type = "rlib"]
 
 // CHECK-LABEL: old_style

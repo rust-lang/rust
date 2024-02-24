@@ -123,7 +123,12 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::variant_count
         | sym::is_val_statically_known
         | sym::ptr_mask
-        | sym::debug_assertions => hir::Unsafety::Normal,
+        | sym::debug_assertions
+        | sym::fadd_algebraic
+        | sym::fsub_algebraic
+        | sym::fmul_algebraic
+        | sym::fdiv_algebraic
+        | sym::frem_algebraic => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
     };
 
@@ -405,6 +410,11 @@ pub fn check_intrinsic_type(
             sym::fadd_fast | sym::fsub_fast | sym::fmul_fast | sym::fdiv_fast | sym::frem_fast => {
                 (1, 0, vec![param(0), param(0)], param(0))
             }
+            sym::fadd_algebraic
+            | sym::fsub_algebraic
+            | sym::fmul_algebraic
+            | sym::fdiv_algebraic
+            | sym::frem_algebraic => (1, 0, vec![param(0), param(0)], param(0)),
             sym::float_to_int_unchecked => (2, 0, vec![param(0)], param(1)),
 
             sym::assume => (0, 1, vec![tcx.types.bool], Ty::new_unit(tcx)),
@@ -596,9 +606,7 @@ pub fn check_platform_intrinsic_type(
         | sym::simd_reduce_or
         | sym::simd_reduce_xor
         | sym::simd_reduce_min
-        | sym::simd_reduce_max
-        | sym::simd_reduce_min_nanless
-        | sym::simd_reduce_max_nanless => (2, 0, vec![param(0)], param(1)),
+        | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
         sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
         sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {

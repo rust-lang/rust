@@ -11,6 +11,7 @@ use crate::ty::{GenericArgKind, GenericArgsRef};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -867,6 +868,63 @@ impl<'tcx> TyCtxt<'tcx> {
 
         self.mk_args_from_iter(args.into_iter().map(|arg| arg.into()).chain(opt_const_param))
     }
+
+    /// Expand any [weak alias types][weak] contained within the given `value`.
+    ///
+    /// This should be used over other normalization routines in situations where
+    /// it's important not to normalize other alias types and where the predicates
+    /// on the corresponding type alias shouldn't be taken into consideration.
+    ///
+    /// Whenever possible **prefer not to use this function**! Instead, use standard
+    /// normalization routines or if feasible don't normalize at all.
+    ///
+    /// This function comes in handy if you want to mimic the behavior of eager
+    /// type alias expansion in a localized manner.
+    ///
+    /// <div class="warning">
+    /// This delays a bug on overflow! Therefore you need to be certain that the
+    /// contained types get fully normalized at a later stage. Note that even on
+    /// overflow all well-behaved weak alias types get expanded correctly, so the
+    /// result is still useful.
+    /// </div>
+    ///
+    /// [weak]: ty::Weak
+    pub fn expand_weak_alias_tys<T: TypeFoldable<TyCtxt<'tcx>>>(self, value: T) -> T {
+        value.fold_with(&mut WeakAliasTypeExpander { tcx: self, depth: 0 })
+    }
+
+    /// Peel off all [weak alias types] in this type until there are none left.
+    ///
+    /// This only expands weak alias types in “head” / outermost positions. It can
+    /// be used over [expand_weak_alias_tys] as an optimization in situations where
+    /// one only really cares about the *kind* of the final aliased type but not
+    /// the types the other constituent types alias.
+    ///
+    /// <div class="warning">
+    /// This delays a bug on overflow! Therefore you need to be certain that the
+    /// type gets fully normalized at a later stage.
+    /// </div>
+    ///
+    /// [weak]: ty::Weak
+    /// [expand_weak_alias_tys]: Self::expand_weak_alias_tys
+    pub fn peel_off_weak_alias_tys(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        let ty::Alias(ty::Weak, _) = ty.kind() else { return ty };
+
+        let limit = self.recursion_limit();
+        let mut depth = 0;
+
+        while let ty::Alias(ty::Weak, alias) = ty.kind() {
+            if !limit.value_within_limit(depth) {
+                let guar = self.dcx().delayed_bug("overflow expanding weak alias type");
+                return Ty::new_error(self, guar);
+            }
+
+            ty = self.type_of(alias.def_id).instantiate(self, alias.args);
+            depth += 1;
+        }
+
+        ty
+    }
 }
 
 struct OpaqueTypeExpander<'tcx> {
@@ -999,6 +1057,42 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
         } else {
             p.super_fold_with(self)
         }
+    }
+}
+
+struct WeakAliasTypeExpander<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    depth: usize,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+            return ty;
+        }
+        let ty::Alias(ty::Weak, alias) = ty.kind() else {
+            return ty.super_fold_with(self);
+        };
+        if !self.tcx.recursion_limit().value_within_limit(self.depth) {
+            let guar = self.tcx.dcx().delayed_bug("overflow expanding weak alias type");
+            return Ty::new_error(self.tcx, guar);
+        }
+
+        self.depth += 1;
+        ensure_sufficient_stack(|| {
+            self.tcx.type_of(alias.def_id).instantiate(self.tcx, alias.args).fold_with(self)
+        })
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if !ct.ty().has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+            return ct;
+        }
+        ct.super_fold_with(self)
     }
 }
 

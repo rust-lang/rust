@@ -1,7 +1,7 @@
 // Tests the rustdoc --sort-modules-by-appearance option, that allows module declarations to appear
 // in the order they are declared in the source code, rather than only alphabetically.
 
-// compile-flags: -Z unstable-options --sort-modules-by-appearance
+//@ compile-flags: -Z unstable-options --sort-modules-by-appearance
 
 pub mod module_b {}
 

@@ -1,5 +1,5 @@
-// compile-flags: -O -Z merge-functions=disabled --edition=2021
-// only-x86_64
+//@ compile-flags: -O -Z merge-functions=disabled --edition=2021
+//@ only-x86_64
 
 #![crate_type = "lib"]
 #![feature(try_blocks)]

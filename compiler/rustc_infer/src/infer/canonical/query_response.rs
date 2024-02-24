@@ -12,22 +12,19 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryOutlivesConstraint, QueryRegionConstraints, QueryResponse,
 };
-use crate::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
+use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult};
 use crate::traits::query::NoSolution;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
-use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
+use crate::traits::{TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, BoundVar, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArg, GenericArgKind};
-use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 use std::iter;
 
@@ -290,31 +287,19 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
 
                 (GenericArgKind::Type(v1), GenericArgKind::Type(v2)) => {
-                    TypeRelating::new(
-                        self,
-                        QueryTypeRelatingDelegate {
-                            infcx: self,
-                            param_env,
-                            cause,
-                            obligations: &mut obligations,
-                        },
-                        ty::Variance::Invariant,
-                    )
-                    .relate(v1, v2)?;
+                    obligations.extend(
+                        self.at(&cause, param_env)
+                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                            .into_obligations(),
+                    );
                 }
 
                 (GenericArgKind::Const(v1), GenericArgKind::Const(v2)) => {
-                    TypeRelating::new(
-                        self,
-                        QueryTypeRelatingDelegate {
-                            infcx: self,
-                            param_env,
-                            cause,
-                            obligations: &mut obligations,
-                        },
-                        ty::Variance::Invariant,
-                    )
-                    .relate(v1, v2)?;
+                    obligations.extend(
+                        self.at(&cause, param_env)
+                            .eq(DefineOpaqueTypes::Yes, v1, v2)?
+                            .into_obligations(),
+                    );
                 }
 
                 _ => {
@@ -405,7 +390,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// will instantiate fresh inference variables for each canonical
     /// variable instead. Therefore, the result of this method must be
     /// properly unified
-    #[instrument(level = "debug", skip(self, cause, param_env))]
+    #[instrument(level = "debug", skip(self, param_env))]
     fn query_response_instantiation_guess<R>(
         &self,
         cause: &ObligationCause<'tcx>,
@@ -696,68 +681,4 @@ pub fn make_query_region_constraints<'tcx>(
         .collect();
 
     QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
-}
-
-struct QueryTypeRelatingDelegate<'a, 'tcx> {
-    infcx: &'a InferCtxt<'tcx>,
-    obligations: &'a mut Vec<PredicateObligation<'tcx>>,
-    param_env: ty::ParamEnv<'tcx>,
-    cause: &'a ObligationCause<'tcx>,
-}
-
-impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
-    fn span(&self) -> Span {
-        self.cause.span
-    }
-
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
-    }
-
-    fn create_next_universe(&mut self) -> ty::UniverseIndex {
-        self.infcx.create_next_universe()
-    }
-
-    fn next_existential_region_var(
-        &mut self,
-        from_forall: bool,
-        _name: Option<Symbol>,
-    ) -> ty::Region<'tcx> {
-        let origin = NllRegionVariableOrigin::Existential { from_forall };
-        self.infcx.next_nll_region_var(origin)
-    }
-
-    fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        ty::Region::new_placeholder(self.infcx.tcx, placeholder)
-    }
-
-    fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
-        self.infcx.next_nll_region_var_in_universe(
-            NllRegionVariableOrigin::Existential { from_forall: false },
-            universe,
-        )
-    }
-
-    fn push_outlives(
-        &mut self,
-        sup: ty::Region<'tcx>,
-        sub: ty::Region<'tcx>,
-        _info: ty::VarianceDiagInfo<'tcx>,
-    ) {
-        self.obligations.push(Obligation {
-            cause: self.cause.clone(),
-            param_env: self.param_env,
-            predicate: ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(sup, sub))
-                .to_predicate(self.infcx.tcx),
-            recursion_depth: 0,
-        });
-    }
-
-    fn forbid_inference_vars() -> bool {
-        true
-    }
-
-    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
-        self.obligations.extend(obligations);
-    }
 }

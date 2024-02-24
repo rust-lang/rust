@@ -1,4 +1,4 @@
-// unit-test: LowerIntrinsics
+//@ unit-test: LowerIntrinsics
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(core_intrinsics, intrinsics, rustc_attrs)]

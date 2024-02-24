@@ -569,6 +569,26 @@ impl fmt::Display for NameOrNameRef {
     }
 }
 
+impl ast::AstNode for NameOrNameRef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, SyntaxKind::NAME | SyntaxKind::NAME_REF)
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            SyntaxKind::NAME => NameOrNameRef::Name(ast::Name { syntax }),
+            SyntaxKind::NAME_REF => NameOrNameRef::NameRef(ast::NameRef { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            NameOrNameRef::NameRef(it) => it.syntax(),
+            NameOrNameRef::Name(it) => it.syntax(),
+        }
+    }
+}
+
 impl NameOrNameRef {
     pub fn text(&self) -> TokenText<'_> {
         match self {

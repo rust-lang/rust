@@ -1,9 +1,9 @@
 // GVN may create indirect constants with higher alignment than their type requires. Verify that we
 // do not ICE during codegen, and that the LLVM constant has the higher alignment.
 //
-// compile-flags: -Zmir-opt-level=0 -Zmir-enable-passes=+GVN
-// compile-flags: -Cno-prepopulate-passes
-// only-64bit
+//@ compile-flags: -Zmir-opt-level=0 -Zmir-enable-passes=+GVN
+//@ compile-flags: -Cno-prepopulate-passes
+//@ only-64bit
 
 struct S(i32);
 

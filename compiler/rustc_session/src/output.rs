@@ -6,6 +6,7 @@ use crate::errors::{
 };
 use crate::Session;
 use rustc_ast::{self as ast, attr};
+use rustc_errors::FatalError;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use std::path::Path;
@@ -115,7 +116,7 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
     }
 
     if err_count > 0 {
-        sess.dcx().abort_if_errors();
+        FatalError.raise();
     }
 }
 

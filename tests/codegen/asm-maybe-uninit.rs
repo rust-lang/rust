@@ -1,5 +1,5 @@
-// compile-flags: -O
-// only-x86_64
+//@ compile-flags: -O
+//@ only-x86_64
 
 #![crate_type = "rlib"]
 #![allow(asm_sub_register)]

@@ -27,7 +27,7 @@ jobs:
       typescript: ${{ steps.filter.outputs.typescript }}
       proc_macros: ${{ steps.filter.outputs.proc_macros }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dorny/paths-filter@1441771bbfdd59dcd748680ee64ebd8faab1a242
         id: filter
         with:
@@ -56,7 +56,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -65,6 +65,10 @@ jobs:
           rustup update --no-self-update ${{ env.RUST_CHANNEL }}
           rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
           rustup default ${{ env.RUST_CHANNEL }}
+      # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
+      - name: Install Rust Problem Matcher
+        if: matrix.os == 'ubuntu-latest'
+        run: echo "::add-matcher::.github/rust.json"
 
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@988c164c3d0e93c4dbab36aaf5bbeb77425b2894
@@ -107,6 +111,10 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
 
+      - name: rustfmt
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo fmt -- --check
+
   # Weird targets to catch non-portable code
   rust-cross:
     if: github.repository == 'rust-lang/rust-analyzer'
@@ -121,7 +129,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         run: |
@@ -153,13 +161,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         if: needs.changes.outputs.typescript == 'true'
 
       - name: Install Nodejs
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 18
         if: needs.changes.outputs.typescript == 'true'
 
       - name: Install xvfb

@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // EMIT_MIR bad_op_div_by_zero.main.GVN.diff

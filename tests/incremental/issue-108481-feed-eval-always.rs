@@ -1,4 +1,4 @@
-// revisions: cpass1 cpass2
+//@ revisions: cpass1 cpass2
 
 #![crate_type = "rlib"]
 

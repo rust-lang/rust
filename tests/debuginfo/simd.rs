@@ -1,12 +1,12 @@
 // Need a fix for LLDB first...
-// ignore-lldb
+//@ ignore-lldb
 
 // FIXME: LLVM generates invalid debug info for variables requiring
 // dynamic stack realignment, which is the case on s390x for vector
 // types with non-vector ABI.
-// ignore-s390x
+//@ ignore-s390x
 
-// compile-flags:-g
+//@ compile-flags:-g
 // gdb-command:run
 
 // gdbg-command:print/d vi8x16

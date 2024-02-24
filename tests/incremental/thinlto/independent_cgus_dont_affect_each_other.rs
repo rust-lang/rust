@@ -1,9 +1,9 @@
 // This test checks that a change in a CGU does not invalidate an unrelated CGU
 // during incremental ThinLTO.
 
-// revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -O
-// build-pass
+//@ revisions: cfail1 cfail2 cfail3
+//@ compile-flags: -Z query-dep-graph -O
+//@ build-pass
 
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]

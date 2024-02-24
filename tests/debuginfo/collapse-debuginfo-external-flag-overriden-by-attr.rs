@@ -1,10 +1,10 @@
-// ignore-lldb
+//@ ignore-lldb
 #![feature(collapse_debuginfo)]
 
 // Test that macro attribute #[collapse_debuginfo(no)]
 // overrides "collapse_macro_debuginfo=external" flag
 
-// compile-flags:-g -Z collapse_macro_debuginfo=external
+//@ compile-flags:-g -Z collapse_macro_debuginfo=external
 
 // === GDB TESTS ===================================================================================
 

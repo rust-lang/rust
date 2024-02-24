@@ -56,6 +56,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for UnusedGenericParamsHint {
             // FIXME: I can figure out how to do a label with a fluent string with a fixed message,
             // or a label with a dynamic value in a hard-coded string, but I haven't figured out
             // how to combine the two. 😢
+            #[allow(rustc::untranslatable_diagnostic)]
             diag.span_label(span, format!("generic parameter `{name}` is unused"));
         }
         diag

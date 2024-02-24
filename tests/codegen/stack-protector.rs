@@ -1,8 +1,8 @@
-// revisions: all strong basic none
-// ignore-nvptx64 stack protector not supported
-// [all] compile-flags: -Z stack-protector=all
-// [strong] compile-flags: -Z stack-protector=strong
-// [basic] compile-flags: -Z stack-protector=basic
+//@ revisions: all strong basic none
+//@ ignore-nvptx64 stack protector not supported
+//@ [all] compile-flags: -Z stack-protector=all
+//@ [strong] compile-flags: -Z stack-protector=strong
+//@ [basic] compile-flags: -Z stack-protector=basic
 
 #![crate_type = "lib"]
 

@@ -700,10 +700,12 @@ impl<S> SynToken<S> {
 }
 
 impl<SpanMap, S: std::fmt::Debug> SrcToken<Converter<SpanMap, S>, S> for SynToken<S> {
-    fn kind(&self, ctx: &Converter<SpanMap, S>) -> SyntaxKind {
+    fn kind(&self, _ctx: &Converter<SpanMap, S>) -> SyntaxKind {
         match self {
             SynToken::Ordinary(token) => token.kind(),
-            SynToken::Punct { .. } => SyntaxKind::from_char(self.to_char(ctx).unwrap()).unwrap(),
+            SynToken::Punct { token, offset: i } => {
+                SyntaxKind::from_char(token.text().chars().nth(*i).unwrap()).unwrap()
+            }
             SynToken::Leaf(_) => {
                 never!();
                 SyntaxKind::ERROR

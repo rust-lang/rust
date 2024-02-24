@@ -129,17 +129,6 @@ LL | static STATIC19: Vec<isize> = vec![3];
    = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0507]: cannot move out of static item `x`
-  --> $DIR/check-static-values-constraints.rs:119:9
-   |
-LL |         x
-   |         ^ move occurs because `x` has type `Vec<isize>`, which does not implement the `Copy` trait
-   |
-help: consider borrowing here
-   |
-LL |         &x
-   |         +
-
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:117:32
    |
@@ -157,6 +146,17 @@ LL |         static x: Vec<isize> = vec![3];
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `Lazy::new(|| ...)` from the `once_cell` crate: https://crates.io/crates/once_cell
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0507]: cannot move out of static item `x`
+  --> $DIR/check-static-values-constraints.rs:119:9
+   |
+LL |         x
+   |         ^ move occurs because `x` has type `Vec<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |         &x
+   |         +
 
 error: aborting due to 17 previous errors
 

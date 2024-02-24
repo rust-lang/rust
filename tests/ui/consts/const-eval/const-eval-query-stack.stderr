@@ -7,6 +7,5 @@ LL | const X: i32 = 1 / 0;
 query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `X`
 #1 [eval_to_const_value_raw] simplifying constant for the type system `X`
-#2 [lint_mod] linting top-level module
-#3 [analysis] running analysis passes on this crate
+#2 [analysis] running analysis passes on this crate
 end of query stack

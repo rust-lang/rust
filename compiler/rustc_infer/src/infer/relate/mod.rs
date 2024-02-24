@@ -3,10 +3,9 @@
 
 pub(super) mod combine;
 mod equate;
-pub(super) mod generalize;
+mod generalize;
 mod glb;
 mod higher_ranked;
 mod lattice;
 mod lub;
-pub mod nll;
 mod sub;

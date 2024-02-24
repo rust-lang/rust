@@ -1,4 +1,4 @@
-// aux-build:pub-struct.rs
+//@ aux-build:pub-struct.rs
 // ignore-tidy-linelength
 
 // Test for the ICE in https://github.com/rust-lang/rust/issues/83057

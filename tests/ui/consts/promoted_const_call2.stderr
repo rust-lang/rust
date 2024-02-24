@@ -18,6 +18,12 @@ LL |     let _: &'static _ = &id(&String::new());
    |            |                 creates a temporary value which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`
 
+error[E0493]: destructor of `String` cannot be evaluated at compile-time
+  --> $DIR/promoted_const_call2.rs:4:30
+   |
+LL |     let _: &'static _ = &id(&String::new());
+   |                              ^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constants
+
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_const_call2.rs:11:26
    |
@@ -37,12 +43,6 @@ LL |     let _: &'static _ = &id(&String::new());
    |            |                 |
    |            |                 creates a temporary value which is freed while still in use
    |            type annotation requires that borrow lasts for `'static`
-
-error[E0493]: destructor of `String` cannot be evaluated at compile-time
-  --> $DIR/promoted_const_call2.rs:4:30
-   |
-LL |     let _: &'static _ = &id(&String::new());
-   |                              ^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constants
 
 error: aborting due to 5 previous errors
 

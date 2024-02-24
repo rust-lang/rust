@@ -1,5 +1,5 @@
-// compile-flags:-Z unstable-options --show-coverage
-// check-pass
+//@ compile-flags:-Z unstable-options --show-coverage
+//@ check-pass
 
 //! (remember the crate root is still a module)
 

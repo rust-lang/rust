@@ -1,8 +1,8 @@
-// assembly-output: emit-asm
+//@ assembly-output: emit-asm
 // # zen3 previously exhibited odd vectorization
-// compile-flags: --crate-type=lib -Ctarget-cpu=znver3 -O
-// only-x86_64
-// ignore-sgx
+//@ compile-flags: --crate-type=lib -Ctarget-cpu=znver3 -O
+//@ only-x86_64
+//@ ignore-sgx
 
 use std::iter;
 

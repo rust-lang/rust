@@ -1,4 +1,4 @@
-// compile-flags: -Zunstable-options --html-no-source
+//@ compile-flags: -Zunstable-options --html-no-source
 
 // This test ensures that the `--html-no-source` flag disables
 // the creation of the `src` folder.

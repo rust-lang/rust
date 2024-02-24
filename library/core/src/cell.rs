@@ -471,6 +471,7 @@ impl<T> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
+    #[rustc_confusables("swap")]
     pub fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.
@@ -862,6 +863,7 @@ impl<T> RefCell<T> {
     #[inline]
     #[stable(feature = "refcell_replace", since = "1.24.0")]
     #[track_caller]
+    #[rustc_confusables("swap")]
     pub fn replace(&self, t: T) -> T {
         mem::replace(&mut *self.borrow_mut(), t)
     }

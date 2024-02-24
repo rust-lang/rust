@@ -36,7 +36,7 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
             // this code expects one suggestion per line in the following format:
             // <x_subcommand> {some number of flags} [optional stage number]
             let cmd = sections.next().unwrap();
-            let stage = sections.next_back().map(|s| str::parse(s).ok()).flatten();
+            let stage = sections.next_back().and_then(|s| str::parse(s).ok());
             let paths: Vec<PathBuf> = sections.map(|p| PathBuf::from_str(p).unwrap()).collect();
 
             (cmd, stage, paths)

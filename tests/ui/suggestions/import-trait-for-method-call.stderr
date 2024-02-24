@@ -8,7 +8,7 @@ LL |     h.finish()
    = note: the method is available for `DefaultHasher` here
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Hasher` which provides `finish` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::hash::Hasher;
    |

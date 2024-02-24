@@ -1,5 +1,5 @@
 #![allow(dead_code, unreachable_code)]
-// edition: 2021
+//@ edition: 2021
 
 // Regression test for #93054: Functions using uninhabited types often only have a single,
 // unreachable basic block which doesn't get instrumented. This should not cause llvm-cov to fail.

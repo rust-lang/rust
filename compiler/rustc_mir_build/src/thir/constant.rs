@@ -12,15 +12,12 @@ pub(crate) fn lit_to_const<'tcx>(
 
     let trunc = |n| {
         let param_ty = ParamEnv::reveal_all().and(ty);
-        let width =
-            tcx.layout_of(param_ty)
-                .map_err(|_| {
-                    LitToConstError::Reported(tcx.dcx().delayed_bug(format!(
-                        "couldn't compute width of literal: {:?}",
-                        lit_input.lit
-                    )))
-                })?
-                .size;
+        let width = match tcx.layout_of(param_ty) {
+            Ok(layout) => layout.size,
+            Err(_) => {
+                tcx.dcx().bug(format!("couldn't compute width of literal: {:?}", lit_input.lit))
+            }
+        };
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
         let result = width.truncate(n);
         trace!("trunc result: {}", result);
@@ -59,15 +56,11 @@ pub(crate) fn lit_to_const<'tcx>(
         }
         (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            let bits =
-                parse_float_into_scalar(*n, *fty, neg)
-                    .ok_or_else(|| {
-                        LitToConstError::Reported(tcx.dcx().delayed_bug(format!(
-                            "couldn't parse float literal: {:?}",
-                            lit_input.lit
-                        )))
-                    })?
-                    .assert_int();
+            let bits = parse_float_into_scalar(*n, *fty, neg)
+                .ok_or_else(|| {
+                    tcx.dcx().bug(format!("couldn't parse float literal: {:?}", lit_input.lit))
+                })?
+                .assert_int();
             ty::ValTree::from_scalar_int(bits)
         }
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),

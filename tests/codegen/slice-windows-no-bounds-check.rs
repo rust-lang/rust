@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-// compile-flags: -O
+//@ compile-flags: -O
 
 use std::slice::Windows;
 

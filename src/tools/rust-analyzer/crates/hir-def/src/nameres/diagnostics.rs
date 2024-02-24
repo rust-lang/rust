@@ -103,6 +103,9 @@ impl DefDiagnostic {
     }
 
     // FIXME: Whats the difference between this and unresolved_macro_call
+    // FIXME: This is used for a lot of things, unresolved proc macros, disabled proc macros, etc
+    // yet the diagnostic handler in ide-diagnostics has to figure out what happened because this
+    // struct loses all that information!
     pub(crate) fn unresolved_proc_macro(
         container: LocalModuleId,
         ast: MacroCallKind,

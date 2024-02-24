@@ -1,6 +1,6 @@
-// compile-flags: -C no-prepopulate-passes
-// only-loongarch64
-// only-linux
+//@ compile-flags: -C no-prepopulate-passes
+//@ only-loongarch64
+//@ only-linux
 
 #![crate_type = "lib"]
 

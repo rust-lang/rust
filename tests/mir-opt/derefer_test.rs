@@ -1,5 +1,5 @@
 // skip-filecheck
-// unit-test: Derefer
+//@ unit-test: Derefer
 // EMIT_MIR derefer_test.main.Derefer.diff
 fn main() {
     let mut a = (42,43);

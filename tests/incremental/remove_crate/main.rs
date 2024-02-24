@@ -1,7 +1,7 @@
 // Test that removing an upstream crate does not cause any trouble.
 
-// revisions:rpass1 rpass2
-// aux-build:extern_crate.rs
+//@ revisions:rpass1 rpass2
+//@ aux-build:extern_crate.rs
 
 #[cfg(rpass1)]
 extern crate extern_crate;

@@ -698,7 +698,7 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 /// Note that this can fail if `p` doesn't look like it can be opened relative
 /// to any pre-opened file descriptor.
 fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
-    run_path_with_cstr(p, |p| {
+    run_path_with_cstr(p, &|p| {
         let mut buf = Vec::<u8>::with_capacity(512);
         loop {
             unsafe {

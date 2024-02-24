@@ -1,11 +1,11 @@
-// ignore-lldb
+//@ ignore-lldb
 #![feature(collapse_debuginfo)]
 
 // Test that line numbers are not replaced with those of the outermost expansion site when the
 // `collapse_debuginfo` is active and `-Zdebug-macros` is provided, despite `#[collapse_debuginfo]`
 // being used.
 
-// compile-flags:-g -Zdebug-macros
+//@ compile-flags:-g -Zdebug-macros
 
 // === GDB TESTS ===================================================================================
 

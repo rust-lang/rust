@@ -1,7 +1,7 @@
-// check-pass
-// force-host
-// no-prefer-dynamic
-// compile-flags: --crate-type proc-macro
+//@ check-pass
+//@ force-host
+//@ no-prefer-dynamic
+//@ compile-flags: --crate-type proc-macro
 
 #![deny(rustdoc::broken_intra_doc_links)]
 

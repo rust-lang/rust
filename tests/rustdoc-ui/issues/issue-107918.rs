@@ -1,7 +1,7 @@
-// aux-build:panic-handler.rs
-// compile-flags: --document-private-items
-// build-pass
-// only-linux
+//@ aux-build:panic-handler.rs
+//@ compile-flags: --document-private-items
+//@ build-pass
+//@ only-linux
 
 #![no_std]
 #![no_main]

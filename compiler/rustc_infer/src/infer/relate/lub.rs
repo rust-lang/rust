@@ -7,6 +7,7 @@ use crate::traits::{ObligationCause, PredicateObligations};
 
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'combine, 'infcx, 'tcx> {
@@ -134,6 +135,10 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Lub<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.fields.trace.span()
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
     }

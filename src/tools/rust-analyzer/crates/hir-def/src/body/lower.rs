@@ -416,6 +416,11 @@ impl ExprCollector<'_> {
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
+            ast::Expr::BecomeExpr(e) => {
+                let expr =
+                    e.expr().map(|e| self.collect_expr(e)).unwrap_or_else(|| self.missing_expr());
+                self.alloc_expr(Expr::Become { expr }, syntax_ptr)
+            }
             ast::Expr::YieldExpr(e) => {
                 self.is_lowering_coroutine = true;
                 let expr = e.expr().map(|e| self.collect_expr(e));
@@ -1000,10 +1005,6 @@ impl ExprCollector<'_> {
                         krate: *krate,
                     });
                 }
-                Some(ExpandError::RecursionOverflowPoisoned) => {
-                    // Recursion limit has been reached in the macro expansion tree, but not in
-                    // this very macro call. Don't add diagnostics to avoid duplication.
-                }
                 Some(err) => {
                     self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
                         node: InFile::new(outer_file, syntax_ptr),
@@ -1112,7 +1113,7 @@ impl ExprCollector<'_> {
                     statements.push(Statement::Expr { expr, has_semi });
                 }
             }
-            ast::Stmt::Item(_item) => (),
+            ast::Stmt::Item(_item) => statements.push(Statement::Item),
         }
     }
 

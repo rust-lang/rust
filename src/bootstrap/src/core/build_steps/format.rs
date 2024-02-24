@@ -11,7 +11,7 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc::SyncSender;
 
 fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl FnMut(bool) -> bool {
-    let mut cmd = Command::new(&rustfmt);
+    let mut cmd = Command::new(rustfmt);
     // avoid the submodule config paths from coming into play,
     // we only allow a single global config for the workspace for now
     cmd.arg("--config-path").arg(&src.canonicalize().unwrap());
@@ -162,7 +162,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
                 untracked_count += 1;
-                fmt_override.add(&format!("!/{untracked_path}")).expect(&untracked_path);
+                fmt_override.add(&format!("!/{untracked_path}")).expect(untracked_path);
             }
             // Only check modified files locally to speed up runtime.
             // We still check all files in CI to avoid bugs in `get_modified_rs_files` letting regressions slip through;
@@ -221,7 +221,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     assert!(rustfmt_path.exists(), "{}", rustfmt_path.display());
     let src = build.src.clone();
     let (tx, rx): (SyncSender<PathBuf>, _) = std::sync::mpsc::sync_channel(128);
-    let walker = match paths.get(0) {
+    let walker = match paths.first() {
         Some(first) => {
             let find_shortcut_candidates = |p: &PathBuf| {
                 let mut candidates = Vec::new();

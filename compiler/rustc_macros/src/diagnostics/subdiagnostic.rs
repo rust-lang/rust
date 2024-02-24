@@ -87,9 +87,13 @@ impl SubdiagnosticDeriveBuilder {
         let f = &self.f;
         let ret = structure.gen_impl(quote! {
             gen impl rustc_errors::AddToDiagnostic for @Self {
-                fn add_to_diagnostic_with<__F>(self, #diag: &mut rustc_errors::Diagnostic, #f: __F)
-                where
-                    __F: rustc_errors::SubdiagnosticMessageOp,
+                fn add_to_diagnostic_with<__G, __F>(
+                    self,
+                    #diag: &mut rustc_errors::DiagnosticBuilder<'_, __G>,
+                    #f: __F
+                ) where
+                    __G: rustc_errors::EmissionGuarantee,
+                    __F: rustc_errors::SubdiagnosticMessageOp<__G>,
                 {
                     #implementation
                 }

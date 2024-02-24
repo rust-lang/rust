@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options
+//@ compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
 #![deny(rustc::lint_pass_impl_without_macro)]

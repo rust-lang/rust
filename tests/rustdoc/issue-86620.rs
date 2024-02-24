@@ -1,4 +1,4 @@
-// aux-build:issue-86620-1.rs
+//@ aux-build:issue-86620-1.rs
 
 extern crate issue_86620_1;
 

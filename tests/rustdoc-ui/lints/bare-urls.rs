@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![deny(rustdoc::bare_urls)]
 

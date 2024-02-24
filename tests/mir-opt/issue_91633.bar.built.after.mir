@@ -12,7 +12,7 @@ fn bar(_1: Box<[T]>) -> () {
         StorageLive(_2);
         StorageLive(_3);
         _3 = &(*_1);
-        _2 = <[T] as Index<usize>>::index(move _3, const 0_usize) -> [return: bb1, unwind: bb4];
+        _2 = <[T] as Index<usize>>::index(move _3, const 0_usize) -> [return: bb1, unwind: bb5];
     }
 
     bb1: {
@@ -20,7 +20,7 @@ fn bar(_1: Box<[T]>) -> () {
         PlaceMention((*_2));
         StorageDead(_2);
         _0 = const ();
-        drop(_1) -> [return: bb3, unwind: bb5];
+        drop(_1) -> [return: bb4, unwind: bb6];
     }
 
     bb2: {
@@ -29,14 +29,18 @@ fn bar(_1: Box<[T]>) -> () {
     }
 
     bb3: {
+        goto -> bb2;
+    }
+
+    bb4: {
         return;
     }
 
-    bb4 (cleanup): {
-        drop(_1) -> [return: bb5, unwind terminate(cleanup)];
+    bb5 (cleanup): {
+        drop(_1) -> [return: bb6, unwind terminate(cleanup)];
     }
 
-    bb5 (cleanup): {
+    bb6 (cleanup): {
         resume;
     }
 }

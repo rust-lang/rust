@@ -95,9 +95,6 @@ pub trait Interner: Sized {
     fn mk_bound_ty(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Ty;
     fn mk_bound_region(self, debruijn: DebruijnIndex, var: BoundVar) -> Self::Region;
     fn mk_bound_const(self, debruijn: DebruijnIndex, var: BoundVar, ty: Self::Ty) -> Self::Const;
-
-    /// Assert that an error has been delayed or emitted.
-    fn expect_error_or_delayed_bug();
 }
 
 /// Common capabilities of placeholder kinds

@@ -1,4 +1,4 @@
-// compile-flags: -O
+//@ compile-flags: -O
 #![crate_type = "lib"]
 
 // Test that LLVM can eliminate the impossible `i == 0` check.

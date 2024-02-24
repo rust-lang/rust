@@ -13,7 +13,6 @@ use crate::{Database, DatabaseKeyIndex, QueryDb};
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 use std::collections::hash_map::Entry;
-use std::convert::From;
 use std::fmt::Debug;
 use std::hash::Hash;
 use triomphe::Arc;

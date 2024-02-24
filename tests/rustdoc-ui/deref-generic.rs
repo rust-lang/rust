@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 // #81395: Fix ICE when recursing into Deref target only differing in type args
 
 pub struct Generic<T>(T);

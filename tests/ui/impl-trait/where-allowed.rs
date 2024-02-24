@@ -59,7 +59,6 @@ fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
 fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` is not allowed in the parameters of `Fn` trait bounds
 //~| ERROR nested `impl Trait` is not allowed
-//~| ERROR: type annotations needed
 
 // Allowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }

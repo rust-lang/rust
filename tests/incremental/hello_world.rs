@@ -1,5 +1,5 @@
-// revisions: rpass1 rpass2
-// compile-flags: -Z query-dep-graph
+//@ revisions: rpass1 rpass2
+//@ compile-flags: -Z query-dep-graph
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

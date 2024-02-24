@@ -8,42 +8,42 @@ LL | const VALUE: u8 = unsafe { *REG_ADDR };
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
-  --> $DIR/E0396.rs:10:11
+error[E0658]: dereferencing raw mutable pointers in constants is unstable
+  --> $DIR/E0396.rs:14:36
    |
-LL |     match *INFALLIBLE {}
-   |           ^^^^^^^^^^^
+LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
+   |                                    ^^^^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
-  --> $DIR/E0396.rs:10:11
+error[E0658]: dereferencing raw mutable pointers in constants is unstable
+  --> $DIR/E0396.rs:14:36
    |
-LL |     match *INFALLIBLE {}
-   |           ^^^^^^^^^^^
+LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
+   |                                    ^^^^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0658]: dereferencing raw mutable pointers in constants is unstable
-  --> $DIR/E0396.rs:14:36
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
+  --> $DIR/E0396.rs:10:11
    |
-LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
-   |                                    ^^^^^^^^^^^
+LL |     match *INFALLIBLE {}
+   |           ^^^^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: dereferencing raw mutable pointers in constants is unstable
-  --> $DIR/E0396.rs:14:36
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
+  --> $DIR/E0396.rs:10:11
    |
-LL |     const BAD: () = unsafe { match *INFALLIBLE {} };
-   |                                    ^^^^^^^^^^^
+LL |     match *INFALLIBLE {}
+   |           ^^^^^^^^^^^
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable

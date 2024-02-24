@@ -1,4 +1,4 @@
-// aux-build:external-macro-src.rs
+//@ aux-build:external-macro-src.rs
 
 #![crate_name = "foo"]
 

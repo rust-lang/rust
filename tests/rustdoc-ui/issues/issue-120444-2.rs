@@ -1,4 +1,4 @@
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 #![deny(rustdoc::redundant_explicit_links)]
 

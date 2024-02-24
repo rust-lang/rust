@@ -143,7 +143,6 @@ fn current_dll_path() -> Result<PathBuf, String> {
             &mut module,
         )
     }
-    .ok()
     .map_err(|e| e.to_string())?;
 
     let mut filename = vec![0; 1024];

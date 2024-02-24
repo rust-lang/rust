@@ -46,7 +46,6 @@ async fn async_main() {
 use std::pin::{Pin, pin};
 use std::task::*;
 use std::async_iter::AsyncIterator;
-use std::future::Future;
 
 trait AsyncIterExt {
     fn next(&mut self) -> Next<'_, Self>;

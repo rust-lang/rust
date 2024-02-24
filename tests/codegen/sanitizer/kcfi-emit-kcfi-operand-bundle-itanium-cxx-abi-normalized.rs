@@ -1,11 +1,11 @@
 // Verifies that normalized KCFI type metadata for functions are emitted.
 //
-// revisions: aarch64 x86_64
-// [aarch64] compile-flags: --target aarch64-unknown-none
-// [aarch64] needs-llvm-components: aarch64
-// [x86_64] compile-flags: --target x86_64-unknown-none
-// [x86_64] needs-llvm-components:
-// compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Zsanitizer-cfi-normalize-integers
+//@ revisions: aarch64 x86_64
+//@ [aarch64] compile-flags: --target aarch64-unknown-none
+//@ [aarch64] needs-llvm-components: aarch64
+//@ [x86_64] compile-flags: --target x86_64-unknown-none
+//@ [x86_64] needs-llvm-components:
+//@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Zsanitizer-cfi-normalize-integers
 
 #![crate_type="lib"]
 #![feature(no_core, lang_items)]

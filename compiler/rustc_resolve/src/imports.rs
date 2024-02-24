@@ -10,9 +10,9 @@ use crate::errors::{
 use crate::Determinacy::{self, *};
 use crate::Namespace::*;
 use crate::{module_to_string, names_to_string, ImportSuggestion};
-use crate::{AmbiguityKind, BindingKey, ModuleKind, ResolutionError, Resolver, Segment};
+use crate::{AmbiguityKind, BindingKey, ResolutionError, Resolver, Segment};
 use crate::{Finalize, Module, ModuleOrUniformRoot, ParentScope, PerNS, ScopeSet};
-use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult};
+use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult, Used};
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
@@ -173,7 +173,7 @@ pub(crate) struct ImportData<'a> {
     /// The resolution of `module_path`.
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'a>>>,
     pub vis: Cell<Option<ty::Visibility>>,
-    pub used: Cell<bool>,
+    pub used: Cell<Option<Used>>,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -286,7 +286,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         self.arenas.alloc_name_binding(NameBindingData {
-            kind: NameBindingKind::Import { binding, import, used: Cell::new(false) },
+            kind: NameBindingKind::Import { binding, import },
             ambiguity: None,
             warn_ambiguity: false,
             span: import.span,
@@ -485,9 +485,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     resolution.single_imports.remove(&import);
                 })
             });
-            self.record_use(target, dummy_binding, false);
+            self.record_use(target, dummy_binding, Used::Other);
         } else if import.imported_module.get().is_none() {
-            import.used.set(true);
+            import.used.set(Some(Used::Other));
             if let Some(id) = import.id() {
                 self.used_imports.insert(id);
             }
@@ -1056,11 +1056,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     && initial_binding.is_extern_crate()
                                     && !initial_binding.is_import()
                                 {
-                                    this.record_use(
-                                        ident,
-                                        target_binding,
-                                        import.module_path.is_empty(),
-                                    );
+                                    let used = if import.module_path.is_empty() {
+                                        Used::Scope
+                                    } else {
+                                        Used::Other
+                                    };
+                                    this.record_use(ident, target_binding, used);
                                 }
                             }
                             initial_binding.res()
@@ -1299,22 +1300,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         });
 
-        self.check_for_redundant_imports(ident, import, source_bindings, target_bindings, target);
-
         debug!("(resolving single import) successfully resolved import");
         None
     }
 
-    fn check_for_redundant_imports(
-        &mut self,
-        ident: Ident,
-        import: Import<'a>,
-        source_bindings: &PerNS<Cell<Result<NameBinding<'a>, Determinacy>>>,
-        target_bindings: &PerNS<Cell<Option<NameBinding<'a>>>>,
-        target: Ident,
-    ) {
+    pub(crate) fn check_for_redundant_imports(&mut self, import: Import<'a>) {
         // This function is only called for single imports.
-        let ImportKind::Single { id, .. } = import.kind else { unreachable!() };
+        let ImportKind::Single {
+            source, target, ref source_bindings, ref target_bindings, id, ..
+        } = import.kind
+        else {
+            unreachable!()
+        };
+
+        // Skip if the import is of the form `use source as target` and source != target.
+        if source != target {
+            return;
+        }
 
         // Skip if the import was produced by a macro.
         if import.parent_scope.expansion != LocalExpnId::ROOT {
@@ -1323,16 +1325,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Skip if we are inside a named module (in contrast to an anonymous
         // module defined by a block).
-        if let ModuleKind::Def(..) = import.parent_scope.module.kind {
+        // Skip if the import is public or was used through non scope-based resolution,
+        // e.g. through a module-relative path.
+        if import.used.get() == Some(Used::Other)
+            || self.effective_visibilities.is_exported(self.local_def_id(id))
+        {
             return;
         }
 
-        let mut is_redundant = PerNS { value_ns: None, type_ns: None, macro_ns: None };
+        let mut is_redundant = true;
 
         let mut redundant_span = PerNS { value_ns: None, type_ns: None, macro_ns: None };
 
         self.per_ns(|this, ns| {
-            if let Ok(binding) = source_bindings[ns].get() {
+            if is_redundant && let Ok(binding) = source_bindings[ns].get() {
                 if binding.res() == Res::Err {
                     return;
                 }
@@ -1346,18 +1352,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     target_bindings[ns].get(),
                 ) {
                     Ok(other_binding) => {
-                        is_redundant[ns] = Some(
-                            binding.res() == other_binding.res() && !other_binding.is_ambiguity(),
-                        );
-                        redundant_span[ns] = Some((other_binding.span, other_binding.is_import()));
+                        is_redundant =
+                            binding.res() == other_binding.res() && !other_binding.is_ambiguity();
+                        if is_redundant {
+                            redundant_span[ns] =
+                                Some((other_binding.span, other_binding.is_import()));
+                        }
                     }
-                    Err(_) => is_redundant[ns] = Some(false),
+                    Err(_) => is_redundant = false,
                 }
             }
         });
 
-        if !is_redundant.is_empty() && is_redundant.present_items().all(|is_redundant| is_redundant)
-        {
+        if is_redundant && !redundant_span.is_empty() {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
@@ -1365,8 +1372,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 UNUSED_IMPORTS,
                 id,
                 import.span,
-                format!("the item `{ident}` is imported redundantly"),
-                BuiltinLintDiagnostics::RedundantImport(redundant_spans, ident),
+                format!("the item `{source}` is imported redundantly"),
+                BuiltinLintDiagnostics::RedundantImport(redundant_spans, source),
             );
         }
     }

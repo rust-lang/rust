@@ -988,7 +988,10 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Struct(qpath, fields, ref base) = expr.kind {
             let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
-            let adt = self.typeck_results().expr_ty(expr).ty_adt_def().unwrap();
+            let Some(adt) = self.typeck_results().expr_ty(expr).ty_adt_def() else {
+                self.tcx.dcx().span_delayed_bug(expr.span, "no adt_def for expression");
+                return;
+            };
             let variant = adt.variant_of_res(res);
             if let Some(base) = *base {
                 // If the expression uses FRU we need to make sure all the unmentioned fields

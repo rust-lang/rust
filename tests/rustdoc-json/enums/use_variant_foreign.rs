@@ -1,4 +1,4 @@
-// aux-build: color.rs
+//@ aux-build: color.rs
 
 extern crate color;
 

@@ -1,6 +1,6 @@
    LL|       |#![feature(coverage_attribute, stmt_expr_attributes)]
    LL|       |#![allow(dead_code)]
-   LL|       |// edition: 2021
+   LL|       |//@ edition: 2021
    LL|       |
    LL|       |static GLOBAL_CLOSURE_ON: fn(&str) = #[coverage(on)]
    LL|      0||input: &str| {

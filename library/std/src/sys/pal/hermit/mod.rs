@@ -39,16 +39,6 @@ pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
 
-#[path = "../unix/locks"]
-pub mod locks {
-    mod futex_condvar;
-    mod futex_mutex;
-    mod futex_rwlock;
-    pub(crate) use futex_condvar::Condvar;
-    pub(crate) use futex_mutex::Mutex;
-    pub(crate) use futex_rwlock::RwLock;
-}
-
 use crate::io::ErrorKind;
 use crate::os::hermit::abi;
 

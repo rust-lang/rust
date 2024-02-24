@@ -1,6 +1,6 @@
-// compile-flags:-Zprint-mono-items=eager
-// compile-flags:-Zinline-in-all-cgus
-// compile-flags:-Zmir-opt-level=0
+//@ compile-flags:-Zprint-mono-items=eager
+//@ compile-flags:-Zinline-in-all-cgus
+//@ compile-flags:-Zmir-opt-level=0
 
 #![deny(dead_code)]
 #![feature(coerce_unsized)]

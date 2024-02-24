@@ -199,7 +199,7 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
     fn try_from((host, port): (&'a str, u16)) -> io::Result<LookupHost> {
         init();
 
-        run_with_cstr(host.as_bytes(), |c_host| {
+        run_with_cstr(host.as_bytes(), &|c_host| {
             let mut hints: c::addrinfo = unsafe { mem::zeroed() };
             hints.ai_socktype = c::SOCK_STREAM;
             let mut res = ptr::null_mut();

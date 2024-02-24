@@ -20,7 +20,7 @@ LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^
 
 error[E0658]: mutable references are not allowed in statics
-  --> $DIR/E0388.rs:6:39
+  --> $DIR/E0388.rs:7:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^
@@ -30,7 +30,7 @@ LL | static STATIC_REF: &'static mut i32 = &mut X;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/E0388.rs:8:38
+  --> $DIR/E0388.rs:9:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^
@@ -44,7 +44,7 @@ LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/E0388.rs:8:38
+  --> $DIR/E0388.rs:9:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^

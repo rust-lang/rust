@@ -1,7 +1,7 @@
-// ignore-windows
-// ignore-macos
+//@ ignore-windows
+//@ ignore-macos
 
-// compile-flags: -g -C no-prepopulate-passes
+//@ compile-flags: -g -C no-prepopulate-passes
 
 #![feature(start)]
 

@@ -1,3 +1,11 @@
+Function name: no_spans::affected_function
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 1a, 1c, 00, 1d]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 26, 28) to (start + 0, 29)
+
 Function name: no_spans::affected_function::{closure#0}
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 1b, 0c, 00, 0e]
 Number of files: 1

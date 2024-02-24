@@ -1,4 +1,4 @@
-// run-pass
+//@ run-pass
 
 #![allow(unknown_lints)]
 // Check that an arena (TypedArena) can carry elements whose drop

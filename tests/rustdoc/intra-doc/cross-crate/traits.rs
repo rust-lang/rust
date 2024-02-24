@@ -1,5 +1,5 @@
-// aux-build:traits.rs
-// build-aux-docs
+//@ aux-build:traits.rs
+//@ build-aux-docs
 #![deny(rustdoc::broken_intra_doc_links)]
 
 extern crate inner;

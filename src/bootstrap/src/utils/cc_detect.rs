@@ -35,7 +35,7 @@ use crate::{Build, CLang, GitRepo};
 // try to infer the archiver path from the C compiler path.
 // In the future this logic should be replaced by calling into the `cc` crate.
 fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
-    if let Some(ar) = env::var_os(format!("AR_{}", target.triple.replace("-", "_"))) {
+    if let Some(ar) = env::var_os(format!("AR_{}", target.triple.replace('-', "_"))) {
         Some(PathBuf::from(ar))
     } else if let Some(ar) = env::var_os("AR") {
         Some(PathBuf::from(ar))
@@ -172,11 +172,9 @@ fn default_compiler(
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.
-        t if t.contains("android") => build
-            .config
-            .android_ndk
-            .as_ref()
-            .map(|ndk| ndk_compiler(compiler, &*target.triple, ndk)),
+        t if t.contains("android") => {
+            build.config.android_ndk.as_ref().map(|ndk| ndk_compiler(compiler, &target.triple, ndk))
+        }
 
         // The default gcc version from OpenBSD may be too old, try using egcc,
         // which is a gcc version from ports, if this is the case.
@@ -230,7 +228,7 @@ fn default_compiler(
 }
 
 pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> PathBuf {
-    let mut triple_iter = triple.split("-");
+    let mut triple_iter = triple.split('-');
     let triple_translated = if let Some(arch) = triple_iter.next() {
         let arch_new = match arch {
             "arm" | "armv7" | "armv7neon" | "thumbv7" | "thumbv7neon" => "armv7a",

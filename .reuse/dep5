@@ -52,7 +52,7 @@ Copyright: 2019 The Crossbeam Project Developers
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT OR Apache-2.0
 
-Files: library/std/src/sys/pal/unix/locks/fuchsia_mutex.rs
+Files: library/std/src/sys/locks/mutex/fuchsia.rs
 Copyright: 2016 The Fuchsia Authors
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: BSD-2-Clause AND (MIT OR Apache-2.0)

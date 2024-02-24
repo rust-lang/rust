@@ -921,8 +921,8 @@ pub(crate) enum CrateError {
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
     SymbolConflictsCurrent(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
-    DlOpen(String),
-    DlSym(String),
+    DlOpen(String, String),
+    DlSym(String, String),
     LocatorCombined(Box<CombinedLocatorError>),
     NotFound(Symbol),
 }
@@ -967,8 +967,8 @@ impl CrateError {
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
                 dcx.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });
             }
-            CrateError::DlOpen(s) | CrateError::DlSym(s) => {
-                dcx.emit_err(errors::DlError { span, err: s });
+            CrateError::DlOpen(path, err) | CrateError::DlSym(path, err) => {
+                dcx.emit_err(errors::DlError { span, path, err });
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;

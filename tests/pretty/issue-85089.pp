@@ -4,9 +4,9 @@ use ::std::prelude::rust_2015::*;
 extern crate std;
 // Test to print lifetimes on HIR pretty-printing.
 
-// pretty-compare-only
-// pretty-mode:hir
-// pp-exact:issue-85089.pp
+//@ pretty-compare-only
+//@ pretty-mode:hir
+//@ pp-exact:issue-85089.pp
 
 trait A<'x> { }
 trait B<'x> { }

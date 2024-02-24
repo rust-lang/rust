@@ -1,9 +1,9 @@
 // Test that we are able to reuse `main` even though a private
 // item was removed from the root module of crate`a`.
 
-// revisions:rpass1 rpass2
-// aux-build:a.rs
-// compile-flags: -Zquery-dep-graph
+//@ revisions:rpass1 rpass2
+//@ aux-build:a.rs
+//@ compile-flags: -Zquery-dep-graph
 
 #![feature(rustc_attrs)]
 #![crate_type = "bin"]

@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: GVN
+//@ unit-test: GVN
 
 // This used to ICE in const-prop
 

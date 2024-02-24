@@ -5,7 +5,7 @@
  * importing it by name, and instead we suggest importing it by glob.
  */
 extern crate unnamed_pub_trait_source;
-//~^ HELP the following trait is implemented but not in scope; perhaps add a `use` for it:
+//~^ HELP trait `Tr` which provides `method` is implemented but not in scope; perhaps you want to import it
 //~| SUGGESTION unnamed_pub_trait_source::prelude::*; // trait Tr
 
 fn main() {

@@ -10,7 +10,7 @@ error[E0609]: no field `ba` on type `(Box<(dyn Fn(Option<A>) -> Option<B> + 'sta
 LL |     let (ab, ba) = (i.ab, i.ba);
    |                             ^^ unknown field
 
-error[E0275]: overflow evaluating the requirement `_ <: Option<_>`
+error[E0275]: overflow assigning `_` to `Option<_>`
   --> $DIR/well-formed-recursion-limit.rs:15:33
    |
 LL |     let left = move |o_a| match o_a {

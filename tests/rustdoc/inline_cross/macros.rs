@@ -1,5 +1,5 @@
-// aux-build:macros.rs
-// build-aux-docs
+//@ aux-build:macros.rs
+//@ build-aux-docs
 
 #![feature(macro_test)]
 #![crate_name = "foo"]

@@ -1,5 +1,5 @@
-// ignore-debug: the debug assertions get in the way
-// compile-flags: -O
+//@ ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O
 #![crate_type = "lib"]
 
 // CHECK-LABEL: @slice_fold_to_last

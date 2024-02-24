@@ -1,4 +1,4 @@
-// compile-flags:--test
+//@ compile-flags:--test
 
 /// A check of using various process termination strategies
 ///

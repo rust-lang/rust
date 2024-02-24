@@ -589,12 +589,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 && last_opaque_ty.ty != hidden_type.ty
             {
                 assert!(!self.fcx.next_trait_solver());
-                hidden_type
-                    .report_mismatch(&last_opaque_ty, opaque_type_key.def_id, self.tcx())
-                    .stash(
+                if let Ok(d) = hidden_type.build_mismatch_error(
+                    &last_opaque_ty,
+                    opaque_type_key.def_id,
+                    self.tcx(),
+                ) {
+                    d.stash(
                         self.tcx().def_span(opaque_type_key.def_id),
                         StashKey::OpaqueHiddenTypeMismatch,
                     );
+                }
             }
         }
     }

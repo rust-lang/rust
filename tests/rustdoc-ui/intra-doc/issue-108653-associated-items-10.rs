@@ -15,7 +15,7 @@
 // 1 | //! [`derive@PartialEq`]
 //   |       +++++++
 
-// check-pass
+//@ check-pass
 
 #![deny(rustdoc::broken_intra_doc_links)]
 

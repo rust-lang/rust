@@ -1,6 +1,6 @@
-// aux-build:a.rs
-// aux-build:b.rs
-// revisions:rpass1 rpass2
+//@ aux-build:a.rs
+//@ aux-build:b.rs
+//@ revisions:rpass1 rpass2
 
 #![feature(rustc_attrs)]
 

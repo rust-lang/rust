@@ -188,9 +188,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// This is similar to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. However, unlike `self as usize`, casting the returned address
-    /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
-    /// properly restore the lost information and obtain a dereferenceable pointer, use
-    /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
+    /// back to a pointer yields yields a [pointer without provenance][without_provenance_mut], which is undefined
+    /// behavior to dereference. To properly restore the lost information and obtain a
+    /// dereferenceable pointer, use [`with_addr`][pointer::with_addr] or
+    /// [`map_addr`][pointer::map_addr].
     ///
     /// If using those APIs is not possible because there is no way to preserve a pointer with the
     /// required provenance, then Strict Provenance might not be for you. Use pointer-integer casts

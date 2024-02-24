@@ -989,14 +989,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     arith_red!(
         simd_reduce_add_unordered: BinaryOp::Plus,
-        vector_reduce_fadd_fast,
+        vector_reduce_fadd_reassoc,
         false,
         add,
         0.0 // TODO: Use this argument.
     );
     arith_red!(
         simd_reduce_mul_unordered: BinaryOp::Mult,
-        vector_reduce_fmul_fast,
+        vector_reduce_fmul_reassoc,
         false,
         mul,
         1.0
@@ -1041,9 +1041,6 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     minmax_red!(simd_reduce_min: vector_reduce_min, vector_reduce_fmin);
     minmax_red!(simd_reduce_max: vector_reduce_max, vector_reduce_fmax);
-    // TODO(sadlerap): revisit these intrinsics to generate more optimal reductions
-    minmax_red!(simd_reduce_min_nanless: vector_reduce_min, vector_reduce_fmin);
-    minmax_red!(simd_reduce_max_nanless: vector_reduce_max, vector_reduce_fmax);
 
     macro_rules! bitwise_red {
         ($name:ident : $op:expr, $boolean:expr) => {

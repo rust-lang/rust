@@ -95,7 +95,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let result = run_path_with_cstr(p, |p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
+    let result = run_path_with_cstr(p, &|p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
     match result == (0 as libc::c_int) {
         true => Ok(()),
         false => Err(io::Error::last_os_error()),
@@ -227,7 +227,7 @@ pub fn env() -> Env {
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
-    run_with_cstr(k.as_bytes(), |k| {
+    run_with_cstr(k.as_bytes(), &|k| {
         let _guard = env_read_lock();
         let v = unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char;
 
@@ -245,8 +245,8 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    run_with_cstr(k.as_bytes(), |k| {
-        run_with_cstr(v.as_bytes(), |v| unsafe {
+    run_with_cstr(k.as_bytes(), &|k| {
+        run_with_cstr(v.as_bytes(), &|v| unsafe {
             let _guard = env_write_lock();
             cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
         })
@@ -254,7 +254,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
-    run_with_cstr(n.as_bytes(), |nbuf| unsafe {
+    run_with_cstr(n.as_bytes(), &|nbuf| unsafe {
         let _guard = env_write_lock();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
     })

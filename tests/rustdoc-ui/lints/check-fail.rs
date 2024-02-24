@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options --check
+//@ compile-flags: -Z unstable-options --check
 
 #![feature(rustdoc_missing_doc_code_examples)]
 #![deny(missing_docs)]

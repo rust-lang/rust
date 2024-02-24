@@ -1397,3 +1397,22 @@ pub use bridge2::server2::Span2;
         "#]],
     );
 }
+
+#[test]
+fn flyimport_only_traits_in_impl_trait_block() {
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+pub struct Bar;
+
+impl Foo$0 for Bar { }
+//- /lib.rs crate:dep
+pub trait FooTrait;
+
+pub struct FooStruct;
+"#,
+        expect![[r#"
+            tt FooTrait (use dep::FooTrait)
+        "#]],
+    );
+}

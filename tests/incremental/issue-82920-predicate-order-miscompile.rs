@@ -1,4 +1,4 @@
-// revisions: rpass1 rpass2
+//@ revisions: rpass1 rpass2
 
 trait MyTrait: One + Two {}
 impl<T> One for T {

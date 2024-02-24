@@ -22,7 +22,7 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb5];
+        _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb7];
     }
 
     bb1: {
@@ -42,7 +42,7 @@ fn main() -> () {
         _6 = const 0_usize;
         _7 = Len(_2);
         _8 = Lt(_6, _7);
-        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb3, unwind: bb5];
+        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb4, unwind: bb7];
     }
 
     bb2: {
@@ -51,6 +51,10 @@ fn main() -> () {
     }
 
     bb3: {
+        goto -> bb2;
+    }
+
+    bb4: {
         _5 = (_2[_6].0: u64);
         PlaceMention(_5);
         StorageDead(_6);
@@ -60,12 +64,16 @@ fn main() -> () {
         return;
     }
 
-    bb4: {
+    bb5: {
         FakeRead(ForMatchedPlace(None), _5);
         unreachable;
     }
 
-    bb5 (cleanup): {
+    bb6: {
+        goto -> bb5;
+    }
+
+    bb7 (cleanup): {
         resume;
     }
 }

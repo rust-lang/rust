@@ -3,7 +3,7 @@
 // Test via: rustc -Zunpretty normal tests/pretty/block-comment-wchar.rs
 // ignore-tidy-cr
 // ignore-tidy-tab
-// pp-exact:block-comment-wchar.pp
+//@ pp-exact:block-comment-wchar.pp
 fn f() {
     fn nested() {
         /*

@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 unsafe trait UnsafeTrait {
     fn foo(&self);

@@ -2,7 +2,7 @@ use std::io::Write;
 
 use tabled::builder::Builder;
 use tabled::settings::object::Columns;
-use tabled::settings::style::{BorderChar, Offset};
+use tabled::settings::style::{LineChar, Offset};
 use tabled::settings::{Modify, Style};
 
 use crate::environment::Environment;
@@ -40,11 +40,11 @@ pub fn print_binary_sizes(env: &Environment) -> anyhow::Result<()> {
     // Write to GitHub summary
     if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
         let mut builder = Builder::default();
+        builder.push_record(vec!["Artifact", "Size"]);
         for (name, size_formatted) in items {
             builder.push_record(vec![name, size_formatted]);
         }
 
-        builder.set_header(vec!["Artifact", "Size"]);
         let mut table = builder.build();
 
         let mut file = std::fs::File::options().append(true).create(true).open(summary_path)?;
@@ -52,7 +52,7 @@ pub fn print_binary_sizes(env: &Environment) -> anyhow::Result<()> {
             file,
             "# Artifact size\n{}\n",
             table.with(Style::markdown()).with(
-                Modify::new(Columns::single(1)).with(BorderChar::horizontal(':', Offset::End(0))),
+                Modify::new(Columns::single(1)).with(LineChar::horizontal(':', Offset::End(0))),
             )
         )?;
     }

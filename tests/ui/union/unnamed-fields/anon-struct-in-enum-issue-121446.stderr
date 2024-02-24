@@ -1,0 +1,16 @@
+error: unnamed fields are not allowed outside of structs or unions
+  --> $DIR/anon-struct-in-enum-issue-121446.rs:7:9
+   |
+LL |         _ : struct { field: u8 },
+   |         -^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         unnamed field declared here
+
+error: anonymous structs are not allowed outside of unnamed struct or union fields
+  --> $DIR/anon-struct-in-enum-issue-121446.rs:7:13
+   |
+LL |         _ : struct { field: u8 },
+   |             ^^^^^^^^^^^^^^^^^^^^ anonymous struct declared here
+
+error: aborting due to 2 previous errors
+

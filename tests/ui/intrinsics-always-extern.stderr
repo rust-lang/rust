@@ -9,6 +9,8 @@ error[E0093]: unrecognized intrinsic function: `hello`
    |
 LL | extern "rust-intrinsic" fn hello() {
    |                            ^^^^^ unrecognized intrinsic
+   |
+   = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
   --> $DIR/intrinsics-always-extern.rs:8:43

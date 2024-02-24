@@ -1,5 +1,5 @@
-// aux-build:self.rs
-// build-aux-docs
+//@ aux-build:self.rs
+//@ build-aux-docs
 
 extern crate cross_crate_self;
 

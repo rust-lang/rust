@@ -14,6 +14,8 @@ the intrinsic directly when you can.
 Many intrinsics can be written in pure rust, albeit inefficiently or without supporting
 some features that only exist on some backends. Backends can simply not implement those
 intrinsics without causing any code miscompilations or failures to compile.
+All intrinsic fallback bodies are automatically made cross-crate inlineable (like `#[inline]`)
+by the codegen backend, but not the MIR inliner.
 
 ```rust
 #![feature(rustc_attrs, effects)]

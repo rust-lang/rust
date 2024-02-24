@@ -1,7 +1,7 @@
 // This test does not passed with gdb < 8.0. See #53497.
-// min-gdb-version: 10.1
+//@ min-gdb-version: 10.1
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

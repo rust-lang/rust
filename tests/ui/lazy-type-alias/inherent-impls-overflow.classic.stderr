@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `Loop`
+error[E0275]: overflow normalizing the type alias `Loop`
   --> $DIR/inherent-impls-overflow.rs:7:13
    |
 LL | type Loop = Loop;
@@ -6,7 +6,7 @@ LL | type Loop = Loop;
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
-error[E0275]: overflow evaluating the requirement `Loop`
+error[E0275]: overflow normalizing the type alias `Loop`
   --> $DIR/inherent-impls-overflow.rs:9:1
    |
 LL | impl Loop {}
@@ -14,24 +14,24 @@ LL | impl Loop {}
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
-error[E0275]: overflow evaluating the requirement `Poly0<((((((...,),),),),),)>`
-  --> $DIR/inherent-impls-overflow.rs:11:17
+error[E0275]: overflow normalizing the type alias `Poly0<(((((((...,),),),),),),)>`
+  --> $DIR/inherent-impls-overflow.rs:13:17
    |
 LL | type Poly0<T> = Poly1<(T,)>;
    |                 ^^^^^^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
-error[E0275]: overflow evaluating the requirement `Poly1<((((((...,),),),),),)>`
-  --> $DIR/inherent-impls-overflow.rs:14:17
+error[E0275]: overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
+  --> $DIR/inherent-impls-overflow.rs:16:17
    |
 LL | type Poly1<T> = Poly0<(T,)>;
    |                 ^^^^^^^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 
-error[E0275]: overflow evaluating the requirement `Poly1<((((((...,),),),),),)>`
-  --> $DIR/inherent-impls-overflow.rs:18:1
+error[E0275]: overflow normalizing the type alias `Poly1<(((((((...,),),),),),),)>`
+  --> $DIR/inherent-impls-overflow.rs:20:1
    |
 LL | impl Poly0<()> {}
    | ^^^^^^^^^^^^^^^^^

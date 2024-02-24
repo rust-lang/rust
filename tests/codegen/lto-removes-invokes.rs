@@ -1,5 +1,5 @@
-// compile-flags: -C lto -C panic=abort -O
-// no-prefer-dynamic
+//@ compile-flags: -C lto -C panic=abort -O
+//@ no-prefer-dynamic
 
 fn main() {
     foo();

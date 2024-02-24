@@ -570,8 +570,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             _ => {
                 self.tcx()
                     .dcx()
-                    .span_delayed_bug(span, "struct or tuple struct pattern not applied to an ADT");
-                Err(())
+                    .span_bug(span, "struct or tuple struct pattern not applied to an ADT");
             }
         }
     }

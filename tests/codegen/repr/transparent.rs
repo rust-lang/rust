@@ -1,7 +1,7 @@
-// compile-flags: -O -C no-prepopulate-passes
-// ignore-riscv64 riscv64 has an i128 type used with test_Vector
-// ignore-s390x s390x with default march passes vector types per reference
-// ignore-loongarch64 see codegen/loongarch-abi for loongarch function call tests
+//@ compile-flags: -O -C no-prepopulate-passes
+//@ ignore-riscv64 riscv64 has an i128 type used with test_Vector
+//@ ignore-s390x s390x with default march passes vector types per reference
+//@ ignore-loongarch64 see codegen/loongarch-abi for loongarch function call tests
 
 // This codegen test embeds assumptions about how certain "C" psABIs are handled
 // so it doesn't apply to all architectures or even all OS

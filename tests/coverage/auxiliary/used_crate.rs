@@ -1,6 +1,6 @@
 #![allow(unused_assignments, unused_variables)]
 // Verify that coverage works with optimizations:
-// compile-flags: -C opt-level=3
+//@ compile-flags: -C opt-level=3
 
 use std::fmt::Debug;
 

@@ -425,7 +425,7 @@ pub fn get_clang_cl_resource_dir(clang_cl_path: &str) -> PathBuf {
     // Similar to how LLVM does it, to find clang's library runtime directory:
     // - we ask `clang-cl` to locate the `clang_rt.builtins` lib.
     let mut builtins_locator = Command::new(clang_cl_path);
-    builtins_locator.args(&["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
+    builtins_locator.args(["/clang:-print-libgcc-file-name", "/clang:--rtlib=compiler-rt"]);
 
     let clang_rt_builtins = output(&mut builtins_locator);
     let clang_rt_builtins = Path::new(clang_rt_builtins.trim());
@@ -475,7 +475,7 @@ pub fn dir_is_empty(dir: &Path) -> bool {
 /// the "y" part from the string.
 pub fn extract_beta_rev(version: &str) -> Option<String> {
     let parts = version.splitn(2, "-beta.").collect::<Vec<_>>();
-    let count = parts.get(1).and_then(|s| s.find(' ').map(|p| (&s[..p]).to_string()));
+    let count = parts.get(1).and_then(|s| s.find(' ').map(|p| s[..p].to_string()));
 
     count
 }
@@ -559,11 +559,10 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
     // ',values("tvos","watchos")' or '' (nothing) when there are no values.
     let next = match values {
         Some(values) => {
-            let mut tmp =
-                values.iter().map(|val| [",", "\"", val, "\""]).flatten().collect::<String>();
+            let mut tmp = values.iter().flat_map(|val| [",", "\"", val, "\""]).collect::<String>();
 
             tmp.insert_str(1, "values(");
-            tmp.push_str(")");
+            tmp.push(')');
             tmp
         }
         None => "".to_string(),

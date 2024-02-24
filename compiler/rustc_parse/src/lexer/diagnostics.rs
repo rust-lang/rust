@@ -1,6 +1,6 @@
 use super::UnmatchedDelim;
 use rustc_ast::token::Delimiter;
-use rustc_errors::Diagnostic;
+use rustc_errors::DiagnosticBuilder;
 use rustc_span::source_map::SourceMap;
 use rustc_span::Span;
 
@@ -31,7 +31,7 @@ pub fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> 
 // When we get a `)` or `]` for `{`, we should emit help message here
 // it's more friendly compared to report `unmatched error` in later phase
 pub fn report_missing_open_delim(
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     unmatched_delims: &[UnmatchedDelim],
 ) -> bool {
     let mut reported_missing_open = false;
@@ -55,7 +55,7 @@ pub fn report_missing_open_delim(
 }
 
 pub fn report_suspicious_mismatch_block(
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     diag_info: &TokenTreeDiagInfo,
     sm: &SourceMap,
     delim: Delimiter,

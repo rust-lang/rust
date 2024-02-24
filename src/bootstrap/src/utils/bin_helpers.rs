@@ -39,8 +39,7 @@ pub(crate) fn maybe_dump(dump_name: String, cmd: &Command) {
     if let Ok(dump_dir) = env::var("DUMP_BOOTSTRAP_SHIMS") {
         let dump_file = format!("{dump_dir}/{dump_name}");
 
-        let mut file =
-            OpenOptions::new().create(true).write(true).append(true).open(&dump_file).unwrap();
+        let mut file = OpenOptions::new().create(true).append(true).open(dump_file).unwrap();
 
         let cmd_dump = format!("{:?}\n", cmd);
         let cmd_dump = cmd_dump.replace(&env::var("BUILD_OUT").unwrap(), "${BUILD_OUT}");

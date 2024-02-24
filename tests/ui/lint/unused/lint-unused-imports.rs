@@ -66,7 +66,6 @@ pub mod bar {
 
 fn g() {
     use self::g; //~ ERROR unused import: `self::g`
-    //~^ ERROR the item `g` is imported redundantly
     fn f() {
         self::g();
     }
@@ -76,7 +75,6 @@ fn g() {
 #[allow(unused_variables)]
 fn h() {
     use test2::foo; //~ ERROR unused import: `test2::foo`
-    //~^ ERROR the item `foo` is imported redundantly
     let foo = 0;
 }
 

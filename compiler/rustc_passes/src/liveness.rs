@@ -526,8 +526,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn define_bindings_in_pat(&mut self, pat: &hir::Pat<'_>, mut succ: LiveNode) -> LiveNode {
-        // In an or-pattern, only consider the first pattern; any later patterns
-        // must have the same bindings, and we also consider the first pattern
+        // In an or-pattern, only consider the first non-never pattern; any later patterns
+        // must have the same bindings, and we also consider that pattern
         // to be the "authoritative" set of ids.
         pat.each_binding_or_first(&mut |_, hir_id, pat_sp, ident| {
             let ln = self.live_node(hir_id, pat_sp);

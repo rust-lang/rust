@@ -4,13 +4,13 @@
 //!
 //! # Safety
 //!
-//! Many functions in this module take raw pointers as arguments and read from
-//! or write to them. For this to be safe, these pointers must be *valid*.
-//! Whether a pointer is valid depends on the operation it is used for
-//! (read or write), and the extent of the memory that is accessed (i.e.,
-//! how many bytes are read/written). Most functions use `*mut T` and `*const T`
-//! to access only a single value, in which case the documentation omits the size
-//! and implicitly assumes it to be `size_of::<T>()` bytes.
+//! Many functions in this module take raw pointers as arguments and read from or write to them. For
+//! this to be safe, these pointers must be *valid* for the given access. Whether a pointer is valid
+//! depends on the operation it is used for (read or write), and the extent of the memory that is
+//! accessed (i.e., how many bytes are read/written) -- it makes no sense to ask "is this pointer
+//! valid"; one has to ask "is this pointer valid for a given access". Most functions use `*mut T`
+//! and `*const T` to access only a single value, in which case the documentation omits the size and
+//! implicitly assumes it to be `size_of::<T>()` bytes.
 //!
 //! The precise rules for validity are not determined yet. The guarantees that are
 //! provided at this point are very minimal:
@@ -26,7 +26,7 @@
 //!   some memory happens to exist at that address and gets deallocated. This corresponds to writing
 //!   your own allocator: allocating zero-sized objects is not very hard. The canonical way to
 //!   obtain a pointer that is valid for zero-sized accesses is [`NonNull::dangling`].
-//FIXME: mention `ptr::invalid` above, once it is stable.
+//FIXME: mention `ptr::dangling` above, once it is stable.
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -43,6 +43,10 @@
 //! will be provided eventually, as the [aliasing] rules are being determined. For more
 //! information, see the [book] as well as the section in the reference devoted
 //! to [undefined behavior][ub].
+//!
+//! We say that a pointer is "dangling" if it is not valid for any non-zero-sized accesses. This
+//! means out-of-bounds pointers, pointers to freed memory, null pointers, and pointers created with
+//! [`NonNull::dangling`] are all dangling.
 //!
 //! ## Alignment
 //!
@@ -167,6 +171,7 @@
 //! * The **address-space** it is part of (e.g. "data" vs "code" in WASM).
 //! * The **address** it points to, which can be represented by a `usize`.
 //! * The **provenance** it has, defining the memory it has permission to access.
+//!   Provenance can be absent, in which case the pointer does not have permission to access any memory.
 //!
 //! Under Strict Provenance, a usize *cannot* accurately represent a pointer, and converting from
 //! a pointer to a usize is generally an operation which *only* extracts the address. It is
@@ -270,11 +275,12 @@
 //!
 //! But it *is* still sound to:
 //!
-//! * Create an invalid pointer from just an address (see [`ptr::invalid`][]). This can
-//!   be used for sentinel values like `null` *or* to represent a tagged pointer that will
-//!   never be dereferenceable. In general, it is always sound for an integer to pretend
-//!   to be a pointer "for fun" as long as you don't use operations on it which require
-//!   it to be valid (offset, read, write, etc).
+//! * Create a pointer without provenance from just an address (see [`ptr::dangling`][]). Such a
+//!   pointer cannot be used for memory accesses (except for zero-sized accesses). This can still be
+//!   useful for sentinel values like `null` *or* to represent a tagged pointer that will never be
+//!   dereferenceable. In general, it is always sound for an integer to pretend to be a pointer "for
+//!   fun" as long as you don't use operations on it which require it to be valid (non-zero-sized
+//!   offset, read, write, etc).
 //!
 //! * Forge an allocation of size zero at any sufficiently aligned non-null address.
 //!   i.e. the usual "ZSTs are fake, do what you want" rules apply *but* this only applies
@@ -283,7 +289,7 @@
 //!   that allocation and it will still get invalidated if the allocation gets deallocated.
 //!   In the future we may introduce an API to make such a forged allocation explicit.
 //!
-//! * [`wrapping_offset`][] a pointer outside its provenance. This includes invalid pointers
+//! * [`wrapping_offset`][] a pointer outside its provenance. This includes pointers
 //!   which have "no" provenance. Unfortunately there may be practical limits on this for a
 //!   particular platform, and it's an open question as to how to specify this (if at all).
 //!   Notably, [CHERI][] relies on a compression scheme that can't handle a
@@ -294,7 +300,7 @@
 //!   generous (think kilobytes, not bytes).
 //!
 //! * Compare arbitrary pointers by address. Addresses *are* just integers and so there is
-//!   always a coherent answer, even if the pointers are invalid or from different
+//!   always a coherent answer, even if the pointers are dangling or from different
 //!   address-spaces/provenances. Of course, comparing addresses from different address-spaces
 //!   is generally going to be *meaningless*, but so is comparing Kilograms to Meters, and Rust
 //!   doesn't prevent that either. Similarly, if you get "lucky" and notice that a pointer
@@ -367,7 +373,7 @@
 //! [`with_addr`]: pointer::with_addr
 //! [`map_addr`]: pointer::map_addr
 //! [`addr`]: pointer::addr
-//! [`ptr::invalid`]: core::ptr::invalid
+//! [`ptr::dangling`]: core::ptr::dangling
 //! [`expose_addr`]: pointer::expose_addr
 //! [`from_exposed_addr`]: from_exposed_addr
 //! [Miri]: https://github.com/rust-lang/miri
@@ -537,7 +543,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
-    from_raw_parts(invalid(0), ())
+    from_raw_parts(without_provenance(0), ())
 }
 
 /// Creates a null mutable raw pointer.
@@ -563,32 +569,26 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
-    from_raw_parts_mut(invalid_mut(0), ())
+    from_raw_parts_mut(without_provenance_mut(0), ())
 }
 
-/// Creates an invalid pointer with the given address.
+/// Creates a pointer with the given address and no provenance.
+///
+/// Without provenance, this pointer is not associated with any actual allocation. Such a
+/// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
+/// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers are
+/// little more than a usize address in disguise.
 ///
 /// This is different from `addr as *const T`, which creates a pointer that picks up a previously
 /// exposed provenance. See [`from_exposed_addr`] for more details on that operation.
 ///
-/// The module's top-level documentation discusses the precise meaning of an "invalid"
-/// pointer but essentially this expresses that the pointer is not associated
-/// with any actual allocation and is little more than a usize address in disguise.
-///
-/// This pointer will have no provenance associated with it and is therefore
-/// UB to read/write/offset. This mostly exists to facilitate things
-/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
-///
-/// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
-/// may be desirable to give them their own API just to make that 100% clear.)
-///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.
 #[inline(always)]
 #[must_use]
 #[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[unstable(feature = "strict_provenance", issue = "95228")]
-pub const fn invalid<T>(addr: usize) -> *const T {
+pub const fn without_provenance<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     // We use transmute rather than a cast so tools like Miri can tell that this
     // is *not* the same as from_exposed_addr.
@@ -597,21 +597,32 @@ pub const fn invalid<T>(addr: usize) -> *const T {
     unsafe { mem::transmute(addr) }
 }
 
-/// Creates an invalid mutable pointer with the given address.
+/// Creates a new pointer that is dangling, but well-aligned.
+///
+/// This is useful for initializing types which lazily allocate, like
+/// `Vec::new` does.
+///
+/// Note that the pointer value may potentially represent a valid pointer to
+/// a `T`, which means this must not be used as a "not yet initialized"
+/// sentinel value. Types that lazily allocate must track initialization by
+/// some other means.
+#[inline(always)]
+#[must_use]
+#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[unstable(feature = "strict_provenance", issue = "95228")]
+pub const fn dangling<T>() -> *const T {
+    without_provenance(mem::align_of::<T>())
+}
+
+/// Creates a pointer with the given address and no provenance.
+///
+/// Without provenance, this pointer is not associated with any actual allocation. Such a
+/// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
+/// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers are
+/// little more than a usize address in disguise.
 ///
 /// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
 /// exposed provenance. See [`from_exposed_addr_mut`] for more details on that operation.
-///
-/// The module's top-level documentation discusses the precise meaning of an "invalid"
-/// pointer but essentially this expresses that the pointer is not associated
-/// with any actual allocation and is little more than a usize address in disguise.
-///
-/// This pointer will have no provenance associated with it and is therefore
-/// UB to read/write/offset. This mostly exists to facilitate things
-/// like `ptr::null` and `NonNull::dangling` which make invalid pointers.
-///
-/// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
-/// may be desirable to give them their own API just to make that 100% clear.)
 ///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.
@@ -619,13 +630,30 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 #[must_use]
 #[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[unstable(feature = "strict_provenance", issue = "95228")]
-pub const fn invalid_mut<T>(addr: usize) -> *mut T {
+pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     // We use transmute rather than a cast so tools like Miri can tell that this
     // is *not* the same as from_exposed_addr.
     // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
     // pointer).
     unsafe { mem::transmute(addr) }
+}
+
+/// Creates a new pointer that is dangling, but well-aligned.
+///
+/// This is useful for initializing types which lazily allocate, like
+/// `Vec::new` does.
+///
+/// Note that the pointer value may potentially represent a valid pointer to
+/// a `T`, which means this must not be used as a "not yet initialized"
+/// sentinel value. Types that lazily allocate must track initialization by
+/// some other means.
+#[inline(always)]
+#[must_use]
+#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
+#[unstable(feature = "strict_provenance", issue = "95228")]
+pub const fn dangling_mut<T>() -> *mut T {
+    without_provenance_mut(mem::align_of::<T>())
 }
 
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.

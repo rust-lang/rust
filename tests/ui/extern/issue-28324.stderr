@@ -1,3 +1,9 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/issue-28324.rs:5:23
+   |
+LL | pub static BAZ: u32 = *&error_message_count;
+   |                       ^^^^^^^^^^^^^^^^^^^^^ cannot access extern static (DefId(0:4 ~ issue_28324[8ec4]::{extern#0}::error_message_count))
+
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/issue-28324.rs:5:25
    |
@@ -6,6 +12,7 @@ LL | pub static BAZ: u32 = *&error_message_count;
    |
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0133`.
+Some errors have detailed explanations: E0080, E0133.
+For more information about an error, try `rustc --explain E0080`.

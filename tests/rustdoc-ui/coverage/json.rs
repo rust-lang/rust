@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags:-Z unstable-options --output-format json --show-coverage
+//@ check-pass
+//@ compile-flags:-Z unstable-options --output-format json --show-coverage
 
 pub mod foo {
     /// Hello!

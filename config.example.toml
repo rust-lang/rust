@@ -612,6 +612,10 @@
 # Indicates whether symbols should be stripped using `-Cstrip=symbols`.
 #strip = false
 
+# Forces frame pointers to be used with `-Cforce-frame-pointers`.
+# This can be helpful for profiling at a small performance cost.
+# frame-pointers = false
+
 # Indicates whether stack protectors should be used
 # via the unstable option `-Zstack-protector`.
 #
@@ -829,7 +833,7 @@
 # target triples containing `-none`, `nvptx`, `switch`, or `-uefi`.
 #no-std = <platform-specific> (bool)
 
-# This is an array of the codegen backends that will be compiled a rustc
+# This is an array of the codegen backends that will be
 # compiled for this target, overriding the global rust.codegen-backends option.
 # See that option for more info.
 #codegen-backends = rust.codegen-backends (array)

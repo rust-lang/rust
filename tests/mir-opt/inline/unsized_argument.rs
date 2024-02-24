@@ -1,4 +1,4 @@
-// needs-unwind
+//@ needs-unwind
 #![feature(unsized_fn_params)]
 
 #[inline(always)]

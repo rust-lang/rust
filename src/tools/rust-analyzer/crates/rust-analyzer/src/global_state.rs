@@ -9,7 +9,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use hir::Change;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId};
-use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
+use ide_db::base_db::{CrateId, ProcMacroPaths};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
@@ -74,8 +74,8 @@ pub(crate) struct GlobalState {
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
 
     // proc macros
-    pub(crate) proc_macro_changed: bool,
     pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
+    pub(crate) build_deps_changed: bool,
 
     // Flycheck
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
@@ -203,8 +203,9 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
             config_errors: Default::default(),
 
-            proc_macro_changed: false,
             proc_macro_clients: Arc::from_iter([]),
+
+            build_deps_changed: false,
 
             flycheck: Arc::from_iter([]),
             flycheck_sender,
@@ -300,12 +301,19 @@ impl GlobalState {
                 if let Some(path) = vfs_path.as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.kind()) {
-                        workspace_structure_change = Some((path.clone(), false));
+                        workspace_structure_change = Some((
+                            path.clone(),
+                            false,
+                            AsRef::<std::path::Path>::as_ref(&path).ends_with("build.rs"),
+                        ));
                     }
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
-                        workspace_structure_change =
-                            Some((path, self.crate_graph_file_dependencies.contains(vfs_path)));
+                        workspace_structure_change = Some((
+                            path,
+                            self.crate_graph_file_dependencies.contains(vfs_path),
+                            false,
+                        ));
                     } else if path.extension() == Some("rs".as_ref()) {
                         modified_rust_files.push(file.file_id);
                     }
@@ -346,23 +354,28 @@ impl GlobalState {
         };
 
         self.analysis_host.apply_change(change);
+
         {
-            let raw_database = self.analysis_host.raw_database();
+            if !matches!(&workspace_structure_change, Some((.., true))) {
+                _ = self
+                    .deferred_task_queue
+                    .sender
+                    .send(crate::main_loop::QueuedTask::CheckProcMacroSources(modified_rust_files));
+            }
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
             // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
-            if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
+            if let Some((path, force_crate_graph_reload, build_scripts_touched)) =
+                workspace_structure_change
+            {
                 self.fetch_workspaces_queue.request_op(
                     format!("workspace vfs file change: {path}"),
                     force_crate_graph_reload,
                 );
+                if build_scripts_touched {
+                    self.fetch_build_data_queue.request_op(format!("build.rs changed: {path}"), ());
+                }
             }
-            self.proc_macro_changed = modified_rust_files.into_iter().any(|file_id| {
-                let crates = raw_database.relevant_crates(file_id);
-                let crate_graph = raw_database.crate_graph();
-
-                crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
-            });
         }
 
         true

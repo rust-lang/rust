@@ -2,8 +2,8 @@
 //! Tests that coroutines that cannot return or unwind don't have unnecessary
 //! panic branches.
 
-// compile-flags: -C panic=abort
-// no-prefer-dynamic
+//@ compile-flags: -C panic=abort
+//@ no-prefer-dynamic
 
 #![feature(coroutines, coroutine_trait)]
 

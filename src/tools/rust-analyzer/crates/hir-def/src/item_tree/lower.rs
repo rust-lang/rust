@@ -2,12 +2,12 @@
 
 use std::collections::hash_map::Entry;
 
-use hir_expand::{ast_id_map::AstIdMap, span_map::SpanMapRef, HirFileId};
-use syntax::ast::{self, HasModuleItem, HasTypeBounds, IsString};
+use hir_expand::{ast_id_map::AstIdMap, span_map::SpanMapRef};
+use syntax::ast::{HasModuleItem, HasTypeBounds, IsString};
 
 use crate::{
-    generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
-    type_ref::{LifetimeRef, TraitBoundModifier, TraitRef},
+    generics::{GenericParamsCollector, TypeParamData, TypeParamProvenance},
+    type_ref::{LifetimeRef, TraitBoundModifier},
     LocalLifetimeParamId, LocalTypeOrConstParamId,
 };
 

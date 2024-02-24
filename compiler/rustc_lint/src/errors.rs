@@ -1,5 +1,7 @@
 use crate::fluent_generated as fluent;
-use rustc_errors::{codes::*, AddToDiagnostic, Diagnostic, SubdiagnosticMessageOp};
+use rustc_errors::{
+    codes::*, AddToDiagnostic, DiagnosticBuilder, EmissionGuarantee, SubdiagnosticMessageOp,
+};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
@@ -24,7 +26,11 @@ pub enum OverruledAttributeSub {
 }
 
 impl AddToDiagnostic for OverruledAttributeSub {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+        self,
+        diag: &mut DiagnosticBuilder<'_, G>,
+        _f: F,
+    ) {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
                 diag.note(fluent::lint_default_source);

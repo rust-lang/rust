@@ -1,10 +1,10 @@
-// revisions: powerpc powerpc64 powerpc64le
-//[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
-//[powerpc] needs-llvm-components: powerpc
-//[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
-//[powerpc64] needs-llvm-components: powerpc
-//[powerpc64le] compile-flags: --target powerpc64le-unknown-linux-gnu
-//[powerpc64le] needs-llvm-components: powerpc
+//@ revisions: powerpc powerpc64 powerpc64le
+//@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
+//@[powerpc] needs-llvm-components: powerpc
+//@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
+//@[powerpc64] needs-llvm-components: powerpc
+//@[powerpc64le] compile-flags: --target powerpc64le-unknown-linux-gnu
+//@[powerpc64le] needs-llvm-components: powerpc
 
 #![crate_type = "rlib"]
 #![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]

@@ -1,4 +1,4 @@
-// compile-flags: -g -O
+//@ compile-flags: -g -O
 
 // Check that simple constant values are preserved in debuginfo across both MIR opts and LLVM opts
 

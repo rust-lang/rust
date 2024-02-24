@@ -1,9 +1,8 @@
 //! `solid_fs.h`
 use crate::os::raw::{c_char, c_int, c_uchar};
 pub use libc::{
-    blksize_t, dev_t, ino_t, off_t, stat, time_t, O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR,
-    O_TRUNC, O_WRONLY, SEEK_CUR, SEEK_END, SEEK_SET, S_IEXEC, S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO,
-    S_IFMT, S_IFREG, S_IREAD, S_IWRITE,
+    ino_t, off_t, stat, time_t, O_APPEND, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC, O_WRONLY,
+    SEEK_CUR, SEEK_END, SEEK_SET, S_IFBLK, S_IFCHR, S_IFDIR, S_IFIFO, S_IFMT, S_IFREG, S_IWRITE,
 };
 
 pub const O_ACCMODE: c_int = 0x3;

@@ -62,6 +62,20 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
+
+    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
+    #[salsa::input]
+    fn data_layout(&self, krate: CrateId) -> TargetLayoutLoadResult;
+
+    #[salsa::input]
+    fn toolchain(&self, krate: CrateId) -> Option<Version>;
+
+    #[salsa::transparent]
+    fn toolchain_channel(&self, krate: CrateId) -> Option<ReleaseChannel>;
+}
+
+fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseChannel> {
+    db.toolchain(krate).as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {

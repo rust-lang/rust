@@ -1,7 +1,7 @@
 // Verify that debuginfo column numbers are 1-based byte offsets.
 //
-// ignore-windows
-// compile-flags: -C debuginfo=2
+//@ ignore-windows
+//@ compile-flags: -C debuginfo=2
 
 fn main() {
     unsafe {

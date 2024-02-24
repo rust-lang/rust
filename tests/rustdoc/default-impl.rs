@@ -1,5 +1,5 @@
-// aux-build:rustdoc-default-impl.rs
-// ignore-cross-compile
+//@ aux-build:rustdoc-default-impl.rs
+//@ ignore-cross-compile
 
 extern crate rustdoc_default_impl as foo;
 

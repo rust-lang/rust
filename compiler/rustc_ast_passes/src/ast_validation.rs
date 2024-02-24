@@ -881,9 +881,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         &item.vis,
                         errors::VisibilityNotPermittedNote::TraitImpl,
                     );
-                    // njn: use Dummy here
-                    if let TyKind::Err(_) = self_ty.kind {
-                        this.dcx().emit_err(errors::ObsoleteAuto { span: item.span });
+                    if let TyKind::Dummy = self_ty.kind {
+                        // Abort immediately otherwise the `TyKind::Dummy` will reach HIR lowering,
+                        // which isn't allowed. Not a problem for this obscure, obsolete syntax.
+                        this.dcx().emit_fatal(errors::ObsoleteAuto { span: item.span });
                     }
                     if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
                     {

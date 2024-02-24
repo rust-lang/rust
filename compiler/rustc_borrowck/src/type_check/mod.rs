@@ -37,7 +37,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -49,7 +49,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::ResultsCursor;
 
-use crate::session_diagnostics::{MoveUnsized, SimdShuffleLastConst};
+use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::{
     borrow_set::BorrowSet,
     constraints::{OutlivesConstraint, OutlivesConstraintSet},
@@ -220,14 +220,13 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     "opaque_type_map",
                 ),
             );
-            let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
+            let hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
-                let reported = infcx.dcx().span_delayed_bug(
+                infcx.dcx().span_bug(
                     decl.hidden_type.span,
                     format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
-                hidden_type.ty = Ty::new_error(infcx.tcx, reported);
             }
 
             (opaque_type_key, hidden_type)
@@ -1014,7 +1013,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> Self {
         let mut checker = Self {
             infcx,
-            last_span: DUMMY_SP,
+            last_span: body.span,
             body,
             user_type_annotations: &body.user_type_annotations,
             param_env,
@@ -1089,10 +1088,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         if result.is_err() {
-            self.infcx.dcx().span_delayed_bug(
-                self.body.span,
-                "failed re-defining predefined opaques in mir typeck",
-            );
+            self.infcx
+                .dcx()
+                .span_bug(self.body.span, "failed re-defining predefined opaques in mir typeck");
         }
     }
 
@@ -1666,9 +1664,22 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let func_ty = func.ty(body, self.infcx.tcx);
         if let ty::FnDef(def_id, _) = *func_ty.kind() {
-            if let Some(sym::simd_shuffle) = self.tcx().intrinsic(def_id) {
-                if !matches!(args[2], Spanned { node: Operand::Constant(_), .. }) {
-                    self.tcx().dcx().emit_err(SimdShuffleLastConst { span: term.source_info.span });
+            // Some of the SIMD intrinsics are special: they need a particular argument to be a constant.
+            // (Eventually this should use const-generics, but those are not up for the task yet:
+            // https://github.com/rust-lang/rust/issues/85229.)
+            if let Some(name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract)) =
+                self.tcx().intrinsic(def_id)
+            {
+                let idx = match name {
+                    sym::simd_shuffle => 2,
+                    _ => 1,
+                };
+                if !matches!(args[idx], Spanned { node: Operand::Constant(_), .. }) {
+                    self.tcx().dcx().emit_err(SimdIntrinsicArgConst {
+                        span: term.source_info.span,
+                        arg: idx + 1,
+                        intrinsic: name.to_string(),
+                    });
                 }
             }
         }
@@ -2766,7 +2777,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.param_env,
                 self.known_type_outlives_obligations,
                 locations,
-                DUMMY_SP,                   // irrelevant; will be overridden.
+                self.body.span,             // irrelevant; will be overridden.
                 ConstraintCategory::Boring, // same as above.
                 self.borrowck_context.constraints,
             )

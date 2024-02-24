@@ -11,7 +11,7 @@ LL |     pub struct S;
    |     ------------ method `abc` not found for this struct
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Foo` which provides `abc` is implemented but not in scope; perhaps you want to import it
    |
 LL + use m::Foo;
    |

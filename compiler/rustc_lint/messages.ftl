@@ -72,8 +72,11 @@ lint_builtin_explicit_outlives = outlives requirements can be inferred
 
 lint_builtin_export_name_fn = declaration of a function with `export_name`
 lint_builtin_export_name_method = declaration of a method with `export_name`
-
 lint_builtin_export_name_static = declaration of a static with `export_name`
+
+lint_builtin_global_asm = usage of `core::arch::global_asm`
+lint_builtin_global_macro_unsafety = using this macro is unsafe even though it does not need an `unsafe` block
+
 lint_builtin_impl_unsafe_method = implementation of an `unsafe` method
 
 lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may not be safe to use and/or cause compiler crashes
@@ -426,6 +429,7 @@ lint_non_upper_case_global = {$sort} `{$name}` should have an upper case name
 lint_noop_method_call = call to `.{$method}()` on a reference in this situation does nothing
     .suggestion = remove this redundant call
     .note = the type `{$orig_ty}` does not implement `{$trait_}`, so calling `{$method}` on `&{$orig_ty}` copies the reference, which does not do anything and can be removed
+    .derive_suggestion = if you meant to clone `{$orig_ty}`, implement `Clone` for it
 
 lint_only_cast_u8_to_char = only `u8` can be cast into `char`
     .suggestion = use a `char` literal instead

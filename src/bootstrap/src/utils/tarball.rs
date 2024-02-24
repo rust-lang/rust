@@ -226,8 +226,7 @@ impl<'a> Tarball<'a> {
         if self.include_target_in_component_name {
             component_name.push('-');
             component_name.push_str(
-                &self
-                    .target
+                self.target
                     .as_ref()
                     .expect("include_target_in_component_name used in a targetless tarball"),
             );
@@ -326,7 +325,7 @@ impl<'a> Tarball<'a> {
             assert!(!formats.is_empty(), "dist.compression-formats can't be empty");
             cmd.arg("--compression-formats").arg(formats.join(","));
         }
-        cmd.args(&["--compression-profile", &self.builder.config.dist_compression_profile]);
+        cmd.args(["--compression-profile", &self.builder.config.dist_compression_profile]);
         self.builder.run(&mut cmd);
 
         // Ensure there are no symbolic links in the tarball. In particular,
@@ -347,7 +346,7 @@ impl<'a> Tarball<'a> {
             .config
             .dist_compression_formats
             .as_ref()
-            .and_then(|formats| formats.get(0))
+            .and_then(|formats| formats.first())
             .map(|s| s.as_str())
             .unwrap_or("gz");
 

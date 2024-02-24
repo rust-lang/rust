@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    codes::*, AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, EmissionGuarantee,
     IntoDiagnostic, Level, SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -1073,9 +1073,9 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = DiagnosticBuilder::new(
@@ -1133,9 +1133,9 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = DiagnosticBuilder::new(
@@ -1475,7 +1475,11 @@ pub(crate) struct FnTraitMissingParen {
 }
 
 impl AddToDiagnostic for FnTraitMissingParen {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+        self,
+        diag: &mut DiagnosticBuilder<'_, G>,
+        _: F,
+    ) {
         diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
         let applicability = if self.machine_applicable {
             Applicability::MachineApplicable
@@ -2971,3 +2975,10 @@ pub(crate) struct ArrayIndexInOffsetOf(#[primary_span] pub Span);
 #[derive(Diagnostic)]
 #[diag(parse_invalid_offset_of)]
 pub(crate) struct InvalidOffsetOf(#[primary_span] pub Span);
+
+#[derive(Diagnostic)]
+#[diag(parse_async_impl)]
+pub(crate) struct AsyncImpl {
+    #[primary_span]
+    pub span: Span,
+}

@@ -3,8 +3,8 @@
 // `get_context`, and that the MIR argument type for an async fn and all locals
 // related to `yield` are `&mut Context`, and its return type is `Poll`.
 
-// edition:2018
-// compile-flags: -C panic=abort
+//@ edition:2018
+//@ compile-flags: -C panic=abort
 
 #![crate_type = "lib"]
 

@@ -1,6 +1,6 @@
-   LL|       |// edition: 2021
-   LL|       |// ignore-windows - we can't force `llvm-cov` to use ANSI escapes on Windows
-   LL|       |// llvm-cov-flags: --use-color
+   LL|       |//@ edition: 2021
+   LL|       |//@ ignore-windows - we can't force `llvm-cov` to use ANSI escapes on Windows
+   LL|       |//@ llvm-cov-flags: --use-color
    LL|       |
    LL|       |// Check that column numbers are denoted in bytes, so that they don't cause
    LL|       |// `llvm-cov` to fail or emit malformed output.

@@ -2,9 +2,9 @@
 // Checks that we correctly modify the target when MACOSX_DEPLOYMENT_TARGET is set.
 // See issue #60235.
 
-// compile-flags: -O --target=x86_64-apple-darwin --crate-type=rlib
-// needs-llvm-components: x86
-// rustc-env:MACOSX_DEPLOYMENT_TARGET=10.14
+//@ compile-flags: -O --target=x86_64-apple-darwin --crate-type=rlib
+//@ needs-llvm-components: x86
+//@ rustc-env:MACOSX_DEPLOYMENT_TARGET=10.14
 #![feature(no_core, lang_items)]
 #![no_core]
 

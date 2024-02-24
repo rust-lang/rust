@@ -1,10 +1,10 @@
 use crate::errors;
 use info;
-use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync;
+use rustc_metadata::{load_symbol_from_dylib, DylibError};
 use rustc_parse::validate_attr;
 use rustc_session as session;
 use rustc_session::config::{self, Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes};
@@ -17,7 +17,6 @@ use rustc_span::symbol::{sym, Symbol};
 use session::EarlyDiagCtxt;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::mem;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
@@ -162,29 +161,19 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 }
 
 fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
-    fn format_err(e: &(dyn std::error::Error + 'static)) -> String {
-        e.sources().map(|e| format!(": {e}")).collect()
-    }
-    let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
-        let err = format!("couldn't load codegen backend {path:?}{}", format_err(&err));
-        early_dcx.early_fatal(err);
-    });
-
-    let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
-        .unwrap_or_else(|e| {
+    match unsafe { load_symbol_from_dylib::<MakeBackendFn>(path, "__rustc_codegen_backend") } {
+        Ok(backend_sym) => backend_sym,
+        Err(DylibError::DlOpen(path, err)) => {
+            let err = format!("couldn't load codegen backend {path}{err}");
+            early_dcx.early_fatal(err);
+        }
+        Err(DylibError::DlSym(_path, err)) => {
             let e = format!(
-                "`__rustc_codegen_backend` symbol lookup in the codegen backend failed{}",
-                format_err(&e)
+                "`__rustc_codegen_backend` symbol lookup in the codegen backend failed{err}",
             );
             early_dcx.early_fatal(e);
-        });
-
-    // Intentionally leak the dynamic library. We can't ever unload it
-    // since the library can make things that will live arbitrarily long.
-    let backend_sym = unsafe { backend_sym.into_raw() };
-    mem::forget(lib);
-
-    *backend_sym
+        }
+    }
 }
 
 /// Get the codegen backend based on the name and specified sysroot.

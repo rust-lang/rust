@@ -12,11 +12,6 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "128"]
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
-
 #[cfg(test)]
 mod fixture;
 
@@ -258,11 +253,11 @@ impl Analysis {
             Env::default(),
             false,
             CrateOrigin::Local { repo: None, name: None },
-            Err("Analysis::from_single_file has no target layout".into()),
-            None,
         );
         change.change_file(file_id, Some(Arc::from(text)));
         change.set_crate_graph(crate_graph);
+        change.set_target_data_layouts(vec![Err("fixture has no layout".into())]);
+        change.set_toolchains(vec![None]);
         host.apply_change(change);
         (host.analysis(), file_id)
     }
@@ -680,9 +675,8 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
-        rename_external: bool,
     ) -> Cancellable<Result<SourceChange, RenameError>> {
-        self.with_db(|db| rename::rename(db, position, new_name, rename_external))
+        self.with_db(|db| rename::rename(db, position, new_name))
     }
 
     pub fn prepare_rename(

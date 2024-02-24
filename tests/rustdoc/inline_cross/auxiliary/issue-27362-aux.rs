@@ -1,4 +1,4 @@
-// compile-flags: -Cmetadata=aux
+//@ compile-flags: -Cmetadata=aux
 
 pub const fn foo() {}
 pub const unsafe fn bar() {}

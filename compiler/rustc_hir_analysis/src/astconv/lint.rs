@@ -1,5 +1,5 @@
 use rustc_ast::TraitObjectSyntax;
-use rustc_errors::{codes::*, Diagnostic, StashKey};
+use rustc_errors::{codes::*, DiagnosticBuilder, EmissionGuarantee, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
@@ -10,10 +10,10 @@ use super::AstConv;
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Make sure that we are in the condition to suggest the blanket implementation.
-    pub(super) fn maybe_lint_blanket_trait_impl(
+    pub(super) fn maybe_lint_blanket_trait_impl<G: EmissionGuarantee>(
         &self,
         self_ty: &hir::Ty<'_>,
-        diag: &mut Diagnostic,
+        diag: &mut DiagnosticBuilder<'_, G>,
     ) {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
@@ -75,7 +75,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Make sure that we are in the condition to suggest `impl Trait`.
-    fn maybe_lint_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diagnostic) -> bool {
+    fn maybe_lint_impl_trait(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) -> bool {
         let tcx = self.tcx();
         let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
         let (sig, generics, owner) = match tcx.hir_node_by_def_id(parent_id) {

@@ -1,8 +1,8 @@
 // Require a gdb or lldb that can read DW_TAG_variant_part.
-// min-gdb-version: 8.2
-// needs-rust-lldb
+//@ min-gdb-version: 8.2
+//@ needs-rust-lldb
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

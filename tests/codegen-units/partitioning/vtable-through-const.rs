@@ -1,10 +1,10 @@
 //
 
 // We specify incremental here because we want to test the partitioning for
-// incremental compilation
-// incremental
-// compile-flags:-Zprint-mono-items=lazy
-// compile-flags:-Zinline-in-all-cgus
+//@ incremental compilation
+//@ incremental
+//@ compile-flags:-Zprint-mono-items=lazy
+//@ compile-flags:-Zinline-in-all-cgus
 
 // This test case makes sure, that references made through constants are
 // recorded properly in the InliningMap.

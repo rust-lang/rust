@@ -3,11 +3,11 @@
 // pack into a DWARF package.
 
 // ignore-tidy-linelength
-// only-x86_64-unknown-linux-gnu
-// revisions:rpass1 rpass2
+//@ only-x86_64-unknown-linux-gnu
+//@ revisions:rpass1 rpass2
 
-// [rpass1]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
-// [rpass2]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
+//@ [rpass1]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
+//@ [rpass2]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
 
 #![feature(rustc_attrs)]
 // For `rpass2`, nothing has changed so everything should re-used.

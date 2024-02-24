@@ -1,5 +1,5 @@
-// aux-crate:priv:pub_struct=pub-struct.rs
-// compile-flags:-Z unstable-options
+//@ aux-crate:priv:pub_struct=pub-struct.rs
+//@ compile-flags:-Z unstable-options
 
 // The issue was an ICE which meant that we never actually generated the docs
 // so if we have generated the docs, we're okay.

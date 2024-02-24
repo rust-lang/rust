@@ -397,7 +397,6 @@ pub trait OpenOptionsExt {
     ///
     /// ```no_run
     /// # #![feature(rustc_private)]
-    /// use libc;
     /// use std::fs::OpenOptions;
     /// use std::os::unix::fs::OpenOptionsExt;
     ///

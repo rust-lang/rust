@@ -1,5 +1,5 @@
-// unit-test: GVN
-// compile-flags: -O
+//@ unit-test: GVN
+//@ compile-flags: -O
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![feature(rustc_attrs, stmt_expr_attributes)]

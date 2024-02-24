@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // @is "$.index[*][?(@.name=='nothing_fn')].inner.function.header.async" false
 // @is "$.index[*][?(@.name=='nothing_fn')].inner.function.header.const"  false

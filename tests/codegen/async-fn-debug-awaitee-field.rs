@@ -3,7 +3,7 @@
 // extensions rely on the field having this name.
 
 // ignore-tidy-linelength
-// compile-flags: -C debuginfo=2 --edition=2018 -Copt-level=0
+//@ compile-flags: -C debuginfo=2 --edition=2018 -Copt-level=0
 
 #![crate_type = "lib"]
 

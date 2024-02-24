@@ -3,6 +3,7 @@
 #![feature(rustdoc_internals)]
 #![allow(internal_features)]
 #![feature(decl_macro)]
+#![feature(error_iter)]
 #![feature(extract_if)]
 #![feature(coroutines)]
 #![feature(generic_nonzero)]
@@ -39,6 +40,7 @@ pub mod errors;
 pub mod fs;
 pub mod locator;
 
+pub use creader::{load_symbol_from_dylib, DylibError};
 pub use fs::{emit_wrapper_file, METADATA_FILENAME};
 pub use native_libs::find_native_static_library;
 pub use rmeta::{encode_metadata, rendered_const, EncodedMetadata, METADATA_HEADER};

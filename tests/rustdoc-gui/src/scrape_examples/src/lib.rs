@@ -1,4 +1,4 @@
-// run-flags:-Zrustdoc-scrape-examples
+//@ run-flags:-Zrustdoc-scrape-examples
 /// # Examples
 ///
 /// ```

@@ -1,9 +1,9 @@
 // Checks that naked functions are not instrumented by -Cinstrument-coverage.
 // Regression test for issue #105170.
 //
-// needs-asm-support
-// needs-profiler-support
-// compile-flags: -Cinstrument-coverage
+//@ needs-asm-support
+//@ needs-profiler-support
+//@ compile-flags: -Cinstrument-coverage
 #![crate_type = "lib"]
 #![feature(naked_functions)]
 use std::arch::asm;

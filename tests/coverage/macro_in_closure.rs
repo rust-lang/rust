@@ -1,5 +1,5 @@
 #![feature(coverage_attribute)]
-// edition: 2021
+//@ edition: 2021
 
 // If a closure body consists entirely of a single bang-macro invocation, the
 // body span ends up inside the macro-expansion, so we need to un-expand it

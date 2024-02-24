@@ -9,6 +9,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::InliningThreshold;
 use rustc_session::config::OptLevel;
+use rustc_span::sym;
 
 pub fn provide(providers: &mut Providers) {
     providers.cross_crate_inlinable = cross_crate_inlinable;
@@ -31,6 +32,14 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
     // From this point on, it is valid to return true or false.
     if tcx.sess.opts.unstable_opts.cross_crate_inline_threshold == InliningThreshold::Always {
+        return true;
+    }
+
+    if tcx.has_attr(def_id, sym::rustc_intrinsic) {
+        // Intrinsic fallback bodies are always cross-crate inlineable.
+        // To ensure that the MIR inliner doesn't cluelessly try to inline fallback
+        // bodies even when the backend would implement something better, we stop
+        // the MIR inliner from ever inlining an intrinsic.
         return true;
     }
 

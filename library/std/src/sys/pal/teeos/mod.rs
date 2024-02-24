@@ -13,7 +13,6 @@ pub mod alloc;
 pub mod args;
 #[path = "../unsupported/env.rs"]
 pub mod env;
-pub mod locks;
 //pub mod fd;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;

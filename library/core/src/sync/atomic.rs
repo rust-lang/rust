@@ -1842,7 +1842,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_add(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_add(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_add(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Offsets the pointer's address by subtracting `val` *bytes*, returning the
@@ -1867,7 +1867,7 @@ impl<T> AtomicPtr<T> {
     /// #![feature(strict_provenance_atomic_ptr, strict_provenance)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
-    /// let atom = AtomicPtr::<i64>::new(core::ptr::invalid_mut(1));
+    /// let atom = AtomicPtr::<i64>::new(core::ptr::without_provenance_mut(1));
     /// assert_eq!(atom.fetch_byte_sub(1, Ordering::Relaxed).addr(), 1);
     /// assert_eq!(atom.load(Ordering::Relaxed).addr(), 0);
     /// ```
@@ -1877,7 +1877,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_byte_sub(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_sub(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_sub(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "or" operation on the address of the current pointer,
@@ -1928,7 +1928,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_or(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_or(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "and" operation on the address of the current
@@ -1978,7 +1978,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_and(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_and(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Performs a bitwise "xor" operation on the address of the current
@@ -2026,7 +2026,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> *mut T {
         // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_xor(self.p.get(), core::ptr::invalid_mut(val), order).cast() }
+        unsafe { atomic_xor(self.p.get(), core::ptr::without_provenance_mut(val), order).cast() }
     }
 
     /// Returns a mutable pointer to the underlying pointer.

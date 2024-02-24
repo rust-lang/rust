@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options --generate-redirect-map
+//@ compile-flags: -Z unstable-options --generate-redirect-map
 
 #![crate_name = "foo"]
 

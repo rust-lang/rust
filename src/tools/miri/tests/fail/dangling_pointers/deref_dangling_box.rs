@@ -8,7 +8,7 @@ use std::ptr::{self, addr_of_mut};
 // (This test relies on the `deref_copy` pass that lowers `**ptr` to materialize the intermediate pointer.)
 
 fn main() {
-    let mut inner = ptr::invalid::<i32>(24);
+    let mut inner = ptr::without_provenance::<i32>(24);
     let outer = addr_of_mut!(inner).cast::<Box<i32>>();
     // Now `outer` is a pointer to a dangling reference.
     // Deref'ing that should be UB.

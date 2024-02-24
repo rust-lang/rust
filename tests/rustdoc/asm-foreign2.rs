@@ -1,4 +1,4 @@
-// only-aarch64
+//@ only-aarch64
 // Make sure rustdoc accepts options(att_syntax) asm! on non-x86 targets.
 
 use std::arch::asm;

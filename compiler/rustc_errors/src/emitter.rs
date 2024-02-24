@@ -519,7 +519,7 @@ impl Emitter for HumanEmitter {
     }
 
     fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
-        let fluent_args = to_fluent_args(diag.args());
+        let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_or(vec![]);
         self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);
@@ -599,7 +599,7 @@ impl Emitter for SilentEmitter {
 
     fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
         if diag.level == Level::Fatal {
-            diag.note(self.fatal_note.clone());
+            diag.sub(Level::Note, self.fatal_note.clone(), MultiSpan::new());
             self.fatal_dcx.emit_diagnostic(diag);
         }
     }

@@ -1,5 +1,5 @@
    LL|       |#![allow(unused_assignments)]
-   LL|       |// failure-status: 101
+   LL|       |//@ failure-status: 101
    LL|       |
    LL|      4|fn might_fail_assert(one_plus_one: u32) {
    LL|      4|    println!("does 1 + 1 = {}?", one_plus_one);

@@ -1090,3 +1090,57 @@ fn main() {
 "#]],
     );
 }
+
+#[test]
+fn regression_16529() {
+    check(
+        r#"
+mod any {
+    #[macro_export]
+    macro_rules! nameable {
+        {
+            struct $name:ident[$a:lifetime]
+        } => {
+            $crate::any::nameable! {
+                struct $name[$a]
+                a
+            }
+        };
+        {
+            struct $name:ident[$a:lifetime]
+            a
+        } => {};
+    }
+    pub use nameable;
+
+    nameable! {
+        Name['a]
+    }
+}
+"#,
+        expect![[r#"
+mod any {
+    #[macro_export]
+    macro_rules! nameable {
+        {
+            struct $name:ident[$a:lifetime]
+        } => {
+            $crate::any::nameable! {
+                struct $name[$a]
+                a
+            }
+        };
+        {
+            struct $name:ident[$a:lifetime]
+            a
+        } => {};
+    }
+    pub use nameable;
+
+    /* error: unexpected token in input */$crate::any::nameable! {
+        struct $name[$a]a
+    }
+}
+"#]],
+    );
+}

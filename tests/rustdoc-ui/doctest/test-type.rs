@@ -1,7 +1,7 @@
-// compile-flags: --test --test-args=--test-threads=1
-// check-pass
-// normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ compile-flags: --test --test-args=--test-threads=1
+//@ check-pass
+//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 /// ```
 /// let a = true;

@@ -1,5 +1,5 @@
-// compile-flags:--test
-// edition:2018
+//@ compile-flags:--test
+//@ edition:2018
 
 /// ```rust
 /// fn main() {

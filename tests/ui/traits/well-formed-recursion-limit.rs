@@ -13,8 +13,8 @@ pub fn iso_un_option<A: 'static, B: 'static>(i: ISO<Option<A>, Option<B>>) -> IS
     //~^ ERROR no field `ab` on type
     //~| ERROR no field `ba` on type
     let left = move |o_a| match o_a {
-        //~^ ERROR overflow evaluating the requirement
-        None => panic!("absured"),
+        //~^ ERROR overflow assigning `_` to `Option<_>`
+        None => panic!("absurd"),
         Some(a) => a,
     };
     let right = move |o_b| match o_b {

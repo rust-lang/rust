@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: GVN
+//@ unit-test: GVN
 
 // Due to a bug in propagating scalar pairs the assertion below used to fail. In the expected
 // outputs below, after GVN this is how _2 would look like with the bug:

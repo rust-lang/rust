@@ -45,7 +45,7 @@ impl Translate for AnnotateSnippetEmitter {
 impl Emitter for AnnotateSnippetEmitter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, mut diag: Diagnostic) {
-        let fluent_args = to_fluent_args(diag.args());
+        let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_or(vec![]);
         self.primary_span_formatted(&mut diag.span, &mut suggestions, &fluent_args);

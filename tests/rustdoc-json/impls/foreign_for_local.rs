@@ -1,4 +1,4 @@
-// aux-build: foreign_trait.rs
+//@ aux-build: foreign_trait.rs
 extern crate foreign_trait;
 
 /// ForeignTrait id hack

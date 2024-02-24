@@ -1,4 +1,4 @@
-// compile-flags:--remap-path-prefix={{src-base}}=/does-not-exist
+//@ compile-flags:--remap-path-prefix={{src-base}}=/does-not-exist
 
 #![doc(html_root_url = "https://example.com/")]
 

@@ -1007,20 +1007,24 @@ impl ast::IdentPat {
 }
 
 pub trait HasVisibilityEdit: ast::HasVisibility {
-    fn set_visibility(&self, visibility: ast::Visibility) {
-        match self.visibility() {
-            Some(current_visibility) => {
-                ted::replace(current_visibility.syntax(), visibility.syntax())
-            }
-            None => {
-                let vis_before = self
-                    .syntax()
-                    .children_with_tokens()
-                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
-                    .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
+    fn set_visibility(&self, visibility: Option<ast::Visibility>) {
+        if let Some(visibility) = visibility {
+            match self.visibility() {
+                Some(current_visibility) => {
+                    ted::replace(current_visibility.syntax(), visibility.syntax())
+                }
+                None => {
+                    let vis_before = self
+                        .syntax()
+                        .children_with_tokens()
+                        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                        .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
 
-                ted::insert(ted::Position::before(vis_before), visibility.syntax());
+                    ted::insert(ted::Position::before(vis_before), visibility.syntax());
+                }
             }
+        } else if let Some(visibility) = self.visibility() {
+            ted::remove(visibility.syntax());
         }
     }
 }

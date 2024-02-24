@@ -517,7 +517,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: SourceScope) {
         if self.body.source_scopes.get(scope).is_none() {
-            self.tcx.dcx().span_delayed_bug(
+            self.tcx.dcx().span_bug(
                 self.body.span,
                 format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",

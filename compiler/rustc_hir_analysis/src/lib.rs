@@ -198,6 +198,17 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         collect::test_opaque_hidden_types(tcx)?;
     }
 
+    // Make sure we evaluate all static and (non-associated) const items, even if unused.
+    // If any of these fail to evaluate, we do not want this crate to pass compilation.
+    tcx.hir().par_body_owners(|item_def_id| {
+        let def_kind = tcx.def_kind(item_def_id);
+        match def_kind {
+            DefKind::Static(_) => tcx.ensure().eval_static_initializer(item_def_id),
+            DefKind::Const => tcx.ensure().const_eval_poly(item_def_id.into()),
+            _ => (),
+        }
+    });
+
     // Freeze definitions as we don't add new ones at this point. This improves performance by
     // allowing lock-free access to them.
     tcx.untracked().definitions.freeze();

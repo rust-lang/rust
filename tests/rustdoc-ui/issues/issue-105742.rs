@@ -1,4 +1,4 @@
-// compile-flags: -Znormalize-docs
+//@ compile-flags: -Znormalize-docs
 use std::ops::Index;
 
 pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {

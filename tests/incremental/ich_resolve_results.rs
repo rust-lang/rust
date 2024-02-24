@@ -1,8 +1,8 @@
 // Check that the hash for `mod3::bar` changes when we change the
 // `use` to something different.
 
-// revisions: rpass1 rpass2 rpass3
-// compile-flags: -Z query-dep-graph
+//@ revisions: rpass1 rpass2 rpass3
+//@ compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 

@@ -1,4 +1,4 @@
-// revisions: cfail
+//@ revisions: cfail
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 // regression test for #79251

@@ -1,4 +1,4 @@
-// aux-build: issue-113982-doc_auto_cfg-reexport-foreign.rs
+//@ aux-build: issue-113982-doc_auto_cfg-reexport-foreign.rs
 
 #![feature(no_core, doc_auto_cfg)]
 #![no_core]

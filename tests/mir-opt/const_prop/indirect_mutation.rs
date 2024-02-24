@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 // Check that we do not propagate past an indirect mutation.
 #![feature(raw_ref_op)]
 

@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `_ <: *const _`
+error[E0275]: overflow assigning `_` to `*const _`
   --> $DIR/subtype-recursion-limit.rs:12:17
    |
 LL |     let mut w = (x, y);

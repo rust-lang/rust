@@ -105,6 +105,17 @@ pub enum AliasKind {
     Weak,
 }
 
+impl AliasKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            AliasKind::Projection => "associated type",
+            AliasKind::Inherent => "inherent associated type",
+            AliasKind::Opaque => "opaque type",
+            AliasKind::Weak => "type alias",
+        }
+    }
+}
+
 /// Defines the kinds of types used by the type system.
 ///
 /// Types written by the user start out as `hir::TyKind` and get

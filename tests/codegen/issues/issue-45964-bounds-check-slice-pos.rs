@@ -1,8 +1,8 @@
 // This test case checks that slice::{r}position functions do not
 // prevent optimizing away bounds checks
 
-// compile-flags: -O
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O
+//@ ignore-debug: the debug assertions get in the way
 
 #![crate_type="rlib"]
 

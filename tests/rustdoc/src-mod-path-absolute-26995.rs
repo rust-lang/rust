@@ -1,5 +1,5 @@
-// ignore-windows
-// compile-flags: --no-defaults
+//@ ignore-windows
+//@ compile-flags: --no-defaults
 
 // https://github.com/rust-lang/rust/issues/26995
 #![crate_name="issue_26995"]

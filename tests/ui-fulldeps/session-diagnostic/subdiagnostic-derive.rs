@@ -1,12 +1,12 @@
-// check-fail
+//@ check-fail
 // Tests error conditions for specifying subdiagnostics using #[derive(Subdiagnostic)]
 
 // The proc_macro2 crate handles spans differently when on beta/stable release rather than nightly,
 // changing the output of this test. Since Subdiagnostic is strictly internal to the compiler
 // the test is just ignored on stable and beta:
-// ignore-stage1
-// ignore-beta
-// ignore-stable
+//@ ignore-stage1
+//@ ignore-beta
+//@ ignore-stable
 
 #![feature(rustc_private)]
 #![crate_type = "lib"]

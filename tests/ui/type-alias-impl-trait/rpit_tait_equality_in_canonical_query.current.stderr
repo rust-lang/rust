@@ -21,5 +21,3 @@ LL |     query(get_rpit);
 
 query stack during panic:
 end of query stack
-error: aborting due to 2 previous errors
-

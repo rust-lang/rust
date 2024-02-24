@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 /// ```ignore (to-prevent-tidy-error)
 /// let heart = '❤️';

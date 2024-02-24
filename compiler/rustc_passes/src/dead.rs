@@ -237,7 +237,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     ) {
         let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
             ty::Adt(adt, _) => adt.variant_of_res(res),
-            _ => span_bug!(lhs.span, "non-ADT in tuple struct pattern"),
+            _ => {
+                self.tcx.dcx().span_delayed_bug(lhs.span, "non-ADT in tuple struct pattern");
+                return;
+            }
         };
         let dotdot = dotdot.as_opt_usize().unwrap_or(pats.len());
         let first_n = pats.iter().enumerate().take(dotdot);

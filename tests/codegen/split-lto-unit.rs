@@ -1,7 +1,7 @@
 // Verifies that "EnableSplitLTOUnit" module flag is added.
 //
-// needs-sanitizer-cfi
-// compile-flags: -Clto -Ctarget-feature=-crt-static -Zsplit-lto-unit
+//@ needs-sanitizer-cfi
+//@ compile-flags: -Clto -Ctarget-feature=-crt-static -Zsplit-lto-unit
 
 #![crate_type="lib"]
 

@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 // EMIT_MIR reify_fn_ptr.main.GVN.diff
 
 fn main() {

@@ -8,11 +8,11 @@
 use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
-use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
+use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::{errors, BindingKey, MacroData, NameBindingData};
 use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
-use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError};
-use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
+use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError};
+use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, Used, VisResolutionError};
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
@@ -362,7 +362,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             root_span,
             root_id,
             vis: Cell::new(Some(vis)),
-            used: Cell::new(false),
+            used: Default::default(),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -885,7 +885,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             span: item.span,
             module_path: Vec::new(),
             vis: Cell::new(Some(vis)),
-            used: Cell::new(used),
+            used: Cell::new(used.then_some(Used::Other)),
         });
         self.r.potentially_unused_imports.push(import);
         let imported_binding = self.r.import(binding, import);
@@ -1090,7 +1090,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 span,
                 module_path: Vec::new(),
                 vis: Cell::new(Some(ty::Visibility::Restricted(CRATE_DEF_ID))),
-                used: Cell::new(false),
+                used: Default::default(),
             })
         };
 
@@ -1261,7 +1261,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     span,
                     module_path: Vec::new(),
                     vis: Cell::new(Some(vis)),
-                    used: Cell::new(true),
+                    used: Cell::new(Some(Used::Other)),
                 });
                 let import_binding = self.r.import(binding, import);
                 self.r.define(self.r.graph_root, ident, MacroNS, import_binding);

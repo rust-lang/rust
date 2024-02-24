@@ -1,8 +1,8 @@
 // Test for inlining with an indirect destination place.
 //
-// unit-test: Inline
-// edition: 2021
-// needs-unwind
+//@ unit-test: Inline
+//@ edition: 2021
+//@ needs-unwind
 #![crate_type = "lib"]
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;

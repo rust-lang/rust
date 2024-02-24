@@ -3,7 +3,7 @@
 //
 // This is a regression test for issue #73754.
 //
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 #![feature(decl_macro)]
 

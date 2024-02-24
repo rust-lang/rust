@@ -1,5 +1,5 @@
 // skip-filecheck
-// compile-flags: -Z mir-opt-level=3 -Zunsound-mir-opts
+//@ compile-flags: -Z mir-opt-level=3 -Zunsound-mir-opts
 // EMIT_MIR simplify_arm.id.SimplifyArmIdentity.diff
 // EMIT_MIR simplify_arm.id.SimplifyBranchSame.diff
 // EMIT_MIR simplify_arm.id_result.SimplifyArmIdentity.diff
@@ -7,7 +7,7 @@
 // EMIT_MIR simplify_arm.id_try.SimplifyArmIdentity.diff
 // EMIT_MIR simplify_arm.id_try.SimplifyBranchSame.diff
 
-// ignore-test This pass is broken since deaggregation changed
+//@ ignore-test This pass is broken since deaggregation changed
 
 fn id(o: Option<u8>) -> Option<u8> {
     match o {

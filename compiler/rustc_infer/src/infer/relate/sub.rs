@@ -6,6 +6,7 @@ use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -103,12 +104,12 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 
                 Ok(a)
             }
-            (&ty::Infer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, ty::Contravariant, a_id, !self.a_is_expected)?;
+            (&ty::Infer(TyVar(a_vid)), _) => {
+                infcx.instantiate_ty_var(self, self.a_is_expected, a_vid, ty::Covariant, b)?;
                 Ok(a)
             }
-            (_, &ty::Infer(TyVar(b_id))) => {
-                self.fields.instantiate(a, ty::Covariant, b_id, self.a_is_expected)?;
+            (_, &ty::Infer(TyVar(b_vid))) => {
+                infcx.instantiate_ty_var(self, !self.a_is_expected, b_vid, ty::Contravariant, a)?;
                 Ok(a)
             }
 
@@ -199,6 +200,10 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Sub<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.fields.trace.span()
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
     }

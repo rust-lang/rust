@@ -8,7 +8,7 @@ LL |     A::deserialize();
    |        ^^^^^^^^^^^ function or associated item not found in `A`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Deserialize` which provides `deserialize` is implemented but not in scope; perhaps you want to import it
    |
 LL + use <crate::A as issue_87932_a::Deserialize>::deserialize::_a::Deserialize;
    |

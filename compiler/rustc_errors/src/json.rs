@@ -341,7 +341,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 
 impl Diagnostic {
     fn from_errors_diagnostic(diag: crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
-        let args = to_fluent_args(diag.args());
+        let args = to_fluent_args(diag.args.iter());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
             let translated_message =
                 je.translate_message(&sugg.msg, &args).map_err(Report::new).unwrap();

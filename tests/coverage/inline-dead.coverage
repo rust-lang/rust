@@ -1,5 +1,5 @@
    LL|       |// Regression test for issue #98833.
-   LL|       |// compile-flags: -Zinline-mir -Cdebug-assertions=off
+   LL|       |//@ compile-flags: -Zinline-mir -Cdebug-assertions=off
    LL|       |
    LL|      1|fn main() {
    LL|      1|    println!("{}", live::<false>());

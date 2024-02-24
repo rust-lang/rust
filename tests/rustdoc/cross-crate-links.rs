@@ -1,5 +1,5 @@
-// aux-build:all-item-types.rs
-// build-aux-docs
+//@ aux-build:all-item-types.rs
+//@ build-aux-docs
 
 #![crate_name = "foo"]
 

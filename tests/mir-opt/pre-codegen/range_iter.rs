@@ -1,6 +1,6 @@
 // skip-filecheck
-// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
-// only-64bit
+//@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+//@ only-64bit
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![crate_type = "lib"]

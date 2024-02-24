@@ -1,5 +1,5 @@
-// needs-asm-support
-// pp-exact
+//@ needs-asm-support
+//@ pp-exact
 
 #[cfg(foo = r#"just parse this"#)]
 extern crate blah as blah;

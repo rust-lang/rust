@@ -1,7 +1,7 @@
-// revisions:cfail1 cfail2
-//[cfail1] compile-flags: --crate-type=lib --edition=2021 -Zassert-incr-state=not-loaded
-//[cfail2] compile-flags: --crate-type=lib --edition=2021 -Zassert-incr-state=loaded
-// build-pass
+//@ revisions:cfail1 cfail2
+//@[cfail1] compile-flags: --crate-type=lib --edition=2021 -Zassert-incr-state=not-loaded
+//@[cfail2] compile-flags: --crate-type=lib --edition=2021 -Zassert-incr-state=loaded
+//@ build-pass
 
 use core::any::Any;
 use core::marker::PhantomData;

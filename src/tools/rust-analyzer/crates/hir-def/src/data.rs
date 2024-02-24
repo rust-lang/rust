@@ -634,7 +634,6 @@ impl<'a> AssocItemCollector<'a> {
                     attr,
                 ) {
                     Ok(ResolvedAttr::Macro(call_id)) => {
-                        self.attr_calls.push((ast_id, call_id));
                         // If proc attribute macro expansion is disabled, skip expanding it here
                         if !self.db.expand_proc_attr_macros() {
                             continue 'attrs;
@@ -647,9 +646,20 @@ impl<'a> AssocItemCollector<'a> {
                             // disabled. This is analogous to the handling in
                             // `DefCollector::collect_macros`.
                             if exp.is_dummy() {
+                                self.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                                    self.module_id.local_id,
+                                    loc.kind,
+                                    loc.def.krate,
+                                ));
+
+                                continue 'attrs;
+                            }
+                            if exp.is_disabled() {
                                 continue 'attrs;
                             }
                         }
+
+                        self.attr_calls.push((ast_id, call_id));
 
                         let res =
                             self.expander.enter_expand_id::<ast::MacroItems>(self.db, call_id);

@@ -1,5 +1,5 @@
-// unit-test: InstSimplify
-// compile-flags: -C panic=abort
+//@ unit-test: InstSimplify
+//@ compile-flags: -C panic=abort
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

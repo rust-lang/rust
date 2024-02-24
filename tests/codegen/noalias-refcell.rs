@@ -1,4 +1,4 @@
-// compile-flags: -O -C no-prepopulate-passes -Z mutable-noalias=yes
+//@ compile-flags: -O -C no-prepopulate-passes -Z mutable-noalias=yes
 
 #![crate_type = "lib"]
 

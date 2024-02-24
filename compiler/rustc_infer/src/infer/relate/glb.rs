@@ -2,6 +2,7 @@
 
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::Span;
 
 use super::combine::{CombineFields, ObligationEmittingRelation};
 use super::lattice::{self, LatticeDir};
@@ -134,6 +135,10 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Glb<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.fields.trace.span()
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
     }

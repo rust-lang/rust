@@ -29,6 +29,7 @@ paths.workspace = true
 base-db.workspace = true
 span.workspace = true
 proc-macro-api.workspace = true
+ra-ap-rustc_lexer.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"

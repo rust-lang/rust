@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 // This tests the bug in #70814, where the unused_braces lint triggered on the following code
 // without providing a span.

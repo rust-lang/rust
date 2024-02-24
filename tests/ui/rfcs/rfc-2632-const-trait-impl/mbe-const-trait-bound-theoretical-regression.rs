@@ -6,15 +6,16 @@
 
 macro_rules! demo {
     ($ty:ty) => { compile_error!("ty"); };
-    (impl $c:ident) => {};
-    (dyn $c:ident) => {};
+    //~^ ERROR ty
+    //~| ERROR ty
+    (impl $c:ident Trait) => {};
+    (dyn $c:ident Trait) => {};
 }
 
-demo! { impl const }
-//~^ ERROR expected identifier, found `<eof>`
-
-demo! { dyn const }
+demo! { impl const Trait }
 //~^ ERROR const trait impls are experimental
-//~| ERROR expected identifier, found `<eof>`
+
+demo! { dyn const Trait }
+//~^ ERROR const trait impls are experimental
 
 fn main() {}

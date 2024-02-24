@@ -467,7 +467,7 @@ impl Build {
         }
 
         // Make a symbolic link so we can use a consistent directory in the documentation.
-        let build_triple = build.out.join(&build.build.triple);
+        let build_triple = build.out.join(build.build.triple);
         t!(fs::create_dir_all(&build_triple));
         let host = build.out.join("host");
         if host.is_symlink() {
@@ -491,7 +491,7 @@ impl Build {
     ///
     /// `relative_path` should be relative to the root of the git repository, not an absolute path.
     pub(crate) fn update_submodule(&self, relative_path: &Path) {
-        if !self.config.submodules(&self.rust_info()) {
+        if !self.config.submodules(self.rust_info()) {
             return;
         }
 
@@ -507,11 +507,11 @@ impl Build {
 
         // check_submodule
         let checked_out_hash =
-            output(Command::new("git").args(&["rev-parse", "HEAD"]).current_dir(&absolute_path));
+            output(Command::new("git").args(["rev-parse", "HEAD"]).current_dir(&absolute_path));
         // update_submodules
         let recorded = output(
             Command::new("git")
-                .args(&["ls-tree", "HEAD"])
+                .args(["ls-tree", "HEAD"])
                 .arg(relative_path)
                 .current_dir(&self.config.src),
         );
@@ -529,7 +529,7 @@ impl Build {
         println!("Updating submodule {}", relative_path.display());
         self.run(
             Command::new("git")
-                .args(&["submodule", "-q", "sync"])
+                .args(["submodule", "-q", "sync"])
                 .arg(relative_path)
                 .current_dir(&self.config.src),
         );
@@ -560,7 +560,7 @@ impl Build {
                 let branch = branch.strip_prefix("heads/").unwrap_or(&branch);
                 git.arg("-c").arg(format!("branch.{branch}.remote=origin"));
             }
-            git.args(&["submodule", "update", "--init", "--recursive", "--depth=1"]);
+            git.args(["submodule", "update", "--init", "--recursive", "--depth=1"]);
             if progress {
                 git.arg("--progress");
             }
@@ -577,7 +577,7 @@ impl Build {
         let has_local_modifications = !self.run_cmd(
             BootstrapCommand::from(
                 Command::new("git")
-                    .args(&["diff-index", "--quiet", "HEAD"])
+                    .args(["diff-index", "--quiet", "HEAD"])
                     .current_dir(&absolute_path),
             )
             .allow_failure()
@@ -587,14 +587,14 @@ impl Build {
             }),
         );
         if has_local_modifications {
-            self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
+            self.run(Command::new("git").args(["stash", "push"]).current_dir(&absolute_path));
         }
 
-        self.run(Command::new("git").args(&["reset", "-q", "--hard"]).current_dir(&absolute_path));
-        self.run(Command::new("git").args(&["clean", "-qdfx"]).current_dir(&absolute_path));
+        self.run(Command::new("git").args(["reset", "-q", "--hard"]).current_dir(&absolute_path));
+        self.run(Command::new("git").args(["clean", "-qdfx"]).current_dir(&absolute_path));
 
         if has_local_modifications {
-            self.run(Command::new("git").args(&["stash", "pop"]).current_dir(absolute_path));
+            self.run(Command::new("git").args(["stash", "pop"]).current_dir(absolute_path));
         }
     }
 
@@ -602,20 +602,20 @@ impl Build {
     /// This avoids contributors checking in a submodule change by accident.
     pub fn update_existing_submodules(&self) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules(&self.rust_info()) {
+        if !self.config.submodules(self.rust_info()) {
             return;
         }
         let output = output(
             self.config
                 .git()
-                .args(&["config", "--file"])
+                .args(["config", "--file"])
                 .arg(&self.config.src.join(".gitmodules"))
-                .args(&["--get-regexp", "path"]),
+                .args(["--get-regexp", "path"]),
         );
         for line in output.lines() {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = Path::new(line.splitn(2, ' ').nth(1).unwrap());
+            let submodule = Path::new(line.split_once(' ').unwrap().1);
             // Don't update the submodule unless it's already been cloned.
             if GitInfo::new(false, submodule).is_managed_git_subrepository() {
                 self.update_submodule(submodule);
@@ -630,26 +630,26 @@ impl Build {
         }
 
         // Download rustfmt early so that it can be used in rust-analyzer configs.
-        let _ = &builder::Builder::new(&self).initial_rustfmt();
+        let _ = &builder::Builder::new(self).initial_rustfmt();
 
         // hardcoded subcommands
         match &self.config.cmd {
             Subcommand::Format { check } => {
                 return core::build_steps::format::format(
-                    &builder::Builder::new(&self),
+                    &builder::Builder::new(self),
                     *check,
                     &self.config.paths,
                 );
             }
             Subcommand::Suggest { run } => {
-                return core::build_steps::suggest::suggest(&builder::Builder::new(&self), *run);
+                return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
             }
             _ => (),
         }
 
         {
-            let builder = builder::Builder::new(&self);
-            if let Some(path) = builder.paths.get(0) {
+            let builder = builder::Builder::new(self);
+            if let Some(path) = builder.paths.first() {
                 if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
                     return;
                 }
@@ -659,14 +659,14 @@ impl Build {
         if !self.config.dry_run() {
             {
                 self.config.dry_run = DryRun::SelfCheck;
-                let builder = builder::Builder::new(&self);
+                let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
             self.config.dry_run = DryRun::Disabled;
-            let builder = builder::Builder::new(&self);
+            let builder = builder::Builder::new(self);
             builder.execute_cli();
         } else {
-            let builder = builder::Builder::new(&self);
+            let builder = builder::Builder::new(self);
             builder.execute_cli();
         }
 
@@ -936,7 +936,7 @@ impl Build {
         static SYSROOT_CACHE: OnceLock<PathBuf> = OnceLock::new();
         SYSROOT_CACHE.get_or_init(|| {
             let mut rustc = Command::new(&self.initial_rustc);
-            rustc.args(&["--print", "sysroot"]);
+            rustc.args(["--print", "sysroot"]);
             output(&mut rustc).trim().into()
         })
     }
@@ -1162,7 +1162,7 @@ impl Build {
     fn group(&self, msg: &str) -> Option<gha::Group> {
         match self.config.dry_run {
             DryRun::SelfCheck => None,
-            DryRun::Disabled | DryRun::UserSelected => Some(gha::group(&msg)),
+            DryRun::Disabled | DryRun::UserSelected => Some(gha::group(msg)),
         }
     }
 
@@ -1322,7 +1322,7 @@ impl Build {
             .target_config
             .get(&target)
             .and_then(|t| t.musl_root.as_ref())
-            .or_else(|| self.config.musl_root.as_ref())
+            .or(self.config.musl_root.as_ref())
             .map(|p| &**p)
     }
 
@@ -1511,11 +1511,11 @@ impl Build {
 
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
-        let toml_file_name = self.src.join(&format!("src/tools/{package}/Cargo.toml"));
-        let toml = t!(fs::read_to_string(&toml_file_name));
+        let toml_file_name = self.src.join(format!("src/tools/{package}/Cargo.toml"));
+        let toml = t!(fs::read_to_string(toml_file_name));
         for line in toml.lines() {
             if let Some(stripped) =
-                line.strip_prefix("version = \"").and_then(|s| s.strip_suffix("\""))
+                line.strip_prefix("version = \"").and_then(|s| s.strip_suffix('"'))
             {
                 return stripped.to_owned();
             }
@@ -1618,7 +1618,7 @@ impl Build {
         if src == dst {
             return;
         }
-        let _ = fs::remove_file(&dst);
+        let _ = fs::remove_file(dst);
         let metadata = t!(src.symlink_metadata());
         let mut src = src.to_path_buf();
         if metadata.file_type().is_symlink() {
@@ -1908,7 +1908,7 @@ pub fn prepare_behaviour_dump_dir(build: &Build) {
 
     let dump_path = build.out.join("bootstrap-shims-dump");
 
-    let initialized = INITIALIZED.get().unwrap_or_else(|| &false);
+    let initialized = INITIALIZED.get().unwrap_or(&false);
     if !initialized {
         // clear old dumps
         if dump_path.exists() {

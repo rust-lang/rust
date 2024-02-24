@@ -1,4 +1,4 @@
-// aux-build:add-docs.rs
+//@ aux-build:add-docs.rs
 
 extern crate inner;
 

@@ -1,4 +1,4 @@
-// unit-test: DataflowConstProp
+//@ unit-test: DataflowConstProp
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 #[derive(Copy, Clone)]

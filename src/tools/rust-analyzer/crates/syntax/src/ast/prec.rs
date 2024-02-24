@@ -130,8 +130,8 @@ impl Expr {
             //
             ContinueExpr(_) => (0, 0),
 
-            ClosureExpr(_) | ReturnExpr(_) | YieldExpr(_) | YeetExpr(_) | BreakExpr(_)
-            | OffsetOfExpr(_) | FormatArgsExpr(_) | AsmExpr(_) => (0, 1),
+            ClosureExpr(_) | ReturnExpr(_) | BecomeExpr(_) | YieldExpr(_) | YeetExpr(_)
+            | BreakExpr(_) | OffsetOfExpr(_) | FormatArgsExpr(_) | AsmExpr(_) => (0, 1),
 
             RangeExpr(_) => (5, 5),
 
@@ -288,6 +288,7 @@ impl Expr {
                 PrefixExpr(e) => e.op_token(),
                 RefExpr(e) => e.amp_token(),
                 ReturnExpr(e) => e.return_token(),
+                BecomeExpr(e) => e.become_token(),
                 TryExpr(e) => e.question_mark_token(),
                 YieldExpr(e) => e.yield_token(),
                 YeetExpr(e) => e.do_token(),
@@ -316,7 +317,8 @@ impl Expr {
 
             // For BinExpr and RangeExpr this is technically wrong -- the child can be on the left...
             BinExpr(_) | RangeExpr(_) | BreakExpr(_) | ContinueExpr(_) | PrefixExpr(_)
-            | RefExpr(_) | ReturnExpr(_) | YieldExpr(_) | YeetExpr(_) | LetExpr(_) => self
+            | RefExpr(_) | ReturnExpr(_) | BecomeExpr(_) | YieldExpr(_) | YeetExpr(_)
+            | LetExpr(_) => self
                 .syntax()
                 .parent()
                 .and_then(Expr::cast)

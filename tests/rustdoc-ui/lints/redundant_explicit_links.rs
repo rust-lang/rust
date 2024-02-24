@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 
 #![deny(rustdoc::redundant_explicit_links)]
 

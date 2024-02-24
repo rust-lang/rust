@@ -1,6 +1,6 @@
 // skip-filecheck
-// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
-// only-64bit
+//@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+//@ only-64bit
 
 #[inline(always)]
 fn map<T, U, F>(slf: Option<T>, f: F) -> Option<U>

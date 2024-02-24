@@ -47,7 +47,7 @@ macro_rules! arena_types {
                         rustc_middle::traits::query::DropckOutlivesResult<'tcx>
                     >
                 >,
-            [] normalize_projection_ty:
+            [] normalize_canonicalized_projection_ty:
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx,
                         rustc_middle::traits::query::NormalizationResult<'tcx>

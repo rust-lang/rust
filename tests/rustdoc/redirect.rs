@@ -1,6 +1,6 @@
-// aux-build:reexp-stripped.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:reexp-stripped.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 extern crate reexp_stripped;
 

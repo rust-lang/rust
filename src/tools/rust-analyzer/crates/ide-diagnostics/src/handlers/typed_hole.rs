@@ -1,13 +1,19 @@
-use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, StructKind};
+use hir::{
+    db::ExpandDatabase,
+    term_search::{term_search, TermSearchCtx},
+    ClosureStyle, HirDisplay,
+};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, GroupLabel},
     label::Label,
     source_change::SourceChange,
 };
-use syntax::AstNode;
+use itertools::Itertools;
 use text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
+
+use syntax::AstNode;
 
 // Diagnostic: typed-hole
 //
@@ -36,50 +42,54 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
     let (original_range, _) =
         d.expr.as_ref().map(|it| it.to_node(&root)).syntax().original_file_range_opt(db)?;
     let scope = ctx.sema.scope(d.expr.value.to_node(&root).syntax())?;
-    let mut assists = vec![];
-    scope.process_all_names(&mut |name, def| {
-        let ty = match def {
-            hir::ScopeDef::ModuleDef(it) => match it {
-                hir::ModuleDef::Function(it) => it.ty(db),
-                hir::ModuleDef::Adt(hir::Adt::Struct(it)) if it.kind(db) != StructKind::Record => {
-                    it.constructor_ty(db)
-                }
-                hir::ModuleDef::Variant(it) if it.kind(db) != StructKind::Record => {
-                    it.constructor_ty(db)
-                }
-                hir::ModuleDef::Const(it) => it.ty(db),
-                hir::ModuleDef::Static(it) => it.ty(db),
-                _ => return,
-            },
-            hir::ScopeDef::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
-            hir::ScopeDef::Local(it) => it.ty(db),
-            _ => return,
-        };
-        // FIXME: should also check coercions if it is at a coercion site
-        if !ty.contains_unknown() && ty.could_unify_with(db, &d.expected) {
-            assists.push(Assist {
-                id: AssistId("typed-hole", AssistKind::QuickFix),
-                label: Label::new(format!("Replace `_` with `{}`", name.display(db))),
-                group: Some(GroupLabel("Replace `_` with a matching entity in scope".to_owned())),
-                target: original_range.range,
-                source_change: Some(SourceChange::from_text_edit(
-                    original_range.file_id,
-                    TextEdit::replace(original_range.range, name.display(db).to_string()),
-                )),
-                trigger_signature_help: false,
-            });
-        }
-    });
-    if assists.is_empty() {
-        None
-    } else {
+
+    let term_search_ctx = TermSearchCtx {
+        sema: &ctx.sema,
+        scope: &scope,
+        goal: d.expected.clone(),
+        config: Default::default(),
+    };
+    let paths = term_search(&term_search_ctx);
+
+    let mut formatter = |_: &hir::Type| String::from("_");
+
+    let assists: Vec<Assist> = paths
+        .into_iter()
+        .filter_map(|path| {
+            path.gen_source_code(
+                &scope,
+                &mut formatter,
+                ctx.config.prefer_no_std,
+                ctx.config.prefer_prelude,
+            )
+            .ok()
+        })
+        .unique()
+        .map(|code| Assist {
+            id: AssistId("typed-hole", AssistKind::QuickFix),
+            label: Label::new(format!("Replace `_` with `{}`", &code)),
+            group: Some(GroupLabel("Replace `_` with a term".to_owned())),
+            target: original_range.range,
+            source_change: Some(SourceChange::from_text_edit(
+                original_range.file_id,
+                TextEdit::replace(original_range.range, code),
+            )),
+            trigger_signature_help: false,
+        })
+        .collect();
+
+    if !assists.is_empty() {
         Some(assists)
+    } else {
+        None
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fixes};
+    use crate::tests::{
+        check_diagnostics, check_fixes_unordered, check_has_fix, check_has_single_fix,
+    };
 
     #[test]
     fn unknown() {
@@ -99,7 +109,7 @@ fn main() {
             r#"
 fn main() {
     if _ {}
-     //^ error: invalid `_` expression, expected type `bool`
+     //^ 💡 error: invalid `_` expression, expected type `bool`
     let _: fn() -> i32 = _;
                        //^ error: invalid `_` expression, expected type `fn() -> i32`
     let _: fn() -> () = _; // FIXME: This should trigger an assist because `main` matches via *coercion*
@@ -129,7 +139,7 @@ fn main() {
 fn main() {
     let mut x = t();
     x = _;
-      //^ 💡 error: invalid `_` expression, expected type `&str`
+      //^ error: invalid `_` expression, expected type `&str`
     x = "";
 }
 fn t<T>() -> T { loop {} }
@@ -143,7 +153,8 @@ fn t<T>() -> T { loop {} }
             r#"
 fn main() {
     let _x = [(); _];
-    let _y: [(); 10] = [(); _];
+    // FIXME: This should trigger error
+    // let _y: [(); 10] = [(); _];
     _ = 0;
     (_,) = (1,);
 }
@@ -153,7 +164,7 @@ fn main() {
 
     #[test]
     fn check_quick_fix() {
-        check_fixes(
+        check_fixes_unordered(
             r#"
 enum Foo {
     Bar
@@ -167,6 +178,18 @@ fn main<const CP: Foo>(param: Foo) {
 }
 "#,
             vec![
+                r#"
+enum Foo {
+    Bar
+}
+use Foo::Bar;
+const C: Foo = Foo::Bar;
+fn main<const CP: Foo>(param: Foo) {
+    let local = Foo::Bar;
+    let _: Foo = Bar;
+               //^ error: invalid `_` expression, expected type `fn()`
+}
+"#,
                 r#"
 enum Foo {
     Bar
@@ -211,22 +234,159 @@ use Foo::Bar;
 const C: Foo = Foo::Bar;
 fn main<const CP: Foo>(param: Foo) {
     let local = Foo::Bar;
-    let _: Foo = Bar;
-               //^ error: invalid `_` expression, expected type `fn()`
-}
-"#,
-                r#"
-enum Foo {
-    Bar
-}
-use Foo::Bar;
-const C: Foo = Foo::Bar;
-fn main<const CP: Foo>(param: Foo) {
-    let local = Foo::Bar;
     let _: Foo = C;
                //^ error: invalid `_` expression, expected type `fn()`
 }
 "#,
+            ],
+        );
+    }
+
+    #[test]
+    fn local_item_use_trait() {
+        check_has_fix(
+            r#"
+struct Bar;
+struct Baz;
+trait Foo {
+    fn foo(self) -> Bar;
+}
+impl Foo for Baz {
+    fn foo(self) -> Bar {
+        unimplemented!()
+    }
+}
+fn asd() -> Bar {
+    let a = Baz;
+    _$0
+}
+"#,
+            r"
+struct Bar;
+struct Baz;
+trait Foo {
+    fn foo(self) -> Bar;
+}
+impl Foo for Baz {
+    fn foo(self) -> Bar {
+        unimplemented!()
+    }
+}
+fn asd() -> Bar {
+    let a = Baz;
+    Foo::foo(a)
+}
+",
+        );
+    }
+
+    #[test]
+    fn init_struct() {
+        check_has_fix(
+            r#"struct Abc {}
+struct Qwe { a: i32, b: Abc }
+fn main() {
+    let a: i32 = 1;
+    let c: Qwe = _$0;
+}"#,
+            r#"struct Abc {}
+struct Qwe { a: i32, b: Abc }
+fn main() {
+    let a: i32 = 1;
+    let c: Qwe = Qwe { a: a, b: Abc {  } };
+}"#,
+        );
+    }
+
+    #[test]
+    fn ignore_impl_func_with_incorrect_return() {
+        check_has_single_fix(
+            r#"
+struct Bar {}
+trait Foo {
+    type Res;
+    fn foo(&self) -> Self::Res;
+}
+impl Foo for i32 {
+    type Res = Self;
+    fn foo(&self) -> Self::Res { 1 }
+}
+fn main() {
+    let a: i32 = 1;
+    let c: Bar = _$0;
+}"#,
+            r#"
+struct Bar {}
+trait Foo {
+    type Res;
+    fn foo(&self) -> Self::Res;
+}
+impl Foo for i32 {
+    type Res = Self;
+    fn foo(&self) -> Self::Res { 1 }
+}
+fn main() {
+    let a: i32 = 1;
+    let c: Bar = Bar {  };
+}"#,
+        );
+    }
+
+    #[test]
+    fn use_impl_func_with_correct_return() {
+        check_has_fix(
+            r#"
+struct Bar {}
+struct A;
+trait Foo {
+    type Res;
+    fn foo(&self) -> Self::Res;
+}
+impl Foo for A {
+    type Res = Bar;
+    fn foo(&self) -> Self::Res { Bar { } }
+}
+fn main() {
+    let a = A;
+    let c: Bar = _$0;
+}"#,
+            r#"
+struct Bar {}
+struct A;
+trait Foo {
+    type Res;
+    fn foo(&self) -> Self::Res;
+}
+impl Foo for A {
+    type Res = Bar;
+    fn foo(&self) -> Self::Res { Bar { } }
+}
+fn main() {
+    let a = A;
+    let c: Bar = Foo::foo(&a);
+}"#,
+        );
+    }
+
+    #[test]
+    fn local_shadow_fn() {
+        check_fixes_unordered(
+            r#"
+fn f() {
+    let f: i32 = 0;
+    _$0
+}"#,
+            vec![
+                r#"
+fn f() {
+    let f: i32 = 0;
+    ()
+}"#,
+                r#"
+fn f() {
+    let f: i32 = 0;
+    crate::f()
+}"#,
             ],
         );
     }

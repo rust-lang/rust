@@ -1,9 +1,9 @@
 // Test incremental compilation tracking where we change field names
 // in between revisions (hashing should be stable).
 
-// revisions:rpass1 cfail2
-// compile-flags: -Z query-dep-graph
-// [cfail2] compile-flags: -Z query-dep-graph -Z assert-incr-state=loaded
+//@ revisions:rpass1 cfail2
+//@ compile-flags: -Z query-dep-graph
+//@ [cfail2] compile-flags: -Z query-dep-graph -Z assert-incr-state=loaded
 
 #![feature(rustc_attrs)]
 #![allow(unused_variables)]

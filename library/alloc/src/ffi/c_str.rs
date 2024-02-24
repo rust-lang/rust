@@ -11,7 +11,7 @@ use core::borrow::Borrow;
 use core::ffi::{c_char, CStr};
 use core::fmt;
 use core::mem;
-use core::num::NonZeroU8;
+use core::num::NonZero;
 use core::ops;
 use core::ptr;
 use core::slice;
@@ -795,22 +795,22 @@ impl From<Box<CStr>> for CString {
 }
 
 #[stable(feature = "cstring_from_vec_of_nonzerou8", since = "1.43.0")]
-impl From<Vec<NonZeroU8>> for CString {
-    /// Converts a <code>[Vec]<[NonZeroU8]></code> into a [`CString`] without
+impl From<Vec<NonZero<u8>>> for CString {
+    /// Converts a <code>[Vec]<[NonZero]<[u8]>></code> into a [`CString`] without
     /// copying nor checking for inner nul bytes.
     #[inline]
-    fn from(v: Vec<NonZeroU8>) -> CString {
+    fn from(v: Vec<NonZero<u8>>) -> CString {
         unsafe {
-            // Transmute `Vec<NonZeroU8>` to `Vec<u8>`.
+            // Transmute `Vec<NonZero<u8>>` to `Vec<u8>`.
             let v: Vec<u8> = {
                 // SAFETY:
-                //   - transmuting between `NonZeroU8` and `u8` is sound;
-                //   - `alloc::Layout<NonZeroU8> == alloc::Layout<u8>`.
-                let (ptr, len, cap): (*mut NonZeroU8, _, _) = Vec::into_raw_parts(v);
+                //   - transmuting between `NonZero<u8>` and `u8` is sound;
+                //   - `alloc::Layout<NonZero<u8>> == alloc::Layout<u8>`.
+                let (ptr, len, cap): (*mut NonZero<u8>, _, _) = Vec::into_raw_parts(v);
                 Vec::from_raw_parts(ptr.cast::<u8>(), len, cap)
             };
             // SAFETY: `v` cannot contain nul bytes, given the type-level
-            // invariant of `NonZeroU8`.
+            // invariant of `NonZero<u8>`.
             Self::_from_vec_unchecked(v)
         }
     }

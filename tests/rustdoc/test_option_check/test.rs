@@ -1,5 +1,5 @@
-// compile-flags: --test
-// check-test-line-numbers-match
+//@ compile-flags: --test
+//@ check-test-line-numbers-match
 
 pub mod bar;
 

@@ -1,5 +1,5 @@
-// aux-build:inline-default-methods.rs
-// ignore-cross-compile
+//@ aux-build:inline-default-methods.rs
+//@ ignore-cross-compile
 
 extern crate inline_default_methods;
 

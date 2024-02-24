@@ -1,6 +1,6 @@
 #![feature(coverage_attribute)]
 #![feature(noop_waker)]
-// edition: 2018
+//@ edition: 2018
 
 fn non_async_func() {
     println!("non_async_func was covered");

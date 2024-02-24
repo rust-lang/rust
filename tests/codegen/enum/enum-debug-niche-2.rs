@@ -2,9 +2,9 @@
 // This is ignored for the fallback mode on MSVC due to problems with PDB.
 
 //
-// ignore-msvc
+//@ ignore-msvc
 
-// compile-flags: -g -C no-prepopulate-passes
+//@ compile-flags: -g -C no-prepopulate-passes
 
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_variant_part,{{.*}}size: 32,{{.*}}
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Placeholder",{{.*}}extraData: i128 4294967295{{[,)].*}}

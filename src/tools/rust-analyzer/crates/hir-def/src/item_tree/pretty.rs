@@ -1,13 +1,12 @@
 //! `ItemTree` debug printer.
 
-use std::fmt::{self, Write};
+use std::fmt::Write;
 
 use span::ErasedFileAstId;
 
 use crate::{
-    generics::{TypeOrConstParamData, WherePredicate, WherePredicateTypeTarget},
+    generics::{WherePredicate, WherePredicateTypeTarget},
     pretty::{print_path, print_type_bounds, print_type_ref},
-    visibility::RawVisibility,
 };
 
 use super::*;

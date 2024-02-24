@@ -250,6 +250,38 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
+            sym::fadd_algebraic
+            | sym::fsub_algebraic
+            | sym::fmul_algebraic
+            | sym::fdiv_algebraic
+            | sym::frem_algebraic => match float_type_width(arg_tys[0]) {
+                Some(_width) => match name {
+                    sym::fadd_algebraic => {
+                        bx.fadd_algebraic(args[0].immediate(), args[1].immediate())
+                    }
+                    sym::fsub_algebraic => {
+                        bx.fsub_algebraic(args[0].immediate(), args[1].immediate())
+                    }
+                    sym::fmul_algebraic => {
+                        bx.fmul_algebraic(args[0].immediate(), args[1].immediate())
+                    }
+                    sym::fdiv_algebraic => {
+                        bx.fdiv_algebraic(args[0].immediate(), args[1].immediate())
+                    }
+                    sym::frem_algebraic => {
+                        bx.frem_algebraic(args[0].immediate(), args[1].immediate())
+                    }
+                    _ => bug!(),
+                },
+                None => {
+                    bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicFloatType {
+                        span,
+                        name,
+                        ty: arg_tys[0],
+                    });
+                    return Ok(());
+                }
+            },
 
             sym::float_to_int_unchecked => {
                 if float_type_width(arg_tys[0]).is_none() {

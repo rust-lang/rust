@@ -1,6 +1,6 @@
-// force-host
-// no-prefer-dynamic
-// compile-flags: --crate-type proc-macro
+//@ force-host
+//@ no-prefer-dynamic
+//@ compile-flags: --crate-type proc-macro
 
 #![crate_type = "proc-macro"]
 

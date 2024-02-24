@@ -112,7 +112,7 @@ config_data! {
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = "null",
         /// Rerun proc-macros building/build-scripts running when proc-macro
         /// or build-script sources change and are saved.
-        cargo_buildScripts_rebuildOnSave: bool = "false",
+        cargo_buildScripts_rebuildOnSave: bool = "true",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
@@ -209,6 +209,11 @@ config_data! {
         /// by changing `#rust-analyzer.check.invocationStrategy#` and
         /// `#rust-analyzer.check.invocationLocation#`.
         ///
+        /// If `$saved_file` is part of the command, rust-analyzer will pass
+        /// the absolute path of the saved file to the provided command. This is
+        /// intended to be used with non-Cargo build systems.
+        /// Note that `$saved_file` is experimental and may be removed in the futureg.
+        ///
         /// An example command would be:
         ///
         /// ```bash
@@ -286,6 +291,8 @@ config_data! {
                 "scope": "expr"
             }
         }"#,
+        /// Whether to enable term search based snippets like `Some(foo.bar().baz())`.
+        completion_termSearch_enable: bool = "false",
 
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
@@ -503,9 +510,6 @@ config_data! {
 
         /// Exclude tests from find-all-references.
         references_excludeTests: bool = "false",
-
-        /// Allow renaming of items not belonging to the loaded workspaces.
-        rename_allowExternalItems: bool = "false",
 
 
         /// Command to be executed instead of 'cargo' for runnables.
@@ -1202,7 +1206,7 @@ impl Config {
         Some(AbsPathBuf::try_from(path).unwrap_or_else(|path| self.root_path.join(path)))
     }
 
-    pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
+    pub fn ignored_proc_macros(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
         &self.data.procMacro_ignored
     }
 
@@ -1535,6 +1539,7 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
             enable_private_editable: self.data.completion_privateEditable_enable,
+            enable_term_search: self.data.completion_termSearch_enable,
             full_function_signatures: self.data.completion_fullFunctionSignatures_enable,
             callable: match self.data.completion_callable_snippets {
                 CallableCompletionDef::FillArguments => Some(CallableSnippets::FillArguments),
@@ -1764,10 +1769,6 @@ impl Config {
 
     pub fn typing_autoclose_angle(&self) -> bool {
         self.data.typing_autoClosingAngleBrackets_enable
-    }
-
-    pub fn rename(&self) -> bool {
-        self.data.rename_allowExternalItems
     }
 
     // FIXME: VSCode seems to work wrong sometimes, see https://github.com/microsoft/vscode/issues/193124

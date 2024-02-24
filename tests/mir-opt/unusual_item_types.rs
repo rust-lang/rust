@@ -1,7 +1,7 @@
 // skip-filecheck
 // Test that we don't ICE when trying to dump MIR for unusual item types and
 // that we don't create filenames containing `<` and `>`
-// compile-flags: -Zmir-opt-level=0
+//@ compile-flags: -Zmir-opt-level=0
 
 
 struct A;

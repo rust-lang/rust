@@ -100,7 +100,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// to `n` times until [`None`] is encountered.
     ///
     /// `advance_back_by(n)` will return `Ok(())` if the iterator successfully advances by
-    /// `n` elements, or a `Err(NonZeroUsize)` with value `k` if [`None`] is encountered, where `k`
+    /// `n` elements, or a `Err(NonZero<usize>)` with value `k` if [`None`] is encountered, where `k`
     /// is remaining number of steps that could not be advanced because the iterator ran out.
     /// If `self` is empty and `n` is non-zero, then this returns `Err(n)`.
     /// Otherwise, `k` is always less than `n`.
@@ -118,8 +118,8 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_advance_by)]
-    /// use std::num::NonZeroUsize;
+    /// #![feature(generic_nonzero, iter_advance_by)]
+    /// use std::num::NonZero;
     ///
     /// let a = [3, 4, 5, 6];
     /// let mut iter = a.iter();
@@ -127,7 +127,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(iter.advance_back_by(2), Ok(()));
     /// assert_eq!(iter.next_back(), Some(&4));
     /// assert_eq!(iter.advance_back_by(0), Ok(()));
-    /// assert_eq!(iter.advance_back_by(100), Err(NonZeroUsize::new(99).unwrap())); // only `&3` was skipped
+    /// assert_eq!(iter.advance_back_by(100), Err(NonZero::new(99).unwrap())); // only `&3` was skipped
     /// ```
     ///
     /// [`Ok(())`]: Ok

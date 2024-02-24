@@ -1,11 +1,11 @@
-// ignore-windows
-// ignore-android
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
-// min-lldb-version: 310
+//@ ignore-windows
+//@ ignore-android
+//@ ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+//@ min-lldb-version: 310
 
 #![allow(unused)]
 
-// compile-flags:-g -O -C no-prepopulate-passes
+//@ compile-flags:-g -O -C no-prepopulate-passes
 // -O -C no-prepopulate-passes added to work around https://bugs.llvm.org/show_bug.cgi?id=32123
 
 // This test checks that drop glue code gets attributed to scope's closing brace,

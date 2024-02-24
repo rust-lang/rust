@@ -1,4 +1,4 @@
-// compile-flags: -C opt-level=0 -C no-prepopulate-passes
+//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes
 
 // This test checks that arguments/returns in opt-level=0 builds,
 // while lacking attributes used for optimization, still have ABI-affecting attributes.

@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 // Check that the visibility is printed on an enum variant.
 

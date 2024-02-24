@@ -1,6 +1,6 @@
 // skip-filecheck
-// compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=2
-// ignore-debug: standard library debug assertions add a panic that breaks this optimization
+//@ compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=2
+//@ ignore-debug: standard library debug assertions add a panic that breaks this optimization
 
 #![crate_type = "lib"]
 

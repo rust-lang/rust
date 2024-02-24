@@ -1,4 +1,4 @@
-// unit-test: InstSimplify
+//@ unit-test: InstSimplify
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // EMIT_MIR combine_clone_of_primitives.{impl#0}-clone.InstSimplify.diff

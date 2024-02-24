@@ -1,4 +1,4 @@
-// revisions:rpass1
+//@ revisions:rpass1
 pub struct Foo<T, const N: usize>([T; 0]);
 
 impl<T, const N: usize> Foo<T, {N}> {

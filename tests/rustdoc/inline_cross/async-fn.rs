@@ -2,8 +2,8 @@
 // Check that we render the correct return type of free and
 // associated async functions reexported from external crates.
 
-// aux-crate:async_fn=async-fn.rs
-// edition: 2021
+//@ aux-crate:async_fn=async-fn.rs
+//@ edition: 2021
 #![crate_name = "user"]
 
 // @has user/fn.load.html

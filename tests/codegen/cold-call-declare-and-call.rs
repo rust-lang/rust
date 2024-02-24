@@ -1,8 +1,8 @@
-// revisions: NORMAL WINDOWS
-// compile-flags: -C no-prepopulate-passes
-//[NORMAL] ignore-windows
-//[WINDOWS] only-windows
-//[WINDOWS] only-x86_64
+//@ revisions: NORMAL WINDOWS
+//@ compile-flags: -C no-prepopulate-passes
+//@[NORMAL] ignore-windows
+//@[WINDOWS] only-windows
+//@[WINDOWS] only-x86_64
 
 #![crate_type = "lib"]
 #![feature(rust_cold_cc)]

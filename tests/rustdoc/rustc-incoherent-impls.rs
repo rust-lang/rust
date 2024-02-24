@@ -1,5 +1,5 @@
-// aux-build:incoherent-impl-types.rs
-// build-aux-docs
+//@ aux-build:incoherent-impl-types.rs
+//@ build-aux-docs
 
 #![crate_name = "foo"]
 #![feature(rustc_attrs)]

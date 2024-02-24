@@ -18,9 +18,9 @@ fn main() {
 
     // Invoke sccache with said compiler
     let sccache_path = env::var_os("SCCACHE_PATH").unwrap();
-    let mut cmd = Command::new(&sccache_path);
+    let mut cmd = Command::new(sccache_path);
     cmd.arg(compiler.path());
-    for &(ref k, ref v) in compiler.env() {
+    for (k, v) in compiler.env() {
         cmd.env(k, v);
     }
     for arg in env::args().skip(1) {

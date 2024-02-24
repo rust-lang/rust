@@ -1,5 +1,5 @@
-// ignore-stage1
-// compile-flags: -Zdeduplicate-diagnostics=yes
+//@ ignore-stage1
+//@ compile-flags: -Zdeduplicate-diagnostics=yes
 extern crate rustc_data_structures;
 //~^ use of unstable library feature 'rustc_private'
 //~| NOTE: issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information

@@ -1,3 +1,3 @@
-// ignore-mode-coverage-run
+//@ ignore-mode-coverage-run
 
 fn main() {}

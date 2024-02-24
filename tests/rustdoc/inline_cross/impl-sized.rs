@@ -1,7 +1,7 @@
 #![crate_name = "user"]
 
-// aux-crate:impl_sized=impl-sized.rs
-// edition:2021
+//@ aux-crate:impl_sized=impl-sized.rs
+//@ edition:2021
 
 // @has user/fn.sized.html
 // @has - '//pre[@class="rust item-decl"]' "sized(x: impl Sized) -> impl Sized"

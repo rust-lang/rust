@@ -503,10 +503,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         description: r##"stable features found in `#[feature]` directive"##,
     },
     Lint {
-        label: "suspicious_auto_trait_impls",
-        description: r##"the rules governing auto traits have recently changed resulting in potential breakage"##,
-    },
-    Lint {
         label: "suspicious_double_ref_op",
         description: r##"suspicious call of trait method on `&&T`"##,
     },
@@ -778,7 +774,6 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "repr_transparent_external_private_fields",
             "semicolon_in_expressions_from_macros",
             "soft_unstable",
-            "suspicious_auto_trait_impls",
             "uninhabited_static",
             "unstable_name_collisions",
             "unstable_syntax_pre_expansion",

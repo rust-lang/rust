@@ -1,10 +1,10 @@
 // In the current version of the collector that still has to support
 // legacy-codegen, closures do not generate their own MonoItems, so we are
 // ignoring this test until MIR codegen has taken over completely
-// ignore-test
+//@ ignore-test
 
 //
-// compile-flags:-Zprint-mono-items=eager
+//@ compile-flags:-Zprint-mono-items=eager
 
 #![deny(dead_code)]
 #![feature(start)]

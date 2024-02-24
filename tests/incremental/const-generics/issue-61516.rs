@@ -1,4 +1,4 @@
-// revisions:rpass1
+//@ revisions:rpass1
 
 struct FakeArray<T, const N: usize>(T);
 

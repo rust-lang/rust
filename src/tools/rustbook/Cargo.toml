@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 clap = "4.0.32"
-env_logger = "0.10"
+env_logger = "0.11"
 
 [dependencies.mdbook]
 version = "0.4.37"

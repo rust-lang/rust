@@ -78,8 +78,7 @@ use std::io::{self, IsTerminal};
 use std::process;
 use std::sync::{atomic::AtomicBool, Arc};
 
-use rustc_driver::abort_on_err;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{ErrorGuaranteed, FatalError};
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
@@ -779,7 +778,7 @@ fn main_args(
         }
 
         compiler.enter(|queries| {
-            let mut gcx = abort_on_err(queries.global_ctxt(), sess);
+            let Ok(mut gcx) = queries.global_ctxt() else { FatalError.raise() };
             if sess.dcx().has_errors().is_some() {
                 sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
@@ -787,7 +786,7 @@ fn main_args(
             gcx.enter(|tcx| {
                 let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                     core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-                });
+                })?;
                 info!("finished with rustc");
 
                 if let Some(options) = scrape_examples_options {

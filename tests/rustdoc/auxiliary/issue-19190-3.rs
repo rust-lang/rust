@@ -1,4 +1,4 @@
-// compile-flags: -Cmetadata=aux
+//@ compile-flags: -Cmetadata=aux
 
 use std::ops::Deref;
 

@@ -5,7 +5,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::TyCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::ty::{self, Binder, Region, Ty, TypeVisitable};
+use rustc_middle::ty::{self, Binder, Region, Ty, TypeFoldable};
 use rustc_span::Span;
 
 /// Information about the anonymous region we are searching for.
@@ -142,10 +142,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
     fn includes_region(
         &self,
-        ty: Binder<'tcx, impl TypeVisitable<TyCtxt<'tcx>>>,
+        ty: Binder<'tcx, impl TypeFoldable<TyCtxt<'tcx>>>,
         region: ty::BoundRegionKind,
     ) -> bool {
-        let late_bound_regions = self.tcx().collect_referenced_late_bound_regions(&ty);
+        let late_bound_regions = self.tcx().collect_referenced_late_bound_regions(ty);
         // We are only checking is any region meets the condition so order doesn't matter
         #[allow(rustc::potential_query_instability)]
         late_bound_regions.iter().any(|r| *r == region)

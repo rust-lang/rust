@@ -1,6 +1,6 @@
 #![feature(repr_simd, platform_intrinsics)]
 
-// revisions:rpass1 rpass2
+//@ revisions:rpass1 rpass2
 
 #[repr(simd)]
 struct I32x2(i32, i32);

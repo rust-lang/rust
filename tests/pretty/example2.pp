@@ -1,3 +1,3 @@
-// pp-exact:example2.pp
+//@ pp-exact:example2.pp
 
 fn main() {}

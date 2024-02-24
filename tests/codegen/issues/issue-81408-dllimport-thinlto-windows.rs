@@ -1,6 +1,6 @@
-// compile-flags: -O -C lto=thin -C prefer-dynamic=no
-// only-windows
-// aux-build:static_dllimport_aux.rs
+//@ compile-flags: -O -C lto=thin -C prefer-dynamic=no
+//@ only-windows
+//@ aux-build:static_dllimport_aux.rs
 
 // Test that on Windows, when performing ThinLTO, we do not mark cross-crate static items with
 // dllimport because lld does not fix the symbol names for us.

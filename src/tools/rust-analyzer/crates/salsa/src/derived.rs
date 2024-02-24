@@ -13,7 +13,6 @@ use crate::Runtime;
 use crate::{Database, DatabaseKeyIndex, QueryDb, Revision};
 use parking_lot::RwLock;
 use std::borrow::Borrow;
-use std::convert::TryFrom;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use triomphe::Arc;

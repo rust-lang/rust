@@ -93,6 +93,9 @@ pub struct FnCallNonConst<'tcx> {
 }
 
 impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
+    // FIXME: make this translatable
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    #[allow(rustc::untranslatable_diagnostic)]
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> DiagnosticBuilder<'tcx> {
         let FnCallNonConst { caller, callee, args, span, call_source, feature } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
@@ -321,6 +324,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
             .dcx()
             .create_err(errors::UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
 
+        // FIXME: make this translatable
+        #[allow(rustc::untranslatable_diagnostic)]
         if ccx.is_const_stable_const_fn() {
             err.help("const-stable functions can only call other const-stable functions");
         } else if ccx.tcx.sess.is_nightly_build() {
@@ -591,6 +596,8 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
             span,
             format!("referencing statics in {}s is unstable", ccx.const_kind(),),
         );
+        // FIXME: make this translatable
+        #[allow(rustc::untranslatable_diagnostic)]
         err
             .note("`static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.")
             .help("to fix this, the value can be extracted to a `const` and then used.");

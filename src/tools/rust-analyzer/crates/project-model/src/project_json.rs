@@ -49,7 +49,7 @@
 //! user explores them belongs to that extension (it's totally valid to change
 //! rust-project.json over time via configuration request!)
 
-use base_db::{CrateDisplayName, CrateId, CrateName, Dependency, DependencyKind, Edition};
+use base_db::{CrateDisplayName, CrateId, CrateName, Dependency, Edition};
 use la_arena::RawIdx;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
@@ -135,7 +135,6 @@ impl ProjectJson {
                                 Dependency::new(
                                     dep_data.name,
                                     CrateId::from_raw(RawIdx::from(dep_data.krate as u32)),
-                                    DependencyKind::Normal,
                                 )
                             })
                             .collect::<Vec<_>>(),

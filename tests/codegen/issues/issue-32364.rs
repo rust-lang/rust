@@ -1,8 +1,8 @@
 // Test that `extern "stdcall"` is properly translated.
 
-// only-x86
+//@ only-x86
 
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 
 struct Foo;
 

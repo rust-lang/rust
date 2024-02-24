@@ -53,7 +53,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                         futex as *const AtomicU32 as *mut _,
                         libc::UMTX_OP_WAIT_UINT_PRIVATE,
                         expected as libc::c_ulong,
-                        crate::ptr::invalid_mut(umtx_timeout_size),
+                        crate::ptr::without_provenance_mut(umtx_timeout_size),
                         umtx_timeout_ptr as *mut _,
                     )
                 } else if #[cfg(any(target_os = "linux", target_os = "android"))] {

@@ -1,6 +1,6 @@
-// only-x86_64
-// revisions: base avx512
-// [avx512]compile-flags: -C target-feature=+avx512f
+//@ only-x86_64
+//@ revisions: base avx512
+//@ [avx512]compile-flags: -C target-feature=+avx512f
 
 #![crate_type = "rlib"]
 

@@ -2468,6 +2468,9 @@ pub fn parse_externs(
             ));
             let adjusted_name = name.replace('-', "_");
             if is_ascii_ident(&adjusted_name) {
+                // FIXME: make this translatable
+                #[allow(rustc::diagnostic_outside_of_impl)]
+                #[allow(rustc::untranslatable_diagnostic)]
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
                 ));

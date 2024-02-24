@@ -21,7 +21,32 @@ use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 
-use crate::const_prop::throw_machine_stop_str;
+/// Macro for machine-specific `InterpError` without allocation.
+/// (These will never be shown to the user, but they help diagnose ICEs.)
+pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
+    // We make a new local type for it. The type itself does not carry any information,
+    // but its vtable (for the `MachineStopType` trait) does.
+    #[derive(Debug)]
+    struct Zst;
+    // Printing this type shows the desired string.
+    impl std::fmt::Display for Zst {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, $($tt)*)
+        }
+    }
+
+    impl rustc_middle::mir::interpret::MachineStopType for Zst {
+        fn diagnostic_message(&self) -> rustc_errors::DiagnosticMessage {
+            self.to_string().into()
+        }
+
+        fn add_args(
+            self: Box<Self>,
+            _: &mut dyn FnMut(rustc_errors::DiagnosticArgName, rustc_errors::DiagnosticArgValue),
+        ) {}
+    }
+    throw_machine_stop!(Zst)
+}}
 
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).

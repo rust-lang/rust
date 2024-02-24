@@ -14,10 +14,12 @@ LL | struct Struct;
    | ------------- function or associated item `fob` not found for this struct
 ...
 LL |     Struct::fob();
-   |             ^^^
-   |             |
-   |             function or associated item not found in `Struct`
-   |             help: there is an associated function with a similar name: `foo`
+   |             ^^^ function or associated item not found in `Struct`
+   |
+help: there is an associated function `foo` with a similar name
+   |
+LL |     Struct::foo();
+   |             ~~~
 
 error[E0433]: failed to resolve: use of undeclared type `Struc`
   --> $DIR/typo-suggestion-mistyped-in-path.rs:27:5

@@ -1,5 +1,4 @@
 use crate::simd::{
-    intrinsics,
     ptr::{SimdConstPtr, SimdMutPtr},
     LaneCount, Mask, Simd, SimdElement, SupportedLaneCount,
 };
@@ -31,14 +30,14 @@ macro_rules! impl_number {
             fn simd_eq(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_int_unchecked(intrinsics::simd_eq(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_eq(self, other)) }
             }
 
             #[inline]
             fn simd_ne(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Mask::from_int_unchecked(intrinsics::simd_ne(self, other)) }
+                unsafe { Mask::from_int_unchecked(core::intrinsics::simd::simd_ne(self, other)) }
             }
         }
         )*
@@ -60,14 +59,14 @@ macro_rules! impl_mask {
             fn simd_eq(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(intrinsics::simd_eq(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_eq(self.to_int(), other.to_int())) }
             }
 
             #[inline]
             fn simd_ne(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(intrinsics::simd_ne(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_ne(self.to_int(), other.to_int())) }
             }
         }
         )*

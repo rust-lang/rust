@@ -34,7 +34,7 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         &builder.config.cmd
     {
         // disable the most spammy clippy lints
-        let ignored_lints = vec![
+        let ignored_lints = [
             "many_single_char_names", // there are a lot in stdarch
             "collapsible_if",
             "type_complexity",
@@ -150,7 +150,7 @@ impl Step for Std {
         if compiler.stage == 0 {
             let libdir = builder.sysroot_libdir(compiler, target);
             let hostdir = builder.sysroot_libdir(compiler, compiler.host);
-            add_to_sysroot(&builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+            add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
         }
         drop(_guard);
 
@@ -301,7 +301,7 @@ impl Step for Rustc {
 
         let libdir = builder.sysroot_libdir(compiler, target);
         let hostdir = builder.sysroot_libdir(compiler, compiler.host);
-        add_to_sysroot(&builder, &libdir, &hostdir, &librustc_stamp(builder, compiler, target));
+        add_to_sysroot(builder, &libdir, &hostdir, &librustc_stamp(builder, compiler, target));
     }
 }
 
@@ -353,7 +353,7 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
-        let _guard = builder.msg_check(&backend, target);
+        let _guard = builder.msg_check(backend, target);
 
         run_cargo(
             builder,

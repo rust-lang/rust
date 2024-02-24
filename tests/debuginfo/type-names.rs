@@ -1,9 +1,9 @@
-// ignore-lldb
+//@ ignore-lldb
 
 // GDB changed the way that it formatted Foreign types
-// min-gdb-version: 9.2
+//@ min-gdb-version: 9.2
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

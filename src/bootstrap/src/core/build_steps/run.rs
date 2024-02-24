@@ -23,7 +23,7 @@ impl Step for ExpandYamlAnchors {
     fn run(self, builder: &Builder<'_>) {
         builder.info("Expanding YAML anchors in the GitHub Actions configuration");
         builder.run_delaying_failure(
-            &mut builder.tool_cmd(Tool::ExpandYamlAnchors).arg("generate").arg(&builder.src),
+            builder.tool_cmd(Tool::ExpandYamlAnchors).arg("generate").arg(&builder.src),
         );
     }
 

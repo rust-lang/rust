@@ -218,7 +218,7 @@ pub fn output_filename(
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
 pub fn set_image_base() {
     let image_base = crate::os::fortanix_sgx::mem::image_base();
-    backtrace_rs::set_image_base(crate::ptr::invalid_mut(image_base as _));
+    backtrace_rs::set_image_base(crate::ptr::without_provenance_mut(image_base as _));
 }
 
 #[cfg(not(all(target_vendor = "fortanix", target_env = "sgx")))]

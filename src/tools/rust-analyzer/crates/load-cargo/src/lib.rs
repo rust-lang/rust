@@ -2,7 +2,7 @@
 //! for incorporating changes.
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
-use std::{collections::hash_map::Entry, mem, path::Path, sync};
+use std::{collections::hash_map::Entry, iter, mem, path::Path, sync};
 
 use crossbeam_channel::{unbounded, Receiver};
 use hir_expand::proc_macro::{
@@ -18,7 +18,6 @@ use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
-use tt::DelimSpan;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -68,9 +67,9 @@ pub fn load_workspace(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroServer::spawn(it).map_err(Into::into)),
+            .and_then(|it| ProcMacroServer::spawn(it, extra_env).map_err(Into::into)),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroServer::spawn(path.clone()).map_err(Into::into)
+            ProcMacroServer::spawn(path.clone(), extra_env).map_err(Into::into)
         }
         ProcMacroServerChoice::None => Err(anyhow::format_err!("proc macro server disabled")),
     };
@@ -107,7 +106,7 @@ pub fn load_workspace(
             .collect()
     };
 
-    let project_folders = ProjectFolders::new(&[ws], &[]);
+    let project_folders = ProjectFolders::new(std::slice::from_ref(&ws), &[]);
     loader.set_config(vfs::loader::Config {
         load: project_folders.load,
         watch: vec![],
@@ -115,6 +114,7 @@ pub fn load_workspace(
     });
 
     let host = load_crate_graph(
+        &ws,
         crate_graph,
         proc_macros,
         project_folders.source_root_config,
@@ -273,7 +273,7 @@ impl SourceRootConfig {
 pub fn load_proc_macro(
     server: &ProcMacroServer,
     path: &AbsPath,
-    dummy_replace: &[Box<str>],
+    ignored_macros: &[Box<str>],
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
@@ -283,7 +283,7 @@ pub fn load_proc_macro(
         }
         Ok(vec
             .into_iter()
-            .map(|expander| expander_to_proc_macro(expander, dummy_replace))
+            .map(|expander| expander_to_proc_macro(expander, ignored_macros))
             .collect())
     })();
     match res {
@@ -302,6 +302,7 @@ pub fn load_proc_macro(
 }
 
 fn load_crate_graph(
+    ws: &ProjectWorkspace,
     crate_graph: CrateGraph,
     proc_macros: ProcMacros,
     source_root_config: SourceRootConfig,
@@ -340,8 +341,17 @@ fn load_crate_graph(
     let source_roots = source_root_config.partition(vfs);
     analysis_change.set_roots(source_roots);
 
+    let num_crates = crate_graph.len();
     analysis_change.set_crate_graph(crate_graph);
     analysis_change.set_proc_macros(proc_macros);
+    if let ProjectWorkspace::Cargo { toolchain, target_layout, .. }
+    | ProjectWorkspace::Json { toolchain, target_layout, .. } = ws
+    {
+        analysis_change.set_target_data_layouts(
+            iter::repeat(target_layout.clone()).take(num_crates).collect(),
+        );
+        analysis_change.set_toolchains(iter::repeat(toolchain.clone()).take(num_crates).collect());
+    }
 
     host.apply_change(analysis_change);
     host
@@ -349,7 +359,7 @@ fn load_crate_graph(
 
 fn expander_to_proc_macro(
     expander: proc_macro_api::ProcMacro,
-    dummy_replace: &[Box<str>],
+    ignored_macros: &[Box<str>],
 ) -> ProcMacro {
     let name = From::from(expander.name());
     let kind = match expander.kind() {
@@ -357,16 +367,8 @@ fn expander_to_proc_macro(
         proc_macro_api::ProcMacroKind::FuncLike => ProcMacroKind::FuncLike,
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
-    let expander: sync::Arc<dyn ProcMacroExpander> =
-        if dummy_replace.iter().any(|replace| **replace == name) {
-            match kind {
-                ProcMacroKind::Attr => sync::Arc::new(IdentityExpander),
-                _ => sync::Arc::new(EmptyExpander),
-            }
-        } else {
-            sync::Arc::new(Expander(expander))
-        };
-    ProcMacro { name, kind, expander }
+    let disabled = ignored_macros.iter().any(|replace| **replace == name);
+    ProcMacro { name, kind, expander: sync::Arc::new(Expander(expander)), disabled }
 }
 
 #[derive(Debug)]
@@ -388,42 +390,6 @@ impl ProcMacroExpander for Expander {
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
         }
-    }
-}
-
-/// Dummy identity expander, used for attribute proc-macros that are deliberately ignored by the user.
-#[derive(Debug)]
-struct IdentityExpander;
-
-impl ProcMacroExpander for IdentityExpander {
-    fn expand(
-        &self,
-        subtree: &tt::Subtree<Span>,
-        _: Option<&tt::Subtree<Span>>,
-        _: &Env,
-        _: Span,
-        _: Span,
-        _: Span,
-    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        Ok(subtree.clone())
-    }
-}
-
-/// Empty expander, used for proc-macros that are deliberately ignored by the user.
-#[derive(Debug)]
-struct EmptyExpander;
-
-impl ProcMacroExpander for EmptyExpander {
-    fn expand(
-        &self,
-        _: &tt::Subtree<Span>,
-        _: Option<&tt::Subtree<Span>>,
-        _: &Env,
-        call_site: Span,
-        _: Span,
-        _: Span,
-    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
-        Ok(tt::Subtree::empty(DelimSpan { open: call_site, close: call_site }))
     }
 }
 

@@ -1,4 +1,4 @@
-// aux-build:trait-vis.rs
+//@ aux-build:trait-vis.rs
 
 extern crate inner;
 

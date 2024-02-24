@@ -1,6 +1,6 @@
 #![feature(coverage_attribute)]
 #![feature(noop_waker)]
-// edition: 2018
+//@ edition: 2018
 
 macro_rules! bail {
     ($msg:literal $(,)?) => {

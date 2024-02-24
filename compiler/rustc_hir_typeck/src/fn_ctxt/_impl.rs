@@ -5,7 +5,7 @@ use crate::rvalue_scopes;
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -1020,7 +1020,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn note_internal_mutation_in_method(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
         expected: Option<Ty<'tcx>>,
         found: Ty<'tcx>,
@@ -1522,10 +1522,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.next_trait_solver()
             && let ty::Alias(..) = ty.kind()
         {
-            match self
+            // We need to use a separate variable here as otherwise the temporary for
+            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
+            // in a reentrant borrow, causing an ICE.
+            let result = self
                 .at(&self.misc(sp), self.param_env)
-                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut())
-            {
+                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut());
+            match result {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
                     let guar = self.err_ctxt().report_fulfillment_errors(errors);

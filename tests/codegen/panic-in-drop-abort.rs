@@ -1,5 +1,5 @@
-// compile-flags: -Z panic-in-drop=abort -O
-// ignore-msvc
+//@ compile-flags: -Z panic-in-drop=abort -O
+//@ ignore-msvc
 
 // Ensure that unwinding code paths are eliminated from the output after
 // optimization.

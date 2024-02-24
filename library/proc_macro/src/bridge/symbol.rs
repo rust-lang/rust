@@ -136,7 +136,7 @@ thread_local! {
         arena: arena::Arena::new(),
         names: fxhash::FxHashMap::default(),
         strings: Vec::new(),
-        // Start with a base of 1 to make sure that `NonZeroU32` works.
+        // Start with a base of 1 to make sure that `NonZero<u32>` works.
         sym_base: NonZero::new(1).unwrap(),
     });
 }

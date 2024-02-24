@@ -1,4 +1,4 @@
-// unit-test: DataflowConstProp
+//@ unit-test: DataflowConstProp
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 #![feature(custom_mir, core_intrinsics, rustc_attrs)]
@@ -62,7 +62,7 @@ fn statics() {
 
     static RC: &E = &E::V2(4);
 
-    // CHECK: [[t:_.*]] = const {alloc2: &&E};
+    // CHECK: [[t:_.*]] = const {alloc5: &&E};
     // CHECK: [[e2]] = (*[[t]]);
     let e2 = RC;
 

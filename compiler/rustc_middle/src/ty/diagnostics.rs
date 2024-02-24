@@ -11,7 +11,7 @@ use crate::ty::{
 };
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg};
+use rustc_errors::{Applicability, DiagnosticArgValue, DiagnosticBuilder, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -111,7 +111,7 @@ where
 pub fn suggest_arbitrary_trait_bound<'tcx>(
     tcx: TyCtxt<'tcx>,
     generics: &hir::Generics<'_>,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     trait_pred: PolyTraitPredicate<'tcx>,
     associated_ty: Option<(&'static str, Ty<'tcx>)>,
 ) -> bool {
@@ -216,7 +216,7 @@ fn suggest_changing_unsized_bound(
 pub fn suggest_constraining_type_param(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     param_name: &str,
     constraint: &str,
     def_id: Option<DefId>,
@@ -235,7 +235,7 @@ pub fn suggest_constraining_type_param(
 pub fn suggest_constraining_type_params<'a>(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
-    err: &mut Diagnostic,
+    err: &mut DiagnosticBuilder<'_>,
     param_names_and_constraints: impl Iterator<Item = (&'a str, &'a str, Option<DefId>)>,
     span_to_replace: Option<Span>,
 ) -> bool {

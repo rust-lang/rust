@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, VariantIdx};
 
-use super::eval_queries::{mk_eval_cx, op_to_const};
+use super::eval_queries::{mk_eval_cx_to_read_const_val, op_to_const};
 use super::machine::CompileTimeEvalContext;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessMutGlobal;
@@ -223,7 +223,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
     let const_alloc = tcx.eval_to_allocation_raw(param_env.and(cid))?;
 
     // FIXME Need to provide a span to `eval_to_valtree`
-    let ecx = mk_eval_cx(
+    let ecx = mk_eval_cx_to_read_const_val(
         tcx,
         DUMMY_SP,
         param_env,
@@ -287,7 +287,8 @@ pub fn valtree_to_const_value<'tcx>(
             }
         }
         ty::Ref(_, inner_ty, _) => {
-            let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
+            let mut ecx =
+                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
             let imm = valtree_to_ref(&mut ecx, valtree, *inner_ty);
             let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
             op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
@@ -314,7 +315,8 @@ pub fn valtree_to_const_value<'tcx>(
                 bug!("could not find non-ZST field during in {layout:#?}");
             }
 
-            let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
+            let mut ecx =
+                mk_eval_cx_to_read_const_val(tcx, DUMMY_SP, param_env, CanAccessMutGlobal::No);
 
             // Need to create a place for this valtree.
             let place = create_valtree_place(&mut ecx, layout, valtree);

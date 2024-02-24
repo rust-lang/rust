@@ -96,7 +96,7 @@ impl Annotatable {
         }
     }
 
-    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
+    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) -> V::Result {
         match self {
             Annotatable::Item(item) => visitor.visit_item(item),
             Annotatable::TraitItem(item) => visitor.visit_assoc_item(item, AssocCtxt::Trait),
@@ -1176,6 +1176,8 @@ impl<'a> ExtCtxt<'a> {
         for (span, notes) in self.expansions.iter() {
             let mut db = self.dcx().create_note(errors::TraceMacro { span: *span });
             for note in notes {
+                // FIXME: make this translatable
+                #[allow(rustc::untranslatable_diagnostic)]
                 db.note(note.clone());
             }
             db.emit();

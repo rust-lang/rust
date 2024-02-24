@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
 // Preserve semicolons that disambiguate unops
 

@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 #![feature(inline_const)]
 #![feature(inline_const_pat)]

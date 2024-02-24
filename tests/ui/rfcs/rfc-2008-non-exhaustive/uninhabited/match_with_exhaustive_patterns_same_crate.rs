@@ -1,7 +1,7 @@
 //@ check-pass
 
 #![deny(unreachable_patterns)]
-#![feature(exhaustive_patterns)]
+#![feature(min_exhaustive_patterns)]
 #![feature(never_type)]
 
 #[non_exhaustive]

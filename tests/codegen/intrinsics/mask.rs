@@ -1,4 +1,4 @@
-// compile-flags: -Copt-level=0
+//@ compile-flags: -Copt-level=0
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
 

@@ -1,5 +1,5 @@
-// aux-build:trait-alias-mention.rs
-// build-aux-docs
+//@ aux-build:trait-alias-mention.rs
+//@ build-aux-docs
 
 #![crate_name = "foo"]
 

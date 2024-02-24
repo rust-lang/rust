@@ -18,6 +18,6 @@ fn main() {
     let f = |(_, _)| {};
     let g = |(a, _)| a;
     let t7 = |env| |a| |b| t7p(f, g)(((env, a), b));
+    //~^ ERROR mismatched types
     let t8 = t8n(t7, t7p(f, g));
-    //~^ ERROR: expected a `Fn(_)` closure, found `impl Fn(((_, _), _))` [E0277]
 }

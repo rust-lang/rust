@@ -21,12 +21,16 @@ error[E0093]: unrecognized intrinsic function: `bar`
    |
 LL |     fn bar();
    |     ^^^^^^^^^ unrecognized intrinsic
+   |
+   = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error[E0093]: unrecognized intrinsic function: `baz`
   --> $DIR/feature-gate-intrinsics.rs:5:28
    |
 LL | extern "rust-intrinsic" fn baz() {}
    |                            ^^^ unrecognized intrinsic
+   |
+   = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 
 error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
   --> $DIR/feature-gate-intrinsics.rs:5:34

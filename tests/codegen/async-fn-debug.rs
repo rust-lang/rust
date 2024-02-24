@@ -4,8 +4,8 @@
 //  - Other fields are not marked artificial
 //
 //
-// compile-flags: -C debuginfo=2 --edition=2018
-// ignore-msvc
+//@ compile-flags: -C debuginfo=2 --edition=2018
+//@ ignore-msvc
 
 async fn foo() {}
 async fn async_fn_test() {

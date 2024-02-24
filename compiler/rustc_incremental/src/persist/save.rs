@@ -32,7 +32,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             return;
         }
         // This is going to be deleted in finalize_session_directory, so let's not create it.
-        if sess.dcx().has_errors_or_lint_errors_or_delayed_bugs().is_some() {
+        if sess.dcx().has_errors_or_delayed_bugs().is_some() {
             return;
         }
 
@@ -87,7 +87,7 @@ pub fn save_work_product_index(
         return;
     }
     // This is going to be deleted in finalize_session_directory, so let's not create it
-    if sess.dcx().has_errors_or_lint_errors().is_some() {
+    if sess.dcx().has_errors().is_some() {
         return;
     }
 

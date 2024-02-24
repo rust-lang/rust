@@ -1,7 +1,7 @@
 #![feature(fn_delegation)]
 //~^ WARN the feature `fn_delegation` is incomplete
 
-// pp-exact
+//@ pp-exact
 
 trait Trait {
     fn bar(&self, x: i32) -> i32 { x }

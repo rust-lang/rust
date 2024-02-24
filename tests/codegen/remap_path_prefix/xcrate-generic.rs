@@ -1,6 +1,6 @@
-// ignore-windows
-// compile-flags: -g -C metadata=foo -C no-prepopulate-passes
-// aux-build:xcrate-generic.rs
+//@ ignore-windows
+//@ compile-flags: -g -C metadata=foo -C no-prepopulate-passes
+//@ aux-build:xcrate-generic.rs
 
 #![crate_type = "lib"]
 

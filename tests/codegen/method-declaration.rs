@@ -1,4 +1,4 @@
-// compile-flags: -g -Cno-prepopulate-passes
+//@ compile-flags: -g -Cno-prepopulate-passes
 
 // Verify that we added a declaration for a method.
 

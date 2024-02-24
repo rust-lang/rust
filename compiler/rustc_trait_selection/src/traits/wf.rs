@@ -313,7 +313,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             // Don't normalize the whole obligation, the param env is either
             // already normalized, or we're currently normalizing the
             // param_env. Either way we should only normalize the predicate.
-            let normalized_predicate = traits::project::normalize_with_depth_to(
+            let normalized_predicate = traits::normalize::normalize_with_depth_to(
                 &mut selcx,
                 param_env,
                 cause.clone(),

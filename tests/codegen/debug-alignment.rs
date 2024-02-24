@@ -1,6 +1,6 @@
 // Verifies that DWARF alignment is specified properly.
 //
-// compile-flags: -C debuginfo=2
+//@ compile-flags: -C debuginfo=2
 #![crate_type = "lib"]
 
 // CHECK: !DIGlobalVariable

@@ -1,5 +1,5 @@
-// compile-flags: -O -Z merge-functions=disabled
-// ignore-debug (the extra assertions get in the way)
+//@ compile-flags: -O -Z merge-functions=disabled
+//@ ignore-debug (the extra assertions get in the way)
 
 #![crate_type = "lib"]
 

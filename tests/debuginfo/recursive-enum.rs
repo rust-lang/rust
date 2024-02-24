@@ -1,6 +1,6 @@
-// ignore-lldb
+//@ ignore-lldb
 
-// compile-flags:-g
+//@ compile-flags:-g
 // gdb-command:run
 
 // Test whether compiling a recursive enum definition crashes debug info generation. The test case

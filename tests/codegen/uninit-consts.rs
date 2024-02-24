@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 
 // Check that we use undef (and not zero) for uninitialized bytes in constants.
 

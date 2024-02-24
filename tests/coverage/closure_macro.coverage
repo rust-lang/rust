@@ -1,4 +1,4 @@
-   LL|       |// edition: 2018
+   LL|       |//@ edition: 2018
    LL|       |
    LL|       |macro_rules! bail {
    LL|       |    ($msg:literal $(,)?) => {

@@ -864,8 +864,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .map(|(i, arg)| {
                         // The indices passed to simd_shuffle in the
                         // third argument must be constant. This is
-                        // checked by const-qualification, which also
-                        // promotes any complex rvalues to constants.
+                        // checked by the type-checker.
                         if i == 2 && intrinsic == sym::simd_shuffle {
                             if let mir::Operand::Constant(constant) = &arg.node {
                                 let (llval, ty) = self.simd_shuffle_indices(bx, constant);

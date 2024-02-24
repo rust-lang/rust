@@ -6,9 +6,7 @@
 use either::Either;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan,
-};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
@@ -635,7 +633,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_assign_value(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         moved_place: PlaceRef<'tcx>,
         sugg_span: Span,
     ) {
@@ -674,7 +672,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_borrow_fn_like(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         ty: Ty<'tcx>,
         move_sites: &[MoveSite],
         value_name: &str,
@@ -742,7 +740,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_cloning(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         ty: Ty<'tcx>,
         expr: &hir::Expr<'_>,
         span: Span,
@@ -778,7 +776,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    fn suggest_adding_copy_bounds(&self, err: &mut Diagnostic, ty: Ty<'tcx>, span: Span) {
+    fn suggest_adding_copy_bounds(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) {
         let tcx = self.infcx.tcx;
         let generics = tcx.generics_of(self.mir_def_id());
 
@@ -1225,7 +1228,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self, err))]
     fn suggest_using_local_if_applicable(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         location: Location,
         issued_borrow: &BorrowData<'tcx>,
         explanation: BorrowExplanation<'tcx>,
@@ -1321,7 +1324,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_slice_method_if_applicable(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         place: Place<'tcx>,
         borrowed_place: Place<'tcx>,
     ) {
@@ -1430,7 +1433,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// ```
     pub(crate) fn explain_iterator_advancement_in_for_loop_if_applicable(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         span: Span,
         issued_spans: &UseSpans<'tcx>,
     ) {
@@ -1617,7 +1620,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// ```
     fn suggest_using_closure_argument_instead_of_capture(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         borrowed_place: Place<'tcx>,
         issued_spans: &UseSpans<'tcx>,
     ) {
@@ -1751,7 +1754,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_binding_for_closure_capture_self(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'_>,
         issued_spans: &UseSpans<'tcx>,
     ) {
         let UseSpans::ClosureUse { capture_kind_span, .. } = issued_spans else { return };
@@ -2997,7 +3000,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut Diagnostic) {
+    fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut DiagnosticBuilder<'_>) {
         let tcx = self.infcx.tcx;
         if let (
             Some(Terminator {
@@ -3532,7 +3535,11 @@ enum AnnotatedBorrowFnSignature<'tcx> {
 impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
     /// Annotate the provided diagnostic with information about borrow from the fn signature that
     /// helps explain.
-    pub(crate) fn emit(&self, cx: &mut MirBorrowckCtxt<'_, 'tcx>, diag: &mut Diagnostic) -> String {
+    pub(crate) fn emit(
+        &self,
+        cx: &mut MirBorrowckCtxt<'_, 'tcx>,
+        diag: &mut DiagnosticBuilder<'_>,
+    ) -> String {
         match self {
             &AnnotatedBorrowFnSignature::Closure { argument_ty, argument_span } => {
                 diag.span_label(

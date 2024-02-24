@@ -1,7 +1,7 @@
 // Verifies that "CFI Canonical Jump Tables" module flag is added.
 //
-// needs-sanitizer-cfi
-// compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ needs-sanitizer-cfi
+//@ compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
 
 #![crate_type="lib"]
 

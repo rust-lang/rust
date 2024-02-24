@@ -1,5 +1,5 @@
 // skip-filecheck
-// unit-test: CopyProp
+//@ unit-test: CopyProp
 // Verify that we do not ICE on partial initializations.
 
 #![feature(custom_mir, core_intrinsics)]

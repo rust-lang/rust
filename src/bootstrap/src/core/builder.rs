@@ -288,16 +288,61 @@ impl PathSet {
     }
 }
 
-const PATH_REMAP: &[(&str, &str)] = &[("rust-analyzer-proc-macro-srv", "proc-macro-srv-cli")];
+const PATH_REMAP: &[(&str, &[&str])] = &[
+    // config.toml uses `rust-analyzer-proc-macro-srv`, but the
+    // actual path is `proc-macro-srv-cli`
+    ("rust-analyzer-proc-macro-srv", &["proc-macro-srv-cli"]),
+    // Make `x test tests` function the same as `x t tests/*`
+    (
+        "tests",
+        &[
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/coverage",
+            "tests/coverage-run-rustdoc",
+            "tests/debuginfo",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make",
+            "tests/run-make-fulldeps",
+            "tests/run-pass-valgrind",
+            "tests/rustdoc",
+            "tests/rustdoc-gui",
+            "tests/rustdoc-js",
+            "tests/rustdoc-js-std",
+            "tests/rustdoc-json",
+            "tests/rustdoc-ui",
+            "tests/ui",
+            "tests/ui-fulldeps",
+        ],
+    ),
+];
 
 fn remap_paths(paths: &mut Vec<&Path>) {
-    for path in paths.iter_mut() {
+    let mut remove = vec![];
+    let mut add = vec![];
+    for (i, path) in paths
+        .iter()
+        .enumerate()
+        .filter_map(|(i, path)| if let Some(s) = path.to_str() { Some((i, s)) } else { None })
+    {
         for &(search, replace) in PATH_REMAP {
-            if path.to_str() == Some(search) {
-                *path = Path::new(replace)
+            // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
+            if path.trim_matches(std::path::is_separator) == search {
+                remove.push(i);
+                add.extend(replace.into_iter().map(Path::new));
+                break;
             }
         }
     }
+    remove.sort();
+    remove.dedup();
+    for idx in remove.into_iter().rev() {
+        paths.remove(idx);
+    }
+    paths.append(&mut add);
 }
 
 impl StepDescription {
@@ -329,7 +374,7 @@ impl StepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.skip.iter().any(|e| pathset.has(&e, builder.kind)) {
+        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
             if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
             }
@@ -369,8 +414,7 @@ impl StepDescription {
         }
 
         // strip CurDir prefix if present
-        let mut paths: Vec<_> =
-            paths.into_iter().map(|p| p.strip_prefix(".").unwrap_or(p)).collect();
+        let mut paths: Vec<_> = paths.iter().map(|p| p.strip_prefix(".").unwrap_or(p)).collect();
 
         remap_paths(&mut paths);
 
@@ -378,7 +422,7 @@ impl StepDescription {
         // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
         paths.retain(|path| {
             for (desc, should_run) in v.iter().zip(&should_runs) {
-                if let Some(suite) = should_run.is_suite_path(&path) {
+                if let Some(suite) = should_run.is_suite_path(path) {
                     desc.maybe_run(builder, vec![suite.clone()]);
                     return false;
                 }
@@ -537,7 +581,7 @@ impl<'a> ShouldRun<'a> {
                 .iter()
                 .map(|p| {
                     // assert only if `p` isn't submodule
-                    if submodules_paths.iter().find(|sm_p| p.contains(*sm_p)).is_none() {
+                    if !submodules_paths.iter().any(|sm_p| p.contains(sm_p)) {
                         assert!(
                             self.builder.src.join(p).exists(),
                             "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
@@ -858,6 +902,11 @@ impl<'a> Builder<'a> {
             Kind::Install => describe!(
                 install::Docs,
                 install::Std,
+                // During the Rust compiler (rustc) installation process, we copy the entire sysroot binary
+                // path (build/host/stage2/bin). Since the building tools also make their copy in the sysroot
+                // binary path, we must install rustc before the tools. Otherwise, the rust-installer will
+                // install the same binaries twice for each tool, leaving backup files (*.old) as a result.
+                install::Rustc,
                 install::Cargo,
                 install::RustAnalyzer,
                 install::Rustfmt,
@@ -866,7 +915,6 @@ impl<'a> Builder<'a> {
                 install::Miri,
                 install::LlvmTools,
                 install::Src,
-                install::Rustc,
             ),
             Kind::Run => describe!(
                 run::ExpandYamlAnchors,
@@ -1204,7 +1252,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
-        let mut cmd = Command::new(&self.bootstrap_out.join("rustdoc"));
+        let mut cmd = Command::new(self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
@@ -1347,7 +1395,7 @@ impl<'a> Builder<'a> {
 
         // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
-        cargo.env("REAL_LIBRARY_PATH_VAR", &helpers::dylib_path_var());
+        cargo.env("REAL_LIBRARY_PATH_VAR", helpers::dylib_path_var());
         if let Some(e) = env::var_os(helpers::dylib_path_var()) {
             cargo.env("REAL_LIBRARY_PATH", e);
         }
@@ -1616,8 +1664,8 @@ impl<'a> Builder<'a> {
             .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", stage.to_string())
-            .env("RUSTC_SYSROOT", &sysroot)
-            .env("RUSTC_LIBDIR", &libdir)
+            .env("RUSTC_SYSROOT", sysroot)
+            .env("RUSTC_LIBDIR", libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env(
                 "RUSTDOC_REAL",
@@ -1750,7 +1798,7 @@ impl<'a> Builder<'a> {
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
         if self.config.dump_bootstrap_shims {
-            prepare_behaviour_dump_dir(&self.build);
+            prepare_behaviour_dump_dir(self.build);
 
             cargo
                 .env("DUMP_BOOTSTRAP_SHIMS", self.build.out.join("bootstrap-shims-dump"))
@@ -1789,7 +1837,7 @@ impl<'a> Builder<'a> {
         // platform-specific environment variable as a workaround.
         if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
-                let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
+                let llvm_libdir = output(Command::new(llvm_config).arg("--libdir"));
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
             }
         }
@@ -1868,6 +1916,10 @@ impl<'a> Builder<'a> {
         if mode == Mode::Rustc {
             rustflags.arg("-Zunstable-options");
             rustflags.arg("-Wrustc::internal");
+        }
+
+        if self.config.rust_frame_pointers {
+            rustflags.arg("-Cforce-frame-pointers=true");
         }
 
         // If Control Flow Guard is enabled, pass the `control-flow-guard` flag to rustc
@@ -2072,7 +2124,7 @@ impl<'a> Builder<'a> {
 
         if self.config.print_step_timings && !self.config.dry_run() {
             let step_string = format!("{step:?}");
-            let brace_index = step_string.find("{").unwrap_or(0);
+            let brace_index = step_string.find('{').unwrap_or(0);
             let type_string = type_name::<S>();
             println!(
                 "[TIMING] {} {} -- {}.{:03}",
@@ -2421,7 +2473,7 @@ impl Cargo {
                     _ => s.display().to_string(),
                 }
             };
-            let triple_underscored = target.triple.replace("-", "_");
+            let triple_underscored = target.triple.replace('-', "_");
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 

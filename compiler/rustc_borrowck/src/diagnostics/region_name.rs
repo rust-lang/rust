@@ -5,7 +5,7 @@ use std::fmt::{self, Display};
 use std::iter;
 
 use rustc_data_structures::fx::IndexEntry;
-use rustc_errors::Diagnostic;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
@@ -106,7 +106,7 @@ impl RegionName {
         }
     }
 
-    pub(crate) fn highlight_region_name(&self, diag: &mut Diagnostic) {
+    pub(crate) fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
         match &self.source {
             RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::NamedEarlyParamRegion(span) => {
@@ -626,9 +626,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     | GenericArgKind::Const(_),
                     _,
                 ) => {
-                    // HIR lowering sometimes doesn't catch this in erroneous
-                    // programs, so we need to use span_delayed_bug here. See #82126.
-                    self.dcx().span_delayed_bug(
+                    // This was previously a `span_delayed_bug` and could be
+                    // reached by the test for #82126, but no longer.
+                    self.dcx().span_bug(
                         hir_arg.span(),
                         format!("unmatched arg and hir arg: found {kind:?} vs {hir_arg:?}"),
                     );

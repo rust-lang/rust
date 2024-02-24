@@ -2,7 +2,7 @@
 
 #![doc(html_playground_url = "")]
 
-// compile-flags:-Z unstable-options --playground-url https://play.rust-lang.org/
+//@ compile-flags:-Z unstable-options --playground-url https://play.rust-lang.org/
 
 //! module docs
 //!

@@ -3,7 +3,7 @@
 use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
-use fst::{self, raw::IndexedValue, Automaton, Streamer};
+use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir_expand::name::Name;
 use indexmap::IndexMap;
 use itertools::Itertools;

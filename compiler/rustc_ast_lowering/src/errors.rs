@@ -1,5 +1,6 @@
 use rustc_errors::{
-    codes::*, AddToDiagnostic, Diagnostic, DiagnosticArgFromDisplay, SubdiagnosticMessageOp,
+    codes::*, AddToDiagnostic, DiagnosticArgFromDisplay, DiagnosticBuilder, EmissionGuarantee,
+    SubdiagnosticMessageOp,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -41,7 +42,11 @@ pub struct InvalidAbi {
 pub struct InvalidAbiReason(pub &'static str);
 
 impl AddToDiagnostic for InvalidAbiReason {
-    fn add_to_diagnostic_with<F: SubdiagnosticMessageOp>(self, diag: &mut Diagnostic, _: F) {
+    fn add_to_diagnostic_with<G: EmissionGuarantee, F: SubdiagnosticMessageOp<G>>(
+        self,
+        diag: &mut DiagnosticBuilder<'_, G>,
+        _: F,
+    ) {
         #[allow(rustc::untranslatable_diagnostic)]
         diag.note(self.0);
     }

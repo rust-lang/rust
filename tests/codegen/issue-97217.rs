@@ -1,6 +1,6 @@
-// compile-flags: -C opt-level=3
-// ignore-debug: the debug assertions get in the way
-// min-llvm-version: 17.0.2
+//@ compile-flags: -C opt-level=3
+//@ ignore-debug: the debug assertions get in the way
+//@ min-llvm-version: 17.0.2
 #![crate_type = "lib"]
 
 // Regression test for issue 97217 (the following should result in no allocations)

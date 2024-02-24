@@ -1,14 +1,16 @@
 //! This module provides `StaticIndex` which is used for powering
 //! read-only code browsers and emitting LSIF
 
-use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
+use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
     defs::Definition,
+    documentation::Documentation,
+    famous_defs::FamousDefs,
     helpers::get_definition,
     FxHashMap, FxHashSet, RootDatabase,
 };
-use syntax::{AstNode, SyntaxKind::*, TextRange, T};
+use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
 use crate::inlay_hints::InlayFieldsToResolve;
 use crate::navigation_target::UpmappingResult;
@@ -22,7 +24,7 @@ use crate::{
 
 /// A static representation of fully analyzed source code.
 ///
-/// The intended use-case is powering read-only code browsers and emitting LSIF
+/// The intended use-case is powering read-only code browsers and emitting LSIF/SCIP.
 #[derive(Debug)]
 pub struct StaticIndex<'a> {
     pub files: Vec<StaticIndexedFile>,
@@ -40,6 +42,7 @@ pub struct ReferenceData {
 
 #[derive(Debug)]
 pub struct TokenStaticData {
+    pub documentation: Option<Documentation>,
     pub hover: Option<HoverResult>,
     pub definition: Option<FileRange>,
     pub references: Vec<ReferenceData>,
@@ -101,6 +104,19 @@ fn all_modules(db: &dyn HirDatabase) -> Vec<Module> {
     }
 
     modules
+}
+
+fn documentation_for_definition(
+    sema: &Semantics<'_, RootDatabase>,
+    def: Definition,
+    scope_node: &SyntaxNode,
+) -> Option<Documentation> {
+    let famous_defs = match &def {
+        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(scope_node)?.krate())),
+        _ => None,
+    };
+
+    def.docs(sema.db, famous_defs.as_ref())
 }
 
 impl StaticIndex<'_> {
@@ -169,6 +185,7 @@ impl StaticIndex<'_> {
                 *it
             } else {
                 let it = self.tokens.insert(TokenStaticData {
+                    documentation: documentation_for_definition(&sema, def, &node),
                     hover: hover_for_definition(&sema, file_id, def, &node, &hover_config),
                     definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }

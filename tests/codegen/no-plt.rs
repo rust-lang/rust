@@ -1,4 +1,4 @@
-// compile-flags: -C relocation-model=pic -Z plt=no
+//@ compile-flags: -C relocation-model=pic -Z plt=no
 
 #![crate_type = "lib"]
 

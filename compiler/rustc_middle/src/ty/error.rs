@@ -351,7 +351,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
         .expect("could not write to `String`");
 
-        if !self.sess.opts.unstable_opts.write_long_types_to_disk {
+        if !self.sess.opts.unstable_opts.write_long_types_to_disk || self.sess.opts.verbose {
             return regular;
         }
 

@@ -1,7 +1,10 @@
+//@ aux-build:block-on.rs
 //@ edition: 2021
 //@ build-pass
 
 #![feature(async_fn_traits)]
+
+extern crate block_on;
 
 use std::ops::AsyncFn;
 
@@ -12,5 +15,7 @@ async fn call_asyncly(f: impl AsyncFn(i32) -> i32) -> i32 {
 }
 
 fn main() {
-    let fut = call_asyncly(|x| async move { x + 1 });
+    block_on::block_on(async {
+        call_asyncly(|x| async move { x + 1 }).await;
+    });
 }

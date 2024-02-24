@@ -1,4 +1,4 @@
-// compile-flags: -O -Zmutable-noalias=no
+//@ compile-flags: -O -Zmutable-noalias=no
 
 #![crate_type = "lib"]
 

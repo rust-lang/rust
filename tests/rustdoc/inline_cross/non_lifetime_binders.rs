@@ -1,5 +1,5 @@
-// aux-crate:non_lifetime_binders=non_lifetime_binders.rs
-// edition: 2021
+//@ aux-crate:non_lifetime_binders=non_lifetime_binders.rs
+//@ edition: 2021
 #![crate_name = "user"]
 
 // @has user/fn.f.html

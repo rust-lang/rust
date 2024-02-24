@@ -1,9 +1,9 @@
 // Verify that we do not ICE when we try to overwrite an anon-const's type because of a trait
 // cycle.
 //
-// compile-flags: -Zincremental-ignore-spans
-// revisions: cpass cfail
-// error-pattern: cycle detected when computing type of `Bar::N`
+//@ compile-flags: -Zincremental-ignore-spans
+//@ revisions: cpass cfail
+//@ error-pattern: cycle detected when computing type of `Bar::N`
 
 #![feature(trait_alias)]
 #![crate_type="lib"]

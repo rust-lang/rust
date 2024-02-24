@@ -1,5 +1,5 @@
-// aux-build:proc_macro.rs
-// build-aux-docs
+//@ aux-build:proc_macro.rs
+//@ build-aux-docs
 
 extern crate some_macros;
 

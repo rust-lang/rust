@@ -1,4 +1,4 @@
-// compile-flags: -g -O
+//@ compile-flags: -g -O
 
 // Check that each inline call site for the same function uses the same "sub-program" so that LLVM
 // can correctly merge the debug info if it merges the inlined code (e.g., for merging of tail

@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 trait Foo {
     #![allow(bar)]

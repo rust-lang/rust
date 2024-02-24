@@ -2,10 +2,10 @@
 // Checks that `SimplifyArmIdentity` is not applied if enums have incompatible layouts.
 // Regression test for issue #66856.
 //
-// compile-flags: -Zmir-opt-level=3
+//@ compile-flags: -Zmir-opt-level=3
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
-// ignore-test This pass is broken since deaggregation changed
+//@ ignore-test This pass is broken since deaggregation changed
 
 enum Src {
     Foo(u8),

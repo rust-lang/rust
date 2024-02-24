@@ -1,6 +1,6 @@
-// aux-build:issue-100204-aux.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:issue-100204-aux.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #![crate_name="second"]
 

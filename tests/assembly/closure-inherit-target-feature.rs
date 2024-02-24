@@ -1,8 +1,8 @@
-// only-x86_64
-// ignore-sgx Tests incompatible with LVI mitigations
-// assembly-output: emit-asm
+//@ only-x86_64
+//@ ignore-sgx Tests incompatible with LVI mitigations
+//@ assembly-output: emit-asm
 // make sure the feature is not enabled at compile-time
-// compile-flags: -C opt-level=3 -C target-feature=-sse4.1 -C llvm-args=-x86-asm-syntax=intel
+//@ compile-flags: -C opt-level=3 -C target-feature=-sse4.1 -C llvm-args=-x86-asm-syntax=intel
 
 #![feature(target_feature_11)]
 #![crate_type = "rlib"]

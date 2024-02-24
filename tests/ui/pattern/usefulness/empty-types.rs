@@ -11,7 +11,6 @@
 #![feature(never_type_fallback)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![cfg_attr(min_exh_pats, feature(min_exhaustive_patterns))]
-//[min_exh_pats]~^ WARN the feature `min_exhaustive_patterns` is incomplete
 #![allow(dead_code, unreachable_code)]
 #![deny(unreachable_patterns)]
 

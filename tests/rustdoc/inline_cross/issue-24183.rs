@@ -1,8 +1,8 @@
 #![crate_type = "lib"]
 #![crate_name = "usr"]
 
-// aux-crate:issue_24183=issue-24183.rs
-// edition: 2021
+//@ aux-crate:issue_24183=issue-24183.rs
+//@ edition: 2021
 
 // @has usr/trait.U.html
 // @has - '//*[@class="rust item-decl"]' "pub trait U {"

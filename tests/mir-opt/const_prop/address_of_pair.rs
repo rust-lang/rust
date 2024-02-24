@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 
 // EMIT_MIR address_of_pair.fn0.GVN.diff
 pub fn fn0() -> bool {

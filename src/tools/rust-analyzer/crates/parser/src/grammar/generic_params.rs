@@ -157,6 +157,16 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
                     p.bump_any();
                     p.expect(T![const]);
                 }
+                // test const_trait_bound
+                // const fn foo(_: impl const Trait) {}
+                T![const] => {
+                    p.bump_any();
+                }
+                // test async_trait_bound
+                // fn async_foo(_: impl async Fn(&i32)) {}
+                T![async] => {
+                    p.bump_any();
+                }
                 _ => (),
             }
             if paths::is_use_path_start(p) {

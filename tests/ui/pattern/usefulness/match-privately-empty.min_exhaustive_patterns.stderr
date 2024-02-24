@@ -1,14 +1,5 @@
-warning: the feature `min_exhaustive_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/match-privately-empty.rs:3:46
-   |
-LL | #![cfg_attr(min_exhaustive_patterns, feature(min_exhaustive_patterns))]
-   |                                              ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #119612 <https://github.com/rust-lang/rust/issues/119612> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0004]: non-exhaustive patterns: `Some(Private { misc: true, .. })` not covered
-  --> $DIR/match-privately-empty.rs:16:11
+  --> $DIR/match-privately-empty.rs:15:11
    |
 LL |     match private::DATA {
    |           ^^^^^^^^^^^^^ pattern `Some(Private { misc: true, .. })` not covered
@@ -25,6 +16,6 @@ LL ~         Some(private::Private { misc: false, .. }) => {},
 LL +         Some(Private { misc: true, .. }) => todo!()
    |
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0004`.

@@ -1,5 +1,5 @@
-// compile-flags:-Z unstable-options --show-coverage
-// check-pass
+//@ compile-flags:-Z unstable-options --show-coverage
+//@ check-pass
 
 // The point of this test is to ensure that the number of "documented" items
 // is higher than in `enum-tuple.rs`.

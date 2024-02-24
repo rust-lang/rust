@@ -1,4 +1,4 @@
-// aux-build:elided-lifetime.rs
+//@ aux-build:elided-lifetime.rs
 //
 // rust-lang/rust#75225
 //

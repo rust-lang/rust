@@ -14,13 +14,7 @@ LL | const S: &'static mut str = &mut " hello ";
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/issue-76510.rs:3:29
-   |
-LL | const S: &'static mut str = &mut " hello ";
-   |                             ^^^^^^^^^^^^^^ cannot borrow as mutable
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0596, E0658, E0764.
-For more information about an error, try `rustc --explain E0596`.
+Some errors have detailed explanations: E0658, E0764.
+For more information about an error, try `rustc --explain E0658`.

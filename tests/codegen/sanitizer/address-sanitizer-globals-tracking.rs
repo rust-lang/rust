@@ -15,13 +15,13 @@
 // narrower than really needed (i.e. narrower than ELF-or-MachO), but this seems ok - having a
 // linux-only regression test should be sufficient here.
 //
-// needs-sanitizer-address
-// only-linux
+//@ needs-sanitizer-address
+//@ only-linux
 //
-// revisions:ASAN ASAN-FAT-LTO
-//                compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
-//[ASAN]          compile-flags:
-//[ASAN-FAT-LTO]  compile-flags: -Cprefer-dynamic=false -Clto=fat
+//@ revisions:ASAN ASAN-FAT-LTO
+//@                compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
+//@[ASAN]          compile-flags:
+//@[ASAN-FAT-LTO]  compile-flags: -Cprefer-dynamic=false -Clto=fat
 
 #![crate_type="staticlib"]
 

@@ -350,9 +350,9 @@ fn align_offset_zst() {
     // all, because no amount of elements will align the pointer.
     let mut p = 1;
     while p < 1024 {
-        assert_eq!(ptr::invalid::<()>(p).align_offset(p), 0);
+        assert_eq!(ptr::without_provenance::<()>(p).align_offset(p), 0);
         if p != 1 {
-            assert_eq!(ptr::invalid::<()>(p + 1).align_offset(p), !0);
+            assert_eq!(ptr::without_provenance::<()>(p + 1).align_offset(p), !0);
         }
         p = (p + 1).next_power_of_two();
     }
@@ -365,9 +365,9 @@ fn align_offset_zst_const() {
         // all, because no amount of elements will align the pointer.
         let mut p = 1;
         while p < 1024 {
-            assert!(ptr::invalid::<()>(p).align_offset(p) == 0);
+            assert!(ptr::without_provenance::<()>(p).align_offset(p) == 0);
             if p != 1 {
-                assert!(ptr::invalid::<()>(p + 1).align_offset(p) == !0);
+                assert!(ptr::without_provenance::<()>(p + 1).align_offset(p) == !0);
             }
             p = (p + 1).next_power_of_two();
         }
@@ -384,7 +384,7 @@ fn align_offset_stride_one() {
             let expected = ptr % align;
             let offset = if expected == 0 { 0 } else { align - expected };
             assert_eq!(
-                ptr::invalid::<u8>(ptr).align_offset(align),
+                ptr::without_provenance::<u8>(ptr).align_offset(align),
                 offset,
                 "ptr = {}, align = {}, size = 1",
                 ptr,
@@ -406,7 +406,7 @@ fn align_offset_stride_one_const() {
             while ptr < 2 * align {
                 let expected = ptr % align;
                 let offset = if expected == 0 { 0 } else { align - expected };
-                assert!(ptr::invalid::<u8>(ptr).align_offset(align) == offset);
+                assert!(ptr::without_provenance::<u8>(ptr).align_offset(align) == offset);
                 ptr += 1;
             }
             align = (align + 1).next_power_of_two();
@@ -452,30 +452,30 @@ fn align_offset_various_strides() {
             unsafe {
                 #[repr(packed)]
                 struct A3(#[allow(dead_code)] u16, #[allow(dead_code)] u8);
-                x |= test_stride::<A3>(ptr::invalid::<A3>(ptr), align);
+                x |= test_stride::<A3>(ptr::without_provenance::<A3>(ptr), align);
 
                 struct A4(#[allow(dead_code)] u32);
-                x |= test_stride::<A4>(ptr::invalid::<A4>(ptr), align);
+                x |= test_stride::<A4>(ptr::without_provenance::<A4>(ptr), align);
 
                 #[repr(packed)]
                 struct A5(#[allow(dead_code)] u32, #[allow(dead_code)] u8);
-                x |= test_stride::<A5>(ptr::invalid::<A5>(ptr), align);
+                x |= test_stride::<A5>(ptr::without_provenance::<A5>(ptr), align);
 
                 #[repr(packed)]
                 struct A6(#[allow(dead_code)] u32, #[allow(dead_code)] u16);
-                x |= test_stride::<A6>(ptr::invalid::<A6>(ptr), align);
+                x |= test_stride::<A6>(ptr::without_provenance::<A6>(ptr), align);
 
                 #[repr(packed)]
                 struct A7(#[allow(dead_code)] u32, #[allow(dead_code)] u16, #[allow(dead_code)] u8);
-                x |= test_stride::<A7>(ptr::invalid::<A7>(ptr), align);
+                x |= test_stride::<A7>(ptr::without_provenance::<A7>(ptr), align);
 
                 #[repr(packed)]
                 struct A8(#[allow(dead_code)] u32, #[allow(dead_code)] u32);
-                x |= test_stride::<A8>(ptr::invalid::<A8>(ptr), align);
+                x |= test_stride::<A8>(ptr::without_provenance::<A8>(ptr), align);
 
                 #[repr(packed)]
                 struct A9(#[allow(dead_code)] u32, #[allow(dead_code)] u32, #[allow(dead_code)] u8);
-                x |= test_stride::<A9>(ptr::invalid::<A9>(ptr), align);
+                x |= test_stride::<A9>(ptr::without_provenance::<A9>(ptr), align);
 
                 #[repr(packed)]
                 struct A10(
@@ -483,10 +483,10 @@ fn align_offset_various_strides() {
                     #[allow(dead_code)] u32,
                     #[allow(dead_code)] u16,
                 );
-                x |= test_stride::<A10>(ptr::invalid::<A10>(ptr), align);
+                x |= test_stride::<A10>(ptr::without_provenance::<A10>(ptr), align);
 
-                x |= test_stride::<u32>(ptr::invalid::<u32>(ptr), align);
-                x |= test_stride::<u128>(ptr::invalid::<u128>(ptr), align);
+                x |= test_stride::<u32>(ptr::without_provenance::<u32>(ptr), align);
+                x |= test_stride::<u128>(ptr::without_provenance::<u128>(ptr), align);
             }
         }
         align = (align + 1).next_power_of_two();
@@ -522,18 +522,18 @@ fn align_offset_various_strides_const() {
                 unsafe {
                     #[repr(packed)]
                     struct A3(#[allow(dead_code)] u16, #[allow(dead_code)] u8);
-                    test_stride::<A3>(ptr::invalid::<A3>(ptr), ptr, align);
+                    test_stride::<A3>(ptr::without_provenance::<A3>(ptr), ptr, align);
 
                     struct A4(#[allow(dead_code)] u32);
-                    test_stride::<A4>(ptr::invalid::<A4>(ptr), ptr, align);
+                    test_stride::<A4>(ptr::without_provenance::<A4>(ptr), ptr, align);
 
                     #[repr(packed)]
                     struct A5(#[allow(dead_code)] u32, #[allow(dead_code)] u8);
-                    test_stride::<A5>(ptr::invalid::<A5>(ptr), ptr, align);
+                    test_stride::<A5>(ptr::without_provenance::<A5>(ptr), ptr, align);
 
                     #[repr(packed)]
                     struct A6(#[allow(dead_code)] u32, #[allow(dead_code)] u16);
-                    test_stride::<A6>(ptr::invalid::<A6>(ptr), ptr, align);
+                    test_stride::<A6>(ptr::without_provenance::<A6>(ptr), ptr, align);
 
                     #[repr(packed)]
                     struct A7(
@@ -541,11 +541,11 @@ fn align_offset_various_strides_const() {
                         #[allow(dead_code)] u16,
                         #[allow(dead_code)] u8,
                     );
-                    test_stride::<A7>(ptr::invalid::<A7>(ptr), ptr, align);
+                    test_stride::<A7>(ptr::without_provenance::<A7>(ptr), ptr, align);
 
                     #[repr(packed)]
                     struct A8(#[allow(dead_code)] u32, #[allow(dead_code)] u32);
-                    test_stride::<A8>(ptr::invalid::<A8>(ptr), ptr, align);
+                    test_stride::<A8>(ptr::without_provenance::<A8>(ptr), ptr, align);
 
                     #[repr(packed)]
                     struct A9(
@@ -553,7 +553,7 @@ fn align_offset_various_strides_const() {
                         #[allow(dead_code)] u32,
                         #[allow(dead_code)] u8,
                     );
-                    test_stride::<A9>(ptr::invalid::<A9>(ptr), ptr, align);
+                    test_stride::<A9>(ptr::without_provenance::<A9>(ptr), ptr, align);
 
                     #[repr(packed)]
                     struct A10(
@@ -561,10 +561,10 @@ fn align_offset_various_strides_const() {
                         #[allow(dead_code)] u32,
                         #[allow(dead_code)] u16,
                     );
-                    test_stride::<A10>(ptr::invalid::<A10>(ptr), ptr, align);
+                    test_stride::<A10>(ptr::without_provenance::<A10>(ptr), ptr, align);
 
-                    test_stride::<u32>(ptr::invalid::<u32>(ptr), ptr, align);
-                    test_stride::<u128>(ptr::invalid::<u128>(ptr), ptr, align);
+                    test_stride::<u32>(ptr::without_provenance::<u32>(ptr), ptr, align);
+                    test_stride::<u128>(ptr::without_provenance::<u128>(ptr), ptr, align);
                 }
                 ptr += 1;
             }
@@ -689,7 +689,7 @@ fn align_offset_issue_103361() {
     #[cfg(target_pointer_width = "16")]
     const SIZE: usize = 1 << 13;
     struct HugeSize(#[allow(dead_code)] [u8; SIZE - 1]);
-    let _ = ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE);
+    let _ = ptr::without_provenance::<HugeSize>(SIZE).align_offset(SIZE);
 }
 
 #[test]
@@ -703,9 +703,9 @@ fn align_offset_issue_103361_const() {
     struct HugeSize(#[allow(dead_code)] [u8; SIZE - 1]);
 
     const {
-        assert!(ptr::invalid::<HugeSize>(SIZE - 1).align_offset(SIZE) == SIZE - 1);
-        assert!(ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE) == 0);
-        assert!(ptr::invalid::<HugeSize>(SIZE + 1).align_offset(SIZE) == 1);
+        assert!(ptr::without_provenance::<HugeSize>(SIZE - 1).align_offset(SIZE) == SIZE - 1);
+        assert!(ptr::without_provenance::<HugeSize>(SIZE).align_offset(SIZE) == 0);
+        assert!(ptr::without_provenance::<HugeSize>(SIZE + 1).align_offset(SIZE) == 1);
     }
 }
 

@@ -1,4 +1,4 @@
-// revisions: cpass
+//@ revisions: cpass
 
 #[derive(PartialEq, Eq)]
 struct Id<'a> {

@@ -2,7 +2,7 @@
 // comments. The doc link points to an associated item, so we check that traits in scope for that
 // link are populated.
 
-// aux-build:extern-builtin-type-impl-dep.rs
+//@ aux-build:extern-builtin-type-impl-dep.rs
 
 #![no_std]
 

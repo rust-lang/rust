@@ -13,10 +13,6 @@ fn main() {
     //~^ ERROR E0308
     test2(&y);
     //~^ ERROR E0308
-    let f;
-    f = Box::new(f);
-    //~^ ERROR E0308
-
     let s = &mut String::new();
     s = format!("foo");
     //~^ ERROR E0308

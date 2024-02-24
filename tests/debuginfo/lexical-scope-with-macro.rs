@@ -1,7 +1,7 @@
-// min-lldb-version: 310
-// ignore-lldb FIXME #48807
+//@ min-lldb-version: 310
+//@ ignore-lldb FIXME #48807
 
-// compile-flags:-g -Zdebug-macros
+//@ compile-flags:-g -Zdebug-macros
 
 // === GDB TESTS ===================================================================================
 

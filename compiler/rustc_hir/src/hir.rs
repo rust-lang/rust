@@ -3004,6 +3004,11 @@ impl<'hir> Item<'hir> {
         matches!(self.kind, ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..))
     }
 
+    /// Check if this is an [`ItemKind::Struct`] or [`ItemKind::Union`].
+    pub fn is_struct_or_union(&self) -> bool {
+        matches!(self.kind, ItemKind::Struct(..) | ItemKind::Union(..))
+    }
+
     expect_methods_self_kind! {
         expect_extern_crate, Option<Symbol>, ItemKind::ExternCrate(s), *s;
 

@@ -1,4 +1,4 @@
-   LL|       |// compile-flags: -Zinline-mir
+   LL|       |//@ compile-flags: -Zinline-mir
    LL|       |
    LL|       |use std::fmt::Display;
    LL|       |

@@ -1,5 +1,5 @@
-// aux-build:issue-15318.rs
-// ignore-cross-compile
+//@ aux-build:issue-15318.rs
+//@ ignore-cross-compile
 // https://github.com/rust-lang/rust/issues/15318
 
 #![crate_name="issue_15318_2"]

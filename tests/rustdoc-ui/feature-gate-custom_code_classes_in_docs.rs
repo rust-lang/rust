@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 /// ```{class=language-c}
 /// int main(void) { return 0; }

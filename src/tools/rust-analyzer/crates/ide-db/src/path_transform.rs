@@ -148,7 +148,7 @@ impl<'a> PathTransform<'a> {
         let mut defaulted_params: Vec<DefaultedParam> = Default::default();
         self.generic_def
             .into_iter()
-            .flat_map(|it| it.type_params(db))
+            .flat_map(|it| it.type_or_const_params(db))
             .skip(skip)
             // The actual list of trait type parameters may be longer than the one
             // used in the `impl` block due to trailing default type parameters.

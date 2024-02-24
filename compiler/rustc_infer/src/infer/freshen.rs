@@ -56,49 +56,46 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         }
     }
 
-    fn freshen_ty<F>(&mut self, opt_ty: Option<Ty<'tcx>>, key: ty::InferTy, mk_fresh: F) -> Ty<'tcx>
+    fn freshen_ty<F>(&mut self, input: Result<Ty<'tcx>, ty::InferTy>, mk_fresh: F) -> Ty<'tcx>
     where
         F: FnOnce(u32) -> Ty<'tcx>,
     {
-        if let Some(ty) = opt_ty {
-            return ty.fold_with(self);
-        }
-
-        match self.ty_freshen_map.entry(key) {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                let index = self.ty_freshen_count;
-                self.ty_freshen_count += 1;
-                let t = mk_fresh(index);
-                entry.insert(t);
-                t
-            }
+        match input {
+            Ok(ty) => ty.fold_with(self),
+            Err(key) => match self.ty_freshen_map.entry(key) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let index = self.ty_freshen_count;
+                    self.ty_freshen_count += 1;
+                    let t = mk_fresh(index);
+                    entry.insert(t);
+                    t
+                }
+            },
         }
     }
 
     fn freshen_const<F>(
         &mut self,
-        opt_ct: Option<ty::Const<'tcx>>,
-        key: ty::InferConst,
+        input: Result<ty::Const<'tcx>, ty::InferConst>,
         freshener: F,
         ty: Ty<'tcx>,
     ) -> ty::Const<'tcx>
     where
         F: FnOnce(u32) -> ty::InferConst,
     {
-        if let Some(ct) = opt_ct {
-            return ct.fold_with(self);
-        }
-
-        match self.const_freshen_map.entry(key) {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                let index = self.const_freshen_count;
-                self.const_freshen_count += 1;
-                let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
-                entry.insert(ct);
-                ct
-            }
+        match input {
+            Ok(ct) => ct.fold_with(self),
+            Err(key) => match self.const_freshen_map.entry(key) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let index = self.const_freshen_count;
+                    self.const_freshen_count += 1;
+                    let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
+                    entry.insert(ct);
+                    ct
+                }
+            },
         }
     }
 }
@@ -146,19 +143,22 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
-                let opt_ct =
-                    self.infcx.inner.borrow_mut().const_unification_table().probe_value(v).known();
-                self.freshen_const(opt_ct, ty::InferConst::Var(v), ty::InferConst::Fresh, ct.ty())
+                let mut inner = self.infcx.inner.borrow_mut();
+                let input =
+                    inner.const_unification_table().probe_value(v).known().ok_or_else(|| {
+                        ty::InferConst::Var(inner.const_unification_table().find(v).vid)
+                    });
+                drop(inner);
+                self.freshen_const(input, ty::InferConst::Fresh, ct.ty())
             }
             ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {
-                let opt_ct =
-                    self.infcx.inner.borrow_mut().effect_unification_table().probe_value(v).known();
-                self.freshen_const(
-                    opt_ct,
-                    ty::InferConst::EffectVar(v),
-                    ty::InferConst::Fresh,
-                    ct.ty(),
-                )
+                let mut inner = self.infcx.inner.borrow_mut();
+                let input =
+                    inner.effect_unification_table().probe_value(v).known().ok_or_else(|| {
+                        ty::InferConst::EffectVar(inner.effect_unification_table().find(v).vid)
+                    });
+                drop(inner);
+                self.freshen_const(input, ty::InferConst::Fresh, ct.ty())
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
@@ -191,35 +191,37 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
     fn fold_infer_ty(&mut self, v: ty::InferTy) -> Option<Ty<'tcx>> {
         match v {
             ty::TyVar(v) => {
-                let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
-                Some(self.freshen_ty(opt_ty, ty::TyVar(v), |n| Ty::new_fresh(self.infcx.tcx, n)))
+                let mut inner = self.infcx.inner.borrow_mut();
+                let input = inner
+                    .type_variables()
+                    .probe(v)
+                    .known()
+                    .ok_or_else(|| ty::TyVar(inner.type_variables().root_var(v)));
+                drop(inner);
+                Some(self.freshen_ty(input, |n| Ty::new_fresh(self.infcx.tcx, n)))
             }
 
-            ty::IntVar(v) => Some(
-                self.freshen_ty(
-                    self.infcx
-                        .inner
-                        .borrow_mut()
-                        .int_unification_table()
-                        .probe_value(v)
-                        .map(|v| v.to_type(self.infcx.tcx)),
-                    ty::IntVar(v),
-                    |n| Ty::new_fresh_int(self.infcx.tcx, n),
-                ),
-            ),
+            ty::IntVar(v) => {
+                let mut inner = self.infcx.inner.borrow_mut();
+                let input = inner
+                    .int_unification_table()
+                    .probe_value(v)
+                    .map(|v| v.to_type(self.infcx.tcx))
+                    .ok_or_else(|| ty::IntVar(inner.int_unification_table().find(v)));
+                drop(inner);
+                Some(self.freshen_ty(input, |n| Ty::new_fresh_int(self.infcx.tcx, n)))
+            }
 
-            ty::FloatVar(v) => Some(
-                self.freshen_ty(
-                    self.infcx
-                        .inner
-                        .borrow_mut()
-                        .float_unification_table()
-                        .probe_value(v)
-                        .map(|v| v.to_type(self.infcx.tcx)),
-                    ty::FloatVar(v),
-                    |n| Ty::new_fresh_float(self.infcx.tcx, n),
-                ),
-            ),
+            ty::FloatVar(v) => {
+                let mut inner = self.infcx.inner.borrow_mut();
+                let input = inner
+                    .float_unification_table()
+                    .probe_value(v)
+                    .map(|v| v.to_type(self.infcx.tcx))
+                    .ok_or_else(|| ty::FloatVar(inner.float_unification_table().find(v)));
+                drop(inner);
+                Some(self.freshen_ty(input, |n| Ty::new_fresh_float(self.infcx.tcx, n)))
+            }
 
             ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct) => {
                 if ct >= self.ty_freshen_count {

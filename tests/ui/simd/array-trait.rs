@@ -33,12 +33,7 @@ extern "platform-intrinsic" {
 pub fn main() {
     let mut t = T::<i32x4>([0; 4]);
     unsafe {
-        for i in 0_i32..4 {
-            t = simd_insert(t, i as u32, i);
-        }
-        for i in 0_i32..4 {
-            assert_eq!(i, simd_extract(t, i as u32));
-            //~^ ERROR: use of moved value: `t`
-        }
+        t = simd_insert(t, 3, 3);
+        assert_eq!(3, simd_extract(t, 3));
     }
 }

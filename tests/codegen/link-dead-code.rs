@@ -1,4 +1,4 @@
-// compile-flags:-Clink-dead-code
+//@ compile-flags:-Clink-dead-code
 
 #![crate_type = "rlib"]
 

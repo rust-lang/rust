@@ -1,5 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/105025>
-// aux-build: enum_variant_in_trait_method.rs
+//@ aux-build: enum_variant_in_trait_method.rs
 
 extern crate enum_variant_in_trait_method;
 

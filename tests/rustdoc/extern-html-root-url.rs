@@ -1,6 +1,6 @@
-// compile-flags:-Z unstable-options --extern-html-root-url html_root=https://example.com/override --extern-html-root-url no_html_root=https://example.com/override
-// aux-build:html_root.rs
-// aux-build:no_html_root.rs
+//@ compile-flags:-Z unstable-options --extern-html-root-url html_root=https://example.com/override --extern-html-root-url no_html_root=https://example.com/override
+//@ aux-build:html_root.rs
+//@ aux-build:no_html_root.rs
 // NOTE: intentionally does not build any auxiliary docs
 
 extern crate html_root;

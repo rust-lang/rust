@@ -1,5 +1,5 @@
-// aux-build:intra-links-external-traits.rs
-// ignore-cross-compile
+//@ aux-build:intra-links-external-traits.rs
+//@ ignore-cross-compile
 
 #![crate_name = "outer"]
 #![deny(rustdoc::broken_intra_doc_links)]

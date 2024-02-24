@@ -1,6 +1,6 @@
-// pretty-compare-only
-// pretty-mode:hir
-// pp-exact:hir-fn-variadic.pp
+//@ pretty-compare-only
+//@ pretty-mode:hir
+//@ pp-exact:hir-fn-variadic.pp
 
 #![feature(c_variadic)]
 

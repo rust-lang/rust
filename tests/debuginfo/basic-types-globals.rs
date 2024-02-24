@@ -1,15 +1,15 @@
 // Caveat - gdb doesn't know about UTF-32 character encoding and will print a
 // rust char as only its numerical value.
 
-// min-lldb-version: 310
-// min-gdb-version: 8.0
+//@ min-lldb-version: 310
+//@ min-gdb-version: 8.0
 
-// revisions: lto no-lto
+//@ revisions: lto no-lto
 
-// compile-flags:-g
+//@ compile-flags:-g
 
-// [lto] compile-flags:-C lto
-// [lto] no-prefer-dynamic
+//@ [lto] compile-flags:-C lto
+//@ [lto] no-prefer-dynamic
 
 // gdb-command:run
 // gdbg-command:print 'basic_types_globals::B'

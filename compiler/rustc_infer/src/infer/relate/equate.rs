@@ -8,6 +8,7 @@ use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 
 use rustc_hir::def_id::DefId;
+use rustc_span::Span;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'combine, 'infcx, 'tcx> {
@@ -81,12 +82,17 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 infcx.inner.borrow_mut().type_variables().equate(a_id, b_id);
             }
 
-            (&ty::Infer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, ty::Invariant, a_id, self.a_is_expected)?;
+            (&ty::Infer(TyVar(a_vid)), _) => {
+                infcx.instantiate_ty_var(self, self.a_is_expected, a_vid, ty::Invariant, b)?;
             }
 
-            (_, &ty::Infer(TyVar(b_id))) => {
-                self.fields.instantiate(a, ty::Invariant, b_id, self.a_is_expected)?;
+            (_, &ty::Infer(TyVar(b_vid))) => {
+                infcx.instantiate_ty_var(self, !self.a_is_expected, b_vid, ty::Invariant, a)?;
+            }
+
+            (&ty::Error(e), _) | (_, &ty::Error(e)) => {
+                infcx.set_tainted_by_errors(e);
+                return Ok(Ty::new_error(self.tcx(), e));
             }
 
             (
@@ -170,6 +176,10 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Equate<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.fields.trace.span()
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
     }

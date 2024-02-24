@@ -6,7 +6,7 @@
 // used to modify `x.1` - if it did not, then it might incorrectly assume that it
 // can infer the value of `x.1` at the end of this function.
 
-// unit-test: DataflowConstProp
+//@ unit-test: DataflowConstProp
 
 // EMIT_MIR sibling_ptr.main.DataflowConstProp.diff
 

@@ -1,4 +1,4 @@
-// aux-build: intra-link-pub-use.rs
+//@ aux-build: intra-link-pub-use.rs
 #![deny(rustdoc::broken_intra_doc_links)]
 #![crate_name = "outer"]
 

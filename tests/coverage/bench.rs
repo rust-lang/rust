@@ -1,6 +1,6 @@
 #![feature(test)]
-// edition: 2021
-// compile-flags: --test
+//@ edition: 2021
+//@ compile-flags: --test
 
 extern crate test;
 

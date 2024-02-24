@@ -1,0 +1,93 @@
+{
+    "injectionSelector": "L:source.rust -string -comment -meta.embedded.block.rustdoc.md",
+    "patterns": [
+        {
+            "include": "#triple-slash"
+        },
+        {
+            "include": "#double-slash-exclamation"
+        },
+        {
+            "include": "#slash-start-exclamation"
+        },
+        {
+            "include": "#slash-double-start"
+        }
+    ],
+    "repository": {
+        "triple-slash": {
+            "begin": "(^|\\G)\\s*(///) ?",
+            "captures": {
+                "2": {
+                    "name": "comment.line.double-slash.rust"
+                }
+            },
+            "name": "comment.quote_code.triple-slash.rust",
+            "contentName": "meta.embedded.block.rustdoc",
+            "patterns": [
+                {
+                    "include": "text.html.markdown.rustdoc"
+                }
+            ],
+            "while": "(^|\\G)\\s*(///) ?"
+        },
+        "double-slash-exclamation": {
+            "begin": "(^|\\G)\\s*(//!) ?",
+            "captures": {
+                "2": {
+                    "name": "comment.line.double-slash.rust"
+                }
+            },
+            "name": "comment.quote_code.double-slash-exclamation.rust",
+            "contentName": "meta.embedded.block.rustdoc",
+            "patterns": [
+                {
+                    "include": "text.html.markdown.rustdoc"
+                }
+            ],
+            "while": "(^|\\G)\\s*(//!) ?"
+        },
+        "slash-start-exclamation": {
+            "begin": "(^)(/\\*!) ?$",
+            "captures": {
+                "2": {
+                    "name": "comment.block.rust"
+                }
+            },
+            "name": "comment.quote_code.slash-start-exclamation.rust",
+            "contentName": "meta.embedded.block.rustdoc",
+            "patterns": [
+                {
+                    "include": "text.html.markdown.rustdoc"
+                }
+            ],
+            "end": "( ?)(\\*/)"
+        },
+        "slash-double-start": {
+            "name": "comment.quote_code.slash-double-start-quote-star.rust",
+            "begin": "(?:^)\\s*/\\*\\* ?$",
+            "end": "\\*/",
+            "patterns": [
+                {
+                    "include": "#quote-star"
+                }
+            ]
+        },
+        "quote-star": {
+            "begin": "(^|\\G)\\s*(\\*(?!/)) ?",
+            "captures": {
+                "2": {
+                    "name": "comment.punctuation.definition.quote_code.slash-star.MR"
+                }
+            },
+            "contentName": "meta.embedded.block.rustdoc",
+            "patterns": [
+                {
+                    "include": "text.html.markdown.rustdoc"
+                }
+            ],
+            "while": "(^|\\G)\\s*(\\*(?!/)) ?"
+        }
+    },
+    "scopeName": "comment.markdown-cell-inject.rustdoc"
+}

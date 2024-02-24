@@ -1,3 +1,6 @@
+#![allow(rustc::diagnostic_outside_of_impl)]
+#![allow(rustc::untranslatable_diagnostic)]
+
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{add_elided_lifetime_in_path_suggestion, DiagnosticBuilder};
 use rustc_errors::{Applicability, SuggestionStyle};

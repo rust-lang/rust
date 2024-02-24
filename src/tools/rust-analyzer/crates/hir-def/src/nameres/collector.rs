@@ -11,7 +11,7 @@ use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId,
     attrs::{Attr, AttrId},
-    builtin_attr_macro::find_builtin_attr,
+    builtin_attr_macro::{find_builtin_attr, BuiltinAttrExpander},
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
@@ -98,9 +98,13 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                         };
                         (
                             name.as_name(),
-                            CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId(
-                                idx as u32,
-                            )),
+                            if it.disabled {
+                                CustomProcMacroExpander::disabled()
+                            } else {
+                                CustomProcMacroExpander::new(
+                                    hir_expand::proc_macro::ProcMacroId::new(idx as u32),
+                                )
+                            },
                         )
                     })
                     .collect())
@@ -604,9 +608,6 @@ impl DefCollector<'_> {
         id: ItemTreeId<item_tree::Function>,
         fn_id: FunctionId,
     ) {
-        if self.def_map.block.is_some() {
-            return;
-        }
         let kind = def.kind.to_basedb_kind();
         let (expander, kind) =
             match self.proc_macros.as_ref().map(|it| it.iter().find(|(n, _)| n == &def.name)) {
@@ -1120,9 +1121,16 @@ impl DefCollector<'_> {
         let mut push_resolved = |directive: &MacroDirective, call_id| {
             resolved.push((directive.module_id, directive.depth, directive.container, call_id));
         };
+
+        #[derive(PartialEq, Eq)]
+        enum Resolved {
+            Yes,
+            No,
+        }
+
         let mut res = ReachedFixedPoint::Yes;
         // Retain unresolved macros after this round of resolution.
-        macros.retain(|directive| {
+        let mut retain = |directive: &MacroDirective| {
             let subns = match &directive.kind {
                 MacroDirectiveKind::FnLike { .. } => MacroSubNs::Bang,
                 MacroDirectiveKind::Attr { .. } | MacroDirectiveKind::Derive { .. } => {
@@ -1156,10 +1164,11 @@ impl DefCollector<'_> {
                         self.def_map.modules[directive.module_id]
                             .scope
                             .add_macro_invoc(ast_id.ast_id, call_id);
+
                         push_resolved(directive, call_id);
 
                         res = ReachedFixedPoint::No;
-                        return false;
+                        return Resolved::Yes;
                     }
                 }
                 MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, call_site } => {
@@ -1198,7 +1207,7 @@ impl DefCollector<'_> {
 
                         push_resolved(directive, call_id);
                         res = ReachedFixedPoint::No;
-                        return false;
+                        return Resolved::Yes;
                     }
                 }
                 MacroDirectiveKind::Attr { ast_id: file_ast_id, mod_item, attr, tree } => {
@@ -1221,7 +1230,7 @@ impl DefCollector<'_> {
                         }
                         .collect(&[*mod_item], directive.container);
                         res = ReachedFixedPoint::No;
-                        false
+                        Resolved::Yes
                     };
 
                     if let Some(ident) = path.as_ident() {
@@ -1237,13 +1246,18 @@ impl DefCollector<'_> {
 
                     let def = match resolver_def_id(path.clone()) {
                         Some(def) if def.is_attribute() => def,
-                        _ => return true,
+                        _ => return Resolved::No,
                     };
-                    if matches!(
-                        def,
-                        MacroDefId { kind: MacroDefKind::BuiltInAttr(expander, _),.. }
-                        if expander.is_derive()
-                    ) {
+
+                    if let MacroDefId {
+                        kind:
+                            MacroDefKind::BuiltInAttr(
+                                BuiltinAttrExpander::Derive | BuiltinAttrExpander::DeriveConst,
+                                _,
+                            ),
+                        ..
+                    } = def
+                    {
                         // Resolved to `#[derive]`, we don't actually expand this attribute like
                         // normal (as that would just be an identity expansion with extra output)
                         // Instead we treat derive attributes special and apply them separately.
@@ -1316,16 +1330,6 @@ impl DefCollector<'_> {
                     let call_id =
                         attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
 
-                    // If proc attribute macro expansion is disabled, skip expanding it here
-                    if !self.db.expand_proc_attr_macros() {
-                        self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
-                            directive.module_id,
-                            self.db.lookup_intern_macro_call(call_id).kind,
-                            def.krate,
-                        ));
-                        return recollect_without(self);
-                    }
-
                     // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions
                     if matches!(
@@ -1337,17 +1341,29 @@ impl DefCollector<'_> {
                     }
 
                     if let MacroDefKind::ProcMacro(exp, ..) = def.kind {
-                        if exp.is_dummy() {
-                            // If there's no expander for the proc macro (e.g.
-                            // because proc macros are disabled, or building the
-                            // proc macro crate failed), report this and skip
-                            // expansion like we would if it was disabled
+                        // If proc attribute macro expansion is disabled, skip expanding it here
+                        if !self.db.expand_proc_attr_macros() {
                             self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                                 directive.module_id,
                                 self.db.lookup_intern_macro_call(call_id).kind,
                                 def.krate,
                             ));
+                            return recollect_without(self);
+                        }
 
+                        // If there's no expander for the proc macro (e.g.
+                        // because proc macros are disabled, or building the
+                        // proc macro crate failed), report this and skip
+                        // expansion like we would if it was disabled
+                        if exp.is_dummy() {
+                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                                directive.module_id,
+                                self.db.lookup_intern_macro_call(call_id).kind,
+                                def.krate,
+                            ));
+                            return recollect_without(self);
+                        }
+                        if exp.is_disabled() {
                             return recollect_without(self);
                         }
                     }
@@ -1358,12 +1374,13 @@ impl DefCollector<'_> {
 
                     push_resolved(directive, call_id);
                     res = ReachedFixedPoint::No;
-                    return false;
+                    return Resolved::Yes;
                 }
             }
 
-            true
-        });
+            Resolved::No
+        };
+        macros.retain(|it| retain(it) == Resolved::No);
         // Attribute resolution can add unresolved macro invocations, so concatenate the lists.
         macros.extend(mem::take(&mut self.unresolved_macros));
         self.unresolved_macros = macros;
@@ -1673,7 +1690,11 @@ impl ModCollector<'_, '_> {
                         FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
                     let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
-                    if self.def_collector.is_proc_macro && self.module_id == DefMap::ROOT {
+
+                    if self.def_collector.def_map.block.is_none()
+                        && self.def_collector.is_proc_macro
+                        && self.module_id == DefMap::ROOT
+                    {
                         if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
                             self.def_collector.export_proc_macro(
                                 proc_macro,
@@ -2333,7 +2354,7 @@ impl ModCollector<'_, '_> {
                 resolved_res.resolved_def.take_macros().map(|it| db.macro_def(it))
             },
         ) {
-            // FIXME: if there were errors, this mightve been in the eager expansion from an
+            // FIXME: if there were errors, this might've been in the eager expansion from an
             // unresolved macro, so we need to push this into late macro resolution. see fixme above
             if res.err.is_none() {
                 // Legacy macros need to be expanded immediately, so that any macros they produce

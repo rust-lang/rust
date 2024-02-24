@@ -2,7 +2,7 @@
 #![feature(control_flow_enum)]
 #![feature(try_trait_v2)]
 
-// compile-flags: -Zunsound-mir-opts
+//@ compile-flags: -Zunsound-mir-opts
 
 use std::ops::ControlFlow;
 

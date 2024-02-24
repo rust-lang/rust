@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR issue_75439.foo.MatchBranchSimplification.diff
-// ignore-endian-big
+//@ ignore-endian-big
 
 use std::mem::transmute;
 

@@ -1,13 +1,13 @@
 //
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 // NOTE: We always compile this test with -Copt-level=0 because higher opt-levels
 //       prevent drop-glue from participating in share-generics.
-// incremental
-// compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Copt-level=0
+//@ incremental
+//@ compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Copt-level=0
 
 #![crate_type="rlib"]
 
-// aux-build:shared_generics_aux.rs
+//@ aux-build:shared_generics_aux.rs
 extern crate shared_generics_aux;
 
 //~ MONO_ITEM fn foo

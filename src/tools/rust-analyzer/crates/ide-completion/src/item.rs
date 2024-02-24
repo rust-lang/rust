@@ -166,6 +166,8 @@ pub struct CompletionRelevance {
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
     /// This is set for type inference results
     pub is_definite: bool,
+    /// This is set for items that are function (associated or method)
+    pub function: Option<CompletionRelevanceFn>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -207,6 +209,24 @@ pub enum CompletionRelevancePostfixMatch {
     Exact,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct CompletionRelevanceFn {
+    pub has_params: bool,
+    pub has_self_param: bool,
+    pub return_type: CompletionRelevanceReturnType,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CompletionRelevanceReturnType {
+    Other,
+    /// Returns the Self type of the impl/trait
+    DirectConstructor,
+    /// Returns something that indirectly constructs the `Self` type of the impl/trait e.g. `Result<Self, ()>`, `Option<Self>`
+    Constructor,
+    /// Returns a possible builder for the type
+    Builder,
+}
+
 impl CompletionRelevance {
     /// Provides a relevance score. Higher values are more relevant.
     ///
@@ -231,6 +251,7 @@ impl CompletionRelevance {
             postfix_match,
             is_definite,
             is_item_from_notable_trait,
+            function,
         } = self;
 
         // lower rank private things
@@ -275,6 +296,33 @@ impl CompletionRelevance {
         if is_definite {
             score += 10;
         }
+
+        score += function
+            .map(|asf| {
+                let mut fn_score = match asf.return_type {
+                    CompletionRelevanceReturnType::DirectConstructor => 15,
+                    CompletionRelevanceReturnType::Builder => 10,
+                    CompletionRelevanceReturnType::Constructor => 5,
+                    CompletionRelevanceReturnType::Other => 0,
+                };
+
+                // When a fn is bumped due to return type:
+                // Bump Constructor or Builder methods with no arguments,
+                // over them tha with self arguments
+                if fn_score > 0 {
+                    if !asf.has_params {
+                        // bump associated functions
+                        fn_score += 1;
+                    } else if asf.has_self_param {
+                        // downgrade methods (below Constructor)
+                        fn_score = 1;
+                    }
+                }
+
+                fn_score
+            })
+            .unwrap_or_default();
+
         score
     }
 
@@ -297,6 +345,7 @@ pub enum CompletionItemKind {
     Method,
     Snippet,
     UnresolvedReference,
+    Expression,
 }
 
 impl_from!(SymbolKind for CompletionItemKind);
@@ -341,6 +390,7 @@ impl CompletionItemKind {
             CompletionItemKind::Method => "me",
             CompletionItemKind::Snippet => "sn",
             CompletionItemKind::UnresolvedReference => "??",
+            CompletionItemKind::Expression => "ex",
         }
     }
 }

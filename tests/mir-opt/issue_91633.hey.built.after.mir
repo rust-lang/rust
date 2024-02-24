@@ -14,7 +14,7 @@ fn hey(_1: &[T]) -> () {
         StorageLive(_3);
         StorageLive(_4);
         _4 = &(*_1);
-        _3 = <[T] as Index<usize>>::index(move _4, const 0_usize) -> [return: bb1, unwind: bb3];
+        _3 = <[T] as Index<usize>>::index(move _4, const 0_usize) -> [return: bb1, unwind: bb4];
     }
 
     bb1: {
@@ -32,7 +32,11 @@ fn hey(_1: &[T]) -> () {
         unreachable;
     }
 
-    bb3 (cleanup): {
+    bb3: {
+        goto -> bb2;
+    }
+
+    bb4 (cleanup): {
         resume;
     }
 }

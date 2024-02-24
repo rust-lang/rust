@@ -1,5 +1,5 @@
-// compile-flags: --target riscv64gc-unknown-linux-gnu -O -C no-prepopulate-passes
-// needs-llvm-components: riscv
+//@ compile-flags: --target riscv64gc-unknown-linux-gnu -O -C no-prepopulate-passes
+//@ needs-llvm-components: riscv
 
 #![crate_type = "lib"]
 #![no_core]

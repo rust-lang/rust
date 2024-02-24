@@ -1,6 +1,6 @@
 // https://github.com/rust-lang/rust/issues/49081
 
-// revisions:rpass1 rpass2
+//@ revisions:rpass1 rpass2
 
 #[cfg(rpass1)]
 pub static A: &str = "hello";

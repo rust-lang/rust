@@ -1,6 +1,6 @@
-// check-pass
-// compile-flags: --passes unknown-pass
-// error-pattern: the `passes` flag no longer functions
+//@ check-pass
+//@ compile-flags: --passes unknown-pass
+//@ error-pattern: the `passes` flag no longer functions
 
 #![doc(no_default_passes)]
 //~^ WARNING attribute is deprecated

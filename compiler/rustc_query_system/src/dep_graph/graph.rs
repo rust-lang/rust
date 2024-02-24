@@ -817,7 +817,7 @@ impl<D: Deps> DepGraphData<D> {
             None => {}
         }
 
-        if let None = qcx.dep_context().sess().dcx().has_errors_or_lint_errors_or_delayed_bugs() {
+        if let None = qcx.dep_context().sess().dcx().has_errors_or_delayed_bugs() {
             panic!("try_mark_previous_green() - Forcing the DepNode should have set its color")
         }
 

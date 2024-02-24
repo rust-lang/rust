@@ -1,7 +1,7 @@
-// assembly-output: ptx-linker
-// compile-flags: --crate-type cdylib -C target-cpu=sm_86
-// only-nvptx64
-// ignore-nvptx64
+//@ assembly-output: ptx-linker
+//@ compile-flags: --crate-type cdylib -C target-cpu=sm_86
+//@ only-nvptx64
+//@ ignore-nvptx64
 
 // The following ABI tests are made with nvcc 11.6 does.
 //

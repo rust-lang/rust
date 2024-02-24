@@ -1,5 +1,5 @@
-// unit-test: InstSimplify
-// compile-flags: -Zinline-mir
+//@ unit-test: InstSimplify
+//@ compile-flags: -Zinline-mir
 #![crate_type = "lib"]
 
 #[inline(always)]

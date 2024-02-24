@@ -562,6 +562,15 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
         }
 
+        // Parse stray `impl async Trait`
+        if (self.token.uninterpolated_span().at_least_rust_2018()
+            && self.token.is_keyword(kw::Async))
+            || self.is_kw_followed_by_ident(kw::Async)
+        {
+            self.bump();
+            self.dcx().emit_err(errors::AsyncImpl { span: self.prev_token.span });
+        }
+
         let polarity = self.parse_polarity();
 
         // Parse both types and traits as a type, then reinterpret if necessary.
@@ -592,22 +601,10 @@ impl<'a> Parser<'a> {
             // We need to report this error after `cfg` expansion for compatibility reasons
             self.bump(); // `..`, do not add it to expected tokens
 
-            // FIXME(nnethercote): AST validation later detects this
-            // `TyKind::Err` and emits an errors. So why the unchecked
-            // ErrorGuaranteed?
-            // - A `span_delayed_bug` doesn't work here, because rustfmt can
-            //   hit this path but then not hit the follow-up path in the AST
-            //   validator that issues the error, which results in ICEs.
-            // - `TyKind::Dummy` doesn't work, because it ends up reaching HIR
-            //   lowering, which results in ICEs. Changing `TyKind::Dummy` to
-            //   `TyKind::Err` during AST validation might fix that, but that's
-            //   not possible because AST validation doesn't allow mutability.
-            //
-            // #121072 will hopefully remove all this special handling of the
-            // obsolete `impl Trait for ..` and then this can go away.
-            #[allow(deprecated)]
-            let guar = rustc_errors::ErrorGuaranteed::unchecked_error_guaranteed();
-            Some(self.mk_ty(self.prev_token.span, TyKind::Err(guar)))
+            // AST validation later detects this `TyKind::Dummy` and emits an
+            // error. (#121072 will hopefully remove all this special handling
+            // of the obsolete `impl Trait for ..` and then this can go away.)
+            Some(self.mk_ty(self.prev_token.span, TyKind::Dummy))
         } else if has_for || self.token.can_begin_type() {
             Some(self.parse_ty()?)
         } else {

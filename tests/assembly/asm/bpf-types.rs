@@ -1,6 +1,6 @@
-// assembly-output: emit-asm
-// compile-flags: --target bpfel-unknown-none -C target_feature=+alu32
-// needs-llvm-components: bpf
+//@ assembly-output: emit-asm
+//@ compile-flags: --target bpfel-unknown-none -C target_feature=+alu32
+//@ needs-llvm-components: bpf
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]

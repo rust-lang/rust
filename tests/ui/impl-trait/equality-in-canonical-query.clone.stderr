@@ -21,5 +21,3 @@ LL |     same_output(foo, rpit);
 
 query stack during panic:
 end of query stack
-error: aborting due to 2 previous errors
-

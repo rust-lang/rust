@@ -1,7 +1,7 @@
-// compile-flags: -C no-prepopulate-passes -Copt-level=0
+//@ compile-flags: -C no-prepopulate-passes -Copt-level=0
 
-// ignore-riscv64
-// ignore-loongarch64
+//@ ignore-riscv64
+//@ ignore-loongarch64
 
 #![feature(link_llvm_intrinsics)]
 #![crate_type = "lib"]

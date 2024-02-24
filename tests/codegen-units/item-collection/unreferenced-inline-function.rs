@@ -1,4 +1,4 @@
-// compile-flags:-Zprint-mono-items=lazy
+//@ compile-flags:-Zprint-mono-items=lazy
 
 // N.B., we do not expect *any* monomorphization to be generated here.
 

@@ -1,5 +1,5 @@
-// aux-build:rustdoc-impl-parts-crosscrate.rs
-// ignore-cross-compile
+//@ aux-build:rustdoc-impl-parts-crosscrate.rs
+//@ ignore-cross-compile
 
 #![feature(negative_impls)]
 

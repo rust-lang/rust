@@ -1,8 +1,8 @@
 // This example is interesting because the non-transitive version of `MaybeLiveLocals` would
 // report that *all* of these stores are live.
 //
-// needs-unwind
-// unit-test: DeadStoreElimination-initial
+//@ needs-unwind
+//@ unit-test: DeadStoreElimination-initial
 
 #![feature(core_intrinsics, custom_mir)]
 use std::intrinsics::mir::*;

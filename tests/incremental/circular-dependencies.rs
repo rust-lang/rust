@@ -1,9 +1,9 @@
 // ignore-tidy-linelength
-// revisions: cpass1 cfail2
-// edition: 2021
-// [cpass1] compile-flags: --crate-type lib --emit dep-info,metadata
-// [cfail2] aux-build: circular-dependencies-aux.rs
-// [cfail2] compile-flags: --test --extern aux={{build-base}}/circular-dependencies/auxiliary/libcircular_dependencies_aux.rmeta -L dependency={{build-base}}/circular-dependencies
+//@ revisions: cpass1 cfail2
+//@ edition: 2021
+//@ [cpass1] compile-flags: --crate-type lib --emit dep-info,metadata
+//@ [cfail2] aux-build: circular-dependencies-aux.rs
+//@ [cfail2] compile-flags: --test --extern aux={{build-base}}/circular-dependencies/auxiliary/libcircular_dependencies_aux.rmeta -L dependency={{build-base}}/circular-dependencies
 
 pub struct Foo;
 //[cfail2]~^ NOTE `Foo` is defined in the current crate

@@ -1,4 +1,3 @@
-#![allow(suspicious_auto_trait_impls)]
 // Tests that we don't incorrectly allow overlap between a builtin auto trait
 // impl and a user written one. See #83857 for more details
 
