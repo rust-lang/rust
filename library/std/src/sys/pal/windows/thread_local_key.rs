@@ -295,16 +295,13 @@ unsafe extern "system" fn on_tls_callback(_h: c::LPVOID, dwReason: c::DWORD, _pv
 
     // See comments above for what this is doing. Note that we don't need this
     // trickery on GNU windows, just on MSVC.
-    reference_tls_used();
-    #[cfg(target_env = "msvc")]
-    unsafe fn reference_tls_used() {
+    #[cfg(all(target_env = "msvc", not(target_thread_local)))]
+    {
         extern "C" {
             static _tls_used: u8;
         }
         crate::intrinsics::volatile_load(&_tls_used);
     }
-    #[cfg(not(target_env = "msvc"))]
-    unsafe fn reference_tls_used() {}
 }
 
 #[cfg(not(target_thread_local))]
