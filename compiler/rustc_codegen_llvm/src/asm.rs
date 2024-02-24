@@ -465,6 +465,7 @@ pub(crate) fn inline_asm_call<'ll>(
             );
 
             let call = if !labels.is_empty() {
+                assert!(catch_funclet.is_none());
                 bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None)
             } else if let Some((catch, funclet)) = catch_funclet {
                 bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet)

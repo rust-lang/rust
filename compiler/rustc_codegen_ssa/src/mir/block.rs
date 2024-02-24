@@ -265,6 +265,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         };
 
         if operands.iter().any(|x| matches!(x, InlineAsmOperandRef::Label { .. })) {
+            assert!(unwind_target.is_none());
             let ret_llbb = if let Some(target) = destination {
                 fx.llbb(target)
             } else {
