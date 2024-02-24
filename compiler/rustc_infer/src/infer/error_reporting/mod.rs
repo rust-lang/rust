@@ -2437,6 +2437,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let suggestion =
                     if has_lifetimes { format!(" + {lt_name}") } else { format!(": {lt_name}") };
                 suggs.push((sp, suggestion))
+            } else if let GenericKind::Alias(ref p) = bound_kind
+                && let ty::Projection = p.kind(self.tcx)
+                && let DefKind::AssocTy = self.tcx.def_kind(p.def_id)
+                && let Some(ty::ImplTraitInTraitData::Trait { .. }) =
+                    self.tcx.opt_rpitit_info(p.def_id)
+            {
+                // The lifetime found in the `impl` is longer than the one on the RPITIT.
+                // Do not suggest `<Type as Trait>::{opaque}: 'static`.
             } else if let Some(generics) = self.tcx.hir().get_generics(suggestion_scope) {
                 let pred = format!("{bound_kind}: {lt_name}");
                 let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
