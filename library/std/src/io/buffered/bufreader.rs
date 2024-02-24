@@ -328,10 +328,9 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
             self.discard_buffer();
             return self.inner.read_vectored(bufs);
         }
-        let nread = {
-            let mut rem = self.fill_buf()?;
-            rem.read_vectored(bufs)?
-        };
+        let mut rem = self.fill_buf()?;
+        let nread = rem.read_vectored(bufs)?;
+
         self.consume(nread);
         Ok(nread)
     }

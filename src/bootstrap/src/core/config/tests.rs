@@ -1,6 +1,6 @@
 use super::{flags::Flags, ChangeIdWrapper, Config};
-use crate::core::config::{LldMode, TomlConfig};
 use crate::core::build_steps::check::get_clippy_rules_in_order;
+use crate::core::config::{LldMode, TomlConfig};
 
 use clap::CommandFactory;
 use serde::Deserialize;
