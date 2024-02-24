@@ -876,498 +876,353 @@ error: this operation will panic at runtime
 LL |     let _n = &(i8::MIN / -1);
    |               ^^^^^^^^^^^^^^ attempt to compute `i8::MIN / -1_i8`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:251:15
-   |
-LL |     let _n = &(i8::MIN / -1);
-   |               ^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:251:14
-   |
-LL |     let _n = &(i8::MIN / -1);
-   |              ^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:254:14
+  --> $DIR/lint-overflowing-ops.rs:253:14
    |
 LL |     let _n = 1i16 / 0;
    |              ^^^^^^^^ attempt to divide `1_i16` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:255:15
+  --> $DIR/lint-overflowing-ops.rs:254:15
    |
 LL |     let _n = &(1i16 / 0);
    |               ^^^^^^^^^^ attempt to divide `1_i16` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:256:14
+  --> $DIR/lint-overflowing-ops.rs:255:14
    |
 LL |     let _n = i16::MIN / -1;
    |              ^^^^^^^^^^^^^ attempt to compute `i16::MIN / -1_i16`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:257:15
+  --> $DIR/lint-overflowing-ops.rs:256:15
    |
 LL |     let _n = &(i16::MIN / -1);
    |               ^^^^^^^^^^^^^^^ attempt to compute `i16::MIN / -1_i16`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:257:15
-   |
-LL |     let _n = &(i16::MIN / -1);
-   |               ^^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:257:14
-   |
-LL |     let _n = &(i16::MIN / -1);
-   |              ^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:260:14
+  --> $DIR/lint-overflowing-ops.rs:258:14
    |
 LL |     let _n = 1i32 / 0;
    |              ^^^^^^^^ attempt to divide `1_i32` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:261:15
+  --> $DIR/lint-overflowing-ops.rs:259:15
    |
 LL |     let _n = &(1i32 / 0);
    |               ^^^^^^^^^^ attempt to divide `1_i32` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:262:14
+  --> $DIR/lint-overflowing-ops.rs:260:14
    |
 LL |     let _n = i32::MIN / -1;
    |              ^^^^^^^^^^^^^ attempt to compute `i32::MIN / -1_i32`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:263:15
+  --> $DIR/lint-overflowing-ops.rs:261:15
    |
 LL |     let _n = &(i32::MIN / -1);
    |               ^^^^^^^^^^^^^^^ attempt to compute `i32::MIN / -1_i32`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:263:15
-   |
-LL |     let _n = &(i32::MIN / -1);
-   |               ^^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:263:14
-   |
-LL |     let _n = &(i32::MIN / -1);
-   |              ^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:266:14
+  --> $DIR/lint-overflowing-ops.rs:263:14
    |
 LL |     let _n = 1i64 / 0;
    |              ^^^^^^^^ attempt to divide `1_i64` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:267:15
+  --> $DIR/lint-overflowing-ops.rs:264:15
    |
 LL |     let _n = &(1i64 / 0);
    |               ^^^^^^^^^^ attempt to divide `1_i64` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:268:14
+  --> $DIR/lint-overflowing-ops.rs:265:14
    |
 LL |     let _n = i64::MIN / -1;
    |              ^^^^^^^^^^^^^ attempt to compute `i64::MIN / -1_i64`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:269:15
+  --> $DIR/lint-overflowing-ops.rs:266:15
    |
 LL |     let _n = &(i64::MIN / -1);
    |               ^^^^^^^^^^^^^^^ attempt to compute `i64::MIN / -1_i64`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:269:15
-   |
-LL |     let _n = &(i64::MIN / -1);
-   |               ^^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:269:14
-   |
-LL |     let _n = &(i64::MIN / -1);
-   |              ^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:272:14
+  --> $DIR/lint-overflowing-ops.rs:268:14
    |
 LL |     let _n = 1i128 / 0;
    |              ^^^^^^^^^ attempt to divide `1_i128` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:273:15
+  --> $DIR/lint-overflowing-ops.rs:269:15
    |
 LL |     let _n = &(1i128 / 0);
    |               ^^^^^^^^^^^ attempt to divide `1_i128` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:274:14
+  --> $DIR/lint-overflowing-ops.rs:270:14
    |
 LL |     let _n = i128::MIN / -1;
    |              ^^^^^^^^^^^^^^ attempt to compute `i128::MIN / -1_i128`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:275:15
+  --> $DIR/lint-overflowing-ops.rs:271:15
    |
 LL |     let _n = &(i128::MIN / -1);
    |               ^^^^^^^^^^^^^^^^ attempt to compute `i128::MIN / -1_i128`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:275:15
-   |
-LL |     let _n = &(i128::MIN / -1);
-   |               ^^^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:275:14
-   |
-LL |     let _n = &(i128::MIN / -1);
-   |              ^^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:278:14
+  --> $DIR/lint-overflowing-ops.rs:273:14
    |
 LL |     let _n = 1isize / 0;
    |              ^^^^^^^^^^ attempt to divide `1_isize` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:279:15
+  --> $DIR/lint-overflowing-ops.rs:274:15
    |
 LL |     let _n = &(1isize / 0);
    |               ^^^^^^^^^^^^ attempt to divide `1_isize` by zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:280:14
+  --> $DIR/lint-overflowing-ops.rs:275:14
    |
 LL |     let _n = isize::MIN / -1;
    |              ^^^^^^^^^^^^^^^ attempt to compute `isize::MIN / -1_isize`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:281:15
+  --> $DIR/lint-overflowing-ops.rs:276:15
    |
 LL |     let _n = &(isize::MIN / -1);
    |               ^^^^^^^^^^^^^^^^^ attempt to compute `isize::MIN / -1_isize`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:281:15
-   |
-LL |     let _n = &(isize::MIN / -1);
-   |               ^^^^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:281:14
-   |
-LL |     let _n = &(isize::MIN / -1);
-   |              ^^^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:286:14
+  --> $DIR/lint-overflowing-ops.rs:280:14
    |
 LL |     let _n = 1u8 % 0;
    |              ^^^^^^^ attempt to calculate the remainder of `1_u8` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:287:15
+  --> $DIR/lint-overflowing-ops.rs:281:15
    |
 LL |     let _n = &(1u8 % 0);
    |               ^^^^^^^^^ attempt to calculate the remainder of `1_u8` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:289:14
+  --> $DIR/lint-overflowing-ops.rs:283:14
    |
 LL |     let _n = 1u16 % 0;
    |              ^^^^^^^^ attempt to calculate the remainder of `1_u16` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:290:15
+  --> $DIR/lint-overflowing-ops.rs:284:15
    |
 LL |     let _n = &(1u16 % 0);
    |               ^^^^^^^^^^ attempt to calculate the remainder of `1_u16` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:292:14
+  --> $DIR/lint-overflowing-ops.rs:286:14
    |
 LL |     let _n = 1u32 % 0;
    |              ^^^^^^^^ attempt to calculate the remainder of `1_u32` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:293:15
+  --> $DIR/lint-overflowing-ops.rs:287:15
    |
 LL |     let _n = &(1u32 % 0);
    |               ^^^^^^^^^^ attempt to calculate the remainder of `1_u32` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:295:14
+  --> $DIR/lint-overflowing-ops.rs:289:14
    |
 LL |     let _n = 1u64 % 0;
    |              ^^^^^^^^ attempt to calculate the remainder of `1_u64` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:296:15
+  --> $DIR/lint-overflowing-ops.rs:290:15
    |
 LL |     let _n = &(1u64 % 0);
    |               ^^^^^^^^^^ attempt to calculate the remainder of `1_u64` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:298:14
+  --> $DIR/lint-overflowing-ops.rs:292:14
    |
 LL |     let _n = 1u128 % 0;
    |              ^^^^^^^^^ attempt to calculate the remainder of `1_u128` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:299:15
+  --> $DIR/lint-overflowing-ops.rs:293:15
    |
 LL |     let _n = &(1u128 % 0);
    |               ^^^^^^^^^^^ attempt to calculate the remainder of `1_u128` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:301:14
+  --> $DIR/lint-overflowing-ops.rs:295:14
    |
 LL |     let _n = 1usize % 0;
    |              ^^^^^^^^^^ attempt to calculate the remainder of `1_usize` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:302:15
+  --> $DIR/lint-overflowing-ops.rs:296:15
    |
 LL |     let _n = &(1usize % 0);
    |               ^^^^^^^^^^^^ attempt to calculate the remainder of `1_usize` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:304:14
+  --> $DIR/lint-overflowing-ops.rs:298:14
    |
 LL |     let _n = 1i8 % 0;
    |              ^^^^^^^ attempt to calculate the remainder of `1_i8` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:305:15
+  --> $DIR/lint-overflowing-ops.rs:299:15
    |
 LL |     let _n = &(1i8 % 0);
    |               ^^^^^^^^^ attempt to calculate the remainder of `1_i8` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:306:14
+  --> $DIR/lint-overflowing-ops.rs:300:14
    |
 LL |     let _n = i8::MIN % -1;
    |              ^^^^^^^^^^^^ attempt to compute `i8::MIN % -1_i8`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:307:15
+  --> $DIR/lint-overflowing-ops.rs:301:15
    |
 LL |     let _n = &(i8::MIN % -1);
    |               ^^^^^^^^^^^^^^ attempt to compute `i8::MIN % -1_i8`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:307:15
-   |
-LL |     let _n = &(i8::MIN % -1);
-   |               ^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:307:14
-   |
-LL |     let _n = &(i8::MIN % -1);
-   |              ^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:310:14
+  --> $DIR/lint-overflowing-ops.rs:303:14
    |
 LL |     let _n = 1i16 % 0;
    |              ^^^^^^^^ attempt to calculate the remainder of `1_i16` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:311:15
+  --> $DIR/lint-overflowing-ops.rs:304:15
    |
 LL |     let _n = &(1i16 % 0);
    |               ^^^^^^^^^^ attempt to calculate the remainder of `1_i16` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:312:14
+  --> $DIR/lint-overflowing-ops.rs:305:14
    |
 LL |     let _n = i16::MIN % -1;
    |              ^^^^^^^^^^^^^ attempt to compute `i16::MIN % -1_i16`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:313:15
+  --> $DIR/lint-overflowing-ops.rs:306:15
    |
 LL |     let _n = &(i16::MIN % -1);
    |               ^^^^^^^^^^^^^^^ attempt to compute `i16::MIN % -1_i16`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:313:15
-   |
-LL |     let _n = &(i16::MIN % -1);
-   |               ^^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:313:14
-   |
-LL |     let _n = &(i16::MIN % -1);
-   |              ^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:316:14
+  --> $DIR/lint-overflowing-ops.rs:308:14
    |
 LL |     let _n = 1i32 % 0;
    |              ^^^^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:317:15
+  --> $DIR/lint-overflowing-ops.rs:309:15
    |
 LL |     let _n = &(1i32 % 0);
    |               ^^^^^^^^^^ attempt to calculate the remainder of `1_i32` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:318:14
+  --> $DIR/lint-overflowing-ops.rs:310:14
    |
 LL |     let _n = i32::MIN % -1;
    |              ^^^^^^^^^^^^^ attempt to compute `i32::MIN % -1_i32`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:319:15
+  --> $DIR/lint-overflowing-ops.rs:311:15
    |
 LL |     let _n = &(i32::MIN % -1);
    |               ^^^^^^^^^^^^^^^ attempt to compute `i32::MIN % -1_i32`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:319:15
-   |
-LL |     let _n = &(i32::MIN % -1);
-   |               ^^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:319:14
-   |
-LL |     let _n = &(i32::MIN % -1);
-   |              ^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:322:14
+  --> $DIR/lint-overflowing-ops.rs:313:14
    |
 LL |     let _n = 1i64 % 0;
    |              ^^^^^^^^ attempt to calculate the remainder of `1_i64` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:323:15
+  --> $DIR/lint-overflowing-ops.rs:314:15
    |
 LL |     let _n = &(1i64 % 0);
    |               ^^^^^^^^^^ attempt to calculate the remainder of `1_i64` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:324:14
+  --> $DIR/lint-overflowing-ops.rs:315:14
    |
 LL |     let _n = i64::MIN % -1;
    |              ^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:325:15
+  --> $DIR/lint-overflowing-ops.rs:316:15
    |
 LL |     let _n = &(i64::MIN % -1);
    |               ^^^^^^^^^^^^^^^ attempt to compute `i64::MIN % -1_i64`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:325:15
-   |
-LL |     let _n = &(i64::MIN % -1);
-   |               ^^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:325:14
-   |
-LL |     let _n = &(i64::MIN % -1);
-   |              ^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:328:14
+  --> $DIR/lint-overflowing-ops.rs:318:14
    |
 LL |     let _n = 1i128 % 0;
    |              ^^^^^^^^^ attempt to calculate the remainder of `1_i128` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:329:15
+  --> $DIR/lint-overflowing-ops.rs:319:15
    |
 LL |     let _n = &(1i128 % 0);
    |               ^^^^^^^^^^^ attempt to calculate the remainder of `1_i128` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:330:14
+  --> $DIR/lint-overflowing-ops.rs:320:14
    |
 LL |     let _n = i128::MIN % -1;
    |              ^^^^^^^^^^^^^^ attempt to compute `i128::MIN % -1_i128`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:331:15
+  --> $DIR/lint-overflowing-ops.rs:321:15
    |
 LL |     let _n = &(i128::MIN % -1);
    |               ^^^^^^^^^^^^^^^^ attempt to compute `i128::MIN % -1_i128`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:331:15
-   |
-LL |     let _n = &(i128::MIN % -1);
-   |               ^^^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:331:14
-   |
-LL |     let _n = &(i128::MIN % -1);
-   |              ^^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:334:14
+  --> $DIR/lint-overflowing-ops.rs:323:14
    |
 LL |     let _n = 1isize % 0;
    |              ^^^^^^^^^^ attempt to calculate the remainder of `1_isize` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:335:15
+  --> $DIR/lint-overflowing-ops.rs:324:15
    |
 LL |     let _n = &(1isize % 0);
    |               ^^^^^^^^^^^^ attempt to calculate the remainder of `1_isize` with a divisor of zero
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:336:14
+  --> $DIR/lint-overflowing-ops.rs:325:14
    |
 LL |     let _n = isize::MIN % -1;
    |              ^^^^^^^^^^^^^^^ attempt to compute `isize::MIN % -1_isize`, which would overflow
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:337:15
+  --> $DIR/lint-overflowing-ops.rs:326:15
    |
 LL |     let _n = &(isize::MIN % -1);
    |               ^^^^^^^^^^^^^^^^^ attempt to compute `isize::MIN % -1_isize`, which would overflow
 
-error[E0080]: evaluation of constant value failed
-  --> $DIR/lint-overflowing-ops.rs:337:15
-   |
-LL |     let _n = &(isize::MIN % -1);
-   |               ^^^^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
-
-note: erroneous constant encountered
-  --> $DIR/lint-overflowing-ops.rs:337:14
-   |
-LL |     let _n = &(isize::MIN % -1);
-   |              ^^^^^^^^^^^^^^^^^^
-
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:341:14
+  --> $DIR/lint-overflowing-ops.rs:329:14
    |
 LL |     let _n = [1, 2, 3][4];
    |              ^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
 
 error: this operation will panic at runtime
-  --> $DIR/lint-overflowing-ops.rs:342:15
+  --> $DIR/lint-overflowing-ops.rs:330:15
    |
 LL |     let _n = &([1, 2, 3][4]);
    |               ^^^^^^^^^^^^^^ index out of bounds: the length is 3 but the index is 4
 
-error: aborting due to 215 previous errors
+error: aborting due to 203 previous errors
 
-For more information about this error, try `rustc --explain E0080`.

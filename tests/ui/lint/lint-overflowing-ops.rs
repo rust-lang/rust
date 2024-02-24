@@ -249,37 +249,31 @@ fn main() {
     let _n = &(1i8 / 0);   //~ ERROR: this operation will panic at runtime
     let _n = i8::MIN / -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i8::MIN / -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i16 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i16 / 0); //~ ERROR: this operation will panic at runtime
     let _n = i16::MIN / -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i16::MIN / -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i32 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i32 / 0); //~ ERROR: this operation will panic at runtime
     let _n = i32::MIN / -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i32::MIN / -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i64 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i64 / 0); //~ ERROR: this operation will panic at runtime
     let _n = i64::MIN / -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i64::MIN / -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i128 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i128 / 0); //~ ERROR: this operation will panic at runtime
     let _n = i128::MIN / -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i128::MIN / -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1isize / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1isize / 0); //~ ERROR: this operation will panic at runtime
     let _n = isize::MIN / -1; //~ ERROR: this operation will panic at runtime
     let _n = &(isize::MIN / -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
 
     // Modulus
@@ -305,37 +299,31 @@ fn main() {
     let _n = &(1i8 % 0);   //~ ERROR: this operation will panic at runtime
     let _n = i8::MIN % -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i8::MIN % -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i16 % 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i16 % 0); //~ ERROR: this operation will panic at runtime
     let _n = i16::MIN % -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i16::MIN % -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i32 % 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i32 % 0); //~ ERROR: this operation will panic at runtime
     let _n = i32::MIN % -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i32::MIN % -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i64 % 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i64 % 0); //~ ERROR: this operation will panic at runtime
     let _n = i64::MIN % -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i64::MIN % -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1i128 % 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i128 % 0); //~ ERROR: this operation will panic at runtime
     let _n = i128::MIN % -1; //~ ERROR: this operation will panic at runtime
     let _n = &(i128::MIN % -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     let _n = 1isize % 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1isize % 0); //~ ERROR: this operation will panic at runtime
     let _n = isize::MIN % -1; //~ ERROR: this operation will panic at runtime
     let _n = &(isize::MIN % -1); //~ ERROR: this operation will panic at runtime
-    //~^ERROR: evaluation of constant value failed
 
     // Out of bounds access
     let _n = [1, 2, 3][4]; //~ ERROR: this operation will panic at runtime
