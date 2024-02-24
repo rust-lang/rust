@@ -4,7 +4,7 @@ fn non_elidable<'a, 'b>(a: &'a u8, b: &'b u8) -> &'a u8 {
     a
 }
 
-// The incorrect case without `for<'a>` is tested for in `rfc1623-2.rs`
+// The incorrect case without `for<'a>` is tested for in `rfc1623-3.rs`
 static NON_ELIDABLE_FN: &for<'a> fn(&'a u8, &'a u8) -> &'a u8 =
     &(non_elidable as for<'a> fn(&'a u8, &'a u8) -> &'a u8);
 
@@ -26,10 +26,14 @@ static SOME_STRUCT: &SomeStruct = &SomeStruct {
     foo: &Foo { bools: &[false, true] },
     bar: &Bar { bools: &[true, true] },
     f: &id,
-    //~^ ERROR implementation of `Fn` is not general enough
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
     //~| ERROR implementation of `Fn` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
-    //~| ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
+    //~| ERROR implementation of `Fn` is not general enough
 };
 
 // very simple test for a 'static static with default lifetime
