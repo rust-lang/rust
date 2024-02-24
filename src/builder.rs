@@ -26,6 +26,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::mir::Rvalue;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -398,6 +399,16 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
     type DIVariable = <CodegenCx<'gcc, 'tcx> as BackendTypes>::DIVariable;
 }
 
+pub fn set_rval_location<'a, 'gcc, 'tcx>(bx: &mut Builder<'a,'gcc,'tcx>, r:RValue<'gcc>) -> RValue<'gcc> {
+    if bx.loc.is_some(){
+        unsafe {
+            r.set_location(bx.loc.unwrap());
+        }
+    }
+    r
+    
+}
+
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
         Builder::with_cx(cx, block)
@@ -612,7 +623,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             // FIXME(antoyo): this seems to produce the wrong result.
             return self.context.new_call(self.loc, fmodf, &[a, b]);
         }
-        else if let Some(vector_type) = a_type_unqualified.dyncast_vector() {
+        if let Some(vector_type) = a_type_unqualified.dyncast_vector() {
             assert_eq!(a_type_unqualified, b.get_type().unqualified());
 
             let num_units = vector_type.get_num_units();
@@ -630,7 +641,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         assert_eq!(a_type_unqualified, self.cx.double_type);
 
         let fmod = self.context.get_builtin_function("fmod");
-        return self.context.new_call(self.loc, fmod, &[a, b]);
+        self.context.new_call(self.loc, fmod, &[a, b])
     }
 
     fn shl(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -652,73 +663,80 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn or(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.cx.gcc_or(a, b)
+        let ret = self.cx.gcc_or(a, b, self.loc);
+        
+        if self.loc.is_some() {
+            unsafe { ret.set_location(self.loc.unwrap()); }
+        }
+        ret
     }
 
     fn xor(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_xor(a, b)
+        set_rval_location(self,self.gcc_xor(a, b))
     }
 
     fn neg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_neg(a)
+        set_rval_location(self,self.gcc_neg(a))
     }
 
     fn fneg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        self.cx.context.new_unary_op(self.loc, UnaryOp::Minus, a.get_type(), a)
+        set_rval_location(self,self.cx.context.new_unary_op(self.loc, UnaryOp::Minus, a.get_type(), a))
     }
 
     fn not(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_not(a)
+        set_rval_location(self,self.gcc_not(a))
     }
 
     fn unchecked_sadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_add(a, b)
+        set_rval_location(self,self.gcc_add(a, b))
     }
 
     fn unchecked_uadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_add(a, b)
+        set_rval_location(self,self.gcc_add(a, b))
     }
 
     fn unchecked_ssub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_sub(a, b)
+        set_rval_location(self,self.gcc_sub(a, b))
     }
 
     fn unchecked_usub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): should generate poison value?
-        self.gcc_sub(a, b)
+        set_rval_location(self,self.gcc_sub(a, b))
     }
 
     fn unchecked_smul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_mul(a, b)
+        set_rval_location(self,self.gcc_mul(a, b))
     }
 
     fn unchecked_umul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        self.gcc_mul(a, b)
+        set_rval_location(self,self.gcc_mul(a, b))
     }
 
     fn fadd_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs + rhs
+        set_rval_location(self,lhs + rhs)
     }
 
     fn fsub_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs - rhs
+        set_rval_location(self,lhs - rhs)
     }
 
     fn fmul_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs * rhs
+        set_rval_location(self,lhs * rhs)
     }
 
     fn fdiv_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        lhs / rhs
+        set_rval_location(self,lhs / rhs)
     }
 
     fn frem_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
-        self.frem(lhs, rhs)
+        let i = self.frem(lhs, rhs);
+        set_rval_location(self,i);
+        i
     }
 
     fn checked_binop(&mut self, oop: OverflowOp, typ: Ty<'_>, lhs: Self::Value, rhs: Self::Value) -> (Self::Value, Self::Value) {
@@ -1005,33 +1023,33 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn fptoui(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.gcc_float_to_uint_cast(value, dest_ty)
+        set_rval_location(self,self.gcc_float_to_uint_cast(value, dest_ty))
     }
 
     fn fptosi(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.gcc_float_to_int_cast(value, dest_ty)
+        set_rval_location(self,self.gcc_float_to_int_cast(value, dest_ty))
     }
 
     fn uitofp(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.gcc_uint_to_float_cast(value, dest_ty)
+        set_rval_location(self,self.gcc_uint_to_float_cast(value, dest_ty))
     }
 
     fn sitofp(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.gcc_int_to_float_cast(value, dest_ty)
+        set_rval_location(self,self.gcc_int_to_float_cast(value, dest_ty))
     }
 
     fn fptrunc(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): make sure it truncates.
-        self.context.new_cast(self.loc, value, dest_ty)
+        set_rval_location(self,self.context.new_cast(self.loc, value, dest_ty))
     }
 
     fn fpext(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.context.new_cast(self.loc, value, dest_ty)
+        set_rval_location(self,self.context.new_cast(self.loc, value, dest_ty))
     }
 
     fn ptrtoint(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         let usize_value = self.cx.const_bitcast(value, self.cx.type_isize());
-        self.intcast(usize_value, dest_ty, false)
+        self.intcast(usize_value, dest_ty, false)        
     }
 
     fn inttoptr(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
