@@ -49,6 +49,10 @@ fn main() {
     // No promotion of fallible operations.
     let _val: &'static _ = &(1/0); //~ ERROR temporary value dropped while borrowed
     let _val: &'static _ = &(1/(1-1)); //~ ERROR temporary value dropped while borrowed
+    let _val: &'static _ = &((1+1)/(1-1)); //~ ERROR temporary value dropped while borrowed
+    let _val: &'static _ = &(i32::MIN/-1); //~ ERROR temporary value dropped while borrowed
+    let _val: &'static _ = &(i32::MIN/(0-1)); //~ ERROR temporary value dropped while borrowed
+    let _val: &'static _ = &(-128i8/-1); //~ ERROR temporary value dropped while borrowed
     let _val: &'static _ = &(1%0); //~ ERROR temporary value dropped while borrowed
     let _val: &'static _ = &(1%(1-1)); //~ ERROR temporary value dropped while borrowed
     let _val: &'static _ = &([1,2,3][4]+1); //~ ERROR temporary value dropped while borrowed

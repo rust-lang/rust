@@ -36,6 +36,7 @@
 #![feature(strict_provenance)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
+#![deny(ffi_unwind_calls)]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
