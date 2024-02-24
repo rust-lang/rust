@@ -23,6 +23,26 @@ pub fn vec_zero_bytes(n: usize) -> Vec<u8> {
     vec![0; n]
 }
 
+pub struct MyU8(u8);
+
+// CHECK-LABEL: @vec_zero_bytes_newtype
+#[no_mangle]
+pub fn vec_zero_bytes_newtype(n: usize) -> Vec<MyU8> {
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK: call {{.*}}__rust_alloc(
+    // CHECK: call {{.*}}llvm.memset
+
+    // CHECK-NOT: call {{.*}}alloc::vec::from_elem
+    // CHECK-NOT: call {{.*}}reserve
+    // CHECK-NOT: call {{.*}}__rust_alloc_zeroed(
+
+    // CHECK: ret void
+    vec![MyU8(0); n]
+}
+
 // CHECK-LABEL: @vec_one_bytes
 #[no_mangle]
 pub fn vec_one_bytes(n: usize) -> Vec<u8> {

@@ -10,8 +10,16 @@ pub(super) trait SpecFromElem: Sized {
     fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A>;
 }
 
+#[inline(always)]
+fn is_null_byte<T>(val: &T) -> bool {
+    core::mem::size_of::<T>() == 1 && unsafe { *(val as *const T as *const u8) == 0u8 }
+}
+
 impl<T: Clone> SpecFromElem for T {
     default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
+        if is_null_byte(&elem) {
+            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
+        }
         let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, elem);
         v
