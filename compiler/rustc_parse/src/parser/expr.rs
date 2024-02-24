@@ -13,13 +13,14 @@ use ast::mut_visit::{noop_visit_expr, MutVisitor};
 use ast::token::IdentIsRaw;
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, Pat, Path, PathSegment};
 use core::mem;
+use core::ops::ControlFlow;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
-use rustc_ast::visit::Visitor;
+use rustc_ast::visit::{walk_expr, Visitor};
 use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, UnOp, DUMMY_NODE_ID};
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
@@ -1703,19 +1704,20 @@ impl<'a> Parser<'a> {
                 let span = expr.span;
 
                 let found_labeled_breaks = {
-                    struct FindLabeledBreaksVisitor(bool);
+                    struct FindLabeledBreaksVisitor;
 
                     impl<'ast> Visitor<'ast> for FindLabeledBreaksVisitor {
-                        fn visit_expr_post(&mut self, ex: &'ast Expr) {
+                        type Result = ControlFlow<()>;
+                        fn visit_expr(&mut self, ex: &'ast Expr) -> ControlFlow<()> {
                             if let ExprKind::Break(Some(_label), _) = ex.kind {
-                                self.0 = true;
+                                ControlFlow::Break(())
+                            } else {
+                                walk_expr(self, ex)
                             }
                         }
                     }
 
-                    let mut vis = FindLabeledBreaksVisitor(false);
-                    vis.visit_expr(&expr);
-                    vis.0
+                    FindLabeledBreaksVisitor.visit_expr(&expr).is_break()
                 };
 
                 // Suggestion involves adding a labeled block.

@@ -1,6 +1,7 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::errors;
+use core::ops::ControlFlow;
 use rustc_ast as ast;
 use rustc_ast::visit::walk_list;
 use rustc_ast::{attr, EnumDef, VariantData};
@@ -231,20 +232,19 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
 }
 
 fn has_a_default_variant(item: &Annotatable) -> bool {
-    struct HasDefaultAttrOnVariant {
-        found: bool,
-    }
+    struct HasDefaultAttrOnVariant;
 
     impl<'ast> rustc_ast::visit::Visitor<'ast> for HasDefaultAttrOnVariant {
-        fn visit_variant(&mut self, v: &'ast rustc_ast::Variant) {
+        type Result = ControlFlow<()>;
+        fn visit_variant(&mut self, v: &'ast rustc_ast::Variant) -> ControlFlow<()> {
             if v.attrs.iter().any(|attr| attr.has_name(kw::Default)) {
-                self.found = true;
+                ControlFlow::Break(())
+            } else {
+                // no need to subrecurse.
+                ControlFlow::Continue(())
             }
-            // no need to subrecurse.
         }
     }
 
-    let mut visitor = HasDefaultAttrOnVariant { found: false };
-    item.visit_with(&mut visitor);
-    visitor.found
+    item.visit_with(&mut HasDefaultAttrOnVariant).is_break()
 }
