@@ -639,6 +639,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.gen_random(ptr, len)?;
                 this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
             }
+            "_Unwind_RaiseException" => {
+                trace!("_Unwind_RaiseException: {:?}", this.frame().instance);
+
+                // Get the raw pointer stored in arg[0] (the panic payload).
+                let [payload] = this.check_shim(abi, Abi::C { unwind: true }, link_name, args)?;
+                let payload = this.read_scalar(payload)?;
+                let thread = this.active_thread_mut();
+                thread.panic_payloads.push(payload);
+
+                return Ok(EmulateItemResult::NeedsUnwind);
+            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.

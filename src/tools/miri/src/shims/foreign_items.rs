@@ -87,6 +87,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 trace!("{:?}", this.dump_place(&dest.clone().into()));
                 this.return_to_block(ret)?;
             }
+            EmulateItemResult::NeedsUnwind => {
+                // Jump to the unwind block to begin unwinding.
+                this.unwind_to_block(unwind)?;
+            }
             EmulateItemResult::AlreadyJumped => (),
             EmulateItemResult::NotSupported => {
                 if let Some(body) = this.lookup_exported_symbol(link_name)? {

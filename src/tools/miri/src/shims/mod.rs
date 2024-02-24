@@ -23,6 +23,8 @@ pub use unix::{DirTable, FdTable};
 pub enum EmulateItemResult {
     /// The caller is expected to jump to the return block.
     NeedsJumping,
+    /// The caller is expected to jump to the unwind block.
+    NeedsUnwind,
     /// Jumping has already been taken care of.
     AlreadyJumped,
     /// The item is not supported.
