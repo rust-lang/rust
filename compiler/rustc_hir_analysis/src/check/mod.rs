@@ -159,21 +159,27 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
         return;
     }
 
-    // For the wasm32 target statics with `#[link_section]` are placed into custom
-    // sections of the final output file, but this isn't link custom sections of
-    // other executable formats. Namely we can only embed a list of bytes,
-    // nothing with provenance (pointers to anything else). If any provenance
-    // show up, reject it here.
+    // For the wasm32 target statics with `#[link_section]` other than `.init_array`
+    // are placed into custom sections of the final output file, but this isn't link
+    // custom sections of other executable formats. Namely we can only embed a list
+    // of bytes, nothing with provenance (pointers to anything else). If any
+    // provenance show up, reject it here.
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
         && alloc.inner().provenance().ptrs().len() != 0
     {
-        let msg = "statics with a custom `#[link_section]` must be a \
+        if attrs
+            .link_section
+            .map(|link_section| !link_section.as_str().starts_with(".init_array"))
+            .unwrap_or(true)
+        {
+            let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-        tcx.dcx().span_err(tcx.def_span(id), msg);
+            tcx.dcx().span_err(tcx.def_span(id), msg);
+        }
     }
 }
 
