@@ -38,7 +38,7 @@ pub mod thread_parking;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
-pub fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {}
+pub fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 #[cfg(not(target_os = "espidf"))]
 // SAFETY: must be called only once during runtime initialization.
