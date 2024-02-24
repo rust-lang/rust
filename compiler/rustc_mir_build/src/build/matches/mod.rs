@@ -1582,7 +1582,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let mut test = self.test(match_pair);
         let match_place = match_pair.place.clone();
 
-        debug!("test_candidates: test={:?} match_pair={:?}", test, match_pair);
+        debug!(?test, ?match_pair);
         // Most of the time, the test to perform is simply a function of the main candidate; but for
         // a test like SwitchInt, we may want to add cases based on the candidates that are
         // available
