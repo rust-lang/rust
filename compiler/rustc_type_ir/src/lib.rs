@@ -21,13 +21,15 @@ use std::hash::Hash;
 #[cfg(not(feature = "nightly"))]
 use std::sync::Arc as Lrc;
 
+#[macro_use]
+pub mod visit;
+
 #[cfg(feature = "nightly")]
 pub mod codec;
 pub mod fold;
 pub mod new;
 pub mod ty_info;
 pub mod ty_kind;
-pub mod visit;
 
 #[macro_use]
 mod macros;

@@ -396,9 +396,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected_ty: Ty<'tcx>,
                 }
                 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MentionsTy<'tcx> {
-                    type BreakTy = ();
+                    type Result = ControlFlow<()>;
 
-                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                         if t == self.expected_ty {
                             ControlFlow::Break(())
                         } else {

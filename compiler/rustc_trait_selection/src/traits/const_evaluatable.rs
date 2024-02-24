@@ -17,7 +17,6 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor};
 
 use rustc_span::Span;
-use std::ops::ControlFlow;
 
 use crate::traits::ObligationCtxt;
 
@@ -170,8 +169,7 @@ fn satisfied_from_param_env<'tcx>(
     }
 
     impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for Visitor<'a, 'tcx> {
-        type BreakTy = ();
-        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_const(&mut self, c: ty::Const<'tcx>) {
             debug!("is_const_evaluatable: candidate={:?}", c);
             if self.infcx.probe(|_| {
                 let ocx = ObligationCtxt::new(self.infcx);
@@ -187,7 +185,7 @@ fn satisfied_from_param_env<'tcx>(
             }
 
             if let ty::ConstKind::Expr(e) = c.kind() {
-                e.visit_with(self)
+                e.visit_with(self);
             } else {
                 // FIXME(generic_const_exprs): This doesn't recurse into `<T as Trait<U>>::ASSOC`'s args.
                 // This is currently unobservable as `<T as Trait<{ U + 1 }>>::ASSOC` creates an anon const
@@ -196,7 +194,6 @@ fn satisfied_from_param_env<'tcx>(
                 // If we start allowing directly writing `ConstKind::Expr` without an intermediate anon const
                 // this will be incorrect. It might be worth investigating making `predicates_of` elaborate
                 // all of the `ConstEvaluatable` bounds rather than having a visitor here.
-                ControlFlow::Continue(())
             }
         }
     }

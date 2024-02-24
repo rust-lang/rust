@@ -1,6 +1,7 @@
+use rustc_ast_ir::try_visit;
+use rustc_ast_ir::visit::VisitorResult;
 use std::fmt;
 use std::hash::Hash;
-use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
@@ -107,9 +108,9 @@ impl<I: Interner, V: TypeVisitable<I>> TypeVisitable<I> for Canonical<I, V>
 where
     I::CanonicalVars: TypeVisitable<I>,
 {
-    fn visit_with<F: TypeVisitor<I>>(&self, folder: &mut F) -> ControlFlow<F::BreakTy> {
-        self.value.visit_with(folder)?;
-        self.max_universe.visit_with(folder)?;
+    fn visit_with<F: TypeVisitor<I>>(&self, folder: &mut F) -> F::Result {
+        try_visit!(self.value.visit_with(folder));
+        try_visit!(self.max_universe.visit_with(folder));
         self.variables.visit_with(folder)
     }
 }
@@ -137,7 +138,7 @@ impl<I: Interner> TypeVisitable<I> for CanonicalVarInfo<I>
 where
     I::Ty: TypeVisitable<I>,
 {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         self.kind.visit_with(visitor)
     }
 }
@@ -251,13 +252,13 @@ impl<I: Interner> TypeVisitable<I> for CanonicalVarKind<I>
 where
     I::Ty: TypeVisitable<I>,
 {
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         match self {
             CanonicalVarKind::Ty(_)
             | CanonicalVarKind::PlaceholderTy(_)
             | CanonicalVarKind::Region(_)
             | CanonicalVarKind::PlaceholderRegion(_)
-            | CanonicalVarKind::Effect => ControlFlow::Continue(()),
+            | CanonicalVarKind::Effect => V::Result::output(),
             CanonicalVarKind::Const(_, ty) | CanonicalVarKind::PlaceholderConst(_, ty) => {
                 ty.visit_with(visitor)
             }

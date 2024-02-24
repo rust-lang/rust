@@ -202,8 +202,8 @@ impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'t
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
-        t.super_visit_with(self)?;
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
+        t.super_visit_with(self);
         match t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
                 self.visit_opaque_ty(alias_ty);
@@ -212,7 +212,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 self.tcx
                     .type_of(alias_ty.def_id)
                     .instantiate(self.tcx, alias_ty.args)
-                    .visit_with(self)?;
+                    .visit_with(self);
             }
             ty::Alias(ty::Projection, alias_ty) => {
                 // This avoids having to do normalization of `Self::AssocTy` by only
@@ -244,11 +244,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                             );
 
                             if check_args_compatible(self.tcx, assoc, impl_args) {
-                                return self
-                                    .tcx
+                                self.tcx
                                     .type_of(assoc.def_id)
                                     .instantiate(self.tcx, impl_args)
                                     .visit_with(self);
+                                return;
                             } else {
                                 self.tcx.dcx().span_delayed_bug(
                                     self.tcx.def_span(assoc.def_id),
@@ -261,10 +261,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             }
             ty::Adt(def, _) if def.did().is_local() => {
                 if let CollectionMode::ImplTraitInAssocTypes = self.mode {
-                    return ControlFlow::Continue(());
+                    return;
                 }
                 if !self.seen.insert(def.did().expect_local()) {
-                    return ControlFlow::Continue(());
+                    return;
                 }
                 for variant in def.variants().iter() {
                     for field in variant.fields.iter() {
@@ -283,7 +283,6 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             }
             _ => trace!(kind=?t.kind()),
         }
-        ControlFlow::Continue(())
     }
 }
 

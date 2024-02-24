@@ -17,7 +17,7 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitor};
 
 use std::mem;
-use std::ops::{ControlFlow, Deref};
+use std::ops::Deref;
 
 use super::ops::{self, NonConstOp, Status};
 use super::qualifs::{self, HasMutInterior, NeedsDrop, NeedsNonConstDrop};
@@ -164,9 +164,9 @@ struct LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
 }
 
 impl<'ck, 'mir, 'tcx> TypeVisitor<TyCtxt<'tcx>> for LocalReturnTyVisitor<'ck, 'mir, 'tcx> {
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
         match t.kind() {
-            ty::FnPtr(_) => ControlFlow::Continue(()),
+            ty::FnPtr(_) => {}
             ty::Ref(_, _, hir::Mutability::Mut) => {
                 self.checker.check_op(ops::ty::MutRef(self.kind));
                 t.super_visit_with(self)
