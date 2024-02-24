@@ -30,7 +30,7 @@ xflags::xflags! {
 
         default cmd lsp-server {
             /// Print version.
-            optional --version
+            optional -V, --version
 
             /// Dump a LSP config JSON schema.
             optional --print-config-schema
