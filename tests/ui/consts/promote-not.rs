@@ -51,6 +51,15 @@ const TEST_DROP_NOT_PROMOTE: &String = {
 };
 
 
+// We do not promote function calls in `const` initializers in dead code.
+const fn mk_panic() -> u32 { panic!() }
+const fn mk_false() -> bool { false }
+const Y: () = {
+    if mk_false() {
+        let _x: &'static u32 = &mk_panic(); //~ ERROR temporary value dropped while borrowed
+    }
+};
+
 fn main() {
     // We must not promote things with interior mutability. Not even if we "project it away".
     let _val: &'static _ = &(Cell::new(1), 2).0; //~ ERROR temporary value dropped while borrowed
