@@ -61,7 +61,7 @@ impl<T> List<T> {
         // length) that is 64-byte aligned, thus featuring the necessary
         // trailing padding for elements with up to 64-byte alignment.
         static EMPTY_SLICE: InOrder<usize, MaxAlign> = InOrder(0, MaxAlign);
-        unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
+        unsafe { &*(std::ptr::addr_of!(EMPTY_SLICE) as *const List<T>) }
     }
 
     pub fn len(&self) -> usize {
