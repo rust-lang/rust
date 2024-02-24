@@ -563,9 +563,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         let right_idx = src_index.checked_sub(left_len).unwrap();
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
-                        span_bug!(
-                            this.cur_span(),
-                            "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
+                        throw_ub_format!(
+                            "`simd_shuffle_generic` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
                         );
                     };
                     this.write_immediate(*val, &dest)?;
@@ -604,9 +603,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         let right_idx = src_index.checked_sub(left_len).unwrap();
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
-                        span_bug!(
-                            this.cur_span(),
-                            "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
+                        throw_ub_format!(
+                            "`simd_shuffle` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
                         );
                     };
                     this.write_immediate(*val, &dest)?;
