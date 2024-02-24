@@ -6,7 +6,6 @@
 //@ [A64] needs-llvm-components: aarch64
 //@ [ppc64le] compile-flags: --target powerpc64le-unknown-linux-gnu -Crelocation-model=static
 //@ [ppc64le] needs-llvm-components: powerpc
-//@ ignore-debug: alignment checks insert panics that we don't have a lang item for
 
 #![feature(no_core, lang_items)]
 #![no_core]

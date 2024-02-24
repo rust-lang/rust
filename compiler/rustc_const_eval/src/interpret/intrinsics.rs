@@ -379,10 +379,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (input, input_len) = self.operand_to_simd(&args[0])?;
                 let (dest, dest_len) = self.place_to_simd(dest)?;
                 assert_eq!(input_len, dest_len, "Return vector length must match input length");
-                assert!(
-                    index < dest_len,
-                    "Index `{index}` must be in bounds of vector with length {dest_len}"
-                );
+                // Bounds are not checked by typeck so we have to do it ourselves.
+                if index >= input_len {
+                    throw_ub_format!(
+                        "`simd_insert` index {index} is out-of-bounds of vector with length {input_len}"
+                    );
+                }
 
                 for i in 0..dest_len {
                     let place = self.project_index(&dest, i)?;
@@ -397,10 +399,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::simd_extract => {
                 let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
                 let (input, input_len) = self.operand_to_simd(&args[0])?;
-                assert!(
-                    index < input_len,
-                    "index `{index}` must be in bounds of vector with length {input_len}"
-                );
+                // Bounds are not checked by typeck so we have to do it ourselves.
+                if index >= input_len {
+                    throw_ub_format!(
+                        "`simd_extract` index {index} is out-of-bounds of vector with length {input_len}"
+                    );
+                }
                 self.copy_op(&self.project_index(&input, index)?, dest)?;
             }
             sym::likely | sym::unlikely | sym::black_box => {

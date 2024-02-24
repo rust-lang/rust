@@ -1,6 +1,6 @@
 //@ compile-flags: -O -C no-prepopulate-passes
 //@ only-x86_64 (to not worry about usize differing)
-//@ ignore-debug (the debug assertions get in the way)
+//@ ignore-debug: precondition checks make mem::replace not a candidate for MIR inlining
 
 #![crate_type = "lib"]
 

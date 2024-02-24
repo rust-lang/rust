@@ -14,7 +14,7 @@ fn simulator_targets_set_abi() {
         aarch64_apple_watchos_sim::target(),
     ];
 
-    for target in all_sim_targets {
+    for target in &all_sim_targets {
         assert_eq!(target.abi, "sim")
     }
 }

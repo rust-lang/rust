@@ -1,7 +1,7 @@
 // Check that draining at the front or back doesn't copy memory.
 
 //@ compile-flags: -O
-//@ ignore-debug: the debug assertions get in the way
+//@ ignore-debug: FIXME: checks for call detect scoped noalias metadata
 
 #![crate_type = "lib"]
 

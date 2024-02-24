@@ -797,16 +797,8 @@ pub enum InvalidMonomorphization<'tcx> {
         out_ty: Ty<'tcx>,
     },
 
-    #[diag(codegen_ssa_invalid_monomorphization_shuffle_index_not_constant, code = E0511)]
-    ShuffleIndexNotConstant {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        arg_idx: u64,
-    },
-
-    #[diag(codegen_ssa_invalid_monomorphization_shuffle_index_out_of_bounds, code = E0511)]
-    ShuffleIndexOutOfBounds {
+    #[diag(codegen_ssa_invalid_monomorphization_simd_index_out_of_bounds, code = E0511)]
+    SimdIndexOutOfBounds {
         #[primary_span]
         span: Span,
         name: Symbol,
