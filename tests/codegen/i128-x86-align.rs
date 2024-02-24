@@ -94,9 +94,9 @@ pub fn store_struct(x: &mut Struct) {
     // CHECK-SAME: align 16 dereferenceable(32) %x
     // CHECK:      [[TMP:%.*]] = alloca %Struct, align 16
     // CHECK:      store i32 1, ptr [[TMP]], align 16
-    // CHECK-NEXT: [[GEP1:%.*]] = getelementptr inbounds %Struct, ptr [[TMP]], i32 0, i32 1
+    // CHECK-NEXT: [[GEP1:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 4
     // CHECK-NEXT: store i32 2, ptr [[GEP1]], align 4
-    // CHECK-NEXT: [[GEP2:%.*]] = getelementptr inbounds %Struct, ptr [[TMP]], i32 0, i32 3
+    // CHECK-NEXT: [[GEP2:%.*]] = getelementptr inbounds i8, ptr [[TMP]], i64 16
     // CHECK-NEXT: store i128 3, ptr [[GEP2]], align 16
     // CHECK-NEXT: call void @llvm.memcpy.p0.p0.i64(ptr align 16 %x, ptr align 16 [[TMP]], i64 32, i1 false)
     *x = Struct { a: 1, b: 2, c: 3 };
