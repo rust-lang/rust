@@ -15,10 +15,11 @@
 
 use crate::ast::*;
 
-use core::ops::ControlFlow;
-
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+
+pub use rustc_ast_ir::visit::VisitorResult;
+pub use rustc_ast_ir::{try_visit, visit_opt, walk_list, walk_visitable_list};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AssocCtxt {
@@ -99,51 +100,6 @@ pub enum LifetimeCtxt {
     Bound,
     /// Appears as a generic argument.
     GenericArg,
-}
-
-/// Similar to the `Try` trait, but also implemented for `()`.
-pub trait VisitorResult {
-    type Residual;
-    fn output() -> Self;
-    fn from_residual(residual: Self::Residual) -> Self;
-    fn branch(self) -> ControlFlow<Self::Residual>;
-}
-
-impl VisitorResult for () {
-    type Residual = !;
-
-    fn output() -> Self {}
-    fn from_residual(_: !) -> Self {}
-    fn branch(self) -> ControlFlow<!> {
-        ControlFlow::Continue(())
-    }
-}
-
-impl<T> VisitorResult for ControlFlow<T> {
-    type Residual = T;
-
-    fn output() -> Self {
-        ControlFlow::Continue(())
-    }
-    fn from_residual(residual: Self::Residual) -> Self {
-        ControlFlow::Break(residual)
-    }
-    fn branch(self) -> ControlFlow<T> {
-        self
-    }
-}
-
-#[macro_export]
-macro_rules! try_visit {
-    ($e:expr) => {
-        match $crate::visit::VisitorResult::branch($e) {
-            core::ops::ControlFlow::Continue(()) => (),
-            #[allow(unreachable_code)]
-            core::ops::ControlFlow::Break(r) => {
-                return $crate::visit::VisitorResult::from_residual(r);
-            }
-        }
-    };
 }
 
 /// Each method of the `Visitor` trait is a hook to be potentially
@@ -313,24 +269,6 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_capture_by(&mut self, _capture_by: &'ast CaptureBy) -> Self::Result {
         Self::Result::output()
-    }
-}
-
-#[macro_export]
-macro_rules! walk_list {
-    ($visitor: expr, $method: ident, $list: expr $(, $($extra_args: expr),* )?) => {
-        for elem in $list {
-            $crate::try_visit!($visitor.$method(elem $(, $($extra_args,)* )?));
-        }
-    }
-}
-
-#[macro_export]
-macro_rules! visit_opt {
-    ($visitor: expr, $method: ident, $opt: expr $(, $($extra_args: expr),* )?) => {
-        if let Some(x) = $opt {
-            $crate::try_visit!($visitor.$method(x $(, $($extra_args,)* )?));
-        }
     }
 }
 
