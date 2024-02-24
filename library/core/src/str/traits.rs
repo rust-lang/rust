@@ -27,7 +27,7 @@ impl Ord for str {
 impl PartialEq for str {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        self.as_bytes() == other.as_bytes()
+        self.len() == other.len() && self.as_bytes() == other.as_bytes()
     }
 }
 
