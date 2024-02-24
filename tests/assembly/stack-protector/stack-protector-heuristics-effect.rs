@@ -10,6 +10,10 @@
 //@ [none] compile-flags: -Z stack-protector=none
 //@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
 //@ min-llvm-version: 17.0.2
+//@ ignore-test
+// FIXME: The LLVM stack protector code assumes that alloca types are meaningful,
+// so using [n x i8] types causes it to emit stack protection code for all allocas.
+// It needs to be changed to use some meaningful heuristic.
 
 #![crate_type = "lib"]
 
