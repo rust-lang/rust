@@ -13,12 +13,14 @@ use crate::sys::common::thread_local::run_dtors;
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
+#[cfg_attr(bootstrap, allow(unexpected_cfgs))]
 #[cfg(any(
     target_os = "linux",
     target_os = "android",
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "hurd",
+    target_os = "freebsd",
     target_os = "netbsd",
     target_os = "dragonfly"
 ))]
@@ -102,8 +104,7 @@ pub fn activate() {
     target_os = "vxworks",
     target_os = "horizon",
     target_os = "emscripten",
-    target_os = "aix",
-    target_os = "freebsd",
+    target_os = "aix"
 ))]
 #[cfg_attr(target_family = "wasm", allow(unused))] // might remain unused depending on target details (e.g. wasm32-unknown-emscripten)
 pub fn activate() {

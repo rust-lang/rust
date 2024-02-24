@@ -7,6 +7,7 @@ use crate::io;
 use crate::mem;
 use crate::num::NonZero;
 use crate::ptr;
+use crate::sys::common::thread_local::run_dtors;
 use crate::time::Duration;
 
 pub type Tid = abi::Tid;
@@ -50,7 +51,7 @@ impl Thread {
                 Box::from_raw(ptr::from_exposed_addr::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
-                run_dtors();
+                run_dtors(ptr::null_mut());
             }
         }
     }
