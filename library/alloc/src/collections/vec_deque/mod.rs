@@ -761,7 +761,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     /// # Complexity
-    /// 
+    ///
     /// Takes `O(n)` time to resize and copy.
     ///
     /// [`reserve`]: VecDeque::reserve
@@ -795,7 +795,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     /// # Complexity
-    // 
+    //
     /// Takes `O(n)` time as it copies array to new location.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
@@ -850,7 +850,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     /// # Complexity
-    // 
+    //
     /// Takes `O(n)` time as it copies array to new location.
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -901,7 +901,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     /// # Complexity
-    // 
+    //
     /// Takes `O(n)` time as it copies array to new location.
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -935,7 +935,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     /// # Complexity
-    // 
+    //
     /// Takes `O(n)` time as it copies values to rotate into smaller size.
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn shrink_to_fit(&mut self) {
@@ -961,9 +961,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 6);
     /// buf.shrink_to(0);
     /// assert!(buf.capacity() >= 4);
-    /// ``` 
+    /// ```
     /// # Complexity
-    // 
+    //
     /// Takes `O(n)` time as it copies values to rotate into smaller size.
     #[stable(feature = "shrink_to", since = "1.56.0")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
@@ -1903,7 +1903,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Complexity
     ///
     /// Takes `O(n)` time to copy elements to fill interior gap.
-    /// For removal from front and back in `O(1)` time 
+    /// For removal from front and back in `O(1)` time
     /// use [`pop_front`] or [`pop_back`].
     ///
     /// [`pop_front`]: VecDeque::pop_front
