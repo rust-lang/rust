@@ -17,7 +17,6 @@ use rustc_middle::ty::{
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::Span;
-use std::ops::ControlFlow;
 
 mod table;
 
@@ -415,29 +414,22 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for ConstrainOpaqueTypeRegionVisitor<'t
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
-        &mut self,
-        t: &ty::Binder<'tcx, T>,
-    ) -> ControlFlow<Self::BreakTy> {
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
         t.super_visit_with(self);
-        ControlFlow::Continue(())
     }
 
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReBound(_, _) => ControlFlow::Continue(()),
-            _ => {
-                (self.op)(r);
-                ControlFlow::Continue(())
-            }
+            ty::ReBound(_, _) => {}
+            _ => (self.op)(r),
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
         // We're only interested in types involving regions
         if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
-            return ControlFlow::Continue(());
+            return;
         }
 
         match ty.kind() {
@@ -488,8 +480,6 @@ where
                 ty.super_visit_with(self);
             }
         }
-
-        ControlFlow::Continue(())
     }
 }
 

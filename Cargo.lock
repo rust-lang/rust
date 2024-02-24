@@ -3942,6 +3942,7 @@ version = "0.0.0"
 dependencies = [
  "itertools 0.11.0",
  "rustc_ast",
+ "rustc_ast_ir",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -4010,6 +4011,7 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
+ "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4604,6 +4606,7 @@ dependencies = [
  "bitflags 2.4.2",
  "itertools 0.11.0",
  "rustc_ast",
+ "rustc_ast_ir",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",
@@ -4642,6 +4645,7 @@ name = "rustc_transmute"
 version = "0.0.0"
 dependencies = [
  "itertools 0.11.0",
+ "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_infer",
