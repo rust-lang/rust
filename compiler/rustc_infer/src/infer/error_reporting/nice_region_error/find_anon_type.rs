@@ -1,3 +1,4 @@
+use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::hir::map::Map;
@@ -43,14 +44,9 @@ fn find_component_for_bound_region<'tcx>(
     arg: &'tcx hir::Ty<'tcx>,
     br: &ty::BoundRegionKind,
 ) -> Option<&'tcx hir::Ty<'tcx>> {
-    let mut nested_visitor = FindNestedTypeVisitor {
-        tcx,
-        bound_region: *br,
-        found_type: None,
-        current_index: ty::INNERMOST,
-    };
-    nested_visitor.visit_ty(arg);
-    nested_visitor.found_type
+    FindNestedTypeVisitor { tcx, bound_region: *br, current_index: ty::INNERMOST }
+        .visit_ty(arg)
+        .break_value()
 }
 
 // The FindNestedTypeVisitor captures the corresponding `hir::Ty` of the
@@ -65,26 +61,24 @@ struct FindNestedTypeVisitor<'tcx> {
     // The bound_region corresponding to the Refree(freeregion)
     // associated with the anonymous region we are looking for.
     bound_region: ty::BoundRegionKind,
-    // The type where the anonymous lifetime appears
-    // for e.g., Vec<`&u8`> and <`&u8`>
-    found_type: Option<&'tcx hir::Ty<'tcx>>,
     current_index: ty::DebruijnIndex,
 }
 
 impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
+    type Result = ControlFlow<&'tcx hir::Ty<'tcx>>;
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.tcx.hir()
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> Self::Result {
         match arg.kind {
             hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
                 intravisit::walk_ty(self, arg);
                 self.current_index.shift_out(1);
-                return;
+                return ControlFlow::Continue(());
             }
 
             hir::TyKind::TraitObject(bounds, ..) => {
@@ -105,8 +99,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                     (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
                         debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                         if id == def_id {
-                            self.found_type = Some(arg);
-                            return; // we can stop visiting now
+                            return ControlFlow::Break(arg);
                         }
                     }
 
@@ -123,8 +116,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                         );
                         debug!("LateBound id={:?} def_id={:?}", id, def_id);
                         if debruijn_index == self.current_index && id == def_id {
-                            self.found_type = Some(arg);
-                            return; // we can stop visiting now
+                            return ControlFlow::Break(arg);
                         }
                     }
 
@@ -145,23 +137,30 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
             }
             // Checks if it is of type `hir::TyKind::Path` which corresponds to a struct.
             hir::TyKind::Path(_) => {
-                let subvisitor = &mut TyPathVisitor {
-                    tcx: self.tcx,
-                    found_it: false,
-                    bound_region: self.bound_region,
-                    current_index: self.current_index,
+                // Prefer using the lifetime in type arguments rather than lifetime arguments.
+                intravisit::walk_ty(self, arg)?;
+
+                // Call `walk_ty` as `visit_ty` is empty.
+                return if intravisit::walk_ty(
+                    &mut TyPathVisitor {
+                        tcx: self.tcx,
+                        bound_region: self.bound_region,
+                        current_index: self.current_index,
+                    },
+                    arg,
+                )
+                .is_break()
+                {
+                    ControlFlow::Break(arg)
+                } else {
+                    ControlFlow::Continue(())
                 };
-                intravisit::walk_ty(subvisitor, arg); // call walk_ty; as visit_ty is empty,
-                // this will visit only outermost type
-                if subvisitor.found_it {
-                    self.found_type = Some(arg);
-                }
             }
             _ => {}
         }
         // walk the embedded contents: e.g., if we are visiting `Vec<&Foo>`,
         // go on to visit `&Foo`
-        intravisit::walk_ty(self, arg);
+        intravisit::walk_ty(self, arg)
     }
 }
 
@@ -173,26 +172,25 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
 // specific part of the type in the error message.
 struct TyPathVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    found_it: bool,
     bound_region: ty::BoundRegionKind,
     current_index: ty::DebruijnIndex,
 }
 
 impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn nested_visit_map(&mut self) -> Map<'tcx> {
         self.tcx.hir()
     }
 
-    fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {
+    fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) -> Self::Result {
         match (self.tcx.named_bound_var(lifetime.hir_id), self.bound_region) {
             // the lifetime of the TyPath!
             (Some(rbv::ResolvedArg::EarlyBound(id)), ty::BrNamed(def_id, _)) => {
                 debug!("EarlyBound id={:?} def_id={:?}", id, def_id);
                 if id == def_id {
-                    self.found_it = true;
-                    return; // we can stop visiting now
+                    return ControlFlow::Break(());
                 }
             }
 
@@ -201,8 +199,7 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
                 debug!("id={:?}", id);
                 debug!("def_id={:?}", def_id);
                 if debruijn_index == self.current_index && id == def_id {
-                    self.found_it = true;
-                    return; // we can stop visiting now
+                    return ControlFlow::Break(());
                 }
             }
 
@@ -220,9 +217,10 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
                 debug!("no arg found");
             }
         }
+        ControlFlow::Continue(())
     }
 
-    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) -> Self::Result {
         // ignore nested types
         //
         // If you have a type like `Foo<'a, &Ty>` we
@@ -231,5 +229,6 @@ impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
         // Making `visit_ty` empty will ignore the `&Ty` embedded
         // inside, it will get reached by the outer visitor.
         debug!("`Ty` corresponding to a struct is {:?}", arg);
+        ControlFlow::Continue(())
     }
 }

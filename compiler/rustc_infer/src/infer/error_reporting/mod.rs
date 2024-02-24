@@ -79,7 +79,7 @@ use rustc_middle::ty::{
 use rustc_span::{sym, symbol::kw, BytePos, DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
@@ -2129,15 +2129,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let tykind = match self.tcx.opt_hir_node_by_def_id(trace.cause.body_id) {
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) => {
                 let body = hir.body(*body_id);
-                struct LetVisitor<'v> {
+                struct LetVisitor {
                     span: Span,
-                    result: Option<&'v hir::Ty<'v>>,
                 }
-                impl<'v> Visitor<'v> for LetVisitor<'v> {
-                    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) {
-                        if self.result.is_some() {
-                            return;
-                        }
+                impl<'v> Visitor<'v> for LetVisitor {
+                    type Result = ControlFlow<&'v hir::TyKind<'v>>;
+                    fn visit_stmt(&mut self, s: &'v hir::Stmt<'v>) -> Self::Result {
                         // Find a local statement where the initializer has
                         // the same span as the error and the type is specified.
                         if let hir::Stmt {
@@ -2151,13 +2148,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         } = s
                             && init_span == &self.span
                         {
-                            self.result = Some(*array_ty);
+                            ControlFlow::Break(&array_ty.peel_refs().kind)
+                        } else {
+                            ControlFlow::Continue(())
                         }
                     }
                 }
-                let mut visitor = LetVisitor { span, result: None };
-                visitor.visit_body(body);
-                visitor.result.map(|r| &r.peel_refs().kind)
+                LetVisitor { span }.visit_body(body).break_value()
             }
             Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. })) => {
                 Some(&ty.peel_refs().kind)

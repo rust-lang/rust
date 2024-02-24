@@ -6,6 +6,7 @@
 use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
 use crate::Expectation;
 use crate::FnCtxt;
+use core::ops::ControlFlow;
 use rustc_ast::ast::Mutability;
 use rustc_attr::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -2212,30 +2213,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let map = self.infcx.tcx.hir();
                 let body_id = self.tcx.hir().body_owned_by(self.body_id);
                 let body = map.body(body_id);
-                struct LetVisitor<'a> {
-                    result: Option<&'a hir::Expr<'a>>,
+                struct LetVisitor {
                     ident_name: Symbol,
                 }
 
                 // FIXME: This really should be taking scoping, etc into account.
-                impl<'v> Visitor<'v> for LetVisitor<'v> {
-                    fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                        if let hir::StmtKind::Local(hir::Local { pat, init, .. }) = &ex.kind
+                impl<'v> Visitor<'v> for LetVisitor {
+                    type Result = ControlFlow<Option<&'v hir::Expr<'v>>>;
+                    fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) -> Self::Result {
+                        if let hir::StmtKind::Local(&hir::Local { pat, init, .. }) = ex.kind
                             && let Binding(_, _, ident, ..) = pat.kind
                             && ident.name == self.ident_name
                         {
-                            self.result = *init;
+                            ControlFlow::Break(init)
                         } else {
-                            hir::intravisit::walk_stmt(self, ex);
+                            hir::intravisit::walk_stmt(self, ex)
                         }
                     }
                 }
 
-                let mut visitor = LetVisitor { result: None, ident_name: seg1.ident.name };
-                visitor.visit_body(body);
-
                 if let Node::Expr(call_expr) = self.tcx.parent_hir_node(seg1.hir_id)
-                    && let Some(expr) = visitor.result
+                    && let ControlFlow::Break(Some(expr)) =
+                        (LetVisitor { ident_name: seg1.ident.name }).visit_body(body)
                     && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
                 {
                     let probe = self.lookup_probe_for_diagnostic(

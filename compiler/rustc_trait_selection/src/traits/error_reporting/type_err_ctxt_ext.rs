@@ -19,6 +19,7 @@ use crate::traits::{
     ObligationCause, ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation,
     SelectionError, SignatureMismatch, TraitNotObjectSafe,
 };
+use core::ops::ControlFlow;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::codes::*;
 use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan, StringPart};
@@ -1126,22 +1127,20 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         err: &mut Diag<'_>,
     ) -> bool {
         let span = obligation.cause.span;
-        struct V<'v> {
+        struct V {
             search_span: Span,
-            found: Option<&'v hir::Expr<'v>>,
         }
-        impl<'v> Visitor<'v> for V<'v> {
-            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+        impl<'v> Visitor<'v> for V {
+            type Result = ControlFlow<&'v hir::Expr<'v>>;
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) -> Self::Result {
                 if let hir::ExprKind::Match(expr, _arms, hir::MatchSource::TryDesugar(_)) = ex.kind
+                    && ex.span.with_lo(ex.span.hi() - BytePos(1)).source_equal(self.search_span)
+                    && let hir::ExprKind::Call(_, [expr, ..]) = expr.kind
                 {
-                    if ex.span.with_lo(ex.span.hi() - BytePos(1)).source_equal(self.search_span) {
-                        if let hir::ExprKind::Call(_, [expr, ..]) = expr.kind {
-                            self.found = Some(expr);
-                            return;
-                        }
-                    }
+                    ControlFlow::Break(expr)
+                } else {
+                    hir::intravisit::walk_expr(self, ex)
                 }
-                hir::intravisit::walk_expr(self, ex);
             }
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
@@ -1149,9 +1148,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) => body_id,
             _ => return false,
         };
-        let mut v = V { search_span: span, found: None };
-        v.visit_body(self.tcx.hir().body(*body_id));
-        let Some(expr) = v.found else {
+        let ControlFlow::Break(expr) =
+            (V { search_span: span }).visit_body(self.tcx.hir().body(*body_id))
+        else {
             return false;
         };
         let Some(typeck) = &self.typeck_results else {

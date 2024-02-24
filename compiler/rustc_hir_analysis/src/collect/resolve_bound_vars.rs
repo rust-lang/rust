@@ -6,6 +6,7 @@
 //! the types in HIR to identify late-bound lifetimes and assign their Debruijn indices. This file
 //! is also responsible for assigning their semantics to implicit lifetimes in trait objects.
 
+use core::ops::ControlFlow;
 use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
@@ -417,23 +418,18 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         {
             if let &hir::ClosureBinder::For { span: for_sp, .. } = binder {
                 fn span_of_infer(ty: &hir::Ty<'_>) -> Option<Span> {
-                    struct V(Option<Span>);
-
+                    struct V;
                     impl<'v> Visitor<'v> for V {
-                        fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
-                            match t.kind {
-                                _ if self.0.is_some() => (),
-                                hir::TyKind::Infer => {
-                                    self.0 = Some(t.span);
-                                }
-                                _ => intravisit::walk_ty(self, t),
+                        type Result = ControlFlow<Span>;
+                        fn visit_ty(&mut self, t: &'v hir::Ty<'v>) -> Self::Result {
+                            if matches!(t.kind, hir::TyKind::Infer) {
+                                ControlFlow::Break(t.span)
+                            } else {
+                                intravisit::walk_ty(self, t)
                             }
                         }
                     }
-
-                    let mut v = V(None);
-                    v.visit_ty(ty);
-                    v.0
+                    V.visit_ty(ty).break_value()
                 }
 
                 let infer_in_rt_sp = match fn_decl.output {
