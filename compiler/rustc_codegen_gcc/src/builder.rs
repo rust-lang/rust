@@ -839,11 +839,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                     let llptr = if i == 0 {
                         place.llval
                     } else {
-                        self.inbounds_gep(
-                            self.type_i8(),
-                            place.llval,
-                            &[self.const_usize(b_offset.bytes())],
-                        )
+                        self.inbounds_ptradd(place.llval, self.const_usize(b_offset.bytes()))
                     };
                     let llty = place.layout.scalar_pair_element_gcc_type(self, i);
                     let load = self.load(llty, llptr, align);
