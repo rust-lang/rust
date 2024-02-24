@@ -94,3 +94,10 @@ mod issue9748 {
         let _ = for<'a> |_: &'a u32| -> () {};
     }
 }
+
+mod issue9949 {
+    fn main() {
+        #[doc = "documentation"]
+        ()
+    }
+}
