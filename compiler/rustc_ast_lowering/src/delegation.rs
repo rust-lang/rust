@@ -138,7 +138,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             self.tcx.fn_arg_names(sig_id).len()
         };
-        let inputs = self.arena.alloc_from_iter((0..args_count).into_iter().map(|arg| hir::Ty {
+        let inputs = self.arena.alloc_from_iter((0..args_count).map(|arg| hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::InferDelegation(sig_id, hir::InferDelegationKind::Input(arg)),
             span: self.lower_span(param_span),
