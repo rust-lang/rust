@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::{self, Align, HasDataLayout, Primitive};
+use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 
 use std::cmp::Ordering;
@@ -565,7 +565,8 @@ fn codegen_msvc_try<'ll>(
         //
         // More information can be found in libstd's seh.rs implementation.
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let slot = bx.alloca(bx.type_ptr(), ptr_align);
+        let ptr_size = bx.tcx().data_layout.pointer_size;
+        let slot = bx.alloca(ptr_size, ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.invoke(try_func_ty, None, None, try_func, &[data], normal, catchswitch, None);
 
@@ -838,7 +839,7 @@ fn codegen_emcc_try<'ll>(
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let i8_align = bx.tcx().data_layout.i8_align.abi;
         let catch_data_type = bx.type_struct(&[bx.type_ptr(), bx.type_bool()], false);
-        let catch_data = bx.alloca(catch_data_type, ptr_align);
+        let catch_data = bx.typed_alloca(catch_data_type, ptr_align);
         let catch_data_0 =
             bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(0)]);
         bx.store(ptr, catch_data_0, ptr_align);
@@ -1289,7 +1290,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
-                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
+                let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
                 let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
                 return Ok(bx.load(array_ty, ptr, Align::ONE));

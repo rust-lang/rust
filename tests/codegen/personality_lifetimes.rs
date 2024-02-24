@@ -24,7 +24,7 @@ pub fn test() {
     let _s = S;
     // Check that the personality slot alloca gets a lifetime start in each cleanup block, not just
     // in the first one.
-    // CHECK: [[SLOT:%[0-9]+]] = alloca { ptr, i32{{.*}} }
+    // CHECK: [[SLOT:%[0-9]+]] = alloca [{{[0-9]+}} x i8]
     // CHECK-LABEL: cleanup:
     // CHECK: call void @llvm.lifetime.start.{{.*}}({{.*}})
     // CHECK-LABEL: cleanup1:

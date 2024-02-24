@@ -16,7 +16,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::Align;
+use rustc_target::abi::{Align, Size};
 
 use crate::builder::Builder;
 #[cfg(feature = "master")]
@@ -363,7 +363,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 let ze = bx.zext(result, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
-                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
+                let ptr = bx.alloca(Size::from_bytes(expected_bytes), Align::ONE);
                 bx.store(ze, ptr, Align::ONE);
                 let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
                 let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));

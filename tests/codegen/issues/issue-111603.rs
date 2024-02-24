@@ -11,7 +11,7 @@ pub fn new_from_array(x: u64) -> Arc<[u64]> {
     // Ensure that we only generate one alloca for the array.
 
     // CHECK: alloca
-    // CHECK-SAME: [1000 x i64]
+    // CHECK-SAME: [8000 x i8]
     // CHECK-NOT: alloca
     let array = [x; 1000];
     Arc::new(array)

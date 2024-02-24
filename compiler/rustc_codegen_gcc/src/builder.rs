@@ -734,7 +734,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.gcc_checked_binop(oop, typ, lhs, rhs)
     }
 
-    fn alloca(&mut self, ty: Type<'gcc>, align: Align) -> RValue<'gcc> {
+    fn alloca(&mut self, size: Size, align: Align) -> RValue<'gcc> {
+        let ty = self.cx.type_array(self.cx.type_i8(), size.bytes()).get_aligned(align.bytes());
+        // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
+        self.stack_var_count.set(self.stack_var_count.get() + 1);
+        self.current_func().new_local(None, ty, &format!("stack_var_{}", self.stack_var_count.get())).get_address(None)
+    }
+
+    fn dynamic_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
+        unimplemented!();
+    }
+
+    fn typed_alloca(&mut self, ty: Type<'gcc>, align: Align) -> RValue<'gcc> {
         // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
         // Ideally, we shouldn't need to do this check.
         let aligned_type =
@@ -747,10 +758,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): It might be better to return a LValue, but fixing the rustc API is non-trivial.
         self.stack_var_count.set(self.stack_var_count.get() + 1);
         self.current_func().new_local(None, aligned_type, &format!("stack_var_{}", self.stack_var_count.get())).get_address(None)
-    }
-
-    fn byte_array_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
-        unimplemented!();
     }
 
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {

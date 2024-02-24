@@ -106,20 +106,20 @@ pub struct ForceAlign16 {
 pub unsafe fn call_na1(x: NaturalAlign1) {
     // CHECK: start:
 
-    // m68k: [[ALLOCA:%[a-z0-9+]]] = alloca %NaturalAlign1, align 1
+    // m68k: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 1
     // m68k: call void @natural_align_1({{.*}}byval(%NaturalAlign1) align 1{{.*}} [[ALLOCA]])
 
-    // wasm: [[ALLOCA:%[a-z0-9+]]] = alloca %NaturalAlign1, align 1
+    // wasm: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 1
     // wasm: call void @natural_align_1({{.*}}byval(%NaturalAlign1) align 1{{.*}} [[ALLOCA]])
 
     // x86_64-linux: call void @natural_align_1(i16
 
     // x86_64-windows: call void @natural_align_1(i16
 
-    // i686-linux: [[ALLOCA:%[a-z0-9+]]] = alloca %NaturalAlign1, align 4
+    // i686-linux: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 4
     // i686-linux: call void @natural_align_1({{.*}}byval(%NaturalAlign1) align 4{{.*}} [[ALLOCA]])
 
-    // i686-windows: [[ALLOCA:%[a-z0-9+]]] = alloca %NaturalAlign1, align 4
+    // i686-windows: [[ALLOCA:%[a-z0-9+]]] = alloca [2 x i8], align 4
     // i686-windows: call void @natural_align_1({{.*}}byval(%NaturalAlign1) align 4{{.*}} [[ALLOCA]])
     natural_align_1(x);
 }
@@ -134,10 +134,10 @@ pub unsafe fn call_na2(x: NaturalAlign2) {
     // x86_64-linux-NEXT: call void @natural_align_2
     // x86_64-windows-NEXT: call void @natural_align_2
 
-    // i686-linux: [[ALLOCA:%[0-9]+]] = alloca %NaturalAlign2, align 4
+    // i686-linux: [[ALLOCA:%[0-9]+]] = alloca [34 x i8], align 4
     // i686-linux: call void @natural_align_2({{.*}}byval(%NaturalAlign2) align 4{{.*}} [[ALLOCA]])
 
-    // i686-windows: [[ALLOCA:%[0-9]+]] = alloca %NaturalAlign2, align 4
+    // i686-windows: [[ALLOCA:%[0-9]+]] = alloca [34 x i8], align 4
     // i686-windows: call void @natural_align_2({{.*}}byval(%NaturalAlign2) align 4{{.*}} [[ALLOCA]])
     natural_align_2(x);
 }

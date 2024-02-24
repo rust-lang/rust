@@ -15,7 +15,7 @@ type KeccakBuffer = [[u64; 5]; 5];
 // CHECK-LABEL: @swap_basic
 #[no_mangle]
 pub fn swap_basic(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
-// CHECK: alloca [5 x [5 x i64]]
+// CHECK: alloca [200 x i8]
 
     // SAFETY: exclusive references are always valid to read/write,
     // are non-overlapping, and nothing here panics so it's drop-safe.

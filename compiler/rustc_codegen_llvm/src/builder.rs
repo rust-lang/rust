@@ -466,7 +466,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         val
     }
 
-    fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
+    fn alloca(&mut self, size: Size, align: Align) -> &'ll Value {
+        let ty = self.cx().type_array(self.cx().type_i8(), size.bytes());
+
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
         unsafe {
@@ -476,10 +478,20 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn byte_array_alloca(&mut self, len: &'ll Value, align: Align) -> &'ll Value {
+    fn dynamic_alloca(&mut self, size: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
             let alloca =
-                llvm::LLVMBuildArrayAlloca(self.llbuilder, self.cx().type_i8(), len, UNNAMED);
+                llvm::LLVMBuildArrayAlloca(self.llbuilder, self.cx().type_i8(), size, UNNAMED);
+            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
+            alloca
+        }
+    }
+
+    fn typed_alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
+        let mut bx = Builder::with_cx(self.cx);
+        bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
+        unsafe {
+            let alloca = llvm::LLVMBuildAlloca(bx.llbuilder, ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
             alloca
         }

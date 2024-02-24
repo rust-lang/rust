@@ -2,7 +2,7 @@
 // do not ICE during codegen, and that the LLVM constant has the higher alignment.
 //
 //@ compile-flags: -Zmir-opt-level=0 -Zmir-enable-passes=+GVN
-//@ compile-flags: -Cno-prepopulate-passes
+//@ compile-flags: -Cno-prepopulate-passes --crate-type=lib
 //@ only-64bit
 
 struct S(i32);
@@ -12,9 +12,10 @@ struct SmallStruct(f32, Option<S>, &'static [f32]);
 // CHECK: @0 = private unnamed_addr constant
 // CHECK-SAME: , align 8
 
-fn main() {
-    // CHECK-LABEL: @_ZN20overaligned_constant4main
-    // CHECK: [[full:%_.*]] = alloca %SmallStruct, align 8
+#[no_mangle]
+pub fn overaligned_constant() {
+    // CHECK-LABEL: @overaligned_constant
+    // CHECK: [[full:%_.*]] = alloca [32 x i8], align 8
     // CHECK: call void @llvm.memcpy.p0.p0.i64(ptr align 8 [[full]], ptr align 8 @0, i64 32, i1 false)
     // CHECK: %b.0 = load i32, ptr @0, align 4,
     // CHECK: %b.1 = load i32, ptr getelementptr inbounds ({{.*}}), align 4

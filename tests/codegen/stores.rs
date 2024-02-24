@@ -15,8 +15,8 @@ pub struct Bytes {
 // dependent alignment
 #[no_mangle]
 pub fn small_array_alignment(x: &mut [i8; 4], y: [i8; 4]) {
-// CHECK: [[TMP:%.+]] = alloca i32
-// CHECK: %y = alloca [4 x i8]
+// CHECK: [[TMP:%.+]] = alloca [4 x i8], align 4
+// CHECK: %y = alloca [4 x i8], align 1
 // CHECK: store i32 %0, ptr [[TMP]]
 // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 {{.+}}, ptr align 4 {{.+}}, i{{[0-9]+}} 4, i1 false)
     *x = y;
@@ -27,8 +27,8 @@ pub fn small_array_alignment(x: &mut [i8; 4], y: [i8; 4]) {
 // dependent alignment
 #[no_mangle]
 pub fn small_struct_alignment(x: &mut Bytes, y: Bytes) {
-// CHECK: [[TMP:%.+]] = alloca i32
-// CHECK: %y = alloca %Bytes
+// CHECK: [[TMP:%.+]] = alloca [4 x i8], align 4
+// CHECK: %y = alloca [4 x i8], align 1
 // CHECK: store i32 %0, ptr [[TMP]]
 // CHECK: call void @llvm.memcpy.{{.*}}(ptr align 1 {{.+}}, ptr align 4 {{.+}}, i{{[0-9]+}} 4, i1 false)
     *x = y;
