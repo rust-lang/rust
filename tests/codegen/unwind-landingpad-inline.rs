@@ -1,6 +1,5 @@
 //@ min-llvm-version: 17.0.2
 //@ compile-flags: -Copt-level=3
-//@ ignore-debug: the debug assertions get in the way
 #![crate_type = "lib"]
 
 // This test checks that we can inline drop_in_place in

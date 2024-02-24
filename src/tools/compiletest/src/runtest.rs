@@ -2503,8 +2503,11 @@ impl<'test> TestCx<'test> {
                 // overridden by `compile-flags`.
                 rustc.arg("-Copt-level=2");
             }
-            RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest | Assembly => {
+            Assembly | Codegen => {
+                rustc.arg("-Cdebug-assertions=no");
+            }
+            RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
+            | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }

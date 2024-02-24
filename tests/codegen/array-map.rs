@@ -1,6 +1,5 @@
 //@ compile-flags: -C opt-level=3 -C target-cpu=x86-64-v3
 //@ only-x86_64
-//@ ignore-debug (the extra assertions get in the way)
 
 #![crate_type = "lib"]
 

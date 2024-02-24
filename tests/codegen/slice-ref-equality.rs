@@ -1,5 +1,4 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
-//@ ignore-debug (the extra assertions get in the way)
 
 #![crate_type = "lib"]
 
