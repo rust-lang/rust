@@ -8,7 +8,9 @@ use rustc_middle::ty::layout::{
     IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout, MAX_SIMD_LANES,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, AdtDef, EarlyBinder, FieldDef, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt,
+};
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::*;
@@ -503,6 +505,23 @@ fn layout_of_uncached<'tcx>(
                 ));
             }
 
+            let is_unsized_field = |field: &FieldDef| {
+                let param_env = tcx.param_env(def.did());
+                !tcx.type_of(field.did).instantiate_identity().is_sized(tcx, param_env)
+            };
+
+            if def.is_struct()
+                && let Some((_, fields_except_last)) =
+                    def.non_enum_variant().fields.raw.split_last()
+                && fields_except_last.iter().any(is_unsized_field)
+            {
+                cx.tcx.dcx().span_delayed_bug(
+                    tcx.def_span(def.did()),
+                    "only the last field of a struct can be unsized",
+                );
+                return Err(error(cx, LayoutError::Unknown(ty)));
+            }
+
             let get_discriminant_type =
                 |min, max| Integer::repr_discr(tcx, ty, &def.repr(), min, max);
 
@@ -519,11 +538,8 @@ fn layout_of_uncached<'tcx>(
                     .iter_enumerated()
                     .any(|(i, v)| v.discr != ty::VariantDiscr::Relative(i.as_u32()));
 
-            let maybe_unsized = def.is_struct()
-                && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
-                    let param_env = tcx.param_env(def.did());
-                    !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, param_env)
-                });
+            let maybe_unsized =
+                def.is_struct() && def.non_enum_variant().tail_opt().is_some_and(is_unsized_field);
 
             let Some(layout) = cx.layout_of_struct_or_enum(
                 &def.repr(),
