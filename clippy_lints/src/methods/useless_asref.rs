@@ -22,9 +22,9 @@ fn get_enum_ty(enum_ty: Ty<'_>) -> Option<Ty<'_>> {
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTyVisitor {
-        type BreakTy = Ty<'tcx>;
+        type Result = ControlFlow<Ty<'tcx>>;
 
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
             self.level += 1;
             if self.level == 1 {
                 t.super_visit_with(self)
