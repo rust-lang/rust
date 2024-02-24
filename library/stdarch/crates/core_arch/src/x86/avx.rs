@@ -1432,7 +1432,7 @@ pub unsafe fn _mm256_loadu_pd(mem_addr: *const f64) -> __m256d {
     let mut dst = _mm256_undefined_pd();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
-        &mut dst as *mut __m256d as *mut u8,
+        ptr::addr_of_mut!(dst) as *mut u8,
         mem::size_of::<__m256d>(),
     );
     dst
@@ -1464,7 +1464,7 @@ pub unsafe fn _mm256_loadu_ps(mem_addr: *const f32) -> __m256 {
     let mut dst = _mm256_undefined_ps();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
-        &mut dst as *mut __m256 as *mut u8,
+        ptr::addr_of_mut!(dst) as *mut u8,
         mem::size_of::<__m256>(),
     );
     dst
@@ -1521,7 +1521,7 @@ pub unsafe fn _mm256_loadu_si256(mem_addr: *const __m256i) -> __m256i {
     let mut dst = _mm256_undefined_si256();
     ptr::copy_nonoverlapping(
         mem_addr as *const u8,
-        &mut dst as *mut __m256i as *mut u8,
+        ptr::addr_of_mut!(dst) as *mut u8,
         mem::size_of::<__m256i>(),
     );
     dst
@@ -3065,6 +3065,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use crate::hint::black_box;
+    use crate::ptr;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
@@ -3903,7 +3904,7 @@ mod tests {
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_load_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
-        let p = &a as *const _ as *const f64;
+        let p = ptr::addr_of!(a) as *const f64;
         let r = _mm256_load_pd(p);
         let e = _mm256_setr_pd(1., 2., 3., 4.);
         assert_eq_m256d(r, e);
@@ -3913,14 +3914,14 @@ mod tests {
     unsafe fn test_mm256_store_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let mut r = _mm256_undefined_pd();
-        _mm256_store_pd(&mut r as *mut _ as *mut f64, a);
+        _mm256_store_pd(ptr::addr_of_mut!(r) as *mut f64, a);
         assert_eq_m256d(r, a);
     }
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_load_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
-        let p = &a as *const _ as *const f32;
+        let p = ptr::addr_of!(a) as *const f32;
         let r = _mm256_load_ps(p);
         let e = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         assert_eq_m256(r, e);
@@ -3930,7 +3931,7 @@ mod tests {
     unsafe fn test_mm256_store_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let mut r = _mm256_undefined_ps();
-        _mm256_store_ps(&mut r as *mut _ as *mut f32, a);
+        _mm256_store_ps(ptr::addr_of_mut!(r) as *mut f32, a);
         assert_eq_m256(r, a);
     }
 
@@ -3947,7 +3948,7 @@ mod tests {
     unsafe fn test_mm256_storeu_pd() {
         let a = _mm256_set1_pd(9.);
         let mut r = _mm256_undefined_pd();
-        _mm256_storeu_pd(&mut r as *mut _ as *mut f64, a);
+        _mm256_storeu_pd(ptr::addr_of_mut!(r) as *mut f64, a);
         assert_eq_m256d(r, a);
     }
 
@@ -3964,14 +3965,14 @@ mod tests {
     unsafe fn test_mm256_storeu_ps() {
         let a = _mm256_set1_ps(9.);
         let mut r = _mm256_undefined_ps();
-        _mm256_storeu_ps(&mut r as *mut _ as *mut f32, a);
+        _mm256_storeu_ps(ptr::addr_of_mut!(r) as *mut f32, a);
         assert_eq_m256(r, a);
     }
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_load_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
-        let p = &a as *const _;
+        let p = ptr::addr_of!(a);
         let r = _mm256_load_si256(p);
         let e = _mm256_setr_epi64x(1, 2, 3, 4);
         assert_eq_m256i(r, e);
@@ -3981,14 +3982,14 @@ mod tests {
     unsafe fn test_mm256_store_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
-        _mm256_store_si256(&mut r as *mut _, a);
+        _mm256_store_si256(ptr::addr_of_mut!(r), a);
         assert_eq_m256i(r, a);
     }
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_loadu_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
-        let p = &a as *const _;
+        let p = ptr::addr_of!(a);
         let r = _mm256_loadu_si256(black_box(p));
         let e = _mm256_setr_epi64x(1, 2, 3, 4);
         assert_eq_m256i(r, e);
@@ -3998,7 +3999,7 @@ mod tests {
     unsafe fn test_mm256_storeu_si256() {
         let a = _mm256_set1_epi8(9);
         let mut r = _mm256_undefined_si256();
-        _mm256_storeu_si256(&mut r as *mut _, a);
+        _mm256_storeu_si256(ptr::addr_of_mut!(r), a);
         assert_eq_m256i(r, a);
     }
 
@@ -4017,7 +4018,7 @@ mod tests {
         let mut r = _mm256_set1_pd(0.);
         let mask = _mm256_setr_epi64x(0, !0, 0, !0);
         let a = _mm256_setr_pd(1., 2., 3., 4.);
-        _mm256_maskstore_pd(&mut r as *mut _ as *mut f64, mask, a);
+        _mm256_maskstore_pd(ptr::addr_of_mut!(r) as *mut f64, mask, a);
         let e = _mm256_setr_pd(0., 2., 0., 4.);
         assert_eq_m256d(r, e);
     }
@@ -4037,7 +4038,7 @@ mod tests {
         let mut r = _mm_set1_pd(0.);
         let mask = _mm_setr_epi64x(0, !0);
         let a = _mm_setr_pd(1., 2.);
-        _mm_maskstore_pd(&mut r as *mut _ as *mut f64, mask, a);
+        _mm_maskstore_pd(ptr::addr_of_mut!(r) as *mut f64, mask, a);
         let e = _mm_setr_pd(0., 2.);
         assert_eq_m128d(r, e);
     }
@@ -4057,7 +4058,7 @@ mod tests {
         let mut r = _mm256_set1_ps(0.);
         let mask = _mm256_setr_epi32(0, !0, 0, !0, 0, !0, 0, !0);
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
-        _mm256_maskstore_ps(&mut r as *mut _ as *mut f32, mask, a);
+        _mm256_maskstore_ps(ptr::addr_of_mut!(r) as *mut f32, mask, a);
         let e = _mm256_setr_ps(0., 2., 0., 4., 0., 6., 0., 8.);
         assert_eq_m256(r, e);
     }
@@ -4077,7 +4078,7 @@ mod tests {
         let mut r = _mm_set1_ps(0.);
         let mask = _mm_setr_epi32(0, !0, 0, !0);
         let a = _mm_setr_ps(1., 2., 3., 4.);
-        _mm_maskstore_ps(&mut r as *mut _ as *mut f32, mask, a);
+        _mm_maskstore_ps(ptr::addr_of_mut!(r) as *mut f32, mask, a);
         let e = _mm_setr_ps(0., 2., 0., 4.);
         assert_eq_m128(r, e);
     }
@@ -4115,7 +4116,7 @@ mod tests {
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        let p = &a as *const _;
+        let p = ptr::addr_of!(a);
         let r = _mm256_lddqu_si256(black_box(p));
         #[rustfmt::skip]
         let e = _mm256_setr_epi8(
@@ -4131,7 +4132,7 @@ mod tests {
     unsafe fn test_mm256_stream_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
-        _mm256_stream_si256(&mut r as *mut _, a);
+        _mm256_stream_si256(ptr::addr_of_mut!(r), a);
         assert_eq_m256i(r, a);
     }
 
@@ -4144,7 +4145,7 @@ mod tests {
         let a = _mm256_set1_pd(7.0);
         let mut mem = Memory { data: [-1.0; 4] };
 
-        _mm256_stream_pd(&mut mem.data[0] as *mut f64, a);
+        _mm256_stream_pd(ptr::addr_of_mut!(mem.data[0]), a);
         for i in 0..4 {
             assert_eq!(mem.data[i], get_m256d(a, i));
         }
@@ -4159,7 +4160,7 @@ mod tests {
         let a = _mm256_set1_ps(7.0);
         let mut mem = Memory { data: [-1.0; 8] };
 
-        _mm256_stream_ps(&mut mem.data[0] as *mut f32, a);
+        _mm256_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m256(a, i));
         }
@@ -4807,7 +4808,7 @@ mod tests {
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
         );
-        let r = _mm256_loadu2_m128i(&hi as *const _ as *const _, &lo as *const _ as *const _);
+        let r = _mm256_loadu2_m128i(ptr::addr_of!(hi) as *const _, ptr::addr_of!(lo) as *const _);
         #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
@@ -4824,8 +4825,8 @@ mod tests {
         let mut hi = _mm_undefined_ps();
         let mut lo = _mm_undefined_ps();
         _mm256_storeu2_m128(
-            &mut hi as *mut _ as *mut f32,
-            &mut lo as *mut _ as *mut f32,
+            ptr::addr_of_mut!(hi) as *mut f32,
+            ptr::addr_of_mut!(lo) as *mut f32,
             a,
         );
         assert_eq_m128(hi, _mm_setr_ps(5., 6., 7., 8.));
@@ -4838,8 +4839,8 @@ mod tests {
         let mut hi = _mm_undefined_pd();
         let mut lo = _mm_undefined_pd();
         _mm256_storeu2_m128d(
-            &mut hi as *mut _ as *mut f64,
-            &mut lo as *mut _ as *mut f64,
+            ptr::addr_of_mut!(hi) as *mut f64,
+            ptr::addr_of_mut!(lo) as *mut f64,
             a,
         );
         assert_eq_m128d(hi, _mm_setr_pd(3., 4.));
@@ -4857,7 +4858,7 @@ mod tests {
         );
         let mut hi = _mm_undefined_si128();
         let mut lo = _mm_undefined_si128();
-        _mm256_storeu2_m128i(&mut hi as *mut _, &mut lo as *mut _, a);
+        _mm256_storeu2_m128i(ptr::addr_of_mut!(hi), ptr::addr_of_mut!(lo), a);
         #[rustfmt::skip]
         let e_hi = _mm_setr_epi8(
             17, 18, 19, 20, 21, 22, 23, 24,

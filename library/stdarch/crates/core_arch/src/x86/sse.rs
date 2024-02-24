@@ -1167,7 +1167,7 @@ pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
     let mut dst = _mm_undefined_ps();
     ptr::copy_nonoverlapping(
         p as *const u8,
-        &mut dst as *mut __m128 as *mut u8,
+        ptr::addr_of_mut!(dst) as *mut u8,
         mem::size_of::<__m128>(),
     );
     dst
@@ -1300,7 +1300,7 @@ pub unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
     ptr::copy_nonoverlapping(
-        &a as *const __m128 as *const u8,
+        ptr::addr_of!(a) as *const u8,
         p as *mut u8,
         mem::size_of::<__m128>(),
     );
@@ -1448,7 +1448,7 @@ pub unsafe fn _mm_sfence() {
 )]
 pub unsafe fn _mm_getcsr() -> u32 {
     let mut result = 0_i32;
-    stmxcsr(&mut result as *mut _ as *mut i8);
+    stmxcsr(ptr::addr_of_mut!(result) as *mut i8);
     result as u32
 }
 
@@ -1598,7 +1598,7 @@ pub unsafe fn _mm_getcsr() -> u32 {
     note = "see `_mm_setcsr` documentation - use inline assembly instead"
 )]
 pub unsafe fn _mm_setcsr(val: u32) {
-    ldmxcsr(&val as *const _ as *const i8);
+    ldmxcsr(ptr::addr_of!(val) as *const i8);
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
@@ -2018,7 +2018,7 @@ pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{hint::black_box, mem::transmute};
+    use crate::{hint::black_box, mem::transmute, ptr};
     use std::{boxed, f32::NAN};
     use stdarch_test::simd_test;
 
@@ -3132,14 +3132,14 @@ mod tests {
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_load_ss() {
         let a = 42.0f32;
-        let r = _mm_load_ss(&a as *const f32);
+        let r = _mm_load_ss(ptr::addr_of!(a));
         assert_eq_m128(r, _mm_setr_ps(42.0, 0.0, 0.0, 0.0));
     }
 
     #[simd_test(enable = "sse")]
     unsafe fn test_mm_load1_ps() {
         let a = 42.0f32;
-        let r = _mm_load1_ps(&a as *const f32);
+        let r = _mm_load1_ps(ptr::addr_of!(a));
         assert_eq_m128(r, _mm_setr_ps(42.0, 42.0, 42.0, 42.0));
     }
 
@@ -3198,7 +3198,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_loadu_si64() {
         let a = _mm_setr_epi64x(5, 6);
-        let r = _mm_loadu_si64(&a as *const _ as *const _);
+        let r = _mm_loadu_si64(ptr::addr_of!(a) as *const _);
         assert_eq_m128i(r, _mm_setr_epi64x(5, 0));
     }
 
@@ -3428,7 +3428,7 @@ mod tests {
         let a = _mm_set1_ps(7.0);
         let mut mem = Memory { data: [-1.0; 4] };
 
-        _mm_stream_ps(&mut mem.data[0] as *mut f32, a);
+        _mm_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
         for i in 0..4 {
             assert_eq!(mem.data[i], get_m128(a, i));
         }
