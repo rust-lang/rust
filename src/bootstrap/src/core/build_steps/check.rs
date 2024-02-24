@@ -64,8 +64,8 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         let all_args = std::env::args().collect::<Vec<_>>();
 
         args.extend(strings(&["--", "--cap-lints", "warn"]));
-        args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
         args.extend(get_clippy_rules_in_order(&all_args, allow, deny, warn, forbid));
+        args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
         args.extend(builder.config.free_args.clone());
         args
     } else {
