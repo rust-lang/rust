@@ -1,5 +1,5 @@
 #![deny(clippy::type_repetition_in_bounds)]
-#![allow(clippy::extra_unused_type_parameters)]
+#![allow(clippy::extra_unused_type_parameters, clippy::multiple_bound_locations)]
 
 use serde::Deserialize;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};

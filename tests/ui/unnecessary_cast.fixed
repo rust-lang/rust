@@ -2,6 +2,7 @@
 #![warn(clippy::unnecessary_cast)]
 #![allow(
     clippy::borrow_as_ptr,
+    clippy::multiple_bound_locations,
     clippy::no_effect,
     clippy::nonstandard_macro_braces,
     clippy::unnecessary_operation,
