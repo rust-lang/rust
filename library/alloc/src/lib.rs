@@ -92,6 +92,7 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![allow(rustdoc::redundant_explicit_links)]
+#![deny(ffi_unwind_calls)]
 //
 // Library features:
 // tidy-alphabetical-start
