@@ -41,7 +41,6 @@ use crate::core::builder::Kind;
 use crate::core::config::{flags, LldMode};
 use crate::core::config::{DryRun, Target};
 use crate::core::config::{LlvmLibunwind, TargetSelection};
-use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, OutputMode};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, mtime, output, symlink_dir};
 
@@ -191,8 +190,8 @@ pub struct Build {
     ranlib: RefCell<HashMap<TargetSelection, PathBuf>>,
     // Miscellaneous
     // allow bidirectional lookups: both name -> path and path -> name
-    crates: HashMap<Interned<String>, Crate>,
-    crate_paths: HashMap<PathBuf, Interned<String>>,
+    crates: HashMap<String, Crate>,
+    crate_paths: HashMap<PathBuf, String>,
     is_sudo: bool,
     ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
@@ -204,8 +203,8 @@ pub struct Build {
 
 #[derive(Debug, Clone)]
 struct Crate {
-    name: Interned<String>,
-    deps: HashSet<Interned<String>>,
+    name: String,
+    deps: HashSet<String>,
     path: PathBuf,
     has_lib: bool,
 }
@@ -829,8 +828,8 @@ impl Build {
     }
 
     /// Output directory for some generated md crate documentation for a target (temporary)
-    fn md_doc_out(&self, target: TargetSelection) -> Interned<PathBuf> {
-        INTERNER.intern_path(self.out.join(&*target.triple).join("md-doc"))
+    fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("md-doc")
     }
 
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
@@ -1538,7 +1537,7 @@ impl Build {
     /// "local" crates (those in the local source tree, not from a registry).
     fn in_tree_crates(&self, root: &str, target: Option<TargetSelection>) -> Vec<&Crate> {
         let mut ret = Vec::new();
-        let mut list = vec![INTERNER.intern_str(root)];
+        let mut list = vec![root.to_owned()];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
             let krate = self
@@ -1564,11 +1563,11 @@ impl Build {
                     && (dep != "rustc_codegen_llvm"
                         || self.config.hosts.iter().any(|host| self.config.llvm_enabled(*host)))
                 {
-                    list.push(*dep);
+                    list.push(dep.clone());
                 }
             }
         }
-        ret.sort_unstable_by_key(|krate| krate.name); // reproducible order needed for tests
+        ret.sort_unstable_by_key(|krate| krate.name.clone()); // reproducible order needed for tests
         ret
     }
 
