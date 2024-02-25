@@ -55,7 +55,9 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxt, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::{ConstArg, GenericArg, ItemLocalMap, ParamName, TraitCandidate};
+use rustc_hir::{
+    ConstArg, GenericArg, ItemLocalMap, MissingLifetimeKind, ParamName, TraitCandidate,
+};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
@@ -797,7 +799,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Param { .. } => {
                 (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
             }
-            LifetimeRes::Fresh { param, .. } => {
+            LifetimeRes::Fresh { param, kind, .. } => {
                 // Late resolution delegates to us the creation of the `LocalDefId`.
                 let _def_id = self.create_def(
                     self.current_hir_id_owner.def_id,
@@ -808,7 +810,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 );
                 debug!(?_def_id);
 
-                (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided)
+                (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided(kind))
             }
             LifetimeRes::Static | LifetimeRes::Error => return None,
             res => panic!(
@@ -1605,13 +1607,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         for lifetime in captured_lifetimes_to_duplicate {
             let res = self.resolver.get_lifetime_res(lifetime.id).unwrap_or(LifetimeRes::Error);
-            let old_def_id = match res {
-                LifetimeRes::Param { param: old_def_id, binder: _ } => old_def_id,
+            let (old_def_id, missing_kind) = match res {
+                LifetimeRes::Param { param: old_def_id, binder: _ } => (old_def_id, None),
 
-                LifetimeRes::Fresh { param, binder: _ } => {
+                LifetimeRes::Fresh { param, kind, .. } => {
                     debug_assert_eq!(lifetime.ident.name, kw::UnderscoreLifetime);
                     if let Some(old_def_id) = self.orig_opt_local_def_id(param) {
-                        old_def_id
+                        (old_def_id, Some(kind))
                     } else {
                         self.dcx()
                             .span_delayed_bug(lifetime.ident.span, "no def-id for fresh lifetime");
@@ -1651,6 +1653,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     duplicated_lifetime_node_id,
                     duplicated_lifetime_def_id,
                     self.lower_ident(lifetime.ident),
+                    missing_kind,
                 ));
 
                 // Now make an arg that we can use for the generic params of the opaque tykind.
@@ -1668,27 +1671,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let bounds = this
                 .with_remapping(captured_to_synthesized_mapping, |this| lower_item_bounds(this));
 
-            let generic_params = this.arena.alloc_from_iter(
-                synthesized_lifetime_definitions.iter().map(|&(new_node_id, new_def_id, ident)| {
-                    let hir_id = this.lower_node_id(new_node_id);
-                    let (name, kind) = if ident.name == kw::UnderscoreLifetime {
-                        (hir::ParamName::Fresh, hir::LifetimeParamKind::Elided)
-                    } else {
-                        (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
-                    };
+            let generic_params =
+                this.arena.alloc_from_iter(synthesized_lifetime_definitions.iter().map(
+                    |&(new_node_id, new_def_id, ident, missing_kind)| {
+                        let hir_id = this.lower_node_id(new_node_id);
+                        let (name, kind) = if ident.name == kw::UnderscoreLifetime {
+                            (
+                                hir::ParamName::Fresh,
+                                hir::LifetimeParamKind::Elided(
+                                    missing_kind.unwrap_or(MissingLifetimeKind::Underscore),
+                                ),
+                            )
+                        } else {
+                            (hir::ParamName::Plain(ident), hir::LifetimeParamKind::Explicit)
+                        };
 
-                    hir::GenericParam {
-                        hir_id,
-                        def_id: new_def_id,
-                        name,
-                        span: ident.span,
-                        pure_wrt_drop: false,
-                        kind: hir::GenericParamKind::Lifetime { kind },
-                        colon_span: None,
-                        source: hir::GenericParamSource::Generics,
-                    }
-                }),
-            );
+                        hir::GenericParam {
+                            hir_id,
+                            def_id: new_def_id,
+                            name,
+                            span: ident.span,
+                            pure_wrt_drop: false,
+                            kind: hir::GenericParamKind::Lifetime { kind },
+                            colon_span: None,
+                            source: hir::GenericParamSource::Generics,
+                        }
+                    },
+                ));
             debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
             let lifetime_mapping = self.arena.alloc_slice(&synthesized_lifetime_args);
