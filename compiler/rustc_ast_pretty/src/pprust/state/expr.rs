@@ -898,6 +898,11 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose()
             }
+            ast::ExprKind::Dummy => {
+                self.popen();
+                self.word("/*DUMMY*/");
+                self.pclose();
+            }
         }
 
         self.ann.post(self, AnnNode::Expr(expr));

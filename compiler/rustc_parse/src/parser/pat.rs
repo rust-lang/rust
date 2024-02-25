@@ -388,7 +388,7 @@ impl<'a> Parser<'a> {
         // Parse `?`, `.f`, `(arg0, arg1, ...)` or `[expr]` until they've all been eaten.
         if let Ok(expr) = snapshot
             .parse_expr_dot_or_call_with(
-                self.mk_expr_err(pat_span), // equivalent to transforming the parsed pattern into an `Expr`
+                self.mk_expr(pat_span, ExprKind::Dummy), // equivalent to transforming the parsed pattern into an `Expr`
                 pat_span,
                 AttrVec::new(),
             )

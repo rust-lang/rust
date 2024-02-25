@@ -1296,21 +1296,8 @@ impl Expr {
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
             ExprKind::FormatArgs(..) => ExprPrecedence::FormatArgs,
             ExprKind::Become(..) => ExprPrecedence::Become,
-            ExprKind::Err => ExprPrecedence::Err,
+            ExprKind::Err | ExprKind::Dummy => ExprPrecedence::Err,
         }
-    }
-
-    pub fn take(&mut self) -> Self {
-        mem::replace(
-            self,
-            Expr {
-                id: DUMMY_NODE_ID,
-                kind: ExprKind::Err,
-                span: DUMMY_SP,
-                attrs: AttrVec::new(),
-                tokens: None,
-            },
-        )
     }
 
     /// To a first-order approximation, is this a pattern?
@@ -1532,6 +1519,9 @@ pub enum ExprKind {
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
+
+    /// Acts as a null expression. Lowering it will always emit a bug.
+    Dummy,
 }
 
 /// Used to differentiate between `for` loops and `for await` loops.

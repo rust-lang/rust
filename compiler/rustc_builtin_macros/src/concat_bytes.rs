@@ -176,6 +176,7 @@ pub fn expand_concat_bytes(
             ast::ExprKind::Err => {
                 has_errors = true;
             }
+            ast::ExprKind::Dummy => cx.dcx().span_bug(e.span, "concatenating `ExprKind::Dummy`"),
             _ => {
                 missing_literals.push(e.span);
             }

@@ -68,6 +68,7 @@ pub fn expand_concat(
             ast::ExprKind::Err => {
                 has_errors = true;
             }
+            ast::ExprKind::Dummy => cx.dcx().span_bug(e.span, "concatenating `ExprKind::Dummy`"),
             _ => {
                 missing_literal.push(e.span);
             }
