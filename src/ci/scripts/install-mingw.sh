@@ -38,11 +38,11 @@ if isWindows; then
             ;;
     esac
 
-    if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
-        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
-            mingw-w64-$arch-gcc \
-            mingw-w64-$arch-python # the python package is actually for python3
-        ciCommandAddPath "$(ciCheckoutPath)/msys2/mingw${bits}/bin"
+    if [[ "${CUSTOM_MINGW:-0}" == 0 ]]; then
+        pacboy -S --noconfirm toolchain:p
+        # According to the comment in the Windows part of install-clang.sh, in the future we might
+        # want to do this instead:
+        # pacboy -S --noconfirm clang:p ...
     else
         mingw_dir="mingw${bits}"
 
