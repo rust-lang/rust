@@ -1,12 +1,20 @@
 //! Interpret intrinsics, lang items and `extern "C"` wellknown functions which their implementation
 //! is not available.
-
+//!
 use std::cmp;
 
 use chalk_ir::TyKind;
-use hir_def::builtin_type::{BuiltinInt, BuiltinUint};
+use hir_def::{
+    builtin_type::{BuiltinInt, BuiltinUint},
+    resolver::HasResolver,
+};
 
-use super::*;
+use crate::mir::eval::{
+    name, pad16, static_lifetime, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId,
+    HasModule, HirDisplay, Interned, InternedClosure, Interner, Interval, IntervalAndTy,
+    IntervalOrOwned, ItemContainerId, LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan,
+    ModPath, Mutability, Result, Substitution, Ty, TyBuilder, TyExt,
+};
 
 mod simd;
 

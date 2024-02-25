@@ -526,7 +526,7 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
         fmt_ops.extend(quote! {
             #query_index => {
                 salsa::plumbing::QueryStorageOps::fmt_index(
-                    &*self.#fn_name, db, input, fmt,
+                    &*self.#fn_name, db, input.key_index(), fmt,
                 )
             }
         });
@@ -537,7 +537,7 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
         maybe_changed_ops.extend(quote! {
             #query_index => {
                 salsa::plumbing::QueryStorageOps::maybe_changed_after(
-                    &*self.#fn_name, db, input, revision
+                    &*self.#fn_name, db, input.key_index(), revision
                 )
             }
         });

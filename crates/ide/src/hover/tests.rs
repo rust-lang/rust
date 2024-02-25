@@ -1202,7 +1202,7 @@ fn main() {
             *C*
 
             ```rust
-            test
+            test::X
             ```
 
             ```rust
@@ -1279,11 +1279,11 @@ impl Thing {
     );
     check(
         r#"
-        enum Thing { A }
-        impl Thing {
-            pub fn thing(a: Self$0) {}
-        }
-        "#,
+enum Thing { A }
+impl Thing {
+    pub fn thing(a: Self$0) {}
+}
+"#,
         expect![[r#"
                 *Self*
 
@@ -1297,6 +1297,42 @@ impl Thing {
                 }
                 ```
             "#]],
+    );
+    check(
+        r#"
+impl usize {
+    pub fn thing(a: Self$0) {}
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            usize
+            ```
+        "#]],
+    );
+    check(
+        r#"
+impl fn() -> usize {
+    pub fn thing(a: Self$0) {}
+}
+"#,
+        expect![[r#"
+            *Self*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            fn() -> usize
+            ```
+        "#]],
     );
 }
 
@@ -2241,7 +2277,7 @@ fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
             *foo*
 
             ```rust
-            test
+            test::<extern>
             ```
 
             ```rust
@@ -4230,7 +4266,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4259,7 +4295,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4291,7 +4327,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            test::T
             ```
 
             ```rust
@@ -4883,7 +4919,7 @@ fn test() {
             *FOO*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -5248,7 +5284,7 @@ impl T1 for Foo {
             *Bar*
 
             ```rust
-            test::t2
+            test::t2::T2
             ```
 
             ```rust
@@ -5270,7 +5306,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -5291,7 +5327,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -5310,7 +5346,7 @@ trait A where
             *Assoc*
 
             ```rust
-            test
+            test::A
             ```
 
             ```rust
@@ -6596,7 +6632,7 @@ fn test() {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -6625,7 +6661,7 @@ fn test() {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -6655,7 +6691,7 @@ mod m {
             *A*
 
             ```rust
-            test
+            test::S
             ```
 
             ```rust
@@ -7196,6 +7232,65 @@ impl Iterator for S {
              // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
              // size = 0, align = 1
             struct S
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn extern_items() {
+    check(
+        r#"
+extern "C" {
+    static STATIC$0: ();
+}
+"#,
+        expect![[r#"
+            *STATIC*
+
+            ```rust
+            test::<extern>
+            ```
+
+            ```rust
+            static STATIC: ()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+extern "C" {
+    fn fun$0();
+}
+"#,
+        expect![[r#"
+            *fun*
+
+            ```rust
+            test::<extern>
+            ```
+
+            ```rust
+            unsafe fn fun()
+            ```
+        "#]],
+    );
+    check(
+        r#"
+extern "C" {
+    type Ty$0;
+}
+"#,
+        expect![[r#"
+            *Ty*
+
+            ```rust
+            test::<extern>
+            ```
+
+            ```rust
+             // size = 0, align = 1
+            type Ty
             ```
         "#]],
     );

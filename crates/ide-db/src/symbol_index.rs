@@ -394,7 +394,6 @@ impl Query {
 mod tests {
 
     use expect_test::expect_file;
-    use hir::symbols::SymbolCollector;
     use test_fixture::WithFixture;
 
     use super::*;

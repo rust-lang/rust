@@ -17,7 +17,7 @@ impl RootDatabase {
     pub fn request_cancellation(&mut self) {
         let _p =
             tracing::span!(tracing::Level::INFO, "RootDatabase::request_cancellation").entered();
-        self.salsa_runtime_mut().synthetic_write(Durability::LOW);
+        self.synthetic_write(Durability::LOW);
     }
 
     pub fn apply_change(&mut self, change: Change) {
@@ -124,7 +124,7 @@ impl RootDatabase {
             hir::db::InternCoroutineQuery
             hir::db::AssociatedTyDataQuery
             hir::db::TraitDatumQuery
-            hir::db::StructDatumQuery
+            hir::db::AdtDatumQuery
             hir::db::ImplDatumQuery
             hir::db::FnDefDatumQuery
             hir::db::FnDefVarianceQuery

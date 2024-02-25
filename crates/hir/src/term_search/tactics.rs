@@ -281,14 +281,14 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                         if ctx.config.enable_borrowcheck && struct_ty.contains_reference(db) {
                             return None;
                         }
-                        let fileds = it.fields(db);
+                        let fields = it.fields(db);
                         // Check if all fields are visible, otherwise we cannot fill them
-                        if fileds.iter().any(|it| !it.is_visible_from(db, module)) {
+                        if fields.iter().any(|it| !it.is_visible_from(db, module)) {
                             return None;
                         }
 
                         // Early exit if some param cannot be filled from lookup
-                        let param_exprs: Vec<Vec<Expr>> = fileds
+                        let param_exprs: Vec<Vec<Expr>> = fields
                             .into_iter()
                             .map(|field| lookup.find(db, &field.ty(db)))
                             .collect::<Option<_>>()?;

@@ -634,7 +634,8 @@ struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
     let one = 1;
-    let s = TestStruct{ ..a };
+    let a = TestStruct{ one, two: 2 };
+    let _ = TestStruct{ ..a };
 }
 "#,
         );

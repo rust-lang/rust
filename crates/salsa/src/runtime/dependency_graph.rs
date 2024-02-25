@@ -12,7 +12,7 @@ type QueryStack = Vec<ActiveQuery>;
 
 #[derive(Debug, Default)]
 pub(super) struct DependencyGraph {
-    /// A `(K -> V)` pair in this map indicates that the the runtime
+    /// A `(K -> V)` pair in this map indicates that the runtime
     /// `K` is blocked on some query executing in the runtime `V`.
     /// This encodes a graph that must be acyclic (or else deadlock
     /// will result).

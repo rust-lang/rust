@@ -1,15 +1,21 @@
 //! `ItemTree` debug printer.
 
-use std::fmt::Write;
+use std::fmt::{self, Write};
 
 use span::ErasedFileAstId;
 
 use crate::{
-    generics::{WherePredicate, WherePredicateTypeTarget},
+    generics::{TypeOrConstParamData, WherePredicate, WherePredicateTypeTarget},
+    item_tree::{
+        AttrOwner, Const, DefDatabase, Enum, ExternBlock, ExternCrate, Field, FieldAstId, Fields,
+        FileItemTreeId, FnFlags, Function, GenericParams, Impl, Interned, ItemTree, Macro2,
+        MacroCall, MacroRules, Mod, ModItem, ModKind, Param, ParamAstId, Path, RawAttrs,
+        RawVisibilityId, Static, Struct, Trait, TraitAlias, TypeAlias, TypeBound, TypeRef, Union,
+        Use, UseTree, UseTreeKind, Variant,
+    },
     pretty::{print_path, print_type_bounds, print_type_ref},
+    visibility::RawVisibility,
 };
-
-use super::*;
 
 pub(super) fn print_item_tree(db: &dyn DefDatabase, tree: &ItemTree) -> String {
     let mut p = Printer { db, tree, buf: String::new(), indent_level: 0, needs_indent: true };

@@ -448,7 +448,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_owned()),
+            &["remove-unnecessary-else"],
         );
         check_diagnostics_with_disabled(
             r#"
@@ -463,7 +463,7 @@ fn main(b: bool) {
     &mut x;
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_owned()),
+            &["remove-unnecessary-else"],
         );
     }
 
@@ -817,7 +817,7 @@ fn f() {
 //- minicore: option
 fn f(_: i32) {}
 fn main() {
-    let ((Some(mut x), None) | (_, Some(mut x))) = (None, Some(7));
+    let ((Some(mut x), None) | (_, Some(mut x))) = (None, Some(7)) else { return };
              //^^^^^ 💡 warn: variable does not need to be mutable
     f(x);
 }

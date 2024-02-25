@@ -54,7 +54,7 @@ pub trait Database: plumbing::DatabaseOps {
     /// runtime. It permits the database to be customized and to
     /// inject logging or other custom behavior.
     fn salsa_event(&self, event_fn: Event) {
-        #![allow(unused_variables)]
+        _ = event_fn;
     }
 
     /// Starts unwinding the stack if the current revision is cancelled.
@@ -96,11 +96,16 @@ pub trait Database: plumbing::DatabaseOps {
         self.ops_salsa_runtime()
     }
 
-    /// Gives access to the underlying salsa runtime.
+    /// A "synthetic write" causes the system to act *as though* some
+    /// input of durability `durability` has changed. This is mostly
+    /// useful for profiling scenarios.
     ///
-    /// This method should not be overridden by `Database` implementors.
-    fn salsa_runtime_mut(&mut self) -> &mut Runtime {
-        self.ops_salsa_runtime_mut()
+    /// **WARNING:** Just like an ordinary write, this method triggers
+    /// cancellation. If you invoke it while a snapshot exists, it
+    /// will block until that snapshot is dropped -- if that snapshot
+    /// is owned by the current thread, this could trigger deadlock.
+    fn synthetic_write(&mut self, durability: Durability) {
+        plumbing::DatabaseOps::synthetic_write(self, durability)
     }
 }
 
@@ -456,12 +461,12 @@ pub trait Query: Debug + Default + Sized + for<'d> QueryDb<'d> {
     /// Name of the query method (e.g., `foo`)
     const QUERY_NAME: &'static str;
 
-    /// Extact storage for this query from the storage for its group.
+    /// Extract storage for this query from the storage for its group.
     fn query_storage<'a>(
         group_storage: &'a <Self as QueryDb<'_>>::GroupStorage,
     ) -> &'a std::sync::Arc<Self::Storage>;
 
-    /// Extact storage for this query from the storage for its group.
+    /// Extract storage for this query from the storage for its group.
     fn query_storage_mut<'a>(
         group_storage: &'a <Self as QueryDb<'_>>::GroupStorage,
     ) -> &'a std::sync::Arc<Self::Storage>;

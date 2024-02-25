@@ -1,9 +1,6 @@
 use expect_test::expect;
-use test_fixture::WithFixture;
 
 use itertools::Itertools;
-
-use crate::nameres::tests::check;
 
 use super::*;
 

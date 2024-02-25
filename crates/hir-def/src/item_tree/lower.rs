@@ -2,16 +2,32 @@
 
 use std::collections::hash_map::Entry;
 
-use hir_expand::{ast_id_map::AstIdMap, span_map::SpanMapRef};
-use syntax::ast::{HasModuleItem, HasTypeBounds, IsString};
+use hir_expand::{
+    ast_id_map::AstIdMap, mod_path::path, name, name::AsName, span_map::SpanMapRef, HirFileId,
+};
+use la_arena::Arena;
+use syntax::{
+    ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
+    AstNode,
+};
+use triomphe::Arc;
 
 use crate::{
-    generics::{GenericParamsCollector, TypeParamData, TypeParamProvenance},
-    type_ref::{LifetimeRef, TraitBoundModifier},
+    db::DefDatabase,
+    generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
+    item_tree::{
+        AssocItem, AttrOwner, Const, Either, Enum, ExternBlock, ExternCrate, Field, FieldAstId,
+        Fields, FileItemTreeId, FnFlags, Function, GenericArgs, Idx, IdxRange, Impl, ImportAlias,
+        Interned, ItemTree, ItemTreeData, ItemTreeNode, Macro2, MacroCall, MacroRules, Mod,
+        ModItem, ModKind, ModPath, Mutability, Name, Param, ParamAstId, Path, Range, RawAttrs,
+        RawIdx, RawVisibilityId, Static, Struct, StructKind, Trait, TraitAlias, TypeAlias, Union,
+        Use, UseTree, UseTreeKind, Variant,
+    },
+    path::AssociatedTypeBinding,
+    type_ref::{LifetimeRef, TraitBoundModifier, TraitRef, TypeBound, TypeRef},
+    visibility::RawVisibility,
     LocalLifetimeParamId, LocalTypeOrConstParamId,
 };
-
-use super::*;
 
 fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
     FileItemTreeId(index)
