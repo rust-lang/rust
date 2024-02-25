@@ -38,10 +38,12 @@ fn foo() {
     fn while_let_loop_with_label_in_condition() {
         check_diagnostics(
             r#"
+//- minicore: option
+
 fn foo() {
     let mut optional = Some(0);
 
-    'my_label: while let Some(a) = match optional {
+    'my_label: while let Some(_) = match optional {
         None => break 'my_label,
         Some(val) => Some(val),
     } {
@@ -59,8 +61,8 @@ fn foo() {
             r#"
 //- minicore: iterator
 fn foo() {
-    'xxx: for _ in unknown {
-        'yyy: for _ in unknown {
+    'xxx: for _ in [] {
+        'yyy: for _ in [] {
             break 'xxx;
             continue 'yyy;
             break 'zzz;
