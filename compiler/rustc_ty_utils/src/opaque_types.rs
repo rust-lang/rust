@@ -8,7 +8,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::Span;
 use rustc_trait_selection::traits::check_args_compatible;
-use std::ops::ControlFlow;
 
 use crate::errors::{DuplicateArg, NotParam};
 
@@ -194,9 +193,8 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
     #[instrument(skip(self), ret, level = "trace")]
-    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<!> {
+    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) {
         self.visit_spanned(span, value);
-        ControlFlow::Continue(())
     }
 }
 
