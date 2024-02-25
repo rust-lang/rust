@@ -1,6 +1,6 @@
 // `SetDiscriminant` does not actually write anything if the chosen variant is the untagged variant
 // of a niche encoding. Verify that we do not thread over this case.
-// unit-test: JumpThreading
+//@ unit-test: JumpThreading
 
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]

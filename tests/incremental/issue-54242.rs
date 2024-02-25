@@ -1,4 +1,4 @@
-// revisions: rpass cfail
+//@ revisions: rpass cfail
 
 trait Tr
 where

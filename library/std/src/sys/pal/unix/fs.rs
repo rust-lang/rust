@@ -1344,7 +1344,7 @@ impl File {
                 }
                 cvt(unsafe { libc::fsetattrlist(
                     self.as_raw_fd(),
-                    (&attrlist as *const libc::attrlist).cast::<libc::c_void>().cast_mut(),
+                    core::ptr::addr_of!(attrlist).cast::<libc::c_void>().cast_mut(),
                     buf.as_ptr().cast::<libc::c_void>().cast_mut(),
                     num_times * mem::size_of::<libc::timespec>(),
                     0
@@ -1744,7 +1744,7 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 #[cfg(target_os = "espidf")]
 fn open_to_and_set_permissions(
     to: &Path,
-    reader_metadata: crate::fs::Metadata,
+    _reader_metadata: crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
     let writer = OpenOptions::new().open(to)?;
@@ -1918,7 +1918,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         copyfile_state_get(
             state.0,
             COPYFILE_STATE_COPIED,
-            &mut bytes_copied as *mut libc::off_t as *mut libc::c_void,
+            core::ptr::addr_of_mut!(bytes_copied) as *mut libc::c_void,
         )
     })?;
     Ok(bytes_copied as u64)

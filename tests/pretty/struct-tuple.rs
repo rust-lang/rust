@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 struct Foo;
 struct Bar(isize, isize);
 

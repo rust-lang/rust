@@ -43,6 +43,8 @@ pub enum DiagnosticArgValue {
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
 
+pub type DiagnosticArgMap = FxIndexMap<DiagnosticArgName, DiagnosticArgValue>;
+
 /// Trait for types that `DiagnosticBuilder::emit` can return as a "guarantee"
 /// (or "proof") token that the emission happened.
 pub trait EmissionGuarantee: Sized {
@@ -275,7 +277,7 @@ pub struct Diagnostic {
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
-    args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>,
+    pub args: DiagnosticArgMap,
 
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
@@ -403,14 +405,6 @@ impl Diagnostic {
         self.args.insert(name.into(), arg.into_diagnostic_arg());
     }
 
-    pub fn args(&self) -> impl Iterator<Item = DiagnosticArg<'_>> {
-        self.args.iter()
-    }
-
-    pub fn replace_args(&mut self, args: FxIndexMap<DiagnosticArgName, DiagnosticArgValue>) {
-        self.args = args;
-    }
-
     /// Fields used for Hash, and PartialEq trait.
     fn keys(
         &self,
@@ -431,7 +425,7 @@ impl Diagnostic {
             &self.span,
             &self.children,
             &self.suggestions,
-            self.args().collect(),
+            self.args.iter().collect(),
             // omit self.sort_span
             &self.is_lint,
             // omit self.emitted_at
@@ -1165,7 +1159,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         subdiagnostic: impl AddToDiagnostic,
     ) -> &mut Self {
         subdiagnostic.add_to_diagnostic_with(self, |diag, msg| {
-            let args = diag.args();
+            let args = diag.args.iter();
             let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
             dcx.eagerly_translate(msg, args)
         });

@@ -2,7 +2,7 @@
 // preserved, and that the first outer item parsed in main is not
 // accidentally carried over to each inner function
 
-// pp-exact
+//@ pp-exact
 
 #![feature(rustc_attrs)]
 

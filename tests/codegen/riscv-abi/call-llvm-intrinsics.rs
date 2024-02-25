@@ -1,6 +1,6 @@
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 
-// only-riscv64
+//@ only-riscv64
 
 #![feature(link_llvm_intrinsics)]
 #![crate_type = "lib"]

@@ -5,6 +5,7 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
+use crate::traits::error_reporting::OverflowCause;
 use crate::traits::error_reporting::TypeErrCtxtExt;
 use crate::traits::normalize::needs_normalization;
 use crate::traits::{BoundVarReplacer, PlaceholderReplacer};
@@ -228,7 +229,11 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                             let guar = self
                                 .infcx
                                 .err_ctxt()
-                                .build_overflow_error(&ty, self.cause.span, true)
+                                .build_overflow_error(
+                                    OverflowCause::DeeplyNormalize(data),
+                                    self.cause.span,
+                                    true,
+                                )
                                 .delay_as_bug();
                             return Ok(Ty::new_error(self.interner(), guar));
                         }

@@ -1,4 +1,4 @@
-// compile-flags: -Z ehcont-guard
+//@ compile-flags: -Z ehcont-guard
 
 #![crate_type = "lib"]
 

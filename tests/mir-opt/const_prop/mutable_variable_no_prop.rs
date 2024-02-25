@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 
 // Verify that we do not propagate the contents of this mutable static.
 static mut STATIC: u32 = 0x42424242;

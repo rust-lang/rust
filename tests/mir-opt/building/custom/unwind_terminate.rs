@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib
-// edition:2021
+//@ compile-flags: --crate-type=lib
+//@ edition:2021
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 

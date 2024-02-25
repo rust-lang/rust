@@ -123,7 +123,11 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         // `handle_opaque_type` cannot handle subtyping, so to support subtyping
         // we instead eagerly generalize here. This is a bit of a mess but will go
         // away once we're using the new solver.
-        let mut enable_subtyping = |ty, ty_is_expected| {
+        //
+        // Given `opaque rel B`, we create a new infer var `ty_vid` constrain it
+        // by using `ty_vid rel B` and then finally and end by equating `ty_vid` to
+        // the opaque.
+        let mut enable_subtyping = |ty, opaque_is_expected| {
             let ty_vid = infcx.next_ty_var_id_in_universe(
                 TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
@@ -132,7 +136,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
                 ty::UniverseIndex::ROOT,
             );
 
-            let variance = if ty_is_expected {
+            let variance = if opaque_is_expected {
                 self.ambient_variance
             } else {
                 self.ambient_variance.xform(ty::Contravariant)
@@ -140,7 +144,7 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
 
             self.type_checker.infcx.instantiate_ty_var(
                 self,
-                ty_is_expected,
+                opaque_is_expected,
                 ty_vid,
                 variance,
                 ty,
@@ -149,8 +153,8 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
         };
 
         let (a, b) = match (a.kind(), b.kind()) {
-            (&ty::Alias(ty::Opaque, ..), _) => (a, enable_subtyping(b, false)?),
-            (_, &ty::Alias(ty::Opaque, ..)) => (enable_subtyping(a, true)?, b),
+            (&ty::Alias(ty::Opaque, ..), _) => (a, enable_subtyping(b, true)?),
+            (_, &ty::Alias(ty::Opaque, ..)) => (enable_subtyping(a, false)?, b),
             _ => unreachable!(
                 "expected at least one opaque type in `relate_opaques`, got {a} and {b}."
             ),

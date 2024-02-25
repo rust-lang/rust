@@ -121,10 +121,20 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         let orig_ty = expr_ty.peel_refs();
 
         if receiver_ty == expr_ty {
+            let suggest_derive = match orig_ty.kind() {
+                ty::Adt(def, _) => Some(cx.tcx.def_span(def.did()).shrink_to_lo()),
+                _ => None,
+            };
             cx.emit_span_lint(
                 NOOP_METHOD_CALL,
                 span,
-                NoopMethodCallDiag { method: call.ident.name, orig_ty, trait_, label: span },
+                NoopMethodCallDiag {
+                    method: call.ident.name,
+                    orig_ty,
+                    trait_,
+                    label: span,
+                    suggest_derive,
+                },
             );
         } else {
             match name {

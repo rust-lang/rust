@@ -840,12 +840,12 @@ pub struct OpaqueHiddenType<'tcx> {
 }
 
 impl<'tcx> OpaqueHiddenType<'tcx> {
-    pub fn report_mismatch(
+    pub fn build_mismatch_error(
         &self,
         other: &Self,
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> Result<DiagnosticBuilder<'tcx>, ErrorGuaranteed> {
         if let Some(diag) = tcx
             .sess
             .dcx()
@@ -853,18 +853,19 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         {
             diag.cancel();
         }
+        (self.ty, other.ty).error_reported()?;
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
             TypeMismatchReason::ConflictType { span: self.span }
         } else {
             TypeMismatchReason::PreviousUse { span: self.span }
         };
-        tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
+        Ok(tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
             self_ty: self.ty,
             other_ty: other.ty,
             other_span: other.span,
             sub: sub_diag,
-        })
+        }))
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]
@@ -1471,7 +1472,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
     }
 
-    pub fn repr_options_of_def(self, did: DefId) -> ReprOptions {
+    pub fn repr_options_of_def(self, did: LocalDefId) -> ReprOptions {
         let mut flags = ReprFlags::empty();
         let mut size = None;
         let mut max_align: Option<Align> = None;
@@ -1479,7 +1480,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Generate a deterministically-derived seed from the item's path hash
         // to allow for cross-crate compilation to actually work
-        let mut field_shuffle_seed = self.def_path_hash(did).0.to_smaller_hash().as_u64();
+        let mut field_shuffle_seed =
+            self.def_path_hash(did.to_def_id()).0.to_smaller_hash().as_u64();
 
         // If the user defined a custom seed for layout randomization, xor the item's
         // path hash with the user defined seed, this will allowing determinism while

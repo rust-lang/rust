@@ -1,6 +1,6 @@
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 
-// only-loongarch64
+//@ only-loongarch64
 
 #![feature(link_llvm_intrinsics)]
 #![crate_type = "lib"]

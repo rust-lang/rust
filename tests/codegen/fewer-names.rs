@@ -1,7 +1,7 @@
-// compile-flags: -Coverflow-checks=no -O
-// revisions: YES NO
-// [YES]compile-flags: -Zfewer-names=yes
-// [NO] compile-flags: -Zfewer-names=no
+//@ compile-flags: -Coverflow-checks=no -O
+//@ revisions: YES NO
+//@ [YES]compile-flags: -Zfewer-names=yes
+//@ [NO] compile-flags: -Zfewer-names=no
 #![crate_type = "lib"]
 
 #[no_mangle]

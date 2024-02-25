@@ -1,4 +1,4 @@
-// compile-flags: -Zpolymorphize=on
+//@ compile-flags: -Zpolymorphize=on
 
 #[inline(never)]
 pub fn foo<T>() {}

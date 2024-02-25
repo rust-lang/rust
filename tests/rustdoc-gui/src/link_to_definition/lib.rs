@@ -1,4 +1,4 @@
-// compile-flags: -Zunstable-options --generate-link-to-definition
+//@ compile-flags: -Zunstable-options --generate-link-to-definition
 pub fn sub_fn() {
     barbar();
 }

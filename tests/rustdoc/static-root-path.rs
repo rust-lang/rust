@@ -1,4 +1,4 @@
-// compile-flags:-Z unstable-options --static-root-path /cache/
+//@ compile-flags:-Z unstable-options --static-root-path /cache/
 
 // @has static_root_path/struct.SomeStruct.html
 // @matchesraw - '"/cache/main-'

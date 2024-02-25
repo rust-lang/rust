@@ -1,5 +1,5 @@
-// aux-build:derive-foo.rs
-// pp-exact
+//@ aux-build:derive-foo.rs
+//@ pp-exact
 // Testing that both the inner item and next outer item are
 // preserved, and that the first outer item parsed in main is not
 // accidentally carried over to each inner function

@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-// pp-exact
+//@ pp-exact
 
 fn call_it(f: Box<FnMut(String) -> String>) {}
 

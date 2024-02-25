@@ -1,7 +1,7 @@
-// aux-build:my-core.rs
-// build-aux-docs
-// ignore-cross-compile
-// only-linux
+//@ aux-build:my-core.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
+//@ only-linux
 
 #![deny(rustdoc::broken_intra_doc_links)]
 #![feature(no_core, lang_items)]

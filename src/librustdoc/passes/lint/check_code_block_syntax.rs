@@ -159,7 +159,7 @@ impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: Diagnostic) {
         let mut buffer = self.buffer.borrow_mut();
 
-        let fluent_args = to_fluent_args(diag.args());
+        let fluent_args = to_fluent_args(diag.args.iter());
         let translated_main_message = self
             .translate_message(&diag.messages[0].0, &fluent_args)
             .unwrap_or_else(|e| panic!("{e}"));

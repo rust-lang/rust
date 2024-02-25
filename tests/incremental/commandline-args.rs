@@ -1,8 +1,8 @@
 // Test that changing a tracked commandline argument invalidates
 // the cache while changing an untracked one doesn't.
 
-// revisions:rpass1 rpass2 rpass3 rpass4
-// compile-flags: -Z query-dep-graph
+//@ revisions:rpass1 rpass2 rpass3 rpass4
+//@ compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 
@@ -14,10 +14,10 @@
 // invalidate the cache. Between revisions 2 and 3, we are adding `--diagnostic-width`
 // which should have no effect on the cache. Between revisions, we are adding
 // `--remap-path-prefix` which should invalidate the cache:
-//[rpass1] compile-flags: -C debuginfo=0
-//[rpass2] compile-flags: -C debuginfo=2
-//[rpass3] compile-flags: -C debuginfo=2 --diagnostic-width=80
-//[rpass4] compile-flags: -C debuginfo=2 --diagnostic-width=80 --remap-path-prefix=/home/bors/r=src
+//@[rpass1] compile-flags: -C debuginfo=0
+//@[rpass2] compile-flags: -C debuginfo=2
+//@[rpass3] compile-flags: -C debuginfo=2 --diagnostic-width=80
+//@[rpass4] compile-flags: -C debuginfo=2 --diagnostic-width=80 --remap-path-prefix=/home/bors/r=src
 
 pub fn main() {
     // empty

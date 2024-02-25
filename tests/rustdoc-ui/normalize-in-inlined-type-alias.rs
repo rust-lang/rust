@@ -1,5 +1,5 @@
-// check-pass
-// compile-flags: -Znormalize-docs
+//@ check-pass
+//@ compile-flags: -Znormalize-docs
 
 trait Woo<T> {
     type Assoc;

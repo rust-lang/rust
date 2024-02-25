@@ -4,12 +4,12 @@
 // about UTF-32 character encoding and will print a rust char as only
 // its numerical value.
 
-// min-lldb-version: 310
+//@ min-lldb-version: 310
 
 // This fails on lldb 6.0.1 on x86-64 Fedora 28; so ignore Linux for now.
-// ignore-linux
+//@ ignore-linux
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

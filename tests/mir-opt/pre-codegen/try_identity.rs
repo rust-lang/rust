@@ -1,6 +1,6 @@
 // skip-filecheck
-// compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
-// only-64bit
+//@ compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
+//@ only-64bit
 
 // Track the status of MIR optimizations simplifying `Ok(res?)` for both the old and new desugarings
 // of that syntax.

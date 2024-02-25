@@ -1079,7 +1079,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .map(|(arg_idx, val)| {
                 let idx = val.unwrap_leaf().try_to_i32().unwrap();
                 if idx >= i32::try_from(total_len).unwrap() {
-                    bx.sess().dcx().emit_err(InvalidMonomorphization::ShuffleIndexOutOfBounds {
+                    bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
                         span,
                         name,
                         arg_idx: arg_idx as u64,
@@ -1138,24 +1138,15 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let val = bx.const_get_elt(vector, i as u64);
                 match bx.const_to_opt_u128(val, true) {
                     None => {
-                        bx.sess().dcx().emit_err(
-                            InvalidMonomorphization::ShuffleIndexNotConstant {
-                                span,
-                                name,
-                                arg_idx,
-                            },
-                        );
-                        None
+                        bug!("typeck should have already ensured that these are const")
                     }
                     Some(idx) if idx >= total_len => {
-                        bx.sess().dcx().emit_err(
-                            InvalidMonomorphization::ShuffleIndexOutOfBounds {
-                                span,
-                                name,
-                                arg_idx,
-                                total_len,
-                            },
-                        );
+                        bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+                            span,
+                            name,
+                            arg_idx,
+                            total_len,
+                        });
                         None
                     }
                     Some(idx) => Some(bx.const_i32(idx as i32)),
@@ -1184,10 +1175,22 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 out_ty: arg_tys[2]
             }
         );
+        let idx = bx
+            .const_to_opt_u128(args[1].immediate(), false)
+            .expect("typeck should have ensure that this is a const");
+        if idx >= in_len.into() {
+            bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+                span,
+                name,
+                arg_idx: 1,
+                total_len: in_len.into(),
+            });
+            return Ok(bx.const_null(llret_ty));
+        }
         return Ok(bx.insert_element(
             args[0].immediate(),
             args[2].immediate(),
-            args[1].immediate(),
+            bx.const_i32(idx as i32),
         ));
     }
     if name == sym::simd_extract {
@@ -1195,7 +1198,19 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ret_ty == in_elem,
             InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
-        return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()));
+        let idx = bx
+            .const_to_opt_u128(args[1].immediate(), false)
+            .expect("typeck should have ensure that this is a const");
+        if idx >= in_len.into() {
+            bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+                span,
+                name,
+                arg_idx: 1,
+                total_len: in_len.into(),
+            });
+            return Ok(bx.const_null(llret_ty));
+        }
+        return Ok(bx.extract_element(args[0].immediate(), bx.const_i32(idx as i32)));
     }
 
     if name == sym::simd_select {
@@ -1880,14 +1895,14 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     arith_red!(simd_reduce_mul_ordered: vector_reduce_mul, vector_reduce_fmul, true, mul, 1.0);
     arith_red!(
         simd_reduce_add_unordered: vector_reduce_add,
-        vector_reduce_fadd_algebraic,
+        vector_reduce_fadd_reassoc,
         false,
         add,
         0.0
     );
     arith_red!(
         simd_reduce_mul_unordered: vector_reduce_mul,
-        vector_reduce_fmul_algebraic,
+        vector_reduce_fmul_reassoc,
         false,
         mul,
         1.0
@@ -1919,9 +1934,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
     minmax_red!(simd_reduce_min: vector_reduce_min, vector_reduce_fmin);
     minmax_red!(simd_reduce_max: vector_reduce_max, vector_reduce_fmax);
-
-    minmax_red!(simd_reduce_min_nanless: vector_reduce_min, vector_reduce_fmin_fast);
-    minmax_red!(simd_reduce_max_nanless: vector_reduce_max, vector_reduce_fmax_fast);
 
     macro_rules! bitwise_red {
         ($name:ident : $red:ident, $boolean:expr) => {

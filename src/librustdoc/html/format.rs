@@ -879,11 +879,16 @@ fn primitive_link_fragment(
         match m.primitive_locations.get(&prim) {
             Some(&def_id) if def_id.is_local() => {
                 let len = cx.current.len();
-                let len = if len == 0 { 0 } else { len - 1 };
+                let path = if len == 0 {
+                    let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
+                    format!("{cname_sym}/")
+                } else {
+                    "../".repeat(len - 1)
+                };
                 write!(
                     f,
                     "<a class=\"primitive\" href=\"{}primitive.{}.html{fragment}\">",
-                    "../".repeat(len),
+                    path,
                     prim.as_sym()
                 )?;
                 needs_termination = true;

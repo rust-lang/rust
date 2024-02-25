@@ -1,9 +1,9 @@
-// assembly-output: emit-asm
-// only-x86_64
-// ignore-sgx
-// revisions: opt-speed opt-size
-// [opt-speed] compile-flags: -Copt-level=2 -Cdebug-assertions=no
-// [opt-size] compile-flags: -Copt-level=s -Cdebug-assertions=no
+//@ assembly-output: emit-asm
+//@ only-x86_64
+//@ ignore-sgx
+//@ revisions: opt-speed opt-size
+//@ [opt-speed] compile-flags: -Copt-level=2 -Cdebug-assertions=no
+//@ [opt-size] compile-flags: -Copt-level=s -Cdebug-assertions=no
 #![crate_type="rlib"]
 
 #![feature(core_intrinsics)]

@@ -1,6 +1,6 @@
 // Verify that the only debuginfo generated are the line directives.
 //
-// compile-flags: -C debuginfo=line-directives-only
+//@ compile-flags: -C debuginfo=line-directives-only
 
 #[repr(C)]
 struct StructType {

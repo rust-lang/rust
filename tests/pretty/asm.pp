@@ -4,9 +4,9 @@
 use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
-// pretty-mode:expanded
-// pp-exact:asm.pp
-// only-x86_64
+//@ pretty-mode:expanded
+//@ pp-exact:asm.pp
+//@ only-x86_64
 
 use std::arch::asm;
 

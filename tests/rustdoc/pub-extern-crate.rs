@@ -1,4 +1,4 @@
-// aux-build:pub-extern-crate.rs
+//@ aux-build:pub-extern-crate.rs
 
 // @has pub_extern_crate/index.html
 // @!has - '//code' 'pub extern crate inner'

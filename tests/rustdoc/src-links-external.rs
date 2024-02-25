@@ -1,6 +1,6 @@
-// aux-build:src-links-external.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:src-links-external.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #![crate_name = "foo"]
 

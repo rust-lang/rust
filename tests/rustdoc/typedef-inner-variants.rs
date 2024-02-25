@@ -3,7 +3,7 @@
 
 #![crate_name = "inner_variants"]
 
-// aux-build:cross_crate_generic_typedef.rs
+//@ aux-build:cross_crate_generic_typedef.rs
 extern crate cross_crate_generic_typedef;
 
 pub struct Adt;

@@ -673,14 +673,17 @@ pub fn line_directive<'line>(
 /// names. This is **not** an exhaustive list of all possible directives. Instead, this is a
 /// best-effort approximation for diagnostics.
 const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
+    "assembly-output",
     "aux-build",
     "aux-crate",
+    "build-aux-docs",
     "build-fail",
     "build-pass",
     "check-fail",
     "check-pass",
     "check-run-results",
     "check-stdout",
+    "check-test-line-numbers-match",
     "compile-flags",
     "dont-check-compiler-stderr",
     "dont-check-compiler-stdout",
@@ -691,12 +694,16 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "failure-status",
     "forbid-output",
     "force-host",
+    "ignore-16bit",
     "ignore-32bit",
     "ignore-64bit",
     "ignore-aarch64",
     "ignore-aarch64-unknown-linux-gnu",
     "ignore-android",
     "ignore-arm",
+    "ignore-avr",
+    "ignore-beta",
+    "ignore-cdb",
     "ignore-compare-mode-next-solver",
     "ignore-compare-mode-polonius",
     "ignore-cross-compile",
@@ -705,13 +712,21 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-endian-big",
     "ignore-freebsd",
     "ignore-fuchsia",
+    "ignore-gdb",
+    "ignore-gdb-version",
     "ignore-gnu",
     "ignore-haiku",
     "ignore-horizon",
     "ignore-i686-pc-windows-msvc",
     "ignore-ios",
+    "ignore-linux",
+    "ignore-lldb",
     "ignore-llvm-version",
+    "ignore-loongarch64",
     "ignore-macos",
+    "ignore-mode-coverage-map",
+    "ignore-mode-coverage-run",
+    "ignore-msp430",
     "ignore-msvc",
     "ignore-musl",
     "ignore-netbsd",
@@ -720,8 +735,13 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-nvptx64",
     "ignore-openbsd",
     "ignore-pass",
+    "ignore-remote",
+    "ignore-riscv64",
+    "ignore-s390x",
     "ignore-sgx",
     "ignore-spirv",
+    "ignore-stable",
+    "ignore-stage1",
     "ignore-test",
     "ignore-thumbv8m.base-none-eabi",
     "ignore-thumbv8m.main-none-eabi",
@@ -731,9 +751,15 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-wasm32",
     "ignore-wasm32-bare",
     "ignore-windows",
+    "ignore-windows-gnu",
     "ignore-x86",
+    "ignore-x86_64-apple-darwin",
     "incremental",
     "known-bug",
+    "llvm-cov-flags",
+    "min-cdb-version",
+    "min-gdb-version",
+    "min-lldb-version",
     "min-llvm-version",
     "needs-asm-support",
     "needs-dlltool",
@@ -742,11 +768,15 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "needs-profiler-support",
     "needs-relocation-model-pic",
     "needs-run-enabled",
+    "needs-rust-lldb",
     "needs-sanitizer-address",
     "needs-sanitizer-cfi",
     "needs-sanitizer-hwaddress",
     "needs-sanitizer-leak",
     "needs-sanitizer-memory",
+    "needs-sanitizer-memtag",
+    "needs-sanitizer-safestack",
+    "needs-sanitizer-shadow-call-stack",
     "needs-sanitizer-support",
     "needs-sanitizer-thread",
     "needs-unwind",
@@ -756,23 +786,42 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "normalize-stderr-64bit",
     "normalize-stderr-test",
     "normalize-stdout-test",
+    "only-16bit",
     "only-32bit",
     "only-64bit",
     "only-aarch64",
+    "only-arm",
+    "only-avr",
+    "only-bpf",
+    "only-cdb",
     "only-gnu",
     "only-i686-pc-windows-msvc",
     "only-linux",
+    "only-loongarch64",
+    "only-loongarch64-unknown-linux-gnu",
     "only-macos",
+    "only-mips",
+    "only-mips64",
+    "only-msp430",
     "only-msvc",
     "only-nightly",
+    "only-nvptx64",
+    "only-riscv64",
+    "only-sparc",
+    "only-sparc64",
+    "only-thumb",
     "only-wasm32",
+    "only-wasm32-bare",
     "only-windows",
     "only-x86",
     "only-x86_64",
+    "only-x86_64-fortanix-unknown-sgx",
     "only-x86_64-pc-windows-msvc",
     "only-x86_64-unknown-linux-gnu",
     "pp-exact",
+    "pretty-compare-only",
     "pretty-expanded",
+    "pretty-mode",
     "regex-error-pattern",
     "remap-src-base",
     "revisions",
@@ -783,7 +832,10 @@ const DIAGNOSTICS_DIRECTIVE_NAMES: &[&str] = &[
     "rustc-env",
     "rustfix-only-machine-applicable",
     "should-fail",
+    "should-ice",
     "stderr-per-bitwidth",
+    "unit-test",
+    "unset-exec-env",
     "unset-rustc-env",
 ];
 
@@ -817,7 +869,7 @@ struct HeaderLine<'ln> {
 
 fn iter_header(
     mode: Mode,
-    suite: &str,
+    _suite: &str,
     poisoned: &mut bool,
     testfile: &Path,
     rdr: impl Read,
@@ -848,11 +900,7 @@ fn iter_header(
         }
     }
 
-    let comment = if testfile.extension().is_some_and(|e| e == "rs") {
-        if mode == Mode::Ui && suite == "ui" { "//@" } else { "//" }
-    } else {
-        "#"
-    };
+    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
 
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
@@ -879,7 +927,7 @@ fn iter_header(
         // First try to accept `ui_test` style comments
         } else if let Some((header_revision, directive)) = line_directive(comment, ln) {
             it(HeaderLine { line_number, original_line, header_revision, directive });
-        } else if mode == Mode::Ui && suite == "ui" && !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
+        } else if !REVISION_MAGIC_COMMENT_RE.is_match(ln) {
             let Some((_, rest)) = line_directive("//", ln) else {
                 continue;
             };
@@ -899,7 +947,7 @@ fn iter_header(
                         // directive. We emit an error here to warn the user.
                         *poisoned = true;
                         eprintln!(
-                            "error: detected legacy-style directives in ui test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
+                            "error: detected legacy-style directives in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
                             testfile.display(),
                             line_number,
                             line_directive("//", ln),
@@ -912,7 +960,7 @@ fn iter_header(
                         // directive. We emit an error here to warn the user.
                         *poisoned = true;
                         eprintln!(
-                            "error: detected legacy-style directives in ui test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
+                            "error: detected legacy-style directives in compiletest test: {}:{}, please use `ui_test`-style directives `//@` instead:{:#?}",
                             testfile.display(),
                             line_number,
                             line_directive("//", ln),
@@ -1213,11 +1261,8 @@ pub fn make_test_description<R: Read>(
 
             if let Some((_, post)) = original_line.trim_start().split_once("//") {
                 let post = post.trim_start();
-                if post.starts_with("ignore-tidy")
-                    && config.mode == Mode::Ui
-                    && config.suite == "ui"
-                {
-                    // not handled by compiletest under the ui test mode and ui test suite.
+                if post.starts_with("ignore-tidy") {
+                    // Not handled by compiletest.
                 } else {
                     decision!(cfg::handle_ignore(config, ln));
                 }

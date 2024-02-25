@@ -1,7 +1,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Test that we correctly generate StorageDead statements for while loop
 // conditions on all branches
-// compile-flags: -Zmir-opt-level=0
+//@ compile-flags: -Zmir-opt-level=0
 
 fn get_bool(c: bool) -> bool {
     c

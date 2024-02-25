@@ -5,6 +5,5 @@ fn main() {
 
     g = f;
     f = Box::new(g);
-    //~^  ERROR mismatched types
-    //~| cyclic type of infinite size
+    //~^ ERROR overflow assigning `Box<_>` to `_`
 }

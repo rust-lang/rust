@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[doc(include = "external-cross-doc.md")]
 //~^ WARNING unknown `doc` attribute `include`

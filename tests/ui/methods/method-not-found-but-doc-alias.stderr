@@ -5,7 +5,12 @@ LL | struct Foo;
    | ---------- method `quux` not found for this struct
 ...
 LL |     Foo.quux();
-   |         ^^^^ help: there is a method with a similar name: `bar`
+   |         ^^^^
+   |
+help: there is a method `bar` with a similar name
+   |
+LL |     Foo.bar();
+   |         ~~~
 
 error: aborting due to 1 previous error
 

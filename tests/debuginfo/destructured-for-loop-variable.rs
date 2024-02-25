@@ -1,10 +1,10 @@
-// min-lldb-version: 310
+//@ min-lldb-version: 310
 
 // This fails on lldb 6.0.1 on x86-64 Fedora 28; so mark it macOS-only
 // for now.
-// only-macos
+//@ only-macos
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

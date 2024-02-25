@@ -1,7 +1,7 @@
-// compile-flags:-g
+//@ compile-flags:-g
 
 // We only test Rust-aware versions of GDB:
-// min-gdb-version: 8.2
+//@ min-gdb-version: 8.2
 
 // === GDB TESTS ===================================================================================
 

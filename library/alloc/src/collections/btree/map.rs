@@ -979,6 +979,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map[&37], "c");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("push", "put", "set")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
@@ -1041,6 +1042,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_confusables("delete", "take")]
     pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
     where
         K: Borrow<Q> + Ord,
@@ -2495,6 +2497,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         issue = "71835",
         implied_by = "const_btree_new"
     )]
+    #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         self.length
     }
@@ -2913,7 +2916,7 @@ impl<'a, K, V> Cursor<'a, K, V> {
         }
     }
 
-    /// Returns a reference to the the key and value of the next element without
+    /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
     /// If the cursor is at the end of the map then `None` is returned
@@ -2922,7 +2925,7 @@ impl<'a, K, V> Cursor<'a, K, V> {
         self.clone().next()
     }
 
-    /// Returns a reference to the the key and value of the previous element
+    /// Returns a reference to the key and value of the previous element
     /// without moving the cursor.
     ///
     /// If the cursor is at the start of the map then `None` is returned.
@@ -2955,7 +2958,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
         Some((&*k, v))
     }
 
-    /// Returns a reference to the the key and value of the next element without
+    /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
     /// If the cursor is at the end of the map then `None` is returned
@@ -2965,7 +2968,7 @@ impl<'a, K, V, A> CursorMut<'a, K, V, A> {
         Some((&*k, v))
     }
 
-    /// Returns a reference to the the key and value of the previous element
+    /// Returns a reference to the key and value of the previous element
     /// without moving the cursor.
     ///
     /// If the cursor is at the start of the map then `None` is returned.
@@ -3053,7 +3056,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
         }
     }
 
-    /// Returns a reference to the the key and value of the next element without
+    /// Returns a reference to the key and value of the next element without
     /// moving the cursor.
     ///
     /// If the cursor is at the end of the map then `None` is returned
@@ -3065,7 +3068,7 @@ impl<'a, K, V, A> CursorMutKey<'a, K, V, A> {
         Some(kv)
     }
 
-    /// Returns a reference to the the key and value of the previous element
+    /// Returns a reference to the key and value of the previous element
     /// without moving the cursor.
     ///
     /// If the cursor is at the start of the map then `None` is returned.

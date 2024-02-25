@@ -1,4 +1,4 @@
-// run-rustfix
+//@ run-rustfix
 #![deny(warnings)]
 #![feature(doc_notable_trait)]
 

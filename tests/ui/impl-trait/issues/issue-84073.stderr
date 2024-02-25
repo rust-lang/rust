@@ -1,14 +1,9 @@
-error[E0282]: type annotations needed for `RaceBuilder<T, Never<T>>`
-  --> $DIR/issue-84073.rs:32:16
+error[E0275]: overflow assigning `_` to `Option<_>`
+  --> $DIR/issue-84073.rs:32:22
    |
 LL |     Race::new(|race| race.when());
-   |                ^^^^  ---- type must be known at this point
-   |
-help: consider giving this closure parameter an explicit type, where the type for type parameter `T` is specified
-   |
-LL |     Race::new(|race: RaceBuilder<T, Never<T>>| race.when());
-   |                    ++++++++++++++++++++++++++
+   |                      ^^^^
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0275`.

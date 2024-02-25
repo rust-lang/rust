@@ -1,5 +1,4 @@
-// compile-flags: -O -Z merge-functions=disabled
-// ignore-debug
+//@ compile-flags: -O -Z merge-functions=disabled
 
 #![crate_type = "lib"]
 

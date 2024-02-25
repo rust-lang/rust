@@ -1,6 +1,6 @@
-// aux-build:renamed-via-module.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:renamed-via-module.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #![crate_name = "bar"]
 

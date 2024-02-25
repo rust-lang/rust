@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options --document-hidden-items --document-private-items
+//@ compile-flags: -Z unstable-options --document-hidden-items --document-private-items
 
 #![crate_name = "foo"]
 

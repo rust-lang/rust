@@ -1,9 +1,9 @@
-// only-loongarch64-unknown-linux-gnu
+//@ only-loongarch64-unknown-linux-gnu
 
-// revisions: DEFAULT DIRECT INDIRECT
-// [DEFAULT] compile-flags: -C relocation-model=static
-// [DIRECT] compile-flags: -C relocation-model=static -Z direct-access-external-data=yes
-// [INDIRECT] compile-flags: -C relocation-model=static -Z direct-access-external-data=no
+//@ revisions: DEFAULT DIRECT INDIRECT
+//@ [DEFAULT] compile-flags: -C relocation-model=static
+//@ [DIRECT] compile-flags: -C relocation-model=static -Z direct-access-external-data=yes
+//@ [INDIRECT] compile-flags: -C relocation-model=static -Z direct-access-external-data=no
 
 #![crate_type = "rlib"]
 

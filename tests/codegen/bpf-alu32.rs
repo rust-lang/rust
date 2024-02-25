@@ -1,4 +1,4 @@
-// only-bpf
+//@ only-bpf
 #![crate_type = "lib"]
 #![feature(bpf_target_feature)]
 #![no_std]

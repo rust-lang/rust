@@ -1,13 +1,13 @@
 //
 // We specify incremental here because we want to test the partitioning for
-// incremental compilation
-// incremental
-// compile-flags:-Zprint-mono-items=eager -Zshare-generics=y
+//@ incremental compilation
+//@ incremental
+//@ compile-flags:-Zprint-mono-items=eager -Zshare-generics=y
 
 #![allow(dead_code)]
 #![crate_type="lib"]
 
-// aux-build:cgu_generic_function.rs
+//@ aux-build:cgu_generic_function.rs
 extern crate cgu_generic_function;
 
 //~ MONO_ITEM fn user @@ extern_generic[Internal]

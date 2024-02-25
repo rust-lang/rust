@@ -1,9 +1,9 @@
-// min-lldb-version: 310
+//@ min-lldb-version: 310
 
 // Require a gdb that can read DW_TAG_variant_part.
-// min-gdb-version: 8.2
+//@ min-gdb-version: 8.2
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // gdb-command:set print union on
 // gdb-command:run

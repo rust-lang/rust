@@ -578,12 +578,7 @@ fn ignore_mode() {
         assert_eq!(config.mode, Mode::from_str(mode).unwrap());
         assert_ne!(config.mode, Mode::from_str(other).unwrap());
 
-        if mode == "ui" {
-            assert!(check_ignore(&config, &format!("//@ ignore-mode-{mode}")));
-            assert!(!check_ignore(&config, &format!("//@ ignore-mode-{other}")));
-        } else {
-            assert!(check_ignore(&config, &format!("// ignore-mode-{mode}")));
-            assert!(!check_ignore(&config, &format!("// ignore-mode-{other}")));
-        }
+        assert!(check_ignore(&config, &format!("//@ ignore-mode-{mode}")));
+        assert!(!check_ignore(&config, &format!("//@ ignore-mode-{other}")));
     }
 }

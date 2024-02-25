@@ -1,6 +1,6 @@
 #![feature(auto_traits)]
 
-// pp-exact
+//@ pp-exact
 
 auto trait MyTrait {}
 

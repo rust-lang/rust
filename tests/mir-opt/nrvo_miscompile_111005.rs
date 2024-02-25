@@ -1,7 +1,7 @@
 // skip-filecheck
 // This is a miscompilation, #111005 to track
 
-// unit-test: RenameReturnPlace
+//@ unit-test: RenameReturnPlace
 
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;

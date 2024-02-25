@@ -555,23 +555,14 @@ fn count_repetitions<'a>(
 ) -> PResult<'a, usize> {
     // Recursively count the number of matches in `matched` at given depth
     // (or at the top-level of `matched` if no depth is given).
-    fn count<'a>(
-        cx: &ExtCtxt<'a>,
-        depth_curr: usize,
-        depth_max: usize,
-        matched: &NamedMatch,
-        sp: &DelimSpan,
-    ) -> PResult<'a, usize> {
+    fn count<'a>(depth_curr: usize, depth_max: usize, matched: &NamedMatch) -> PResult<'a, usize> {
         match matched {
             MatchedTokenTree(_) | MatchedNonterminal(_) => Ok(1),
             MatchedSeq(named_matches) => {
                 if depth_curr == depth_max {
                     Ok(named_matches.len())
                 } else {
-                    named_matches
-                        .iter()
-                        .map(|elem| count(cx, depth_curr + 1, depth_max, elem, sp))
-                        .sum()
+                    named_matches.iter().map(|elem| count(depth_curr + 1, depth_max, elem)).sum()
                 }
             }
         }
@@ -612,7 +603,7 @@ fn count_repetitions<'a>(
         return Err(cx.dcx().create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
-    count(cx, depth_user, depth_max, matched, sp)
+    count(depth_user, depth_max, matched)
 }
 
 /// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]

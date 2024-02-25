@@ -1,13 +1,13 @@
-// revisions: all strong basic none missing
-// assembly-output: emit-asm
-// only-windows
-// only-msvc
-// ignore-32bit 64-bit table based SEH has slightly different behaviors than classic SEH
-// [all] compile-flags: -Z stack-protector=all
-// [strong] compile-flags: -Z stack-protector=strong
-// [basic] compile-flags: -Z stack-protector=basic
-// [none] compile-flags: -Z stack-protector=none
-// compile-flags: -C opt-level=2 -Z merge-functions=disabled
+//@ revisions: all strong basic none missing
+//@ assembly-output: emit-asm
+//@ only-windows
+//@ only-msvc
+//@ ignore-32bit 64-bit table based SEH has slightly different behaviors than classic SEH
+//@ [all] compile-flags: -Z stack-protector=all
+//@ [strong] compile-flags: -Z stack-protector=strong
+//@ [basic] compile-flags: -Z stack-protector=basic
+//@ [none] compile-flags: -Z stack-protector=none
+//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
 
 #![crate_type = "lib"]
 

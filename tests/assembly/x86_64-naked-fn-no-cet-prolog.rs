@@ -1,7 +1,7 @@
-// compile-flags: -C no-prepopulate-passes -Zcf-protection=full
-// assembly-output: emit-asm
-// needs-asm-support
-// only-x86_64
+//@ compile-flags: -C no-prepopulate-passes -Zcf-protection=full
+//@ assembly-output: emit-asm
+//@ needs-asm-support
+//@ only-x86_64
 
 #![crate_type = "lib"]
 #![feature(naked_functions)]

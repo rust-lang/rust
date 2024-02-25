@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// needs-unwind
+//@ needs-unwind
 
 #![crate_type = "lib"]
 pub trait Factory<T> {

@@ -1,4 +1,4 @@
-// aux-build:extern-impl-trait.rs
+//@ aux-build:extern-impl-trait.rs
 
 #![crate_name = "foo"]
 

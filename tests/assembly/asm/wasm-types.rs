@@ -1,7 +1,7 @@
-// assembly-output: emit-asm
-// compile-flags: --target wasm32-unknown-unknown
-// compile-flags: --crate-type cdylib
-// needs-llvm-components: webassembly
+//@ assembly-output: emit-asm
+//@ compile-flags: --target wasm32-unknown-unknown
+//@ compile-flags: --crate-type cdylib
+//@ needs-llvm-components: webassembly
 
 #![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
 #![no_core]

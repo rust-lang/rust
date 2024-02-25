@@ -1,6 +1,6 @@
 // Adapted from rust-lang/rust#58813
 
-// revisions: rpass1 cfail2
+//@ revisions: rpass1 cfail2
 
 #[cfg(rpass1)]
 pub trait T2 {}

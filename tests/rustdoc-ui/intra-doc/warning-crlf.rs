@@ -1,5 +1,5 @@
 // ignore-tidy-cr
-// check-pass
+//@ check-pass
 
 // This file checks the spans of intra-link warnings in a file with CRLF line endings. The
 // .gitattributes file in this directory should enforce it.

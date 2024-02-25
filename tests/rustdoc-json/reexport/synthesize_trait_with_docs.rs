@@ -1,5 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/105022>
-// aux-build: trait_with_docs.rs
+//@ aux-build: trait_with_docs.rs
 
 extern crate trait_with_docs;
 

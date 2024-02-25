@@ -1,4 +1,4 @@
-// compile-flags: -C relocation-model=pic -Copt-level=0
+//@ compile-flags: -C relocation-model=pic -Copt-level=0
 
 #![crate_type = "rlib"]
 

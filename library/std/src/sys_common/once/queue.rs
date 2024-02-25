@@ -212,7 +212,7 @@ fn wait(state_and_queue: &AtomicPtr<Masked>, mut current_state: *mut Masked) {
             signaled: AtomicBool::new(false),
             next: current_state.with_addr(current_state.addr() & !STATE_MASK) as *const Waiter,
         };
-        let me = &node as *const Waiter as *const Masked as *mut Masked;
+        let me = core::ptr::addr_of!(node) as *const Masked as *mut Masked;
 
         // Try to slide in the node at the head of the linked list, making sure
         // that another thread didn't just replace the head of the linked list.

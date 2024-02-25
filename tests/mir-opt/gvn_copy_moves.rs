@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;

@@ -1,5 +1,5 @@
 #![crate_type="rlib"]
-// compile-flags: -Copt-level=3 -g
+//@ compile-flags: -Copt-level=3 -g
 //
 
 #[no_mangle]

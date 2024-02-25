@@ -1,5 +1,5 @@
-// only-wasm32
-// compile-flags: -C target-feature=-nontrapping-fptoint
+//@ only-wasm32
+//@ compile-flags: -C target-feature=-nontrapping-fptoint
 #![crate_type = "lib"]
 
 // CHECK-LABEL: @cast_f64_i64

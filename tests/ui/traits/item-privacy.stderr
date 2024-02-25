@@ -5,13 +5,17 @@ LL | struct S;
    | -------- method `a` not found for this struct
 ...
 LL |     S.a();
-   |       ^ method not found in `S`
+   |       ^
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `A` which provides `a` is implemented but not in scope; perhaps you want to import it
    |
 LL + use method::A;
    |
+help: there is a method `b` with a similar name
+   |
+LL |     S.b();
+   |       ~
 
 error[E0599]: no method named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:68:7
@@ -23,13 +27,17 @@ LL |         fn b(&self) { }
    |            - the method is available for `S` here
 ...
 LL |     S.b();
-   |       ^ method not found in `S`
+   |       ^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
 LL + use method::B;
    |
+help: there is a method `c` with a similar name
+   |
+LL |     S.c();
+   |       ~
 
 error[E0624]: method `a` is private
   --> $DIR/item-privacy.rs:72:7
@@ -50,7 +58,12 @@ LL |     S::a(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: there is an associated constant `B` with a similar name
+  --> $DIR/item-privacy.rs:29:9
+   |
+LL |         const B: u8 = 0;
+   |         ^^^^^^^^^^^
+help: trait `A` which provides `a` is implemented but not in scope; perhaps you want to import it
    |
 LL + use method::A;
    |
@@ -65,7 +78,12 @@ LL |     S::b(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: there is an associated constant `B` with a similar name
+  --> $DIR/item-privacy.rs:29:9
+   |
+LL |         const B: u8 = 0;
+   |         ^^^^^^^^^^^
+help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
    |
 LL + use method::B;
    |
@@ -89,10 +107,14 @@ LL |     S::A;
    |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `A` which provides `A` is implemented but not in scope; perhaps you want to import it
    |
 LL + use assoc_const::A;
    |
+help: there is an associated constant `B` with a similar name
+   |
+LL |     S::B;
+   |        ~
 
 error[E0599]: no associated item named `B` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:98:8
@@ -104,10 +126,14 @@ LL |     S::B;
    |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `B` which provides `B` is implemented but not in scope; perhaps you want to import it
    |
 LL + use assoc_const::B;
    |
+help: there is a method `b` with a similar name
+   |
+LL |     S::b;
+   |        ~
 
 error[E0624]: associated constant `A` is private
   --> $DIR/item-privacy.rs:101:14

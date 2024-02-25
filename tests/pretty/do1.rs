@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 
 fn f<F>(f: F) where F: Fn(isize) { f(10) }
 

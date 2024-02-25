@@ -1,4 +1,4 @@
-// compile-flags: --playground-url=https://example.com/ -Z unstable-options
+//@ compile-flags: --playground-url=https://example.com/ -Z unstable-options
 
 #![crate_name = "foo"]
 

@@ -1,5 +1,5 @@
 // Check that `-Zmir-enable-passes=+Inline` does not ICE because of stolen MIR.
-// unit-test: Inline
+//@ unit-test: Inline
 // skip-filecheck
 #![crate_type = "lib"]
 

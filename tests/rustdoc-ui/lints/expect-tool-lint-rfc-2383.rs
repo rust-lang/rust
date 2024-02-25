@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 #![feature(lint_reasons)]
 
 //! This file tests the `#[expect]` attribute implementation for tool lints. The same

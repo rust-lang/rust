@@ -165,7 +165,7 @@ use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::{self, forget};
-use crate::num::{NonZero, NonZeroU64, NonZeroUsize};
+use crate::num::NonZero;
 use crate::panic;
 use crate::panicking;
 use crate::pin::Pin;
@@ -1222,7 +1222,7 @@ impl ThreadId {
     /// change across Rust versions.
     #[must_use]
     #[unstable(feature = "thread_id_value", issue = "67939")]
-    pub fn as_u64(&self) -> NonZeroU64 {
+    pub fn as_u64(&self) -> NonZero<u64> {
         self.0
     }
 }
@@ -1784,6 +1784,6 @@ fn _assert_sync_and_send() {
 #[doc(alias = "hardware_concurrency")] // Alias for C++ `std::thread::hardware_concurrency`.
 #[doc(alias = "num_cpus")] // Alias for a popular ecosystem crate which provides similar functionality.
 #[stable(feature = "available_parallelism", since = "1.59.0")]
-pub fn available_parallelism() -> io::Result<NonZeroUsize> {
+pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     imp::available_parallelism()
 }

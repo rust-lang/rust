@@ -2,8 +2,8 @@
 // They should be rendered exactly as the user wrote it, i.e., in source order and with unused
 // parameters present, not stripped.
 
-// aux-crate:fn_type=fn-type.rs
-// edition: 2021
+//@ aux-crate:fn_type=fn-type.rs
+//@ edition: 2021
 #![crate_name = "user"]
 
 // @has user/type.F.html

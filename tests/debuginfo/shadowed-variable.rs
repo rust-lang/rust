@@ -1,5 +1,5 @@
-// min-lldb-version: 310
-// compile-flags:-g
+//@ min-lldb-version: 310
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

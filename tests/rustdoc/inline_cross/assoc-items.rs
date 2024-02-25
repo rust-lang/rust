@@ -1,6 +1,6 @@
-// aux-build:assoc-items.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:assoc-items.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 #![crate_name = "foo"]
 

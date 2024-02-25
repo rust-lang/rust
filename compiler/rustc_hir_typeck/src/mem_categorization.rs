@@ -582,7 +582,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         match ty.kind() {
             ty::Tuple(args) => Ok(args.len()),
             _ => {
-                self.tcx().dcx().span_bug(span, "tuple pattern not applied to a tuple");
+                self.tcx().dcx().span_delayed_bug(span, "tuple pattern not applied to a tuple");
+                Err(())
             }
         }
     }

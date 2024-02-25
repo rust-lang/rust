@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #[cfg(any(target_arch = "wasm32", doc))]
 #[target_feature(enable = "simd128")]

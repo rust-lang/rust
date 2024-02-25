@@ -1,4 +1,4 @@
-// compile-flags: -O
+//@ compile-flags: -O
 #![feature(c_unwind)]
 #![crate_type = "lib"]
 

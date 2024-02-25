@@ -374,7 +374,10 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn universe_of_lt(&self, lt: ty::RegionVid) -> Option<ty::UniverseIndex> {
-        Some(self.universe_of_region_vid(lt))
+        match self.inner.borrow_mut().unwrap_region_constraints().probe_value(lt) {
+            Err(universe) => Some(universe),
+            Ok(_) => None,
+        }
     }
 
     fn root_ty_var(&self, vid: TyVid) -> TyVid {
@@ -762,6 +765,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn err_ctxt(&self) -> TypeErrCtxt<'_, 'tcx> {
         TypeErrCtxt {
             infcx: self,
+            sub_relations: Default::default(),
             typeck_results: None,
             fallback_has_occurred: false,
             normalize_fn_sig: Box::new(|fn_sig| fn_sig),
@@ -1029,7 +1033,6 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
-                self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
                 return Err((a_vid, b_vid));
             }
             _ => {}
@@ -1153,11 +1156,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// are associated.
     pub fn universe_of_region(&self, r: ty::Region<'tcx>) -> ty::UniverseIndex {
         self.inner.borrow_mut().unwrap_region_constraints().universe(r)
-    }
-
-    /// Return the universe that the region variable `r` was created in.
-    pub fn universe_of_region_vid(&self, vid: ty::RegionVid) -> ty::UniverseIndex {
-        self.inner.borrow_mut().unwrap_region_constraints().var_universe(vid)
     }
 
     /// Number of region variables created so far.

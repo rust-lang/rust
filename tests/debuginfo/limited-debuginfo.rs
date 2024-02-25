@@ -1,7 +1,7 @@
-// ignore-lldb
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+//@ ignore-lldb
+//@ ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
-// compile-flags:-C debuginfo=1
+//@ compile-flags:-C debuginfo=1
 
 // Make sure functions have proper names
 // gdb-command:info functions

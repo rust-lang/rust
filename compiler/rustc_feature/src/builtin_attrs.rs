@@ -792,6 +792,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing,
         "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
     ),
+    rustc_attr!(
+        rustc_no_mir_inline, Normal, template!(Word), WarnFollowing,
+        "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

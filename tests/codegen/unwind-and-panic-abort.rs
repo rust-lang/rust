@@ -1,4 +1,4 @@
-// compile-flags: -C panic=abort
+//@ compile-flags: -C panic=abort
 
 #![crate_type = "lib"]
 #![feature(c_unwind)]

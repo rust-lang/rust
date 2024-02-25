@@ -477,7 +477,7 @@ fn sanity_check_found_hidden_type<'tcx>(
     } else {
         let span = tcx.def_span(key.def_id);
         let other = ty::OpaqueHiddenType { ty: hidden_ty, span };
-        Err(ty.report_mismatch(&other, key.def_id, tcx).emit())
+        Err(ty.build_mismatch_error(&other, key.def_id, tcx)?.emit())
     }
 }
 

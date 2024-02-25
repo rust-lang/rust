@@ -1,5 +1,5 @@
-// revisions:rpass1 rpass2
-// compile-flags: -Z query-dep-graph
+//@ revisions:rpass1 rpass2
+//@ compile-flags: -Z query-dep-graph
 
 // We use #[inline(always)] to ensure that the downstream crate
 // will always load the MIR for these functions

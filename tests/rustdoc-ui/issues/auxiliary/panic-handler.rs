@@ -1,4 +1,4 @@
-// compile-flags: -C panic=abort
+//@ compile-flags: -C panic=abort
 
 #![no_std]
 #![no_main]

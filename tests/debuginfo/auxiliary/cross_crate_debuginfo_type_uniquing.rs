@@ -1,6 +1,6 @@
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 #![crate_type = "rlib"]
-// compile-flags:-g
+//@ compile-flags:-g
 
 struct S1;
 

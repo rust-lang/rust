@@ -1,5 +1,5 @@
-// aux-build:rustdoc-extern-default-method.rs
-// ignore-cross-compile
+//@ aux-build:rustdoc-extern-default-method.rs
+//@ ignore-cross-compile
 // ignore-tidy-linelength
 
 extern crate rustdoc_extern_default_method as ext;

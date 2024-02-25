@@ -1,7 +1,7 @@
 // This is test for more optimal Ord implementation for integers.
 // See <https://github.com/rust-lang/rust/issues/63758> for more info.
 
-// compile-flags: -C opt-level=3
+//@ compile-flags: -C opt-level=3
 
 #![crate_type = "lib"]
 

@@ -140,7 +140,7 @@ pub fn intern_const_alloc_recursive<
         alloc.1.mutability = base_mutability;
         alloc.1.provenance().ptrs().iter().map(|&(_, prov)| prov).collect()
     } else {
-        intern_shallow(ecx, base_alloc_id, base_mutability).unwrap().map(|prov| prov).collect()
+        intern_shallow(ecx, base_alloc_id, base_mutability).unwrap().collect()
     };
     // We need to distinguish "has just been interned" from "was already in `tcx`",
     // so we track this in a separate set.
@@ -277,7 +277,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
             // We are not doing recursive interning, so we don't currently support provenance.
             // (If this assertion ever triggers, we should just implement a
             // proper recursive interning loop -- or just call `intern_const_alloc_recursive`.
-            if !self.tcx.try_get_global_alloc(prov.alloc_id()).is_some() {
+            if self.tcx.try_get_global_alloc(prov.alloc_id()).is_none() {
                 panic!("`intern_with_temp_alloc` with nested allocations");
             }
         }

@@ -1,4 +1,4 @@
-// compile-flags: -Z force-unstable-if-unmarked
+//@ compile-flags: -Z force-unstable-if-unmarked
 
 // Check that the unstable marker is not added for "rustc_private".
 

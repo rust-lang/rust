@@ -1,5 +1,5 @@
-// compile-flags: -C no-prepopulate-passes -C panic=abort -C force-unwind-tables=n
-// ignore-windows
+//@ compile-flags: -C no-prepopulate-passes -C panic=abort -C force-unwind-tables=n
+//@ ignore-windows
 
 #![crate_type="lib"]
 

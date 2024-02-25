@@ -15,7 +15,7 @@
 // decided to change `rustdoc` to behave more like the compiler's
 // default setting, by leaving off `-C prefer-dynamic`.
 
-// compile-flags:--test
+//@ compile-flags:--test
 
 //! This is a doc comment
 //!

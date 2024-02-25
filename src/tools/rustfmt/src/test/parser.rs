@@ -55,3 +55,10 @@ fn crate_parsing_errors_on_unclosed_delims() {
     let filename = "tests/parser/unclosed-delims/issue_4466.rs";
     assert_parser_error(filename);
 }
+
+#[test]
+fn crate_parsing_stashed_diag() {
+    // See also https://github.com/rust-lang/rust/issues/121450
+    let filename = "tests/parser/stashed-diag.rs";
+    assert_parser_error(filename);
+}

@@ -1,8 +1,8 @@
 // Test where we change the body of a public, inherent method.
 
-// revisions:cfail1 cfail2
-// compile-flags: -Z query-dep-graph
-// build-pass
+//@ revisions:cfail1 cfail2
+//@ compile-flags: -Z query-dep-graph
+//@ build-pass
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]

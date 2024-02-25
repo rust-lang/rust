@@ -1,4 +1,4 @@
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 #![crate_type = "lib"]
 #![no_std]
 #![feature(lang_items)]

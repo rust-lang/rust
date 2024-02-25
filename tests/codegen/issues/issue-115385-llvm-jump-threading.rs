@@ -1,4 +1,4 @@
-// compile-flags: -O -Ccodegen-units=1
+//@ compile-flags: -O -Ccodegen-units=1
 
 #![crate_type = "lib"]
 

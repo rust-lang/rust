@@ -1,5 +1,5 @@
-// ignore-debug: the debug assertions get in the way
-// compile-flags: -O -Z merge-functions=disabled
+//@ ignore-debug: FIXME: checks for call detect scoped noalias metadata
+//@ compile-flags: -O -Z merge-functions=disabled
 #![crate_type = "lib"]
 
 // Ensure that trivial casts of vec elements are O(1)

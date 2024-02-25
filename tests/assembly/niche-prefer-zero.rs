@@ -1,8 +1,8 @@
 // Check that niche selection prefers zero and that jumps are optimized away.
 // See https://github.com/rust-lang/rust/pull/87794
-// assembly-output: emit-asm
-// only-x86
-// compile-flags: -Copt-level=3
+//@ assembly-output: emit-asm
+//@ only-x86
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
 

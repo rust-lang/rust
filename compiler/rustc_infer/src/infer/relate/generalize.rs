@@ -26,13 +26,13 @@ impl<'tcx> InferCtxt<'tcx> {
     /// This is *not* expected to be used anywhere except for an implementation of
     /// `TypeRelation`. Do not use this, and instead please use `At::eq`, for all
     /// other usecases (i.e. setting the value of a type var).
-    #[instrument(level = "debug", skip(self, relation, target_is_expected))]
+    #[instrument(level = "debug", skip(self, relation))]
     pub fn instantiate_ty_var<R: ObligationEmittingRelation<'tcx>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
         target_vid: ty::TyVid,
-        ambient_variance: ty::Variance,
+        instantiation_variance: ty::Variance,
         source_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         debug_assert!(self.inner.borrow_mut().type_variables().probe(target_vid).is_unknown());
@@ -46,7 +46,7 @@ impl<'tcx> InferCtxt<'tcx> {
         //
         // We then relate `generalized_ty <: source_ty`,adding constraints like `'x: '?2` and `?1 <: ?3`.
         let Generalization { value_may_be_infer: generalized_ty, has_unconstrained_ty_var } =
-            self.generalize(relation.span(), target_vid, ambient_variance, source_ty)?;
+            self.generalize(relation.span(), target_vid, instantiation_variance, source_ty)?;
 
         // Constrain `b_vid` to the generalized type `generalized_ty`.
         if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
@@ -73,7 +73,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // the alias can be normalized to something which does not
             // mention `?0`.
             if self.next_trait_solver() {
-                let (lhs, rhs, direction) = match ambient_variance {
+                let (lhs, rhs, direction) = match instantiation_variance {
                     ty::Variance::Invariant => {
                         (generalized_ty.into(), source_ty.into(), AliasRelationDirection::Equate)
                     }
@@ -106,22 +106,28 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
         } else {
-            // HACK: make sure that we `a_is_expected` continues to be
-            // correct when relating the generalized type with the source.
+            // NOTE: The `instantiation_variance` is not the same variance as
+            // used by the relation. When instantiating `b`, `target_is_expected`
+            // is flipped and the `instantion_variance` is also flipped. To
+            // constrain the `generalized_ty` while using the original relation,
+            // we therefore only have to flip the arguments.
+            //
+            // ```ignore (not code)
+            // ?a rel B
+            // instantiate_ty_var(?a, B) # expected and variance not flipped
+            // B' rel B
+            // ```
+            // or
+            // ```ignore (not code)
+            // A rel ?b
+            // instantiate_ty_var(?b, A) # expected and variance flipped
+            // A rel A'
+            // ```
             if target_is_expected == relation.a_is_expected() {
-                relation.relate_with_variance(
-                    ambient_variance,
-                    ty::VarianceDiagInfo::default(),
-                    generalized_ty,
-                    source_ty,
-                )?;
+                relation.relate(generalized_ty, source_ty)?;
             } else {
-                relation.relate_with_variance(
-                    ambient_variance.xform(ty::Contravariant),
-                    ty::VarianceDiagInfo::default(),
-                    source_ty,
-                    generalized_ty,
-                )?;
+                debug!("flip relation");
+                relation.relate(source_ty, generalized_ty)?;
             }
         }
 
@@ -217,10 +223,9 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, Generalization<T>> {
         assert!(!source_term.has_escaping_bound_vars());
         let (for_universe, root_vid) = match target_vid.into() {
-            ty::TermVid::Ty(ty_vid) => (
-                self.probe_ty_var(ty_vid).unwrap_err(),
-                ty::TermVid::Ty(self.inner.borrow_mut().type_variables().sub_root_var(ty_vid)),
-            ),
+            ty::TermVid::Ty(ty_vid) => {
+                (self.probe_ty_var(ty_vid).unwrap_err(), ty::TermVid::Ty(self.root_var(ty_vid)))
+            }
             ty::TermVid::Const(ct_vid) => (
                 self.probe_const_var(ct_vid).unwrap_err(),
                 ty::TermVid::Const(
@@ -424,9 +429,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
             ty::Infer(ty::TyVar(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let vid = inner.type_variables().root_var(vid);
-                let sub_vid = inner.type_variables().sub_root_var(vid);
-
-                if ty::TermVid::Ty(sub_vid) == self.root_vid {
+                if ty::TermVid::Ty(vid) == self.root_vid {
                     // If sub-roots are equal, then `root_vid` and
                     // `vid` are related via subtyping.
                     Err(self.cyclic_term_error())
@@ -461,11 +464,6 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
                             let u = Ty::new_var(self.tcx(), new_var_id);
-
-                            // Record that we replaced `vid` with `new_var_id` as part of a generalization
-                            // operation. This is needed to detect cyclic types. To see why, see the
-                            // docs in the `type_variables` module.
-                            inner.type_variables().sub(vid, new_var_id);
                             debug!("replacing original vid={:?} with new={:?}", vid, u);
                             Ok(u)
                         }

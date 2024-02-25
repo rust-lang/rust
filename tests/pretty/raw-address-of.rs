@@ -1,4 +1,4 @@
-// pp-exact
+//@ pp-exact
 #![feature(raw_ref_op)]
 
 const C_PTR: () = { let a = 1; &raw const a; };

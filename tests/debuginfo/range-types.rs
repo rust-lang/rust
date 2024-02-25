@@ -1,8 +1,8 @@
 // Testing the display of range types in cdb.
 
 // cdb-only
-// min-cdb-version: 10.0.18317.1001
-// compile-flags:-g
+//@ min-cdb-version: 10.0.18317.1001
+//@ compile-flags:-g
 
 // === CDB TESTS ==================================================================================
 

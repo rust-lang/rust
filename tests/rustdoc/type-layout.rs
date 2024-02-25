@@ -1,4 +1,4 @@
-// compile-flags: --show-type-layout -Z unstable-options
+//@ compile-flags: --show-type-layout -Z unstable-options
 
 // @hasraw type_layout/struct.Foo.html 'Size: '
 // @hasraw - ' bytes'

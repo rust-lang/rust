@@ -337,9 +337,6 @@ pub mod panic_count {
 #[doc(hidden)]
 #[cfg(not(feature = "panic_immediate_abort"))]
 #[unstable(feature = "update_panic_count", issue = "none")]
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
-#[cfg_attr(bootstrap, allow(static_mut_ref))]
-#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 pub mod panic_count {
     use crate::cell::Cell;
     use crate::sync::atomic::{AtomicUsize, Ordering};
@@ -505,7 +502,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // method of calling a catch panic whilst juggling ownership.
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let data_ptr = &mut data as *mut _ as *mut u8;
+    let data_ptr = core::ptr::addr_of_mut!(data) as *mut u8;
     // SAFETY:
     //
     // Access to the union's fields: this is `std` and we know that the `r#try`

@@ -310,7 +310,7 @@ impl Socket {
                 buf.as_mut_ptr() as *mut _,
                 length,
                 flags,
-                &mut storage as *mut _ as *mut _,
+                core::ptr::addr_of_mut!(storage) as *mut _,
                 &mut addrlen,
             )
         };

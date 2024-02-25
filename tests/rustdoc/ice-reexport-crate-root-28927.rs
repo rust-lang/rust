@@ -1,6 +1,6 @@
-// aux-build:issue-28927-2.rs
-// aux-build:issue-28927-1.rs
-// ignore-cross-compile
+//@ aux-build:issue-28927-2.rs
+//@ aux-build:issue-28927-1.rs
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/28927
 #![crate_name="issue_28927"]

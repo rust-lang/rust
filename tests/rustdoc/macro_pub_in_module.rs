@@ -1,6 +1,6 @@
-// aux-build:macro_pub_in_module.rs
-// edition:2018
-// build-aux-docs
+//@ aux-build:macro_pub_in_module.rs
+//@ edition:2018
+//@ build-aux-docs
 
 //! See issue #74355
 #![feature(decl_macro, no_core, rustc_attrs)]

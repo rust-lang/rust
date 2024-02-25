@@ -2,9 +2,9 @@
 // for nested closures and coroutines.
 
 // Require a gdb that can read DW_TAG_variant_part.
-// min-gdb-version: 8.2
+//@ min-gdb-version: 8.2
 
-// compile-flags:-g
+//@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 

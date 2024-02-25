@@ -1,4 +1,4 @@
-// compile-flags:--extern first_crate
+//@ compile-flags:--extern first_crate
 
 // Note: adding `first_crate` to the extern prelude
 // (instead of using `extern_crate`) appears to be necessary to

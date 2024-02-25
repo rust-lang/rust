@@ -1,5 +1,5 @@
-// compile-flags: -O
-// aux-build:always.rs
+//@ compile-flags: -O
+//@ aux-build:always.rs
 
 #![crate_type = "lib"]
 

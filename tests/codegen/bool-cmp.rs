@@ -1,7 +1,7 @@
 // This is a test for optimal Ord trait implementation for bool.
 // See <https://github.com/rust-lang/rust/issues/66780> for more info.
 
-// compile-flags: -C opt-level=3
+//@ compile-flags: -C opt-level=3
 
 #![crate_type = "lib"]
 

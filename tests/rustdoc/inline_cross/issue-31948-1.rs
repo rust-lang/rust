@@ -1,6 +1,6 @@
-// aux-build:rustdoc-nonreachable-impls.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:rustdoc-nonreachable-impls.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 extern crate rustdoc_nonreachable_impls;
 

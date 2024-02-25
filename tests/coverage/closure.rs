@@ -1,5 +1,5 @@
 #![allow(unused_assignments, unused_variables)]
-// compile-flags: -C opt-level=2
+//@ compile-flags: -C opt-level=2
 
 // This test used to be sensitive to certain coverage-specific hacks in
 // `rustc_middle/mir/mono.rs`, but those hacks were later cleaned up by

@@ -215,7 +215,7 @@ impl Parker {
     }
 
     fn ptr(&self) -> c::LPVOID {
-        &self.state as *const _ as c::LPVOID
+        core::ptr::addr_of!(self.state) as c::LPVOID
     }
 }
 

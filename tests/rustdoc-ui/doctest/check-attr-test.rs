@@ -1,4 +1,4 @@
-// compile-flags:--test
+//@ compile-flags:--test
 
 #![deny(rustdoc::invalid_codeblock_attributes)]
 

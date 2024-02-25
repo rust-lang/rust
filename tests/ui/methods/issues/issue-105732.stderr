@@ -10,7 +10,12 @@ error[E0599]: no method named `g` found for reference `&Self` in the current sco
   --> $DIR/issue-105732.rs:10:14
    |
 LL |         self.g();
-   |              ^ help: there is a method with a similar name: `f`
+   |              ^
+   |
+help: there is a method `f` with a similar name
+   |
+LL |         self.f();
+   |              ~
 
 error: aborting due to 2 previous errors
 
