@@ -533,10 +533,14 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     suspicious_doc_comments::check(cx, attrs);
 
     let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
-    let mut doc = String::new();
-    for fragment in &fragments {
-        add_doc_fragment(&mut doc, fragment);
-    }
+    let mut doc = fragments
+        .iter()
+        .fold(String::new(), |mut acc, fragment| {
+            add_doc_fragment(&mut acc, fragment);
+            acc
+        })
+        .trim()
+        .to_string();
     doc.pop();
 
     if doc.is_empty() {
