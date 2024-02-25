@@ -116,9 +116,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     None,
                 )
             }
-            sym::likely => {
-                self.call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(true)])
-            }
+            sym::likely => self.expect(args[0].immediate(), true),
             sym::is_val_statically_known => {
                 let intrinsic_type = args[0].layout.immediate_llvm_type(self.cx);
                 match self.type_kind(intrinsic_type) {
@@ -131,8 +129,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     _ => self.const_bool(false),
                 }
             }
-            sym::unlikely => self
-                .call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(false)]),
+            sym::unlikely => self.expect(args[0].immediate(), false),
             kw::Try => {
                 try_intrinsic(
                     self,
@@ -423,11 +420,17 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 
     fn assume(&mut self, val: Self::Value) {
-        self.call_intrinsic("llvm.assume", &[val]);
+        if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
+            self.call_intrinsic("llvm.assume", &[val]);
+        }
     }
 
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {
-        self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expected)])
+        if self.cx.sess().opts.optimize != rustc_session::config::OptLevel::No {
+            self.call_intrinsic("llvm.expect.i1", &[cond, self.const_bool(expected)])
+        } else {
+            cond
+        }
     }
 
     fn type_test(&mut self, pointer: Self::Value, typeid: Self::Value) -> Self::Value {
