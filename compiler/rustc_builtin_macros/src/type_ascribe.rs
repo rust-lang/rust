@@ -13,8 +13,8 @@ pub fn expand_type_ascribe(
     let (expr, ty) = match parse_ascribe(cx, tts) {
         Ok(parsed) => parsed,
         Err(err) => {
-            err.emit();
-            return DummyResult::any(span);
+            let guar = err.emit();
+            return DummyResult::any(span, guar);
         }
     };
 

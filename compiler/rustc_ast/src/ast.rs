@@ -1296,7 +1296,7 @@ impl Expr {
             ExprKind::Yeet(..) => ExprPrecedence::Yeet,
             ExprKind::FormatArgs(..) => ExprPrecedence::FormatArgs,
             ExprKind::Become(..) => ExprPrecedence::Become,
-            ExprKind::Err | ExprKind::Dummy => ExprPrecedence::Err,
+            ExprKind::Err(_) | ExprKind::Dummy => ExprPrecedence::Err,
         }
     }
 
@@ -1518,7 +1518,7 @@ pub enum ExprKind {
     FormatArgs(P<FormatArgs>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
-    Err,
+    Err(ErrorGuaranteed),
 
     /// Acts as a null expression. Lowering it will always emit a bug.
     Dummy,

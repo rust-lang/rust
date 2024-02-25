@@ -28,8 +28,9 @@ pub fn expand_option_env<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    let Some(var) = get_single_str_from_tts(cx, sp, tts, "option_env!") else {
-        return DummyResult::any(sp);
+    let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
+        Ok(var) => var,
+        Err(guar) => return DummyResult::any(sp, guar),
     };
 
     let sp = cx.with_def_site_ctxt(sp);
@@ -65,24 +66,25 @@ pub fn expand_env<'cx>(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, tts) {
-        Some(exprs) if exprs.is_empty() || exprs.len() > 2 => {
-            cx.dcx().emit_err(errors::EnvTakesArgs { span: sp });
-            return DummyResult::any(sp);
+        Ok(exprs) if exprs.is_empty() || exprs.len() > 2 => {
+            let guar = cx.dcx().emit_err(errors::EnvTakesArgs { span: sp });
+            return DummyResult::any(sp, guar);
         }
-        None => return DummyResult::any(sp),
-        Some(exprs) => exprs.into_iter(),
+        Err(guar) => return DummyResult::any(sp, guar),
+        Ok(exprs) => exprs.into_iter(),
     };
 
     let var_expr = exprs.next().unwrap();
-    let Some((var, _)) = expr_to_string(cx, var_expr.clone(), "expected string literal") else {
-        return DummyResult::any(sp);
+    let var = match expr_to_string(cx, var_expr.clone(), "expected string literal") {
+        Ok((var, _)) => var,
+        Err(guar) => return DummyResult::any(sp, guar),
     };
 
     let custom_msg = match exprs.next() {
         None => None,
         Some(second) => match expr_to_string(cx, second, "expected string literal") {
-            None => return DummyResult::any(sp),
-            Some((s, _)) => Some(s),
+            Ok((s, _)) => Some(s),
+            Err(guar) => return DummyResult::any(sp, guar),
         },
     };
 
@@ -100,23 +102,23 @@ pub fn expand_env<'cx>(
                 unreachable!("`expr_to_string` ensures this is a string lit")
             };
 
-            if let Some(msg_from_user) = custom_msg {
-                cx.dcx().emit_err(errors::EnvNotDefinedWithUserMessage { span, msg_from_user });
+            let guar = if let Some(msg_from_user) = custom_msg {
+                cx.dcx().emit_err(errors::EnvNotDefinedWithUserMessage { span, msg_from_user })
             } else if is_cargo_env_var(var.as_str()) {
                 cx.dcx().emit_err(errors::EnvNotDefined::CargoEnvVar {
                     span,
                     var: *symbol,
                     var_expr: var_expr.ast_deref(),
-                });
+                })
             } else {
                 cx.dcx().emit_err(errors::EnvNotDefined::CustomEnvVar {
                     span,
                     var: *symbol,
                     var_expr: var_expr.ast_deref(),
-                });
-            }
+                })
+            };
 
-            return DummyResult::any(sp);
+            return DummyResult::any(sp, guar);
         }
         Some(value) => cx.expr_str(span, value),
     };

@@ -103,15 +103,16 @@ pub fn expand_include<'cx>(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     let sp = cx.with_def_site_ctxt(sp);
-    let Some(file) = get_single_str_from_tts(cx, sp, tts, "include!") else {
-        return DummyResult::any(sp);
+    let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
+        Ok(file) => file,
+        Err(guar) => return DummyResult::any(sp, guar),
     };
     // The file will be added to the code map by the parser
     let file = match resolve_path(&cx.sess, file.as_str(), sp) {
         Ok(f) => f,
         Err(err) => {
-            err.emit();
-            return DummyResult::any(sp);
+            let guar = err.emit();
+            return DummyResult::any(sp, guar);
         }
     };
     let p = new_parser_from_file(cx.parse_sess(), &file, Some(sp));
@@ -130,7 +131,7 @@ pub fn expand_include<'cx>(
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
-            let r = base::parse_expr(&mut self.p)?;
+            let expr = base::parse_expr(&mut self.p).ok()?;
             if self.p.token != token::Eof {
                 self.p.sess.buffer_lint(
                     INCOMPLETE_INCLUDE,
@@ -139,7 +140,7 @@ pub fn expand_include<'cx>(
                     "include macro expected single expression in source",
                 );
             }
-            Some(r)
+            Some(expr)
         }
 
         fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
@@ -176,14 +177,15 @@ pub fn expand_include_str(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_str!") else {
-        return DummyResult::any(sp);
+    let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
+        Ok(file) => file,
+        Err(guar) => return DummyResult::any(sp, guar),
     };
     let file = match resolve_path(&cx.sess, file.as_str(), sp) {
         Ok(f) => f,
         Err(err) => {
-            err.emit();
-            return DummyResult::any(sp);
+            let guar = err.emit();
+            return DummyResult::any(sp, guar);
         }
     };
     match cx.source_map().load_binary_file(&file) {
@@ -193,13 +195,13 @@ pub fn expand_include_str(
                 base::MacEager::expr(cx.expr_str(sp, interned_src))
             }
             Err(_) => {
-                cx.dcx().span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
-                DummyResult::any(sp)
+                let guar = cx.dcx().span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
+                DummyResult::any(sp, guar)
             }
         },
         Err(e) => {
-            cx.dcx().span_err(sp, format!("couldn't read {}: {}", file.display(), e));
-            DummyResult::any(sp)
+            let guar = cx.dcx().span_err(sp, format!("couldn't read {}: {}", file.display(), e));
+            DummyResult::any(sp, guar)
         }
     }
 }
@@ -210,14 +212,15 @@ pub fn expand_include_bytes(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_bytes!") else {
-        return DummyResult::any(sp);
+    let file = match get_single_str_from_tts(cx, sp, tts, "include_bytes!") {
+        Ok(file) => file,
+        Err(guar) => return DummyResult::any(sp, guar),
     };
     let file = match resolve_path(&cx.sess, file.as_str(), sp) {
         Ok(f) => f,
         Err(err) => {
-            err.emit();
-            return DummyResult::any(sp);
+            let guar = err.emit();
+            return DummyResult::any(sp, guar);
         }
     };
     match cx.source_map().load_binary_file(&file) {
@@ -226,8 +229,8 @@ pub fn expand_include_bytes(
             base::MacEager::expr(expr)
         }
         Err(e) => {
-            cx.dcx().span_err(sp, format!("couldn't read {}: {}", file.display(), e));
-            DummyResult::any(sp)
+            let guar = cx.dcx().span_err(sp, format!("couldn't read {}: {}", file.display(), e));
+            DummyResult::any(sp, guar)
         }
     }
 }

@@ -29,8 +29,8 @@ pub fn expand_cfg(
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }
         Err(err) => {
-            err.emit();
-            DummyResult::any(sp)
+            let guar = err.emit();
+            DummyResult::any(sp, guar)
         }
     }
 }

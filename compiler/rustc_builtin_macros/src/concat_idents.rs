@@ -14,8 +14,8 @@ pub fn expand_concat_idents<'cx>(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     if tts.is_empty() {
-        cx.dcx().emit_err(errors::ConcatIdentsMissingArgs { span: sp });
-        return DummyResult::any(sp);
+        let guar = cx.dcx().emit_err(errors::ConcatIdentsMissingArgs { span: sp });
+        return DummyResult::any(sp, guar);
     }
 
     let mut res_str = String::new();
@@ -24,8 +24,8 @@ pub fn expand_concat_idents<'cx>(
             match e {
                 TokenTree::Token(Token { kind: token::Comma, .. }, _) => {}
                 _ => {
-                    cx.dcx().emit_err(errors::ConcatIdentsMissingComma { span: sp });
-                    return DummyResult::any(sp);
+                    let guar = cx.dcx().emit_err(errors::ConcatIdentsMissingComma { span: sp });
+                    return DummyResult::any(sp, guar);
                 }
             }
         } else {
@@ -36,8 +36,8 @@ pub fn expand_concat_idents<'cx>(
                 }
             }
 
-            cx.dcx().emit_err(errors::ConcatIdentsIdentArgs { span: sp });
-            return DummyResult::any(sp);
+            let guar = cx.dcx().emit_err(errors::ConcatIdentsIdentArgs { span: sp });
+            return DummyResult::any(sp, guar);
         }
     }
 
