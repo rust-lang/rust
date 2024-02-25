@@ -1922,10 +1922,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Time complexity
     ///
     /// Takes amortized *O*(1) time. If the vector's length would exceed its
-    /// capacity after the push, the capacity is doubled by allocating
-    /// *O*(*capacity*) space, then *O*(*capacity*) time to copy the vector's
-    /// elements. This expensive operation is offset by the *capacity* *O*(1)
-    /// insertions it allows.
+    /// capacity after the push, *O*(*capacity*) time is taken to copy the
+    /// vector's elements to a larger allocation. This expensive operation is
+    /// offset by the *capacity* *O*(1) insertions it allows.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
