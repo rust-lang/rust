@@ -1023,18 +1023,17 @@ struct AmbiguityCausesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
-    type BreakTy = !;
-    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_goal(&mut self, goal: &InspectGoal<'_, 'tcx>) {
         let infcx = goal.infcx();
         for cand in goal.candidates() {
-            cand.visit_nested(self)?;
+            cand.visit_nested(self);
         }
         // When searching for intercrate ambiguity causes, we only need to look
         // at ambiguous goals, as for others the coherence unknowable candidate
         // was irrelevant.
         match goal.result() {
             Ok(Certainty::Maybe(_)) => {}
-            Ok(Certainty::Yes) | Err(NoSolution) => return ControlFlow::Continue(()),
+            Ok(Certainty::Yes) | Err(NoSolution) => return,
         }
 
         let Goal { param_env, predicate } = goal.goal();
@@ -1051,7 +1050,7 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             {
                 proj.projection_ty.trait_ref(infcx.tcx)
             }
-            _ => return ControlFlow::Continue(()),
+            _ => return,
         };
 
         // Add ambiguity causes for reservation impls.
@@ -1151,8 +1150,6 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         if let Some(ambiguity_cause) = ambiguity_cause {
             self.causes.insert(ambiguity_cause);
         }
-
-        ControlFlow::Continue(())
     }
 }
 
