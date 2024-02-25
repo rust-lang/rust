@@ -742,9 +742,8 @@ pub(crate) fn adt_datum_query(
         phantom_data,
     };
 
-    #[cfg(FALSE)]
     // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
-    let variant_id_to_fields = |id: VariantId| {
+    let _variant_id_to_fields = |id: VariantId| {
         let variant_data = &id.variant_data(db.upcast());
         let fields = if variant_data.fields().is_empty() {
             vec![]
