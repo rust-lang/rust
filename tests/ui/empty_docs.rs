@@ -15,7 +15,13 @@ enum Warn {
     B,
 }
 
-enum WarnForB {
+enum WarnA {
+    ///
+    A,
+    B,
+}
+
+enum DontWarn {
     /// it's ok
     A,
     ///
@@ -23,8 +29,11 @@ enum WarnForB {
 }
 
 #[doc = ""]
-#[doc = ""]
 fn warn_about_this() {}
+
+#[doc = ""]
+#[doc = ""]
+fn this_doesn_warn() {}
 
 #[doc = "a fine function"]
 fn this_is_fine() {}
@@ -33,11 +42,20 @@ fn warn_about_this_as_well() {
     //!
 }
 
+///
+fn warn_inner_outer() {
+    //! what
+}
+
 fn this_is_ok() {
     //!
     //! inside the function
 }
 
 fn warn() {
-    /*! inside the function */
+    /*! */
+}
+
+fn dont_warn() {
+    /*! dont warn me */
 }

@@ -23,10 +23,11 @@ use rustc_resolve::rustdoc::{
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, Span, DUMMY_SP};
+use rustc_span::{sym, Span};
 use std::ops::Range;
 use url::Url;
 
+mod empty_docs;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
@@ -403,17 +404,8 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             return;
         };
 
-        if let Some(span) = get_empty_doc_combined_span(attrs, item.span)
-            && headers.empty
-        {
-            span_lint_and_help(
-                cx,
-                EMPTY_DOCS,
-                span,
-                "empty doc comment",
-                None,
-                "consider removing or filling it",
-            );
+        if headers.empty && !item.span.is_dummy() {
+            empty_docs::check(cx, attrs);
         }
 
         match item.kind {
@@ -757,22 +749,5 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
-    }
-}
-
-fn get_empty_doc_combined_span(attrs: &[Attribute], item_span: Span) -> Option<Span> {
-    let mut attrs_span = DUMMY_SP;
-    if attrs.len() > 0 {
-        attrs_span = attrs
-            .iter()
-            .map(|attr| attr.span)
-            .fold(attrs[0].span, |acc, next| acc.to(next));
-    }
-
-    match (!item_span.is_dummy(), !attrs_span.is_dummy()) {
-        (true, true) => Some(item_span.shrink_to_lo().to(attrs_span)),
-        (true, false) => Some(item_span),
-        (false, true) => Some(attrs_span),
-        (false, false) => None,
     }
 }

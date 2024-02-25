@@ -1,33 +1,26 @@
 error: empty doc comment
   --> tests/ui/empty_docs.rs:10:1
    |
-LL | / ///
-LL | | enum Warn {
-   | |_
+LL | ///
+   | ^^^
    |
    = help: consider removing or filling it
    = note: `-D clippy::empty-docs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::empty_docs)]`
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:18:1
+  --> tests/ui/empty_docs.rs:31:1
    |
-LL | / enum WarnForB {
-LL | |     /// it's ok
-LL | |     A,
-LL | |     ///
-LL | |     B,
-LL | | }
-   | |_^
+LL | #[doc = ""]
+   | ^^^^^^^^^^^
    |
    = help: consider removing or filling it
 
 error: empty doc comment
-  --> tests/ui/empty_docs.rs:32:1
+  --> tests/ui/empty_docs.rs:42:5
    |
-LL | / fn warn_about_this_as_well() {
-LL | |     //!
-   | |_______^
+LL |     //!
+   |     ^^^
    |
    = help: consider removing or filling it
 
