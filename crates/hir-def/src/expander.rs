@@ -140,13 +140,11 @@ impl Expander {
             // The overflow error should have been reported when it occurred (see the next branch),
             // so don't return overflow error here to avoid diagnostics duplication.
             cov_mark::hit!(overflow_but_not_me);
-            return ExpandResult::only_err(ExpandError::RecursionOverflowPoisoned);
+            return ExpandResult::ok(None);
         } else if self.recursion_limit.check(self.recursion_depth as usize + 1).is_err() {
             self.recursion_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
-            return ExpandResult::only_err(ExpandError::other(
-                "reached recursion limit during macro expansion",
-            ));
+            return ExpandResult::only_err(ExpandError::RecursionOverflow);
         }
 
         let ExpandResult { value, err } = op(self);

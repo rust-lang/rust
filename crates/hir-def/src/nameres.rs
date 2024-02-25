@@ -57,7 +57,7 @@ pub mod proc_macro;
 #[cfg(test)]
 mod tests;
 
-use std::{cmp::Ord, ops::Deref};
+use std::ops::Deref;
 
 use base_db::{CrateId, Edition, FileId};
 use hir_expand::{

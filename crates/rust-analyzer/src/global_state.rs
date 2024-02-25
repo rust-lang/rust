@@ -9,7 +9,7 @@ use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
 use hir::Change;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId};
-use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
+use ide_db::base_db::{CrateId, ProcMacroPaths};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
 use nohash_hasher::IntMap;
@@ -74,8 +74,8 @@ pub(crate) struct GlobalState {
     pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
 
     // proc macros
-    pub(crate) proc_macro_changed: bool,
     pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
+    pub(crate) build_deps_changed: bool,
 
     // Flycheck
     pub(crate) flycheck: Arc<[FlycheckHandle]>,
@@ -203,8 +203,9 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
             config_errors: Default::default(),
 
-            proc_macro_changed: false,
             proc_macro_clients: Arc::from_iter([]),
+
+            build_deps_changed: false,
 
             flycheck: Arc::from_iter([]),
             flycheck_sender,
@@ -346,8 +347,14 @@ impl GlobalState {
         };
 
         self.analysis_host.apply_change(change);
+
         {
-            let raw_database = self.analysis_host.raw_database();
+            if !matches!(&workspace_structure_change, Some((.., true))) {
+                _ = self
+                    .deferred_task_queue
+                    .sender
+                    .send(crate::main_loop::QueuedTask::CheckProcMacroSources(modified_rust_files));
+            }
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
             // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
@@ -357,12 +364,6 @@ impl GlobalState {
                     force_crate_graph_reload,
                 );
             }
-            self.proc_macro_changed = modified_rust_files.into_iter().any(|file_id| {
-                let crates = raw_database.relevant_crates(file_id);
-                let crate_graph = raw_database.crate_graph();
-
-                crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
-            });
         }
 
         true

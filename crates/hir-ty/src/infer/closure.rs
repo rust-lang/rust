@@ -485,6 +485,7 @@ impl InferenceContext<'_> {
                         Statement::Expr { expr, has_semi: _ } => {
                             self.consume_expr(*expr);
                         }
+                        Statement::Item => (),
                     }
                 }
                 if let Some(tail) = tail {
@@ -530,6 +531,9 @@ impl InferenceContext<'_> {
                 if let &Some(expr) = expr {
                     self.consume_expr(expr);
                 }
+            }
+            &Expr::Become { expr } => {
+                self.consume_expr(expr);
             }
             Expr::RecordLit { fields, spread, .. } => {
                 if let &Some(expr) = spread {

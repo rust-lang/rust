@@ -8,12 +8,10 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use flycheck::FlycheckHandle;
-use ide_db::base_db::{SourceDatabaseExt, VfsPath};
+use ide_db::base_db::{SourceDatabase, SourceDatabaseExt, VfsPath};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use stdx::thread::ThreadIntent;
-use triomphe::Arc;
 use vfs::FileId;
 
 use crate::{
@@ -77,6 +75,7 @@ impl fmt::Display for Event {
 #[derive(Debug)]
 pub(crate) enum QueuedTask {
     CheckIfIndexed(lsp_types::Url),
+    CheckProcMacroSources(Vec<FileId>),
 }
 
 #[derive(Debug)]
@@ -89,6 +88,7 @@ pub(crate) enum Task {
     FetchWorkspace(ProjectWorkspaceProgress),
     FetchBuildData(BuildDataProgress),
     LoadProcMacros(ProcMacroProgress),
+    BuildDepsHaveChanged,
 }
 
 #[derive(Debug)]
@@ -337,7 +337,7 @@ impl GlobalState {
             if became_quiescent {
                 if self.config.check_on_save() {
                     // Project has loaded properly, kick off initial flycheck
-                    self.flycheck.iter().for_each(FlycheckHandle::restart_workspace);
+                    self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
                 if self.config.prefill_caches() {
                     self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
@@ -358,9 +358,7 @@ impl GlobalState {
                 }
 
                 // Refresh inlay hints if the client supports it.
-                if (self.send_hint_refresh_query || self.proc_macro_changed)
-                    && self.config.inlay_hints_refresh()
-                {
+                if self.send_hint_refresh_query && self.config.inlay_hints_refresh() {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
                     self.send_hint_refresh_query = false;
                 }
@@ -555,16 +553,7 @@ impl GlobalState {
                         if let Err(e) = self.fetch_workspace_error() {
                             tracing::error!("FetchWorkspaceError:\n{e}");
                         }
-
-                        let old = Arc::clone(&self.workspaces);
                         self.switch_workspaces("fetched workspace".to_owned());
-                        let workspaces_updated = !Arc::ptr_eq(&old, &self.workspaces);
-
-                        if self.config.run_build_scripts() && workspaces_updated {
-                            self.fetch_build_data_queue
-                                .request_op("workspace updated".to_owned(), ());
-                        }
-
                         (Progress::End, None)
                     }
                 };
@@ -608,6 +597,7 @@ impl GlobalState {
                     self.report_progress("Loading", state, msg, None, None);
                 }
             }
+            Task::BuildDepsHaveChanged => self.build_deps_changed = true,
         }
     }
 
@@ -682,6 +672,25 @@ impl GlobalState {
                             sender.send(Task::ClientNotification(params)).unwrap();
                         } else {
                             tracing::debug!(?uri, "is indexed");
+                        }
+                    }
+                });
+            }
+            QueuedTask::CheckProcMacroSources(modified_rust_files) => {
+                let crate_graph = self.analysis_host.raw_database().crate_graph();
+                let snap = self.snapshot();
+                self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
+                    move |sender| {
+                        if modified_rust_files.into_iter().any(|file_id| {
+                            // FIXME: Check whether these files could be build script related
+                            match snap.analysis.crates_for(file_id) {
+                                Ok(crates) => {
+                                    crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
+                                }
+                                _ => false,
+                            }
+                        }) {
+                            sender.send(Task::BuildDepsHaveChanged).unwrap();
                         }
                     }
                 });

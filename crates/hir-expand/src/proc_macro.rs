@@ -12,7 +12,13 @@ use syntax::SmolStr;
 use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ProcMacroId(pub u32);
+pub struct ProcMacroId(u32);
+
+impl ProcMacroId {
+    pub fn new(u32: u32) -> Self {
+        ProcMacroId(u32)
+    }
+}
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum ProcMacroKind {
@@ -49,6 +55,7 @@ pub struct ProcMacro {
     pub name: SmolStr,
     pub kind: ProcMacroKind,
     pub expander: sync::Arc<dyn ProcMacroExpander>,
+    pub disabled: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -56,20 +63,35 @@ pub struct CustomProcMacroExpander {
     proc_macro_id: ProcMacroId,
 }
 
-const DUMMY_ID: u32 = !0;
-
 impl CustomProcMacroExpander {
+    const DUMMY_ID: u32 = !0;
+    const DISABLED_ID: u32 = !1;
+
     pub fn new(proc_macro_id: ProcMacroId) -> Self {
-        assert_ne!(proc_macro_id.0, DUMMY_ID);
+        assert_ne!(proc_macro_id.0, Self::DUMMY_ID);
+        assert_ne!(proc_macro_id.0, Self::DISABLED_ID);
         Self { proc_macro_id }
     }
 
-    pub fn dummy() -> Self {
-        Self { proc_macro_id: ProcMacroId(DUMMY_ID) }
+    /// A dummy expander that always errors. This is used for proc-macros that are missing, usually
+    /// due to them not being built yet.
+    pub const fn dummy() -> Self {
+        Self { proc_macro_id: ProcMacroId(Self::DUMMY_ID) }
     }
 
-    pub fn is_dummy(&self) -> bool {
-        self.proc_macro_id.0 == DUMMY_ID
+    /// The macro was not yet resolved.
+    pub const fn is_dummy(&self) -> bool {
+        self.proc_macro_id.0 == Self::DUMMY_ID
+    }
+
+    /// A dummy expander that always errors. This expander is used for macros that have been disabled.
+    pub const fn disabled() -> Self {
+        Self { proc_macro_id: ProcMacroId(Self::DISABLED_ID) }
+    }
+
+    /// The macro is explicitly disabled and cannot be expanded.
+    pub const fn is_disabled(&self) -> bool {
+        self.proc_macro_id.0 == Self::DISABLED_ID
     }
 
     pub fn expand(
@@ -84,9 +106,13 @@ impl CustomProcMacroExpander {
         mixed_site: Span,
     ) -> ExpandResult<tt::Subtree> {
         match self.proc_macro_id {
-            ProcMacroId(DUMMY_ID) => ExpandResult::new(
+            ProcMacroId(Self::DUMMY_ID) => ExpandResult::new(
                 tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::UnresolvedProcMacro(def_crate),
+            ),
+            ProcMacroId(Self::DISABLED_ID) => ExpandResult::new(
+                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                ExpandError::MacroDisabled,
             ),
             ProcMacroId(id) => {
                 let proc_macros = db.proc_macros();
@@ -110,7 +136,7 @@ impl CustomProcMacroExpander {
                         );
                         return ExpandResult::new(
                             tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
-                            ExpandError::other("Internal error"),
+                            ExpandError::other("Internal error: proc-macro index out of bounds"),
                         );
                     }
                 };

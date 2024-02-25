@@ -16,6 +16,7 @@ use ide::{
     ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
+use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -52,7 +53,7 @@ use crate::{
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     state.proc_macro_clients = Arc::from_iter([]);
-    state.proc_macro_changed = false;
+    state.build_deps_changed = false;
 
     state.fetch_workspaces_queue.request_op("reload workspace request".to_owned(), false);
     Ok(())
@@ -60,7 +61,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow:
 
 pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
     state.proc_macro_clients = Arc::from_iter([]);
-    state.proc_macro_changed = false;
+    state.build_deps_changed = false;
 
     state.fetch_build_data_queue.request_op("rebuild proc macros request".to_owned(), ());
     Ok(())
@@ -1017,10 +1018,8 @@ pub(crate) fn handle_rename(
     let _p = tracing::span!(tracing::Level::INFO, "handle_rename").entered();
     let position = from_proto::file_position(&snap, params.text_document_position)?;
 
-    let mut change = snap
-        .analysis
-        .rename(position, &params.new_name, snap.config.rename())?
-        .map_err(to_proto::rename_error)?;
+    let mut change =
+        snap.analysis.rename(position, &params.new_name)?.map_err(to_proto::rename_error)?;
 
     // this is kind of a hack to prevent double edits from happening when moving files
     // When a module gets renamed by renaming the mod declaration this causes the file to move
@@ -1057,9 +1056,8 @@ pub(crate) fn handle_references(
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
     let exclude_tests = snap.config.find_all_refs_exclude_tests();
 
-    let refs = match snap.analysis.find_all_refs(position, None)? {
-        None => return Ok(None),
-        Some(refs) => refs,
+    let Some(refs) = snap.analysis.find_all_refs(position, None)? else {
+        return Ok(None);
     };
 
     let include_declaration = params.context.include_declaration;
@@ -1086,6 +1084,7 @@ pub(crate) fn handle_references(
                 })
                 .chain(decl)
         })
+        .unique()
         .filter_map(|frange| to_proto::location(&snap, frange).ok())
         .collect();
 
@@ -1804,10 +1803,10 @@ fn show_ref_command_link(
                 .into_iter()
                 .flat_map(|res| res.references)
                 .flat_map(|(file_id, ranges)| {
-                    ranges.into_iter().filter_map(move |(range, _)| {
-                        to_proto::location(snap, FileRange { file_id, range }).ok()
-                    })
+                    ranges.into_iter().map(move |(range, _)| FileRange { file_id, range })
                 })
+                .unique()
+                .filter_map(|range| to_proto::location(snap, range).ok())
                 .collect();
             let title = to_proto::reference_title(locations.len());
             let command = to_proto::command::show_references(title, &uri, position, locations);
@@ -1937,6 +1936,7 @@ fn run_rustfmt(
 
     let mut command = match snap.config.rustfmt() {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
+            // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = process::Command::new(toolchain::rustfmt());
             cmd.envs(snap.config.extra_env());
             cmd.args(extra_args);

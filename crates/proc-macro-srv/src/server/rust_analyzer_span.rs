@@ -70,11 +70,69 @@ impl server::FreeFunctions for RaSpanServer {
         &mut self,
         s: &str,
     ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
-        // FIXME: keep track of LitKind and Suffix
+        use proc_macro::bridge::LitKind;
+        use rustc_lexer::{LiteralKind, Token, TokenKind};
+
+        let mut tokens = rustc_lexer::tokenize(s);
+        let minus_or_lit = tokens.next().unwrap_or(Token { kind: TokenKind::Eof, len: 0 });
+
+        let lit = if minus_or_lit.kind == TokenKind::Minus {
+            let lit = tokens.next().ok_or(())?;
+            if !matches!(
+                lit.kind,
+                TokenKind::Literal {
+                    kind: LiteralKind::Int { .. } | LiteralKind::Float { .. },
+                    ..
+                }
+            ) {
+                return Err(());
+            }
+            lit
+        } else {
+            minus_or_lit
+        };
+
+        if tokens.next().is_some() {
+            return Err(());
+        }
+
+        let TokenKind::Literal { kind, suffix_start } = lit.kind else { return Err(()) };
+        let (kind, start_offset, end_offset) = match kind {
+            LiteralKind::Int { .. } => (LitKind::Integer, 0, 0),
+            LiteralKind::Float { .. } => (LitKind::Float, 0, 0),
+            LiteralKind::Char { terminated } => (LitKind::Char, 1, terminated as usize),
+            LiteralKind::Byte { terminated } => (LitKind::Byte, 2, terminated as usize),
+            LiteralKind::Str { terminated } => (LitKind::Str, 1, terminated as usize),
+            LiteralKind::ByteStr { terminated } => (LitKind::ByteStr, 2, terminated as usize),
+            LiteralKind::CStr { terminated } => (LitKind::CStr, 2, terminated as usize),
+            LiteralKind::RawStr { n_hashes } => (
+                LitKind::StrRaw(n_hashes.unwrap_or_default()),
+                2 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+            LiteralKind::RawByteStr { n_hashes } => (
+                LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+                3 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+            LiteralKind::RawCStr { n_hashes } => (
+                LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+                3 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+        };
+
+        let (lit, suffix) = s.split_at(suffix_start as usize);
+        let lit = &lit[start_offset..lit.len() - end_offset];
+        let suffix = match suffix {
+            "" | "_" => None,
+            suffix => Some(Symbol::intern(self.interner, suffix)),
+        };
+
         Ok(bridge::Literal {
-            kind: bridge::LitKind::Err,
-            symbol: Symbol::intern(self.interner, s),
-            suffix: None,
+            kind,
+            symbol: Symbol::intern(self.interner, lit),
+            suffix,
             span: self.call_site,
         })
     }
@@ -201,12 +259,8 @@ impl server::TokenStream for RaSpanServer {
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
-                        // FIXME: handle literal kinds
-                        kind: bridge::LitKind::Err,
-                        symbol: Symbol::intern(self.interner, &lit.text),
-                        // FIXME: handle suffixes
-                        suffix: None,
                         span: lit.span,
+                        ..server::FreeFunctions::literal_from_str(self, &lit.text).unwrap()
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {

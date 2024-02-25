@@ -4,7 +4,7 @@ use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
 use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
-use project_model::{self, CargoFeatures, ManifestPath, TargetKind};
+use project_model::{CargoFeatures, ManifestPath, TargetKind};
 use rustc_hash::FxHashSet;
 use vfs::AbsPathBuf;
 
@@ -174,7 +174,7 @@ impl CargoTargetSpec {
                 buf.push("--example".to_owned());
                 buf.push(self.target);
             }
-            TargetKind::Lib => {
+            TargetKind::Lib { is_proc_macro: _ } => {
                 buf.push("--lib".to_owned());
             }
             TargetKind::Other | TargetKind::BuildScript => (),
@@ -208,7 +208,6 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
-    use cfg::CfgExpr;
     use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},

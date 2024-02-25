@@ -335,8 +335,8 @@ fn main() {
             r#"
 struct Foo { bar: i32 }
 fn foo() {
-    Foo { bar: i32 }.bar();
-                  // ^^^ error: no method `bar` on type `Foo`, but a field with a similar name exists
+    Foo { bar: 0 }.bar();
+                // ^^^ error: no method `bar` on type `Foo`, but a field with a similar name exists
 }
 "#,
         );

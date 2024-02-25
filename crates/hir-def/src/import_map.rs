@@ -3,7 +3,7 @@
 use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
-use fst::{self, raw::IndexedValue, Automaton, Streamer};
+use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir_expand::name::Name;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -477,7 +477,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_fixture::WithFixture;
 
-    use crate::{db::DefDatabase, test_db::TestDB, ItemContainerId, Lookup};
+    use crate::{test_db::TestDB, ItemContainerId, Lookup};
 
     use super::*;
 

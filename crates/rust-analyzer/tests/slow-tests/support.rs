@@ -101,8 +101,13 @@ impl Project<'_> {
             };
         });
 
-        let FixtureWithProjectMeta { fixture, mini_core, proc_macro_names, toolchain } =
-            FixtureWithProjectMeta::parse(self.fixture);
+        let FixtureWithProjectMeta {
+            fixture,
+            mini_core,
+            proc_macro_names,
+            toolchain,
+            target_data_layout: _,
+        } = FixtureWithProjectMeta::parse(self.fixture);
         assert!(proc_macro_names.is_empty());
         assert!(mini_core.is_none());
         assert!(toolchain.is_none());
@@ -238,7 +243,7 @@ impl Server {
                             to_string_pretty(actual_part).unwrap(),
                         );
                 } else {
-                    tracing::debug!("sucessfully matched notification");
+                    tracing::debug!("successfully matched notification");
                     return;
                 }
             } else {

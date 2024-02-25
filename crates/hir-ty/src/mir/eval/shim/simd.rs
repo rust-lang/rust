@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 
+use crate::consteval::try_const_usize;
 use crate::TyKind;
 
 use super::*;

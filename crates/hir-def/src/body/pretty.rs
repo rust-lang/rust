@@ -6,8 +6,8 @@ use itertools::Itertools;
 
 use crate::{
     hir::{
-        Array, BindingAnnotation, BindingId, CaptureBy, ClosureKind, Literal, LiteralOrConst,
-        Movability, Statement,
+        Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, LiteralOrConst, Movability,
+        Statement,
     },
     pretty::{print_generic_args, print_path, print_type_ref},
     type_ref::TypeRef,
@@ -260,6 +260,11 @@ impl Printer<'_> {
                     self.whitespace();
                     self.print_expr(*expr);
                 }
+            }
+            Expr::Become { expr } => {
+                w!(self, "become");
+                self.whitespace();
+                self.print_expr(*expr);
             }
             Expr::Yield { expr } => {
                 w!(self, "yield");
@@ -623,6 +628,7 @@ impl Printer<'_> {
                 }
                 wln!(self);
             }
+            Statement::Item => (),
         }
     }
 

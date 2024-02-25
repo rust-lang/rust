@@ -44,7 +44,6 @@ use crate::{
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::{ExpandDatabase, TokenExpander},
-    fixup::SyntaxFixupUndoInfo,
     hygiene::SyntaxContextData,
     mod_path::ModPath,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
@@ -129,8 +128,11 @@ pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ExpandError {
     UnresolvedProcMacro(CrateId),
+    /// The macro expansion is disabled.
+    MacroDisabled,
+    MacroDefinition,
     Mbe(mbe::ExpandError),
-    RecursionOverflowPoisoned,
+    RecursionOverflow,
     Other(Box<Box<str>>),
     ProcMacroPanic(Box<Box<str>>),
 }
@@ -152,14 +154,14 @@ impl fmt::Display for ExpandError {
         match self {
             ExpandError::UnresolvedProcMacro(_) => f.write_str("unresolved proc-macro"),
             ExpandError::Mbe(it) => it.fmt(f),
-            ExpandError::RecursionOverflowPoisoned => {
-                f.write_str("overflow expanding the original macro")
-            }
+            ExpandError::RecursionOverflow => f.write_str("overflow expanding the original macro"),
             ExpandError::ProcMacroPanic(it) => {
                 f.write_str("proc-macro panicked: ")?;
                 f.write_str(it)
             }
             ExpandError::Other(it) => f.write_str(it),
+            ExpandError::MacroDisabled => f.write_str("macro disabled"),
+            ExpandError::MacroDefinition => f.write_str("macro definition has parse errors"),
         }
     }
 }
@@ -225,8 +227,8 @@ pub enum MacroCallKind {
     },
     Attr {
         ast_id: AstId<ast::Item>,
-        // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
-        // leakage problems here
+        // FIXME: This shouldn't be here, we can derive this from `invoc_attr_index`
+        // but we need to fix the `cfg_attr` handling first.
         attr_args: Option<Arc<tt::Subtree>>,
         /// Syntactical index of the invoking `#[attribute]`.
         ///
@@ -758,15 +760,7 @@ impl ExpansionInfo {
         let (parse, exp_map) = db.parse_macro_expansion(macro_file).value;
         let expanded = InMacroFile { file_id: macro_file, value: parse.syntax_node() };
 
-        let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
-            (
-                Arc::new(tt::Subtree {
-                    delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
-                    token_trees: Box::new([]),
-                }),
-                SyntaxFixupUndoInfo::NONE,
-            )
-        });
+        let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id).value;
 
         let def = loc.def.ast_id().left().and_then(|id| {
             let def_tt = match id.to_node(db) {

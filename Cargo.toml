@@ -84,7 +84,7 @@ ra-ap-rustc_lexer = { version = "0.35.0", default-features = false }
 ra-ap-rustc_parse_format = { version = "0.35.0", default-features = false }
 ra-ap-rustc_index = { version = "0.35.0", default-features = false }
 ra-ap-rustc_abi = { version = "0.35.0", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.36.0", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.37.0", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 sourcegen = { path = "./crates/sourcegen" }

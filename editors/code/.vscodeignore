@@ -12,3 +12,6 @@
 !ra_syntax_tree.tmGrammar.json
 !server
 !README.md
+!language-configuration-rustdoc.json
+!rustdoc-inject.json
+!rustdoc.json

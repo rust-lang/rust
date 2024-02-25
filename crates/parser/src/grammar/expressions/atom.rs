@@ -58,6 +58,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T![match],
         T![move],
         T![return],
+        T![become],
         T![static],
         T![try],
         T![unsafe],
@@ -102,6 +103,7 @@ pub(super) fn atom_expr(
         T![try] => try_block_expr(p, None),
         T![match] => match_expr(p),
         T![return] => return_expr(p),
+        T![become] => become_expr(p),
         T![yield] => yield_expr(p),
         T![do] if p.nth_at_contextual_kw(1, T![yeet]) => yeet_expr(p),
         T![continue] => continue_expr(p),
@@ -619,6 +621,18 @@ fn return_expr(p: &mut Parser<'_>) -> CompletedMarker {
         expr(p);
     }
     m.complete(p, RETURN_EXPR)
+}
+
+// test become_expr
+// fn foo() {
+//     become foo();
+// }
+fn become_expr(p: &mut Parser<'_>) -> CompletedMarker {
+    assert!(p.at(T![become]));
+    let m = p.start();
+    p.bump(T![become]);
+    expr(p);
+    m.complete(p, BECOME_EXPR)
 }
 
 // test yield_expr

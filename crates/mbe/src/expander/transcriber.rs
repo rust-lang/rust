@@ -101,10 +101,20 @@ impl<S: Span> Bindings<S> {
                         })))
                     }
                     MetaVarKind::Lifetime => {
-                        Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                            text: SmolStr::new_static("'missing"),
-                            span,
-                        })))
+                        Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
+                            delimiter: tt::Delimiter::invisible_spanned(span),
+                            token_trees: Box::new([
+                                tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+                                    char: '\'',
+                                    span,
+                                    spacing: tt::Spacing::Joint,
+                                })),
+                                tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                                    text: SmolStr::new_static("missing"),
+                                    span,
+                                })),
+                            ]),
+                        }))
                     }
                     MetaVarKind::Literal => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {

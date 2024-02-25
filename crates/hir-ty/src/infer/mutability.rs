@@ -65,6 +65,7 @@ impl InferenceContext<'_> {
                         Statement::Expr { expr, has_semi: _ } => {
                             self.infer_mut_expr(*expr, Mutability::Not);
                         }
+                        Statement::Item => (),
                     }
                 }
                 if let Some(tail) = tail {
@@ -92,6 +93,9 @@ impl InferenceContext<'_> {
                 if let &Some(expr) = expr {
                     self.infer_mut_expr(expr, Mutability::Not);
                 }
+            }
+            Expr::Become { expr } => {
+                self.infer_mut_expr(*expr, Mutability::Not);
             }
             Expr::RecordLit { path: _, fields, spread, ellipsis: _, is_assignee_expr: _ } => {
                 self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))

@@ -94,6 +94,21 @@ impl ModPath {
             }
     }
 
+    pub fn textual_len(&self) -> usize {
+        let base = match self.kind {
+            PathKind::Plain => 0,
+            PathKind::Super(0) => "self".len(),
+            PathKind::Super(i) => "super".len() * i as usize,
+            PathKind::Crate => "crate".len(),
+            PathKind::Abs => 0,
+            PathKind::DollarCrate(_) => "$crate".len(),
+        };
+        self.segments()
+            .iter()
+            .map(|segment| segment.as_str().map_or(0, str::len))
+            .fold(base, core::ops::Add::add)
+    }
+
     pub fn is_ident(&self) -> bool {
         self.as_ident().is_some()
     }

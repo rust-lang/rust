@@ -225,10 +225,10 @@ impl S {
 fn foo() { let _ = lib::S::$0 }
 "#,
         expect![[r#"
-                ct PUBLIC_CONST    pub const PUBLIC_CONST: u32
-                fn public_method() fn()
-                ta PublicType      pub type PublicType = u32
-            "#]],
+            ct PUBLIC_CONST    pub const PUBLIC_CONST: u32
+            fn public_method() fn()
+            ta PublicType      pub type PublicType = u32
+        "#]],
     );
 }
 
@@ -242,8 +242,8 @@ impl U { fn m() { } }
 fn foo() { let _ = U::$0 }
 "#,
         expect![[r#"
-                fn m() fn()
-            "#]],
+            fn m() fn()
+        "#]],
     );
 }
 
@@ -256,8 +256,8 @@ trait Trait { fn m(); }
 fn foo() { let _ = Trait::$0 }
 "#,
         expect![[r#"
-                fn m() (as Trait) fn()
-            "#]],
+            fn m() (as Trait) fn()
+        "#]],
     );
 }
 
@@ -273,8 +273,8 @@ impl Trait for S {}
 fn foo() { let _ = S::$0 }
 "#,
         expect![[r#"
-                fn m() (as Trait) fn()
-            "#]],
+            fn m() (as Trait) fn()
+        "#]],
     );
 }
 
@@ -290,8 +290,8 @@ impl Trait for S {}
 fn foo() { let _ = <S as Trait>::$0 }
 "#,
         expect![[r#"
-                fn m() (as Trait) fn()
-            "#]],
+            fn m() (as Trait) fn()
+        "#]],
     );
 }
 
@@ -396,9 +396,9 @@ macro_rules! foo { () => {} }
 fn main() { let _ = crate::$0 }
 "#,
         expect![[r#"
-                fn main()  fn()
-                ma foo!(…) macro_rules! foo
-            "#]],
+            fn main()  fn()
+            ma foo!(…) macro_rules! foo
+        "#]],
     );
 }
 
@@ -694,8 +694,10 @@ fn bar() -> Bar {
 }
 "#,
         expect![[r#"
-                fn foo() (as Foo) fn() -> Self
-            "#]],
+            fn foo() (as Foo) fn() -> Self
+            ex Bar
+            ex bar()
+        "#]],
     );
 }
 
@@ -722,6 +724,8 @@ fn bar() -> Bar {
         expect![[r#"
             fn bar()          fn()
             fn foo() (as Foo) fn() -> Self
+            ex Bar
+            ex bar()
         "#]],
     );
 }
@@ -748,6 +752,8 @@ fn bar() -> Bar {
 "#,
         expect![[r#"
             fn foo() (as Foo) fn() -> Self
+            ex Bar
+            ex bar()
         "#]],
     );
 }

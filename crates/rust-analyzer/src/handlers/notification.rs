@@ -145,11 +145,11 @@ pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
-    if state.config.script_rebuild_on_save() && state.proc_macro_changed {
-        // reset the flag
-        state.proc_macro_changed = false;
-        // rebuild the proc macros
-        state.fetch_build_data_queue.request_op("ScriptRebuildOnSave".to_owned(), ());
+    if state.config.script_rebuild_on_save() && state.build_deps_changed {
+        state.build_deps_changed = false;
+        state
+            .fetch_build_data_queue
+            .request_op("build_deps_changed - save notification".to_owned(), ());
     }
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
@@ -158,7 +158,7 @@ pub(crate) fn handle_did_save_text_document(
             if reload::should_refresh_for_change(abs_path, ChangeKind::Modify) {
                 state
                     .fetch_workspaces_queue
-                    .request_op(format!("DidSaveTextDocument {abs_path}"), false);
+                    .request_op(format!("workspace vfs file change saved {abs_path}"), false);
             }
         }
 
@@ -168,7 +168,7 @@ pub(crate) fn handle_did_save_text_document(
     } else if state.config.check_on_save() {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
-            flycheck.restart_workspace();
+            flycheck.restart_workspace(None);
         }
     }
     Ok(())
@@ -314,6 +314,8 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 Some((idx, package))
             });
 
+            let saved_file = vfs_path.as_path().map(|p| p.to_owned());
+
             // Find and trigger corresponding flychecks
             for flycheck in world.flycheck.iter() {
                 for (id, package) in workspace_ids.clone() {
@@ -321,7 +323,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                         updated = true;
                         match package.filter(|_| !world.config.flycheck_workspace()) {
                             Some(package) => flycheck.restart_for_package(package),
-                            None => flycheck.restart_workspace(),
+                            None => flycheck.restart_workspace(saved_file.clone()),
                         }
                         continue;
                     }
@@ -330,7 +332,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
             // No specific flycheck was triggered, so let's trigger all of them.
             if !updated {
                 for flycheck in world.flycheck.iter() {
-                    flycheck.restart_workspace();
+                    flycheck.restart_workspace(saved_file.clone());
                 }
             }
             Ok(())
@@ -372,7 +374,7 @@ pub(crate) fn handle_run_flycheck(
     }
     // No specific flycheck was triggered, so let's trigger all of them.
     for flycheck in state.flycheck.iter() {
-        flycheck.restart_workspace();
+        flycheck.restart_workspace(None);
     }
     Ok(())
 }

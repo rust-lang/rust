@@ -97,8 +97,8 @@ m2!(x
 macro_rules! m1 { ($x:ident) => { ($x } }
 macro_rules! m2 { ($x:ident) => {} }
 
-/* error: invalid macro definition: expected subtree */
-/* error: invalid token tree */
+/* error: macro definition has parse errors */
+/* error: mismatched delimiters */
 "#]],
     )
 }

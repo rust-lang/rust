@@ -126,11 +126,6 @@ pub struct Fixture {
     ///
     /// Syntax: `library`
     pub library: bool,
-    /// Specifies LLVM data layout to be used.
-    ///
-    /// You probably don't want to manually specify this. See LLVM manual for the
-    /// syntax, if you must: https://llvm.org/docs/LangRef.html#data-layout
-    pub target_data_layout: Option<String>,
     /// Actual file contents. All meta comments are stripped.
     pub text: String,
 }
@@ -145,6 +140,11 @@ pub struct FixtureWithProjectMeta {
     pub mini_core: Option<MiniCore>,
     pub proc_macro_names: Vec<String>,
     pub toolchain: Option<String>,
+    /// Specifies LLVM data layout to be used.
+    ///
+    /// You probably don't want to manually specify this. See LLVM manual for the
+    /// syntax, if you must: https://llvm.org/docs/LangRef.html#data-layout
+    pub target_data_layout: String,
 }
 
 impl FixtureWithProjectMeta {
@@ -172,6 +172,8 @@ impl FixtureWithProjectMeta {
         let fixture = trim_indent(ra_fixture);
         let mut fixture = fixture.as_str();
         let mut toolchain = None;
+        let mut target_data_layout =
+            "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_owned();
         let mut mini_core = None;
         let mut res: Vec<Fixture> = Vec::new();
         let mut proc_macro_names = vec![];
@@ -179,6 +181,12 @@ impl FixtureWithProjectMeta {
         if let Some(meta) = fixture.strip_prefix("//- toolchain:") {
             let (meta, remain) = meta.split_once('\n').unwrap();
             toolchain = Some(meta.trim().to_owned());
+            fixture = remain;
+        }
+
+        if let Some(meta) = fixture.strip_prefix("//- target_data_layout:") {
+            let (meta, remain) = meta.split_once('\n').unwrap();
+            target_data_layout = meta.trim().to_owned();
             fixture = remain;
         }
 
@@ -225,7 +233,7 @@ impl FixtureWithProjectMeta {
             }
         }
 
-        Self { fixture: res, mini_core, proc_macro_names, toolchain }
+        Self { fixture: res, mini_core, proc_macro_names, toolchain, target_data_layout }
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
@@ -245,9 +253,6 @@ impl FixtureWithProjectMeta {
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = None;
         let mut library = false;
-        let mut target_data_layout = Some(
-            "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_owned(),
-        );
         for component in components {
             if component == "library" {
                 library = true;
@@ -284,7 +289,6 @@ impl FixtureWithProjectMeta {
                     }
                 }
                 "new_source_root" => introduce_new_source_root = Some(value.to_owned()),
-                "target_data_layout" => target_data_layout = Some(value.to_owned()),
                 _ => panic!("bad component: {component:?}"),
             }
         }
@@ -307,7 +311,6 @@ impl FixtureWithProjectMeta {
             env,
             introduce_new_source_root,
             library,
-            target_data_layout,
         }
     }
 }
@@ -476,16 +479,21 @@ fn parse_fixture_checks_further_indented_metadata() {
 
 #[test]
 fn parse_fixture_gets_full_meta() {
-    let FixtureWithProjectMeta { fixture: parsed, mini_core, proc_macro_names, toolchain } =
-        FixtureWithProjectMeta::parse(
-            r#"
+    let FixtureWithProjectMeta {
+        fixture: parsed,
+        mini_core,
+        proc_macro_names,
+        toolchain,
+        target_data_layout: _,
+    } = FixtureWithProjectMeta::parse(
+        r#"
 //- toolchain: nightly
 //- proc_macros: identity
 //- minicore: coerce_unsized
 //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
 mod m;
 "#,
-        );
+    );
     assert_eq!(toolchain, Some("nightly".to_owned()));
     assert_eq!(proc_macro_names, vec!["identity".to_owned()]);
     assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_owned()]);

@@ -60,6 +60,8 @@
 //!     try: infallible
 //!     unpin: sized
 //!     unsize: sized
+//!     todo: panic
+//!     unimplemented: panic
 
 #![rustc_coherence_is_core]
 
@@ -927,6 +929,10 @@ pub mod fmt {
                 use crate::mem::transmute;
                 unsafe { Argument { formatter: transmute(f), value: transmute(x) } }
             }
+
+            pub fn new_display<'b, T: Display>(x: &'b T) -> Argument<'_> {
+                Self::new(x, Display::fmt)
+            }
         }
 
         #[lang = "format_alignment"]
@@ -1437,6 +1443,33 @@ mod macros {
     }
 
     // endregion:fmt
+
+    // region:todo
+    #[macro_export]
+    #[allow_internal_unstable(core_panic)]
+    macro_rules! todo {
+        () => {
+            $crate::panicking::panic("not yet implemented")
+        };
+        ($($arg:tt)+) => {
+            $crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+))
+        };
+    }
+    // endregion:todo
+
+    // region:unimplemented
+    #[macro_export]
+    #[allow_internal_unstable(core_panic)]
+    macro_rules! unimplemented {
+        () => {
+            $crate::panicking::panic("not implemented")
+        };
+        ($($arg:tt)+) => {
+            $crate::panic!("not implemented: {}", $crate::format_args!($($arg)+))
+        };
+    }
+    // endregion:unimplemented
+
 
     // region:derive
     pub(crate) mod builtin {

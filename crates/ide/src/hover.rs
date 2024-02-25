@@ -147,7 +147,7 @@ fn hover_simple(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         cov_mark::hit!(no_highlight_on_comment_hover);
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
-            let res = hover_for_definition(sema, file_id, def, &node, config)?;
+            let res = hover_for_definition(sema, file_id, def, &node, config);
             Some(RangeInfo::new(range, res))
         });
     }
@@ -161,7 +161,7 @@ fn hover_simple(
             Definition::from(resolution?),
             &original_token.parent()?,
             config,
-        )?;
+        );
         return Some(RangeInfo::new(range, res));
     }
 
@@ -215,7 +215,7 @@ fn hover_simple(
                 })
                 .flatten()
                 .unique_by(|&(def, _)| def)
-                .filter_map(|(def, node)| hover_for_definition(sema, file_id, def, &node, config))
+                .map(|(def, node)| hover_for_definition(sema, file_id, def, &node, config))
                 .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
                     acc.actions.extend(actions);
                     acc.markup = Markup::from(format!("{}\n---\n{markup}", acc.markup));
@@ -373,9 +373,9 @@ pub(crate) fn hover_for_definition(
     def: Definition,
     scope_node: &SyntaxNode,
     config: &HoverConfig,
-) -> Option<HoverResult> {
+) -> HoverResult {
     let famous_defs = match &def {
-        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(scope_node)?.krate())),
+        Definition::BuiltinType(_) => sema.scope(scope_node).map(|it| FamousDefs(sema, it.krate())),
         _ => None,
     };
 
@@ -396,20 +396,19 @@ pub(crate) fn hover_for_definition(
     };
     let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
 
-    render::definition(sema.db, def, famous_defs.as_ref(), &notable_traits, config).map(|markup| {
-        HoverResult {
-            markup: render::process_markup(sema.db, def, &markup, config),
-            actions: [
-                show_implementations_action(sema.db, def),
-                show_fn_references_action(sema.db, def),
-                runnable_action(sema, def, file_id),
-                goto_type_action_for_def(sema.db, def, &notable_traits),
-            ]
-            .into_iter()
-            .flatten()
-            .collect(),
-        }
-    })
+    let markup = render::definition(sema.db, def, famous_defs.as_ref(), &notable_traits, config);
+    HoverResult {
+        markup: render::process_markup(sema.db, def, &markup, config),
+        actions: [
+            show_implementations_action(sema.db, def),
+            show_fn_references_action(sema.db, def),
+            runnable_action(sema, def, file_id),
+            goto_type_action_for_def(sema.db, def, &notable_traits),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
+    }
 }
 
 fn notable_traits(

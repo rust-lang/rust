@@ -1096,6 +1096,16 @@ impl ReturnExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BecomeExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasAttrs for BecomeExpr {}
+impl BecomeExpr {
+    pub fn become_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![become]) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1400,9 +1410,10 @@ pub struct TypeBound {
 }
 impl TypeBound {
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
-    pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
     pub fn tilde_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![~]) }
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
+    pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
+    pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
 
@@ -1633,6 +1644,7 @@ pub enum Expr {
     RecordExpr(RecordExpr),
     RefExpr(RefExpr),
     ReturnExpr(ReturnExpr),
+    BecomeExpr(BecomeExpr),
     TryExpr(TryExpr),
     TupleExpr(TupleExpr),
     WhileExpr(WhileExpr),
@@ -2792,6 +2804,17 @@ impl AstNode for ReturnExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for BecomeExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == BECOME_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for TryExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == TRY_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3540,6 +3563,9 @@ impl From<RefExpr> for Expr {
 impl From<ReturnExpr> for Expr {
     fn from(node: ReturnExpr) -> Expr { Expr::ReturnExpr(node) }
 }
+impl From<BecomeExpr> for Expr {
+    fn from(node: BecomeExpr) -> Expr { Expr::BecomeExpr(node) }
+}
 impl From<TryExpr> for Expr {
     fn from(node: TryExpr) -> Expr { Expr::TryExpr(node) }
 }
@@ -3593,6 +3619,7 @@ impl AstNode for Expr {
                 | RECORD_EXPR
                 | REF_EXPR
                 | RETURN_EXPR
+                | BECOME_EXPR
                 | TRY_EXPR
                 | TUPLE_EXPR
                 | WHILE_EXPR
@@ -3632,6 +3659,7 @@ impl AstNode for Expr {
             RECORD_EXPR => Expr::RecordExpr(RecordExpr { syntax }),
             REF_EXPR => Expr::RefExpr(RefExpr { syntax }),
             RETURN_EXPR => Expr::ReturnExpr(ReturnExpr { syntax }),
+            BECOME_EXPR => Expr::BecomeExpr(BecomeExpr { syntax }),
             TRY_EXPR => Expr::TryExpr(TryExpr { syntax }),
             TUPLE_EXPR => Expr::TupleExpr(TupleExpr { syntax }),
             WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
@@ -3673,6 +3701,7 @@ impl AstNode for Expr {
             Expr::RecordExpr(it) => &it.syntax,
             Expr::RefExpr(it) => &it.syntax,
             Expr::ReturnExpr(it) => &it.syntax,
+            Expr::BecomeExpr(it) => &it.syntax,
             Expr::TryExpr(it) => &it.syntax,
             Expr::TupleExpr(it) => &it.syntax,
             Expr::WhileExpr(it) => &it.syntax,
@@ -4150,6 +4179,7 @@ impl AstNode for AnyHasAttrs {
                 | RANGE_EXPR
                 | REF_EXPR
                 | RETURN_EXPR
+                | BECOME_EXPR
                 | TRY_EXPR
                 | TUPLE_EXPR
                 | WHILE_EXPR
@@ -4847,6 +4877,11 @@ impl std::fmt::Display for RefExpr {
     }
 }
 impl std::fmt::Display for ReturnExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for BecomeExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

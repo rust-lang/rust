@@ -1,8 +1,13 @@
 use crate::assist_context::{AssistContext, Assists};
 use ide_db::assists::AssistId;
 use syntax::{
-    ast::{self, edit::IndentLevel, make, HasGenericParams, HasVisibility},
-    ted, AstNode, SyntaxKind,
+    ast::{
+        self,
+        edit_in_place::{HasVisibilityEdit, Indent},
+        make, HasGenericParams, HasName,
+    },
+    ted::{self, Position},
+    AstNode, SyntaxKind, T,
 };
 
 // NOTES :
@@ -44,7 +49,7 @@ use syntax::{
 //     };
 // }
 //
-// trait ${0:TraitName}<const N: usize> {
+// trait ${0:NewTrait}<const N: usize> {
 //     // Used as an associated constant.
 //     const CONST_ASSOC: usize = N * 4;
 //
@@ -53,7 +58,7 @@ use syntax::{
 //     const_maker! {i32, 7}
 // }
 //
-// impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
+// impl<const N: usize> ${0:NewTrait}<N> for Foo<N> {
 //     // Used as an associated constant.
 //     const CONST_ASSOC: usize = N * 4;
 //
@@ -94,8 +99,10 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
         "Generate trait from impl",
         impl_ast.syntax().text_range(),
         |builder| {
+            let impl_ast = builder.make_mut(impl_ast);
             let trait_items = assoc_items.clone_for_update();
-            let impl_items = assoc_items.clone_for_update();
+            let impl_items = builder.make_mut(assoc_items);
+            let impl_name = builder.make_mut(impl_name);
 
             trait_items.assoc_items().for_each(|item| {
                 strip_body(&item);
@@ -112,46 +119,42 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 impl_ast.generic_param_list(),
                 impl_ast.where_clause(),
                 trait_items,
-            );
+            )
+            .clone_for_update();
+
+            let trait_name = trait_ast.name().expect("new trait should have a name");
+            let trait_name_ref = make::name_ref(&trait_name.to_string()).clone_for_update();
 
             // Change `impl Foo` to `impl NewTrait for Foo`
-            let arg_list = if let Some(genpars) = impl_ast.generic_param_list() {
-                genpars.to_generic_args().to_string()
-            } else {
-                "".to_owned()
-            };
+            let mut elements = vec![
+                trait_name_ref.syntax().clone().into(),
+                make::tokens::single_space().into(),
+                make::token(T![for]).into(),
+            ];
 
-            if let Some(snippet_cap) = ctx.config.snippet_cap {
-                builder.replace_snippet(
-                    snippet_cap,
-                    impl_name.syntax().text_range(),
-                    format!("${{0:TraitName}}{} for {}", arg_list, impl_name),
-                );
-
-                // Insert trait before TraitImpl
-                builder.insert_snippet(
-                    snippet_cap,
-                    impl_ast.syntax().text_range().start(),
-                    format!(
-                        "{}\n\n{}",
-                        trait_ast.to_string().replace("NewTrait", "${0:TraitName}"),
-                        IndentLevel::from_node(impl_ast.syntax())
-                    ),
-                );
-            } else {
-                builder.replace(
-                    impl_name.syntax().text_range(),
-                    format!("NewTrait{} for {}", arg_list, impl_name),
-                );
-
-                // Insert trait before TraitImpl
-                builder.insert(
-                    impl_ast.syntax().text_range().start(),
-                    format!("{}\n\n{}", trait_ast, IndentLevel::from_node(impl_ast.syntax())),
-                );
+            if let Some(params) = impl_ast.generic_param_list() {
+                let gen_args = &params.to_generic_args().clone_for_update();
+                elements.insert(1, gen_args.syntax().clone().into());
             }
 
-            builder.replace(assoc_items.syntax().text_range(), impl_items.to_string());
+            ted::insert_all(Position::before(impl_name.syntax()), elements);
+
+            // Insert trait before TraitImpl
+            ted::insert_all_raw(
+                Position::before(impl_ast.syntax()),
+                vec![
+                    trait_ast.syntax().clone().into(),
+                    make::tokens::whitespace(&format!("\n\n{}", impl_ast.indent_level())).into(),
+                ],
+            );
+
+            // Link the trait name & trait ref names together as a placeholder snippet group
+            if let Some(cap) = ctx.config.snippet_cap {
+                builder.add_placeholder_snippet_group(
+                    cap,
+                    vec![trait_name.syntax().clone(), trait_name_ref.syntax().clone()],
+                );
+            }
         },
     );
 
@@ -160,23 +163,8 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
 
 /// `E0449` Trait items always share the visibility of their trait
 fn remove_items_visibility(item: &ast::AssocItem) {
-    match item {
-        ast::AssocItem::Const(c) => {
-            if let Some(vis) = c.visibility() {
-                ted::remove(vis.syntax());
-            }
-        }
-        ast::AssocItem::Fn(f) => {
-            if let Some(vis) = f.visibility() {
-                ted::remove(vis.syntax());
-            }
-        }
-        ast::AssocItem::TypeAlias(t) => {
-            if let Some(vis) = t.visibility() {
-                ted::remove(vis.syntax());
-            }
-        }
-        _ => (),
+    if let Some(has_vis) = ast::AnyHasVisibility::cast(item.syntax().clone()) {
+        has_vis.set_visibility(None);
     }
 }
 
@@ -404,12 +392,12 @@ impl<const N: usize> F$0oo<N> {
             r#"
 struct Foo<const N: usize>([i32; N]);
 
-trait ${0:TraitName}<const N: usize> {
+trait ${0:NewTrait}<const N: usize> {
     // Used as an associated constant.
     const CONST: usize = N * 4;
 }
 
-impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
+impl<const N: usize> ${0:NewTrait}<N> for Foo<N> {
     // Used as an associated constant.
     const CONST: usize = N * 4;
 }

@@ -14,6 +14,7 @@ pub struct CompletionConfig {
     pub enable_imports_on_the_fly: bool,
     pub enable_self_on_the_fly: bool,
     pub enable_private_editable: bool,
+    pub enable_term_search: bool,
     pub full_function_signatures: bool,
     pub callable: Option<CallableSnippets>,
     pub snippet_cap: Option<SnippetCap>,

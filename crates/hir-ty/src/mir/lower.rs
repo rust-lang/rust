@@ -31,13 +31,19 @@ use crate::{
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
+    mir::{
+        intern_const_scalar, return_slot, AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp,
+        BorrowKind, CastKind, ClosureId, ConstScalar, Either, Expr, FieldId, Idx, InferenceResult,
+        Interner, Local, LocalId, MemoryMap, MirBody, MirSpan, Mutability, Operand, Place,
+        PlaceElem, PointerCast, ProjectionElem, ProjectionStore, RawIdx, Rvalue, Statement,
+        StatementKind, Substitution, SwitchTargets, Terminator, TerminatorKind, TupleFieldId, Ty,
+        UnOp, VariantId,
+    },
     static_lifetime,
     traits::FnTrait,
     utils::{generics, ClosureSubst},
     Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
 };
-
-use super::*;
 
 mod as_place;
 mod pattern_matching;
@@ -775,6 +781,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.set_terminator(current, TerminatorKind::Return, expr_id.into());
                 Ok(None)
             }
+            Expr::Become { .. } => not_supported!("tail-calls"),
             Expr::Yield { .. } => not_supported!("yield"),
             Expr::RecordLit { fields, path, spread, ellipsis: _, is_assignee_expr: _ } => {
                 let spread_place = match spread {
@@ -1246,7 +1253,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.push_assignment(current, place, op.into(), expr_id.into());
                 Ok(Some(current))
             }
-            Expr::Underscore => not_supported!("underscore"),
+            Expr::Underscore => Ok(Some(current)),
         }
     }
 
@@ -1780,6 +1787,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.push_fake_read(c, p, expr.into());
                     current = scope2.pop_and_drop(self, c, expr.into());
                 }
+                hir_def::hir::Statement::Item => (),
             }
         }
         if let Some(tail) = tail {

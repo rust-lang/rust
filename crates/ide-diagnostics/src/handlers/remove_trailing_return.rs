@@ -140,7 +140,7 @@ fn foo(x: usize) -> u8 {
     } //^^^^^^^^^ 💡 weak: replace return <expr>; with <expr>
 }
 "#,
-            std::iter::once("remove-unnecessary-else".to_owned()),
+            &["remove-unnecessary-else"],
         );
     }
 
@@ -177,6 +177,18 @@ fn foo() -> u8 {
 fn foo() -> u8 {
     if true { return 2; }
     3
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_diagnostic_if_not_last_statement2() {
+        check_diagnostics(
+            r#"
+fn foo() -> u8 {
+    return 2;
+    fn bar() {}
 }
 "#,
         );

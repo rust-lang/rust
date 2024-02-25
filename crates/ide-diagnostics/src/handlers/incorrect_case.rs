@@ -43,7 +43,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Option<Vec<Ass
     let label = format!("Rename to {}", d.suggested_text);
     let mut res = unresolved_fix("change_case", &label, frange.range);
     if ctx.resolve.should_resolve(&res.id) {
-        let source_change = def.rename(&ctx.sema, &d.suggested_text, true);
+        let source_change = def.rename(&ctx.sema, &d.suggested_text);
         res.source_change = Some(source_change.ok().unwrap_or_default());
     }
 
@@ -512,7 +512,7 @@ impl BAD_TRAIT for () {
     fn BadFunction() {}
 }
     "#,
-            std::iter::once("unused_variables".to_owned()),
+            &["unused_variables"],
         );
     }
 
