@@ -1,63 +1,67 @@
 #![allow(unused)]
 #![warn(clippy::empty_docs)]
-
-/// this is a struct
-struct Bananas {
-    /// count
-    count: usize,
-}
-
-///
-enum Warn {
-    ///
-    A,
-    ///
-    B,
-}
-
-enum WarnA {
-    ///
-    A,
-    B,
-}
-
-enum DontWarn {
-    /// it's ok
-    A,
-    ///
-    B,
-}
-
-#[doc = ""]
-fn warn_about_this() {}
-
-#[doc = ""]
-#[doc = ""]
-fn this_doesn_warn() {}
-
-#[doc = "a fine function"]
-fn this_is_fine() {}
-
-fn warn_about_this_as_well() {
+mod outer {
     //!
-}
 
-///
-fn warn_inner_outer() {
-    //!w
-}
+    /// this is a struct
+    struct Bananas {
+        /// count
+        count: usize,
+    }
 
-fn this_is_ok() {
-    //!
-    //! inside the function
-}
+    ///
+    enum Warn {
+        ///
+        A,
+        B,
+    }
 
-fn warn() {
-    /*! */
-}
+    enum DontWarn {
+        /// i
+        A,
+        B,
+    }
 
-fn dont_warn() {
-    /*! dont warn me */
-}
+    #[doc = ""]
+    fn warn_about_this() {}
 
-trait NoDoc {}
+    #[doc = ""]
+    #[doc = ""]
+    fn this_doesn_warn() {}
+
+    #[doc = "a fine function"]
+    fn this_is_fine() {}
+
+    ///
+    mod inner {
+        ///
+        fn dont_warn_inner_outer() {
+            //!w
+        }
+
+        fn this_is_ok() {
+            //!
+            //! inside the function
+        }
+
+        fn warn() {
+            /*! */
+        }
+
+        fn dont_warn() {
+            /*! dont warn me */
+        }
+
+        trait NoDoc {
+            ///
+            fn some() {}
+        }
+    }
+
+    union Unite {
+        /// lint y
+        x: i32,
+        ///
+        y: i32,
+    }
+}

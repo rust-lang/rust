@@ -399,6 +399,16 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
         check_attrs(cx, &self.valid_idents, attrs);
     }
 
+    fn check_variant(&mut self, cx: &LateContext<'tcx>, variant: &'tcx hir::Variant<'tcx>) {
+        let attrs = cx.tcx.hir().attrs(variant.hir_id);
+        check_attrs(cx, &self.valid_idents, attrs);
+    }
+
+    fn check_field_def(&mut self, cx: &LateContext<'tcx>, variant: &'tcx hir::FieldDef<'tcx>) {
+        let attrs = cx.tcx.hir().attrs(variant.hir_id);
+        check_attrs(cx, &self.valid_idents, attrs);
+    }
+
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
