@@ -804,10 +804,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
             if new_trait_ref.has_non_region_bound_vars() {
-                this.dcx().span_bug(
+                this.dcx().span_delayed_bug(
                     this.span,
                     "tried to select method from HRTB with non-lifetime bound vars",
                 );
+                return;
             }
 
             let new_trait_ref = this.instantiate_bound_regions_with_erased(new_trait_ref);
