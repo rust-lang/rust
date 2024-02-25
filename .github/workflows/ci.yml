@@ -50,24 +50,61 @@ jobs:
     if: "github.event_name == 'pull_request'"
     continue-on-error: "${{ matrix.name == 'mingw-check-tidy' }}"
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: mingw-check-tidy
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: x86_64-gnu-llvm-16
+          - name: i686-mingw
             env:
-              ENABLE_GCC_CODEGEN: "1"
-            os: ubuntu-20.04-16core-64gb
-          - name: x86_64-gnu-tools
-            os: ubuntu-20.04-16core-64gb
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
+              SCRIPT: make ci-mingw
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            os: windows-2019-8core-32gb
+          - name: x86_64-mingw
+            env:
+              SCRIPT: make ci-mingw
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+            os: windows-2019-8core-32gb
+          - name: dist-i686-mingw
+            env:
+              RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler"
+              NO_DOWNLOAD_CI_LLVM: 1
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-2019-8core-32gb
+          - name: dist-x86_64-mingw
+            env:
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler"
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-2019-8core-32gb
+          - name: x86_64-gnu
+            os: ubuntu-20.04-4core-16gb
             env: {}
+          - name: x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: make ci-msvc
+            os: windows-2019-8core-32gb
+    defaults:
+      run:
+        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - if: "contains(matrix.os, 'windows')"
+        uses: msys2/setup-msys2@v2.22.0
+        with:
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
+          update: false
+          release: true
+          path-type: inherit
+          install: "make dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
@@ -461,9 +498,20 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
             os: windows-2019-8core-32gb
+    defaults:
+      run:
+        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - if: "contains(matrix.os, 'windows')"
+        uses: msys2/setup-msys2@v2.22.0
+        with:
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
+          update: false
+          release: true
+          path-type: inherit
+          install: "make dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code
@@ -589,9 +637,20 @@ jobs:
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-16core-64gb
+    defaults:
+      run:
+        shell: "${{ contains(matrix.os, 'windows') && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
+      - if: "contains(matrix.os, 'windows')"
+        uses: msys2/setup-msys2@v2.22.0
+        with:
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
+          update: false
+          release: true
+          path-type: inherit
+          install: "make dos2unix diffutils\n"
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
       - name: checkout the source code

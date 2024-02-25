@@ -76,7 +76,7 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set dist.compression-profile=balance
 # the LLVM build, as not to run out of memory.
 # This is an attempt to fix the spurious build error tracked by
 # https://github.com/rust-lang/rust/issues/108227.
-if isWindows && [[ ${CUSTOM_MINGW-0} -eq 1 ]]; then
+if isKnownToBeMingwBuild; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.link-jobs=1"
 fi
 
