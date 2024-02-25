@@ -378,6 +378,8 @@ lspconfig.rust_analyzer.setup({
 })
 ----
 
+Note that the hints are only visible after `rust-analyzer` has finished loading **and** you have to edit the file to trigger a re-render.
+
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
 Check out https://github.com/mrcjkb/rustaceanvim for a batteries included rust-analyzer setup for Neovim.
