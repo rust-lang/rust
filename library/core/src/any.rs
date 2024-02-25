@@ -662,7 +662,7 @@ impl hash::Hash for TypeId {
         // - It is correct to do so -- only hashing a subset of `self` is still
         //   with an `Eq` implementation that considers the entire value, as
         //   ours does.
-        self.t.0.hash(state);
+        self.t.1.hash(state);
     }
 }
 
