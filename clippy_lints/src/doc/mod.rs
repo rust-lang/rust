@@ -19,7 +19,8 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self};
 use rustc_resolve::rustdoc::{
-    add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, DocFragment,
+    add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, span_of_fragments,
+    DocFragment,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
@@ -27,7 +28,6 @@ use rustc_span::{sym, Span};
 use std::ops::Range;
 use url::Url;
 
-mod empty_docs;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
@@ -546,7 +546,16 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     doc.pop();
 
     if doc.trim().is_empty() {
-        empty_docs::check(cx, attrs);
+        if let Some(span) = span_of_fragments(&fragments) {
+            span_lint_and_help(
+                cx,
+                EMPTY_DOCS,
+                span,
+                "empty doc comment",
+                None,
+                "consider removing or filling it",
+            );
+        }
         return Some(DocHeaders::default());
     }
 
