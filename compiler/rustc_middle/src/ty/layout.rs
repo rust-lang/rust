@@ -1180,6 +1180,21 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
                 return false;
             }
         }
+
+        // Functions in compiler builtins can never unwind.
+        //
+        // The `compiler-builtins` crate exports a bunch of LLVM intrinsics which are defined
+        // with the C ABI, so it must not unwind. If such functions call into unwindable
+        // functions, rustc will inject unwind guards to prevent unwind leaking out. This is
+        // normally okay, but for `compiler-builtins` crate it has the additional requirement to
+        // not call into libcore, so we *must not* generate such guards. One way to do it is to
+        // ensure those exported functions never call into unwindable functions, so we make
+        // every single function defined in compiler builtins nounwind.
+        //
+        // See rust-lang/compiler-builtins#578 for context.
+        if tcx.is_compiler_builtins(did.krate) && !tcx.is_foreign_item(did) {
+            return false;
+        }
     }
 
     // Otherwise if this isn't special then unwinding is generally determined by
