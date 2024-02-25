@@ -1373,7 +1373,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment.
                              SPEC supports the syntax `NAME[=\"VALUE\"]`.", "SPEC"),
-        opt::multi("", "check-cfg", "Provide list of valid cfg options for checking", "SPEC"),
+        opt::multi_s("", "check-cfg", "Provide list of expected cfgs for checking", "SPEC"),
         opt::multi_s(
             "L",
             "",
