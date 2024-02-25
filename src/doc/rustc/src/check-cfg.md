@@ -1,10 +1,4 @@
-# `check-cfg`
-
-The tracking issue for this feature is: [#82450](https://github.com/rust-lang/rust/issues/82450).
-
-------------------------
-
-This feature enables checking of conditional configuration.
+# Checking conditional configurations
 
 `rustc` accepts the `--check-cfg` option, which specifies whether to check conditions and how to
 check them. The `--check-cfg` option takes a value, called the _check cfg specification_.
