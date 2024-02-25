@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Modern Linux and macOS systems commonly only have a thing called `python3` and
 # not `python`, while Windows commonly does not have `python3`, so we cannot
