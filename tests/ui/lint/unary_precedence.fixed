@@ -1,0 +1,36 @@
+//@ check-fail
+//@ run-rustfix
+
+fn main() {
+    let _ = -(1i32.abs());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1f32.abs());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1f64.asin());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1f64.asinh());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1f64.tan());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1f64.tanh());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1.0_f64.cos().cos());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1.0_f64.cos().sin());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1.0_f64.sin().cos());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+    let _ = -(1f64.sin().sin());
+    //~^ ERROR unary operator `-` has lower precedence than method call
+
+    dbg!( -(1.0_f32.cos()) );
+    //~^ ERROR unary operator `-` has lower precedence than method call
+
+    // should not warn
+    let _ = (-1i32).abs();
+    let _ = (-1f32).abs();
+    let _ = -(1i32).abs();
+    let _ = -(1f32).abs();
+    let _ = -(1i32.abs());
+    let _ = -(1f32.abs());
+}

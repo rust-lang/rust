@@ -1334,6 +1334,23 @@ pub struct SuspiciousDoubleRefCloneDiag<'a> {
     pub ty: Ty<'a>,
 }
 
+// precedence.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_unary_precedence)]
+pub struct UnaryPrecedenceDiag {
+    #[subdiagnostic]
+    pub suggestion: UnaryPrecedenceSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+pub struct UnaryPrecedenceSuggestion {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
 // pass_by_value.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_pass_by_value)]

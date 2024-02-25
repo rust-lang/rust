@@ -1,0 +1,124 @@
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:5:13
+   |
+LL |     let _ = -1i32.abs();
+   |             ^^^^^^^^^^^
+   |
+   = note: `#[deny(ambiguous_unary_precedence)]` on by default
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1i32.abs());
+   |              +          +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:7:13
+   |
+LL |     let _ = -1f32.abs();
+   |             ^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1f32.abs());
+   |              +          +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:9:13
+   |
+LL |     let _ = -1f64.asin();
+   |             ^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.asin());
+   |              +           +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:11:13
+   |
+LL |     let _ = -1f64.asinh();
+   |             ^^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.asinh());
+   |              +            +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:13:13
+   |
+LL |     let _ = -1f64.tan();
+   |             ^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.tan());
+   |              +          +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:15:13
+   |
+LL |     let _ = -1f64.tanh();
+   |             ^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.tanh());
+   |              +           +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:17:13
+   |
+LL |     let _ = -1.0_f64.cos().cos();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1.0_f64.cos().cos());
+   |              +                   +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:19:13
+   |
+LL |     let _ = -1.0_f64.cos().sin();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1.0_f64.cos().sin());
+   |              +                   +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:21:13
+   |
+LL |     let _ = -1.0_f64.sin().cos();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1.0_f64.sin().cos());
+   |              +                   +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:23:13
+   |
+LL |     let _ = -1f64.sin().sin();
+   |             ^^^^^^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     let _ = -(1f64.sin().sin());
+   |              +                +
+
+error: unary operator `-` has lower precedence than method calls which might be unexpected
+  --> $DIR/unary_precedence.rs:26:11
+   |
+LL |     dbg!( -1.0_f32.cos() );
+   |           ^^^^^^^^^^^^^^
+   |
+help: use parentheses to clarify your intent
+   |
+LL |     dbg!( -(1.0_f32.cos()) );
+   |            +             +
+
+error: aborting due to 11 previous errors
+

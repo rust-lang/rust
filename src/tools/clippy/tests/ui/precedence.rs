@@ -20,40 +20,6 @@ fn main() {
     1 ^ 1 - 1;
     3 | 2 - 1;
     3 & 5 - 2;
-    -1i32.abs();
-    -1f32.abs();
-
-    // These should not trigger an error
-    let _ = (-1i32).abs();
-    let _ = (-1f32).abs();
-    let _ = -(1i32).abs();
-    let _ = -(1f32).abs();
-    let _ = -(1i32.abs());
-    let _ = -(1f32.abs());
-
-    // Odd functions should not trigger an error
-    let _ = -1f64.asin();
-    let _ = -1f64.asinh();
-    let _ = -1f64.atan();
-    let _ = -1f64.atanh();
-    let _ = -1f64.cbrt();
-    let _ = -1f64.fract();
-    let _ = -1f64.round();
-    let _ = -1f64.signum();
-    let _ = -1f64.sin();
-    let _ = -1f64.sinh();
-    let _ = -1f64.tan();
-    let _ = -1f64.tanh();
-    let _ = -1f64.to_degrees();
-    let _ = -1f64.to_radians();
-
-    // Chains containing any non-odd function should trigger (issue #5924)
-    let _ = -1.0_f64.cos().cos();
-    let _ = -1.0_f64.cos().sin();
-    let _ = -1.0_f64.sin().cos();
-
-    // Chains of odd functions shouldn't trigger
-    let _ = -1f64.sin().sin();
 
     let b = 3;
     trip!(b * 8);
