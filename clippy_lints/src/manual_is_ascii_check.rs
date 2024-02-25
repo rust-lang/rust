@@ -74,7 +74,7 @@ enum CharRange {
     LowerChar,
     /// 'A'..='Z' | b'A'..=b'Z'
     UpperChar,
-    /// AsciiLower | AsciiUpper
+    /// `AsciiLower` | `AsciiUpper`
     FullChar,
     /// '0..=9'
     Digit,
