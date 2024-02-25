@@ -401,17 +401,9 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let Some(DocInfo {
-            empty,
-            doc_headers: headers,
-        }) = check_attrs(cx, &self.valid_idents, attrs)
-        else {
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
             return;
         };
-
-        if empty && !item.span.is_dummy() {
-            empty_docs::check(cx, attrs);
-        }
 
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
@@ -460,11 +452,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let Some(DocInfo {
-            empty: _,
-            doc_headers: headers,
-        }) = check_attrs(cx, &self.valid_idents, attrs)
-        else {
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
             return;
         };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
@@ -476,11 +464,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let Some(DocInfo {
-            empty: _,
-            doc_headers: headers,
-        }) = check_attrs(cx, &self.valid_idents, attrs)
-        else {
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
             return;
         };
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
@@ -522,12 +506,6 @@ struct DocHeaders {
     panics: bool,
 }
 
-#[derive(Copy, Clone, Default)]
-struct DocInfo {
-    empty: bool,
-    doc_headers: DocHeaders,
-}
-
 /// Does some pre-processing on raw, desugared `#[doc]` attributes such as parsing them and
 /// then delegates to `check_doc`.
 /// Some lints are already checked here if they can work with attributes directly and don't need
@@ -535,7 +513,7 @@ struct DocInfo {
 /// Others are checked elsewhere, e.g. in `check_doc` if they need access to markdown, or
 /// back in the various late lint pass methods if they need the final doc headers, like "Safety" or
 /// "Panics" sections.
-fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocInfo> {
+fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocHeaders> {
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links
     /// point to a fake address.
@@ -558,10 +536,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     doc.pop();
 
     if doc.trim().is_empty() {
-        return Some(DocInfo {
-            empty: true,
-            doc_headers: DocHeaders::default(),
-        });
+        empty_docs::check(cx, attrs);
+        return Some(DocHeaders::default());
     }
 
     let mut cb = fake_broken_link_callback;
@@ -570,18 +546,15 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     let opts = main_body_opts() - Options::ENABLE_SMART_PUNCTUATION;
     let parser = pulldown_cmark::Parser::new_with_broken_link_callback(&doc, opts, Some(&mut cb));
 
-    Some(DocInfo {
-        empty: false,
-        doc_headers: check_doc(
-            cx,
-            valid_idents,
-            parser.into_offset_iter(),
-            Fragments {
-                fragments: &fragments,
-                doc: &doc,
-            },
-        ),
-    })
+    Some(check_doc(
+        cx,
+        valid_idents,
+        parser.into_offset_iter(),
+        Fragments {
+            fragments: &fragments,
+            doc: &doc,
+        },
+    ))
 }
 
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
