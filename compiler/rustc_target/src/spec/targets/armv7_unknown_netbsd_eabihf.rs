@@ -8,8 +8,6 @@ pub fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabihf".into(),
-            // FIXME: remove env when cfg_target_abi becomes stable
-            env: "eabihf".into(),
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "__mcount".into(),
