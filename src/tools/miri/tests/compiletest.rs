@@ -99,18 +99,15 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     };
 
     if with_dependencies {
+        // Set the `cargo-miri` binary, which we expect to be in the same folder as the `miri` binary.
+        // (It's a separate crate, so we don't get an env var from cargo.)
+        let mut prog = miri_path();
+        prog.set_file_name("cargo-miri");
+        config.dependency_builder.program = prog;
+        let builder_args = ["miri", "run"]; // There is no `cargo miri build` so we just use `cargo miri run`.
+        config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
         config.dependencies_crate_manifest_path =
             Some(Path::new("test_dependencies").join("Cargo.toml"));
-        let mut builder_args = vec!["run".into()];
-        builder_args.extend(flagsplit(&env::var("CARGO_EXTRA_FLAGS").unwrap_or_default()));
-        builder_args.extend([
-            "--manifest-path".into(),
-            "cargo-miri/Cargo.toml".into(),
-            "--".into(),
-            "miri".into(),
-            "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
-        ]);
-        config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
         // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
         config.dependency_builder.envs.push(("RUSTFLAGS".into(), None));
     }

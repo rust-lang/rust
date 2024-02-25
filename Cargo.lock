@@ -3308,13 +3308,14 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39dcf8d82b1f79a179bdb284dc44db440a9666eefa5a6df5ef282d6db930d544"
+checksum = "a26170e1d79ea32f7ccec3188dd13cfc1f18c82764a9cbc1071667c0f865a4ea"
 dependencies = [
  "anyhow",
  "rustc_version",
  "tempfile",
+ "walkdir",
 ]
 
 [[package]]
