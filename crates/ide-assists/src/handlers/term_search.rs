@@ -253,4 +253,24 @@ fn g() { let a = &1; let b: f32 = f(a); }"#,
             fn g() { let a = &mut 1; let b: f32 = todo$0!(); }"#,
         )
     }
+
+    #[test]
+    fn test_tuple_simple() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+fn f() { let a = 1; let b = 0.0; let c: (i32, f64) = todo$0!(); }"#,
+            r#"fn f() { let a = 1; let b = 0.0; let c: (i32, f64) = (a, b); }"#,
+        )
+    }
+
+    #[test]
+    fn test_tuple_nested() {
+        check_assist(
+            term_search,
+            r#"//- minicore: todo, unimplemented
+fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = todo$0!(); }"#,
+            r#"fn f() { let a = 1; let b = 0.0; let c: (i32, (i32, f64)) = (a, (a, b)); }"#,
+        )
+    }
 }

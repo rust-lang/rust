@@ -311,6 +311,7 @@ pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
         solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup));
         solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup));
         solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup));
+        solutions.extend(tactics::make_tuple(ctx, &defs, &mut lookup));
 
         // Discard not interesting `ScopeDef`s for speedup
         for def in lookup.exhausted_scopedefs() {

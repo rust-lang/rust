@@ -872,3 +872,61 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
         .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then_some(exprs))
         .flatten()
 }
+
+/// # Make tuple tactic
+///
+/// Attempts to create tuple types if any are listed in types wishlist
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
+///
+/// # Arguments
+/// * `ctx` - Context for the term search
+/// * `defs` - Set of items in scope at term search target location
+/// * `lookup` - Lookup table for types
+pub(super) fn make_tuple<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
+    _defs: &'a FxHashSet<ScopeDef>,
+    lookup: &'a mut LookupTable,
+) -> impl Iterator<Item = Expr> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
+
+    lookup
+        .types_wishlist()
+        .clone()
+        .into_iter()
+        .filter(|ty| ty.is_tuple())
+        .filter_map(move |ty| {
+            // Double check to not contain unknown
+            if ty.contains_unknown() {
+                return None;
+            }
+
+            // Ignore types that have something to do with lifetimes
+            if ctx.config.enable_borrowcheck && ty.contains_reference(db) {
+                return None;
+            }
+
+            // Early exit if some param cannot be filled from lookup
+            let param_exprs: Vec<Vec<Expr>> =
+                ty.type_arguments().map(|field| lookup.find(db, &field)).collect::<Option<_>>()?;
+
+            let exprs: Vec<Expr> = param_exprs
+                .into_iter()
+                .multi_cartesian_product()
+                .map(|params| {
+                    let tys: Vec<Type> = params.iter().map(|it| it.ty(db)).collect();
+                    let tuple_ty = Type::new_tuple(module.krate().into(), &tys);
+
+                    let expr = Expr::Tuple { ty: tuple_ty.clone(), params };
+                    lookup.insert(tuple_ty, iter::once(expr.clone()));
+                    expr
+                })
+                .collect();
+
+            Some(exprs)
+        })
+        .flatten()
+        .filter_map(|expr| expr.ty(db).could_unify_with_deeply(db, &ctx.goal).then_some(expr))
+}
