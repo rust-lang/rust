@@ -4661,6 +4661,7 @@ name = "rustc_ty_utils"
 version = "0.0.0"
 dependencies = [
  "itertools 0.11.0",
+ "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
