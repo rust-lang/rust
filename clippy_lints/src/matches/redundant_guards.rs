@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::path_to_local;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr, is_local_used};
+use clippy_utils::{in_constant, path_to_local};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -123,7 +123,7 @@ fn check_method_calls<'tcx>(
         // `s if s.is_empty()` becomes ""
         // `arr if arr.is_empty()` becomes []
 
-        if ty.is_str() {
+        if ty.is_str() && !in_constant(cx, if_expr.hir_id) {
             r#""""#.into()
         } else if slice_like {
             "[]".into()
