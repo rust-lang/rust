@@ -20,7 +20,7 @@
 #![crate_type = "lib"]
 
 #[no_mangle]
-extern "C" fn add_numbers(x: &Option<i32>, y: &Option<i32>) -> i32 {
+extern "C-unwind" fn add_numbers(x: &Option<i32>, y: &Option<i32>) -> i32 {
     let x1 = x.unwrap();
     let y1 = y.unwrap();
 

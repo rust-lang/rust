@@ -1,5 +1,3 @@
-#![feature(c_unwind)]
-
 //! Unwinding when the caller ABI is "C" (without "-unwind") is UB.
 
 extern "C-unwind" fn unwind() {

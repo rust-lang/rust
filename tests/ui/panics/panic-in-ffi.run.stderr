@@ -1,4 +1,4 @@
-thread 'main' panicked at $DIR/panic-in-ffi.rs:13:5:
+thread 'main' panicked at $DIR/panic-in-ffi.rs:12:5:
 Test
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 thread 'main' panicked at library/core/src/panicking.rs:$LINE:$COL:

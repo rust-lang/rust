@@ -6,7 +6,6 @@
 // to prevent LLVM from inferring the attribute.
 
 #![crate_type = "lib"]
-#![feature(c_unwind)]
 
 // CHECK: @rust_item_that_cannot_unwind() unnamed_addr #0 {
 #[no_mangle]

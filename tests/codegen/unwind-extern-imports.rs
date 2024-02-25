@@ -3,7 +3,6 @@
 //@ needs-unwind
 
 #![crate_type = "lib"]
-#![feature(c_unwind)]
 
 extern "C" {
     // CHECK: Function Attrs:{{.*}}nounwind
