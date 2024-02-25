@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::ty::expr_sig;
-use clippy_utils::{get_parent_node, is_default_equivalent, path_def_id};
+use clippy_utils::{is_default_equivalent, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_ty, Visitor};
@@ -100,7 +100,7 @@ impl<'tcx> Visitor<'tcx> for InferVisitor {
 }
 
 fn given_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match get_parent_node(cx.tcx, expr.hir_id) {
+    match cx.tcx.parent_hir_node(expr.hir_id) {
         Node::Local(Local { ty: Some(ty), .. }) => {
             let mut v = InferVisitor::default();
             v.visit_ty(ty);

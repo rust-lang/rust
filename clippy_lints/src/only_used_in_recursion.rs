@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{get_expr_use_or_unification_node, get_parent_node, path_def_id, path_to_local, path_to_local_id};
+use clippy_utils::{get_expr_use_or_unification_node, path_def_id, path_to_local, path_to_local_id};
 use core::cell::Cell;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -227,7 +227,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         }
         // `skip_params` is either `0` or `1` to skip the `self` parameter in trait functions.
         // It can't be renamed, and it can't be removed without removing it from multiple functions.
-        let (fn_id, fn_kind, skip_params) = match get_parent_node(cx.tcx, body.value.hir_id) {
+        let (fn_id, fn_kind, skip_params) = match cx.tcx.parent_hir_node(body.value.hir_id) {
             Node::Item(i) => (i.owner_id.to_def_id(), FnKind::Fn, 0),
             Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Fn(ref sig, _),
@@ -244,7 +244,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 ..
             }) => {
                 #[allow(trivial_casts)]
-                if let Node::Item(item) = get_parent_node(cx.tcx, owner_id.into())
+                if let Node::Item(item) = cx.tcx.parent_hir_node(owner_id.into())
                     && let Some(trait_ref) = cx
                         .tcx
                         .impl_trait_ref(item.owner_id)

@@ -1,9 +1,9 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{get_parent_node, is_lint_allowed};
 use hir::HirId;
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
@@ -340,8 +340,8 @@ fn block_parents_have_safety_comment(
     cx: &LateContext<'_>,
     id: hir::HirId,
 ) -> bool {
-    let (span, hir_id) = match get_parent_node(cx.tcx, id) {
-        Node::Expr(expr) => match get_parent_node(cx.tcx, expr.hir_id) {
+    let (span, hir_id) = match cx.tcx.parent_hir_node(id) {
+        Node::Expr(expr) => match cx.tcx.parent_hir_node(expr.hir_id) {
             Node::Local(hir::Local { span, hir_id, .. }) => (*span, *hir_id),
             Node::Item(hir::Item {
                 kind: hir::ItemKind::Const(..) | ItemKind::Static(..),
@@ -445,7 +445,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     if item.span.ctxt() != SyntaxContext::root() {
         return HasSafetyComment::No;
     }
-    let comment_start = match get_parent_node(cx.tcx, item.hir_id()) {
+    let comment_start = match cx.tcx.parent_hir_node(item.hir_id()) {
         Node::Crate(parent_mod) => comment_start_before_item_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item),
         Node::Item(parent_item) => {
             if let ItemKind::Mod(parent_mod) = &parent_item.kind {
@@ -456,7 +456,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
             }
         },
         Node::Stmt(stmt) => {
-            if let Node::Block(block) = get_parent_node(cx.tcx, stmt.hir_id) {
+            if let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id) {
                 walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo)
             } else {
                 // Problem getting the parent node. Pretend a comment was found.
@@ -504,7 +504,7 @@ fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> H
         return HasSafetyComment::No;
     }
 
-    let comment_start = match get_parent_node(cx.tcx, hir_id) {
+    let comment_start = match cx.tcx.parent_hir_node(hir_id) {
         Node::Block(block) => walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo),
         _ => return HasSafetyComment::Maybe,
     };

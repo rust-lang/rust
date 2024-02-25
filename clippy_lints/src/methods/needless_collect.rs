@@ -4,8 +4,8 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, make_normalized_projection, make_projection};
 use clippy_utils::{
-    can_move_expr_to_closure, fn_def_id, get_enclosing_block, get_parent_node, higher, is_trait_method, path_to_local,
-    path_to_local_id, CaptureKind,
+    can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local, path_to_local_id,
+    CaptureKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
     iter_expr: &'tcx Expr<'tcx>,
     call_span: Span,
 ) {
-    match get_parent_node(cx.tcx, collect_expr.hir_id) {
+    match cx.tcx.parent_hir_node(collect_expr.hir_id) {
         Node::Expr(parent) => {
             check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
 
