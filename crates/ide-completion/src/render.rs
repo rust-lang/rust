@@ -2599,6 +2599,7 @@ fn foo() {
             expect![[r#"
                 lc foo [type+local]
                 ex foo [type]
+                ex Foo::B [type]
                 ev Foo::A(…) [type_could_unify]
                 ev Foo::B [type_could_unify]
                 en Foo [type_could_unify]

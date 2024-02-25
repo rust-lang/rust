@@ -3856,6 +3856,11 @@ impl Type {
         Type { env: ty.env, ty: TyBuilder::slice(ty.ty) }
     }
 
+    pub fn new_tuple(krate: CrateId, tys: &[Type]) -> Type {
+        let tys = tys.iter().map(|it| it.ty.clone());
+        Type { env: TraitEnvironment::empty(krate), ty: TyBuilder::tuple_with(tys) }
+    }
+
     pub fn is_unit(&self) -> bool {
         matches!(self.ty.kind(Interner), TyKind::Tuple(0, ..))
     }

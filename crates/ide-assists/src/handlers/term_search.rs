@@ -57,11 +57,14 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         })
         .unique();
 
+    let macro_name = macro_call.name(ctx.sema.db);
+    let macro_name = macro_name.display(ctx.sema.db);
+
     for code in paths {
         acc.add_group(
             &GroupLabel(String::from("Term search")),
             AssistId("term_search", AssistKind::Generate),
-            format!("Replace todo!() with {code}"),
+            format!("Replace {macro_name}!() with {code}"),
             goal_range,
             |builder| {
                 builder.replace(goal_range, code);
