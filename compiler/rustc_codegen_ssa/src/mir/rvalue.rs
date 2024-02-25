@@ -382,7 +382,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         scalar: abi::Scalar,
         backend_ty: Bx::Type,
     ) {
-        if matches!(self.cx.sess().opts.optimize, OptLevel::No | OptLevel::Less)
+        if matches!(self.cx.sess().opts.optimize, OptLevel::No)
             // For now, the critical niches are all over `Int`eger values.
             // Should floating-point values or pointers ever get more complex
             // niches, then this code will probably want to handle them too.
