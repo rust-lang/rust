@@ -28014,7 +28014,11 @@ pub unsafe fn _mm_mask_testn_epi64_mask(k: __mmask8, a: __m128i, b: __m128i) -> 
 #[cfg_attr(test, assert_instr(vmovntps))]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
-    intrinsics::nontemporal_store(mem_addr as *mut __m512, a);
+    crate::arch::asm!(
+        "vmovntps [{mem_addr}], {a}",
+        mem_addr = in(reg) mem_addr,
+        a = in(zmm_reg) a,
+    );
 }
 
 /// Store 512-bits (composed of 8 packed double-precision (64-bit) floating-point elements) from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
@@ -28035,7 +28039,11 @@ pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
 #[cfg_attr(test, assert_instr(vmovntps))] //should be vmovntpd
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
-    intrinsics::nontemporal_store(mem_addr as *mut __m512d, a);
+    crate::arch::asm!(
+        "vmovntps [{mem_addr}], {a}",
+        mem_addr = in(reg) mem_addr,
+        a = in(zmm_reg) a,
+    );
 }
 
 /// Store 512-bits of integer data from a into memory using a non-temporal memory hint. mem_addr must be aligned on a 64-byte boundary or a general-protection exception may be generated.
@@ -28056,7 +28064,11 @@ pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
 #[cfg_attr(test, assert_instr(vmovntps))] //should be vmovntdq
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_si512(mem_addr: *mut i64, a: __m512i) {
-    intrinsics::nontemporal_store(mem_addr as *mut __m512i, a);
+    crate::arch::asm!(
+        "vmovntps [{mem_addr}], {a}",
+        mem_addr = in(reg) mem_addr,
+        a = in(zmm_reg) a,
+    );
 }
 
 /// Sets packed 32-bit integers in `dst` with the supplied values.

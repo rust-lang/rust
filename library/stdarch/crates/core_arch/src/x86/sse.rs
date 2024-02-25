@@ -2002,7 +2002,11 @@ extern "C" {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
-    intrinsics::nontemporal_store(mem_addr as *mut __m128, a);
+    crate::arch::asm!(
+        "movntps [{mem_addr}], {a}",
+        mem_addr = in(reg) mem_addr,
+        a = in(xmm_reg) a,
+    );
 }
 
 #[cfg(test)]

@@ -2,7 +2,7 @@
 
 #[allow(unused_imports)]
 use crate::marker::Sized;
-use crate::{intrinsics, mem::transmute};
+use crate::mem::transmute;
 
 #[macro_use]
 mod macros;

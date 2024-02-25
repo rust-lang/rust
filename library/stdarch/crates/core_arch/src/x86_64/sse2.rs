@@ -1,9 +1,6 @@
 //! `x86_64`'s Streaming SIMD Extensions 2 (SSE2)
 
-use crate::{
-    core_arch::x86::*,
-    intrinsics::{self, simd::*},
-};
+use crate::{core_arch::x86::*, intrinsics::simd::*};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -81,7 +78,11 @@ pub unsafe fn _mm_cvttsd_si64x(a: __m128d) -> i64 {
 #[cfg_attr(test, assert_instr(movnti))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si64(mem_addr: *mut i64, a: i64) {
-    intrinsics::nontemporal_store(mem_addr, a);
+    crate::arch::asm!(
+        "movnti [{mem_addr}], {a}",
+        mem_addr = in(reg) mem_addr,
+        a = in(reg) a,
+    );
 }
 
 /// Returns a vector whose lowest element is `a` and all higher elements are

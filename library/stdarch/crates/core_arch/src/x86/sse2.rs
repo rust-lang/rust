@@ -1327,11 +1327,15 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 ///
 /// See [`_mm_sfence`] for details.
 #[inline]
-#[target_feature(enable = "sse2")]
+#[target_feature(enable = "sse,sse2")]
 #[cfg_attr(test, assert_instr(movntps))] // FIXME movntdq
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
-    intrinsics::nontemporal_store(mem_addr, a);
+    crate::arch::asm!(
+        "movntps [{mem_addr}], {a}",
+        mem_addr = in(reg) mem_addr,
+        a = in(xmm_reg) a,
+    );
 }
 
 /// Stores a 32-bit integer value in the specified memory location.
@@ -1353,7 +1357,11 @@ pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movnti))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
-    intrinsics::nontemporal_store(mem_addr, a);
+    crate::arch::asm!(
+        "movnti [{mem_addr}], {a:e}", // `:e` for 32bit value
+        mem_addr = in(reg) mem_addr,
+        a = in(reg) a,
+    );
 }
 
 /// Returns a vector where the low element is extracted from `a` and its upper
@@ -2543,12 +2551,16 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 ///
 /// See [`_mm_sfence`] for details.
 #[inline]
-#[target_feature(enable = "sse2")]
+#[target_feature(enable = "sse,sse2")]
 #[cfg_attr(test, assert_instr(movntps))] // FIXME movntpd
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
-    intrinsics::nontemporal_store(mem_addr as *mut __m128d, a);
+    crate::arch::asm!(
+        "movntps [{mem_addr}], {a}",
+        mem_addr = in(reg) mem_addr,
+        a = in(xmm_reg) a,
+    );
 }
 
 /// Stores the lower 64 bits of a 128-bit vector of `[2 x double]` to a
