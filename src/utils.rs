@@ -498,7 +498,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Cast(..)
         | ast::ExprKind::Continue(..)
         | ast::ExprKind::Dummy
-        | ast::ExprKind::Err
+        | ast::ExprKind::Err(_)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
