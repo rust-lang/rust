@@ -1207,6 +1207,13 @@ impl Tester for Collector {
     }
 }
 
+#[cfg(test)] // used in tests
+impl Tester for Vec<usize> {
+    fn add_test(&mut self, _test: String, _config: LangString, line: usize) {
+        self.push(line);
+    }
+}
+
 struct HirCollector<'a, 'hir, 'tcx> {
     sess: &'a Session,
     collector: &'a mut Collector,

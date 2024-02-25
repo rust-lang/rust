@@ -70,6 +70,7 @@ mod methods;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
+mod non_local_def;
 mod nonstandard_style;
 mod noop_method_call;
 mod opaque_hidden_inferred_bound;
@@ -105,6 +106,7 @@ use methods::*;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
+use non_local_def::*;
 use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
@@ -229,6 +231,7 @@ late_lint_methods!(
             MissingDebugImplementations: MissingDebugImplementations,
             MissingDoc: MissingDoc,
             AsyncFnInTrait: AsyncFnInTrait,
+            NonLocalDefinitions: NonLocalDefinitions::default(),
         ]
     ]
 );

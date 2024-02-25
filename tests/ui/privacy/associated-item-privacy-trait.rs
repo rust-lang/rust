@@ -1,5 +1,5 @@
 #![feature(decl_macro, associated_type_defaults)]
-#![allow(private_interfaces, private_bounds)]
+#![allow(private_interfaces, private_bounds, non_local_definitions)]
 
 mod priv_trait {
     trait PrivTr {
