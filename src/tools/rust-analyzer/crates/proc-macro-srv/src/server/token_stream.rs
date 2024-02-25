@@ -115,8 +115,6 @@ pub(super) mod token_stream {
         }
     }
 
-    type LexError = String;
-
     /// Attempts to break the string into tokens and parse those tokens into a token stream.
     /// May fail for a number of reasons, for example, if the string contains unbalanced delimiters
     /// or characters not existing in the language.
@@ -124,13 +122,10 @@ pub(super) mod token_stream {
     ///
     /// NOTE: some errors may cause panics instead of returning `LexError`. We reserve the right to
     /// change these errors into `LexError`s later.
-    #[rustfmt::skip]
-    impl<S: tt::Span> /*FromStr for*/ TokenStream<S> {
-        // type Err = LexError;
-
-        pub(crate) fn from_str(src: &str, call_site: S) -> Result<TokenStream<S>, LexError> {
+    impl<S: tt::Span> TokenStream<S> {
+        pub(crate) fn from_str(src: &str, call_site: S) -> Result<TokenStream<S>, String> {
             let subtree =
-                mbe::parse_to_token_tree_static_span(call_site, src).ok_or("Failed to parse from mbe")?;
+                mbe::parse_to_token_tree_static_span(call_site, src).ok_or("lexing error")?;
 
             Ok(TokenStream::with_subtree(subtree))
         }

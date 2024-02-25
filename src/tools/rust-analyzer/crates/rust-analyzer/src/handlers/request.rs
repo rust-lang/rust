@@ -16,6 +16,7 @@ use ide::{
     ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
+use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -1055,9 +1056,8 @@ pub(crate) fn handle_references(
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
     let exclude_tests = snap.config.find_all_refs_exclude_tests();
 
-    let refs = match snap.analysis.find_all_refs(position, None)? {
-        None => return Ok(None),
-        Some(refs) => refs,
+    let Some(refs) = snap.analysis.find_all_refs(position, None)? else {
+        return Ok(None);
     };
 
     let include_declaration = params.context.include_declaration;
@@ -1084,6 +1084,7 @@ pub(crate) fn handle_references(
                 })
                 .chain(decl)
         })
+        .unique()
         .filter_map(|frange| to_proto::location(&snap, frange).ok())
         .collect();
 
@@ -1802,10 +1803,10 @@ fn show_ref_command_link(
                 .into_iter()
                 .flat_map(|res| res.references)
                 .flat_map(|(file_id, ranges)| {
-                    ranges.into_iter().filter_map(move |(range, _)| {
-                        to_proto::location(snap, FileRange { file_id, range }).ok()
-                    })
+                    ranges.into_iter().map(move |(range, _)| FileRange { file_id, range })
                 })
+                .unique()
+                .filter_map(|range| to_proto::location(snap, range).ok())
                 .collect();
             let title = to_proto::reference_title(locations.len());
             let command = to_proto::command::show_references(title, &uri, position, locations);

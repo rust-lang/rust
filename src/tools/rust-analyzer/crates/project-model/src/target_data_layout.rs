@@ -32,7 +32,16 @@ pub fn get(
             Sysroot::set_rustup_toolchain_env(&mut cmd, sysroot);
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
-                .args(["rustc", "--", "-Z", "unstable-options", "--print", "target-spec-json"])
+                .args([
+                    "rustc",
+                    "-Z",
+                    "unstable-options",
+                    "--print",
+                    "target-spec-json",
+                    "--",
+                    "-Z",
+                    "unstable-options",
+                ])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
                 cmd.args(["--target", target]);

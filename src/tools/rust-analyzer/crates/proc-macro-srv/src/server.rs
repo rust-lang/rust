@@ -93,7 +93,14 @@ impl<S> LiteralFormatter<S> {
                 let hashes = get_hashes_str(n);
                 f(&["br", hashes, "\"", symbol, "\"", hashes, suffix])
             }
-            _ => f(&[symbol, suffix]),
+            bridge::LitKind::CStr => f(&["c\"", symbol, "\"", suffix]),
+            bridge::LitKind::CStrRaw(n) => {
+                let hashes = get_hashes_str(n);
+                f(&["cr", hashes, "\"", symbol, "\"", hashes, suffix])
+            }
+            bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
+                f(&[symbol, suffix])
+            }
         })
     }
 
