@@ -3,7 +3,10 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_expand::base::{self, *};
+use rustc_expand::base::{
+    check_zero_tts, get_single_str_from_tts, parse_expr, resolve_path, DummyResult, ExtCtxt,
+    MacEager, MacResult,
+};
 use rustc_expand::module::DirOwnership;
 use rustc_parse::new_parser_from_file;
 use rustc_parse::parser::{ForceCollect, Parser};
@@ -23,14 +26,14 @@ pub fn expand_line(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'static> {
+) -> Box<dyn MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    base::check_zero_tts(cx, sp, tts, "line!");
+    check_zero_tts(cx, sp, tts, "line!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    base::MacEager::expr(cx.expr_u32(topmost, loc.line as u32))
+    MacEager::expr(cx.expr_u32(topmost, loc.line as u32))
 }
 
 /* column!(): expands to the current column number */
@@ -38,14 +41,14 @@ pub fn expand_column(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'static> {
+) -> Box<dyn MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    base::check_zero_tts(cx, sp, tts, "column!");
+    check_zero_tts(cx, sp, tts, "column!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
-    base::MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1))
+    MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1))
 }
 
 /// file!(): expands to the current filename */
@@ -55,15 +58,15 @@ pub fn expand_file(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'static> {
+) -> Box<dyn MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    base::check_zero_tts(cx, sp, tts, "file!");
+    check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
     let loc = cx.source_map().lookup_char_pos(topmost.lo());
 
     use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
-    base::MacEager::expr(cx.expr_str(
+    MacEager::expr(cx.expr_str(
         topmost,
         Symbol::intern(
             &loc.file.name.for_scope(cx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
@@ -75,23 +78,23 @@ pub fn expand_stringify(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'static> {
+) -> Box<dyn MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
     let s = pprust::tts_to_string(&tts);
-    base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&s)))
+    MacEager::expr(cx.expr_str(sp, Symbol::intern(&s)))
 }
 
 pub fn expand_mod(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'static> {
+) -> Box<dyn MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    base::check_zero_tts(cx, sp, tts, "module_path!");
+    check_zero_tts(cx, sp, tts, "module_path!");
     let mod_path = &cx.current_expansion.module.mod_path;
     let string = mod_path.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("::");
 
-    base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&string)))
+    MacEager::expr(cx.expr_str(sp, Symbol::intern(&string)))
 }
 
 /// include! : parse the given file as an expr
@@ -101,7 +104,7 @@ pub fn expand_include<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
+) -> Box<dyn MacResult + 'cx> {
     let sp = cx.with_def_site_ctxt(sp);
     let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
         Ok(file) => file,
@@ -129,9 +132,9 @@ pub fn expand_include<'cx>(
         p: Parser<'a>,
         node_id: ast::NodeId,
     }
-    impl<'a> base::MacResult for ExpandResult<'a> {
+    impl<'a> MacResult for ExpandResult<'a> {
         fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
-            let expr = base::parse_expr(&mut self.p).ok()?;
+            let expr = parse_expr(&mut self.p).ok()?;
             if self.p.token != token::Eof {
                 self.p.sess.buffer_lint(
                     INCOMPLETE_INCLUDE,
@@ -175,7 +178,7 @@ pub fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'static> {
+) -> Box<dyn MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
     let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
         Ok(file) => file,
@@ -192,7 +195,7 @@ pub fn expand_include_str(
         Ok(bytes) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
                 let interned_src = Symbol::intern(src);
-                base::MacEager::expr(cx.expr_str(sp, interned_src))
+                MacEager::expr(cx.expr_str(sp, interned_src))
             }
             Err(_) => {
                 let guar = cx.dcx().span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
@@ -210,7 +213,7 @@ pub fn expand_include_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'static> {
+) -> Box<dyn MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bytes!") {
         Ok(file) => file,
@@ -226,7 +229,7 @@ pub fn expand_include_bytes(
     match cx.source_map().load_binary_file(&file) {
         Ok(bytes) => {
             let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(bytes));
-            base::MacEager::expr(expr)
+            MacEager::expr(expr)
         }
         Err(e) => {
             let guar = cx.dcx().span_err(sp, format!("couldn't read {}: {}", file.display(), e));

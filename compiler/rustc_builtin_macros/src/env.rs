@@ -3,9 +3,13 @@
 // interface.
 //
 
+use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{self as ast, AstDeref, GenericArg};
-use rustc_expand::base::{self, *};
+use rustc_ast::{AstDeref, ExprKind, GenericArg, Mutability};
+use rustc_expand::base::{
+    expr_to_string, get_exprs_from_tts, get_single_str_from_tts, DummyResult, ExtCtxt, MacEager,
+    MacResult,
+};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use std::env;
@@ -27,7 +31,7 @@ pub fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
+) -> Box<dyn MacResult + 'cx> {
     let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
         Ok(var) => var,
         Err(guar) => return DummyResult::any(sp, guar),
@@ -47,7 +51,7 @@ pub fn expand_option_env<'cx>(
                     sp,
                     cx.ty_ident(sp, Ident::new(sym::str, sp)),
                     Some(lt),
-                    ast::Mutability::Not,
+                    Mutability::Not,
                 ))],
             ))
         }
@@ -64,7 +68,7 @@ pub fn expand_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
-) -> Box<dyn base::MacResult + 'cx> {
+) -> Box<dyn MacResult + 'cx> {
     let mut exprs = match get_exprs_from_tts(cx, tts) {
         Ok(exprs) if exprs.is_empty() || exprs.len() > 2 => {
             let guar = cx.dcx().emit_err(errors::EnvTakesArgs { span: sp });
@@ -93,10 +97,8 @@ pub fn expand_env<'cx>(
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
-            let ast::ExprKind::Lit(ast::token::Lit {
-                kind: ast::token::LitKind::Str | ast::token::LitKind::StrRaw(..),
-                symbol,
-                ..
+            let ExprKind::Lit(token::Lit {
+                kind: LitKind::Str | LitKind::StrRaw(..), symbol, ..
             }) = &var_expr.kind
             else {
                 unreachable!("`expr_to_string` ensures this is a string lit")
