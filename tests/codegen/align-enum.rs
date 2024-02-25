@@ -8,7 +8,6 @@ pub enum Align64 {
     A(u32),
     B(u32),
 }
-// CHECK: %Align64 = type { i32, [15 x i32] }
 
 pub struct Nested64 {
     a: u8,
