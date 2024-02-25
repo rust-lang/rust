@@ -1441,6 +1441,7 @@ symbols! {
         rustc_mir,
         rustc_must_implement_one_of,
         rustc_never_returns_null_ptr,
+        rustc_no_mir_inline,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,
         rustc_object_lifetime_default,

@@ -2706,13 +2706,25 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 macro_rules! assert_unsafe_precondition {
     ($message:expr, ($($name:ident:$ty:ty = $arg:expr),*$(,)?) => $e:expr $(,)?) => {
         {
+            // #[cfg(bootstrap)] (this comment)
             // When the standard library is compiled with debug assertions, we want the check to inline for better performance.
             // This is important when working on the compiler, which is compiled with debug assertions locally.
             // When not compiled with debug assertions (so the precompiled std) we outline the check to minimize the compile
             // time impact when debug assertions are disabled.
-            // It is not clear whether that is the best solution, see #120848.
-            #[cfg_attr(debug_assertions, inline(always))]
-            #[cfg_attr(not(debug_assertions), inline(never))]
+            // The proper solution to this is the `#[rustc_no_mir_inline]` below, but we still want decent performance for cfg(bootstrap).
+            #[cfg_attr(all(debug_assertions, bootstrap), inline(always))]
+            #[cfg_attr(all(not(debug_assertions), bootstrap), inline(never))]
+
+            // This check is inlineable, but not by the MIR inliner.
+            // The reason for this is that the MIR inliner is in an exceptionally bad position
+            // to think about whether or not to inline this. In MIR, this call is gated behind `debug_assertions`,
+            // which will codegen to `false` in release builds. Inlining the check would be wasted work in that case and
+            // would be bad for compile times.
+            //
+            // LLVM on the other hand sees the constant branch, so if it's `false`, it can immediately delete it without
+            // inlining the check. If it's `true`, it can inline it and get significantly better performance.
+            #[cfg_attr(not(bootstrap), rustc_no_mir_inline)]
+            #[cfg_attr(not(bootstrap), inline)]
             #[rustc_nounwind]
             fn precondition_check($($name:$ty),*) {
                 if !$e {
