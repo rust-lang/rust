@@ -1,4 +1,4 @@
-// aux-build:pub-use-extern-macros.rs
+//@ aux-build:pub-use-extern-macros.rs
 
 extern crate macros;
 

@@ -1,9 +1,9 @@
 // Verifies that the `!llvm.ident` named metadata is emitted.
 //
-// revisions: NONE OPT DEBUG
+//@ revisions: NONE OPT DEBUG
 //
-// [OPT] compile-flags: -Copt-level=2
-// [DEBUG] compile-flags: -Cdebuginfo=2
+//@ [OPT] compile-flags: -Copt-level=2
+//@ [DEBUG] compile-flags: -Cdebuginfo=2
 
 // The named metadata should contain a single metadata node (see
 // `LLVMRustPrepareThinLTOImport` for details).

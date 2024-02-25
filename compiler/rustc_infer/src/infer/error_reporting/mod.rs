@@ -88,6 +88,7 @@ mod note_and_explain;
 mod suggest;
 
 pub(crate) mod need_type_info;
+pub mod sub_relations;
 pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
@@ -123,6 +124,8 @@ fn escape_literal(s: &str) -> String {
 /// methods which should not be used during the happy path.
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
+    pub sub_relations: std::cell::RefCell<sub_relations::SubRelations>,
+
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
     pub fallback_has_occurred: bool,
 
@@ -1935,7 +1938,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                         "the full type name has been written to '{}'",
                                         path.display(),
                                     ));
-                                    diag.note(format!("consider using `--verbose` to print the full type name to the console"));
+                                    diag.note("consider using `--verbose` to print the full type name to the console");
                                 }
                             }
                         }
@@ -2434,6 +2437,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let suggestion =
                     if has_lifetimes { format!(" + {lt_name}") } else { format!(": {lt_name}") };
                 suggs.push((sp, suggestion))
+            } else if let GenericKind::Alias(ref p) = bound_kind
+                && let ty::Projection = p.kind(self.tcx)
+                && let DefKind::AssocTy = self.tcx.def_kind(p.def_id)
+                && let Some(ty::ImplTraitInTraitData::Trait { .. }) =
+                    self.tcx.opt_rpitit_info(p.def_id)
+            {
+                // The lifetime found in the `impl` is longer than the one on the RPITIT.
+                // Do not suggest `<Type as Trait>::{opaque}: 'static`.
             } else if let Some(generics) = self.tcx.hir().get_generics(suggestion_scope) {
                 let pred = format!("{bound_kind}: {lt_name}");
                 let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);

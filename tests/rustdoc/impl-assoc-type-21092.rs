@@ -1,5 +1,5 @@
-// aux-build:issue-21092.rs
-// ignore-cross-compile
+//@ aux-build:issue-21092.rs
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/21092
 #![crate_name="issue_21092"]

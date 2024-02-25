@@ -2,7 +2,7 @@
 // It ensures that the items in the `doc(hidden)` const block don't show up in the
 // generated docs.
 
-// compile-flags: --document-private-items
+//@ compile-flags: --document-private-items
 
 #![crate_name = "foo"]
 

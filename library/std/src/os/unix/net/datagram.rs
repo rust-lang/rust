@@ -91,7 +91,7 @@ impl UnixDatagram {
             let socket = UnixDatagram::unbound()?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
-            cvt(libc::bind(socket.as_raw_fd(), &addr as *const _ as *const _, len as _))?;
+            cvt(libc::bind(socket.as_raw_fd(), core::ptr::addr_of!(addr) as *const _, len as _))?;
 
             Ok(socket)
         }
@@ -124,7 +124,7 @@ impl UnixDatagram {
             let socket = UnixDatagram::unbound()?;
             cvt(libc::bind(
                 socket.as_raw_fd(),
-                &socket_addr.addr as *const _ as *const _,
+                core::ptr::addr_of!(socket_addr.addr) as *const _,
                 socket_addr.len as _,
             ))?;
             Ok(socket)
@@ -206,7 +206,7 @@ impl UnixDatagram {
         unsafe {
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
-            cvt(libc::connect(self.as_raw_fd(), &addr as *const _ as *const _, len))?;
+            cvt(libc::connect(self.as_raw_fd(), core::ptr::addr_of!(addr) as *const _, len))?;
         }
         Ok(())
     }
@@ -238,7 +238,7 @@ impl UnixDatagram {
         unsafe {
             cvt(libc::connect(
                 self.as_raw_fd(),
-                &socket_addr.addr as *const _ as *const _,
+                core::ptr::addr_of!(socket_addr.addr) as *const _,
                 socket_addr.len,
             ))?;
         }
@@ -505,7 +505,7 @@ impl UnixDatagram {
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,
-                &addr as *const _ as *const _,
+                core::ptr::addr_of!(addr) as *const _,
                 len,
             ))?;
             Ok(count as usize)
@@ -540,7 +540,7 @@ impl UnixDatagram {
                 buf.as_ptr() as *const _,
                 buf.len(),
                 MSG_NOSIGNAL,
-                &socket_addr.addr as *const _ as *const _,
+                core::ptr::addr_of!(socket_addr.addr) as *const _,
                 socket_addr.len,
             ))?;
             Ok(count as usize)

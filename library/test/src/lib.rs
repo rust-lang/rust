@@ -17,6 +17,7 @@
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
 #![doc(rust_logo)]
+#![feature(generic_nonzero)]
 #![feature(rustdoc_internals)]
 #![feature(internal_output_capture)]
 #![feature(staged_api)]

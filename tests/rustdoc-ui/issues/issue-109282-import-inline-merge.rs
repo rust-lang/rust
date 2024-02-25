@@ -2,7 +2,7 @@
 // Import for `ValueEnum` is inlined and doc comments on the import and `ValueEnum` itself are
 // merged. After the merge they still have correct parent scopes to resolve both `[ValueEnum]`.
 
-// check-pass
+//@ check-pass
 
 mod m {
     pub enum ValueEnum {}

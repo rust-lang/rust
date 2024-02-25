@@ -1,5 +1,5 @@
-// aux-build:issue-76736-1.rs
-// aux-build:issue-76736-2.rs
+//@ aux-build:issue-76736-1.rs
+//@ aux-build:issue-76736-2.rs
 
 #![crate_name = "foo"]
 #![feature(rustc_private)]

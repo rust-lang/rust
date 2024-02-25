@@ -1,9 +1,9 @@
 //! Tests that unwinding from an asm block is caught and forced to abort
 //! when `-C panic=abort`.
 
-// only-x86_64
-// compile-flags: -C panic=abort
-// no-prefer-dynamic
+//@ only-x86_64
+//@ compile-flags: -C panic=abort
+//@ no-prefer-dynamic
 
 #![feature(asm_unwind)]
 

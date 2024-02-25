@@ -1,4 +1,4 @@
-// revisions: rpass1 rpass2
+//@ revisions: rpass1 rpass2
 
 // Regression test for issue #92987
 // Tests that we properly manage `DepNode`s during trait evaluation

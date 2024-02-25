@@ -1,4 +1,4 @@
-// aux-build:doctest_crate.rs
+//@ aux-build:doctest_crate.rs
 
 //! This test ensures that code from doctests is properly re-mapped.
 //! See <https://github.com/rust-lang/rust/issues/79417> for more info.

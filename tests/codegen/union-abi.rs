@@ -1,5 +1,5 @@
-// ignore-emscripten vectors passed directly
-// compile-flags: -O -C no-prepopulate-passes
+//@ ignore-emscripten vectors passed directly
+//@ compile-flags: -O -C no-prepopulate-passes
 
 // This test that using union forward the abi of the inner type, as
 // discussed in #54668

@@ -5,8 +5,8 @@
 // separately in rustc and therefore rustdoc needs to manually merge them.
 
 #![crate_name = "usr"]
-// aux-crate:dep=early-late-bound-lifetime-params.rs
-// edition:2021
+//@ aux-crate:dep=early-late-bound-lifetime-params.rs
+//@ edition:2021
 
 // @has usr/fn.f.html
 // @has - '//pre[@class="rust item-decl"]' "fn f<'a, 'b, 'c, 'd, T, const N: usize>(_: impl Copy)"

@@ -96,7 +96,7 @@ impl UnixStream {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
-            cvt(libc::connect(inner.as_raw_fd(), &addr as *const _ as *const _, len))?;
+            cvt(libc::connect(inner.as_raw_fd(), core::ptr::addr_of!(addr) as *const _, len))?;
             Ok(UnixStream(inner))
         }
     }
@@ -130,7 +130,7 @@ impl UnixStream {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             cvt(libc::connect(
                 inner.as_raw_fd(),
-                &socket_addr.addr as *const _ as *const _,
+                core::ptr::addr_of!(socket_addr.addr) as *const _,
                 socket_addr.len,
             ))?;
             Ok(UnixStream(inner))

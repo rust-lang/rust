@@ -95,7 +95,7 @@ impl Tls {
     #[allow(unused)]
     pub unsafe fn activate_persistent(self: Box<Self>) {
         // FIXME: Needs safety information. See entry.S for `set_tls_ptr` definition.
-        unsafe { set_tls_ptr((&*self) as *const Tls as _) };
+        unsafe { set_tls_ptr(core::ptr::addr_of!(*self) as _) };
         mem::forget(self);
     }
 

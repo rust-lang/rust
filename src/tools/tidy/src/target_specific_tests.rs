@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::walk::filter_not_rust;
 
-const COMMENT: &str = "//";
+const COMMENT: &str = "//@";
 const LLVM_COMPONENTS_HEADER: &str = "needs-llvm-components:";
 const COMPILE_FLAGS_HEADER: &str = "compile-flags:";
 

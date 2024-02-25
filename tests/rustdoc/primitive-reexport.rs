@@ -1,5 +1,5 @@
-// aux-build: primitive-reexport.rs
-// compile-flags:--extern foo --edition 2018
+//@ aux-build: primitive-reexport.rs
+//@ compile-flags:--extern foo --edition 2018
 
 #![crate_name = "bar"]
 

@@ -106,13 +106,11 @@ codegen_ssa_invalid_monomorphization_return_type = invalid monomorphization of `
 
 codegen_ssa_invalid_monomorphization_second_argument_length = invalid monomorphization of `{$name}` intrinsic: expected second argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}
 
-codegen_ssa_invalid_monomorphization_shuffle_index_not_constant = invalid monomorphization of `{$name}` intrinsic: shuffle index #{$arg_idx} is not a constant
-
-codegen_ssa_invalid_monomorphization_shuffle_index_out_of_bounds = invalid monomorphization of `{$name}` intrinsic: shuffle index #{$arg_idx} is out of bounds (limit {$total_len})
-
 codegen_ssa_invalid_monomorphization_simd_argument = invalid monomorphization of `{$name}` intrinsic: expected SIMD argument type, found non-SIMD `{$ty}`
 
 codegen_ssa_invalid_monomorphization_simd_first = invalid monomorphization of `{$name}` intrinsic: expected SIMD first type, found non-SIMD `{$ty}`
+
+codegen_ssa_invalid_monomorphization_simd_index_out_of_bounds = invalid monomorphization of `{$name}` intrinsic: SIMD index #{$arg_idx} is out of bounds (limit {$total_len})
 
 codegen_ssa_invalid_monomorphization_simd_input = invalid monomorphization of `{$name}` intrinsic: expected SIMD input type, found non-SIMD `{$ty}`
 

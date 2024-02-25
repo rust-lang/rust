@@ -1,6 +1,6 @@
-// min-lldb-version: 310
+//@ min-lldb-version: 310
 
-// compile-flags:-g
+//@ compile-flags:-g
 // gdb-command:run
 // lldb-command:run
 

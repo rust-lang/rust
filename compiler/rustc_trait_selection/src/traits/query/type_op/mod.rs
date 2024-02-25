@@ -98,6 +98,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
+        span: Span,
     ) -> Result<
         (
             Self::QueryResponse,
@@ -118,7 +119,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
 
         let InferOk { value, obligations } = infcx
             .instantiate_nll_query_response_and_region_obligations(
-                &ObligationCause::dummy(),
+                &ObligationCause::dummy_with_span(span),
                 old_param_env,
                 &canonical_var_values,
                 canonical_result,
@@ -160,7 +161,7 @@ where
 
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
-            Q::fully_perform_into(self, infcx, &mut region_constraints).map_err(|_| {
+            Q::fully_perform_into(self, infcx, &mut region_constraints, span).map_err(|_| {
                 infcx.dcx().span_delayed_bug(span, format!("error performing {self:?}"))
             })?;
 
@@ -178,6 +179,7 @@ where
                     obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
                     infcx,
                     &mut region_constraints,
+                    span,
                 ) {
                     Ok(((), _, new, certainty)) => {
                         obligations.extend(new);

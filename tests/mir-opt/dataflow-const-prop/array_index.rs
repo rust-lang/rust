@@ -1,5 +1,5 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: DataflowConstProp
+//@ unit-test: DataflowConstProp
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 // EMIT_MIR array_index.main.DataflowConstProp.diff

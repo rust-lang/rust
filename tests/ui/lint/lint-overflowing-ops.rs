@@ -21,6 +21,8 @@ const BITS: usize = 32;
 #[cfg(target_pointer_width = "64")]
 const BITS: usize = 64;
 
+use std::thread;
+
 fn main() {
     // Shift left
     let _n = 1u8 << 8;   //~ ERROR: arithmetic operation will overflow
@@ -59,8 +61,15 @@ fn main() {
     let _n = 1_usize << BITS; //~ ERROR: arithmetic operation will overflow
     let _n = &(1_usize << BITS); //~ ERROR: arithmetic operation will overflow
 
+    let _n = 1 << -1; //~ ERROR: arithmetic operation will overflow
+    let _n = &(1 << -1); //~ ERROR: arithmetic operation will overflow
 
     // Shift right
+
+    let _n = -1_i64 >> 64;  //~ ERROR: arithmetic operation will overflow
+    let _n = -1_i32 >> 32;  //~ ERROR: arithmetic operation will overflow
+    let _n = -1_i32 >> -1;  //~ ERROR: arithmetic operation will overflow
+
     let _n = 1u8 >> 8;   //~ ERROR: arithmetic operation will overflow
     let _n = &(1u8 >> 8);   //~ ERROR: arithmetic operation will overflow
 
@@ -97,6 +106,8 @@ fn main() {
     let _n = 1_usize >> BITS; //~ ERROR: arithmetic operation will overflow
     let _n = &(1_usize >> BITS); //~ ERROR: arithmetic operation will overflow
 
+    let _n = 1i64 >> [64][0];  //~ ERROR: arithmetic operation will overflow
+    let _n = &(1i64 >> [64][0]);  //~ ERROR: arithmetic operation will overflow
 
     // Addition
     let _n = 1u8 + u8::MAX;   //~ ERROR: arithmetic operation will overflow
@@ -173,6 +184,9 @@ fn main() {
     let _n = 1usize - 5; //~ ERROR: arithmetic operation will overflow
     let _n = &(1usize - 5); //~ ERROR: arithmetic operation will overflow
 
+    let _n = -i8::MIN; //~ ERROR this arithmetic operation will overflow
+    let _n = &(-i8::MIN); //~ ERROR this arithmetic operation will overflow
+
 
     // Multiplication
     let _n = u8::MAX * 5; //~ ERROR: arithmetic operation will overflow
@@ -189,6 +203,9 @@ fn main() {
 
     let _n = u128::MAX * 5; //~ ERROR: arithmetic operation will overflow
     let _n = &(u128::MAX * 5); //~ ERROR: arithmetic operation will overflow
+
+    let _n = usize::MAX * 5; //~ ERROR: arithmetic operation will overflow
+    let _n = &(usize::MAX * 5); //~ ERROR: arithmetic operation will overflow
 
     let _n = i8::MAX * i8::MAX;   //~ ERROR: arithmetic operation will overflow
     let _n = &(i8::MAX * i8::MAX);   //~ ERROR: arithmetic operation will overflow
@@ -208,9 +225,6 @@ fn main() {
     let _n = isize::MAX * 5; //~ ERROR: arithmetic operation will overflow
     let _n = &(isize::MAX * 5); //~ ERROR: arithmetic operation will overflow
 
-    let _n = usize::MAX * 5; //~ ERROR: arithmetic operation will overflow
-    let _n = &(usize::MAX * 5); //~ ERROR: arithmetic operation will overflow
-
 
     // Division
     let _n = 1u8 / 0; //~ ERROR: this operation will panic at runtime
@@ -228,26 +242,38 @@ fn main() {
     let _n = 1u128 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1u128 / 0); //~ ERROR: this operation will panic at runtime
 
+    let _n = 1usize / 0; //~ ERROR: this operation will panic at runtime
+    let _n = &(1usize / 0); //~ ERROR: this operation will panic at runtime
+
     let _n = 1i8 / 0;   //~ ERROR: this operation will panic at runtime
     let _n = &(1i8 / 0);   //~ ERROR: this operation will panic at runtime
+    let _n = i8::MIN / -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i8::MIN / -1); //~ ERROR: this operation will panic at runtime
 
     let _n = 1i16 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i16 / 0); //~ ERROR: this operation will panic at runtime
+    let _n = i16::MIN / -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i16::MIN / -1); //~ ERROR: this operation will panic at runtime
 
     let _n = 1i32 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i32 / 0); //~ ERROR: this operation will panic at runtime
+    let _n = i32::MIN / -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i32::MIN / -1); //~ ERROR: this operation will panic at runtime
 
     let _n = 1i64 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i64 / 0); //~ ERROR: this operation will panic at runtime
+    let _n = i64::MIN / -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i64::MIN / -1); //~ ERROR: this operation will panic at runtime
 
     let _n = 1i128 / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1i128 / 0); //~ ERROR: this operation will panic at runtime
+    let _n = i128::MIN / -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i128::MIN / -1); //~ ERROR: this operation will panic at runtime
 
     let _n = 1isize / 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1isize / 0); //~ ERROR: this operation will panic at runtime
-
-    let _n = 1usize / 0; //~ ERROR: this operation will panic at runtime
-    let _n = &(1usize / 0); //~ ERROR: this operation will panic at runtime
+    let _n = isize::MIN / -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(isize::MIN / -1); //~ ERROR: this operation will panic at runtime
 
 
     // Modulus
@@ -266,27 +292,38 @@ fn main() {
     let _n = 1u128 % 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1u128 % 0); //~ ERROR: this operation will panic at runtime
 
-    let _n = 1i8 % 0;   //~ ERROR: this operation will panic at runtime
-    let _n = &(1i8 % 0);   //~ ERROR: this operation will panic at runtime
-
-    let _n = 1i16 % 0; //~ ERROR: this operation will panic at runtime
-    let _n = &(1i16 % 0); //~ ERROR: this operation will panic at runtime
-
-    let _n = 1i32 % 0; //~ ERROR: this operation will panic at runtime
-    let _n = &(1i32 % 0); //~ ERROR: this operation will panic at runtime
-
-    let _n = 1i64 % 0; //~ ERROR: this operation will panic at runtime
-    let _n = &(1i64 % 0); //~ ERROR: this operation will panic at runtime
-
-    let _n = 1i128 % 0; //~ ERROR: this operation will panic at runtime
-    let _n = &(1i128 % 0); //~ ERROR: this operation will panic at runtime
-
-    let _n = 1isize % 0; //~ ERROR: this operation will panic at runtime
-    let _n = &(1isize % 0); //~ ERROR: this operation will panic at runtime
-
     let _n = 1usize % 0; //~ ERROR: this operation will panic at runtime
     let _n = &(1usize % 0); //~ ERROR: this operation will panic at runtime
 
+    let _n = 1i8 % 0;   //~ ERROR: this operation will panic at runtime
+    let _n = &(1i8 % 0);   //~ ERROR: this operation will panic at runtime
+    let _n = i8::MIN % -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i8::MIN % -1); //~ ERROR: this operation will panic at runtime
+
+    let _n = 1i16 % 0; //~ ERROR: this operation will panic at runtime
+    let _n = &(1i16 % 0); //~ ERROR: this operation will panic at runtime
+    let _n = i16::MIN % -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i16::MIN % -1); //~ ERROR: this operation will panic at runtime
+
+    let _n = 1i32 % 0; //~ ERROR: this operation will panic at runtime
+    let _n = &(1i32 % 0); //~ ERROR: this operation will panic at runtime
+    let _n = i32::MIN % -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i32::MIN % -1); //~ ERROR: this operation will panic at runtime
+
+    let _n = 1i64 % 0; //~ ERROR: this operation will panic at runtime
+    let _n = &(1i64 % 0); //~ ERROR: this operation will panic at runtime
+    let _n = i64::MIN % -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i64::MIN % -1); //~ ERROR: this operation will panic at runtime
+
+    let _n = 1i128 % 0; //~ ERROR: this operation will panic at runtime
+    let _n = &(1i128 % 0); //~ ERROR: this operation will panic at runtime
+    let _n = i128::MIN % -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(i128::MIN % -1); //~ ERROR: this operation will panic at runtime
+
+    let _n = 1isize % 0; //~ ERROR: this operation will panic at runtime
+    let _n = &(1isize % 0); //~ ERROR: this operation will panic at runtime
+    let _n = isize::MIN % -1; //~ ERROR: this operation will panic at runtime
+    let _n = &(isize::MIN % -1); //~ ERROR: this operation will panic at runtime
 
     // Out of bounds access
     let _n = [1, 2, 3][4]; //~ ERROR: this operation will panic at runtime

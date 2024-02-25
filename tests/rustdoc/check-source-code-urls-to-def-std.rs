@@ -1,4 +1,4 @@
-// compile-flags: -Zunstable-options --generate-link-to-definition
+//@ compile-flags: -Zunstable-options --generate-link-to-definition
 
 #![crate_name = "foo"]
 

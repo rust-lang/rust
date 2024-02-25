@@ -77,8 +77,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // coercions from ! to `expected`.
         if ty.is_never() {
             if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
-                self.dcx()
-                    .span_bug(expr.span, "expression with never type wound up being adjusted");
+                let reported = self.dcx().span_delayed_bug(
+                    expr.span,
+                    "expression with never type wound up being adjusted",
+                );
+                return Ty::new_error(self.tcx(), reported);
             }
 
             let adj_ty = self.next_ty_var(TypeVariableOrigin {

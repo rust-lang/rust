@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
 trait X { fn dummy(&self) { } }
 impl X for usize { }

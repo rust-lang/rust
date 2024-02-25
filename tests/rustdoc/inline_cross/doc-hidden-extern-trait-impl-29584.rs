@@ -1,5 +1,5 @@
-// aux-build:issue-29584.rs
-// ignore-cross-compile
+//@ aux-build:issue-29584.rs
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/29584
 #![crate_name="issue_29584"]

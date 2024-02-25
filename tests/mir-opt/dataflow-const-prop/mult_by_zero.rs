@@ -1,4 +1,4 @@
-// unit-test: DataflowConstProp
+//@ unit-test: DataflowConstProp
 
 // EMIT_MIR mult_by_zero.test.DataflowConstProp.diff
 // CHECK-LABEL: fn test(

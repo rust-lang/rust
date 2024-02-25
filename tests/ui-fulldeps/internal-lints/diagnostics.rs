@@ -1,4 +1,4 @@
-// compile-flags: -Z unstable-options
+//@ compile-flags: -Z unstable-options
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]

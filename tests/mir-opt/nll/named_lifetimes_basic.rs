@@ -4,7 +4,7 @@
 // suitable variables and that we setup the outlives relationship
 // between R0 and R1 properly.
 
-// compile-flags: -Zverbose-internals
+//@ compile-flags: -Zverbose-internals
 //                ^^^^^^^^^^^^^^^^^^^ force compiler to dump more region information
 
 #![allow(warnings)]

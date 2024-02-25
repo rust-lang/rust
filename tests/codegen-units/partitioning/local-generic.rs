@@ -1,7 +1,7 @@
 // We specify incremental here because we want to test the partitioning for
-// incremental compilation
-// incremental
-// compile-flags:-Zprint-mono-items=eager
+//@ incremental compilation
+//@ incremental
+//@ compile-flags:-Zprint-mono-items=eager
 
 #![allow(dead_code)]
 #![crate_type="lib"]

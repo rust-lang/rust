@@ -1,5 +1,5 @@
-// pp-exact
-// edition:2021
+//@ pp-exact
+//@ edition:2021
 
 #![allow(unused_imports)]
 

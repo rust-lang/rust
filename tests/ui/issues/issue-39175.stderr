@@ -2,10 +2,12 @@ error[E0599]: no method named `exec` found for mutable reference `&mut Command` 
   --> $DIR/issue-39175.rs:14:39
    |
 LL |     Command::new("echo").arg("hello").exec();
-   |                                       ^^^^ method not found in `&mut Command`
+   |                                       ^^^^
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: there is a method `pre_exec` with a similar name, but with different arguments
+  --> $SRC_DIR/std/src/os/unix/process.rs:LL:COL
+help: trait `CommandExt` which provides `exec` is implemented but not in scope; perhaps you want to import it
    |
 LL + use std::os::unix::process::CommandExt;
    |

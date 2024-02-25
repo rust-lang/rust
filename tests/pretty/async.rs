@@ -1,6 +1,6 @@
-// pp-exact
-// pretty-compare-only
-// edition:2021
+//@ pp-exact
+//@ pretty-compare-only
+//@ edition:2021
 
 async fn f() {
     let first = async { 1 };

@@ -1,7 +1,7 @@
 // This test checks that bounds checks are elided when
 // index is part of a (x | y) < C style condition
 
-// compile-flags: -O
+//@ compile-flags: -O
 
 #![crate_type = "lib"]
 

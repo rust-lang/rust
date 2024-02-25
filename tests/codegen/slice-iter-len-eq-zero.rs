@@ -1,5 +1,4 @@
-// compile-flags: -O
-// ignore-debug: the debug assertions add extra comparisons
+//@ compile-flags: -O
 #![crate_type = "lib"]
 
 type Demo = [u8; 3];

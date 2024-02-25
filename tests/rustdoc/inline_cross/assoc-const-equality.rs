@@ -1,5 +1,5 @@
-// aux-crate:assoc_const_equality=assoc-const-equality.rs
-// edition:2021
+//@ aux-crate:assoc_const_equality=assoc-const-equality.rs
+//@ edition:2021
 
 #![crate_name = "user"]
 

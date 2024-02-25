@@ -1,4 +1,4 @@
-// compile-flags: -O -C debug-assertions=yes
+//@ compile-flags: -O -C debug-assertions=yes
 
 #![crate_type = "lib"]
 #![feature(strict_provenance)]

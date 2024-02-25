@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 
 static FOO: u8 = 2;
 

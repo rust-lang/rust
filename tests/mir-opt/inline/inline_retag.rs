@@ -1,4 +1,4 @@
-// compile-flags: -Z span_free_formats -Z mir-emit-retag
+//@ compile-flags: -Z span_free_formats -Z mir-emit-retag
 
 // Tests that MIR inliner fixes up `Retag`'s `fn_entry` flag
 

@@ -1,16 +1,16 @@
-// assembly-output: ptx-linker
-// compile-flags: --crate-type bin
-// only-nvptx64
-// ignore-nvptx64
+//@ assembly-output: ptx-linker
+//@ compile-flags: --crate-type bin
+//@ only-nvptx64
+//@ ignore-nvptx64
 
 #![feature(abi_ptx)]
 #![no_main]
 #![no_std]
 
-// aux-build: breakpoint-panic-handler.rs
+//@ aux-build: breakpoint-panic-handler.rs
 extern crate breakpoint_panic_handler;
 
-// aux-build: non-inline-dependency.rs
+//@ aux-build: non-inline-dependency.rs
 extern crate non_inline_dependency as dep;
 
 // Make sure declarations are there.

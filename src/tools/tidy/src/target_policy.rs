@@ -7,7 +7,7 @@ use std::{collections::HashSet, path::Path};
 
 const TARGET_DEFINITIONS_PATH: &str = "compiler/rustc_target/src/spec/targets/";
 const ASSEMBLY_TEST_PATH: &str = "tests/assembly/targets/";
-const REVISION_LINE_START: &str = "// revisions: ";
+const REVISION_LINE_START: &str = "//@ revisions: ";
 const EXCEPTIONS: &[&str] = &[
     // FIXME: disabled since it fails on CI saying the csky component is missing
     "csky_unknown_linux_gnuabiv2",

@@ -24,6 +24,8 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![cfg_attr(bootstrap, feature(exhaustive_patterns))]
+#![cfg_attr(not(bootstrap), feature(min_exhaustive_patterns))]
 #![feature(rustdoc_internals)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
@@ -32,7 +34,6 @@
 #![feature(core_intrinsics)]
 #![feature(const_type_name)]
 #![feature(discriminant_kind)]
-#![feature(exhaustive_patterns)]
 #![feature(coroutines)]
 #![feature(generic_nonzero)]
 #![feature(if_let_guard)]

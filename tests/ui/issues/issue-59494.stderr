@@ -1,18 +1,9 @@
-error[E0277]: expected a `Fn(_)` closure, found `impl Fn(((_, _), _))`
-  --> $DIR/issue-59494.rs:21:22
+error[E0308]: mismatched types
+  --> $DIR/issue-59494.rs:20:40
    |
-LL |     let t8 = t8n(t7, t7p(f, g));
-   |              ---     ^^^^^^^^^ expected an `Fn(_)` closure, found `impl Fn(((_, _), _))`
-   |              |
-   |              required by a bound introduced by this call
-   |
-   = help: the trait `Fn<(_,)>` is not implemented for `impl Fn(((_, _), _))`
-note: required by a bound in `t8n`
-  --> $DIR/issue-59494.rs:5:45
-   |
-LL | fn t8n<A, B, C>(f: impl Fn(A) -> B, g: impl Fn(A) -> C) -> impl Fn(A) -> (B, C)
-   |                                             ^^^^^^^^^^ required by this bound in `t8n`
+LL |     let t7 = |env| |a| |b| t7p(f, g)(((env, a), b));
+   |                                        ^^^ cyclic type of infinite size
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.

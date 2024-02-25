@@ -1,5 +1,5 @@
-// compile-flags:-g
-// ignore-gdb-version: 13.1 - 99.0
+//@ compile-flags:-g
+//@ ignore-gdb-version: 13.1 - 99.0
 // ^ https://sourceware.org/bugzilla/show_bug.cgi?id=30330
 
 // === GDB TESTS ===================================================================================

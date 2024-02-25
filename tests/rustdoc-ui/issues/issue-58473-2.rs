@@ -1,4 +1,4 @@
-// check-pass
+//@ check-pass
 
 #![deny(rustdoc::private_doc_tests)]
 

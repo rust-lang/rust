@@ -1,4 +1,4 @@
-// unit-test: DataflowConstProp
+//@ unit-test: DataflowConstProp
 
 // EMIT_MIR issue_81605.f.DataflowConstProp.diff
 

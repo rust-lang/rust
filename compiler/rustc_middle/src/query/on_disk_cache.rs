@@ -233,7 +233,7 @@ impl<'sess> OnDiskCache<'sess> {
 
                 for (index, file) in files.iter().enumerate() {
                     let index = SourceFileIndex(index as u32);
-                    let file_ptr: *const SourceFile = &**file as *const _;
+                    let file_ptr: *const SourceFile = std::ptr::addr_of!(**file);
                     file_to_file_index.insert(file_ptr, index);
                     let source_file_id = EncodedSourceFileId::new(tcx, file);
                     file_index_to_stable_id.insert(index, source_file_id);
@@ -835,7 +835,7 @@ pub struct CacheEncoder<'a, 'tcx> {
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     #[inline]
     fn source_file_index(&mut self, source_file: Lrc<SourceFile>) -> SourceFileIndex {
-        self.file_to_file_index[&(&*source_file as *const SourceFile)]
+        self.file_to_file_index[&std::ptr::addr_of!(*source_file)]
     }
 
     /// Encode something with additional information that allows to do some

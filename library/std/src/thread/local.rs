@@ -180,8 +180,6 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
-// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_refs` lint
-#[cfg_attr(not(bootstrap), allow(static_mut_refs))]
 macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
@@ -435,6 +433,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// assert_eq!(X.replace(3), 2);
     /// ```
     #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
+    #[rustc_confusables("swap")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }
@@ -606,6 +605,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// X.with_borrow(|v| assert_eq!(*v, vec![1, 2, 3]));
     /// ```
     #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
+    #[rustc_confusables("swap")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }

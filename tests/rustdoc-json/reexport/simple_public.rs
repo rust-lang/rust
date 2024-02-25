@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 // @set inner_id = "$.index[*][?(@.name=='inner')].id"
 pub mod inner {

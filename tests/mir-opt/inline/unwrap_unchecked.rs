@@ -1,8 +1,8 @@
 #![crate_type = "lib"]
 
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// ignore-debug: the debug assertions prevent the inlining we are testing for
-// compile-flags: -Zmir-opt-level=2 -Zinline-mir -Cdebug-assertions=no
+//@ ignore-debug: the debug assertions prevent the inlining we are testing for
+//@ compile-flags: -Zmir-opt-level=2 -Zinline-mir -Cdebug-assertions=no
 
 // EMIT_MIR unwrap_unchecked.unwrap_unchecked.Inline.diff
 // EMIT_MIR unwrap_unchecked.unwrap_unchecked.PreCodegen.after.mir

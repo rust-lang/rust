@@ -1,5 +1,5 @@
-// revisions: rpass1 rpass2
-// compile-flags: -Z incremental-ignore-spans -Z query-dep-graph
+//@ revisions: rpass1 rpass2
+//@ compile-flags: -Z incremental-ignore-spans -Z query-dep-graph
 
 // Tests that module hashing depends on the order of the items
 // (since the order is exposed through `Mod.item_ids`).

@@ -163,7 +163,7 @@ impl<T: ?Sized> Clone for PtrComponents<T> {
 /// It is a pointer to a vtable (virtual call table)
 /// that represents all the necessary information
 /// to manipulate the concrete type stored inside a trait object.
-/// The vtable notably it contains:
+/// The vtable notably contains:
 ///
 /// * type size
 /// * type alignment

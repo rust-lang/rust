@@ -2,7 +2,7 @@ error[E0599]: no method named `trait_method` found for struct `FooStruct` in the
   --> $DIR/issue-56175.rs:5:33
    |
 LL |     reexported_trait::FooStruct.trait_method();
-   |                                 ^^^^^^^^^^^^ method not found in `FooStruct`
+   |                                 ^^^^^^^^^^^^
    |
   ::: $DIR/auxiliary/reexported-trait.rs:3:12
    |
@@ -10,16 +10,20 @@ LL |         fn trait_method(&self) {
    |            ------------ the method is available for `FooStruct` here
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `Trait` which provides `trait_method` is implemented but not in scope; perhaps you want to import it
    |
 LL + use reexported_trait::Trait;
    |
+help: there is a method `trait_method_b` with a similar name
+   |
+LL |     reexported_trait::FooStruct.trait_method_b();
+   |                                 ~~~~~~~~~~~~~~
 
 error[E0599]: no method named `trait_method_b` found for struct `FooStruct` in the current scope
   --> $DIR/issue-56175.rs:7:33
    |
 LL |     reexported_trait::FooStruct.trait_method_b();
-   |                                 ^^^^^^^^^^^^^^ method not found in `FooStruct`
+   |                                 ^^^^^^^^^^^^^^
    |
   ::: $DIR/auxiliary/reexported-trait.rs:7:12
    |
@@ -27,10 +31,14 @@ LL |         fn trait_method_b(&self) {
    |            -------------- the method is available for `FooStruct` here
    |
    = help: items from traits can only be used if the trait is in scope
-help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+help: trait `TraitB` which provides `trait_method_b` is implemented but not in scope; perhaps you want to import it
    |
 LL + use reexported_trait::TraitBRename;
    |
+help: there is a method `trait_method` with a similar name
+   |
+LL |     reexported_trait::FooStruct.trait_method();
+   |                                 ~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

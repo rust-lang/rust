@@ -1,9 +1,9 @@
 // Regression test for issues #77763, #84579 and #102142.
 #![crate_name = "main"]
 
-// aux-build:assoc_item_trait_bounds.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:assoc_item_trait_bounds.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 extern crate assoc_item_trait_bounds as aux;
 
 // @has main/trait.Main.html

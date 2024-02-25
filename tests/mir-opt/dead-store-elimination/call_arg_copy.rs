@@ -1,6 +1,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: DeadStoreElimination-final
-// compile-flags: -Zmir-enable-passes=+CopyProp
+//@ unit-test: DeadStoreElimination-final
+//@ compile-flags: -Zmir-enable-passes=+CopyProp
 
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]

@@ -1,6 +1,6 @@
-// compile-flags: --crate-type=lib
+//@ compile-flags: --crate-type=lib
 
-// pp-exact
+//@ pp-exact
 /***
 More than two asterisks means that it isn't a doc comment.
 */

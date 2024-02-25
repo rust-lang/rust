@@ -1,6 +1,6 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
-// unit-test: CopyProp
+//@ unit-test: CopyProp
 
 fn id<T>(x: T) -> T {
     x

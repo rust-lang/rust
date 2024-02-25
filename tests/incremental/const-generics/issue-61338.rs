@@ -1,4 +1,4 @@
-// revisions:rpass1
+//@ revisions:rpass1
 
 struct Struct<T>(T);
 

@@ -1031,12 +1031,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     {
                         candidate_set.mark_ambiguous();
                         true
-                    } else if obligation.predicate.args.type_at(0).to_opt_closure_kind().is_some()
-                        && obligation.predicate.args.type_at(1).to_opt_closure_kind().is_some()
-                    {
-                        true
                     } else {
-                        false
+                        obligation.predicate.args.type_at(0).to_opt_closure_kind().is_some()
+                        && obligation.predicate.args.type_at(1).to_opt_closure_kind().is_some()
                     }
                 } else if lang_items.discriminant_kind_trait() == Some(trait_ref.def_id) {
                     match self_ty.kind() {

@@ -5,7 +5,7 @@
 
 type X = Vec<X>;
 //[gated]~^ ERROR cycle detected
-//[feature]~^^ ERROR: overflow evaluating the requirement `X`
+//[feature]~^^ ERROR: overflow normalizing the type alias `X`
 
 #[rustfmt::skip]
 fn main() { let b: X = Vec::new(); }

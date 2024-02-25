@@ -1,4 +1,4 @@
-// edition:2021
+//@ edition:2021
 // ignore-tidy-linelength
 
 // Regression test for <https://github.com/rust-lang/rust/issues/101199>

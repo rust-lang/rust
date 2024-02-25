@@ -1,4 +1,4 @@
-// aux-build: foreign_struct.rs
+//@ aux-build: foreign_struct.rs
 extern crate foreign_struct;
 
 /// ForeignStruct id hack

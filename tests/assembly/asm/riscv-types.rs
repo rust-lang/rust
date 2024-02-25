@@ -1,10 +1,10 @@
-// revisions: riscv64 riscv32
-// assembly-output: emit-asm
-//[riscv64] compile-flags: --target riscv64imac-unknown-none-elf
-//[riscv64] needs-llvm-components: riscv
-//[riscv32] compile-flags: --target riscv32imac-unknown-none-elf
-//[riscv32] needs-llvm-components: riscv
-// compile-flags: -C target-feature=+d
+//@ revisions: riscv64 riscv32
+//@ assembly-output: emit-asm
+//@[riscv64] compile-flags: --target riscv64imac-unknown-none-elf
+//@[riscv64] needs-llvm-components: riscv
+//@[riscv32] compile-flags: --target riscv32imac-unknown-none-elf
+//@[riscv32] needs-llvm-components: riscv
+//@ compile-flags: -C target-feature=+d
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

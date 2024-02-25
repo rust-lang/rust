@@ -1,7 +1,7 @@
 //! See [`S`].
 
 // Check that this isn't an ICE
-// should-fail
+//@ should-fail
 
 mod foo {
     pub use inner::S;

@@ -1,3 +1,4 @@
+use rustc_data_structures::undo_log::Rollback;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, Ty, TyVid};
@@ -12,35 +13,9 @@ use std::cmp;
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use rustc_data_structures::undo_log::Rollback;
-
-/// Represents a single undo-able action that affects a type inference variable.
-#[derive(Clone)]
-pub(crate) enum UndoLog<'tcx> {
-    EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
-    SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
-}
-
-/// Convert from a specific kind of undo to the more general UndoLog
-impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) -> Self {
-        UndoLog::EqRelation(l)
-    }
-}
-
-/// Convert from a specific kind of undo to the more general UndoLog
-impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::TyVid>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<ty::TyVid>>) -> Self {
-        UndoLog::SubRelation(l)
-    }
-}
-
-impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
-    fn reverse(&mut self, undo: UndoLog<'tcx>) {
-        match undo {
-            UndoLog::EqRelation(undo) => self.eq_relations.reverse(undo),
-            UndoLog::SubRelation(undo) => self.sub_relations.reverse(undo),
-        }
+impl<'tcx> Rollback<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for TypeVariableStorage<'tcx> {
+    fn reverse(&mut self, undo: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) {
+        self.eq_relations.reverse(undo)
     }
 }
 
@@ -52,41 +27,6 @@ pub struct TypeVariableStorage<'tcx> {
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
     eq_relations: ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
-
-    /// Two variables are unified in `sub_relations` when we have a
-    /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
-    /// table exists only to help with the occurs check. In particular,
-    /// we want to report constraints like these as an occurs check
-    /// violation:
-    /// ``` text
-    /// ?1 <: ?3
-    /// Box<?3> <: ?1
-    /// ```
-    /// Without this second table, what would happen in a case like
-    /// this is that we would instantiate `?1` with a generalized
-    /// type like `Box<?6>`. We would then relate `Box<?3> <: Box<?6>`
-    /// and infer that `?3 <: ?6`. Next, since `?1` was instantiated,
-    /// we would process `?1 <: ?3`, generalize `?1 = Box<?6>` to `Box<?9>`,
-    /// and instantiate `?3` with `Box<?9>`. Finally, we would relate
-    /// `?6 <: ?9`. But now that we instantiated `?3`, we can process
-    /// `?3 <: ?6`, which gives us `Box<?9> <: ?6`... and the cycle
-    /// continues. (This is `occurs-check-2.rs`.)
-    ///
-    /// What prevents this cycle is that when we generalize
-    /// `Box<?3>` to `Box<?6>`, we also sub-unify `?3` and `?6`
-    /// (in the generalizer). When we then process `Box<?6> <: ?3`,
-    /// the occurs check then fails because `?6` and `?3` are sub-unified,
-    /// and hence generalization fails.
-    ///
-    /// This is reasonable because, in Rust, subtypes have the same
-    /// "skeleton" and hence there is no possible type such that
-    /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
-    ///
-    /// In practice, we sometimes sub-unify variables in other spots, such
-    /// as when processing subtype predicates. This is not necessary but is
-    /// done to aid diagnostics, as it allows us to be more effective when
-    /// we guide the user towards where they should insert type hints.
-    sub_relations: ut::UnificationTableStorage<ty::TyVid>,
 }
 
 pub struct TypeVariableTable<'a, 'tcx> {
@@ -158,7 +98,6 @@ impl<'tcx> TypeVariableStorage<'tcx> {
         TypeVariableStorage {
             values: Default::default(),
             eq_relations: ut::UnificationTableStorage::new(),
-            sub_relations: ut::UnificationTableStorage::new(),
         }
     }
 
@@ -197,16 +136,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
         self.eq_relations().union(a, b);
-        self.sub_relations().union(a, b);
-    }
-
-    /// Records that `a <: b`, depending on `dir`.
-    ///
-    /// Precondition: neither `a` nor `b` are known.
-    pub fn sub(&mut self, a: ty::TyVid, b: ty::TyVid) {
-        debug_assert!(self.probe(a).is_unknown());
-        debug_assert!(self.probe(b).is_unknown());
-        self.sub_relations().union(a, b);
     }
 
     /// Instantiates `vid` with the type `ty`.
@@ -240,10 +169,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         origin: TypeVariableOrigin,
     ) -> ty::TyVid {
         let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
-
-        let sub_key = self.sub_relations().new_key(());
-        debug_assert_eq!(eq_key.vid, sub_key);
-
         let index = self.storage.values.push(TypeVariableData { origin });
         debug_assert_eq!(eq_key.vid, index);
 
@@ -264,24 +189,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// b` (transitively).
     pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.eq_relations().find(vid).vid
-    }
-
-    /// Returns the "root" variable of `vid` in the `sub_relations`
-    /// equivalence table. All type variables that have been are
-    /// related via equality or subtyping will yield the same root
-    /// variable (per the union-find algorithm), so `sub_root_var(a)
-    /// == sub_root_var(b)` implies that:
-    /// ```text
-    /// exists X. (a <: X || X <: a) && (b <: X || X <: b)
-    /// ```
-    pub fn sub_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
-        self.sub_relations().find(vid)
-    }
-
-    /// Returns `true` if `a` and `b` have same "sub-root" (i.e., exists some
-    /// type X such that `forall i in {a, b}. (i <: X || X <: i)`.
-    pub fn sub_unified(&mut self, a: ty::TyVid, b: ty::TyVid) -> bool {
-        self.sub_root_var(a) == self.sub_root_var(b)
     }
 
     /// Retrieves the type to which `vid` has been instantiated, if
@@ -312,11 +219,6 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     #[inline]
     fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
         self.storage.eq_relations.with_log(self.undo_log)
-    }
-
-    #[inline]
-    fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
-        self.storage.sub_relations.with_log(self.undo_log)
     }
 
     /// Returns a range of the type variables created during the snapshot.

@@ -81,8 +81,10 @@ impl Barrier {
     /// let barrier = Barrier::new(10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_barrier", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
-    pub fn new(n: usize) -> Barrier {
+    #[inline]
+    pub const fn new(n: usize) -> Barrier {
         Barrier {
             lock: Mutex::new(BarrierState { count: 0, generation_id: 0 }),
             cvar: Condvar::new(),

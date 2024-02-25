@@ -1,4 +1,4 @@
-// revisions: rpass1
+//@ revisions: rpass1
 
 // Regression test that `infer_outlives_predicates` can be
 // used with incremental without an ICE.

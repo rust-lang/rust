@@ -1,5 +1,5 @@
-// aux-build:issue-98697-reexport-with-anonymous-lifetime.rs
-// ignore-cross-compile
+//@ aux-build:issue-98697-reexport-with-anonymous-lifetime.rs
+//@ ignore-cross-compile
 
 // When reexporting a function with a HRTB with anonymous lifetimes,
 // make sure the anonymous lifetimes are not rendered.

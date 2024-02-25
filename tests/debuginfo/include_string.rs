@@ -1,6 +1,6 @@
-// min-lldb-version: 310
+//@ min-lldb-version: 310
 
-// compile-flags:-g
+//@ compile-flags:-g
 // gdb-command:run
 // gdb-command:print string1.length
 // gdb-check:$1 = 48

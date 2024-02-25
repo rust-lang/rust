@@ -1,6 +1,6 @@
-// compile-flags: -Zforce-unstable-if-unmarked
-// aux-build:issue-76736-1.rs
-// aux-build:issue-76736-2.rs
+//@ compile-flags: -Zforce-unstable-if-unmarked
+//@ aux-build:issue-76736-1.rs
+//@ aux-build:issue-76736-2.rs
 
 #![crate_name = "foo"]
 

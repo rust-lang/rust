@@ -1,6 +1,6 @@
 // Verify that DIEnumerator uses isUnsigned flag when appropriate.
 //
-// compile-flags: -g -C no-prepopulate-passes
+//@ compile-flags: -g -C no-prepopulate-passes
 
 #[repr(i64)]
 pub enum I64 {

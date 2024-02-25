@@ -288,16 +288,61 @@ impl PathSet {
     }
 }
 
-const PATH_REMAP: &[(&str, &str)] = &[("rust-analyzer-proc-macro-srv", "proc-macro-srv-cli")];
+const PATH_REMAP: &[(&str, &[&str])] = &[
+    // config.toml uses `rust-analyzer-proc-macro-srv`, but the
+    // actual path is `proc-macro-srv-cli`
+    ("rust-analyzer-proc-macro-srv", &["proc-macro-srv-cli"]),
+    // Make `x test tests` function the same as `x t tests/*`
+    (
+        "tests",
+        &[
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/coverage",
+            "tests/coverage-run-rustdoc",
+            "tests/debuginfo",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make",
+            "tests/run-make-fulldeps",
+            "tests/run-pass-valgrind",
+            "tests/rustdoc",
+            "tests/rustdoc-gui",
+            "tests/rustdoc-js",
+            "tests/rustdoc-js-std",
+            "tests/rustdoc-json",
+            "tests/rustdoc-ui",
+            "tests/ui",
+            "tests/ui-fulldeps",
+        ],
+    ),
+];
 
-fn remap_paths(paths: &mut [&Path]) {
-    for path in paths.iter_mut() {
+fn remap_paths(paths: &mut Vec<&Path>) {
+    let mut remove = vec![];
+    let mut add = vec![];
+    for (i, path) in paths
+        .iter()
+        .enumerate()
+        .filter_map(|(i, path)| if let Some(s) = path.to_str() { Some((i, s)) } else { None })
+    {
         for &(search, replace) in PATH_REMAP {
-            if path.to_str() == Some(search) {
-                *path = Path::new(replace)
+            // Remove leading and trailing slashes so `tests/` and `tests` are equivalent
+            if path.trim_matches(std::path::is_separator) == search {
+                remove.push(i);
+                add.extend(replace.into_iter().map(Path::new));
+                break;
             }
         }
     }
+    remove.sort();
+    remove.dedup();
+    for idx in remove.into_iter().rev() {
+        paths.remove(idx);
+    }
+    paths.append(&mut add);
 }
 
 impl StepDescription {

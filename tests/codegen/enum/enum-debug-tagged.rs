@@ -1,9 +1,9 @@
 // This tests that debug info for tagged (ordinary) enums is properly emitted.
 // This is ignored for the fallback mode on MSVC due to problems with PDB.
 
-// ignore-msvc
+//@ ignore-msvc
 
-// compile-flags: -g -C no-prepopulate-passes
+//@ compile-flags: -g -C no-prepopulate-passes
 
 // CHECK-LABEL: @main
 // CHECK: {{.*}}DICompositeType{{.*}}tag: DW_TAG_structure_type,{{.*}}name: "E",{{.*}}

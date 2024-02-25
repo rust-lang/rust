@@ -2035,7 +2035,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         slice: Option<&'tcx Pat<'tcx>>,
         span: Span,
     ) -> Option<Ty<'tcx>> {
-        if !slice.is_none() {
+        if slice.is_some() {
             return None;
         }
 

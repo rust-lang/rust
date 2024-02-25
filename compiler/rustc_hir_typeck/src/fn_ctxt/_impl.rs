@@ -846,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_name = item_segment.ident;
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
-            .and_then(|r| {
+            .map(|r| {
                 // lint bare trait if the method is found in the trait
                 if span.edition().at_least_rust_2021()
                     && let Some(diag) =
@@ -854,7 +854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     diag.emit();
                 }
-                Ok(r)
+                r
             })
             .or_else(|error| {
                 let guar = self
@@ -1522,10 +1522,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.next_trait_solver()
             && let ty::Alias(..) = ty.kind()
         {
-            match self
+            // We need to use a separate variable here as otherwise the temporary for
+            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
+            // in a reentrant borrow, causing an ICE.
+            let result = self
                 .at(&self.misc(sp), self.param_env)
-                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut())
-            {
+                .structurally_normalize(ty, &mut **self.fulfillment_cx.borrow_mut());
+            match result {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
                     let guar = self.err_ctxt().report_fulfillment_errors(errors);

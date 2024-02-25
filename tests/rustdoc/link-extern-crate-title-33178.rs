@@ -1,6 +1,6 @@
-// aux-build:empty.rs
-// aux-build:variant-struct.rs
-// ignore-cross-compile
+//@ aux-build:empty.rs
+//@ aux-build:variant-struct.rs
+//@ ignore-cross-compile
 
 // https://github.com/rust-lang/rust/issues/33178
 #![crate_name="issue_33178_1"]

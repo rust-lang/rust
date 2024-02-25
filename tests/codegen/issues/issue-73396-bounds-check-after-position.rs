@@ -1,5 +1,4 @@
-// compile-flags: -O
-// ignore-debug: the debug assertions get in the way
+//@ compile-flags: -O
 #![crate_type = "lib"]
 
 // Make sure no bounds checks are emitted when slicing or indexing

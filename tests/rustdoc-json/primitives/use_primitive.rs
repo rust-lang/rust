@@ -1,4 +1,4 @@
-// edition:2018
+//@ edition:2018
 
 #![feature(rustc_attrs)]
 

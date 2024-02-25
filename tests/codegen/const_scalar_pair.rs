@@ -1,4 +1,4 @@
-// compile-flags: --crate-type=lib -Copt-level=0 -Zmir-opt-level=0 -C debuginfo=2
+//@ compile-flags: --crate-type=lib -Copt-level=0 -Zmir-opt-level=0 -C debuginfo=2
 
 #![feature(inline_const)]
 

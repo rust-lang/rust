@@ -1073,9 +1073,9 @@ pub(crate) struct ExpectedIdentifier {
     pub help_cannot_start_number: Option<HelpIdentifierStartsWithNumber>,
 }
 
-impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = DiagnosticBuilder::new(
@@ -1133,9 +1133,9 @@ pub(crate) struct ExpectedSemi {
     pub sugg: ExpectedSemiSugg,
 }
 
-impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for ExpectedSemi {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = DiagnosticBuilder::new(

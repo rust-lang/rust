@@ -1,5 +1,4 @@
-// ignore-debug: the debug assertions get in the way
-// compile-flags: -O
+//@ compile-flags: -O
 #![crate_type = "lib"]
 #![feature(exact_size_is_empty)]
 

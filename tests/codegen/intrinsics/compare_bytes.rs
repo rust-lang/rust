@@ -1,7 +1,7 @@
-// revisions: INT32 INT16
-// compile-flags: -O
-// [INT32] ignore-16bit
-// [INT16] only-16bit
+//@ revisions: INT32 INT16
+//@ compile-flags: -O
+//@ [INT32] ignore-16bit
+//@ [INT16] only-16bit
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

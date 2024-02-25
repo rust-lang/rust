@@ -1,4 +1,4 @@
-// unit-test: GVN
+//@ unit-test: GVN
 
 // EMIT_MIR boolean_identities.test.GVN.diff
 pub fn test(x: bool, y: bool) -> bool {

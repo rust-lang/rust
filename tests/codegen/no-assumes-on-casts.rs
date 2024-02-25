@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-// compile-flags: -Cno-prepopulate-passes
+//@ compile-flags: -Cno-prepopulate-passes
 
 // CHECK-LABEL: fna
 #[no_mangle]

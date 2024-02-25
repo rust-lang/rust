@@ -1,4 +1,4 @@
-   LL|       |// edition: 2021
+   LL|       |//@ edition: 2021
    LL|       |// ignore-tidy-linelength
    LL|       |
    LL|       |// This file deliberately contains line and column numbers larger than 127,

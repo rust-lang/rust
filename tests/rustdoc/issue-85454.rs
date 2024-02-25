@@ -1,5 +1,5 @@
-// aux-build:issue-85454.rs
-// build-aux-docs
+//@ aux-build:issue-85454.rs
+//@ build-aux-docs
 #![crate_name = "foo"]
 
 extern crate issue_85454;

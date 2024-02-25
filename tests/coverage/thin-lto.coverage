@@ -1,4 +1,4 @@
-   LL|       |// compile-flags: -O -C lto=thin -C prefer-dynamic=no
+   LL|       |//@ compile-flags: -O -C lto=thin -C prefer-dynamic=no
    LL|       |
    LL|      1|pub fn main() {}
 

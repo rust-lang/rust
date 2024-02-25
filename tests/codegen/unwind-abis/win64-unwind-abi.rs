@@ -1,5 +1,5 @@
-// needs-llvm-components: x86
-// compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib -Cno-prepopulate-passes
+//@ needs-llvm-components: x86
+//@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
 #![feature(no_core, lang_items, c_unwind)]
 #[lang="sized"]

@@ -1,4 +1,4 @@
-use crate::ty::{self, Region, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Symbol;
@@ -10,26 +10,16 @@ pub trait ToType {
     fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
 }
 
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub struct UnifiedRegion<'tcx> {
-    value: Option<ty::Region<'tcx>>,
-}
-
-impl<'tcx> UnifiedRegion<'tcx> {
-    pub fn new(value: Option<Region<'tcx>>) -> Self {
-        Self { value }
-    }
-
-    /// The caller is responsible for checking universe compatibility before using this value.
-    pub fn get_value_ignoring_universes(self) -> Option<Region<'tcx>> {
-        self.value
-    }
+#[derive(Copy, Clone, Debug)]
+pub enum RegionVariableValue<'tcx> {
+    Known { value: ty::Region<'tcx> },
+    Unknown { universe: ty::UniverseIndex },
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RegionVidKey<'tcx> {
     pub vid: ty::RegionVid,
-    pub phantom: PhantomData<UnifiedRegion<'tcx>>,
+    pub phantom: PhantomData<RegionVariableValue<'tcx>>,
 }
 
 impl<'tcx> From<ty::RegionVid> for RegionVidKey<'tcx> {
@@ -39,7 +29,7 @@ impl<'tcx> From<ty::RegionVid> for RegionVidKey<'tcx> {
 }
 
 impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
-    type Value = UnifiedRegion<'tcx>;
+    type Value = RegionVariableValue<'tcx>;
     #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()
@@ -53,36 +43,47 @@ impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
     }
 }
 
-impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
-    type Error = NoError;
+pub struct RegionUnificationError;
+impl<'tcx> UnifyValue for RegionVariableValue<'tcx> {
+    type Error = RegionUnificationError;
 
-    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
-        // We pick the value of the least universe because it is compatible with more variables.
-        // This is *not* necessary for completeness.
-        #[cold]
-        fn min_universe<'tcx>(r1: Region<'tcx>, r2: Region<'tcx>) -> Region<'tcx> {
-            cmp::min_by_key(r1, r2, |r| match r.kind() {
-                ty::ReStatic
-                | ty::ReErased
-                | ty::ReLateParam(..)
-                | ty::ReEarlyParam(..)
-                | ty::ReError(_) => ty::UniverseIndex::ROOT,
-                ty::RePlaceholder(placeholder) => placeholder.universe,
-                ty::ReVar(..) | ty::ReBound(..) => bug!("not a universal region"),
-            })
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
+        match (*value1, *value2) {
+            (RegionVariableValue::Known { .. }, RegionVariableValue::Known { .. }) => {
+                Err(RegionUnificationError)
+            }
+
+            (RegionVariableValue::Known { value }, RegionVariableValue::Unknown { universe })
+            | (RegionVariableValue::Unknown { universe }, RegionVariableValue::Known { value }) => {
+                let universe_of_value = match value.kind() {
+                    ty::ReStatic
+                    | ty::ReErased
+                    | ty::ReLateParam(..)
+                    | ty::ReEarlyParam(..)
+                    | ty::ReError(_) => ty::UniverseIndex::ROOT,
+                    ty::RePlaceholder(placeholder) => placeholder.universe,
+                    ty::ReVar(..) | ty::ReBound(..) => bug!("not a universal region"),
+                };
+
+                if universe.can_name(universe_of_value) {
+                    Ok(RegionVariableValue::Known { value })
+                } else {
+                    Err(RegionUnificationError)
+                }
+            }
+
+            (
+                RegionVariableValue::Unknown { universe: a },
+                RegionVariableValue::Unknown { universe: b },
+            ) => {
+                // If we unify two unconstrained regions then whatever
+                // value they wind up taking (which must be the same value) must
+                // be nameable by both universes. Therefore, the resulting
+                // universe is the minimum of the two universes, because that is
+                // the one which contains the fewest names in scope.
+                Ok(RegionVariableValue::Unknown { universe: a.min(b) })
+            }
         }
-
-        Ok(match (value1.value, value2.value) {
-            // Here we can just pick one value, because the full constraints graph
-            // will be handled later. Ideally, we might want a `MultipleValues`
-            // variant or something. For now though, this is fine.
-            (Some(val1), Some(val2)) => Self { value: Some(min_universe(val1, val2)) },
-
-            (Some(_), _) => *value1,
-            (_, Some(_)) => *value2,
-
-            (None, None) => *value1,
-        })
     }
 }
 

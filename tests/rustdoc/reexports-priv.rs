@@ -1,5 +1,5 @@
-// aux-build: reexports.rs
-// compile-flags: --document-private-items
+//@ aux-build: reexports.rs
+//@ compile-flags: --document-private-items
 
 #![crate_name = "foo"]
 

@@ -4,8 +4,8 @@
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
-// no-prefer-dynamic
-// compile-flags:-g
+//@ no-prefer-dynamic
+//@ compile-flags:-g
 
 pub fn generic_function<T: Clone>(val: T) -> (T, T) {
     let result = (val.clone(), val.clone());

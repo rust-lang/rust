@@ -20,9 +20,10 @@ impl<T> Bind<T> for Foo<{ 6 + 1 }> {
 
 fn main() {
     let (mut t, foo) = Foo::bind();
+    //~^ ERROR mismatched types
+    //~| NOTE cyclic type
+
     // `t` is `ty::Infer(TyVar(?1t))`
     // `foo` contains `ty::Infer(TyVar(?1t))` in its substs
     t = foo;
-    //~^ ERROR mismatched types
-    //~| NOTE cyclic type
 }

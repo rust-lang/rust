@@ -37,9 +37,10 @@ extern crate self as rustc_errors;
 
 pub use codes::*;
 pub use diagnostic::{
-    AddToDiagnostic, BugAbort, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgName,
-    DiagnosticArgValue, DiagnosticBuilder, DiagnosticStyledString, EmissionGuarantee, FatalAbort,
-    IntoDiagnostic, IntoDiagnosticArg, StringPart, SubDiagnostic, SubdiagnosticMessageOp,
+    AddToDiagnostic, BugAbort, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgMap,
+    DiagnosticArgName, DiagnosticArgValue, DiagnosticBuilder, DiagnosticStyledString,
+    EmissionGuarantee, FatalAbort, IntoDiagnostic, IntoDiagnosticArg, StringPart, SubDiagnostic,
+    SubdiagnosticMessageOp,
 };
 pub use diagnostic_impls::{
     DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
@@ -843,7 +844,7 @@ impl DiagCtxt {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|&code| {
-                    if registry.try_find_description(code).is_ok().clone() {
+                    if registry.try_find_description(code).is_ok() {
                         Some(code.to_string())
                     } else {
                         None
@@ -1496,9 +1497,8 @@ impl DiagCtxtInner {
         diag: &Diagnostic,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> SubdiagnosticMessage {
-        let args = diag.args();
         let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-        self.eagerly_translate(msg, args)
+        self.eagerly_translate(msg, diag.args.iter())
     }
 
     fn flush_delayed(&mut self) {

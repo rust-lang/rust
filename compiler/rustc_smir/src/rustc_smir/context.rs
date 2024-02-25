@@ -208,11 +208,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let crates: Vec<stable_mir::Crate> = [LOCAL_CRATE]
             .iter()
             .chain(tables.tcx.crates(()).iter())
-            .map(|crate_num| {
+            .filter_map(|crate_num| {
                 let crate_name = tables.tcx.crate_name(*crate_num).to_string();
                 (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
             })
-            .flatten()
             .collect();
         crates
     }

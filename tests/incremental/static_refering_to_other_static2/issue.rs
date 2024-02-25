@@ -1,4 +1,4 @@
-// revisions:rpass1 rpass2
+//@ revisions:rpass1 rpass2
 
 #[cfg(rpass1)]
 pub static A: i32 = 42;

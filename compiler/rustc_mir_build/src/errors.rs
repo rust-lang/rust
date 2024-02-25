@@ -461,8 +461,10 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
     pub ty: Ty<'tcx>,
 }
 
-impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'_> {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G>
+    for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_>
+{
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag = DiagnosticBuilder::new(
             dcx,
             level,

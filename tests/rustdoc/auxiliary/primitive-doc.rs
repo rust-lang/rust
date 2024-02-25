@@ -1,4 +1,4 @@
-// compile-flags: --crate-type lib --edition 2018
+//@ compile-flags: --crate-type lib --edition 2018
 
 #![feature(rustc_attrs)]
 #![feature(no_core)]

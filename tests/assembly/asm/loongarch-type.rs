@@ -1,6 +1,6 @@
-// assembly-output: emit-asm
-// compile-flags: --target loongarch64-unknown-linux-gnu
-// needs-llvm-components: loongarch
+//@ assembly-output: emit-asm
+//@ compile-flags: --target loongarch64-unknown-linux-gnu
+//@ needs-llvm-components: loongarch
 
 #![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
 #![crate_type = "rlib"]

@@ -743,7 +743,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             simd_reduce(fx, v, None, ret, &|fx, _ty, a, b| fx.bcx.ins().bxor(a, b));
         }
 
-        sym::simd_reduce_min | sym::simd_reduce_min_nanless => {
+        sym::simd_reduce_min => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             if !v.layout().ty.is_simd() {
@@ -762,7 +762,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_reduce_max | sym::simd_reduce_max_nanless => {
+        sym::simd_reduce_max => {
             intrinsic_args!(fx, args => (v); intrinsic);
 
             if !v.layout().ty.is_simd() {

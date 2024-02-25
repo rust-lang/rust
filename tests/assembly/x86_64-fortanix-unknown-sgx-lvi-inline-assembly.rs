@@ -1,8 +1,8 @@
 // Test LVI load hardening on SGX inline assembly code
 
-// assembly-output: emit-asm
-// compile-flags: --crate-type staticlib
-// only-x86_64-fortanix-unknown-sgx
+//@ assembly-output: emit-asm
+//@ compile-flags: --crate-type staticlib
+//@ only-x86_64-fortanix-unknown-sgx
 
 use std::arch::asm;
 

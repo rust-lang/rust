@@ -1,4 +1,4 @@
-// aux-build:all-item-types.rs
+//@ aux-build:all-item-types.rs
 
 // This test is to ensure there is no problem on handling foreign functions
 // coming from a dependency.

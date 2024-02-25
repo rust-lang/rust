@@ -1,5 +1,5 @@
-// revisions: cfail1 cfail2
-// build-pass
+//@ revisions: cfail1 cfail2
+//@ build-pass
 
 #![crate_type="lib"]
 #![crate_type="cdylib"]

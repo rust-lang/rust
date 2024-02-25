@@ -57,12 +57,21 @@ use super::{
 
 pub use rustc_infer::traits::error_reporting::*;
 
+pub enum OverflowCause<'tcx> {
+    DeeplyNormalize(ty::AliasTy<'tcx>),
+    TraitSolver(ty::Predicate<'tcx>),
+}
+
 #[extension(pub trait TypeErrCtxtExt<'tcx>)]
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     fn report_fulfillment_errors(
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
+        self.sub_relations
+            .borrow_mut()
+            .add_constraints(self, errors.iter().map(|e| e.obligation.predicate));
+
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -180,49 +189,78 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// whose result could not be truly determined and thus we can't say
     /// if the program type checks or not -- and they are unusual
     /// occurrences in any case.
-    fn report_overflow_error<T>(
+    fn report_overflow_error(
         &self,
-        predicate: &T,
+        cause: OverflowCause<'tcx>,
         span: Span,
         suggest_increasing_limit: bool,
         mutate: impl FnOnce(&mut DiagnosticBuilder<'_>),
-    ) -> !
-    where
-        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>,
-    {
-        let mut err = self.build_overflow_error(predicate, span, suggest_increasing_limit);
+    ) -> ! {
+        let mut err = self.build_overflow_error(cause, span, suggest_increasing_limit);
         mutate(&mut err);
         err.emit();
         FatalError.raise();
     }
 
-    fn build_overflow_error<T>(
+    fn build_overflow_error(
         &self,
-        predicate: &T,
+        cause: OverflowCause<'tcx>,
         span: Span,
         suggest_increasing_limit: bool,
-    ) -> DiagnosticBuilder<'tcx>
-    where
-        T: fmt::Display + TypeFoldable<TyCtxt<'tcx>> + Print<'tcx, FmtPrinter<'tcx, 'tcx>>,
-    {
-        let predicate = self.resolve_vars_if_possible(predicate.clone());
-        let mut pred_str = predicate.to_string();
-
-        if pred_str.len() > 50 {
-            // We don't need to save the type to a file, we will be talking about this type already
-            // in a separate note when we explain the obligation, so it will be available that way.
-            let mut cx: FmtPrinter<'_, '_> =
-                FmtPrinter::new_with_limit(self.tcx, Namespace::TypeNS, rustc_session::Limit(6));
-            predicate.print(&mut cx).unwrap();
-            pred_str = cx.into_buffer();
+    ) -> DiagnosticBuilder<'tcx> {
+        fn with_short_path<'tcx, T>(tcx: TyCtxt<'tcx>, value: T) -> String
+        where
+            T: fmt::Display + Print<'tcx, FmtPrinter<'tcx, 'tcx>>,
+        {
+            let s = value.to_string();
+            if s.len() > 50 {
+                // We don't need to save the type to a file, we will be talking about this type already
+                // in a separate note when we explain the obligation, so it will be available that way.
+                let mut cx: FmtPrinter<'_, '_> =
+                    FmtPrinter::new_with_limit(tcx, Namespace::TypeNS, rustc_session::Limit(6));
+                value.print(&mut cx).unwrap();
+                cx.into_buffer()
+            } else {
+                s
+            }
         }
-        let mut err = struct_span_code_err!(
-            self.dcx(),
-            span,
-            E0275,
-            "overflow evaluating the requirement `{}`",
-            pred_str,
-        );
+
+        let mut err = match cause {
+            OverflowCause::DeeplyNormalize(alias_ty) => {
+                let alias_ty = self.resolve_vars_if_possible(alias_ty);
+                let kind = alias_ty.opt_kind(self.tcx).map_or("alias", |k| k.descr());
+                let alias_str = with_short_path(self.tcx, alias_ty);
+                struct_span_code_err!(
+                    self.dcx(),
+                    span,
+                    E0275,
+                    "overflow normalizing the {kind} `{alias_str}`",
+                )
+            }
+            OverflowCause::TraitSolver(predicate) => {
+                let predicate = self.resolve_vars_if_possible(predicate);
+                match predicate.kind().skip_binder() {
+                    ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ })
+                    | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+                        struct_span_code_err!(
+                            self.dcx(),
+                            span,
+                            E0275,
+                            "overflow assigning `{a}` to `{b}`",
+                        )
+                    }
+                    _ => {
+                        let pred_str = with_short_path(self.tcx, predicate);
+                        struct_span_code_err!(
+                            self.dcx(),
+                            span,
+                            E0275,
+                            "overflow evaluating the requirement `{pred_str}`",
+                        )
+                    }
+                }
+            }
+        };
 
         if suggest_increasing_limit {
             self.suggest_new_overflow_limit(&mut err);
@@ -248,7 +286,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         let predicate = obligation.predicate.clone().to_predicate(self.tcx);
         let predicate = self.resolve_vars_if_possible(predicate);
         self.report_overflow_error(
-            &predicate,
+            OverflowCause::TraitSolver(predicate),
             obligation.cause.span,
             suggest_increasing_limit,
             |err| {
@@ -299,7 +337,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     fn report_overflow_no_abort(&self, obligation: PredicateObligation<'tcx>) -> ErrorGuaranteed {
         let obligation = self.resolve_vars_if_possible(obligation);
-        let mut err = self.build_overflow_error(&obligation.predicate, obligation.cause.span, true);
+        let mut err = self.build_overflow_error(
+            OverflowCause::TraitSolver(obligation.predicate),
+            obligation.cause.span,
+            true,
+        );
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()

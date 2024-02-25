@@ -1,5 +1,5 @@
-// compile-flags: -Z unstable-options
-// check-pass
+//@ compile-flags: -Z unstable-options
+//@ check-pass
 
 #![feature(rustc_private)]
 

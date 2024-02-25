@@ -1,9 +1,9 @@
-// revisions: mips32 mips64
-// assembly-output: emit-asm
-//[mips32] compile-flags: --target mips-unknown-linux-gnu
-//[mips32] needs-llvm-components: mips
-//[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
-//[mips64] needs-llvm-components: mips
+//@ revisions: mips32 mips64
+//@ assembly-output: emit-asm
+//@[mips32] compile-flags: --target mips-unknown-linux-gnu
+//@[mips32] needs-llvm-components: mips
+//@[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
+//@[mips64] needs-llvm-components: mips
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]

@@ -1577,8 +1577,7 @@ mod prim_ref {}
 /// - Any two types with size 0 and alignment 1 are ABI-compatible.
 /// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
-/// - `i32` is ABI-compatible with `NonZeroI32`, and similar for all other integer types with their
-///   matching `NonZero*` type.
+/// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
 ///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
 ///
@@ -1613,9 +1612,9 @@ mod prim_ref {}
 /// type in the function pointer to the type at the function declaration, and the return value is
 /// [`transmute`d][mem::transmute] from the type in the declaration to the type in the
 /// pointer. All the usual caveats and concerns around transmutation apply; for instance, if the
-/// function expects a `NonZeroI32` and the function pointer uses the ABI-compatible type
-/// `Option<NonZeroI32>`, and the value used for the argument is `None`, then this call is Undefined
-/// Behavior since transmuting `None::<NonZeroI32>` to `NonZeroI32` violates the non-zero
+/// function expects a `NonZero<i32>` and the function pointer uses the ABI-compatible type
+/// `Option<NonZero<i32>>`, and the value used for the argument is `None`, then this call is Undefined
+/// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
 ///
 /// #### Requirements concerning target features

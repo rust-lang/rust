@@ -1,5 +1,5 @@
-// only-wasm32-bare
-// compile-flags: -C panic=unwind
+//@ only-wasm32-bare
+//@ compile-flags: -C panic=unwind
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

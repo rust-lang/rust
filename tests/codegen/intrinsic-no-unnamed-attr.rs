@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+//@ compile-flags: -C no-prepopulate-passes
 
 #![feature(intrinsics)]
 

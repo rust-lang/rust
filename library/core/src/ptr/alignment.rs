@@ -1,5 +1,5 @@
 use crate::convert::{TryFrom, TryInto};
-use crate::num::{NonZero, NonZeroUsize};
+use crate::num::NonZero;
 use crate::{cmp, fmt, hash, mem, num};
 
 /// A type storing a `usize` which is a power of two, and thus
@@ -87,7 +87,7 @@ impl Alignment {
         unsafe { mem::transmute::<usize, Alignment>(align) }
     }
 
-    /// Returns the alignment as a [`usize`]
+    /// Returns the alignment as a [`usize`].
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
@@ -95,11 +95,11 @@ impl Alignment {
         self.0 as usize
     }
 
-    /// Returns the alignment as a [`NonZeroUsize`]
+    /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
-    pub const fn as_nonzero(self) -> NonZeroUsize {
+    pub const fn as_nonzero(self) -> NonZero<usize> {
         // SAFETY: All the discriminants are non-zero.
         unsafe { NonZero::new_unchecked(self.as_usize()) }
     }
@@ -164,11 +164,11 @@ impl fmt::Debug for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl TryFrom<NonZeroUsize> for Alignment {
+impl TryFrom<NonZero<usize>> for Alignment {
     type Error = num::TryFromIntError;
 
     #[inline]
-    fn try_from(align: NonZeroUsize) -> Result<Alignment, Self::Error> {
+    fn try_from(align: NonZero<usize>) -> Result<Alignment, Self::Error> {
         align.get().try_into()
     }
 }
@@ -184,9 +184,9 @@ impl TryFrom<usize> for Alignment {
 }
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl From<Alignment> for NonZeroUsize {
+impl From<Alignment> for NonZero<usize> {
     #[inline]
-    fn from(align: Alignment) -> NonZeroUsize {
+    fn from(align: Alignment) -> NonZero<usize> {
         align.as_nonzero()
     }
 }

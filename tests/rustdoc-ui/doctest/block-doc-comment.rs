@@ -1,6 +1,6 @@
-// check-pass
-// compile-flags:--test
-// normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ check-pass
+//@ compile-flags:--test
+//@ normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 // This test ensures that no code block is detected in the doc comments.
 

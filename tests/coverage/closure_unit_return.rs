@@ -1,5 +1,5 @@
 #![feature(coverage_attribute)]
-// edition: 2021
+//@ edition: 2021
 
 // Regression test for an inconsistency between functions that return the value
 // of their trailing expression, and functions that implicitly return `()`.

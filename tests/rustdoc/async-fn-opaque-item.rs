@@ -1,5 +1,5 @@
-// compile-flags: --document-private-items --crate-type=lib
-// edition: 2021
+//@ compile-flags: --document-private-items --crate-type=lib
+//@ edition: 2021
 
 // Issue 109931 -- test against accidentally documenting the `impl Future`
 // that comes from an async fn desugaring.

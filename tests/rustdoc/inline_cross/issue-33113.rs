@@ -1,6 +1,6 @@
-// aux-build:issue-33113.rs
-// build-aux-docs
-// ignore-cross-compile
+//@ aux-build:issue-33113.rs
+//@ build-aux-docs
+//@ ignore-cross-compile
 
 extern crate bar;
 

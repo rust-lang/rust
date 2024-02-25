@@ -2503,8 +2503,11 @@ impl<'test> TestCx<'test> {
                 // overridden by `compile-flags`.
                 rustc.arg("-Copt-level=2");
             }
-            RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
-            | CodegenUnits | JsDocTest | Assembly => {
+            Assembly | Codegen => {
+                rustc.arg("-Cdebug-assertions=no");
+            }
+            RunPassValgrind | Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake
+            | CodegenUnits | JsDocTest => {
                 // do not use JSON output
             }
         }
@@ -3938,15 +3941,10 @@ impl<'test> TestCx<'test> {
                 self.props.compare_output_lines_by_subset,
             );
         } else if !expected_fixed.is_empty() {
-            if self.config.suite == "ui" {
-                panic!(
-                    "the `//@ run-rustfix` directive wasn't found but a `*.fixed` file was found"
-                );
-            } else {
-                panic!(
-                    "the `// run-rustfix` directive wasn't found but a `*.fixed` file was found"
-                );
-            }
+            panic!(
+                "the `//@ run-rustfix` directive wasn't found but a `*.fixed` \
+                 file was found"
+            );
         }
 
         if errors > 0 {

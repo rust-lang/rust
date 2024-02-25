@@ -1,9 +1,9 @@
 // This test makes sure that functions get annotated with the proper
 // "target-cpu" attribute in LLVM.
 
-// no-prefer-dynamic
+//@ no-prefer-dynamic
 //
-// compile-flags: -C no-prepopulate-passes -C panic=abort -C linker-plugin-lto -Cpasses=name-anon-globals
+//@ compile-flags: -C no-prepopulate-passes -C panic=abort -C linker-plugin-lto -Cpasses=name-anon-globals
 
 #![crate_type = "staticlib"]
 

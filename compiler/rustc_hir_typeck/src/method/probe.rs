@@ -54,7 +54,7 @@ pub use self::PickKind::*;
 #[derive(Clone, Copy, Debug)]
 pub struct IsSuggestion(pub bool);
 
-struct ProbeContext<'a, 'tcx> {
+pub(crate) struct ProbeContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
     mode: Mode,
@@ -355,7 +355,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .unwrap()
     }
 
-    fn probe_op<OP, R>(
+    pub(crate) fn probe_op<OP, R>(
         &'a self,
         span: Span,
         mode: Mode,
@@ -1750,7 +1750,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
     /// candidate method where the method name may have been misspelled. Similarly to other
     /// edit distance based suggestions, we provide at most one such suggestion.
-    fn probe_for_similar_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
+    pub(crate) fn probe_for_similar_candidate(
+        &mut self,
+    ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 
         self.probe(|_| {
@@ -1766,6 +1768,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
+            pcx.assemble_extension_candidates_for_all_traits();
 
             let method_names = pcx.candidate_method_names(|_| true);
             pcx.allow_similar_names = false;
@@ -1775,6 +1778,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.reset();
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
+                    pcx.assemble_extension_candidates_for_all_traits();
                     pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();
@@ -1942,7 +1946,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
         let attrs = self.fcx.tcx.hir().attrs(hir_id);
         for attr in attrs {
-            let sym::doc = attr.name_or_empty() else {
+            if sym::doc == attr.name_or_empty() {
+            } else if sym::rustc_confusables == attr.name_or_empty() {
+                let Some(confusables) = attr.meta_item_list() else {
+                    continue;
+                };
+                // #[rustc_confusables("foo", "bar"))]
+                for n in confusables {
+                    if let Some(lit) = n.lit()
+                        && name.as_str() == lit.symbol.as_str()
+                    {
+                        return true;
+                    }
+                }
+                continue;
+            } else {
                 continue;
             };
             let Some(values) = attr.meta_item_list() else {
