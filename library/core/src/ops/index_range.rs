@@ -19,7 +19,9 @@ impl IndexRange {
     /// - `start <= end`
     #[inline]
     pub const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
-        crate::panic::debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter
+        // will miss out on this check.
+        crate::panic::debug_assert_ubcheck!(
             start <= end,
             "IndexRange::new_unchecked requires `start <= end`"
         );

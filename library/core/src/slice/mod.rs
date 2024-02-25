@@ -13,7 +13,7 @@ use crate::intrinsics::exact_div;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{Bound, OneSidedRange, Range, RangeBounds};
-use crate::panic::debug_assert_nounwind;
+use crate::panic::debug_assert_ubcheck;
 use crate::ptr;
 use crate::simd::{self, Simd};
 use crate::slice;
@@ -945,7 +945,9 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The indices might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             a < self.len() && b < self.len(),
             "slice::swap_unchecked requires that the indices are within the slice"
         );
@@ -1285,7 +1287,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
-        debug_assert_nounwind!(
+        debug_assert_ubcheck!(
             N != 0 && self.len() % N == 0,
             "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks"
         );
@@ -1439,7 +1441,7 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
-        debug_assert_nounwind!(
+        debug_assert_ubcheck!(
             N != 0 && self.len() % N == 0,
             "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks"
         );
@@ -1971,7 +1973,9 @@ impl<T> [T] {
         let len = self.len();
         let ptr = self.as_ptr();
 
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (`mid` might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             mid <= len,
             "slice::split_at_unchecked requires the index to be within the slice"
         );
@@ -2021,7 +2025,9 @@ impl<T> [T] {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (`mid`` might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             mid <= len,
             "slice::split_at_mut_unchecked requires the index to be within the slice"
         );

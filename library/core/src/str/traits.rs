@@ -2,7 +2,7 @@
 
 use crate::cmp::Ordering;
 use crate::ops;
-use crate::panic::debug_assert_nounwind;
+use crate::panic::debug_assert_ubcheck;
 use crate::ptr;
 use crate::slice::SliceIndex;
 
@@ -192,7 +192,9 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
     unsafe fn get_unchecked(self, slice: *const str) -> *const Self::Output {
         let slice = slice as *const [u8];
 
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The end might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             // We'd like to check that the bounds are on char boundaries,
             // but there's not really a way to do so without reading
             // behind the pointer, which has aliasing implications.
@@ -213,7 +215,9 @@ unsafe impl SliceIndex<str> for ops::Range<usize> {
     unsafe fn get_unchecked_mut(self, slice: *mut str) -> *mut Self::Output {
         let slice = slice as *mut [u8];
 
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The end might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             self.end >= self.start && self.end <= slice.len(),
             "str::get_unchecked_mut requires that the range is within the string slice"
         );

@@ -3,7 +3,7 @@
 use crate::intrinsics::const_eval_select;
 use crate::intrinsics::unchecked_sub;
 use crate::ops;
-use crate::panic::debug_assert_nounwind;
+use crate::panic::debug_assert_ubcheck;
 use crate::ptr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -225,7 +225,7 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const T {
-        debug_assert_nounwind!(
+        debug_assert_ubcheck!(
             self < slice.len(),
             "slice::get_unchecked requires that the index is within the slice"
         );
@@ -243,7 +243,9 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut T {
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The offset might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             self < slice.len(),
             "slice::get_unchecked_mut requires that the index is within the slice"
         );
@@ -292,7 +294,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The end might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             self.end() <= slice.len(),
             "slice::get_unchecked requires that the index is within the slice"
         );
@@ -305,7 +309,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The end might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             self.end() <= slice.len(),
             "slice::get_unchecked_mut requires that the index is within the slice"
         );
@@ -362,7 +368,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked(self, slice: *const [T]) -> *const [T] {
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The end might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             self.end >= self.start && self.end <= slice.len(),
             "slice::get_unchecked requires that the range is within the slice"
         );
@@ -379,7 +387,9 @@ unsafe impl<T> SliceIndex<[T]> for ops::Range<usize> {
 
     #[inline]
     unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut [T] {
-        debug_assert_nounwind!(
+        // FIXME: violating this is not immediate language UB, so the interpreter will miss out on
+        // this check. (The end might be OOB of the slice but still inbounds of the allocation.)
+        debug_assert_ubcheck!(
             self.end >= self.start && self.end <= slice.len(),
             "slice::get_unchecked_mut requires that the range is within the slice"
         );

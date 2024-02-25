@@ -77,7 +77,7 @@ impl Alignment {
     #[inline]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         #[cfg(debug_assertions)]
-        crate::panic::debug_assert_nounwind!(
+        crate::panic::debug_assert_ubcheck!(
             align.is_power_of_two(),
             "Alignment::new_unchecked requires a power of two"
         );
