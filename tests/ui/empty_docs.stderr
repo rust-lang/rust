@@ -17,6 +17,15 @@ LL | #[doc = ""]
    = help: consider removing or filling it
 
 error: empty doc comment
+  --> tests/ui/empty_docs.rs:34:1
+   |
+LL | / #[doc = ""]
+LL | | #[doc = ""]
+   | |___________^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
   --> tests/ui/empty_docs.rs:42:5
    |
 LL |     //!
@@ -24,5 +33,13 @@ LL |     //!
    |
    = help: consider removing or filling it
 
-error: aborting due to 3 previous errors
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:56:5
+   |
+LL |     /*! */
+   |     ^^^^^^
+   |
+   = help: consider removing or filling it
+
+error: aborting due to 5 previous errors
 
