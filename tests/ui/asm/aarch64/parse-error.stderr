@@ -130,17 +130,17 @@ LL |         asm!("{1}", in("x0") foo, const bar);
    |                     |
    |                     explicit register argument
 
-error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `""`
+error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
   --> $DIR/parse-error.rs:66:29
    |
 LL |         asm!("", options(), "");
-   |                             ^^ expected one of 9 possible tokens
+   |                             ^^ expected one of 10 possible tokens
 
-error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
+error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
   --> $DIR/parse-error.rs:68:33
    |
 LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
-   |                                 ^^^^ expected one of 9 possible tokens
+   |                                 ^^^^ expected one of 10 possible tokens
 
 error: asm template must be a string literal
   --> $DIR/parse-error.rs:70:14
