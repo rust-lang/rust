@@ -185,7 +185,7 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
 
         // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
         (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Not, .. }, _))
-            if !Ident::new(*sym, *span).is_reserved() || *is_raw =>
+            if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, IdentIsRaw::Yes) =>
         {
             false
         }
@@ -197,7 +197,7 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
                 || *sym == kw::Fn
                 || *sym == kw::SelfUpper
                 || *sym == kw::Pub
-                || *is_raw =>
+                || matches!(is_raw, IdentIsRaw::Yes) =>
         {
             false
         }
@@ -731,7 +731,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::NtBlock(e) => self.block_to_string(e),
             token::NtStmt(e) => self.stmt_to_string(e),
             token::NtPat(e) => self.pat_to_string(e),
-            token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(*e, *is_raw).to_string(),
+            &token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(e, is_raw.into()).to_string(),
             token::NtLifetime(e) => e.to_string(),
             token::NtLiteral(e) => self.expr_to_string(e),
             token::NtVis(e) => self.vis_to_string(e),
@@ -795,7 +795,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
             /* Name components */
             token::Ident(s, is_raw) => {
-                IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string().into()
+                IdentPrinter::new(s, is_raw.into(), convert_dollar_crate).to_string().into()
             }
             token::Lifetime(s) => s.to_string().into(),
 

@@ -198,7 +198,7 @@ where
     match fields {
         Unnamed(fields, is_tuple) => {
             let path_expr = cx.expr_path(outer_pat_path);
-            if !*is_tuple {
+            if matches!(is_tuple, IsTuple::No) {
                 path_expr
             } else {
                 let fields = fields

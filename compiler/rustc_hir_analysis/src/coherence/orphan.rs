@@ -1,14 +1,13 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use crate::errors;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_middle::ty::{self, AliasKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
-use rustc_trait_selection::traits;
-
-use crate::errors;
+use rustc_trait_selection::traits::{self, IsFirstInputType};
 
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn orphan_check_impl(
@@ -288,7 +287,7 @@ fn emit_orphan_check_error<'tcx>(
                 (Vec::new(), Vec::new(), Vec::new(), Vec::new(), Vec::new());
             let mut sugg = None;
             for &(mut ty, is_target_ty) in &tys {
-                let span = if is_target_ty {
+                let span = if matches!(is_target_ty, IsFirstInputType::Yes) {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
                     self_ty_span
                 } else {
@@ -321,7 +320,8 @@ fn emit_orphan_check_error<'tcx>(
                     }
                 }
 
-                let is_foreign = !trait_ref.def_id.is_local() && !is_target_ty;
+                let is_foreign =
+                    !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);
 
                 match &ty.kind() {
                     ty::Slice(_) => {

@@ -2,6 +2,7 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::errors::PathSingleColon;
 use crate::{errors, maybe_whole};
+use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::{
@@ -390,7 +391,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident, false)) if ident.is_path_segment_keyword() => {
+            Some((ident, IdentIsRaw::No)) if ident.is_path_segment_keyword() => {
                 self.bump();
                 Ok(ident)
             }

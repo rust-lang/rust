@@ -1,4 +1,5 @@
 use crate::base::ExtCtxt;
+use ast::token::IdentIsRaw;
 use pm::bridge::{
     server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
 };
@@ -216,7 +217,9 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Question => op("?"),
                 SingleQuote => op("'"),
 
-                Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident { sym, is_raw, span })),
+                Ident(sym, is_raw) => {
+                    trees.push(TokenTree::Ident(Ident { sym, is_raw: is_raw.into(), span }))
+                }
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([
@@ -238,7 +241,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         escaped.extend(ch.escape_debug());
                     }
                     let stream = [
-                        Ident(sym::doc, false),
+                        Ident(sym::doc, IdentIsRaw::No),
                         Eq,
                         TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                     ]
@@ -259,7 +262,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Interpolated(ref nt) if let NtIdent(ident, is_raw) = &nt.0 => {
                     trees.push(TokenTree::Ident(Ident {
                         sym: ident.name,
-                        is_raw: *is_raw,
+                        is_raw: matches!(is_raw, IdentIsRaw::Yes),
                         span: ident.span,
                     }))
                 }
@@ -352,7 +355,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 rustc.sess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(Ident(sym, is_raw), span)]
+                smallvec![tokenstream::TokenTree::token_alone(Ident(sym, is_raw.into()), span)]
             }
             TokenTree::Literal(self::Literal {
                 kind: self::LitKind::Integer,
@@ -570,7 +573,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         match &expr.kind {
             ast::ExprKind::Lit(token_lit) if token_lit.kind == token::Bool => {
                 Ok(tokenstream::TokenStream::token_alone(
-                    token::Ident(token_lit.symbol, false),
+                    token::Ident(token_lit.symbol, IdentIsRaw::No),
                     expr.span,
                 ))
             }

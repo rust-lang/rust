@@ -62,8 +62,8 @@ fn default_struct_substructure(
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), ThinVec::new());
 
     let expr = match summary {
-        Unnamed(_, false) => cx.expr_ident(trait_span, substr.type_ident),
-        Unnamed(fields, true) => {
+        Unnamed(_, IsTuple::No) => cx.expr_ident(trait_span, substr.type_ident),
+        Unnamed(fields, IsTuple::Yes) => {
             let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
             cx.expr_call_ident(trait_span, substr.type_ident, exprs)
         }

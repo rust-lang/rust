@@ -1,4 +1,4 @@
-use super::{ForceCollect, Parser, PathStyle, Restrictions, TrailingToken};
+use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, TrailingToken};
 use crate::errors::{
     self, AmbiguousRangePattern, DotDotDotForRemainingFields, DotDotDotRangeToPatternNotAllowed,
     DotDotDotRestPattern, EnumPatternInsteadOfIdentifier, ExpectedBindingLeftOfAt,
@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, false) // e.g. `a | if expr`.
+                | token::Ident(kw::If, token::IdentIsRaw::No) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
@@ -696,7 +696,9 @@ impl<'a> Parser<'a> {
 
         // Here, `(pat,)` is a tuple pattern.
         // For backward compatibility, `(..)` is a tuple pattern as well.
-        Ok(if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
+        let paren_pattern =
+            fields.len() == 1 && !(matches!(trailing_comma, Trailing::Yes) || fields[0].is_rest());
+        if paren_pattern {
             let pat = fields.into_iter().next().unwrap();
             let close_paren = self.prev_token.span;
 
@@ -714,7 +716,7 @@ impl<'a> Parser<'a> {
                         },
                     });
 
-                    self.parse_pat_range_begin_with(begin.clone(), form)?
+                    self.parse_pat_range_begin_with(begin.clone(), form)
                 }
                 // recover ranges with parentheses around the `(start)..`
                 PatKind::Err(_)
@@ -729,15 +731,15 @@ impl<'a> Parser<'a> {
                         },
                     });
 
-                    self.parse_pat_range_begin_with(self.mk_expr(pat.span, ExprKind::Err), form)?
+                    self.parse_pat_range_begin_with(self.mk_expr(pat.span, ExprKind::Err), form)
                 }
 
                 // (pat) with optional parentheses
-                _ => PatKind::Paren(pat),
+                _ => Ok(PatKind::Paren(pat)),
             }
         } else {
-            PatKind::Tuple(fields)
-        })
+            Ok(PatKind::Tuple(fields))
+        }
     }
 
     /// Parse a mutable binding with the `mut` token already eaten.

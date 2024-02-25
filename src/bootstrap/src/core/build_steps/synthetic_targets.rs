@@ -12,7 +12,7 @@ use crate::core::config::TargetSelection;
 use crate::Compiler;
 use std::process::{Command, Stdio};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MirOptPanicAbortSyntheticTarget {
     pub(crate) compiler: Compiler,
     pub(crate) base: TargetSelection,
