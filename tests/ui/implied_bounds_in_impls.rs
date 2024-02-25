@@ -1,5 +1,6 @@
 #![warn(clippy::implied_bounds_in_impls)]
 #![allow(dead_code)]
+#![feature(impl_trait_in_assoc_type, type_alias_impl_trait)]
 
 use std::ops::{Deref, DerefMut};
 
@@ -148,6 +149,28 @@ fn issue11880() {
     fn f3() -> impl X + Y {}
     fn f4() -> impl X + Y<T = u32> {}
     fn f5() -> impl X<U = String> + Y<T = u32> {}
+}
+
+fn apit(_: impl Deref + DerefMut) {}
+
+trait Rpitit {
+    fn f() -> impl Deref + DerefMut;
+}
+
+trait Atpit {
+    type Assoc;
+    fn define() -> Self::Assoc;
+}
+impl Atpit for () {
+    type Assoc = impl Deref + DerefMut;
+    fn define() -> Self::Assoc {
+        &mut [] as &mut [()]
+    }
+}
+
+type Tait = impl Deref + DerefMut;
+fn define() -> Tait {
+    &mut [] as &mut [()]
 }
 
 fn main() {}
