@@ -12,6 +12,7 @@ use rustc_span::Span;
 use rustc_trait_selection::solve::deeply_normalize;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use smallvec::SmallVec;
 
 use crate::{
     constraints::OutlivesConstraint,
@@ -147,8 +148,14 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             region_bound_pairs,
             implicit_region_bound,
             known_type_outlives_obligations,
+            param_env,
             ..
         } = *self;
+        let projection_predicates: SmallVec<[_; 4]> = param_env
+            .caller_bounds()
+            .iter()
+            .filter_map(|clause| clause.as_projection_clause())
+            .collect();
 
         let mut outlives_predicates = vec![(predicate, constraint_category)];
         for iteration in 0.. {
@@ -191,6 +198,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                             region_bound_pairs,
                             Some(implicit_region_bound),
                             known_type_outlives_obligations,
+                            &projection_predicates,
                         )
                         .type_must_outlive(
                             origin,

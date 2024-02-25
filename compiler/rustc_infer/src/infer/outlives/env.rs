@@ -26,7 +26,7 @@ use super::explicit_outlives_bounds;
 /// refactoring here, since the setup with NLL is quite different.
 /// For example, NLL has no need of `RegionRelations`, and is solely
 /// interested in the `OutlivesEnvironment`. -nmatsakis
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OutlivesEnvironment<'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
     free_region_map: FreeRegionMap<'tcx>,

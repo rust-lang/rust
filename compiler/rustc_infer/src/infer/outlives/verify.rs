@@ -24,6 +24,7 @@ pub struct VerifyBoundCx<'cx, 'tcx> {
     /// setting  `'?0` to `'empty`.
     implicit_region_bound: Option<ty::Region<'tcx>>,
     caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
+    projection_predicates: &'cx [ty::PolyTypeProjectionPredicate<'tcx>],
 }
 
 impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
@@ -32,12 +33,23 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
+        projection_predicates: &'cx [ty::PolyTypeProjectionPredicate<'tcx>],
     ) -> Self {
-        Self { tcx, region_bound_pairs, implicit_region_bound, caller_bounds }
+        Self {
+            tcx,
+            region_bound_pairs,
+            implicit_region_bound,
+            caller_bounds,
+            projection_predicates,
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn param_or_placeholder_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
+    pub fn param_or_placeholder_bound(
+        &self,
+        ty: Ty<'tcx>,
+        visited: &mut SsoHashSet<GenericArg<'tcx>>,
+    ) -> VerifyBound<'tcx> {
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
@@ -53,6 +65,30 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // This is `for<'a> T: 'a`. This means that `T` outlives everything! All done here.
                 debug!("found that {ty:?} outlives any lifetime, returning empty vector");
                 return VerifyBound::AllBounds(vec![]);
+            }
+        }
+
+        // A parameter or placeholder bound can also be aliased to an associated type
+        // so we need to inspect in the "reverse"
+        for &predicate in self.projection_predicates {
+            let Some(ty::ProjectionPredicate { term, projection_ty }) = predicate.no_bound_vars()
+            else {
+                continue;
+            };
+            if let Some(term) = term.ty()
+                && ty == term
+            {
+                debug!(?term, ?projection_ty, "found a matching predicate");
+                let alias_ty_as_ty = projection_ty.to_ty(self.tcx);
+                let mut components = smallvec![];
+                compute_alias_components_recursive(
+                    self.tcx,
+                    alias_ty_as_ty,
+                    &mut components,
+                    visited,
+                );
+                debug!(?components);
+                param_bounds.push(self.bound_from_components(&components, visited));
             }
         }
 
@@ -163,10 +199,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> VerifyBound<'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
-            Component::Param(param_ty) => self.param_or_placeholder_bound(param_ty.to_ty(self.tcx)),
-            Component::Placeholder(placeholder_ty) => {
-                self.param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty))
+            Component::Param(param_ty) => {
+                self.param_or_placeholder_bound(param_ty.to_ty(self.tcx), visited)
             }
+            Component::Placeholder(placeholder_ty) => self
+                .param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty), visited),
             Component::Alias(alias_ty) => self.alias_bound(alias_ty, visited),
             Component::EscapingAlias(ref components) => {
                 self.bound_from_components(components, visited)

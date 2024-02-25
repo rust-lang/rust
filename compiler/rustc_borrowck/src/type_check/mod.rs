@@ -1129,6 +1129,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         data: &QueryRegionConstraints<'tcx>,
     ) {
         debug!("constraints generated: {:#?}", data);
+        debug!(?self.param_env);
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,

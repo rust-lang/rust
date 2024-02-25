@@ -94,9 +94,9 @@ pub use self::predicate::{
     ExistentialTraitRef, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
-    PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitPredicate,
-    TraitRef, TypeOutlivesPredicate,
+    PolyTraitRef, PolyTypeOutlivesPredicate, PolyTypeProjectionPredicate, Predicate, PredicateKind,
+    ProjectionPredicate, RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, ToPredicate,
+    TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, BoundRegionKind::*, EarlyParamRegion, LateParamRegion, Region,

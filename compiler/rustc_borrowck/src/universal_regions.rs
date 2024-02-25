@@ -418,6 +418,7 @@ struct UniversalRegionsBuilder<'cx, 'tcx> {
 const FR: NllRegionVariableOrigin = NllRegionVariableOrigin::FreeRegion;
 
 impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def={:?})", self.mir_def);
 
@@ -851,8 +852,8 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// in later and instantiate the late-bound regions, and then we
     /// insert the `ReLateParam` version of those into the map as
     /// well. These are used for error reporting.
+    #[instrument(level = "debug", skip(self))]
     fn insert_late_bound_region(&mut self, r: ty::Region<'tcx>, vid: ty::RegionVid) {
-        debug!("insert_late_bound_region({:?}, {:?})", r, vid);
         self.indices.insert(r, vid);
     }
 

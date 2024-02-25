@@ -211,9 +211,10 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
     let ty::Alias(kind, alias_ty) = alias_ty.kind() else {
         unreachable!("can only call `compute_alias_components_recursive` on an alias type")
     };
-    let opt_variances = if *kind == ty::Opaque { tcx.variances_of(alias_ty.def_id) } else { &[] };
+    let opt_variances =
+        if matches!(kind, ty::Opaque) { tcx.variances_of(alias_ty.def_id) } else { &[] };
     for (index, child) in alias_ty.args.iter().enumerate() {
-        if opt_variances.get(index) == Some(&ty::Bivariant) {
+        if matches!(opt_variances.get(index), Some(ty::Bivariant)) {
             continue;
         }
         if !visited.insert(child) {

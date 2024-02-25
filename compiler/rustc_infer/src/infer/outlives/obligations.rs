@@ -89,13 +89,13 @@ impl<'tcx> InferCtxt<'tcx> {
         inner.region_obligations.push(obligation);
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub fn register_region_obligation_with_cause(
         &self,
         sup_type: Ty<'tcx>,
         sub_region: Region<'tcx>,
         cause: &ObligationCause<'tcx>,
     ) {
-        debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
             infer::RelateParamBound(
                 cause.span,
@@ -125,7 +125,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
-    #[instrument(level = "debug", skip(self, outlives_env, deeply_normalize_ty))]
+    #[instrument(level = "debug", skip(self, deeply_normalize_ty))]
     pub fn process_registered_region_obligations(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
@@ -185,6 +185,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     outlives_env.region_bound_pairs(),
                     None,
                     &normalized_caller_bounds,
+                    &[],
                 );
                 let category = origin.to_constraint_category();
                 outlives.type_must_outlive(origin, sup_type, sub_region, category);
@@ -240,6 +241,7 @@ where
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
         caller_bounds: &'cx [ty::PolyTypeOutlivesPredicate<'tcx>],
+        projection_predicates: &'cx [ty::PolyTypeProjectionPredicate<'tcx>],
     ) -> Self {
         Self {
             delegate,
@@ -249,6 +251,7 @@ where
                 region_bound_pairs,
                 implicit_region_bound,
                 caller_bounds,
+                projection_predicates,
             ),
         }
     }
@@ -319,7 +322,10 @@ where
         region: ty::Region<'tcx>,
         param_ty: ty::ParamTy,
     ) {
-        let verify_bound = self.verify_bound.param_or_placeholder_bound(param_ty.to_ty(self.tcx));
+        let verify_bound = self
+            .verify_bound
+            .param_or_placeholder_bound(param_ty.to_ty(self.tcx), &mut Default::default());
+        debug!("param_ty_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(origin, GenericKind::Param(param_ty), region, verify_bound);
     }
 
@@ -330,9 +336,11 @@ where
         region: ty::Region<'tcx>,
         placeholder_ty: ty::PlaceholderType,
     ) {
-        let verify_bound = self
-            .verify_bound
-            .param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty));
+        let verify_bound = self.verify_bound.param_or_placeholder_bound(
+            Ty::new_placeholder(self.tcx, placeholder_ty),
+            &mut Default::default(),
+        );
+        debug!("placeholder_ty_must_outlive: pushing {:?}", verify_bound);
         self.delegate.push_verify(
             origin,
             GenericKind::Placeholder(placeholder_ty),
