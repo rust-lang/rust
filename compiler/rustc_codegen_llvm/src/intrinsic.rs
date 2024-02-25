@@ -17,7 +17,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::{sym, symbol::kw, Span, Symbol};
+use rustc_span::{sym, Span, Symbol};
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 
@@ -133,8 +133,8 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::unlikely => self
                 .call_intrinsic("llvm.expect.i1", &[args[0].immediate(), self.const_bool(false)]),
-            kw::Try => {
-                try_intrinsic(
+            sym::catch_unwind => {
+                catch_unwind_intrinsic(
                     self,
                     args[0].immediate(),
                     args[1].immediate(),
@@ -457,7 +457,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
-fn try_intrinsic<'ll>(
+fn catch_unwind_intrinsic<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
     try_func: &'ll Value,
     data: &'ll Value,

@@ -69,7 +69,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
-    fn handle_try(
+    fn handle_catch_unwind(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
