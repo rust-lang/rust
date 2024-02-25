@@ -23,7 +23,7 @@ use rustc_resolve::rustdoc::{
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, Span};
+use rustc_span::{sym, Span, DUMMY_SP};
 use std::ops::Range;
 use url::Url;
 
@@ -338,6 +338,29 @@ declare_clippy_lint! {
     "suspicious usage of (outer) doc comments"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects documentation that is empty.
+    /// ### Why is this bad?
+    /// It is unlikely that there is any reason to have empty documentation for an item
+    /// ### Example
+    /// ```rust
+    /// ///
+    /// fn returns_true() -> bool {
+    ///     true
+    /// }
+    /// Use instead:
+    /// ```rust
+    /// fn returns_true() -> bool {
+    ///     true
+    /// }
+    /// ```
+    #[clippy::version = "1.78.0"]
+    pub EMPTY_DOCS,
+    suspicious,
+    "docstrings exist but documentation is empty"
+}
+
 #[derive(Clone)]
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
@@ -364,7 +387,8 @@ impl_lint_pass!(Documentation => [
     NEEDLESS_DOCTEST_MAIN,
     TEST_ATTR_IN_DOCTEST,
     UNNECESSARY_SAFETY_DOC,
-    SUSPICIOUS_DOC_COMMENTS
+    SUSPICIOUS_DOC_COMMENTS,
+    EMPTY_DOCS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Documentation {
@@ -378,6 +402,20 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
             return;
         };
+
+        if let Some(span) = get_empty_doc_combined_span(attrs, item.span)
+            && headers.empty
+        {
+            span_lint_and_help(
+                cx,
+                EMPTY_DOCS,
+                span,
+                "empty doc comment",
+                None,
+                "consider removing or filling it",
+            );
+        }
+
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
                 if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
@@ -477,6 +515,7 @@ struct DocHeaders {
     safety: bool,
     errors: bool,
     panics: bool,
+    empty: bool,
 }
 
 /// Does some pre-processing on raw, desugared `#[doc]` attributes such as parsing them and
@@ -509,7 +548,10 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     doc.pop();
 
     if doc.is_empty() {
-        return Some(DocHeaders::default());
+        return Some(DocHeaders {
+            empty: true,
+            ..DocHeaders::default()
+        });
     }
 
     let mut cb = fake_broken_link_callback;
@@ -715,5 +757,22 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
 
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
+    }
+}
+
+fn get_empty_doc_combined_span(attrs: &[Attribute], item_span: Span) -> Option<Span> {
+    let mut attrs_span = DUMMY_SP;
+    if attrs.len() > 0 {
+        attrs_span = attrs
+            .iter()
+            .map(|attr| attr.span)
+            .fold(attrs[0].span, |acc, next| acc.to(next));
+    }
+
+    match (!item_span.is_dummy(), !attrs_span.is_dummy()) {
+        (true, true) => Some(item_span.shrink_to_lo().to(attrs_span)),
+        (true, false) => Some(item_span),
+        (false, true) => Some(attrs_span),
+        (false, false) => None,
     }
 }
