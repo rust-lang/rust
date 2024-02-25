@@ -345,13 +345,14 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It is unlikely that there is any reason to have empty documentation for an item
     /// ### Example
-    /// ```rust
+    /// ```rs
     /// ///
     /// fn returns_true() -> bool {
     ///     true
     /// }
+    /// ```
     /// Use instead:
-    /// ```rust
+    /// ```rs
     /// fn returns_true() -> bool {
     ///     true
     /// }
