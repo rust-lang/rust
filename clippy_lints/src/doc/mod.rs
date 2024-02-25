@@ -17,7 +17,7 @@ use rustc_hir::{AnonConst, Expr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty;
+use rustc_middle::ty::{self};
 use rustc_resolve::rustdoc::{
     add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, DocFragment,
 };
@@ -556,9 +556,8 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         acc
     });
     doc.pop();
-    let doc = doc.trim().to_string();
 
-    if doc.is_empty() {
+    if doc.trim().is_empty() {
         return Some(DocInfo {
             empty: true,
             doc_headers: DocHeaders::default(),

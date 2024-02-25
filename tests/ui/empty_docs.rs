@@ -59,3 +59,5 @@ fn warn() {
 fn dont_warn() {
     /*! dont warn me */
 }
+
+trait NoDoc {}
