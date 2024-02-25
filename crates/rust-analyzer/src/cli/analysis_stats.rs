@@ -453,8 +453,11 @@ impl flags::AnalysisStats {
                                     err_idx += 7;
                                     let err_code = &err[err_idx..err_idx + 4];
                                     match err_code {
-                                        "0282" => continue,                              // Byproduct of testing method
-                                        "0277" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                        "0282" | "0283" => continue, // Byproduct of testing method
+                                        "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                        // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
+                                        // Generated code is valid in case traits are imported
+                                        "0599" if err.contains("the following trait is implemented but not in scope") => continue,
                                         _ => (),
                                     }
                                     bar.println(err);
