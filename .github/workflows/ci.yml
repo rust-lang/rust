@@ -48,17 +48,23 @@ jobs:
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
-    continue-on-error: true
+    continue-on-error: "${{ matrix.name == 'mingw-check-tidy' }}"
     strategy:
       matrix:
         include:
-          - name: x86_64-msvc-ext
+          - name: mingw-check
+            os: ubuntu-20.04-4core-16gb
+            env: {}
+          - name: mingw-check-tidy
+            os: ubuntu-20.04-4core-16gb
+            env: {}
+          - name: x86_64-gnu-llvm-16
             env:
-              SCRIPT: python x.py test library/std
-              HOST_TARGET: x86_64-pc-windows-msvc
-              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json"
-              DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
-            os: windows-2019-8core-32gb
+              ENABLE_GCC_CODEGEN: "1"
+            os: ubuntu-20.04-16core-64gb
+          - name: x86_64-gnu-tools
+            os: ubuntu-20.04-16core-64gb
+            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
