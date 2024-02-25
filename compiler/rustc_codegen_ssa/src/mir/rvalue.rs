@@ -94,8 +94,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
-                    let zero = bx.const_usize(0);
-                    let start = dest.project_index(bx, zero).llval;
+                    let start = dest.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
