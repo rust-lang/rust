@@ -1,15 +1,15 @@
 WARNING: the flag `-Zmiri-disable-abi-check` is deprecated and planned to be removed.
 If you have a use-case for it, please file an issue.
 error: Undefined Behavior: unwinding past a stack frame that does not allow unwinding
-  --> $DIR/bad_miri_start_panic.rs:LL:CC
+  --> $DIR/bad_miri_start_unwind.rs:LL:CC
    |
-LL |     unsafe { miri_start_panic(&mut 0) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^ unwinding past a stack frame that does not allow unwinding
+LL |     unsafe { miri_start_unwind(&mut 0) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ unwinding past a stack frame that does not allow unwinding
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/bad_miri_start_panic.rs:LL:CC
+   = note: inside `main` at $DIR/bad_miri_start_unwind.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
