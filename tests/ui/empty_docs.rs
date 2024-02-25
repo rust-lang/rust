@@ -44,7 +44,7 @@ fn warn_about_this_as_well() {
 
 ///
 fn warn_inner_outer() {
-    //! what
+    //!w
 }
 
 fn this_is_ok() {
