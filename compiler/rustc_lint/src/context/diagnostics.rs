@@ -108,7 +108,7 @@ pub(super) fn builtin(
             if let Some(span) = in_test_module {
                 db.span_help(
                     sess.source_map().guess_head_span(span),
-                    "consider adding a `#[cfg(test)]` to the containing module",
+                    "if this is a test module, consider adding a `#[cfg(test)]` to the containing module",
                 );
             }
         }
