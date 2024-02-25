@@ -74,7 +74,7 @@ note: function defined here
   --> $DIR/wrong-call-return-type-due-to-generic-arg.rs:1:4
    |
 LL | fn function<T>(x: T, y: bool) -> T {
-   |    ^^^^^^^^    ----
+   |    ^^^^^^^^    ----  -------
 help: change the type of the numeric literal from `u32` to `u16`
    |
 LL |     let x: u16 = function(0u16, true);

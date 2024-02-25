@@ -50,7 +50,7 @@ pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, DelayDm, DiagMessage, FluentBundle, LanguageIdentifier,
     LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
 };
-pub use rustc_lint_defs::{pluralize, Applicability};
+pub use rustc_lint_defs::{a_or_an, display_list_with_comma_and, pluralize, Applicability};
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 pub use rustc_span::ErrorGuaranteed;
 pub use snippet::Style;

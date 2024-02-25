@@ -39,6 +39,39 @@ macro_rules! pluralize {
     };
 }
 
+/// Grammatical tool for displaying messages to end users in a nice form.
+///
+/// Returns "an" if the given string starts with a vowel, and "a" otherwise.
+pub fn a_or_an(s: &str) -> &'static str {
+    let mut chars = s.chars();
+    let Some(mut first_alpha_char) = chars.next() else {
+        return "a";
+    };
+    if first_alpha_char == '`' {
+        let Some(next) = chars.next() else {
+            return "a";
+        };
+        first_alpha_char = next;
+    }
+    if ["a", "e", "i", "o", "u", "&"].contains(&&first_alpha_char.to_lowercase().to_string()[..]) {
+        "an"
+    } else {
+        "a"
+    }
+}
+
+/// Grammatical tool for displaying messages to end users in a nice form.
+///
+/// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
+pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
+    match v.len() {
+        0 => "".to_string(),
+        1 => v[0].to_string(),
+        2 => format!("{} and {}", v[0], v[1]),
+        _ => format!("{}, {}", v[0], display_list_with_comma_and(&v[1..])),
+    }
+}
+
 /// Indicates the confidence in the correctness of a suggestion.
 ///
 /// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion

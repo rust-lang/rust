@@ -5,6 +5,7 @@ LL |     fun(async {}, async {});
    |     --- --------  ^^^^^^^^ expected `async` block, found a different `async` block
    |     |   |
    |     |   the expected `async` block
+   |     |   expected argument `f2` to be an `async` block because that argument needs to match the type of this parameter
    |     arguments to this function are incorrect
    |
    = note: expected `async` block `{async block@$DIR/coroutine-desc.rs:10:9: 10:17}`
@@ -13,14 +14,19 @@ note: function defined here
   --> $DIR/coroutine-desc.rs:8:4
    |
 LL | fn fun<F: Future<Output = ()>>(f1: F, f2: F) {}
-   |    ^^^                                -----
+   |    ^^^ -                       -----  -----
+   |        |                       |      |
+   |        |                       |      this parameter needs to match the `async` block type of `f1`
+   |        |                       `f2` needs to match the type of this parameter
+   |        `f1` and `f2` all reference this parameter F
 
 error[E0308]: mismatched types
   --> $DIR/coroutine-desc.rs:12:16
    |
 LL |     fun(one(), two());
-   |     ---        ^^^^^ expected future, found a different future
-   |     |
+   |     --- -----  ^^^^^ expected future, found a different future
+   |     |   |
+   |     |   expected argument `f2` to be a future because that argument needs to match the type of this parameter
    |     arguments to this function are incorrect
    |
    = help: consider `await`ing on both `Future`s
@@ -29,15 +35,20 @@ note: function defined here
   --> $DIR/coroutine-desc.rs:8:4
    |
 LL | fn fun<F: Future<Output = ()>>(f1: F, f2: F) {}
-   |    ^^^                                -----
+   |    ^^^ -                       -----  -----
+   |        |                       |      |
+   |        |                       |      this parameter needs to match the future type of `f1`
+   |        |                       `f2` needs to match the type of this parameter
+   |        `f1` and `f2` all reference this parameter F
 
 error[E0308]: mismatched types
   --> $DIR/coroutine-desc.rs:14:26
    |
 LL |     fun((async || {})(), (async || {})());
-   |     ---           --     ^^^^^^^^^^^^^^^ expected `async` closure body, found a different `async` closure body
-   |     |             |
-   |     |             the expected `async` closure body
+   |     --- ---------------  ^^^^^^^^^^^^^^^ expected `async` closure body, found a different `async` closure body
+   |     |   |         |
+   |     |   |         the expected `async` closure body
+   |     |   expected argument `f2` to be an `async` closure body because that argument needs to match the type of this parameter
    |     arguments to this function are incorrect
    |
    = note: expected `async` closure body `{async closure body@$DIR/coroutine-desc.rs:14:19: 14:21}`
@@ -46,7 +57,11 @@ note: function defined here
   --> $DIR/coroutine-desc.rs:8:4
    |
 LL | fn fun<F: Future<Output = ()>>(f1: F, f2: F) {}
-   |    ^^^                                -----
+   |    ^^^ -                       -----  -----
+   |        |                       |      |
+   |        |                       |      this parameter needs to match the `async` closure body type of `f1`
+   |        |                       `f2` needs to match the type of this parameter
+   |        `f1` and `f2` all reference this parameter F
 
 error: aborting due to 3 previous errors
 

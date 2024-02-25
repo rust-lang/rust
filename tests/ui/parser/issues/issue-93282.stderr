@@ -43,7 +43,7 @@ note: function defined here
   --> $DIR/issue-93282.rs:7:4
    |
 LL | fn bar(a: usize, b: usize) -> usize {
-   |    ^^^ --------
+   |    ^^^ --------  --------
 
 error: aborting due to 4 previous errors
 

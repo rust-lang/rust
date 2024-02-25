@@ -11,8 +11,30 @@ note: method defined here
    |
 LL |     fn foo(
    |        ^^^
-...
+LL |         &self,
+LL |         a: i32,
+   |         ------
+LL |         b: i32,
+   |         ------
+LL |         c: i32,
+   |         ------
+LL |         d: i32,
+   |         ------
+LL |         e: i32,
+   |         ------
 LL |         f: i32,
+   |         ------
+LL |         g: i32,
+   |         ------
+LL |         h: i32,
+   |         ------
+LL |         i: i32,
+   |         ------
+LL |         j: i32,
+   |         ------
+LL |         k: i32,
+   |         ------
+LL |         l: i32,
    |         ------
 help: consider dereferencing the borrow
    |

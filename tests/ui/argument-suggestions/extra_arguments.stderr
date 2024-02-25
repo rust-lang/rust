@@ -45,7 +45,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/extra_arguments.rs:23:3
@@ -60,7 +60,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 
 error[E0061]: this function takes 1 argument but 3 arguments were supplied
   --> $DIR/extra_arguments.rs:24:3
@@ -74,7 +74,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra arguments
    |
 LL -   one_arg(1, "", 1.0);
@@ -319,7 +319,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/extra_arguments.rs:54:3
@@ -334,7 +334,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/extra_arguments.rs:55:3
@@ -349,7 +349,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/extra_arguments.rs:60:3
@@ -364,7 +364,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 
 error: aborting due to 22 previous errors
 
