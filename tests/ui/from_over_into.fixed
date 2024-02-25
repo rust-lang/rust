@@ -1,5 +1,6 @@
 #![feature(type_alias_impl_trait)]
 #![warn(clippy::from_over_into)]
+#![allow(non_local_definitions)]
 #![allow(unused)]
 
 // this should throw an error
