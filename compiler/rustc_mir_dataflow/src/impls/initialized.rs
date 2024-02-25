@@ -396,11 +396,11 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<'tcx, Self>,
     ) {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
@@ -415,7 +415,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         };
 
         let mut discriminants = enum_def.discriminants(self.tcx);
-        edge_effects.apply(|trans, edge| {
+        edge_effects.apply(self, |self_, trans, edge| {
             let Some(value) = edge.value else {
                 return;
             };
@@ -430,7 +430,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             // Kill all move paths that correspond to variants we know to be inactive along this
             // particular outgoing edge of a `SwitchInt`.
             drop_flag_effects::on_all_inactive_variants(
-                self.move_data(),
+                self_.move_data(),
                 enum_place,
                 variant,
                 |mpi| trans.kill(mpi),
@@ -521,11 +521,11 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn switch_int_edge_effects(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<'tcx, Self>,
     ) {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
             return;
@@ -544,7 +544,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         };
 
         let mut discriminants = enum_def.discriminants(self.tcx);
-        edge_effects.apply(|trans, edge| {
+        edge_effects.apply(self, |self_, trans, edge| {
             let Some(value) = edge.value else {
                 return;
             };
@@ -559,7 +559,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             // Mark all move paths that correspond to variants other than this one as maybe
             // uninitialized (in reality, they are *definitely* uninitialized).
             drop_flag_effects::on_all_inactive_variants(
-                self.move_data(),
+                self_.move_data(),
                 enum_place,
                 variant,
                 |mpi| trans.gen(mpi),

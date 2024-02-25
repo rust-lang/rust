@@ -392,7 +392,7 @@ where
         &mut self,
         _block: BasicBlock,
         _discr: &Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
+        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<'tcx, Self>,
     ) {
     }
 }

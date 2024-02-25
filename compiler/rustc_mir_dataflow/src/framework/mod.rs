@@ -93,7 +93,7 @@ impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
 /// initial value at the entry point of each basic block.
 pub trait AnalysisDomain<'tcx> {
     /// The type that holds the dataflow state at any given point in the program.
-    type Domain: Clone + JoinSemiLattice;
+    type Domain: Clone + Eq;
 
     /// The direction of this analysis. Either `Forward` or `Backward`.
     type Direction: Direction = Forward;
@@ -118,6 +118,24 @@ pub trait AnalysisDomain<'tcx> {
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
 }
 
+/// The join operation of a dataflow analysis. A default implementation is used when the
+/// `Domain` type implements `JoinSemiLattice`.
+pub trait AnalysisJoin<'tcx>: AnalysisDomain<'tcx> {
+    /// Computes the least upper bound of two elements, storing the result in `state` and returning
+    /// `true` if `state` has changed.
+    fn join(&mut self, state: &mut Self::Domain, other: &Self::Domain, loc: BasicBlock) -> bool;
+}
+
+impl<'tcx, T> AnalysisJoin<'tcx> for T
+where
+    T: ?Sized + AnalysisDomain<'tcx>,
+    <T as AnalysisDomain<'tcx>>::Domain: JoinSemiLattice,
+{
+    fn join(&mut self, state: &mut Self::Domain, other: &Self::Domain, _: BasicBlock) -> bool {
+        state.join(other)
+    }
+}
+
 /// A dataflow problem with an arbitrarily complex transfer function.
 ///
 /// # Convergence
@@ -134,7 +152,7 @@ pub trait AnalysisDomain<'tcx> {
 /// monotonically until fixpoint is reached. Note that this monotonicity requirement only applies
 /// to the same point in the program at different points in time. The dataflow state at a given
 /// point in the program may or may not be greater than the state at any preceding point.
-pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
+pub trait Analysis<'tcx>: AnalysisJoin<'tcx> + Sized {
     /// Updates the current dataflow state with the effect of evaluating a statement.
     fn apply_statement_effect(
         &mut self,
@@ -215,7 +233,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         &mut self,
         _block: BasicBlock,
         _discr: &mir::Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
+        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<'tcx, Self>,
     ) {
     }
 
@@ -238,10 +256,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
-    ) -> Engine<'mir, 'tcx, Self>
-    where
-        Self: Sized,
-    {
+    ) -> Engine<'mir, 'tcx, Self> {
         Engine::new_generic(tcx, body, self)
     }
 }
@@ -306,11 +321,11 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     );
 
     /// See `Analysis::apply_switch_int_edge_effects`.
-    fn switch_int_edge_effects<G: GenKill<Self::Idx>>(
+    fn switch_int_edge_effects(
         &mut self,
         _block: BasicBlock,
         _discr: &mir::Operand<'tcx>,
-        _edge_effects: &mut impl SwitchIntEdgeEffects<G>,
+        _edge_effects: &mut impl SwitchIntEdgeEffects<'tcx, Self>,
     ) {
     }
 }
@@ -372,7 +387,7 @@ where
         &mut self,
         block: BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<A::Domain>,
+        edge_effects: &mut impl SwitchIntEdgeEffects<'tcx, A>,
     ) {
         self.switch_int_edge_effects(block, discr, edge_effects);
     }
@@ -383,10 +398,7 @@ where
         self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
-    ) -> Engine<'mir, 'tcx, Self>
-    where
-        Self: Sized,
-    {
+    ) -> Engine<'mir, 'tcx, Self> {
         Engine::new_gen_kill(tcx, body, self)
     }
 }
@@ -573,10 +585,14 @@ pub struct SwitchIntTarget {
 }
 
 /// A type that records the edge-specific effects for a `SwitchInt` terminator.
-pub trait SwitchIntEdgeEffects<D> {
+pub trait SwitchIntEdgeEffects<'tcx, A: AnalysisDomain<'tcx>> {
     /// Calls `apply_edge_effect` for each outgoing edge from a `SwitchInt` terminator and
     /// records the results.
-    fn apply(&mut self, apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget));
+    fn apply(
+        &mut self,
+        analysis: &mut A,
+        apply_edge_effect: impl FnMut(&mut A, &mut A::Domain, SwitchIntTarget),
+    );
 }
 
 #[cfg(test)]

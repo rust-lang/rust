@@ -23,7 +23,7 @@ use super::fmt::DebugWithContext;
 use super::graphviz;
 use super::{
     visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis, GenKillSet,
-    JoinSemiLattice, ResultsCursor, ResultsVisitor,
+    ResultsCursor, ResultsVisitor,
 };
 
 pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
@@ -97,7 +97,7 @@ where
 impl<'mir, 'tcx, A, D, T> Engine<'mir, 'tcx, A>
 where
     A: GenKillAnalysis<'tcx, Idx = T, Domain = D>,
-    D: Clone + JoinSemiLattice + GenKill<T> + BitSetExt<T>,
+    D: Clone + Eq + GenKill<T> + BitSetExt<T>,
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
@@ -136,7 +136,7 @@ where
 impl<'mir, 'tcx, A, D> Engine<'mir, 'tcx, A>
 where
     A: Analysis<'tcx, Domain = D>,
-    D: Clone + JoinSemiLattice,
+    D: Clone + Eq,
 {
     /// Creates a new `Engine` to solve a dataflow problem with an arbitrary transfer
     /// function.
@@ -229,8 +229,8 @@ where
                 &mut state,
                 bb,
                 edges,
-                |target: BasicBlock, state: &A::Domain| {
-                    let set_changed = entry_sets[target].join(state);
+                |analysis: &mut A, target: BasicBlock, state: &A::Domain| {
+                    let set_changed = analysis.join(&mut entry_sets[target], state, target);
                     if set_changed {
                         dirty_queue.insert(target);
                     }

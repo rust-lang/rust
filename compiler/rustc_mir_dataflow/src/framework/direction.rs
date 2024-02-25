@@ -56,7 +56,7 @@ pub trait Direction {
         exit_state: &mut A::Domain,
         block: BasicBlock,
         edges: TerminatorEdges<'_, 'tcx>,
-        propagate: impl FnMut(BasicBlock, &A::Domain),
+        propagate: impl FnMut(&mut A, BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>;
 }
@@ -223,7 +223,7 @@ impl Direction for Backward {
         exit_state: &mut A::Domain,
         bb: BasicBlock,
         _edges: TerminatorEdges<'_, 'tcx>,
-        mut propagate: impl FnMut(BasicBlock, &A::Domain),
+        mut propagate: impl FnMut(&mut A, BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>,
     {
@@ -239,7 +239,7 @@ impl Direction for Backward {
                         pred,
                         CallReturnPlaces::Call(destination),
                     );
-                    propagate(pred, &tmp);
+                    propagate(analysis, pred, &tmp);
                 }
 
                 mir::TerminatorKind::InlineAsm {
@@ -251,7 +251,7 @@ impl Direction for Backward {
                         pred,
                         CallReturnPlaces::InlineAsm(operands),
                     );
-                    propagate(pred, &tmp);
+                    propagate(analysis, pred, &tmp);
                 }
 
                 mir::TerminatorKind::Yield { resume, resume_arg, .. } if resume == bb => {
@@ -261,7 +261,7 @@ impl Direction for Backward {
                         resume,
                         CallReturnPlaces::Yield(resume_arg),
                     );
-                    propagate(pred, &tmp);
+                    propagate(analysis, pred, &tmp);
                 }
 
                 mir::TerminatorKind::SwitchInt { targets: _, ref discr } => {
@@ -277,11 +277,11 @@ impl Direction for Backward {
                     analysis.apply_switch_int_edge_effects(pred, discr, &mut applier);
 
                     if !applier.effects_applied {
-                        propagate(pred, exit_state)
+                        propagate(analysis, pred, exit_state)
                     }
                 }
 
-                _ => propagate(pred, exit_state),
+                _ => propagate(analysis, pred, exit_state),
             }
         }
     }
@@ -296,12 +296,17 @@ struct BackwardSwitchIntEdgeEffectsApplier<'mir, 'tcx, D, F> {
     effects_applied: bool,
 }
 
-impl<D, F> super::SwitchIntEdgeEffects<D> for BackwardSwitchIntEdgeEffectsApplier<'_, '_, D, F>
+impl<'tcx, A, F> super::SwitchIntEdgeEffects<'tcx, A>
+    for BackwardSwitchIntEdgeEffectsApplier<'_, '_, A::Domain, F>
 where
-    D: Clone,
-    F: FnMut(BasicBlock, &D),
+    A: Analysis<'tcx>,
+    F: FnMut(&mut A, BasicBlock, &A::Domain),
 {
-    fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
+    fn apply(
+        &mut self,
+        analysis: &mut A,
+        mut apply_edge_effect: impl FnMut(&mut A, &mut A::Domain, SwitchIntTarget),
+    ) {
         assert!(!self.effects_applied);
 
         let values = &self.body.basic_blocks.switch_sources()[&(self.bb, self.pred)];
@@ -310,8 +315,8 @@ where
         let mut tmp = None;
         for target in targets {
             let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
-            apply_edge_effect(tmp, target);
-            (self.propagate)(self.pred, tmp);
+            apply_edge_effect(analysis, tmp, target);
+            (self.propagate)(analysis, self.pred, tmp);
         }
 
         self.effects_applied = true;
@@ -475,25 +480,25 @@ impl Direction for Forward {
         exit_state: &mut A::Domain,
         bb: BasicBlock,
         edges: TerminatorEdges<'_, 'tcx>,
-        mut propagate: impl FnMut(BasicBlock, &A::Domain),
+        mut propagate: impl FnMut(&mut A, BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>,
     {
         match edges {
             TerminatorEdges::None => {}
-            TerminatorEdges::Single(target) => propagate(target, exit_state),
+            TerminatorEdges::Single(target) => propagate(analysis, target, exit_state),
             TerminatorEdges::Double(target, unwind) => {
-                propagate(target, exit_state);
-                propagate(unwind, exit_state);
+                propagate(analysis, target, exit_state);
+                propagate(analysis, unwind, exit_state);
             }
             TerminatorEdges::AssignOnReturn { return_, cleanup, place } => {
                 // This must be done *first*, otherwise the unwind path will see the assignments.
                 if let Some(cleanup) = cleanup {
-                    propagate(cleanup, exit_state);
+                    propagate(analysis, cleanup, exit_state);
                 }
                 if let Some(return_) = return_ {
                     analysis.apply_call_return_effect(exit_state, bb, place);
-                    propagate(return_, exit_state);
+                    propagate(analysis, return_, exit_state);
                 }
             }
             TerminatorEdges::SwitchInt { targets, discr } => {
@@ -515,7 +520,7 @@ impl Direction for Forward {
 
                 if !effects_applied {
                     for target in targets.all_targets() {
-                        propagate(*target, exit_state);
+                        propagate(analysis, *target, exit_state);
                     }
                 }
             }
@@ -531,26 +536,35 @@ struct ForwardSwitchIntEdgeEffectsApplier<'mir, D, F> {
     effects_applied: bool,
 }
 
-impl<D, F> super::SwitchIntEdgeEffects<D> for ForwardSwitchIntEdgeEffectsApplier<'_, D, F>
+impl<'tcx, A, F> super::SwitchIntEdgeEffects<'tcx, A>
+    for ForwardSwitchIntEdgeEffectsApplier<'_, A::Domain, F>
 where
-    D: Clone,
-    F: FnMut(BasicBlock, &D),
+    A: Analysis<'tcx>,
+    F: FnMut(&mut A, BasicBlock, &A::Domain),
 {
-    fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
+    fn apply(
+        &mut self,
+        analysis: &mut A,
+        mut apply_edge_effect: impl FnMut(&mut A, &mut A::Domain, SwitchIntTarget),
+    ) {
         assert!(!self.effects_applied);
 
         let mut tmp = None;
         for (value, target) in self.targets.iter() {
             let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
-            apply_edge_effect(tmp, SwitchIntTarget { value: Some(value), target });
-            (self.propagate)(target, tmp);
+            apply_edge_effect(analysis, tmp, SwitchIntTarget { value: Some(value), target });
+            (self.propagate)(analysis, target, tmp);
         }
 
         // Once we get to the final, "otherwise" branch, there is no need to preserve `exit_state`,
         // so pass it directly to `apply_edge_effect` to save a clone of the dataflow state.
         let otherwise = self.targets.otherwise();
-        apply_edge_effect(self.exit_state, SwitchIntTarget { value: None, target: otherwise });
-        (self.propagate)(otherwise, self.exit_state);
+        apply_edge_effect(
+            analysis,
+            self.exit_state,
+            SwitchIntTarget { value: None, target: otherwise },
+        );
+        (self.propagate)(analysis, otherwise, self.exit_state);
 
         self.effects_applied = true;
     }
