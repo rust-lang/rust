@@ -1,5 +1,5 @@
 use rustc_errors::Applicability;
-use rustc_hir::{GenericArg, HirId, Node, Path, TyKind};
+use rustc_hir::{GenericArg, HirId, Local, Node, Path, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
@@ -7,6 +7,27 @@ use rustc_middle::ty::Ty;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
+
+fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId) -> Option<Local<'tcx>> {
+    let mut parent_iter = cx.tcx.hir().parent_iter(expr_hir_id);
+    if let Some((_, node)) = parent_iter.next() {
+        match node {
+            Node::Local(local) => Some(*local),
+            Node::Block(_) => {
+                if let Some((parent_hir_id, Node::Expr(expr))) = parent_iter.next()
+                    && matches!(expr.kind, rustc_hir::ExprKind::Block(_, _))
+                {
+                    get_parent_local_binding_ty(cx, parent_hir_id)
+                } else {
+                    None
+                }
+            },
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -33,12 +54,14 @@ pub(super) fn check<'tcx>(
         return false;
     }
     // If it's being set as a local variable value...
-    if let Some((_, node)) = cx.tcx.hir().parent_iter(expr_hir_id).next()
-        && let Node::Local(local) = node
+    if let Some(local) = get_parent_local_binding_ty(cx, expr_hir_id)
         // ... which does have type annotations.
-        && local.ty.is_some()
+        && let Some(ty) = local.ty
     {
-        return false;
+        // If this is a `let x: _ =`, we shouldn't lint.
+        if !matches!(ty.kind, TyKind::Infer) {
+            return false;
+        }
     }
     span_lint_and_sugg(
         cx,

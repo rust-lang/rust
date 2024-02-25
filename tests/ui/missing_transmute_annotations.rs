@@ -1,6 +1,7 @@
 //@aux-build:macro_rules.rs
 
 #![warn(clippy::missing_transmute_annotations)]
+#![allow(clippy::let_with_type_underscore)]
 
 #[macro_use]
 extern crate macro_rules;
@@ -68,7 +69,12 @@ unsafe fn foo9() -> i32 {
 }
 
 fn main() {
+    let x: _ = unsafe { std::mem::transmute::<_, i32>([1u16, 2u16]) };
+    //~^ ERROR: transmute used without annotations
     unsafe {
+        let x: _ = std::mem::transmute::<_, i32>([1u16, 2u16]);
+        //~^ ERROR: transmute used without annotations
+
         // Should not warn.
         std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
         let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
@@ -76,4 +82,5 @@ fn main() {
         let x: i32 = std::mem::transmute::<_, i32>([1u16, 2u16]);
         let x: i32 = std::mem::transmute([1u16, 2u16]);
     }
+    let x: i32 = unsafe { std::mem::transmute([1u16, 2u16]) };
 }
