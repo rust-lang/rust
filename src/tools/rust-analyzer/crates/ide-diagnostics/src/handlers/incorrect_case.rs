@@ -512,7 +512,7 @@ impl BAD_TRAIT for () {
     fn BadFunction() {}
 }
     "#,
-            std::iter::once("unused_variables".to_owned()),
+            &["unused_variables"],
         );
     }
 

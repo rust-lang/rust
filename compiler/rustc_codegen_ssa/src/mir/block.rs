@@ -319,7 +319,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         targets: &SwitchTargets,
     ) {
         let discr = self.codegen_operand(bx, discr);
+        let discr_value = discr.immediate();
         let switch_ty = discr.layout.ty;
+        // If our discriminant is a constant we can branch directly
+        if let Some(const_discr) = bx.const_to_opt_u128(discr_value, false) {
+            let target = targets.target_for_value(const_discr);
+            bx.br(helper.llbb_with_cleanup(self, target));
+            return;
+        };
+
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
             // If there are two targets (one conditional, one fallback), emit `br` instead of
@@ -330,14 +338,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             if switch_ty == bx.tcx().types.bool {
                 // Don't generate trivial icmps when switching on bool.
                 match test_value {
-                    0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
-                    1 => bx.cond_br(discr.immediate(), lltrue, llfalse),
+                    0 => bx.cond_br(discr_value, llfalse, lltrue),
+                    1 => bx.cond_br(discr_value, lltrue, llfalse),
                     _ => bug!(),
                 }
             } else {
                 let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
                 let llval = bx.const_uint_big(switch_llty, test_value);
-                let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
+                let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
                 bx.cond_br(cmp, lltrue, llfalse);
             }
         } else if self.cx.sess().opts.optimize == OptLevel::No
@@ -362,11 +370,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let ll2 = helper.llbb_with_cleanup(self, target2);
             let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
             let llval = bx.const_uint_big(switch_llty, test_value1);
-            let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
+            let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
             bx.cond_br(cmp, ll1, ll2);
         } else {
             bx.switch(
-                discr.immediate(),
+                discr_value,
                 helper.llbb_with_cleanup(self, targets.otherwise()),
                 target_iter.map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
             );

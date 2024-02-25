@@ -10,6 +10,7 @@ use rustc_ast::{
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::{self, *};
+use rustc_parse::parser::Recovered;
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
@@ -111,9 +112,8 @@ fn parse_args<'a>(ecx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<
                         _ => return Err(err),
                     }
                 }
-                Ok(recovered) => {
-                    assert!(recovered);
-                }
+                Ok(Recovered::Yes) => (),
+                Ok(Recovered::No) => unreachable!(),
             }
         }
         first = false;

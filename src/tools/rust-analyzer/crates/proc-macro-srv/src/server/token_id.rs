@@ -14,7 +14,7 @@ use crate::server::{
 mod tt {
     pub use proc_macro_api::msg::TokenId;
 
-    pub use ::tt::*;
+    pub use tt::*;
 
     pub type Subtree = ::tt::Subtree<TokenId>;
     pub type TokenTree = ::tt::TokenTree<TokenId>;
@@ -89,22 +89,34 @@ impl server::FreeFunctions for TokenIdServer {
         }
 
         let TokenKind::Literal { kind, suffix_start } = lit.kind else { return Err(()) };
-        let kind = match kind {
-            LiteralKind::Int { .. } => LitKind::Integer,
-            LiteralKind::Float { .. } => LitKind::Float,
-            LiteralKind::Char { .. } => LitKind::Char,
-            LiteralKind::Byte { .. } => LitKind::Byte,
-            LiteralKind::Str { .. } => LitKind::Str,
-            LiteralKind::ByteStr { .. } => LitKind::ByteStr,
-            LiteralKind::CStr { .. } => LitKind::CStr,
-            LiteralKind::RawStr { n_hashes } => LitKind::StrRaw(n_hashes.unwrap_or_default()),
-            LiteralKind::RawByteStr { n_hashes } => {
-                LitKind::ByteStrRaw(n_hashes.unwrap_or_default())
-            }
-            LiteralKind::RawCStr { n_hashes } => LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+
+        let (kind, start_offset, end_offset) = match kind {
+            LiteralKind::Int { .. } => (LitKind::Integer, 0, 0),
+            LiteralKind::Float { .. } => (LitKind::Float, 0, 0),
+            LiteralKind::Char { terminated } => (LitKind::Char, 1, terminated as usize),
+            LiteralKind::Byte { terminated } => (LitKind::Byte, 2, terminated as usize),
+            LiteralKind::Str { terminated } => (LitKind::Str, 1, terminated as usize),
+            LiteralKind::ByteStr { terminated } => (LitKind::ByteStr, 2, terminated as usize),
+            LiteralKind::CStr { terminated } => (LitKind::CStr, 2, terminated as usize),
+            LiteralKind::RawStr { n_hashes } => (
+                LitKind::StrRaw(n_hashes.unwrap_or_default()),
+                2 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+            LiteralKind::RawByteStr { n_hashes } => (
+                LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+                3 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
+            LiteralKind::RawCStr { n_hashes } => (
+                LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+                3 + n_hashes.unwrap_or_default() as usize,
+                1 + n_hashes.unwrap_or_default() as usize,
+            ),
         };
 
         let (lit, suffix) = s.split_at(suffix_start as usize);
+        let lit = &lit[start_offset..lit.len() - end_offset];
         let suffix = match suffix {
             "" | "_" => None,
             suffix => Some(Symbol::intern(self.interner, suffix)),
@@ -233,12 +245,9 @@ impl server::TokenStream for TokenIdServer {
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     bridge::TokenTree::Literal(bridge::Literal {
-                        // FIXME: handle literal kinds
-                        kind: bridge::LitKind::Integer, // dummy
-                        symbol: Symbol::intern(self.interner, &lit.text),
-                        // FIXME: handle suffixes
-                        suffix: None,
                         span: lit.span,
+                        ..server::FreeFunctions::literal_from_str(self, &lit.text)
+                            .unwrap_or_else(|_| panic!("`{}`", lit.text))
                     })
                 }
                 tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {

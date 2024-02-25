@@ -2446,7 +2446,7 @@ mod tests {
     use base_db::SourceDatabase;
     use test_fixture::WithFixture;
 
-    use crate::{db::DefDatabase, test_db::TestDB};
+    use crate::test_db::TestDB;
 
     use super::*;
 

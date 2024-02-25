@@ -1,5 +1,4 @@
 //@ compile-flags: -O
-//@ ignore-debug: the debug assertions get in the way
 #![crate_type = "lib"]
 
 // Make sure no bounds checks are emitted in the loop when upfront slicing

@@ -16,7 +16,7 @@ use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    IndirectStructuralMatch, InvalidPattern, NaNPattern, NonPartialEqMatch, PointerPattern,
+    IndirectStructuralMatch, InvalidPattern, NaNPattern, PointerPattern, TypeNotPartialEq,
     TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
@@ -208,15 +208,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 );
             }
 
-            // Always check for `PartialEq`, even if we emitted other lints. (But not if there were
-            // any errors.) This ensures it shows up in cargo's future-compat reports as well.
+            // Always check for `PartialEq` if we had no other errors yet.
             if !self.type_has_partial_eq_impl(cv.ty()) {
-                self.tcx().emit_node_span_lint(
-                    lint::builtin::CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
-                    self.id,
-                    self.span,
-                    NonPartialEqMatch { non_peq_ty: cv.ty() },
-                );
+                let err = TypeNotPartialEq { span: self.span, non_peq_ty: cv.ty() };
+                let e = self.tcx().dcx().emit_err(err);
+                let kind = PatKind::Error(e);
+                return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
             }
         }
 

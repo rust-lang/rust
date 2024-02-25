@@ -4,7 +4,7 @@
 //@ [old]ignore-llvm-version: 17 - 99
 //@ [new]min-llvm-version: 17
 //@ compile-flags: -O
-//@ ignore-debug: the debug assertions get in the way
+//@ ignore-debug: plain old debug assertions
 //@ needs-unwind
 #![crate_type = "lib"]
 #![feature(shrink_to)]

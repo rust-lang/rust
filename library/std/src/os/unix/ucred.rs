@@ -62,7 +62,7 @@ pub mod impl_linux {
                 socket.as_raw_fd(),
                 SOL_SOCKET,
                 SO_PEERCRED,
-                &mut ucred as *mut ucred as *mut c_void,
+                core::ptr::addr_of_mut!(ucred) as *mut c_void,
                 &mut ucred_size,
             );
 
@@ -122,7 +122,7 @@ pub mod impl_mac {
                 socket.as_raw_fd(),
                 SOL_LOCAL,
                 LOCAL_PEERPID,
-                &mut pid as *mut pid_t as *mut c_void,
+                core::ptr::addr_of_mut!(pid) as *mut c_void,
                 &mut pid_size,
             );
 

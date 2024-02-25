@@ -18,7 +18,9 @@ pub(crate) fn missing_match_arms(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics, check_diagnostics_with_config},
+        tests::{
+            check_diagnostics, check_diagnostics_with_config, check_diagnostics_with_disabled,
+        },
         DiagnosticsConfig,
     };
 
@@ -282,7 +284,7 @@ fn main() {
         cov_mark::check_count!(validate_match_bailed_out, 4);
         // Match statements with arms that don't match the
         // expression pattern do not fire this diagnostic.
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 enum Either { A, B }
 enum Either2 { C, D }
@@ -307,6 +309,7 @@ fn main() {
     match Unresolved::Bar { Unresolved::Baz => () }
 }
         "#,
+            &["E0425"],
         );
     }
 
@@ -397,11 +400,11 @@ fn main() {
     match loop {} {
         Either::A => (),
     }
-    match loop { break Foo::A } {
-        //^^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `B` not covered
+    match loop { break Either::A } {
+        //^^^^^^^^^^^^^^^^^^^^^^^^ error: missing match arm: `B` not covered
         Either::A => (),
     }
-    match loop { break Foo::A } {
+    match loop { break Either::A } {
         Either::A => (),
         Either::B => (),
     }
@@ -977,7 +980,7 @@ fn f(ty: Enum) {
     #[test]
     fn unexpected_ty_fndef() {
         cov_mark::check!(validate_match_bailed_out);
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r"
 enum Exp {
     Tuple(()),
@@ -987,6 +990,7 @@ fn f() {
         Exp::Tuple => {}
     }
 }",
+            &["E0425"],
         );
     }
 

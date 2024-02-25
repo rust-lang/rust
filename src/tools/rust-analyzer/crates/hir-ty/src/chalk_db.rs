@@ -1,7 +1,7 @@
 //! The implementation of `RustIrDatabase` for Chalk, which provides information
 //! about the code that Chalk needs.
 use core::ops;
-use std::{iter, sync::Arc};
+use std::{iter, ops::ControlFlow, sync::Arc};
 
 use tracing::debug;
 
@@ -10,9 +10,10 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
+    data::adt::StructFlags,
     hir::Movability,
     lang_item::{LangItem, LangItemTarget},
-    AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId,
+    AssocItemId, BlockId, GenericDefId, HasModule, ItemContainerId, Lookup, TypeAliasId, VariantId,
 };
 use hir_expand::name::name;
 
@@ -33,7 +34,7 @@ use crate::{
 
 pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;
 pub(crate) type TraitDatum = chalk_solve::rust_ir::TraitDatum<Interner>;
-pub(crate) type StructDatum = chalk_solve::rust_ir::AdtDatum<Interner>;
+pub(crate) type AdtDatum = chalk_solve::rust_ir::AdtDatum<Interner>;
 pub(crate) type ImplDatum = chalk_solve::rust_ir::ImplDatum<Interner>;
 pub(crate) type OpaqueTyDatum = chalk_solve::rust_ir::OpaqueTyDatum<Interner>;
 
@@ -53,8 +54,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     fn trait_datum(&self, trait_id: TraitId) -> Arc<TraitDatum> {
         self.db.trait_datum(self.krate, trait_id)
     }
-    fn adt_datum(&self, struct_id: AdtId) -> Arc<StructDatum> {
-        self.db.struct_datum(self.krate, struct_id)
+    fn adt_datum(&self, struct_id: AdtId) -> Arc<AdtDatum> {
+        self.db.adt_datum(self.krate, struct_id)
     }
     fn adt_repr(&self, _struct_id: AdtId) -> Arc<rust_ir::AdtRepr<Interner>> {
         // FIXME: keep track of these
@@ -136,81 +137,92 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
             _ => self_ty_fp.as_ref().map(std::slice::from_ref).unwrap_or(&[]),
         };
 
-        let trait_module = trait_.module(self.db.upcast());
-        let type_module = match self_ty_fp {
-            Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(self.db.upcast())),
-            Some(TyFingerprint::ForeignType(type_id)) => {
-                Some(from_foreign_def_id(type_id).module(self.db.upcast()))
-            }
-            Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(self.db.upcast())),
-            _ => None,
-        };
-
-        let mut def_blocks =
-            [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())];
-
-        // Note: Since we're using impls_for_trait, only impls where the trait
-        // can be resolved should ever reach Chalk. impl_datum relies on that
-        // and will panic if the trait can't be resolved.
-        let in_deps = self.db.trait_impls_in_deps(self.krate);
-        let in_self = self.db.trait_impls_in_crate(self.krate);
-
-        let block_impls = iter::successors(self.block, |&block_id| {
-            cov_mark::hit!(block_local_impls);
-            self.db.block_def_map(block_id).parent().and_then(|module| module.containing_block())
-        })
-        .inspect(|&block_id| {
-            // make sure we don't search the same block twice
-            def_blocks.iter_mut().for_each(|block| {
-                if *block == Some(block_id) {
-                    *block = None;
-                }
-            });
-        })
-        .filter_map(|block_id| self.db.trait_impls_in_block(block_id));
-
         let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
+
         let mut result = vec![];
-        match fps {
-            [] => {
-                debug!("Unrestricted search for {:?} impls...", trait_);
-                let mut f = |impls: &TraitImpls| {
-                    result.extend(impls.for_trait(trait_).map(id_to_chalk));
-                };
-                f(&in_self);
-                in_deps.iter().map(ops::Deref::deref).for_each(&mut f);
-                block_impls.for_each(|it| f(&it));
-                def_blocks
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|it| self.db.trait_impls_in_block(it))
-                    .for_each(|it| f(&it));
-            }
-            fps => {
-                let mut f =
-                    |impls: &TraitImpls| {
-                        result.extend(fps.iter().flat_map(|fp| {
-                            impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
-                        }));
-                    };
-                f(&in_self);
-                in_deps.iter().map(ops::Deref::deref).for_each(&mut f);
-                block_impls.for_each(|it| f(&it));
-                def_blocks
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|it| self.db.trait_impls_in_block(it))
-                    .for_each(|it| f(&it));
-            }
-        }
+        if fps.is_empty() {
+            debug!("Unrestricted search for {:?} impls...", trait_);
+            self.for_trait_impls(trait_, self_ty_fp, |impls| {
+                result.extend(impls.for_trait(trait_).map(id_to_chalk));
+                ControlFlow::Continue(())
+            })
+        } else {
+            self.for_trait_impls(trait_, self_ty_fp, |impls| {
+                result.extend(
+                    fps.iter().flat_map(move |fp| {
+                        impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
+                    }),
+                );
+                ControlFlow::Continue(())
+            })
+        };
 
         debug!("impls_for_trait returned {} impls", result.len());
         result
     }
+
     fn impl_provided_for(&self, auto_trait_id: TraitId, kind: &chalk_ir::TyKind<Interner>) -> bool {
         debug!("impl_provided_for {:?}, {:?}", auto_trait_id, kind);
-        false // FIXME
+
+        let trait_id = from_chalk_trait_id(auto_trait_id);
+        let self_ty = kind.clone().intern(Interner);
+        // We cannot filter impls by `TyFingerprint` for the following types:
+        let self_ty_fp = match kind {
+            // because we need to find any impl whose Self type is a ref with the same mutability
+            // (we don't care about the inner type).
+            TyKind::Ref(..) => None,
+            // because we need to find any impl whose Self type is a tuple with the same arity.
+            TyKind::Tuple(..) => None,
+            _ => TyFingerprint::for_trait_impl(&self_ty),
+        };
+
+        let check_kind = |impl_id| {
+            let impl_self_ty = self.db.impl_self_ty(impl_id);
+            // NOTE(skip_binders): it's safe to skip binders here as we don't check substitutions.
+            let impl_self_kind = impl_self_ty.skip_binders().kind(Interner);
+
+            match (kind, impl_self_kind) {
+                (TyKind::Adt(id_a, _), TyKind::Adt(id_b, _)) => id_a == id_b,
+                (TyKind::AssociatedType(id_a, _), TyKind::AssociatedType(id_b, _)) => id_a == id_b,
+                (TyKind::Scalar(scalar_a), TyKind::Scalar(scalar_b)) => scalar_a == scalar_b,
+                (TyKind::Error, TyKind::Error)
+                | (TyKind::Str, TyKind::Str)
+                | (TyKind::Slice(_), TyKind::Slice(_))
+                | (TyKind::Never, TyKind::Never)
+                | (TyKind::Array(_, _), TyKind::Array(_, _)) => true,
+                (TyKind::Tuple(arity_a, _), TyKind::Tuple(arity_b, _)) => arity_a == arity_b,
+                (TyKind::OpaqueType(id_a, _), TyKind::OpaqueType(id_b, _)) => id_a == id_b,
+                (TyKind::FnDef(id_a, _), TyKind::FnDef(id_b, _)) => id_a == id_b,
+                (TyKind::Ref(id_a, _, _), TyKind::Ref(id_b, _, _))
+                | (TyKind::Raw(id_a, _), TyKind::Raw(id_b, _)) => id_a == id_b,
+                (TyKind::Closure(id_a, _), TyKind::Closure(id_b, _)) => id_a == id_b,
+                (TyKind::Coroutine(id_a, _), TyKind::Coroutine(id_b, _))
+                | (TyKind::CoroutineWitness(id_a, _), TyKind::CoroutineWitness(id_b, _)) => {
+                    id_a == id_b
+                }
+                (TyKind::Foreign(id_a), TyKind::Foreign(id_b)) => id_a == id_b,
+                (_, _) => false,
+            }
+        };
+
+        if let Some(fp) = self_ty_fp {
+            self.for_trait_impls(trait_id, self_ty_fp, |impls| {
+                match impls.for_trait_and_self_ty(trait_id, fp).any(check_kind) {
+                    true => ControlFlow::Break(()),
+                    false => ControlFlow::Continue(()),
+                }
+            })
+        } else {
+            self.for_trait_impls(trait_id, self_ty_fp, |impls| {
+                match impls.for_trait(trait_id).any(check_kind) {
+                    true => ControlFlow::Break(()),
+                    false => ControlFlow::Continue(()),
+                }
+            })
+        }
+        .is_break()
     }
+
     fn associated_ty_value(&self, id: AssociatedTyValueId) -> Arc<AssociatedTyValue> {
         self.db.associated_ty_value(self.krate, id)
     }
@@ -489,6 +501,59 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
 }
 
+impl<'a> ChalkContext<'a> {
+    fn for_trait_impls(
+        &self,
+        trait_id: hir_def::TraitId,
+        self_ty_fp: Option<TyFingerprint>,
+        mut f: impl FnMut(&TraitImpls) -> ControlFlow<()>,
+    ) -> ControlFlow<()> {
+        // Note: Since we're using `impls_for_trait` and `impl_provided_for`,
+        // only impls where the trait can be resolved should ever reach Chalk.
+        // `impl_datum` relies on that and will panic if the trait can't be resolved.
+        let in_deps = self.db.trait_impls_in_deps(self.krate);
+        let in_self = self.db.trait_impls_in_crate(self.krate);
+        let trait_module = trait_id.module(self.db.upcast());
+        let type_module = match self_ty_fp {
+            Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(self.db.upcast())),
+            Some(TyFingerprint::ForeignType(type_id)) => {
+                Some(from_foreign_def_id(type_id).module(self.db.upcast()))
+            }
+            Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(self.db.upcast())),
+            _ => None,
+        };
+
+        let mut def_blocks =
+            [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())];
+
+        let block_impls = iter::successors(self.block, |&block_id| {
+            cov_mark::hit!(block_local_impls);
+            self.db.block_def_map(block_id).parent().and_then(|module| module.containing_block())
+        })
+        .inspect(|&block_id| {
+            // make sure we don't search the same block twice
+            def_blocks.iter_mut().for_each(|block| {
+                if *block == Some(block_id) {
+                    *block = None;
+                }
+            });
+        })
+        .filter_map(|block_id| self.db.trait_impls_in_block(block_id));
+        f(&in_self)?;
+        for it in in_deps.iter().map(ops::Deref::deref) {
+            f(it)?;
+        }
+        for it in block_impls {
+            f(&it)?;
+        }
+        for it in def_blocks.into_iter().flatten().filter_map(|it| self.db.trait_impls_in_block(it))
+        {
+            f(&it)?;
+        }
+        ControlFlow::Continue(())
+    }
+}
+
 impl chalk_ir::UnificationDatabase<Interner> for &dyn HirDatabase {
     fn fn_def_variance(
         &self,
@@ -590,7 +655,7 @@ pub(crate) fn trait_datum_query(
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
         marker: false,
-        fundamental: false,
+        fundamental: trait_data.fundamental,
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
@@ -649,35 +714,74 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
     }
 }
 
-pub(crate) fn struct_datum_query(
+pub(crate) fn adt_datum_query(
     db: &dyn HirDatabase,
     krate: CrateId,
-    struct_id: AdtId,
-) -> Arc<StructDatum> {
-    debug!("struct_datum {:?}", struct_id);
-    let chalk_ir::AdtId(adt_id) = struct_id;
+    chalk_ir::AdtId(adt_id): AdtId,
+) -> Arc<AdtDatum> {
+    debug!("adt_datum {:?}", adt_id);
     let generic_params = generics(db.upcast(), adt_id.into());
-    let upstream = adt_id.module(db.upcast()).krate() != krate;
-    let where_clauses = {
-        let generic_params = generics(db.upcast(), adt_id.into());
-        let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-        convert_where_clauses(db, adt_id.into(), &bound_vars)
+    let bound_vars_subst = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
+    let where_clauses = convert_where_clauses(db, adt_id.into(), &bound_vars_subst);
+
+    let (fundamental, phantom_data) = match adt_id {
+        hir_def::AdtId::StructId(s) => {
+            let flags = db.struct_data(s).flags;
+            (
+                flags.contains(StructFlags::IS_FUNDAMENTAL),
+                flags.contains(StructFlags::IS_PHANTOM_DATA),
+            )
+        }
+        // FIXME set fundamental flags correctly
+        hir_def::AdtId::UnionId(_) => (false, false),
+        hir_def::AdtId::EnumId(_) => (false, false),
     };
     let flags = rust_ir::AdtFlags {
-        upstream,
-        // FIXME set fundamental and phantom_data flags correctly
-        fundamental: false,
-        phantom_data: false,
+        upstream: adt_id.module(db.upcast()).krate() != krate,
+        fundamental,
+        phantom_data,
     };
-    // FIXME provide enum variants properly (for auto traits)
-    let variant = rust_ir::AdtVariantDatum {
-        fields: Vec::new(), // FIXME add fields (only relevant for auto traits),
+
+    // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
+    let _variant_id_to_fields = |id: VariantId| {
+        let variant_data = &id.variant_data(db.upcast());
+        let fields = if variant_data.fields().is_empty() {
+            vec![]
+        } else {
+            let field_types = db.field_types(id);
+            variant_data
+                .fields()
+                .iter()
+                .map(|(idx, _)| field_types[idx].clone().substitute(Interner, &bound_vars_subst))
+                .filter(|it| !it.contains_unknown())
+                .collect()
+        };
+        rust_ir::AdtVariantDatum { fields }
     };
-    let struct_datum_bound = rust_ir::AdtDatumBound { variants: vec![variant], where_clauses };
-    let struct_datum = StructDatum {
-        // FIXME set ADT kind
-        kind: rust_ir::AdtKind::Struct,
-        id: struct_id,
+    let variant_id_to_fields = |_: VariantId| rust_ir::AdtVariantDatum { fields: vec![] };
+
+    let (kind, variants) = match adt_id {
+        hir_def::AdtId::StructId(id) => {
+            (rust_ir::AdtKind::Struct, vec![variant_id_to_fields(id.into())])
+        }
+        hir_def::AdtId::EnumId(id) => {
+            let variants = db
+                .enum_data(id)
+                .variants
+                .iter()
+                .map(|&(variant_id, _)| variant_id_to_fields(variant_id.into()))
+                .collect();
+            (rust_ir::AdtKind::Enum, variants)
+        }
+        hir_def::AdtId::UnionId(id) => {
+            (rust_ir::AdtKind::Union, vec![variant_id_to_fields(id.into())])
+        }
+    };
+
+    let struct_datum_bound = rust_ir::AdtDatumBound { variants, where_clauses };
+    let struct_datum = AdtDatum {
+        kind,
+        id: chalk_ir::AdtId(adt_id),
         binders: make_binders(db, &generic_params, struct_datum_bound),
         flags,
     };

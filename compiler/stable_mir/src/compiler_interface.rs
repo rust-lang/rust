@@ -208,7 +208,7 @@ where
     if TLV.is_set() {
         Err(Error::from("StableMIR already running"))
     } else {
-        let ptr: *const () = &context as *const &_ as _;
+        let ptr: *const () = std::ptr::addr_of!(context) as _;
         TLV.set(&Cell::new(ptr), || Ok(f()))
     }
 }

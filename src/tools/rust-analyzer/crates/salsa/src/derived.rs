@@ -102,13 +102,13 @@ where
 
         let mut write = self.slot_map.write();
         let entry = write.entry(key.clone());
-        let key_index = u32::try_from(entry.index()).unwrap();
+        let key_index = entry.index() as u32;
         let database_key_index = DatabaseKeyIndex {
             group_index: self.group_index,
             query_index: Q::QUERY_INDEX,
             key_index,
         };
-        entry.or_insert_with(|| Arc::new(Slot::new(key.clone(), database_key_index))).clone()
+        entry.or_insert_with(|| Arc::new(Slot::new(database_key_index))).clone()
     }
 }
 
@@ -131,34 +131,36 @@ where
     fn fmt_index(
         &self,
         _db: &<Q as QueryDb<'_>>::DynDb,
-        index: DatabaseKeyIndex,
+        index: u32,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        assert_eq!(index.group_index, self.group_index);
-        assert_eq!(index.query_index, Q::QUERY_INDEX);
         let slot_map = self.slot_map.read();
-        let key = slot_map.get_index(index.key_index as usize).unwrap().0;
+        let key = slot_map.get_index(index as usize).unwrap().0;
         write!(fmt, "{}({:?})", Q::QUERY_NAME, key)
     }
 
     fn maybe_changed_after(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        input: DatabaseKeyIndex,
+        index: u32,
         revision: Revision,
     ) -> bool {
-        assert_eq!(input.group_index, self.group_index);
-        assert_eq!(input.query_index, Q::QUERY_INDEX);
         debug_assert!(revision < db.salsa_runtime().current_revision());
-        let slot = self.slot_map.read().get_index(input.key_index as usize).unwrap().1.clone();
-        slot.maybe_changed_after(db, revision)
+        let read = self.slot_map.read();
+        let Some((key, slot)) = read.get_index(index as usize) else {
+            return false;
+        };
+        let (key, slot) = (key.clone(), slot.clone());
+        // note: this drop is load-bearing. removing it would causes deadlocks.
+        drop(read);
+        slot.maybe_changed_after(db, revision, &key)
     }
 
     fn fetch(&self, db: &<Q as QueryDb<'_>>::DynDb, key: &Q::Key) -> Q::Value {
         db.unwind_if_cancelled();
 
         let slot = self.slot(key);
-        let StampedValue { value, durability, changed_at } = slot.read(db);
+        let StampedValue { value, durability, changed_at } = slot.read(db, key);
 
         if let Some(evicted) = self.lru_list.record_use(&slot) {
             evicted.evict();
@@ -182,7 +184,7 @@ where
         C: std::iter::FromIterator<TableEntry<Q::Key, Q::Value>>,
     {
         let slot_map = self.slot_map.read();
-        slot_map.values().filter_map(|slot| slot.as_table_entry()).collect()
+        slot_map.iter().filter_map(|(key, slot)| slot.as_table_entry(key)).collect()
     }
 }
 

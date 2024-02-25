@@ -107,7 +107,7 @@ impl Lit {
     /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
-            Ident(name, false) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
+            Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
             Interpolated(ref nt)
                 if let NtExpr(expr) | NtLiteral(expr) = &nt.0
@@ -183,7 +183,7 @@ impl LitKind {
     }
 }
 
-pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: bool) -> bool {
+pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
 
     !ident_token.is_reserved_ident()
@@ -214,13 +214,31 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: bool) -> bool {
         .contains(&name)
 }
 
-fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
+fn ident_can_begin_type(name: Symbol, span: Span, is_raw: IdentIsRaw) -> bool {
     let ident_token = Token::new(Ident(name, is_raw), span);
 
     !ident_token.is_reserved_ident()
         || ident_token.is_path_segment_keyword()
         || [kw::Underscore, kw::For, kw::Impl, kw::Fn, kw::Unsafe, kw::Extern, kw::Typeof, kw::Dyn]
             .contains(&name)
+}
+
+#[derive(PartialEq, Encodable, Decodable, Debug, Copy, Clone, HashStable_Generic)]
+pub enum IdentIsRaw {
+    No,
+    Yes,
+}
+
+impl From<bool> for IdentIsRaw {
+    fn from(b: bool) -> Self {
+        if b { Self::Yes } else { Self::No }
+    }
+}
+
+impl From<IdentIsRaw> for bool {
+    fn from(is_raw: IdentIsRaw) -> bool {
+        matches!(is_raw, IdentIsRaw::Yes)
+    }
 }
 
 // SAFETY: due to the `Clone` impl below, all fields of all variants other than
@@ -298,7 +316,7 @@ pub enum TokenKind {
     /// Do not forget about `NtIdent` when you want to match on identifiers.
     /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated identifiers in the same way.
-    Ident(Symbol, /* is_raw */ bool),
+    Ident(Symbol, IdentIsRaw),
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
     /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
@@ -411,7 +429,7 @@ impl Token {
 
     /// Recovers a `Token` from an `Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: Ident) -> Self {
-        Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
+        Token::new(Ident(ident.name, ident.is_raw_guess().into()), ident.span)
     }
 
     /// For interpolated tokens, returns a span of the fragment to which the interpolated
@@ -567,7 +585,7 @@ impl Token {
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
-            Ident(name, false) if name.is_bool_lit() => true,
+            Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &nt.0 {
                 NtLiteral(_) => true,
                 NtExpr(e) => match &e.kind {
@@ -602,7 +620,7 @@ impl Token {
 
     /// Returns an identifier if this token is an identifier.
     #[inline]
-    pub fn ident(&self) -> Option<(Ident, /* is_raw */ bool)> {
+    pub fn ident(&self) -> Option<(Ident, IdentIsRaw)> {
         // We avoid using `Token::uninterpolate` here because it's slow.
         match &self.kind {
             &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
@@ -755,7 +773,7 @@ impl Token {
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
     pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(Ident) -> bool) -> bool {
         match self.ident() {
-            Some((id, false)) => pred(id),
+            Some((id, IdentIsRaw::No)) => pred(id),
             _ => false,
         }
     }
@@ -806,7 +824,7 @@ impl Token {
                 _ => return None,
             },
             SingleQuote => match joint.kind {
-                Ident(name, false) => Lifetime(Symbol::intern(&format!("'{name}"))),
+                Ident(name, IdentIsRaw::No) => Lifetime(Symbol::intern(&format!("'{name}"))),
                 _ => return None,
             },
 
@@ -836,7 +854,7 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Ident, /* is_raw */ bool),
+    NtIdent(Ident, IdentIsRaw),
     NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes

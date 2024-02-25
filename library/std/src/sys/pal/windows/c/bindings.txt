@@ -2180,10 +2180,6 @@ Windows.Win32.Networking.WinSock.WSATRY_AGAIN
 Windows.Win32.Networking.WinSock.WSATYPE_NOT_FOUND
 Windows.Win32.Networking.WinSock.WSAVERNOTSUPPORTED
 Windows.Win32.Security.Authentication.Identity.RtlGenRandom
-Windows.Win32.Security.Cryptography.BCRYPT_ALG_HANDLE
-Windows.Win32.Security.Cryptography.BCRYPT_USE_SYSTEM_PREFERRED_RNG
-Windows.Win32.Security.Cryptography.BCryptGenRandom
-Windows.Win32.Security.Cryptography.BCRYPTGENRANDOM_FLAGS
 Windows.Win32.Security.SECURITY_ATTRIBUTES
 Windows.Win32.Security.TOKEN_ACCESS_MASK
 Windows.Win32.Security.TOKEN_ACCESS_PSEUDO_HANDLE

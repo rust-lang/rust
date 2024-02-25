@@ -78,7 +78,9 @@ fn method_fix(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics, check_diagnostics_with_config},
+        tests::{
+            check_diagnostics, check_diagnostics_with_config, check_diagnostics_with_disabled,
+        },
         DiagnosticsConfig,
     };
 
@@ -148,7 +150,7 @@ fn foo() {
 
     #[test]
     fn no_diagnostic_on_unknown() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn foo() {
     x.foo;
@@ -156,6 +158,7 @@ fn foo() {
     (&((x,),),).foo;
 }
 "#,
+            &["E0425"],
         );
     }
 

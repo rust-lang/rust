@@ -1,6 +1,6 @@
 //@ build-fail
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
 // Test for #73542 to verify out-of-bounds shuffle vectors do not compile.
 
@@ -28,9 +28,7 @@ struct u8x32([u8; 32]);
 #[derive(Copy, Clone)]
 struct u8x64([u8; 64]);
 
-extern "platform-intrinsic" {
-    pub fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
-}
+use std::intrinsics::simd::*;
 
 // Test vectors by lane size. Since LLVM does not distinguish between a shuffle
 // over two f32s and a shuffle over two u64s, or any other such combination,
@@ -70,13 +68,16 @@ fn main() {
     test_shuffle_lanes!(32, u8x32, simd_shuffle);
     test_shuffle_lanes!(64, u8x64, simd_shuffle);
 
-    extern "platform-intrinsic" {
-        fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
-    }
     let v = u8x2([0, 0]);
     const I: [u32; 2] = [4, 4];
     unsafe {
         let _: u8x2 = simd_shuffle(v, v, I);
         //~^ ERROR invalid monomorphization of `simd_shuffle` intrinsic
+    }
+
+    // also check insert/extract
+    unsafe {
+        simd_insert(v, 2, 0); //~ ERROR invalid monomorphization of `simd_insert` intrinsic
+        let _val: u8 = simd_extract(v, 2); //~ ERROR invalid monomorphization of `simd_extract` intrinsic
     }
 }

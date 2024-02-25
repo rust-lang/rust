@@ -730,7 +730,7 @@ fn f() -> i32 {
 }
 fn g() { return; }
 "#,
-            std::iter::once("needless_return".to_owned()),
+            &["needless_return"],
         );
     }
 

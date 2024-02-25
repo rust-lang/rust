@@ -1,10 +1,17 @@
 //! MIR lowering for patterns
 
-use hir_def::AssocItemId;
+use hir_def::{hir::LiteralOrConst, resolver::HasResolver, AssocItemId};
 
-use crate::BindingMode;
-
-use super::*;
+use crate::{
+    mir::lower::{
+        BasicBlockId, BinOp, BindingId, BorrowKind, Either, Expr, FieldId, Idx, Interner,
+        MemoryMap, MirLowerCtx, MirLowerError, MirSpan, Mutability, Operand, Pat, PatId, Place,
+        PlaceElem, ProjectionElem, RecordFieldPat, ResolveValueResult, Result, Rvalue,
+        Substitution, SwitchTargets, TerminatorKind, TupleFieldId, TupleId, TyBuilder, TyKind,
+        ValueNs, VariantData, VariantId,
+    },
+    BindingMode,
+};
 
 macro_rules! not_supported {
     ($x: expr) => {

@@ -502,7 +502,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // method of calling a catch panic whilst juggling ownership.
     let mut data = Data { f: ManuallyDrop::new(f) };
 
-    let data_ptr = &mut data as *mut _ as *mut u8;
+    let data_ptr = core::ptr::addr_of_mut!(data) as *mut u8;
     // SAFETY:
     //
     // Access to the union's fields: this is `std` and we know that the `r#try`

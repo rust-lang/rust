@@ -21,6 +21,8 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::parser;
 use crate::parser::attr::InnerAttrPolicy;
+use ast::token::IdentIsRaw;
+use parser::Recovered;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
@@ -264,7 +266,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expected_ident_found(
         &mut self,
         recover: bool,
-    ) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+    ) -> PResult<'a, (Ident, IdentIsRaw)> {
         if let TokenKind::DocComment(..) = self.prev_token.kind {
             return Err(self.dcx().create_err(DocCommentDoesNotDocumentAnything {
                 span: self.prev_token.span,
@@ -290,11 +292,11 @@ impl<'a> Parser<'a> {
         let bad_token = self.token.clone();
 
         // suggest prepending a keyword in identifier position with `r#`
-        let suggest_raw = if let Some((ident, false)) = self.token.ident()
+        let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.is_raw_guess()
             && self.look_ahead(1, |t| valid_follow.contains(&t.kind))
         {
-            recovered_ident = Some((ident, true));
+            recovered_ident = Some((ident, IdentIsRaw::Yes));
 
             // `Symbol::to_string()` is different from `Symbol::into_diagnostic_arg()`,
             // which uses `Symbol::to_ident_string()` and "helpfully" adds an implicit `r#`
@@ -320,7 +322,7 @@ impl<'a> Parser<'a> {
         let help_cannot_start_number = self.is_lit_bad_ident().map(|(len, valid_portion)| {
             let (invalid, valid) = self.token.span.split_at(len as u32);
 
-            recovered_ident = Some((Ident::new(valid_portion, valid), false));
+            recovered_ident = Some((Ident::new(valid_portion, valid), IdentIsRaw::No));
 
             HelpIdentifierStartsWithNumber { num_span: invalid }
         });
@@ -429,7 +431,7 @@ impl<'a> Parser<'a> {
         &mut self,
         edible: &[TokenKind],
         inedible: &[TokenKind],
-    ) -> PResult<'a, bool /* recovered */> {
+    ) -> PResult<'a, Recovered> {
         debug!("expected_one_of_not_found(edible: {:?}, inedible: {:?})", edible, inedible);
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
@@ -532,7 +534,7 @@ impl<'a> Parser<'a> {
                     sugg: ExpectedSemiSugg::ChangeToSemi(self.token.span),
                 });
                 self.bump();
-                return Ok(true);
+                return Ok(Recovered::Yes);
             } else if self.look_ahead(0, |t| {
                 t == &token::CloseDelim(Delimiter::Brace)
                     || ((t.can_begin_expr() || t.can_begin_item())
@@ -556,7 +558,7 @@ impl<'a> Parser<'a> {
                     unexpected_token_label: Some(self.token.span),
                     sugg: ExpectedSemiSugg::AddSemi(span),
                 });
-                return Ok(true);
+                return Ok(Recovered::Yes);
             }
         }
 
@@ -653,9 +655,9 @@ impl<'a> Parser<'a> {
         // positive for a `cr#` that wasn't intended to start a c-string literal, but identifying
         // that in the parser requires unbounded lookahead, so we only add a hint to the existing
         // error rather than replacing it entirely.
-        if ((self.prev_token.kind == TokenKind::Ident(sym::c, false)
+        if ((self.prev_token.kind == TokenKind::Ident(sym::c, IdentIsRaw::No)
             && matches!(&self.token.kind, TokenKind::Literal(token::Lit { kind: token::Str, .. })))
-            || (self.prev_token.kind == TokenKind::Ident(sym::cr, false)
+            || (self.prev_token.kind == TokenKind::Ident(sym::cr, IdentIsRaw::No)
                 && matches!(
                     &self.token.kind,
                     TokenKind::Literal(token::Lit { kind: token::Str, .. }) | token::Pound
@@ -711,7 +713,7 @@ impl<'a> Parser<'a> {
         if self.check_too_many_raw_str_terminators(&mut err) {
             if expected.contains(&TokenType::Token(token::Semi)) && self.eat(&token::Semi) {
                 err.emit();
-                return Ok(true);
+                return Ok(Recovered::Yes);
             } else {
                 return Err(err);
             }
@@ -1223,7 +1225,7 @@ impl<'a> Parser<'a> {
                 |p| p.parse_generic_arg(None),
             );
             match x {
-                Ok((_, _, false)) => {
+                Ok((_, _, Recovered::No)) => {
                     if self.eat(&token::Gt) {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
@@ -1247,7 +1249,7 @@ impl<'a> Parser<'a> {
                         }
                     }
                 }
-                Ok((_, _, true)) => {}
+                Ok((_, _, Recovered::Yes)) => {}
                 Err(err) => {
                     err.cancel();
                 }
@@ -1286,7 +1288,7 @@ impl<'a> Parser<'a> {
         err: &mut ComparisonOperatorsCannotBeChained,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) -> bool /* advanced the cursor */ {
+    ) -> Recovered {
         if let ExprKind::Binary(op, l1, r1) = &inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind
                 && ident.as_str().parse::<i32>().is_err()
@@ -1294,7 +1296,7 @@ impl<'a> Parser<'a> {
             {
                 // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
                 // suggestion being the only one to apply is high.
-                return false;
+                return Recovered::No;
             }
             return match (op.node, &outer_op.node) {
                 // `x == y == z`
@@ -1313,7 +1315,7 @@ impl<'a> Parser<'a> {
                         span: inner_op.span.shrink_to_hi(),
                         middle_term: expr_to_str(r1),
                     });
-                    false // Keep the current parse behavior, where the AST is `(x < y) < z`.
+                    Recovered::No // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
                 (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
@@ -1327,12 +1329,12 @@ impl<'a> Parser<'a> {
                                 left: r1.span.shrink_to_lo(),
                                 right: r2.span.shrink_to_hi(),
                             });
-                            true
+                            Recovered::Yes
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
                             self.restore_snapshot(snapshot);
-                            false
+                            Recovered::Yes
                         }
                     }
                 }
@@ -1347,19 +1349,19 @@ impl<'a> Parser<'a> {
                                 left: l1.span.shrink_to_lo(),
                                 right: r1.span.shrink_to_hi(),
                             });
-                            true
+                            Recovered::Yes
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
                             self.restore_snapshot(snapshot);
-                            false
+                            Recovered::No
                         }
                     }
                 }
-                _ => false,
+                _ => Recovered::No,
             };
         }
-        false
+        Recovered::No
     }
 
     /// Produces an error if comparison operators are chained (RFC #558).
@@ -1487,8 +1489,9 @@ impl<'a> Parser<'a> {
 
                         // If it looks like a genuine attempt to chain operators (as opposed to a
                         // misformatted turbofish, for instance), suggest a correct form.
-                        if self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op)
-                        {
+                        let recovered = self
+                            .attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
+                        if matches!(recovered, Recovered::Yes) {
                             self.dcx().emit_err(err);
                             mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                         } else {
@@ -1500,7 +1503,7 @@ impl<'a> Parser<'a> {
                 let recover =
                     self.attempt_chained_comparison_suggestion(&mut err, inner_op, outer_op);
                 self.dcx().emit_err(err);
-                if recover {
+                if matches!(recover, Recovered::Yes) {
                     return mk_err_expr(self, inner_op.span.to(self.prev_token.span));
                 }
             }
@@ -1840,10 +1843,7 @@ impl<'a> Parser<'a> {
 
     /// Creates a `DiagnosticBuilder` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
-    pub(super) fn unexpected_try_recover(
-        &mut self,
-        t: &TokenKind,
-    ) -> PResult<'a, bool /* recovered */> {
+    pub(super) fn unexpected_try_recover(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
         let token_str = pprust::token_kind_to_string(t);
         let this_token_str = super::token_descr(&self.token);
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {

@@ -58,7 +58,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
                     unsafe extern "C" fn(*mut libc::c_void),
                 >(dtor),
                 t.cast(),
-                &__dso_handle as *const _ as *mut _,
+                core::ptr::addr_of!(__dso_handle) as *mut _,
             );
         }
         return;

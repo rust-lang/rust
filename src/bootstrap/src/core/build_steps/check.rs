@@ -367,7 +367,7 @@ impl Step for CodegenBackend {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RustAnalyzer {
     pub target: TargetSelection,
 }
@@ -441,7 +441,7 @@ impl Step for RustAnalyzer {
 
 macro_rules! tool_check_step {
     ($name:ident, $path:literal, $($alias:literal, )* $source_type:path $(, $default:literal )?) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub target: TargetSelection,
         }

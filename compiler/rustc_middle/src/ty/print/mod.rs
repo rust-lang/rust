@@ -139,7 +139,7 @@ pub trait Printer<'tcx>: Sized {
                                 _,
                                 hir::CoroutineSource::Closure,
                             )) = self.tcx().coroutine_kind(def_id)
-                                && args.len() >= parent_args.len() + 1
+                                && args.len() > parent_args.len()
                             {
                                 return self.path_generic_args(
                                     |cx| cx.print_def_path(def_id, parent_args),

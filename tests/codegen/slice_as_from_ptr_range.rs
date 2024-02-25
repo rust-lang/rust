@@ -1,6 +1,5 @@
 //@ compile-flags: -O
 //@ only-64bit (because we're using [ui]size)
-//@ ignore-debug (because the assertions get in the way)
 
 #![crate_type = "lib"]
 #![feature(slice_from_ptr_range)]

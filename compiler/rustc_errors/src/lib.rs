@@ -844,7 +844,7 @@ impl DiagCtxt {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|&code| {
-                    if registry.try_find_description(code).is_ok().clone() {
+                    if registry.try_find_description(code).is_ok() {
                         Some(code.to_string())
                     } else {
                         None

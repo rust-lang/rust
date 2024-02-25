@@ -23,6 +23,18 @@ use Namespace::*;
 
 type Visibility = ty::Visibility<LocalDefId>;
 
+#[derive(Copy, Clone)]
+pub enum UsePrelude {
+    No,
+    Yes,
+}
+
+impl From<UsePrelude> for bool {
+    fn from(up: UsePrelude) -> bool {
+        matches!(up, UsePrelude::Yes)
+    }
+}
+
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// A generic scope visitor.
     /// Visits scopes in order to resolve some identifier in them or perform other actions.
@@ -32,12 +44,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
         ctxt: SyntaxContext,
-        mut visitor: impl FnMut(
-            &mut Self,
-            Scope<'a>,
-            /*use_prelude*/ bool,
-            SyntaxContext,
-        ) -> Option<T>,
+        mut visitor: impl FnMut(&mut Self, Scope<'a>, UsePrelude, SyntaxContext) -> Option<T>,
     ) -> Option<T> {
         // General principles:
         // 1. Not controlled (user-defined) names should have higher priority than controlled names
@@ -133,6 +140,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             };
 
             if visit {
+                let use_prelude = if use_prelude { UsePrelude::Yes } else { UsePrelude::No };
                 if let break_result @ Some(..) = visitor(self, scope, use_prelude, ctxt) {
                     return break_result;
                 }
@@ -579,7 +587,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 None,
                                 ignore_binding,
                             ) {
-                                if use_prelude || this.is_builtin_macro(binding.res()) {
+                                if matches!(use_prelude, UsePrelude::Yes)
+                                    || this.is_builtin_macro(binding.res())
+                                {
                                     result = Ok((binding, Flags::MISC_FROM_PRELUDE));
                                 }
                             }

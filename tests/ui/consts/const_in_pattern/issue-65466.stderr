@@ -1,23 +1,8 @@
-warning: to use a constant of type `&[O<B>]` in a pattern, the type must implement `PartialEq`
-  --> $DIR/issue-65466.rs:18:9
+error: to use a constant of type `&[O<B>]` in a pattern, the type must implement `PartialEq`
+  --> $DIR/issue-65466.rs:14:9
    |
 LL |         C => (),
    |         ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
-   = note: `#[warn(const_patterns_without_partial_eq)]` on by default
 
-warning: 1 warning emitted
-
-Future incompatibility report: Future breakage diagnostic:
-warning: to use a constant of type `&[O<B>]` in a pattern, the type must implement `PartialEq`
-  --> $DIR/issue-65466.rs:18:9
-   |
-LL |         C => (),
-   |         ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #116122 <https://github.com/rust-lang/rust/issues/116122>
-   = note: `#[warn(const_patterns_without_partial_eq)]` on by default
+error: aborting due to 1 previous error
 

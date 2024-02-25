@@ -14,7 +14,7 @@ use crate::utils::cache::Interned;
 use crate::utils::helpers::t;
 use crate::{Build, Compiler, Mode, Subcommand};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CleanAll {}
 
 impl Step for CleanAll {

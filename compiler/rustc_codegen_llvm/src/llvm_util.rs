@@ -435,7 +435,7 @@ pub(crate) fn print(req: &PrintRequest, mut out: &mut dyn PrintBackendInfo, sess
                     &tm,
                     cpu_cstring.as_ptr(),
                     callback,
-                    &mut out as *mut &mut dyn PrintBackendInfo as *mut c_void,
+                    std::ptr::addr_of_mut!(out) as *mut c_void,
                 );
             }
         }

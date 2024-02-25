@@ -1,5 +1,4 @@
 //@ compile-flags: -C opt-level=3
-//@ ignore-debug: the debug assertions get in the way
 //@ min-llvm-version: 17.0.2
 #![crate_type = "lib"]
 

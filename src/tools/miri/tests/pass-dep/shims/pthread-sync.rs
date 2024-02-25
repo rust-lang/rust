@@ -4,8 +4,8 @@
 #![feature(sync_unsafe_cell)]
 
 use std::cell::SyncUnsafeCell;
-use std::thread;
-use std::{mem, ptr};
+use std::mem::MaybeUninit;
+use std::{mem, ptr, thread};
 
 fn main() {
     test_mutex_libc_init_recursive();
@@ -15,9 +15,10 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_mutex_libc_static_initializer_recursive();
 
-    test_mutex();
+    check_mutex();
     check_rwlock_write();
     check_rwlock_read_no_deadlock();
+    check_cond();
 }
 
 fn test_mutex_libc_init_recursive() {
@@ -119,7 +120,7 @@ impl<T> Clone for SendPtr<T> {
     }
 }
 
-fn test_mutex() {
+fn check_mutex() {
     // Specifically *not* using `Arc` to make sure there is no synchronization apart from the mutex.
     unsafe {
         let data = SyncUnsafeCell::new((libc::PTHREAD_MUTEX_INITIALIZER, 0));
@@ -210,6 +211,53 @@ fn check_rwlock_read_no_deadlock() {
         thread::yield_now();
         assert_eq!(libc::pthread_rwlock_rdlock(l2.ptr), 0);
         handle.join().unwrap();
+    }
+}
+
+fn check_cond() {
+    unsafe {
+        let mut cond: MaybeUninit<libc::pthread_cond_t> = MaybeUninit::uninit();
+        assert_eq!(libc::pthread_cond_init(cond.as_mut_ptr(), ptr::null()), 0);
+        let cond = SendPtr { ptr: cond.as_mut_ptr() };
+
+        let mut mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
+        let mutex = SendPtr { ptr: &mut mutex };
+
+        let mut data = 0;
+        let data = SendPtr { ptr: &mut data };
+
+        let t = thread::spawn(move || {
+            let mutex = mutex; // circumvent per-field closure capture
+            let cond = cond;
+            let data = data;
+            assert_eq!(libc::pthread_mutex_lock(mutex.ptr), 0);
+            assert!(data.ptr.read() == 0);
+            data.ptr.write(1);
+            libc::pthread_cond_wait(cond.ptr, mutex.ptr);
+            assert!(data.ptr.read() == 3);
+            data.ptr.write(4);
+            assert_eq!(libc::pthread_mutex_unlock(mutex.ptr), 0);
+        });
+
+        thread::yield_now();
+
+        assert_eq!(libc::pthread_mutex_lock(mutex.ptr), 0);
+        assert!(data.ptr.read() == 1);
+        data.ptr.write(2);
+        assert_eq!(libc::pthread_cond_signal(cond.ptr), 0);
+        thread::yield_now(); // the other thread wakes up but can't get the lock yet
+        assert!(data.ptr.read() == 2);
+        data.ptr.write(3);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.ptr), 0);
+
+        thread::yield_now(); // now the other thread gets the lock back
+
+        assert_eq!(libc::pthread_mutex_lock(mutex.ptr), 0);
+        assert!(data.ptr.read() == 4);
+        assert_eq!(libc::pthread_cond_broadcast(cond.ptr), 0); // just a smoke test
+        assert_eq!(libc::pthread_mutex_unlock(mutex.ptr), 0);
+
+        t.join().unwrap();
     }
 }
 

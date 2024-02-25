@@ -1189,6 +1189,25 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         }
         Ok(matrix)
     }
+
+    /// Recover row usefulness and intersection information from a processed specialized matrix.
+    /// `specialized` must come from `self.specialize_constructor`.
+    fn unspecialize(&mut self, specialized: Self) {
+        for child_row in specialized.rows() {
+            let parent_row_id = child_row.parent_row;
+            let parent_row = &mut self.rows[parent_row_id];
+            // A parent row is useful if any of its children is.
+            parent_row.useful |= child_row.useful;
+            for child_intersection in child_row.intersects.iter() {
+                // Convert the intersecting ids into ids for the parent matrix.
+                let parent_intersection = specialized.rows[child_intersection].parent_row;
+                // Note: self-intersection can happen with or-patterns.
+                if parent_intersection != parent_row_id {
+                    parent_row.intersects.insert(parent_intersection);
+                }
+            }
+        }
+    }
 }
 
 /// Pretty-printer for matrices of patterns, example:
@@ -1558,21 +1577,6 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         // Accumulate the found witnesses.
         ret.extend(witnesses);
 
-        for child_row in spec_matrix.rows() {
-            let parent_row_id = child_row.parent_row;
-            let parent_row = &mut matrix.rows[parent_row_id];
-            // A parent row is useful if any of its children is.
-            parent_row.useful |= child_row.useful;
-            for child_intersection in child_row.intersects.iter() {
-                // Convert the intersecting ids into ids for the parent matrix.
-                let parent_intersection = spec_matrix.rows[child_intersection].parent_row;
-                // Note: self-intersection can happen with or-patterns.
-                if parent_intersection != parent_row_id {
-                    parent_row.intersects.insert(parent_intersection);
-                }
-            }
-        }
-
         // Detect ranges that overlap on their endpoints.
         if let Constructor::IntRange(overlap_range) = ctor {
             if overlap_range.is_singleton()
@@ -1582,6 +1586,8 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
                 collect_overlapping_range_endpoints(mcx, overlap_range, matrix, &spec_matrix);
             }
         }
+
+        matrix.unspecialize(spec_matrix);
     }
 
     // Record usefulness in the patterns.

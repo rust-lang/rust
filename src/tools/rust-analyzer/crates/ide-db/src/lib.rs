@@ -280,7 +280,7 @@ impl RootDatabase {
             // hir_db::InternCoroutineQuery
             hir_db::AssociatedTyDataQuery
             hir_db::TraitDatumQuery
-            hir_db::StructDatumQuery
+            hir_db::AdtDatumQuery
             hir_db::ImplDatumQuery
             hir_db::FnDefDatumQuery
             hir_db::FnDefVarianceQuery

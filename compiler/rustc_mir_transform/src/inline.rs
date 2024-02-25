@@ -421,6 +421,10 @@ impl<'tcx> Inliner<'tcx> {
         callee_attrs: &CodegenFnAttrs,
         cross_crate_inlinable: bool,
     ) -> Result<(), &'static str> {
+        if self.tcx.has_attr(callsite.callee.def_id(), sym::rustc_no_mir_inline) {
+            return Err("#[rustc_no_mir_inline]");
+        }
+
         if let InlineAttr::Never = callee_attrs.inline {
             return Err("never inline hint");
         }

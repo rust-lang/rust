@@ -25,7 +25,6 @@ pub type GatedCfg = (Symbol, Symbol, GateFn);
 const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::overflow_checks, sym::cfg_overflow_checks, cfg_fn!(cfg_overflow_checks)),
-    (sym::target_abi, sym::cfg_target_abi, cfg_fn!(cfg_target_abi)),
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (
         sym::target_has_atomic_equal_alignment,
@@ -791,6 +790,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing,
         "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    ),
+    rustc_attr!(
+        rustc_no_mir_inline, Normal, template!(Word), WarnFollowing,
+        "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
 
     // ==========================================================================

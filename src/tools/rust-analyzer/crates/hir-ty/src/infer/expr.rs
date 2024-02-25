@@ -13,7 +13,7 @@ use hir_def::{
         ArithOp, Array, BinaryOp, ClosureKind, Expr, ExprId, LabelId, Literal, Statement, UnaryOp,
     },
     lang_item::{LangItem, LangItemTarget},
-    path::{GenericArg, GenericArgs},
+    path::{GenericArg, GenericArgs, Path},
     BlockId, ConstParamId, FieldId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::{name, Name};
@@ -439,7 +439,17 @@ impl InferenceContext<'_> {
             }
             Expr::Path(p) => {
                 let g = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
-                let ty = self.infer_path(p, tgt_expr.into()).unwrap_or_else(|| self.err_ty());
+                let ty = match self.infer_path(p, tgt_expr.into()) {
+                    Some(ty) => ty,
+                    None => {
+                        if matches!(p, Path::Normal { mod_path, .. } if mod_path.is_ident()) {
+                            self.push_diagnostic(InferenceDiagnostic::UnresolvedIdent {
+                                expr: tgt_expr,
+                            });
+                        }
+                        self.err_ty()
+                    }
+                };
                 self.resolver.reset_to_guard(g);
                 ty
             }

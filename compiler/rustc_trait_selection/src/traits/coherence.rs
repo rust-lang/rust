@@ -320,22 +320,25 @@ fn impl_intersection_has_impossible_obligation<'a, 'cx, 'tcx>(
         let mut errors = fulfill_cx.select_where_possible(infcx);
         errors.pop().map(|err| err.obligation)
     } else {
-        obligations.iter().cloned().find(|obligation| {
-            // We use `evaluate_root_obligation` to correctly track intercrate
-            // ambiguity clauses. We cannot use this in the new solver.
-            let evaluation_result = selcx.evaluate_root_obligation(obligation);
+        obligations
+            .iter()
+            .find(|obligation| {
+                // We use `evaluate_root_obligation` to correctly track intercrate
+                // ambiguity clauses. We cannot use this in the new solver.
+                let evaluation_result = selcx.evaluate_root_obligation(obligation);
 
-            match evaluation_result {
-                Ok(result) => !result.may_apply(),
-                // If overflow occurs, we need to conservatively treat the goal as possibly holding,
-                // since there can be instantiations of this goal that don't overflow and result in
-                // success. This isn't much of a problem in the old solver, since we treat overflow
-                // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
-                // but in the new solver, this is very important for correctness, since overflow
-                // *must* be treated as ambiguity for completeness.
-                Err(_overflow) => false,
-            }
-        })
+                match evaluation_result {
+                    Ok(result) => !result.may_apply(),
+                    // If overflow occurs, we need to conservatively treat the goal as possibly holding,
+                    // since there can be instantiations of this goal that don't overflow and result in
+                    // success. This isn't much of a problem in the old solver, since we treat overflow
+                    // fatally (this still can be encountered: <https://github.com/rust-lang/rust/issues/105231>),
+                    // but in the new solver, this is very important for correctness, since overflow
+                    // *must* be treated as ambiguity for completeness.
+                    Err(_overflow) => false,
+                }
+            })
+            .cloned()
     }
 }
 
@@ -598,9 +601,24 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum IsFirstInputType {
+    No,
+    Yes,
+}
+
+impl From<bool> for IsFirstInputType {
+    fn from(b: bool) -> IsFirstInputType {
+        match b {
+            false => IsFirstInputType::No,
+            true => IsFirstInputType::Yes,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum OrphanCheckErr<'tcx> {
-    NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
+    NonLocalInputType(Vec<(Ty<'tcx>, IsFirstInputType)>),
     UncoveredTy(Ty<'tcx>, Option<Ty<'tcx>>),
 }
 
@@ -751,7 +769,7 @@ struct OrphanChecker<'tcx, F> {
     /// Ignore orphan check failures and exclusively search for the first
     /// local type.
     search_first_local_ty: bool,
-    non_local_tys: Vec<(Ty<'tcx>, bool)>,
+    non_local_tys: Vec<(Ty<'tcx>, IsFirstInputType)>,
 }
 
 impl<'tcx, F, E> OrphanChecker<'tcx, F>
@@ -769,7 +787,7 @@ where
     }
 
     fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx, E>> {
-        self.non_local_tys.push((t, self.in_self_ty));
+        self.non_local_tys.push((t, self.in_self_ty.into()));
         ControlFlow::Continue(())
     }
 

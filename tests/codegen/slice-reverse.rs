@@ -1,6 +1,6 @@
 //@ compile-flags: -O
 //@ only-x86_64
-//@ ignore-debug: the debug assertions in from_raw_parts get in the way
+//@ ignore-debug: debug assertions prevent generating shufflevector
 
 #![crate_type = "lib"]
 

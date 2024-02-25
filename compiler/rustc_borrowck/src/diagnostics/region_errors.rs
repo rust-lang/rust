@@ -280,7 +280,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             .iter()
                             .rfind(|param| param.def_id.to_def_id() == defid)
                             .is_some() {
-                            suggestions.push((bounded_span.shrink_to_hi(), format!(" + 'static")));
+                            suggestions.push((bounded_span.shrink_to_hi(), " + 'static".to_string()));
                         }
                 });
             });

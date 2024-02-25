@@ -394,7 +394,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                &mut info as *mut _ as *mut c_void,
+                core::ptr::addr_of_mut!(info) as *mut c_void,
                 size as c::DWORD,
             ))?;
             let mut attr = FileAttr {
@@ -422,7 +422,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
-                &mut info as *mut _ as *mut c_void,
+                core::ptr::addr_of_mut!(info) as *mut c_void,
                 size as c::DWORD,
             ))?;
             attr.file_size = info.AllocationSize as u64;
@@ -638,7 +638,7 @@ impl File {
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
-                &mut info as *mut _ as *mut c_void,
+                core::ptr::addr_of_mut!(info) as *mut c_void,
                 size as c::DWORD,
             ))?;
             Ok(info)
@@ -1438,7 +1438,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             pfrom.as_ptr(),
             pto.as_ptr(),
             Some(callback),
-            &mut size as *mut _ as *mut _,
+            core::ptr::addr_of_mut!(size) as *mut _,
             ptr::null_mut(),
             0,
         )

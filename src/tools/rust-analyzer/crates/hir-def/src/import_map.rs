@@ -477,7 +477,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use test_fixture::WithFixture;
 
-    use crate::{db::DefDatabase, test_db::TestDB, ItemContainerId, Lookup};
+    use crate::{test_db::TestDB, ItemContainerId, Lookup};
 
     use super::*;
 

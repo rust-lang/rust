@@ -1,6 +1,6 @@
 use crate::tests::string_to_stream;
 
-use rustc_ast::token;
+use rustc_ast::token::{self, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_span::create_default_session_globals_then;
 use rustc_span::{BytePos, Span, Symbol};
@@ -86,7 +86,8 @@ fn test_diseq_1() {
 fn test_is_empty() {
     create_default_session_globals_then(|| {
         let test0 = TokenStream::default();
-        let test1 = TokenStream::token_alone(token::Ident(Symbol::intern("a"), false), sp(0, 1));
+        let test1 =
+            TokenStream::token_alone(token::Ident(Symbol::intern("a"), IdentIsRaw::No), sp(0, 1));
         let test2 = string_to_ts("foo(bar::baz)");
 
         assert_eq!(test0.is_empty(), true);

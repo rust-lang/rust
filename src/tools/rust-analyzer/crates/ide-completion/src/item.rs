@@ -308,7 +308,7 @@ impl CompletionRelevance {
 
                 // When a fn is bumped due to return type:
                 // Bump Constructor or Builder methods with no arguments,
-                // over them tha with self arguments
+                // over them than with self arguments
                 if fn_score > 0 {
                     if !asf.has_params {
                         // bump associated functions

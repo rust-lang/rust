@@ -2,6 +2,7 @@ use crate::tests::{
     matches_codepattern, string_to_stream, with_error_checking_parse, with_expected_parse_error,
 };
 
+use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
@@ -74,9 +75,12 @@ fn string_to_tts_macro() {
 
         match tts {
             [
-                TokenTree::Token(Token { kind: token::Ident(name_macro_rules, false), .. }, _),
+                TokenTree::Token(
+                    Token { kind: token::Ident(name_macro_rules, IdentIsRaw::No), .. },
+                    _,
+                ),
                 TokenTree::Token(Token { kind: token::Not, .. }, _),
-                TokenTree::Token(Token { kind: token::Ident(name_zip, false), .. }, _),
+                TokenTree::Token(Token { kind: token::Ident(name_zip, IdentIsRaw::No), .. }, _),
                 TokenTree::Delimited(.., macro_delim, macro_tts),
             ] if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" => {
                 let tts = &macro_tts.trees().collect::<Vec<_>>();
@@ -90,7 +94,10 @@ fn string_to_tts_macro() {
                         match &tts[..] {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
-                                TokenTree::Token(Token { kind: token::Ident(name, false), .. }, _),
+                                TokenTree::Token(
+                                    Token { kind: token::Ident(name, IdentIsRaw::No), .. },
+                                    _,
+                                ),
                             ] if first_delim == &Delimiter::Parenthesis && name.as_str() == "a" => {
                             }
                             _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
@@ -99,7 +106,10 @@ fn string_to_tts_macro() {
                         match &tts[..] {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
-                                TokenTree::Token(Token { kind: token::Ident(name, false), .. }, _),
+                                TokenTree::Token(
+                                    Token { kind: token::Ident(name, IdentIsRaw::No), .. },
+                                    _,
+                                ),
                             ] if second_delim == &Delimiter::Parenthesis
                                 && name.as_str() == "a" => {}
                             _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),
@@ -119,8 +129,11 @@ fn string_to_tts_1() {
         let tts = string_to_stream("fn a(b: i32) { b; }".to_string());
 
         let expected = TokenStream::new(vec![
-            TokenTree::token_alone(token::Ident(kw::Fn, false), sp(0, 2)),
-            TokenTree::token_joint_hidden(token::Ident(Symbol::intern("a"), false), sp(3, 4)),
+            TokenTree::token_alone(token::Ident(kw::Fn, IdentIsRaw::No), sp(0, 2)),
+            TokenTree::token_joint_hidden(
+                token::Ident(Symbol::intern("a"), IdentIsRaw::No),
+                sp(3, 4),
+            ),
             TokenTree::Delimited(
                 DelimSpan::from_pair(sp(4, 5), sp(11, 12)),
                 // `JointHidden` because the `(` is followed immediately by
@@ -128,10 +141,16 @@ fn string_to_tts_1() {
                 DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Parenthesis,
                 TokenStream::new(vec![
-                    TokenTree::token_joint(token::Ident(Symbol::intern("b"), false), sp(5, 6)),
+                    TokenTree::token_joint(
+                        token::Ident(Symbol::intern("b"), IdentIsRaw::No),
+                        sp(5, 6),
+                    ),
                     TokenTree::token_alone(token::Colon, sp(6, 7)),
                     // `JointHidden` because the `i32` is immediately followed by the `)`.
-                    TokenTree::token_joint_hidden(token::Ident(sym::i32, false), sp(8, 11)),
+                    TokenTree::token_joint_hidden(
+                        token::Ident(sym::i32, IdentIsRaw::No),
+                        sp(8, 11),
+                    ),
                 ])
                 .into(),
             ),
@@ -143,7 +162,10 @@ fn string_to_tts_1() {
                 DelimSpacing::new(Spacing::Alone, Spacing::Alone),
                 Delimiter::Brace,
                 TokenStream::new(vec![
-                    TokenTree::token_joint(token::Ident(Symbol::intern("b"), false), sp(15, 16)),
+                    TokenTree::token_joint(
+                        token::Ident(Symbol::intern("b"), IdentIsRaw::No),
+                        sp(15, 16),
+                    ),
                     // `Alone` because the `;` is followed by whitespace.
                     TokenTree::token_alone(token::Semi, sp(16, 17)),
                 ])

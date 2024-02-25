@@ -768,6 +768,14 @@ pub struct TypeNotStructural<'tcx> {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_non_partial_eq_match)]
+pub struct TypeNotPartialEq<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub non_peq_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_invalid_pattern)]
 pub struct InvalidPattern<'tcx> {
     #[primary_span]
@@ -820,12 +828,6 @@ pub struct IndirectStructuralMatch<'tcx> {
 #[note(mir_build_type_not_structural_more_info)]
 pub struct NontrivialStructuralMatch<'tcx> {
     pub non_sm_ty: Ty<'tcx>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_non_partial_eq_match)]
-pub struct NonPartialEqMatch<'tcx> {
-    pub non_peq_ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]

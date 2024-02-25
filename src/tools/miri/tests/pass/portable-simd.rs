@@ -268,15 +268,11 @@ fn simd_mask() {
     }
 
     // This used to cause an ICE. It exercises simd_select_bitmask with an array as input.
-    if cfg!(target_endian = "little") {
-        // FIXME this test currently fails on big-endian:
-        // <https://github.com/rust-lang/portable-simd/issues/379>
-        let bitmask = u8x4::from_array([0b00001101, 0, 0, 0]);
-        assert_eq!(
-            mask32x4::from_bitmask_vector(bitmask),
-            mask32x4::from_array([true, false, true, true]),
-        );
-    }
+    let bitmask = u8x4::from_array([0b00001101, 0, 0, 0]);
+    assert_eq!(
+        mask32x4::from_bitmask_vector(bitmask),
+        mask32x4::from_array([true, false, true, true]),
+    );
     let bitmask = u8x8::from_array([0b01000101, 0, 0, 0, 0, 0, 0, 0]);
     assert_eq!(
         mask32x8::from_bitmask_vector(bitmask),

@@ -219,14 +219,14 @@ if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos", targe
     pub unsafe fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word {
         let mut val: _Unwind_Word = core::ptr::null();
         _Unwind_VRS_Get(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        &mut val as *mut _ as *mut c_void);
+                        core::ptr::addr_of_mut!(val) as *mut c_void);
         val
     }
 
     pub unsafe fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word) {
         let mut value = value;
         _Unwind_VRS_Set(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        &mut value as *mut _ as *mut c_void);
+                        core::ptr::addr_of_mut!(value) as *mut c_void);
     }
 
     pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context)

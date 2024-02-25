@@ -4,6 +4,7 @@ use crate::ffi::c_char;
 use crate::fmt;
 use crate::intrinsics;
 use crate::ops;
+use crate::ptr::addr_of;
 use crate::slice;
 use crate::slice::memchr;
 use crate::str;
@@ -603,7 +604,7 @@ impl CStr {
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
-        unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
+        unsafe { &*(addr_of!(self.inner) as *const [u8]) }
     }
 
     /// Yields a <code>&[str]</code> slice if the `CStr` contains valid UTF-8.

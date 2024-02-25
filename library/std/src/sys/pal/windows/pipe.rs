@@ -375,7 +375,7 @@ impl AnonPipe {
         let mut overlapped: c::OVERLAPPED = crate::mem::zeroed();
         // `hEvent` is unused by `ReadFileEx` and `WriteFileEx`.
         // Therefore the documentation suggests using it to smuggle a pointer to the callback.
-        overlapped.hEvent = &mut async_result as *mut _ as *mut _;
+        overlapped.hEvent = core::ptr::addr_of_mut!(async_result) as *mut _;
 
         // Asynchronous read of the pipe.
         // If successful, `callback` will be called once it completes.

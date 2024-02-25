@@ -208,7 +208,6 @@ fn required_features(cfg_expr: &CfgExpr, features: &mut Vec<String>) {
 mod tests {
     use super::*;
 
-    use cfg::CfgExpr;
     use mbe::{syntax_node_to_token_tree, DummyTestSpanMap, DUMMY};
     use syntax::{
         ast::{self, AstNode},

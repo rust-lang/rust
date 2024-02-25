@@ -10,7 +10,7 @@ use crate::core::config::TargetSelection;
 use crate::utils::helpers::output;
 use crate::Mode;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExpandYamlAnchors;
 
 impl Step for ExpandYamlAnchors {
@@ -36,7 +36,7 @@ impl Step for ExpandYamlAnchors {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;
 
 impl Step for BuildManifest {
@@ -75,7 +75,7 @@ impl Step for BuildManifest {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct BumpStage0;
 
 impl Step for BumpStage0 {
@@ -97,7 +97,7 @@ impl Step for BumpStage0 {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct ReplaceVersionPlaceholder;
 
 impl Step for ReplaceVersionPlaceholder {
@@ -119,7 +119,7 @@ impl Step for ReplaceVersionPlaceholder {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
     stage: u32,
     host: TargetSelection,
@@ -178,7 +178,7 @@ impl Step for Miri {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct CollectLicenseMetadata;
 
 impl Step for CollectLicenseMetadata {
@@ -210,7 +210,7 @@ impl Step for CollectLicenseMetadata {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct GenerateCopyright;
 
 impl Step for GenerateCopyright {
@@ -240,7 +240,7 @@ impl Step for GenerateCopyright {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct GenerateWindowsSys;
 
 impl Step for GenerateWindowsSys {
@@ -262,7 +262,7 @@ impl Step for GenerateWindowsSys {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenerateCompletions;
 
 macro_rules! generate_completions {

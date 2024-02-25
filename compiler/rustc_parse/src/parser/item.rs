@@ -1,8 +1,12 @@
 use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
+use super::{
+    AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, Recovered, Trailing,
+    TrailingToken,
+};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
+use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
@@ -1076,7 +1080,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
+            Some((ident @ Ident { name: kw::Underscore, .. }, IdentIsRaw::No)) => {
                 self.bump();
                 Ok(ident)
             }
@@ -1453,7 +1457,7 @@ impl<'a> Parser<'a> {
         let (variants, _) = if self.token == TokenKind::Semi {
             self.dcx().emit_err(errors::UseEmptyBlockNotSemi { span: self.token.span });
             self.bump();
-            (thin_vec![], false)
+            (thin_vec![], Trailing::No)
         } else {
             self.parse_delim_comma_seq(Delimiter::Brace, |p| p.parse_enum_variant(id.span))
                 .map_err(|mut err| {
@@ -1530,10 +1534,10 @@ impl<'a> Parser<'a> {
                                 err.span_label(span, "while parsing this enum");
                                 err.help(help);
                                 err.emit();
-                                (thin_vec![], true)
+                                (thin_vec![], Recovered::Yes)
                             }
                         };
-                    VariantData::Struct { fields, recovered }
+                    VariantData::Struct { fields, recovered: recovered.into() }
                 } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
                     let body = match this.parse_tuple_struct_body() {
                         Ok(body) => body,
@@ -1618,7 +1622,7 @@ impl<'a> Parser<'a> {
                     class_name.span,
                     generics.where_clause.has_where_token,
                 )?;
-                VariantData::Struct { fields, recovered }
+                VariantData::Struct { fields, recovered: recovered.into() }
             }
         // No `where` so: `struct Foo<T>;`
         } else if self.eat(&token::Semi) {
@@ -1630,7 +1634,7 @@ impl<'a> Parser<'a> {
                 class_name.span,
                 generics.where_clause.has_where_token,
             )?;
-            VariantData::Struct { fields, recovered }
+            VariantData::Struct { fields, recovered: recovered.into() }
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
@@ -1659,14 +1663,14 @@ impl<'a> Parser<'a> {
                 class_name.span,
                 generics.where_clause.has_where_token,
             )?;
-            VariantData::Struct { fields, recovered }
+            VariantData::Struct { fields, recovered: recovered.into() }
         } else if self.token == token::OpenDelim(Delimiter::Brace) {
             let (fields, recovered) = self.parse_record_struct_body(
                 "union",
                 class_name.span,
                 generics.where_clause.has_where_token,
             )?;
-            VariantData::Struct { fields, recovered }
+            VariantData::Struct { fields, recovered: recovered.into() }
         } else {
             let token_str = super::token_descr(&self.token);
             let msg = format!("expected `where` or `{{` after union name, found {token_str}");
@@ -1683,14 +1687,14 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         ident_span: Span,
         parsed_where: bool,
-    ) -> PResult<'a, (ThinVec<FieldDef>, /* recovered */ bool)> {
+    ) -> PResult<'a, (ThinVec<FieldDef>, Recovered)> {
         let mut fields = ThinVec::new();
-        let mut recovered = false;
+        let mut recovered = Recovered::No;
         if self.eat(&token::OpenDelim(Delimiter::Brace)) {
             while self.token != token::CloseDelim(Delimiter::Brace) {
                 let field = self.parse_field_def(adt_ty).map_err(|e| {
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::No);
-                    recovered = true;
+                    recovered = Recovered::Yes;
                     e
                 });
                 match field {
@@ -1962,7 +1966,7 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err(true)?;
         if ident.name == kw::Underscore {
             self.sess.gated_spans.gate(sym::unnamed_fields, lo);
-        } else if !is_raw && ident.is_reserved() {
+        } else if matches!(is_raw, IdentIsRaw::No) && ident.is_reserved() {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis = Visibility {
@@ -2461,8 +2465,8 @@ impl<'a> Parser<'a> {
             // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
             // account for this.
             match self.expect_one_of(&[], &[]) {
-                Ok(true) => {}
-                Ok(false) => unreachable!(),
+                Ok(Recovered::Yes) => {}
+                Ok(Recovered::No) => unreachable!(),
                 Err(mut err) => {
                     // Qualifier keywords ordering check
                     enum WrongKw {
@@ -2740,7 +2744,7 @@ impl<'a> Parser<'a> {
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
         let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, false)) => {
+            Some((ident, IdentIsRaw::No)) => {
                 this.bump();
                 ident
             }

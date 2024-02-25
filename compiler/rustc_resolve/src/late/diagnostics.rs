@@ -1582,7 +1582,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
                         };
                         let pad = match field_ids {
-                            Some(field_ids) if field_ids.is_empty() => "",
+                            Some([]) => "",
                             _ => " ",
                         };
                         err.span_suggestion(

@@ -311,7 +311,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// Checks if the associated thread has finished running its main function.
     ///
     /// `is_finished` supports implementing a non-blocking join operation, by checking
-    /// `is_finished`, and calling `join` if it returns `false`. This function does not block. To
+    /// `is_finished`, and calling `join` if it returns `true`. This function does not block. To
     /// block while waiting on the thread to finish, use [`join`][Self::join].
     ///
     /// This might return `true` for a brief moment after the thread's main

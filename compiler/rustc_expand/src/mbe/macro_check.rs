@@ -107,7 +107,7 @@
 use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
-use rustc_ast::token::{Delimiter, Token, TokenKind};
+use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{DiagnosticMessage, MultiSpan};
@@ -409,7 +409,7 @@ fn check_nested_occurrences(
         match (state, tt) {
             (
                 NestedMacroState::Empty,
-                &TokenTree::Token(Token { kind: TokenKind::Ident(name, false), .. }),
+                &TokenTree::Token(Token { kind: TokenKind::Ident(name, IdentIsRaw::No), .. }),
             ) => {
                 if name == kw::MacroRules {
                     state = NestedMacroState::MacroRules;

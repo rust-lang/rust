@@ -411,10 +411,7 @@ impl GlobalState {
                 if *force_reload_crate_graph {
                     self.recreate_crate_graph(cause);
                 }
-                if self.build_deps_changed && self.config.run_build_scripts() {
-                    self.build_deps_changed = false;
-                    self.fetch_build_data_queue.request_op("build_deps_changed".to_owned(), ());
-                }
+
                 // Current build scripts do not match the version of the active
                 // workspace, so there's nothing for us to update.
                 return;
@@ -424,7 +421,7 @@ impl GlobalState {
 
             // Here, we completely changed the workspace (Cargo.toml edit), so
             // we don't care about build-script results, they are stale.
-            // FIXME: can we abort the build scripts here?
+            // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
 
             if self.config.run_build_scripts() {
@@ -525,13 +522,14 @@ impl GlobalState {
     }
 
     fn recreate_crate_graph(&mut self, cause: String) {
-        {
+        // crate graph construction relies on these paths, record them so when one of them gets
+        // deleted or created we trigger a reconstruction of the crate graph
+        let mut crate_graph_file_dependencies = FxHashSet::default();
+
+        let (crate_graph, proc_macro_paths, layouts, toolchains) = {
             // Create crate graph from all the workspaces
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
-            // crate graph construction relies on these paths, record them so when one of them gets
-            // deleted or created we trigger a reconstruction of the crate graph
-            let mut crate_graph_file_dependencies = FxHashSet::default();
 
             let load = |path: &AbsPath| {
                 let _p = tracing::span!(tracing::Level::DEBUG, "switch_workspaces::load").entered();
@@ -548,25 +546,24 @@ impl GlobalState {
                 }
             };
 
-            let (crate_graph, proc_macro_paths, layouts, toolchains) =
-                ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load);
-
-            let mut change = Change::new();
-            if self.config.expand_proc_macros() {
-                change.set_proc_macros(
-                    crate_graph
-                        .iter()
-                        .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
-                        .collect(),
-                );
-                self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
-            }
-            change.set_crate_graph(crate_graph);
-            change.set_target_data_layouts(layouts);
-            change.set_toolchains(toolchains);
-            self.analysis_host.apply_change(change);
-            self.crate_graph_file_dependencies = crate_graph_file_dependencies;
+            ws_to_crate_graph(&self.workspaces, self.config.extra_env(), load)
+        };
+        let mut change = Change::new();
+        if self.config.expand_proc_macros() {
+            change.set_proc_macros(
+                crate_graph
+                    .iter()
+                    .map(|id| (id, Err("Proc-macros have not been built yet".to_owned())))
+                    .collect(),
+            );
+            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
         }
+        change.set_crate_graph(crate_graph);
+        change.set_target_data_layouts(layouts);
+        change.set_toolchains(toolchains);
+        self.analysis_host.apply_change(change);
+        self.crate_graph_file_dependencies = crate_graph_file_dependencies;
+
         self.process_changes();
         self.reload_flycheck();
     }

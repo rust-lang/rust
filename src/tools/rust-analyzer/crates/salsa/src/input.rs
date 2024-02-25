@@ -29,7 +29,7 @@ where
 }
 
 struct Slot<V> {
-    database_key_index: DatabaseKeyIndex,
+    key_index: u32,
     stamped_value: RwLock<StampedValue<V>>,
 }
 
@@ -54,27 +54,25 @@ where
     fn fmt_index(
         &self,
         _db: &<Q as QueryDb<'_>>::DynDb,
-        index: DatabaseKeyIndex,
+        index: u32,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        assert_eq!(index.group_index, self.group_index);
-        assert_eq!(index.query_index, Q::QUERY_INDEX);
         let slot_map = self.slots.read();
-        let key = slot_map.get_index(index.key_index as usize).unwrap().0;
+        let key = slot_map.get_index(index as usize).unwrap().0;
         write!(fmt, "{}({:?})", Q::QUERY_NAME, key)
     }
 
     fn maybe_changed_after(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        input: DatabaseKeyIndex,
+        index: u32,
         revision: Revision,
     ) -> bool {
-        assert_eq!(input.group_index, self.group_index);
-        assert_eq!(input.query_index, Q::QUERY_INDEX);
         debug_assert!(revision < db.salsa_runtime().current_revision());
         let slots = &self.slots.read();
-        let slot = slots.get_index(input.key_index as usize).unwrap().1;
+        let Some((_, slot)) = slots.get_index(index as usize) else {
+            return true;
+        };
 
         debug!("maybe_changed_after(slot={:?}, revision={:?})", Q::default(), revision,);
 
@@ -96,7 +94,11 @@ where
         let StampedValue { value, durability, changed_at } = slot.stamped_value.read().clone();
 
         db.salsa_runtime().report_query_read_and_unwind_if_cycle_resulted(
-            slot.database_key_index,
+            DatabaseKeyIndex {
+                group_index: self.group_index,
+                query_index: Q::QUERY_INDEX,
+                key_index: slot.key_index,
+            },
             durability,
             changed_at,
         );
@@ -174,16 +176,8 @@ where
                 }
 
                 Entry::Vacant(entry) => {
-                    let key_index = u32::try_from(entry.index()).unwrap();
-                    let database_key_index = DatabaseKeyIndex {
-                        group_index: self.group_index,
-                        query_index: Q::QUERY_INDEX,
-                        key_index,
-                    };
-                    entry.insert(Slot {
-                        database_key_index,
-                        stamped_value: RwLock::new(stamped_value),
-                    });
+                    let key_index = entry.index() as u32;
+                    entry.insert(Slot { key_index, stamped_value: RwLock::new(stamped_value) });
                     None
                 }
             }
@@ -196,7 +190,6 @@ pub struct UnitInputStorage<Q>
 where
     Q: Query<Key = ()>,
 {
-    group_index: u16,
     slot: UnitSlot<Q::Value>,
 }
 
@@ -222,36 +215,32 @@ where
     fn new(group_index: u16) -> Self {
         let database_key_index =
             DatabaseKeyIndex { group_index, query_index: Q::QUERY_INDEX, key_index: 0 };
-        UnitInputStorage {
-            group_index,
-            slot: UnitSlot { database_key_index, stamped_value: RwLock::new(None) },
-        }
+        UnitInputStorage { slot: UnitSlot { database_key_index, stamped_value: RwLock::new(None) } }
     }
 
     fn fmt_index(
         &self,
         _db: &<Q as QueryDb<'_>>::DynDb,
-        index: DatabaseKeyIndex,
+        _index: u32,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
-        assert_eq!(index.group_index, self.group_index);
-        assert_eq!(index.query_index, Q::QUERY_INDEX);
         write!(fmt, "{}", Q::QUERY_NAME)
     }
 
     fn maybe_changed_after(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        input: DatabaseKeyIndex,
+        _index: u32,
         revision: Revision,
     ) -> bool {
-        assert_eq!(input.group_index, self.group_index);
-        assert_eq!(input.query_index, Q::QUERY_INDEX);
         debug_assert!(revision < db.salsa_runtime().current_revision());
 
         debug!("maybe_changed_after(slot={:?}, revision={:?})", Q::default(), revision,);
 
-        let changed_at = self.slot.stamped_value.read().as_ref().unwrap().changed_at;
+        let Some(value) = &*self.slot.stamped_value.read() else {
+            return true;
+        };
+        let changed_at = value.changed_at;
 
         debug!("maybe_changed_after: changed_at = {:?}", changed_at);
 

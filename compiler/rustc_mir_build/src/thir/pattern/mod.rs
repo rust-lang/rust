@@ -223,19 +223,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // If we are handling a range with associated constants (e.g.
         // `Foo::<'a>::A..=Foo::B`), we need to put the ascriptions for the associated
         // constants somewhere. Have them on the range pattern.
-        for ascr in [lo_ascr, hi_ascr] {
-            if let Some(ascription) = ascr {
-                kind = PatKind::AscribeUserType {
-                    ascription,
-                    subpattern: Box::new(Pat { span, ty, kind }),
-                };
-            }
+        for ascription in [lo_ascr, hi_ascr].into_iter().flatten() {
+            kind = PatKind::AscribeUserType {
+                ascription,
+                subpattern: Box::new(Pat { span, ty, kind }),
+            };
         }
-        for inline_const in [lo_inline, hi_inline] {
-            if let Some(def) = inline_const {
-                kind =
-                    PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
-            }
+        for def in [lo_inline, hi_inline].into_iter().flatten() {
+            kind = PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
         }
         Ok(kind)
     }

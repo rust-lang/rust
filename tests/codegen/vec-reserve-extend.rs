@@ -1,6 +1,4 @@
 //@ compile-flags: -O
-//@ ignore-debug
-// (with debug assertions turned on, `assert_unchecked` generates a real assertion)
 
 #![crate_type = "lib"]
 

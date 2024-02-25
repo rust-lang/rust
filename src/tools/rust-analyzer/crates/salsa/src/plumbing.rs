@@ -38,8 +38,15 @@ pub trait DatabaseOps {
     /// Gives access to the underlying salsa runtime.
     fn ops_salsa_runtime(&self) -> &Runtime;
 
-    /// Gives access to the underlying salsa runtime.
-    fn ops_salsa_runtime_mut(&mut self) -> &mut Runtime;
+    /// A "synthetic write" causes the system to act *as though* some
+    /// input of durability `durability` has changed. This is mostly
+    /// useful for profiling scenarios.
+    ///
+    /// **WARNING:** Just like an ordinary write, this method triggers
+    /// cancellation. If you invoke it while a snapshot exists, it
+    /// will block until that snapshot is dropped -- if that snapshot
+    /// is owned by the current thread, this could trigger deadlock.
+    fn synthetic_write(&mut self, durability: Durability);
 
     /// Formats a database key index in a human readable fashion.
     fn fmt_index(
@@ -166,7 +173,7 @@ where
     fn fmt_index(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        index: DatabaseKeyIndex,
+        index: u32,
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result;
 
@@ -179,7 +186,7 @@ where
     fn maybe_changed_after(
         &self,
         db: &<Q as QueryDb<'_>>::DynDb,
-        input: DatabaseKeyIndex,
+        index: u32,
         revision: Revision,
     ) -> bool;
     // ANCHOR_END:maybe_changed_after

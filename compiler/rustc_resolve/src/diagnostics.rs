@@ -1111,7 +1111,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         suggestions.extend(
                             tmp_suggestions
                                 .into_iter()
-                                .filter(|s| use_prelude || this.is_builtin_macro(s.res)),
+                                .filter(|s| use_prelude.into() || this.is_builtin_macro(s.res)),
                         );
                     }
                 }

@@ -324,7 +324,7 @@ fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ide::{AnalysisHost, FilePosition, StaticIndex, TextSize};
+    use ide::{AnalysisHost, FilePosition, TextSize};
     use scip::symbol::format_symbol;
     use test_fixture::ChangeFixture;
 

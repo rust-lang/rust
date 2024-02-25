@@ -42,7 +42,7 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
-pub use self::coherence::{OrphanCheckErr, OverlapResult};
+pub use self::coherence::{IsFirstInputType, OrphanCheckErr, OverlapResult};
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::normalize::NormalizeExt;

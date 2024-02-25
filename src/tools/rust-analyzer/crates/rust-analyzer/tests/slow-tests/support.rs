@@ -243,7 +243,7 @@ impl Server {
                             to_string_pretty(actual_part).unwrap(),
                         );
                 } else {
-                    tracing::debug!("sucessfully matched notification");
+                    tracing::debug!("successfully matched notification");
                     return;
                 }
             } else {

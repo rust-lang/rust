@@ -5,7 +5,6 @@
 //@ compile-flags: --crate-type=lib -O -C llvm-args=-x86-asm-syntax=intel
 //@ only-x86_64
 //@ ignore-sgx
-//@ ignore-debug
 
 #![feature(str_internals)]
 

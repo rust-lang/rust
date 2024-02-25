@@ -1,4 +1,3 @@
-//@ run-pass
 trait EnumSetType {
     type Repr;
 }
@@ -17,8 +16,7 @@ const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
 
 fn main() {
     match CONST_SET {
-        CONST_SET => { /* ok */ } //~WARN: must implement `PartialEq`
-        //~| previously accepted
+        CONST_SET => { /* ok */ } //~ERROR: must implement `PartialEq`
         _ => panic!("match fell through?"),
     }
 }

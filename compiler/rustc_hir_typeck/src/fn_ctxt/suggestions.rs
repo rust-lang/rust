@@ -1061,20 +1061,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let scope = self
-            .tcx
-            .hir()
-            .parent_iter(id)
-            .filter(|(_, node)| {
-                matches!(
-                    node,
-                    Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
-                        | Node::Item(_)
-                        | Node::TraitItem(_)
-                        | Node::ImplItem(_)
-                )
-            })
-            .next();
+        let scope = self.tcx.hir().parent_iter(id).find(|(_, node)| {
+            matches!(
+                node,
+                Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
+                    | Node::Item(_)
+                    | Node::TraitItem(_)
+                    | Node::ImplItem(_)
+            )
+        });
         let in_closure =
             matches!(scope, Some((_, Node::Expr(Expr { kind: ExprKind::Closure(..), .. }))));
 

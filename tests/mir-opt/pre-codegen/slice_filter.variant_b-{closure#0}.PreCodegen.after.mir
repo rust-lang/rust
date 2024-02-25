@@ -1,6 +1,6 @@
 // MIR for `variant_b::{closure#0}` after PreCodegen
 
-fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:12:25: 12:41}, _2: &&(usize, usize, usize, usize)) -> bool {
+fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:11:25: 11:41}, _2: &&(usize, usize, usize, usize)) -> bool {
     let mut _0: bool;
     let mut _3: &(usize, usize, usize, usize);
     let _4: usize;

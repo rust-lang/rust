@@ -1559,7 +1559,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // A bare path doesn't need a `let` assignment, it's already a simple
                     // binding access.
                     // As a new binding wasn't added, we don't need to modify the advancing call.
-                    sugg.push((loop_span.with_hi(pat_span.lo()), format!("while let Some(")));
+                    sugg.push((loop_span.with_hi(pat_span.lo()), "while let Some(".to_string()));
                     sugg.push((
                         pat_span.shrink_to_hi().with_hi(head.span.lo()),
                         ") = ".to_string(),

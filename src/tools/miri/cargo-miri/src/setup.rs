@@ -67,13 +67,8 @@ pub fn setup(
     }
 
     // Determine where to put the sysroot.
-    let sysroot_dir = match std::env::var_os("MIRI_SYSROOT") {
-        Some(dir) => PathBuf::from(dir),
-        None => {
-            let user_dirs = directories::ProjectDirs::from("org", "rust-lang", "miri").unwrap();
-            user_dirs.cache_dir().to_owned()
-        }
-    };
+    let sysroot_dir = get_sysroot_dir();
+
     // Sysroot configuration and build details.
     let no_std = match std::env::var_os("MIRI_NO_STD") {
         None =>

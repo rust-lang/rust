@@ -100,6 +100,8 @@ pub enum ProjectWorkspace {
         /// Holds cfg flags for the current target. We get those by running
         /// `rustc --print cfg`.
         rustc_cfg: Vec<CfgFlag>,
+        toolchain: Option<Version>,
+        target_layout: TargetLayoutLoadResult,
     },
 }
 
@@ -145,16 +147,24 @@ impl fmt::Debug for ProjectWorkspace {
                     debug_struct.field("n_sysroot_crates", &sysroot.num_packages());
                 }
                 debug_struct
-                    .field("toolchain", &toolchain)
                     .field("n_rustc_cfg", &rustc_cfg.len())
+                    .field("toolchain", &toolchain)
                     .field("data_layout", &data_layout);
                 debug_struct.finish()
             }
-            ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => f
+            ProjectWorkspace::DetachedFiles {
+                files,
+                sysroot,
+                rustc_cfg,
+                toolchain,
+                target_layout,
+            } => f
                 .debug_struct("DetachedFiles")
                 .field("n_files", &files.len())
                 .field("sysroot", &sysroot.is_ok())
                 .field("n_rustc_cfg", &rustc_cfg.len())
+                .field("toolchain", &toolchain)
+                .field("data_layout", &target_layout)
                 .finish(),
         }
     }
@@ -403,32 +413,54 @@ impl ProjectWorkspace {
         detached_files: Vec<AbsPathBuf>,
         config: &CargoConfig,
     ) -> anyhow::Result<ProjectWorkspace> {
+        let dir = detached_files
+            .first()
+            .and_then(|it| it.parent())
+            .ok_or_else(|| format_err!("No detached files to load"))?;
         let sysroot = match &config.sysroot {
             Some(RustLibSource::Path(path)) => {
                 Sysroot::with_sysroot_dir(path.clone(), config.sysroot_query_metadata)
                     .map_err(|e| Some(format!("Failed to find sysroot at {path}:{e}")))
             }
-            Some(RustLibSource::Discover) => {
-                let dir = &detached_files
-                    .first()
-                    .and_then(|it| it.parent())
-                    .ok_or_else(|| format_err!("No detached files to load"))?;
-                Sysroot::discover(dir, &config.extra_env, config.sysroot_query_metadata).map_err(
-                    |e| {
-                        Some(format!(
-                            "Failed to find sysroot for {dir}. Is rust-src installed? {e}"
-                        ))
-                    },
-                )
-            }
+            Some(RustLibSource::Discover) => Sysroot::discover(
+                dir,
+                &config.extra_env,
+                config.sysroot_query_metadata,
+            )
+            .map_err(|e| {
+                Some(format!("Failed to find sysroot for {dir}. Is rust-src installed? {e}"))
+            }),
             None => Err(None),
         };
-        let rustc_cfg = rustc_cfg::get(
+
+        let sysroot_ref = sysroot.as_ref().ok();
+        let toolchain = match get_toolchain_version(
+            dir,
+            sysroot_ref,
+            toolchain::Tool::Rustc,
+            &config.extra_env,
+            "rustc ",
+        ) {
+            Ok(it) => it,
+            Err(e) => {
+                tracing::error!("{e}");
+                None
+            }
+        };
+
+        let rustc_cfg = rustc_cfg::get(None, &config.extra_env, RustcCfgConfig::Rustc(sysroot_ref));
+        let data_layout = target_data_layout::get(
+            RustcDataLayoutConfig::Rustc(sysroot_ref),
             None,
-            &FxHashMap::default(),
-            RustcCfgConfig::Rustc(sysroot.as_ref().ok()),
+            &config.extra_env,
         );
-        Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
+        Ok(ProjectWorkspace::DetachedFiles {
+            files: detached_files,
+            sysroot,
+            rustc_cfg,
+            toolchain,
+            target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
+        })
     }
 
     /// Runs the build scripts for this [`ProjectWorkspace`].
@@ -724,7 +756,13 @@ impl ProjectWorkspace {
                 cfg_overrides,
                 build_scripts,
             ),
-            ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
+            ProjectWorkspace::DetachedFiles {
+                files,
+                sysroot,
+                rustc_cfg,
+                toolchain: _,
+                target_layout: _,
+            } => {
                 detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot.as_ref().ok())
             }
         };
@@ -786,9 +824,21 @@ impl ProjectWorkspace {
                     && toolchain == o_toolchain
             }
             (
-                Self::DetachedFiles { files, sysroot, rustc_cfg },
-                Self::DetachedFiles { files: o_files, sysroot: o_sysroot, rustc_cfg: o_rustc_cfg },
-            ) => files == o_files && sysroot == o_sysroot && rustc_cfg == o_rustc_cfg,
+                Self::DetachedFiles { files, sysroot, rustc_cfg, toolchain, target_layout },
+                Self::DetachedFiles {
+                    files: o_files,
+                    sysroot: o_sysroot,
+                    rustc_cfg: o_rustc_cfg,
+                    toolchain: o_toolchain,
+                    target_layout: o_target_layout,
+                },
+            ) => {
+                files == o_files
+                    && sysroot == o_sysroot
+                    && rustc_cfg == o_rustc_cfg
+                    && toolchain == o_toolchain
+                    && target_layout == o_target_layout
+            }
             _ => false,
         }
     }

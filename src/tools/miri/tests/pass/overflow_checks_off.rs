@@ -7,10 +7,9 @@
 // Miri does not implement the codegen-time hack that backs `#[rustc_inherit_overflow_checks]`.
 // use std::ops::*;
 
-
 // Disable _compile-time_ overflow linting
 // so that we can test runtime overflow checks
- #![allow(arithmetic_overflow)]
+#![allow(arithmetic_overflow)]
 
 fn main() {
     assert_eq!(-{ -0x80i8 }, -0x80);

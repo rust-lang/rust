@@ -1079,7 +1079,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .map(|(arg_idx, val)| {
                 let idx = val.unwrap_leaf().try_to_i32().unwrap();
                 if idx >= i32::try_from(total_len).unwrap() {
-                    bx.sess().dcx().emit_err(InvalidMonomorphization::ShuffleIndexOutOfBounds {
+                    bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
                         span,
                         name,
                         arg_idx: arg_idx as u64,
@@ -1138,24 +1138,15 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 let val = bx.const_get_elt(vector, i as u64);
                 match bx.const_to_opt_u128(val, true) {
                     None => {
-                        bx.sess().dcx().emit_err(
-                            InvalidMonomorphization::ShuffleIndexNotConstant {
-                                span,
-                                name,
-                                arg_idx,
-                            },
-                        );
-                        None
+                        bug!("typeck should have already ensured that these are const")
                     }
                     Some(idx) if idx >= total_len => {
-                        bx.sess().dcx().emit_err(
-                            InvalidMonomorphization::ShuffleIndexOutOfBounds {
-                                span,
-                                name,
-                                arg_idx,
-                                total_len,
-                            },
-                        );
+                        bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+                            span,
+                            name,
+                            arg_idx,
+                            total_len,
+                        });
                         None
                     }
                     Some(idx) => Some(bx.const_i32(idx as i32)),
@@ -1184,10 +1175,22 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 out_ty: arg_tys[2]
             }
         );
+        let idx = bx
+            .const_to_opt_u128(args[1].immediate(), false)
+            .expect("typeck should have ensure that this is a const");
+        if idx >= in_len.into() {
+            bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+                span,
+                name,
+                arg_idx: 1,
+                total_len: in_len.into(),
+            });
+            return Ok(bx.const_null(llret_ty));
+        }
         return Ok(bx.insert_element(
             args[0].immediate(),
             args[2].immediate(),
-            args[1].immediate(),
+            bx.const_i32(idx as i32),
         ));
     }
     if name == sym::simd_extract {
@@ -1195,7 +1198,19 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             ret_ty == in_elem,
             InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
-        return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()));
+        let idx = bx
+            .const_to_opt_u128(args[1].immediate(), false)
+            .expect("typeck should have ensure that this is a const");
+        if idx >= in_len.into() {
+            bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
+                span,
+                name,
+                arg_idx: 1,
+                total_len: in_len.into(),
+            });
+            return Ok(bx.const_null(llret_ty));
+        }
+        return Ok(bx.extract_element(args[0].immediate(), bx.const_i32(idx as i32)));
     }
 
     if name == sym::simd_select {
@@ -2091,9 +2106,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             return Ok(args[0].immediate());
         }
 
+        #[derive(Copy, Clone)]
+        enum Sign {
+            Unsigned,
+            Signed,
+        }
+        use Sign::*;
+
         enum Style {
             Float,
-            Int(/* is signed? */ bool),
+            Int(Sign),
             Unsupported,
         }
 
@@ -2101,11 +2123,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             // vectors of pointer-sized integers should've been
             // disallowed before here, so this unwrap is safe.
             ty::Int(i) => (
-                Style::Int(true),
+                Style::Int(Signed),
                 i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Uint(u) => (
-                Style::Int(false),
+                Style::Int(Unsigned),
                 u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Float(f) => (Style::Float, f.bit_width()),
@@ -2113,11 +2135,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
         let (out_style, out_width) = match out_elem.kind() {
             ty::Int(i) => (
-                Style::Int(true),
+                Style::Int(Signed),
                 i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Uint(u) => (
-                Style::Int(false),
+                Style::Int(Unsigned),
                 u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Float(f) => (Style::Float, f.bit_width()),
@@ -2125,31 +2147,31 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
 
         match (in_style, out_style) {
-            (Style::Int(in_is_signed), Style::Int(_)) => {
+            (Style::Int(sign), Style::Int(_)) => {
                 return Ok(match in_width.cmp(&out_width) {
                     Ordering::Greater => bx.trunc(args[0].immediate(), llret_ty),
                     Ordering::Equal => args[0].immediate(),
-                    Ordering::Less => {
-                        if in_is_signed {
-                            bx.sext(args[0].immediate(), llret_ty)
-                        } else {
-                            bx.zext(args[0].immediate(), llret_ty)
-                        }
-                    }
+                    Ordering::Less => match sign {
+                        Sign::Signed => bx.sext(args[0].immediate(), llret_ty),
+                        Sign::Unsigned => bx.zext(args[0].immediate(), llret_ty),
+                    },
                 });
             }
-            (Style::Int(in_is_signed), Style::Float) => {
-                return Ok(if in_is_signed {
-                    bx.sitofp(args[0].immediate(), llret_ty)
-                } else {
-                    bx.uitofp(args[0].immediate(), llret_ty)
-                });
+            (Style::Int(Sign::Signed), Style::Float) => {
+                return Ok(bx.sitofp(args[0].immediate(), llret_ty));
             }
-            (Style::Float, Style::Int(out_is_signed)) => {
-                return Ok(match (out_is_signed, name == sym::simd_as) {
-                    (false, false) => bx.fptoui(args[0].immediate(), llret_ty),
-                    (true, false) => bx.fptosi(args[0].immediate(), llret_ty),
-                    (_, true) => bx.cast_float_to_int(out_is_signed, args[0].immediate(), llret_ty),
+            (Style::Int(Sign::Unsigned), Style::Float) => {
+                return Ok(bx.uitofp(args[0].immediate(), llret_ty));
+            }
+            (Style::Float, Style::Int(sign)) => {
+                return Ok(match (sign, name == sym::simd_as) {
+                    (Sign::Unsigned, false) => bx.fptoui(args[0].immediate(), llret_ty),
+                    (Sign::Signed, false) => bx.fptosi(args[0].immediate(), llret_ty),
+                    (_, true) => bx.cast_float_to_int(
+                        matches!(sign, Sign::Signed),
+                        args[0].immediate(),
+                        llret_ty,
+                    ),
                 });
             }
             (Style::Float, Style::Float) => {

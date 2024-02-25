@@ -15,15 +15,6 @@ extern "system" {
     pub fn RtlGenRandom(randombuffer: *mut ::core::ffi::c_void, randombufferlength: u32)
     -> BOOLEAN;
 }
-#[link(name = "bcrypt")]
-extern "system" {
-    pub fn BCryptGenRandom(
-        halgorithm: BCRYPT_ALG_HANDLE,
-        pbbuffer: *mut u8,
-        cbbuffer: u32,
-        dwflags: BCRYPTGENRANDOM_FLAGS,
-    ) -> NTSTATUS;
-}
 #[link(name = "kernel32")]
 extern "system" {
     pub fn AcquireSRWLockExclusive(srwlock: *mut SRWLOCK) -> ();
@@ -889,9 +880,6 @@ impl ::core::clone::Clone for ARM64_NT_NEON128_0 {
         *self
     }
 }
-pub type BCRYPTGENRANDOM_FLAGS = u32;
-pub type BCRYPT_ALG_HANDLE = *mut ::core::ffi::c_void;
-pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: BCRYPTGENRANDOM_FLAGS = 2u32;
 pub const BELOW_NORMAL_PRIORITY_CLASS: PROCESS_CREATION_FLAGS = 16384u32;
 pub type BOOL = i32;
 pub type BOOLEAN = u8;

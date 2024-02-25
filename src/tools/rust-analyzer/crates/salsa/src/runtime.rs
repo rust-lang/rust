@@ -4,13 +4,14 @@ use crate::hash::FxIndexSet;
 use crate::plumbing::CycleRecoveryStrategy;
 use crate::revision::{AtomicRevision, Revision};
 use crate::{Cancelled, Cycle, Database, DatabaseKeyIndex, Event, EventKind};
+use itertools::Itertools;
 use parking_lot::lock_api::{RawRwLock, RawRwLockRecursive};
 use parking_lot::{Mutex, RwLock};
 use std::hash::Hash;
 use std::panic::panic_any;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 use tracing::debug;
-use triomphe::Arc;
+use triomphe::{Arc, ThinArc};
 
 mod dependency_graph;
 use dependency_graph::DependencyGraph;
@@ -297,8 +298,7 @@ impl Runtime {
             // (at least for this execution, not necessarily across executions),
             // no matter where it started on the stack. Find the minimum
             // key and rotate it to the front.
-            let min = v.iter().min().unwrap();
-            let index = v.iter().position(|p| p == min).unwrap();
+            let index = v.iter().position_min().unwrap_or_default();
             v.rotate_left(index);
 
             // No need to store extra memory.
@@ -440,7 +440,7 @@ impl Runtime {
 /// State that will be common to all threads (when we support multiple threads)
 struct SharedState {
     /// Stores the next id to use for a snapshotted runtime (starts at 1).
-    next_id: AtomicUsize,
+    next_id: AtomicU32,
 
     /// Whenever derived queries are executing, they acquire this lock
     /// in read mode. Mutating inputs (and thus creating a new
@@ -457,50 +457,46 @@ struct SharedState {
     /// revision is cancelled).
     pending_revision: AtomicRevision,
 
-    /// Stores the "last change" revision for values of each duration.
+    /// Stores the "last change" revision for values of each Durability.
     /// This vector is always of length at least 1 (for Durability 0)
-    /// but its total length depends on the number of durations. The
+    /// but its total length depends on the number of Durabilities. The
     /// element at index 0 is special as it represents the "current
     /// revision".  In general, we have the invariant that revisions
     /// in here are *declining* -- that is, `revisions[i] >=
     /// revisions[i + 1]`, for all `i`. This is because when you
     /// modify a value with durability D, that implies that values
     /// with durability less than D may have changed too.
-    revisions: Vec<AtomicRevision>,
+    revisions: [AtomicRevision; Durability::LEN],
 
     /// The dependency graph tracks which runtimes are blocked on one
     /// another, waiting for queries to terminate.
     dependency_graph: Mutex<DependencyGraph>,
 }
 
-impl SharedState {
-    fn with_durabilities(durabilities: usize) -> Self {
+impl std::panic::RefUnwindSafe for SharedState {}
+
+impl Default for SharedState {
+    fn default() -> Self {
+        #[allow(clippy::declare_interior_mutable_const)]
+        const START: AtomicRevision = AtomicRevision::start();
         SharedState {
-            next_id: AtomicUsize::new(1),
+            next_id: AtomicU32::new(1),
             query_lock: Default::default(),
-            revisions: (0..durabilities).map(|_| AtomicRevision::start()).collect(),
-            pending_revision: AtomicRevision::start(),
+            revisions: [START; Durability::LEN],
+            pending_revision: START,
             dependency_graph: Default::default(),
         }
     }
 }
 
-impl std::panic::RefUnwindSafe for SharedState {}
-
-impl Default for SharedState {
-    fn default() -> Self {
-        Self::with_durabilities(Durability::LEN)
-    }
-}
-
 impl std::fmt::Debug for SharedState {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let query_lock = if self.query_lock.try_write().is_some() {
-            "<unlocked>"
-        } else if self.query_lock.try_read().is_some() {
+        let query_lock = if self.query_lock.is_locked_exclusive() {
+            "<wlocked>"
+        } else if self.query_lock.is_locked() {
             "<rlocked>"
         } else {
-            "<wlocked>"
+            "<unlocked>"
         };
         fmt.debug_struct("SharedState")
             .field("query_lock", &query_lock)
@@ -570,7 +566,9 @@ impl ActiveQuery {
                 if dependencies.is_empty() {
                     QueryInputs::NoInputs
                 } else {
-                    QueryInputs::Tracked { inputs: dependencies.iter().copied().collect() }
+                    QueryInputs::Tracked {
+                        inputs: ThinArc::from_header_and_iter((), dependencies.iter().copied()),
+                    }
                 }
             }
         };
@@ -616,7 +614,7 @@ impl ActiveQuery {
 /// complete, its `RuntimeId` may potentially be re-used.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RuntimeId {
-    counter: usize,
+    counter: u32,
 }
 
 #[derive(Clone, Debug)]

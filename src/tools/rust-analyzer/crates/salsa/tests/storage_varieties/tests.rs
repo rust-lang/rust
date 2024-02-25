@@ -20,7 +20,7 @@ fn volatile_twice() {
     let v2 = db.volatile(); // volatiles are cached, so 2nd read returns the same
     assert_eq!(v1, v2);
 
-    db.salsa_runtime_mut().synthetic_write(Durability::LOW); // clears volatile caches
+    db.synthetic_write(Durability::LOW); // clears volatile caches
 
     let v3 = db.volatile(); // will re-increment the counter
     let v4 = db.volatile(); // second call will be cached
@@ -40,7 +40,7 @@ fn intermingled() {
     assert_eq!(v1, v3);
     assert_eq!(v2, v4);
 
-    db.salsa_runtime_mut().synthetic_write(Durability::LOW); // clears volatile caches
+    db.synthetic_write(Durability::LOW); // clears volatile caches
 
     let v5 = db.memoized(); // re-executes volatile, caches new result
     let v6 = db.memoized(); // re-use cached result

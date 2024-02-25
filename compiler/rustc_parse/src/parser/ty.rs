@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle, TokenType};
+use super::{Parser, PathStyle, TokenType, Trailing};
 
 use crate::errors::{
     self, DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
@@ -415,7 +415,7 @@ impl<'a> Parser<'a> {
             Ok(ty)
         })?;
 
-        if ts.len() == 1 && !trailing {
+        if ts.len() == 1 && matches!(trailing, Trailing::No) {
             let ty = ts.into_iter().next().unwrap().into_inner();
             let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {

@@ -1,5 +1,4 @@
 //@ compile-flags: -O
-//@ ignore-debug (because unchecked is checked in debug)
 
 #![crate_type = "lib"]
 #![feature(unchecked_shifts)]

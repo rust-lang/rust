@@ -640,16 +640,30 @@ pub(super) fn implied_predicates_with_filter(
 
     // Now require that immediate supertraits are converted, which will, in
     // turn, reach indirect supertraits, so we detect cycles now instead of
-    // overflowing during elaboration.
-    if matches!(filter, PredicateFilter::SelfOnly) {
-        for &(pred, span) in implied_bounds {
-            debug!("superbound: {:?}", pred);
-            if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
-                && bound.polarity == ty::ImplPolarity::Positive
-            {
-                tcx.at(span).super_predicates_of(bound.def_id());
+    // overflowing during elaboration. Same for implied predicates, which
+    // make sure we walk into associated type bounds.
+    match filter {
+        PredicateFilter::SelfOnly => {
+            for &(pred, span) in implied_bounds {
+                debug!("superbound: {:?}", pred);
+                if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
+                    && bound.polarity == ty::ImplPolarity::Positive
+                {
+                    tcx.at(span).super_predicates_of(bound.def_id());
+                }
             }
         }
+        PredicateFilter::SelfAndAssociatedTypeBounds => {
+            for &(pred, span) in implied_bounds {
+                debug!("superbound: {:?}", pred);
+                if let ty::ClauseKind::Trait(bound) = pred.kind().skip_binder()
+                    && bound.polarity == ty::ImplPolarity::Positive
+                {
+                    tcx.at(span).implied_predicates_of(bound.def_id());
+                }
+            }
+        }
+        _ => {}
     }
 
     ty::GenericPredicates { parent: None, predicates: implied_bounds }
