@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::has_drop;
-use clippy_utils::{any_parent_is_automatically_derived, get_parent_node, is_lint_allowed, path_to_local, peel_blocks};
+use clippy_utils::{any_parent_is_automatically_derived, is_lint_allowed, path_to_local, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
@@ -140,7 +140,7 @@ impl NoEffect {
                         for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
                             if let Node::Item(item) = parent.1
                                 && let ItemKind::Fn(..) = item.kind
-                                && let Node::Block(block) = get_parent_node(cx.tcx, stmt.hir_id)
+                                && let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id)
                                 && let [.., final_stmt] = block.stmts
                                 && final_stmt.hir_id == stmt.hir_id
                             {

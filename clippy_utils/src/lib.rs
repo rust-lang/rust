@@ -1307,11 +1307,6 @@ pub fn contains_return<'tcx>(expr: impl Visitable<'tcx>) -> bool {
     .is_some()
 }
 
-/// Gets the parent node, if any.
-pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Node<'_> {
-    tcx.parent_hir_node(id)
-}
-
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
 pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     get_parent_expr_for_hir(cx, e.hir_id)
@@ -1320,7 +1315,7 @@ pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'t
 /// This retrieves the parent for the given `HirId` if it's an expression. This is useful for
 /// constraint lints
 pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId) -> Option<&'tcx Expr<'tcx>> {
-    match get_parent_node(cx.tcx, hir_id) {
+    match cx.tcx.parent_hir_node(hir_id) {
         Node::Expr(parent) => Some(parent),
         _ => None,
     }
@@ -2182,7 +2177,7 @@ pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 
 /// Checks if the expression is the final expression returned from a block.
 pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
-    matches!(get_parent_node(tcx, expr.hir_id), Node::Block(..))
+    matches!(tcx.parent_hir_node(expr.hir_id), Node::Block(..))
 }
 
 pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {

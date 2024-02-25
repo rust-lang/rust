@@ -2,7 +2,7 @@ use super::needless_pass_by_value::requires_exact_signature;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr_with_closures;
-use clippy_utils::{get_parent_node, inherits_cfg, is_from_proc_macro, is_self};
+use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -239,7 +239,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(expr).kind()
             && let Some(def_id) = def_id.as_local()
         {
-            if let Node::Expr(e) = get_parent_node(cx.tcx, expr.hir_id)
+            if let Node::Expr(e) = cx.tcx.parent_hir_node(expr.hir_id)
                 && let ExprKind::Call(call, _) = e.kind
                 && call.hir_id == expr.hir_id
             {

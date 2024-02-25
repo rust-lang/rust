@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::get_parent_node;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
@@ -48,7 +47,7 @@ pub(super) fn check(
     }
 
     if is_copy(cx, ty) {
-        let parent_is_suffix_expr = match get_parent_node(cx.tcx, expr.hir_id) {
+        let parent_is_suffix_expr = match cx.tcx.parent_hir_node(expr.hir_id) {
             Node::Expr(parent) => match parent.kind {
                 // &*x is a nop, &x.clone() is not
                 ExprKind::AddrOf(..) => return,
