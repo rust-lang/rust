@@ -78,6 +78,7 @@ impl Flag {
     }
 }
 
+#[derive(Clone)]
 pub struct Guard {
     #[cfg(panic = "unwind")]
     panicking: bool,
