@@ -8,8 +8,9 @@
 //!
 //! (1.) If we end up with two rigid aliases, then we relate them structurally.
 //!
-//! (2.) If we end up with an infer var and a rigid alias, then
-//! we assign the alias to the infer var.
+//! (2.) If we end up with an infer var and a rigid alias, then we instantiate
+//! the infer var with the constructor of the alias and then recursively relate
+//! the terms.
 //!
 //! (3.) Otherwise, if we end with two rigid (non-projection) or infer types,
 //! relate them structurally.
@@ -53,27 +54,53 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
 
-            (Some(_), None) => {
-                if rhs.is_infer() {
-                    self.relate(param_env, lhs, variance, rhs)?;
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    Err(NoSolution)
-                }
+            (Some(alias), None) => {
+                self.relate_rigid_alias_non_alias(param_env, alias, variance, rhs)
             }
-            (None, Some(_)) => {
-                if lhs.is_infer() {
-                    self.relate(param_env, lhs, variance, rhs)?;
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    Err(NoSolution)
-                }
-            }
+            (None, Some(alias)) => self.relate_rigid_alias_non_alias(
+                param_env,
+                alias,
+                variance.xform(ty::Variance::Contravariant),
+                lhs,
+            ),
 
             (Some(alias_lhs), Some(alias_rhs)) => {
                 self.relate(param_env, alias_lhs, variance, alias_rhs)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
+        }
+    }
+
+    /// Relate a rigid alias with another type. This is the same as
+    /// an ordinary relate except that we treat the outer most alias
+    /// constructor as rigid.
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    fn relate_rigid_alias_non_alias(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        alias: ty::AliasTy<'tcx>,
+        variance: ty::Variance,
+        term: ty::Term<'tcx>,
+    ) -> QueryResult<'tcx> {
+        // NOTE: this check is purely an optimization, the structural eq would
+        // always fail if the term is not an inference variable.
+        if term.is_infer() {
+            let tcx = self.tcx();
+            // We need to relate `alias` to `term` treating only the outermost
+            // constructor as rigid, relating any contained generic arguments as
+            // normal. We do this by first structurally equating the `term`
+            // with the alias constructor instantiated with unconstrained infer vars,
+            // and then relate this with the whole `alias`.
+            //
+            // Alternatively we could modify `Equate` for this case by adding another
+            // variant to `StructurallyRelateAliases`.
+            let identity_args = self.fresh_args_for_item(alias.def_id);
+            let rigid_ctor = ty::AliasTy::new(tcx, alias.def_id, identity_args);
+            self.eq_structurally_relating_aliases(param_env, term, rigid_ctor.to_ty(tcx).into())?;
+            self.eq(param_env, alias, rigid_ctor)?;
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            Err(NoSolution)
         }
     }
 
@@ -105,6 +132,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, param_env), ret)]
     fn try_normalize_ty_recur(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -128,10 +156,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             );
             this.add_goal(GoalSource::Misc, normalizes_to_goal);
             this.try_evaluate_added_goals()?;
-            let ty = this.resolve_vars_if_possible(normalized_ty);
-            Ok(this.try_normalize_ty_recur(param_env, depth + 1, ty))
+            Ok(this.resolve_vars_if_possible(normalized_ty))
         }) {
-            Ok(ty) => ty,
+            Ok(ty) => self.try_normalize_ty_recur(param_env, depth + 1, ty),
             Err(NoSolution) => Some(ty),
         }
     }

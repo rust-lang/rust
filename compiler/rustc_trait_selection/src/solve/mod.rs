@@ -267,6 +267,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// This function is necessary in nearly all cases before matching on a type.
     /// Not doing so is likely to be incomplete and therefore unsound during
     /// coherence.
+    #[instrument(level = "debug", skip(self, param_env), ret)]
     fn structurally_normalize_ty(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,

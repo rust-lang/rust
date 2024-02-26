@@ -1,4 +1,5 @@
 use super::combine::CombineFields;
+use super::StructurallyRelateAliases;
 use crate::infer::{DefineOpaqueTypes, ObligationEmittingRelation, SubregionOrigin};
 use crate::traits::{Obligation, PredicateObligations};
 
@@ -64,7 +65,9 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
-            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
+            ty::Invariant => {
+                self.fields.equate(StructurallyRelateAliases::No, self.a_is_expected).relate(a, b)
+            }
             ty::Covariant => self.relate(a, b),
             ty::Bivariant => Ok(a),
             ty::Contravariant => self.with_expected_switched(|this| this.relate(b, a)),
@@ -202,6 +205,10 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 impl<'tcx> ObligationEmittingRelation<'tcx> for Sub<'_, '_, 'tcx> {
     fn span(&self) -> Span {
         self.fields.trace.span()
+    }
+
+    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
+        StructurallyRelateAliases::No
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

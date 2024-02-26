@@ -87,7 +87,6 @@ struct WipGoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
     pub kind: WipGoalEvaluationKind<'tcx>,
     pub evaluation: Option<WipCanonicalGoalEvaluation<'tcx>>,
-    pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
 impl<'tcx> WipGoalEvaluation<'tcx> {
@@ -103,7 +102,6 @@ impl<'tcx> WipGoalEvaluation<'tcx> {
                 }
             },
             evaluation: self.evaluation.unwrap().finalize(),
-            returned_goals: self.returned_goals,
         }
     }
 }
@@ -312,7 +310,6 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                 }
             },
             evaluation: None,
-            returned_goals: vec![],
         })
     }
 
@@ -369,17 +366,6 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn returned_goals(&mut self, goals: &[Goal<'tcx, ty::Predicate<'tcx>>]) {
-        if let Some(this) = self.as_mut() {
-            match this {
-                DebugSolver::GoalEvaluation(evaluation) => {
-                    assert!(evaluation.returned_goals.is_empty());
-                    evaluation.returned_goals.extend(goals);
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
     pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
             match (this, *goal_evaluation.state.unwrap()) {

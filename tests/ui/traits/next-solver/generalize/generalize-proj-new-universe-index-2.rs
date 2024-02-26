@@ -1,8 +1,8 @@
 //@ compile-flags: -Znext-solver
-//@ known-bug: trait-system-refactor-initiative#60
+//@ check-pass
 
 // Generalizing a projection containing an inference variable
-// which cannot be named by the `root_vid` can result in ambiguity.
+// which cannot be named by the `root_vid` previously resulted in ambiguity.
 //
 // Because we do not decrement the universe index when exiting a forall,
 // this can cause unexpected failures.

@@ -9,7 +9,7 @@ impl<T> Id for T {
 }
 
 
-// Coherence should be able to reason that `(): PartialEq<<T as Id>::Assoc>>`
+// Coherence should be able to reason that `(): PartialEq<<LocalTy as Id>::Assoc>>`
 // does not hold.
 //
 // See https://github.com/rust-lang/trait-system-refactor-initiative/issues/51
