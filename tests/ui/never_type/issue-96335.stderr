@@ -21,7 +21,6 @@ LL |     0.....{loop{}1};
    |     |   |
    |     |   expected integer, found `RangeTo<{integer}>`
    |     arguments to this function are incorrect
-   |     expected all arguments to be integer because they need to match the type of this parameter
    |
    = note: expected type `{integer}`
             found struct `RangeTo<{integer}>`

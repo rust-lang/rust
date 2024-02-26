@@ -9,4 +9,6 @@ fn main() {
     //~^  ERROR arguments to this function are incorrect
     foo_multi_generics("a", "b", "c", true, false, 32, 2.);
     //~^  ERROR arguments to this function are incorrect
+    foo_multi_same("a", 1, 2, "d", "e", 32);
+    //~^  ERROR arguments to this function are incorrect
 }
