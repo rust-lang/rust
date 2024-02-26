@@ -786,7 +786,7 @@ impl<T, A: Allocator> Vec<T, A> {
         unsafe { Vec { buf: RawVec::from_raw_parts_in(ptr, capacity, alloc), len: length } }
     }
 
-    /// Decomposes a `Vec<T>` into its raw components.
+    /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of
     /// the vector (in elements), and the allocated capacity of the
@@ -824,7 +824,7 @@ impl<T, A: Allocator> Vec<T, A> {
         (me.as_mut_ptr(), me.len(), me.capacity())
     }
 
-    /// Decomposes a `Vec<T>` into its raw components.
+    /// Decomposes a `Vec<T>` into its raw components: `(pointer, length, capacity, allocator)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of the vector (in elements),
     /// the allocated capacity of the data (in elements), and the allocator. These are the same
