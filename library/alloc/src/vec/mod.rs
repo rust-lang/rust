@@ -481,7 +481,7 @@ impl<T> Vec<T> {
         Self::with_capacity_in(capacity, Global)
     }
 
-    /// Creates a `Vec<T>` directly from a pointer, a capacity, and a length.
+    /// Creates a `Vec<T>` directly from a pointer, a length, and a capacity.
     ///
     /// # Safety
     ///
@@ -672,7 +672,7 @@ impl<T, A: Allocator> Vec<T, A> {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
     }
 
-    /// Creates a `Vec<T, A>` directly from a pointer, a capacity, a length,
+    /// Creates a `Vec<T, A>` directly from a pointer, a length, a capacity,
     /// and an allocator.
     ///
     /// # Safety
