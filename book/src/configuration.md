@@ -33,26 +33,29 @@ disallowed-names = ["bar", ".."] # -> ["bar", "foo", "baz", "quux"]
 To deactivate the "for further information visit *lint-link*" message you can define the `CLIPPY_DISABLE_DOCS_LINKS`
 environment variable.
 
-### Allowing/denying lints
+### Allowing/Denying Lints
 
-You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
+#### Attributes in Code
 
-* the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`)
+You can add attributes to your code to `allow`/`warn`/`deny` Clippy lints:
 
-* all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
-  `#![deny(clippy::pedantic)]`). Note that `clippy::pedantic` contains some very aggressive lints prone to false
-  positives.
+* the whole set of `warn`-by-default lints using the `clippy` lint group (`#![allow(clippy::all)]`)
+
+* all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![warn(clippy::all, clippy::pedantic)]`. Note
+  that `clippy::pedantic` contains some very aggressive lints prone to false positives.
 
 * only some lints (`#![deny(clippy::single_match, clippy::box_vec)]`, etc.)
 
 * `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc.
 
 Note: `allow` means to suppress the lint for your code. With `warn` the lint will only emit a warning, while with `deny`
-the lint will emit an error, when triggering for your code. An error causes clippy to exit with an error code, so is
-useful in scripts like CI/CD.
+the lint will emit an error, when triggering for your code. An error causes Clippy to exit with an error code, so is
+most useful in scripts used in CI/CD.
 
-If you do not want to include your lint levels in your code, you can globally enable/disable lints by passing extra
-flags to Clippy during the run:
+#### Command Line Flags
+
+If you do not want to include your lint levels in the code, you can globally enable/disable lints by passing extra flags
+to Clippy during the run:
 
 To allow `lint_name`, run
 
@@ -66,27 +69,32 @@ And to warn on `lint_name`, run
 cargo clippy -- -W clippy::lint_name
 ```
 
-This also works with lint groups. For example, you can run Clippy with warnings for all lints enabled:
+This also works with lint groups. For example, you can run Clippy with warnings for all pedantic lints enabled:
 
 ```terminal
 cargo clippy -- -W clippy::pedantic
 ```
 
-If you care only about a single lint, you can allow all others and then explicitly warn on the lint(s) you are
+If you care only about a certain lints, you can allow all others and then explicitly warn on the lints you are
 interested in:
 
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
 
-The last way to allow/disallow lints is to use `Cargo.toml` using [the lints section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section)):
+#### Lints Section in `Cargo.toml`
 
-To deny `clippy::enum_glob_use`
+Finally, lints can be allowed/denied using [the lints
+section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section)) in the `Cargo.toml` file:
+
+To deny `clippy::enum_glob_use`, put the following in the `Cargo.toml`:
 
 ```toml
 [lints.clippy]
 enum_glob_use = "deny"
 ```
+
+For more details and options, refer to the Cargo documentation.
 
 ### Specifying the minimum supported Rust version
 
