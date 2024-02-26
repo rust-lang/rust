@@ -75,7 +75,7 @@ enum OffendingFilterExpr<'tcx> {
     },
     /// `.filter(|enum| matches!(enum, Enum::A(_)))`
     Matches {
-        /// The DefId of the variant being matched
+        /// The `DefId` of the variant being matched
         variant_def_id: hir::def_id::DefId,
     },
 }

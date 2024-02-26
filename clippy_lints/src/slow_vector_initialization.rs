@@ -62,7 +62,7 @@ declare_lint_pass!(SlowVectorInit => [SLOW_VECTOR_INITIALIZATION]);
 /// assigned to a variable. For example, `let mut vec = Vec::with_capacity(0)` or
 /// `vec = Vec::with_capacity(0)`
 struct VecAllocation<'tcx> {
-    /// HirId of the variable
+    /// `HirId` of the variable
     local_id: HirId,
 
     /// Reference to the expression which allocates the vector

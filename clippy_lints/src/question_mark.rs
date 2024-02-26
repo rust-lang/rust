@@ -74,12 +74,12 @@ impl QuestionMark {
 enum IfBlockType<'hir> {
     /// An `if x.is_xxx() { a } else { b } ` expression.
     ///
-    /// Contains: caller (x), caller_type, call_sym (is_xxx), if_then (a), if_else (b)
+    /// Contains: `caller (x), caller_type, call_sym (is_xxx), if_then (a), if_else (b)`
     IfIs(&'hir Expr<'hir>, Ty<'hir>, Symbol, &'hir Expr<'hir>),
     /// An `if let Xxx(a) = b { c } else { d }` expression.
     ///
-    /// Contains: let_pat_qpath (Xxx), let_pat_type, let_pat_sym (a), let_expr (b), if_then (c),
-    /// if_else (d)
+    /// Contains: `let_pat_qpath (Xxx), let_pat_type, let_pat_sym (a), let_expr (b), if_then (c),
+    /// if_else (d)`
     IfLet(
         Res,
         Ty<'hir>,

@@ -1,0 +1,77 @@
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:4:5
+   |
+LL |     //!
+   |     ^^^
+   |
+   = help: consider removing or filling it
+   = note: `-D clippy::empty-docs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_docs)]`
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:12:5
+   |
+LL |     ///
+   |     ^^^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:14:9
+   |
+LL |         ///
+   |         ^^^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:25:5
+   |
+LL |     #[doc = ""]
+   |     ^^^^^^^^^^^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:28:5
+   |
+LL | /     #[doc = ""]
+LL | |     #[doc = ""]
+   | |_______________^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:35:5
+   |
+LL |     ///
+   |     ^^^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:48:13
+   |
+LL |             /*! */
+   |             ^^^^^^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:56:13
+   |
+LL |             ///
+   |             ^^^
+   |
+   = help: consider removing or filling it
+
+error: empty doc comment
+  --> tests/ui/empty_docs.rs:64:9
+   |
+LL |         ///
+   |         ^^^
+   |
+   = help: consider removing or filling it
+
+error: aborting due to 9 previous errors
+

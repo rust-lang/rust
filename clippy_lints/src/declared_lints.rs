@@ -139,6 +139,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::disallowed_types::DISALLOWED_TYPES_INFO,
     crate::doc::DOC_LINK_WITH_QUOTES_INFO,
     crate::doc::DOC_MARKDOWN_INFO,
+    crate::doc::EMPTY_DOCS_INFO,
     crate::doc::MISSING_ERRORS_DOC_INFO,
     crate::doc::MISSING_PANICS_DOC_INFO,
     crate::doc::MISSING_SAFETY_DOC_INFO,
