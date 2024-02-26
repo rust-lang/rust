@@ -277,25 +277,35 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(cfg_attr, Normal, template!(List: "predicate, attr1, attr2, ..."), DuplicatesOk),
 
     // Testing:
-    ungated!(ignore, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing),
+    ungated!(
+        ignore, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing,
+        @only_local: true,
+    ),
     ungated!(
         should_panic, Normal,
         template!(Word, List: r#"expected = "reason""#, NameValueStr: "reason"), FutureWarnFollowing,
+        @only_local: true,
     ),
     // FIXME(Centril): This can be used on stable but shouldn't.
-    ungated!(reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing),
+    ungated!(
+        reexport_test_harness_main, CrateLevel, template!(NameValueStr: "name"), ErrorFollowing,
+        @only_local: true,
+    ),
 
     // Macros:
     ungated!(automatically_derived, Normal, template!(Word), WarnFollowing),
-    ungated!(macro_use, Normal, template!(Word, List: "name1, name2, ..."), WarnFollowingWordOnly),
-    ungated!(macro_escape, Normal, template!(Word), WarnFollowing), // Deprecated synonym for `macro_use`.
-    ungated!(macro_export, Normal, template!(Word, List: "local_inner_macros"), WarnFollowing),
-    ungated!(proc_macro, Normal, template!(Word), ErrorFollowing),
     ungated!(
-        proc_macro_derive, Normal,
-        template!(List: "TraitName, /*opt*/ attributes(name1, name2, ...)"), ErrorFollowing,
+        macro_use, Normal, template!(Word, List: "name1, name2, ..."), WarnFollowingWordOnly,
+        @only_local: true,
     ),
-    ungated!(proc_macro_attribute, Normal, template!(Word), ErrorFollowing),
+    ungated!(macro_escape, Normal, template!(Word), WarnFollowing, @only_local: true), // Deprecated synonym for `macro_use`.
+    ungated!(macro_export, Normal, template!(Word, List: "local_inner_macros"), WarnFollowing),
+    ungated!(proc_macro, Normal, template!(Word), ErrorFollowing, @only_local: true),
+    ungated!(
+        proc_macro_derive, Normal, template!(List: "TraitName, /*opt*/ attributes(name1, name2, ...)"),
+        ErrorFollowing, @only_local: true,
+    ),
+    ungated!(proc_macro_attribute, Normal, template!(Word), ErrorFollowing, @only_local: true),
 
     // Lints:
     ungated!(
@@ -308,7 +318,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         expect, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk,
-        lint_reasons, experimental!(expect)
+        @only_local: true, lint_reasons, experimental!(expect)
     ),
     ungated!(
         forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#),
@@ -334,32 +344,48 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Crate properties:
-    ungated!(crate_name, CrateLevel, template!(NameValueStr: "name"), FutureWarnFollowing),
-    ungated!(crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), DuplicatesOk),
+    ungated!(
+        crate_name, CrateLevel, template!(NameValueStr: "name"), FutureWarnFollowing,
+        @only_local: true,
+    ),
+    ungated!(
+        crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), DuplicatesOk,
+        @only_local: true,
+    ),
     // crate_id is deprecated
-    ungated!(crate_id, CrateLevel, template!(NameValueStr: "ignored"), FutureWarnFollowing),
+    ungated!(
+        crate_id, CrateLevel, template!(NameValueStr: "ignored"), FutureWarnFollowing,
+        @only_local: true,
+    ),
 
     // ABI, linking, symbols, and FFI
     ungated!(
         link, Normal,
         template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...", /*opt*/ import_name_type = "decorated|noprefix|undecorated""#),
         DuplicatesOk,
+        @only_local: true,
     ),
     ungated!(link_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
-    ungated!(no_link, Normal, template!(Word), WarnFollowing),
+    ungated!(no_link, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(repr, Normal, template!(List: "C"), DuplicatesOk, @only_local: true),
-    ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
-    ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
+    ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, @only_local: true),
+    ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding, @only_local: true),
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, @only_local: true),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding),
 
     // Limits:
-    ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
-    ungated!(type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
+    ungated!(
+        recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing,
+        @only_local: true
+    ),
+    ungated!(
+        type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing,
+        @only_local: true
+    ),
     gated!(
         move_size_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
-        large_assignments, experimental!(move_size_limit)
+        @only_local: true, large_assignments, experimental!(move_size_limit)
     ),
 
     // Entry point:
