@@ -447,8 +447,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     err.span_note(
                         span,
                         format!(
-                            "consider changing this parameter type in {descr} `{ident}` to \
-                                 borrow instead if owning the value isn't necessary",
+                            "consider changing this parameter type in {descr} `{ident}` to borrow \
+                             instead if owning the value isn't necessary",
                         ),
                     );
                 }
@@ -747,8 +747,166 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         true
     }
 
+    /// In a move error that occurs on a call wihtin a loop, we try to identify cases where cloning
+    /// the value would lead to a logic error. We infer these cases by seeing if the moved value is
+    /// part of the logic to break the loop, either through an explicit `break` or if the expression
+    /// is part of a `while let`.
+    fn suggest_hoisting_call_outside_loop(&self, err: &mut Diag<'_>, expr: &hir::Expr<'_>) -> bool {
+        let tcx = self.infcx.tcx;
+        let mut can_suggest_clone = true;
+
+        // If the moved value is a locally declared binding, we'll look upwards on the expression
+        // tree until the scope where it is defined, and no further, as suggesting to move the
+        // expression beyond that point would be illogical.
+        let local_hir_id = if let hir::ExprKind::Path(hir::QPath::Resolved(
+            _,
+            hir::Path { res: hir::def::Res::Local(local_hir_id), .. },
+        )) = expr.kind
+        {
+            Some(local_hir_id)
+        } else {
+            // This case would be if the moved value comes from an argument binding, we'll just
+            // look within the entire item, that's fine.
+            None
+        };
+
+        /// This will allow us to look for a specific `HirId`, in our case `local_hir_id` where the
+        /// binding was declared, within any other expression. We'll use it to search for the
+        /// binding declaration within every scope we inspect.
+        struct Finder {
+            hir_id: hir::HirId,
+            found: bool,
+        }
+        impl<'hir> Visitor<'hir> for Finder {
+            fn visit_pat(&mut self, pat: &'hir hir::Pat<'hir>) {
+                if pat.hir_id == self.hir_id {
+                    self.found = true;
+                }
+                hir::intravisit::walk_pat(self, pat);
+            }
+            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+                if ex.hir_id == self.hir_id {
+                    self.found = true;
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+        // The immediate HIR parent of the moved expression. We'll look for it to be a call.
+        let mut parent = None;
+        // The top-most loop where the moved expression could be moved to a new binding.
+        let mut outer_most_loop: Option<&hir::Expr<'_>> = None;
+        for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
+            let e = match node {
+                hir::Node::Expr(e) => e,
+                hir::Node::Local(hir::Local { els: Some(els), .. }) => {
+                    let mut finder = BreakFinder { found_break: false };
+                    finder.visit_block(els);
+                    if finder.found_break {
+                        // Don't suggest clone as it could be will likely end in an infinite
+                        // loop.
+                        // let Some(_) = foo(non_copy.clone()) else { break; }
+                        // ---                       ^^^^^^^^         -----
+                        can_suggest_clone = false;
+                    }
+                    continue;
+                }
+                _ => continue,
+            };
+            if let Some(&hir_id) = local_hir_id {
+                let mut finder = Finder { hir_id, found: false };
+                finder.visit_expr(e);
+                if finder.found {
+                    // The current scope includes the declaration of the binding we're accessing, we
+                    // can't look up any further for loops.
+                    break;
+                }
+            }
+            if parent.is_none() {
+                parent = Some(e);
+            }
+            match e.kind {
+                hir::ExprKind::Let(_) => {
+                    match tcx.parent_hir_node(e.hir_id) {
+                        hir::Node::Expr(hir::Expr {
+                            kind: hir::ExprKind::If(cond, ..), ..
+                        }) => {
+                            let mut finder = Finder { hir_id: expr.hir_id, found: false };
+                            finder.visit_expr(cond);
+                            if finder.found {
+                                // The expression where the move error happened is in a `while let`
+                                // condition Don't suggest clone as it will likely end in an
+                                // infinite loop.
+                                // while let Some(_) = foo(non_copy.clone()) { }
+                                // ---------                       ^^^^^^^^
+                                can_suggest_clone = false;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                hir::ExprKind::Loop(..) => {
+                    outer_most_loop = Some(e);
+                }
+                _ => {}
+            }
+        }
+
+        /// Look for `break` expressions within any arbitrary expressions. We'll do this to infer
+        /// whether this is a case where the moved value would affect the exit of a loop, making it
+        /// unsuitable for a `.clone()` suggestion.
+        struct BreakFinder {
+            found_break: bool,
+        }
+        impl<'hir> Visitor<'hir> for BreakFinder {
+            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+                if let hir::ExprKind::Break(..) = ex.kind {
+                    self.found_break = true;
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+        if let Some(in_loop) = outer_most_loop
+            && let Some(parent) = parent
+            && let hir::ExprKind::MethodCall(..) | hir::ExprKind::Call(..) = parent.kind
+        {
+            // FIXME: We could check that the call's *parent* takes `&mut val` to make the
+            // suggestion more targeted to the `mk_iter(val).next()` case. Maybe do that only to
+            // check for wheter to suggest `let value` or `let mut value`.
+
+            let span = in_loop.span;
+            let mut finder = BreakFinder { found_break: false };
+            finder.visit_expr(in_loop);
+            let sm = tcx.sess.source_map();
+            if (finder.found_break || true)
+                && let Ok(value) = sm.span_to_snippet(parent.span)
+            {
+                // We know with high certainty that this move would affect the early return of a
+                // loop, so we suggest moving the expression with the move out of the loop.
+                let indent = if let Some(indent) = sm.indentation_before(span) {
+                    format!("\n{indent}")
+                } else {
+                    " ".to_string()
+                };
+                err.multipart_suggestion(
+                    "consider moving the expression out of the loop so it is only moved once",
+                    vec![
+                        (parent.span, "value".to_string()),
+                        (span.shrink_to_lo(), format!("let mut value = {value};{indent}")),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
+        can_suggest_clone
+    }
+
     fn suggest_cloning(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'_>, span: Span) {
         let tcx = self.infcx.tcx;
+        if !self.suggest_hoisting_call_outside_loop(err, expr) {
+            // The place where the the type moves would be misleading to suggest clone. (#121466)
+            return;
+        }
+
         // Try to find predicates on *generic params* that would allow copying `ty`
         let suggestion =
             if let Some(symbol) = tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {

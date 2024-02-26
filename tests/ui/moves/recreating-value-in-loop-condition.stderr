@@ -1,0 +1,133 @@
+error[E0382]: use of moved value: `vec`
+  --> $DIR/recreating-value-in-loop-condition.rs:6:33
+   |
+LL |     let vec = vec!["one", "two", "three"];
+   |         --- move occurs because `vec` has type `Vec<&str>`, which does not implement the `Copy` trait
+LL |     while let Some(item) = iter(vec).next() {
+   |     ----------------------------^^^--------
+   |     |                           |
+   |     |                           value moved here, in previous iteration of loop
+   |     inside of this loop
+   |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = iter(vec);
+LL ~     while let Some(item) = value.next() {
+   |
+
+error[E0382]: use of moved value: `vec`
+  --> $DIR/recreating-value-in-loop-condition.rs:13:31
+   |
+LL |     let vec = vec!["one", "two", "three"];
+   |         --- move occurs because `vec` has type `Vec<&str>`, which does not implement the `Copy` trait
+LL |     loop {
+   |     ---- inside of this loop
+LL |         let Some(item) = iter(vec).next() else {
+   |                               ^^^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = iter(vec);
+LL ~     loop {
+LL ~         let Some(item) = value.next() else {
+   |
+
+error[E0382]: use of moved value: `vec`
+  --> $DIR/recreating-value-in-loop-condition.rs:22:25
+   |
+LL |     let vec = vec!["one", "two", "three"];
+   |         --- move occurs because `vec` has type `Vec<&str>`, which does not implement the `Copy` trait
+LL |     loop {
+   |     ---- inside of this loop
+LL |         let item = iter(vec).next();
+   |                         ^^^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = iter(vec);
+LL ~     loop {
+LL ~         let item = value.next();
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         let item = iter(vec.clone()).next();
+   |                            ++++++++
+
+error[E0382]: use of moved value: `vec`
+  --> $DIR/recreating-value-in-loop-condition.rs:32:34
+   |
+LL |     let vec = vec!["one", "two", "three"];
+   |         --- move occurs because `vec` has type `Vec<&str>`, which does not implement the `Copy` trait
+LL |     loop {
+   |     ---- inside of this loop
+LL |         if let Some(item) = iter(vec).next() {
+   |                                  ^^^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~     let mut value = iter(vec);
+LL ~     loop {
+LL ~         if let Some(item) = value.next() {
+   |
+
+error[E0382]: use of moved value: `vec`
+  --> $DIR/recreating-value-in-loop-condition.rs:43:46
+   |
+LL |         let vec = vec!["one", "two", "three"];
+   |             --- move occurs because `vec` has type `Vec<&str>`, which does not implement the `Copy` trait
+LL |         loop {
+   |         ---- inside of this loop
+LL |             loop {
+   |             ---- inside of this loop
+LL |                 loop {
+   |                 ---- inside of this loop
+LL |                     if let Some(item) = iter(vec).next() {
+   |                                              ^^^ value moved here, in previous iteration of loop
+   |
+note: consider changing this parameter type in function `iter` to borrow instead if owning the value isn't necessary
+  --> $DIR/recreating-value-in-loop-condition.rs:1:17
+   |
+LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
+   |    ----         ^^^^^^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+help: consider moving the expression out of the loop so it is only moved once
+   |
+LL ~         let mut value = iter(vec);
+LL ~         loop {
+LL |             loop {
+LL |                 loop {
+LL ~                     if let Some(item) = value.next() {
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0382`.
