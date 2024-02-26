@@ -10,7 +10,7 @@ use hir_expand::proc_macro::{
     ProcMacros,
 };
 use ide_db::{
-    base_db::{CrateGraph, Env, SourceRoot},
+    base_db::{CrateGraph, Env, SourceRoot, SourceRootId},
     prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
@@ -231,7 +231,7 @@ impl ProjectFolders {
             res.load.push(entry);
 
             if root.is_local {
-                local_filesets.push(fsc.len());
+                local_filesets.push(fsc.len() as u64);
             }
             fsc.add_file_set(file_set_roots)
         }
@@ -246,7 +246,7 @@ impl ProjectFolders {
 #[derive(Default, Debug)]
 pub struct SourceRootConfig {
     pub fsc: FileSetConfig,
-    pub local_filesets: Vec<usize>,
+    pub local_filesets: Vec<u64>,
 }
 
 impl SourceRootConfig {
@@ -256,7 +256,7 @@ impl SourceRootConfig {
             .into_iter()
             .enumerate()
             .map(|(idx, file_set)| {
-                let is_local = self.local_filesets.contains(&idx);
+                let is_local = self.local_filesets.contains(&(idx as u64));
                 if is_local {
                     SourceRoot::new_local(file_set)
                 } else {
@@ -264,6 +264,36 @@ impl SourceRootConfig {
                 }
             })
             .collect()
+    }
+
+    /// Maps local source roots to their parent source roots by bytewise comparing of root paths .
+    /// If a source root doesn't have a parent then its parent is declared as None.
+    pub fn source_root_parent_map(&self) -> FxHashMap<SourceRootId, Option<SourceRootId>> {
+        let roots = self.fsc.roots();
+        let mut map = FxHashMap::<SourceRootId, Option<SourceRootId>>::default();
+
+        'outer: for (idx, (root, root_id)) in roots.iter().enumerate() {
+            if !self.local_filesets.contains(root_id) {
+                continue;
+            }
+
+            for (_, (root2, root2_id)) in roots.iter().enumerate().take(idx).rev() {
+                if root2.iter().enumerate().all(|(i, c)| &root[i] == c) {
+                    // We are interested in parents if they are also local source roots.
+                    // So instead of a non-local parent we may take a local ancestor as a parent to a node.
+                    if self.local_filesets.contains(root2_id) {
+                        map.insert(
+                            SourceRootId(root_id.to_owned() as u32),
+                            Some(SourceRootId(root2_id.to_owned() as u32)),
+                        );
+                        continue 'outer;
+                    }
+                }
+            }
+            map.insert(SourceRootId(idx as u32), None);
+        }
+
+        map
     }
 }
 
@@ -412,5 +442,204 @@ mod tests {
         let n_crates = db.crate_graph().iter().count();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
+    }
+
+    mod source_root_parent {
+        use ide_db::base_db::SourceRootId;
+        use vfs::{file_set::FileSetConfigBuilder, VfsPath};
+
+        use crate::SourceRootConfig;
+
+        macro_rules! virp {
+            ($s : literal) => {
+                VfsPath::new_virtual_path(format!($s))
+            };
+        }
+
+        #[test]
+        fn test1() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/def")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
+            let vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+
+            assert_eq!(vc, vec![(SourceRootId(0), None), (SourceRootId(1), None)])
+        }
+
+        #[test]
+        fn test2() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/def/abc")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
+            let vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+
+            assert_eq!(vc, vec![(SourceRootId(0), None), (SourceRootId(1), None)])
+        }
+
+        #[test]
+        fn test3() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/abc/def")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
+            let vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+
+            assert_eq!(vc, vec![(SourceRootId(0), None), (SourceRootId(1), Some(SourceRootId(0)))])
+        }
+
+        #[test]
+        fn test4() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/def")];
+            let root3 = vec![virp!("/ROOT/def/abc")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            builder.add_file_set(root3);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 2] };
+            let vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+
+            assert_eq!(
+                vc,
+                vec![
+                    (SourceRootId(0), None),
+                    (SourceRootId(1), None),
+                    (SourceRootId(2), Some(SourceRootId(1)))
+                ]
+            )
+        }
+
+        #[test]
+        fn test5() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/ghi")];
+            let root3 = vec![virp!("/ROOT/def/abc")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            builder.add_file_set(root3);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 2] };
+            let vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+
+            assert_eq!(
+                vc,
+                vec![(SourceRootId(0), None), (SourceRootId(1), None), (SourceRootId(2), None)]
+            )
+        }
+
+        #[test]
+        fn test6() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/def")];
+            let root3 = vec![virp!("/ROOT/def/ghi/jkl")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            builder.add_file_set(root3);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 2] };
+            let vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+
+            assert_eq!(
+                vc,
+                vec![
+                    (SourceRootId(0), None),
+                    (SourceRootId(1), None),
+                    (SourceRootId(2), Some(SourceRootId(1)))
+                ]
+            )
+        }
+
+        #[test]
+        fn test7() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/def")];
+            let root3 = vec![virp!("/ROOT/def/ghi/jkl")];
+            let root4 = vec![virp!("/ROOT/def/ghi/klm")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            builder.add_file_set(root3);
+            builder.add_file_set(root4);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 2, 3] };
+            let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+            vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+
+            assert_eq!(
+                vc,
+                vec![
+                    (SourceRootId(0), None),
+                    (SourceRootId(1), None),
+                    (SourceRootId(2), Some(SourceRootId(1))),
+                    (SourceRootId(3), Some(SourceRootId(1)))
+                ]
+            )
+        }
+
+        #[test]
+        fn test8() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/def")];
+            let root3 = vec![virp!("/ROOT/def/ghi/jkl")];
+            let root4 = vec![virp!("/ROOT/def/klm")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            builder.add_file_set(root3);
+            builder.add_file_set(root4);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 3] };
+            let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+            vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+
+            assert_eq!(
+                vc,
+                vec![
+                    (SourceRootId(0), None),
+                    (SourceRootId(1), None),
+                    (SourceRootId(3), Some(SourceRootId(1))),
+                ]
+            )
+        }
+
+        #[test]
+        fn test9() {
+            let mut builder = FileSetConfigBuilder::default();
+            let root = vec![virp!("/ROOT/abc")];
+            let root2 = vec![virp!("/ROOT/def")];
+            let root3 = vec![virp!("/ROOT/def/klm")];
+            let root4 = vec![virp!("/ROOT/def/klm/jkl")];
+            builder.add_file_set(root);
+            builder.add_file_set(root2);
+            builder.add_file_set(root3);
+            builder.add_file_set(root4);
+            let fsc = builder.build();
+            let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 3] };
+            let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
+            vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+
+            assert_eq!(
+                vc,
+                vec![
+                    (SourceRootId(0), None),
+                    (SourceRootId(1), None),
+                    (SourceRootId(3), Some(SourceRootId(1))),
+                ]
+            )
+        }
     }
 }

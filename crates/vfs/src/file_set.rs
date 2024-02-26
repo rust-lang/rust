@@ -123,6 +123,17 @@ impl FileSetConfig {
         self.n_file_sets
     }
 
+    /// Get the lexicographically ordered vector of the underlying map.
+    pub fn roots(&self) -> Vec<(Vec<u8>, u64)> {
+        let mut stream = self.map.stream();
+        let mut vc = vec![];
+        while let Some((pth, idx)) = stream.next() {
+            vc.push((pth.to_vec(), idx));
+        }
+
+        vc
+    }
+
     /// Returns the set index for the given `path`.
     ///
     /// `scratch_space` is used as a buffer and will be entirely replaced.

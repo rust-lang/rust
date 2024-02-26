@@ -515,6 +515,7 @@ impl GlobalState {
             version: self.vfs_config_version,
         });
         self.source_root_config = project_folders.source_root_config;
+        self.local_roots_parent_map = self.source_root_config.source_root_parent_map();
 
         self.recreate_crate_graph(cause);
 
