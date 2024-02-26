@@ -894,7 +894,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static { .. }
+        | DefKind::Static { nested: false, .. }
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::Macro(_)
@@ -915,6 +915,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::LifetimeParam
+        | DefKind::Static { nested: true, .. }
         | DefKind::GlobalAsm => false,
     }
 }
@@ -968,7 +969,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static { .. }
+        | DefKind::Static { nested: false, .. }
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -981,6 +982,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::AnonConst
         | DefKind::InlineConst
+        | DefKind::Static { nested: true, .. }
         | DefKind::OpaqueTy
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
@@ -1163,7 +1165,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Field
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static { .. }
+        | DefKind::Static { nested: false, .. }
         | DefKind::TyAlias
         | DefKind::ForeignTy
         | DefKind::Impl { .. }
@@ -1205,6 +1207,7 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
         | DefKind::Mod
         | DefKind::ForeignMod
         | DefKind::Macro(..)
+        | DefKind::Static { nested: true, .. }
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm

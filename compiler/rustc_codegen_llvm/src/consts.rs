@@ -9,6 +9,7 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
@@ -229,9 +230,17 @@ impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn get_static(&self, def_id: DefId) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         trace!(?instance);
-        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
-        trace!(?ty);
-        let llty = self.layout_of(ty).llvm_type(self);
+
+        let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
+        // Nested statics do not have a type, so pick a random type and let `define_static` figure out
+        // the llvm type from the actual evaluated initializer.
+        let llty = if nested {
+            self.type_i8()
+        } else {
+            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            trace!(?ty);
+            self.layout_of(ty).llvm_type(self)
+        };
         self.get_static_inner(def_id, llty)
     }
 
@@ -346,6 +355,12 @@ impl<'ll> CodegenCx<'ll, '_> {
 
     fn codegen_static_item(&self, def_id: DefId) {
         unsafe {
+            assert!(
+                llvm::LLVMGetInitializer(
+                    self.instances.borrow().get(&Instance::mono(self.tcx, def_id)).unwrap()
+                )
+                .is_none()
+            );
             let attrs = self.tcx.codegen_fn_attrs(def_id);
 
             let Ok((v, alloc)) = codegen_static_initializer(self, def_id) else {

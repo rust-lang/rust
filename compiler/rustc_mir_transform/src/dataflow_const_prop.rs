@@ -3,7 +3,7 @@
 //! Currently, this pass only propagates scalar values.
 
 use rustc_const_eval::interpret::{
-    ImmTy, Immediate, InterpCx, OpTy, PlaceTy, PointerArithmetic, Projectable,
+    HasStaticRootDefId, ImmTy, Immediate, InterpCx, OpTy, PlaceTy, PointerArithmetic, Projectable,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
@@ -888,6 +888,12 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
 }
 
 pub(crate) struct DummyMachine;
+
+impl HasStaticRootDefId for DummyMachine {
+    fn static_def_id(&self) -> Option<rustc_hir::def_id::LocalDefId> {
+        None
+    }
+}
 
 impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);
