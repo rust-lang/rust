@@ -445,7 +445,7 @@ impl Read for Stdin {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "read_shared_stdin", since = "CURRENT_RUSTC_VERSION")]
 impl Read for &Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
