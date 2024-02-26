@@ -281,7 +281,79 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         }
 
         // Coroutine-closures don't implement `Fn` traits the normal way.
-        ty::CoroutineClosure(..) => Err(NoSolution),
+        // Instead, they always implement `FnOnce`, but only implement
+        // `FnMut`/`Fn` if they capture no upvars, since those may borrow
+        // from the closure.
+        ty::CoroutineClosure(def_id, args) => {
+            let args = args.as_coroutine_closure();
+            let kind_ty = args.kind_ty();
+            let sig = args.coroutine_closure_sig().skip_binder();
+
+            let coroutine_ty = if let Some(closure_kind) = kind_ty.to_opt_closure_kind() {
+                if !closure_kind.extends(goal_kind) {
+                    return Err(NoSolution);
+                }
+
+                // If `Fn`/`FnMut`, we only implement this goal if we
+                // have no captures.
+                let no_borrows = match args.tupled_upvars_ty().kind() {
+                    ty::Tuple(tys) => tys.is_empty(),
+                    ty::Error(_) => false,
+                    _ => bug!("tuple_fields called on non-tuple"),
+                };
+                if closure_kind != ty::ClosureKind::FnOnce && !no_borrows {
+                    return Err(NoSolution);
+                }
+
+                sig.to_coroutine_given_kind_and_upvars(
+                    tcx,
+                    args.parent_args(),
+                    tcx.coroutine_for_closure(def_id),
+                    goal_kind,
+                    // No captures by ref, so this doesn't matter.
+                    tcx.lifetimes.re_static,
+                    args.tupled_upvars_ty(),
+                    args.coroutine_captures_by_ref_ty(),
+                )
+            } else {
+                // Closure kind is not yet determined, so we return ambiguity unless
+                // the expected kind is `FnOnce` as that is always implemented.
+                if goal_kind != ty::ClosureKind::FnOnce {
+                    return Ok(None);
+                }
+
+                let async_fn_kind_trait_def_id =
+                    tcx.require_lang_item(LangItem::AsyncFnKindHelper, None);
+                let upvars_projection_def_id = tcx
+                    .associated_items(async_fn_kind_trait_def_id)
+                    .filter_by_name_unhygienic(sym::Upvars)
+                    .next()
+                    .unwrap()
+                    .def_id;
+                let tupled_upvars_ty = Ty::new_projection(
+                    tcx,
+                    upvars_projection_def_id,
+                    [
+                        ty::GenericArg::from(kind_ty),
+                        Ty::from_closure_kind(tcx, goal_kind).into(),
+                        // No captures by ref, so this doesn't matter.
+                        tcx.lifetimes.re_static.into(),
+                        sig.tupled_inputs_ty.into(),
+                        args.tupled_upvars_ty().into(),
+                        args.coroutine_captures_by_ref_ty().into(),
+                    ],
+                );
+                sig.to_coroutine(
+                    tcx,
+                    args.parent_args(),
+                    Ty::from_closure_kind(tcx, goal_kind),
+                    tcx.coroutine_for_closure(def_id),
+                    tupled_upvars_ty,
+                )
+            };
+
+            Ok(Some(args.coroutine_closure_sig().rebind((sig.tupled_inputs_ty, coroutine_ty))))
+        }
 
         ty::Bool
         | ty::Char
