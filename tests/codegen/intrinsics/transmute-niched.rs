@@ -2,11 +2,11 @@
 //@ [OPT] compile-flags: -C opt-level=3 -C no-prepopulate-passes
 //@ [DBG] compile-flags: -C opt-level=0 -C no-prepopulate-passes
 //@ only-64bit (so I don't need to worry about usize)
-
 #![crate_type = "lib"]
+#![feature(generic_nonzero)]
 
 use std::mem::transmute;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 #[repr(u8)]
 pub enum SmallEnum {
@@ -130,7 +130,7 @@ pub unsafe fn check_enum_to_char(x: Minus100ToPlus100) -> char {
 
 // CHECK-LABEL: @check_swap_pair(
 #[no_mangle]
-pub unsafe fn check_swap_pair(x: (char, NonZeroU32)) -> (NonZeroU32, char) {
+pub unsafe fn check_swap_pair(x: (char, NonZero<u32>)) -> (NonZero<u32>, char) {
     // OPT: %0 = icmp ule i32 %x.0, 1114111
     // OPT: call void @llvm.assume(i1 %0)
     // OPT: %1 = icmp uge i32 %x.0, 1

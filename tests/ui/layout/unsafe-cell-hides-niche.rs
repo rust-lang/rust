@@ -1,17 +1,17 @@
 // For rust-lang/rust#68303: the contents of `UnsafeCell<T>` cannot
 // participate in the niche-optimization for enum discriminants. This
-// test checks that an `Option<UnsafeCell<NonZeroU32>>` has the same
+// test checks that an `Option<UnsafeCell<NonZero<u32>>>` has the same
 // size in memory as an `Option<UnsafeCell<u32>>` (namely, 8 bytes).
-
+//
 //@ check-pass
 //@ compile-flags: --crate-type=lib
 //@ only-x86
-
+#![feature(generic_nonzero)]
 #![feature(repr_simd)]
 
 use std::cell::{UnsafeCell, RefCell, Cell};
 use std::mem::size_of;
-use std::num::NonZeroU32 as N32;
+use std::num::NonZero;
 use std::sync::{Mutex, RwLock};
 
 struct Wrapper<T>(#[allow(dead_code)] T);
@@ -54,15 +54,17 @@ macro_rules! check_sizes {
 
 const PTR_SIZE: usize = std::mem::size_of::<*const ()>();
 
-check_sizes!(Wrapper<u32>:     4 => 8);
-check_sizes!(Wrapper<N32>:     4 => 4); // (✓ niche opt)
-check_sizes!(Transparent<u32>: 4 => 8);
-check_sizes!(Transparent<N32>: 4 => 4); // (✓ niche opt)
-check_sizes!(NoNiche<u32>:     4 => 8);
-check_sizes!(NoNiche<N32>:     4 => 8);
+check_sizes!(Wrapper<u32>:              4 => 8);
+check_sizes!(Wrapper<NonZero<u32>>:     4 => 4); // (✓ niche opt)
 
-check_sizes!(UnsafeCell<u32>:  4 => 8);
-check_sizes!(UnsafeCell<N32>:  4 => 8);
+check_sizes!(Transparent<u32>:          4 => 8);
+check_sizes!(Transparent<NonZero<u32>>: 4 => 4); // (✓ niche opt)
+
+check_sizes!(NoNiche<u32>:              4 => 8);
+check_sizes!(NoNiche<NonZero<u32>>:     4 => 8);
+
+check_sizes!(UnsafeCell<u32>:           4 => 8);
+check_sizes!(UnsafeCell<NonZero<u32>>:  4 => 8);
 
 check_sizes!(UnsafeCell<&()>: PTR_SIZE => PTR_SIZE * 2);
 check_sizes!(   RefCell<&()>: PTR_SIZE * 2 => PTR_SIZE * 3);
@@ -79,4 +81,4 @@ check_sizes!(UnsafeCell<&dyn Trait>: PTR_SIZE * 2 => PTR_SIZE * 3);
 #[repr(simd)]
 pub struct Vec4<T>([T; 4]);
 
-check_sizes!(UnsafeCell<Vec4<N32>>: 16 => 32);
+check_sizes!(UnsafeCell<Vec4<NonZero<u32>>>: 16 => 32);

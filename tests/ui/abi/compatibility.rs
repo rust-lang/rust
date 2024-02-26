@@ -64,6 +64,7 @@
   [csky] needs-llvm-components: csky
 */
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
+#![cfg_attr(host, feature(generic_nonzero))]
 #![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 
@@ -74,7 +75,7 @@
 
 #[cfg(host)]
 use std::{
-    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZeroI32, ptr::NonNull, rc::Rc,
+    any::Any, marker::PhantomData, mem::ManuallyDrop, num::NonZero, ptr::NonNull, rc::Rc,
     sync::Arc,
 };
 
@@ -145,7 +146,7 @@ mod prelude {
     #[repr(transparent)]
     #[rustc_layout_scalar_valid_range_start(1)]
     #[rustc_nonnull_optimization_guaranteed]
-    pub struct NonZeroI32(i32);
+    pub struct NonZero<T>(T);
 
     // This just stands in for a non-trivial type.
     pub struct Vec<T> {
@@ -274,7 +275,7 @@ test_abi_compatible!(isize_int, isize, i64);
 test_abi_compatible!(zst_unit, Zst, ());
 #[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
-test_abi_compatible!(nonzero_int, NonZeroI32, i32);
+test_abi_compatible!(nonzero_int, NonZero<i32>, i32);
 
 // `DispatchFromDyn` relies on ABI compatibility.
 // This is interesting since these types are not `repr(transparent)`. So this is not part of our
@@ -381,6 +382,6 @@ test_nonnull!(mut_unsized, &mut [i32]);
 test_nonnull!(fn_, fn());
 test_nonnull!(nonnull, NonNull<i32>);
 test_nonnull!(nonnull_unsized, NonNull<dyn Any>);
-test_nonnull!(non_zero, NonZeroI32);
+test_nonnull!(non_zero, NonZero<i32>);
 
 fn main() {}

@@ -18,8 +18,8 @@ LL |     let out_of_bounds_ptr = &ptr[255];
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:24:1
    |
-LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -29,8 +29,8 @@ LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:26:1
    |
-LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -38,10 +38,10 @@ LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
            }
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-nonnull.rs:34:36
+  --> $DIR/ub-nonnull.rs:34:38
    |
-LL | const UNINIT: NonZeroU8 = unsafe { MaybeUninit { uninit: () }.init };
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-nonnull.rs:43:1

@@ -1,10 +1,10 @@
 //@ compile-flags: -O -C no-prepopulate-passes
-
 #![crate_type = "lib"]
 #![feature(dyn_star)]
+#![feature(generic_nonzero)]
 
 use std::mem::MaybeUninit;
-use std::num::NonZeroU64;
+use std::num::NonZero;
 use std::marker::PhantomPinned;
 use std::ptr::NonNull;
 
@@ -70,13 +70,13 @@ pub fn int(x: u64) -> u64 {
 
 // CHECK: noundef i64 @nonzero_int(i64 noundef %x)
 #[no_mangle]
-pub fn nonzero_int(x: NonZeroU64) -> NonZeroU64 {
+pub fn nonzero_int(x: NonZero<u64>) -> NonZero<u64> {
   x
 }
 
 // CHECK: noundef i64 @option_nonzero_int(i64 noundef %x)
 #[no_mangle]
-pub fn option_nonzero_int(x: Option<NonZeroU64>) -> Option<NonZeroU64> {
+pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
   x
 }
 
