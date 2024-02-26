@@ -852,7 +852,11 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
             .dcx()
             .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
         {
-            diag.cancel();
+            // We used to cancel here for slightly better error messages, but
+            // cancelling stashed diagnostics is no longer allowed because it
+            // causes problems when tracking whether errors have actually
+            // occurred.
+            diag.emit();
         }
         (self.ty, other.ty).error_reported()?;
         // Found different concrete types for the opaque type.
