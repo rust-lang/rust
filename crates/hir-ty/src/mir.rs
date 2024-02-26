@@ -659,66 +659,33 @@ pub enum BorrowKind {
     /// We can also report errors with this kind of borrow differently.
     Shallow,
 
-    /// Data must be immutable but not aliasable. This kind of borrow
-    /// cannot currently be expressed by the user and is used only in
-    /// implicit closure bindings. It is needed when the closure is
-    /// borrowing or mutating a mutable referent, e.g.:
-    /// ```
-    /// let mut z = 3;
-    /// let x: &mut isize = &mut z;
-    /// let y = || *x += 5;
-    /// ```
-    /// If we were to try to translate this closure into a more explicit
-    /// form, we'd encounter an error with the code as written:
-    /// ```compile_fail,E0594
-    /// struct Env<'a> { x: &'a &'a mut isize }
-    /// let mut z = 3;
-    /// let x: &mut isize = &mut z;
-    /// let y = (&mut Env { x: &x }, fn_ptr);  // Closure is pair of env and fn
-    /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
-    /// ```
-    /// This is then illegal because you cannot mutate an `&mut` found
-    /// in an aliasable location. To solve, you'd have to translate with
-    /// an `&mut` borrow:
-    /// ```compile_fail,E0596
-    /// struct Env<'a> { x: &'a mut &'a mut isize }
-    /// let mut z = 3;
-    /// let x: &mut isize = &mut z;
-    /// let y = (&mut Env { x: &mut x }, fn_ptr); // changed from &x to &mut x
-    /// fn fn_ptr(env: &mut Env) { **env.x += 5; }
-    /// ```
-    /// Now the assignment to `**env.x` is legal, but creating a
-    /// mutable pointer to `x` is not because `x` is not mutable. We
-    /// could fix this by declaring `x` as `let mut x`. This is ok in
-    /// user code, if awkward, but extra weird for closures, since the
-    /// borrow is hidden.
-    ///
-    /// So we introduce a "unique imm" borrow -- the referent is
-    /// immutable, but not aliasable. This solves the problem. For
-    /// simplicity, we don't give users the way to express this
-    /// borrow, it's just used when translating closures.
-    Unique,
-
     /// Data is mutable and not aliasable.
-    Mut {
-        /// `true` if this borrow arose from method-call auto-ref
-        /// (i.e., `adjustment::Adjust::Borrow`).
-        allow_two_phase_borrow: bool,
-    },
+    Mut { kind: MutBorrowKind },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+pub enum MutBorrowKind {
+    Default,
+    /// This borrow arose from method-call auto-ref
+    /// (i.e., adjustment::Adjust::Borrow).
+    TwoPhasedBorrow,
+    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
+    /// be expressed by the user and is used only in implicit closure bindings.
+    ClosureCapture,
 }
 
 impl BorrowKind {
     fn from_hir(m: hir_def::type_ref::Mutability) -> Self {
         match m {
             hir_def::type_ref::Mutability::Shared => BorrowKind::Shared,
-            hir_def::type_ref::Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
+            hir_def::type_ref::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         }
     }
 
     fn from_chalk(m: Mutability) -> Self {
         match m {
             Mutability::Not => BorrowKind::Shared,
-            Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
+            Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         }
     }
 }
