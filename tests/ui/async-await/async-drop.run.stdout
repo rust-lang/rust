@@ -1,3 +1,5 @@
 <Foo as AsyncDrop>::Dropper::poll: 0
 <Foo as AsyncDrop>::Dropper::poll: 1
 <Foo as AsyncDrop>::Dropper::poll: 2
+<Foo as AsyncDrop>::Dropper::poll: 3
+<Foo as AsyncDrop>::Dropper::poll: 4

@@ -2324,16 +2324,38 @@ impl<'tcx> Ty<'tcx> {
         let existential_lifetime = args.region_at(1);
         debug_assert_eq!(args.len(), 2);
 
-        match self_ty.kind() {
+        match *self_ty.kind() {
             ty::Array(elem_ty, _) | ty::Slice(elem_ty) => tcx
                 .type_of(tcx.require_lang_item(hir::LangItem::SliceAsyncDestructor, None))
-                .instantiate(tcx, tcx.mk_args(&[existential_lifetime.into(), (*elem_ty).into()])),
+                .instantiate(tcx, tcx.mk_args(&[existential_lifetime.into(), elem_ty.into()])),
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::AsyncDestruct, None),
                 );
                 Ty::new_projection(tcx, assoc_items[0], args)
+            }
+            ty::Tuple(tys) => {
+                let deferred_async_drop =
+                    tcx.type_of(tcx.require_lang_item(hir::LangItem::DeferredAsyncDrop, None));
+                let future_chain =
+                    tcx.type_of(tcx.require_lang_item(hir::LangItem::FutureChain, None));
+
+                let mut dtor = tcx
+                    .type_of(tcx.require_lang_item(hir::LangItem::FutureReadyUnit, None))
+                    .instantiate_identity();
+                for ty in tys.iter().rev() {
+                    dtor = future_chain.instantiate(
+                        tcx,
+                        &[
+                            deferred_async_drop
+                                .instantiate(tcx, &[existential_lifetime.into(), ty.into()])
+                                .into(),
+                            dtor.into(),
+                        ],
+                    );
+                }
+                dtor
             }
 
             ty::Bool
@@ -2352,7 +2374,6 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
             | ty::Never
-            | ty::Tuple(_)
             | ty::Error(_)
             | ty::Infer(IntVar(_) | FloatVar(_))
             | ty::Coroutine(..) => {

@@ -1051,6 +1051,8 @@ fn build_async_destructor_ctor_shim<'tcx>(
             GlueStrategy::Slice { is_array: matches!(kind, ty::Array(..)), elem_ty }
         }
 
+        ty::Tuple(_) => todo!("impl AsyncDestruct for (Tn, ...) {{ ... }}"),
+
         // TODO: Reject bad ones
         ty::Foreign(_)
         | ty::Adt(_, _)
@@ -1059,7 +1061,6 @@ fn build_async_destructor_ctor_shim<'tcx>(
         | ty::CoroutineClosure(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(_, _)
-        | ty::Tuple(_)
         | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Bound(_, _)

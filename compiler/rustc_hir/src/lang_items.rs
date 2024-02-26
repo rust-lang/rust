@@ -167,6 +167,8 @@ language_item_table! {
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(2);
     SliceAsyncDestructor,    sym::slice_async_destructor, slice_async_destructor_ty, Target::Struct,       GenericRequirement::Exact(2);
     SliceAsyncDestructorCtor, sym::slice_async_destructor_ctor, slice_async_destructor_fn, Target::Fn,     GenericRequirement::Exact(2);
+    DeferredAsyncDrop,       sym::deferred_async_drop, deferred_async_drop_type,   Target::Enum,           GenericRequirement::Exact(2);
+    DeferredAsyncDropCtor,   sym::deferred_async_drop_ctor, deferred_async_drop_fn, Target::Fn,            GenericRequirement::Exact(2);
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
@@ -229,10 +231,6 @@ language_item_table! {
 
     FutureChain,             sym::future_chain,        future_chain_type,          Target::Struct,         GenericRequirement::Exact(2);
     FutureChainCtor,         sym::future_chain_ctor,   future_chain_ctor,          Target::Fn,             GenericRequirement::Exact(2);
-
-    FutureEither,            sym::future_either,       future_either_type,         Target::Enum,           GenericRequirement::Exact(2);
-    FutureEitherLeft,        sym::future_either_left,  future_either_left_fn,      Target::Fn,             GenericRequirement::Exact(2);
-    FutureEitherRight,       sym::future_either_right, future_either_right_fn,     Target::Fn,             GenericRequirement::Exact(2);
 
     FutureReadyUnit,         sym::future_ready_unit,   future_ready_unit_type,     Target::Struct,         GenericRequirement::Exact(0);
     FutureReadyUnitCtor,     sym::future_ready_unit_ctor, future_ready_unit_ctor,  Target::Fn,             GenericRequirement::Exact(0);

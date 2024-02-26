@@ -14,8 +14,6 @@ use crate::task::Context;
 
 #[cfg(not(bootstrap))]
 mod async_drop;
-#[cfg(not(bootstrap))]
-pub mod combinators;
 mod future;
 mod into_future;
 mod join;

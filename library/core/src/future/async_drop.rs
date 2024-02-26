@@ -1,4 +1,5 @@
 #![unstable(feature = "async_drop", issue = "none")]
+#![allow(missing_docs)] // TODO: remove
 
 use crate::future::Future;
 use crate::mem::MaybeUninit;
@@ -84,6 +85,79 @@ impl<'a, T: 'a> Future for SliceAsyncDestuctor<'a, T> {
             }
         }
     }
+}
+
+#[unstable(feature = "future_combinators", issue = "none")]
+#[lang = "deferred_async_drop"]
+enum DeferredAsyncDrop<'a, T: 'a> {
+    Init { ptr: ptr::NonNull<T> },
+    Running { dtor: <T as AsyncDestruct<'a>>::AsyncDestructor },
+}
+
+#[unstable(feature = "future_combinators", issue = "none")]
+impl<'a, T: 'a> Future for DeferredAsyncDrop<'a, T> {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        unsafe {
+            let this = self.get_unchecked_mut();
+            if let DeferredAsyncDrop::Init { ptr } = *this {
+                *this = DeferredAsyncDrop::Running { dtor: async_drop_in_place(ptr.as_ptr()) };
+            }
+
+            let DeferredAsyncDrop::Running { dtor } = this else { unreachable!() };
+            return Pin::new_unchecked(dtor).poll(cx);
+        }
+    }
+}
+
+#[unstable(feature = "future_combinators", issue = "none")]
+#[lang = "deferred_async_drop_ctor"]
+const unsafe fn deferred_async_drop<'a, T: 'a>(item: *mut T) -> DeferredAsyncDrop<'a, T> {
+    unsafe { DeferredAsyncDrop::Init { ptr: ptr::NonNull::new_unchecked(item) } }
+}
+
+#[unstable(feature = "future_combinators", issue = "none")]
+#[lang = "future_chain"]
+struct Chain<F1, F2> {
+    inner: ChainDiscr,
+    first: F1,
+    second: F2,
+}
+
+enum ChainDiscr {
+    First,
+    Second,
+}
+
+#[unstable(feature = "future_combinators", issue = "none")]
+impl<F1, F2> Future for Chain<F1, F2>
+where
+    F1: Future<Output = ()>,
+    F2: Future<Output = ()>,
+{
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        let this = unsafe { self.get_unchecked_mut() };
+        loop {
+            match this.inner {
+                ChainDiscr::First => {
+                    ready!(unsafe { Pin::new_unchecked(&mut this.first) }.poll(cx));
+                    this.inner = ChainDiscr::Second;
+                }
+                ChainDiscr::Second => {
+                    return unsafe { Pin::new_unchecked(&mut this.second) }.poll(cx);
+                }
+            }
+        }
+    }
+}
+
+#[unstable(feature = "future_combinators", issue = "none")]
+#[lang = "future_chain_ctor"]
+const fn chain<F1, F2>(first: F1, second: F2) -> Chain<F1, F2> {
+    Chain { inner: ChainDiscr::First, first, second }
 }
 
 #[unstable(feature = "future_combinators", issue = "none")]

@@ -19,6 +19,7 @@ fn main() {
         async_drop(Bar(0)).await;
         async_drop(Foo(0)).await;
         async_drop([Foo(1), Foo(2)]).await;
+        async_drop((Foo(3), Foo(4))).await;
     });
 
     let res = fut.poll(&mut cx);
