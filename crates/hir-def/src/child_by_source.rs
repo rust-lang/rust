@@ -189,10 +189,11 @@ impl ChildBySource for DefWithBodyId {
             VariantId::EnumVariantId(v).child_by_source_to(db, res, file_id)
         }
 
-        for (_, def_map) in body.blocks(db) {
+        for (block, def_map) in body.blocks(db) {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
             def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
+            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_node(db.upcast()), block);
         }
     }
 }
