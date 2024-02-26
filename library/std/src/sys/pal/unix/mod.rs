@@ -197,7 +197,24 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 UNIX_SIGPIPE_ATTR_SPECIFIED.store(true, crate::sync::atomic::Ordering::Relaxed);
             }
             if let Some(handler) = handler {
-                rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
+                if handler == libc::SIG_IGN {
+                    // Implements https://github.com/rust-lang/rust/issues/62569#issuecomment-1961586025
+                    use crate::mem;
+                    use crate::ptr;
+                    let current = {
+                        let mut current: libc::sigaction = mem::zeroed();
+                        libc::sigaction(libc::SIGPIPE, ptr::null(), &mut current);
+                        current.sa_sigaction
+                    };
+                    if current != libc::SIG_IGN {
+                        let mut new: libc::sigaction = mem::zeroed();
+                        new.sa_sigaction = _rustc_sigaction_noop as libc::sighandler_t;
+                        new.sa_flags = libc::SA_RESTART;
+                        libc::sigaction(libc::SIGPIPE, &new, ptr::null_mut());
+                    }
+                } else {
+                    rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
+                }
                 #[cfg(target_os = "hurd")]
                 {
                     rtassert!(signal(libc::SIGLOST, handler) != libc::SIG_ERR);
@@ -226,6 +243,14 @@ static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
 pub(crate) fn unix_sigpipe_attr_specified() -> bool {
     UNIX_SIGPIPE_ATTR_SPECIFIED.load(crate::sync::atomic::Ordering::Relaxed)
 }
+
+#[cfg(not(any(
+    target_os = "espidf",
+    target_os = "emscripten",
+    target_os = "fuchsia",
+    target_os = "horizon",
+)))]
+extern "C" fn _rustc_sigaction_noop(_: libc::c_int) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
