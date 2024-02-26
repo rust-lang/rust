@@ -48,20 +48,7 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             },
         };
         writeln!(self.f, "{}: {:?}", goal_text, eval.uncanonicalized_goal)?;
-        self.nested(|this| this.format_canonical_goal_evaluation(&eval.evaluation))?;
-        if eval.returned_goals.len() > 0 {
-            writeln!(self.f, "NESTED GOALS ADDED TO CALLER: [")?;
-            self.nested(|this| {
-                for goal in eval.returned_goals.iter() {
-                    writeln!(this.f, "ADDED GOAL: {goal:?},")?;
-                }
-                Ok(())
-            })?;
-
-            writeln!(self.f, "]")
-        } else {
-            Ok(())
-        }
+        self.nested(|this| this.format_canonical_goal_evaluation(&eval.evaluation))
     }
 
     pub(super) fn format_canonical_goal_evaluation(

@@ -58,8 +58,6 @@ pub struct GoalEvaluation<'tcx> {
     pub uncanonicalized_goal: Goal<'tcx, ty::Predicate<'tcx>>,
     pub kind: GoalEvaluationKind<'tcx>,
     pub evaluation: CanonicalGoalEvaluation<'tcx>,
-    /// The nested goals from instantiating the query response.
-    pub returned_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
 #[derive(Eq, PartialEq)]
