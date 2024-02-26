@@ -1,9 +1,10 @@
 //@compile-flags: -Zmiri-tree-borrows
 
 // These tests fail Stacked Borrows, but pass Tree Borrows.
-// A modified version of each is also available that fails Tree Borrows.
-// They all have in common that in SB a mutable reborrow is enough to produce
+
+// The first four have in common that in SB a mutable reborrow is enough to produce
 // write access errors, but in TB an actual write is needed.
+// A modified version of each is also available that fails Tree Borrows.
 
 mod fnentry_invalidation {
     // Copied directly from fail/stacked_borrows/fnentry_invalidation.rs
@@ -73,9 +74,22 @@ mod static_memory_modification {
     }
 }
 
+// This one is about direct writes to local variables not being in conflict
+// with interior mutable reborrows.
+#[allow(unused_assignments)] // spurious warning
+fn interior_mut_reborrow() {
+    use std::cell::UnsafeCell;
+
+    let mut c = UnsafeCell::new(42);
+    let ptr = c.get(); // first create interior mutable ptr
+    c = UnsafeCell::new(13); // then write to parent
+    assert_eq!(unsafe { ptr.read() }, 13); // then read through previous ptr
+}
+
 fn main() {
     fnentry_invalidation::main();
     pass_invalid_mut::main();
     return_invalid_mut::main();
     static_memory_modification::main();
+    interior_mut_reborrow();
 }
