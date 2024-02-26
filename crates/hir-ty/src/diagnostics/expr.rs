@@ -160,7 +160,7 @@ impl ExprValidator {
                 });
             }
 
-            let receiver_ty = self.infer[*receiver].strip_references().clone();
+            let receiver_ty = self.infer[*receiver].clone();
             checker.prev_receiver_ty = Some(receiver_ty);
         }
     }
@@ -443,7 +443,7 @@ impl FilterMapNextChecker {
         if *function_id == self.next_function_id? {
             if let Some(prev_filter_map_expr_id) = self.prev_filter_map_expr_id {
                 let is_dyn_trait =
-                    self.prev_receiver_ty.clone().map_or(false, |it| it.dyn_trait().is_some());
+                    self.prev_receiver_ty.as_ref().map_or(false, |it| it.strip_references().dyn_trait().is_some());
                 if *receiver_expr_id == prev_filter_map_expr_id && !is_dyn_trait {
                     return Some(());
                 }
