@@ -6,7 +6,7 @@ use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter};
 use rustc_errors::translation::Translate;
 use rustc_errors::{
-    ColorConfig, DiagCtxt, Diagnostic, DiagnosticBuilder, Level as DiagnosticLevel,
+    ColorConfig, DiagCtxt, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Level as DiagnosticLevel,
 };
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
@@ -228,6 +228,10 @@ impl ParseSess {
 
     pub(crate) fn ignore_file(&self, path: &FileName) -> bool {
         self.ignore_path_set.as_ref().is_match(path)
+    }
+
+    pub(crate) fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
+        self.parse_sess.dcx.emit_stashed_diagnostics()
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
