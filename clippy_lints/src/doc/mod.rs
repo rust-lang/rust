@@ -17,7 +17,7 @@ use rustc_hir::{AnonConst, Expr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self};
+use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
     add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range, span_of_fragments,
     DocFragment,
@@ -343,7 +343,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Detects documentation that is empty.
     /// ### Why is this bad?
-    /// It is unlikely that there is any reason to have empty documentation for an item
+    /// Empty docs clutter code without adding value, reducing readability and maintainability.
     /// ### Example
     /// ```no_run
     /// ///
