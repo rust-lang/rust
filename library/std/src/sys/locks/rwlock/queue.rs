@@ -200,12 +200,12 @@ impl Node {
     }
 
     /// Prepare this node for waiting.
-    fn prepare(&mut self) {
+    fn prepare(&self) {
         // Fall back to creating an unnamed `Thread` handle to allow locking in
         // TLS destructors.
         self.thread
             .get_or_init(|| thread_info::current_thread().unwrap_or_else(|| Thread::new(None)));
-        self.completed = AtomicBool::new(false);
+        unsafe { self.completed.as_ptr().write(false) }; // can't have a race here
     }
 
     /// Wait until this node is marked as completed.
@@ -316,9 +316,13 @@ impl RwLock {
     #[cold]
     fn lock_contended(&self, write: bool) {
         let update = if write { write_lock } else { read_lock };
-        let mut node = Node::new(write);
+        let node = Node::new(write);
         let mut state = self.state.load(Relaxed);
         let mut count = 0;
+        // Aliasing rules require us to not mix direct accesses to `node` and accesses through a
+        // reference. So let's make sure we only use the reference. Fixes
+        // <https://github.com/rust-lang/rust/issues/121626>.
+        let node = &node;
         loop {
             if let Some(next) = update(state) {
                 // The lock is available, try locking it.
@@ -343,9 +347,10 @@ impl RwLock {
                 // pointer to the next node in the queue. Otherwise set it to
                 // the lock count if the state is read-locked or to zero if it
                 // is write-locked.
-                node.next.0 = AtomicPtr::new(state.mask(MASK).cast());
-                node.prev = AtomicLink::new(None);
-                let mut next = ptr::from_ref(&node)
+                // These writes can't race.
+                unsafe { node.next.0.as_ptr().write(state.mask(MASK).cast()) };
+                unsafe { node.prev.0.as_ptr().write(ptr::null_mut()) };
+                let mut next = ptr::from_ref(node)
                     .map_addr(|addr| addr | QUEUED | (state.addr() & LOCKED))
                     as State;
 
@@ -354,7 +359,7 @@ impl RwLock {
                     // the node itself to ensure there is a current `tail` field in
                     // the queue (invariants 1 and 2). This needs to use `set` to
                     // avoid invalidating the new pointer.
-                    node.tail.set(Some(NonNull::from(&node)));
+                    node.tail.set(Some(NonNull::from(node)));
                 } else {
                     // Otherwise, the tail of the queue is not known.
                     node.tail.set(None);
