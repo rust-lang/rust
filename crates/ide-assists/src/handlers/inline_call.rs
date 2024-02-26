@@ -107,6 +107,9 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 let call_infos: Vec<_> = name_refs
                     .into_iter()
                     .filter_map(CallInfo::from_name_ref)
+                    // FIXME: do not handle callsites in macros' parameters, because
+                    // directly inlining into macros may cause errors.
+                    .filter(|call_info| !ctx.sema.hir_file_for(call_info.node.syntax()).is_macro())
                     .map(|call_info| {
                         let mut_node = builder.make_syntax_mut(call_info.node.syntax().clone());
                         (call_info, mut_node)
