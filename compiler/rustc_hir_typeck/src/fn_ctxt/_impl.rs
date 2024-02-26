@@ -879,17 +879,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                // emit or cancel the diagnostic for bare traits
+                // Emit the diagnostic for bare traits. (We used to cancel for slightly better
+                // error messages, but cancelling stashed diagnostics is no longer allowed because
+                // it causes problems when tracking whether errors have actually occurred.)
                 if span.edition().at_least_rust_2021()
                     && let Some(diag) =
                         self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
-                    if trait_missing_method {
-                        // cancel the diag for bare traits when meeting `MyTrait::missing_method`
-                        diag.cancel();
-                    } else {
-                        diag.emit();
-                    }
+                    diag.emit();
                 }
 
                 if item_name.name != kw::Empty {
