@@ -188,6 +188,84 @@ fn foo(bar: Bar) {
     }
 
     #[test]
+    fn fill_fields_struct_generated_by_macro() {
+        check_assist(
+            fill_record_pattern_fields,
+            r#"
+macro_rules! position {
+    ($t: ty) => {
+        struct Pos {x: $t, y: $t}
+    };
+}
+
+position!(usize);
+
+fn macro_call(pos: Pos) {
+    let Pos { ..$0 } = pos;
+}
+"#,
+            r#"
+macro_rules! position {
+    ($t: ty) => {
+        struct Pos {x: $t, y: $t}
+    };
+}
+
+position!(usize);
+
+fn macro_call(pos: Pos) {
+    let Pos { x, y  } = pos;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fill_fields_enum_generated_by_macro() {
+        check_assist(
+            fill_record_pattern_fields,
+            r#"
+macro_rules! enum_gen {
+    ($t: ty) => {
+        enum Foo {
+            A($t),
+            B{x: $t, y: $t},
+        }
+    };
+}
+
+enum_gen!(usize);
+
+fn macro_call(foo: Foo) {
+    match foo {
+        Foo::A(_) => false,
+        Foo::B{ ..$0 } => true,
+    }
+}
+"#,
+            r#"
+macro_rules! enum_gen {
+    ($t: ty) => {
+        enum Foo {
+            A($t),
+            B{x: $t, y: $t},
+        }
+    };
+}
+
+enum_gen!(usize);
+
+fn macro_call(foo: Foo) {
+    match foo {
+        Foo::A(_) => false,
+        Foo::B{ x, y  } => true,
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn not_applicable_when_not_in_ellipsis() {
         check_assist_not_applicable(
             fill_record_pattern_fields,
