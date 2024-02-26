@@ -864,7 +864,7 @@ impl String {
         }
     }
 
-    /// Decomposes a `String` into its raw components.
+    /// Decomposes a `String` into its raw components: `(pointer, length, capacity)`.
     ///
     /// Returns the raw pointer to the underlying data, the length of
     /// the string (in bytes), and the allocated capacity of the data
