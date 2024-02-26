@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `async Fn` trait, but this closure only implements `async FnMut`
-  --> $DIR/wrong-fn-kind.rs:11:20
+  --> $DIR/wrong-fn-kind.rs:9:20
    |
 LL |       needs_async_fn(async || {
    |       -------------- -^^^^^^^
@@ -14,11 +14,32 @@ LL | |     });
    | |_____- the requirement to implement `async Fn` derives from here
    |
 note: required by a bound in `needs_async_fn`
-  --> $DIR/wrong-fn-kind.rs:8:31
+  --> $DIR/wrong-fn-kind.rs:6:31
    |
 LL |     fn needs_async_fn(_: impl async Fn()) {}
    |                               ^^^^^^^^^^ required by this bound in `needs_async_fn`
 
-error: aborting due to 1 previous error
+error[E0525]: expected a closure that implements the `async Fn` trait, but this closure only implements `async FnOnce`
+  --> $DIR/wrong-fn-kind.rs:15:20
+   |
+LL |       needs_async_fn(move || async move {
+   |       -------------- -^^^^^^
+   |       |              |
+   |  _____|______________this closure implements `async FnOnce`, not `async Fn`
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |         println!("{x}");
+   | |                    - closure is `async FnOnce` because it moves the variable `x` out of its environment
+LL | |     });
+   | |_____- the requirement to implement `async Fn` derives from here
+   |
+note: required by a bound in `needs_async_fn`
+  --> $DIR/wrong-fn-kind.rs:6:31
+   |
+LL |     fn needs_async_fn(_: impl async Fn()) {}
+   |                               ^^^^^^^^^^ required by this bound in `needs_async_fn`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0525`.

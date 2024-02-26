@@ -934,7 +934,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 (trait_ref, Ty::from_closure_kind(tcx, ty::ClosureKind::Fn))
             }
             ty::Closure(_, args) => {
-                let sig = args.as_closure().sig();
+                let args = args.as_closure();
+                let sig = args.sig();
                 let trait_ref = sig.map_bound(|sig| {
                     ty::TraitRef::new(
                         self.tcx(),
@@ -950,7 +951,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         ty::TraitRef::new(tcx, future_trait_def_id, [sig.output()])
                     }),
                 ));
-                (trait_ref, Ty::from_closure_kind(tcx, ty::ClosureKind::Fn))
+                (trait_ref, args.kind_ty())
             }
             _ => bug!("expected callable type for AsyncFn candidate"),
         };
