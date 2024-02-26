@@ -19,5 +19,6 @@ fn main() {
     nested_macro_rules::inner_macro!(print_bang, print_attr);
 
     nested_macro_rules::outer_macro!(SecondStruct, SecondAttrStruct);
+    //~^ WARN non-local `macro_rules!` definition
     inner_macro!(print_bang, print_attr);
 }

@@ -321,6 +321,21 @@ pub unsafe fn NtWriteFile(
 }
 }
 
+// Use raw-dylib to import ProcessPrng as we can't rely on there being an import library.
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "win7"))] {
+    #[cfg(target_arch = "x86")]
+    #[link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")]
+    extern "system" {
+        pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
+    }
+    #[cfg(not(target_arch = "x86"))]
+    #[link(name = "bcryptprimitives", kind = "raw-dylib")]
+    extern "system" {
+        pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
+    }
+}}
+
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
 compat_fn_with_fallback! {

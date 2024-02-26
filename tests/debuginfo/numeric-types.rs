@@ -237,25 +237,25 @@
 
 // lldb-command:print nz_usize
 // lldb-check:[...]$11 = 122 { __0 = 122 }
-
+#![feature(generic_nonzero)]
 
 use std::num::*;
 use std::sync::atomic::*;
 
 fn main() {
-    let nz_i8 = NonZeroI8::new(11).unwrap();
-    let nz_i16 = NonZeroI16::new(22).unwrap();
-    let nz_i32 = NonZeroI32::new(33).unwrap();
-    let nz_i64 = NonZeroI64::new(44).unwrap();
-    let nz_i128 = NonZeroI128::new(55).unwrap();
-    let nz_isize = NonZeroIsize::new(66).unwrap();
+    let nz_i8 = NonZero::new(11i8).unwrap();
+    let nz_i16 = NonZero::new(22i16).unwrap();
+    let nz_i32 = NonZero::new(33i32).unwrap();
+    let nz_i64 = NonZero::new(44i64).unwrap();
+    let nz_i128 = NonZero::new(55i128).unwrap();
+    let nz_isize = NonZero::new(66isize).unwrap();
 
-    let nz_u8 = NonZeroU8::new(77).unwrap();
-    let nz_u16 = NonZeroU16::new(88).unwrap();
-    let nz_u32 = NonZeroU32::new(99).unwrap();
-    let nz_u64 = NonZeroU64::new(100).unwrap();
-    let nz_u128 = NonZeroU128::new(111).unwrap();
-    let nz_usize = NonZeroUsize::new(122).unwrap();
+    let nz_u8 = NonZero::new(77u8).unwrap();
+    let nz_u16 = NonZero::new(88u16).unwrap();
+    let nz_u32 = NonZero::new(99u32).unwrap();
+    let nz_u64 = NonZero::new(100u64).unwrap();
+    let nz_u128 = NonZero::new(111u128).unwrap();
+    let nz_usize = NonZero::new(122usize).unwrap();
 
     let w_i8 = Wrapping(10i8);
     let w_i16 = Wrapping(20i16);

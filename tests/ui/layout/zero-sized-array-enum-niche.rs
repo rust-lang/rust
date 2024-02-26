@@ -1,6 +1,7 @@
 //@ normalize-stderr-test "pref: Align\([1-8] bytes\)" -> "pref: $$PREF_ALIGN"
-#![feature(rustc_attrs)]
 #![crate_type = "lib"]
+#![feature(generic_nonzero)]
+#![feature(rustc_attrs)]
 
 // Various tests around the behavior of zero-sized arrays and
 // enum niches, especially that they have coherent size and alignment.
@@ -34,7 +35,7 @@ enum MultipleAlignments { //~ ERROR: layout_of
 struct Packed<T>(T);
 
 #[rustc_layout(debug)]
-type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZeroU16>>; //~ ERROR: layout_of
+type NicheLosesToTagged = Result<[u32; 0], Packed<std::num::NonZero<u16>>>; //~ ERROR: layout_of
 // Should get tag_encoding: Direct, size == align == 4.
 
 #[repr(u16)]

@@ -1,6 +1,6 @@
 //@ compile-flags: -Znext-solver
 //~^ ERROR cannot normalize `<T as Default>::Id: '_`
-
+#![feature(generic_nonzero)]
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
 
@@ -23,8 +23,9 @@ fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
     *t.intu()
 }
 
-use std::num::NonZeroU8;
+use std::num::NonZero;
+
 fn main() {
-    let s = transmute::<u8, Option<NonZeroU8>>(0); //~ ERROR cannot satisfy
+    let s = transmute::<u8, Option<NonZero<u8>>>(0); //~ ERROR cannot satisfy
     assert_eq!(s, None);
 }

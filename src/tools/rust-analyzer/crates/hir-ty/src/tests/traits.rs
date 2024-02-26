@@ -4553,3 +4553,58 @@ fn foo() {
 "#,
     );
 }
+
+#[test]
+fn auto_trait_bound() {
+    check_types(
+        r#"
+//- minicore: sized
+auto trait Send {}
+impl<T> !Send for *const T {}
+
+struct Yes;
+trait IsSend { const IS_SEND: Yes; }
+impl<T: Send> IsSend for T { const IS_SEND: Yes = Yes; }
+
+struct Struct<T>(T);
+enum Enum<T> { A, B(T) }
+union Union<T> { t: T }
+
+#[lang = "phantom_data"]
+struct PhantomData<T: ?Sized>;
+
+fn f<T: Send, U>() {
+    T::IS_SEND;
+  //^^^^^^^^^^Yes
+    U::IS_SEND;
+  //^^^^^^^^^^{unknown}
+    <*const T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^{unknown}
+    Struct::<T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^Yes
+    Struct::<U>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^Yes
+    Struct::<*const T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^Yes
+    Enum::<T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^Yes
+    Enum::<U>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^Yes
+    Enum::<*const T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^^^^^^Yes
+    Union::<T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^Yes
+    Union::<U>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^Yes
+    Union::<*const T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^Yes
+    PhantomData::<T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^^^^^^Yes
+    PhantomData::<U>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
+    PhantomData::<*const T>::IS_SEND;
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
+}
+"#,
+    );
+}

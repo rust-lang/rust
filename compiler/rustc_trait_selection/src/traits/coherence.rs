@@ -601,9 +601,24 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
     trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, sym::fundamental)
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum IsFirstInputType {
+    No,
+    Yes,
+}
+
+impl From<bool> for IsFirstInputType {
+    fn from(b: bool) -> IsFirstInputType {
+        match b {
+            false => IsFirstInputType::No,
+            true => IsFirstInputType::Yes,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum OrphanCheckErr<'tcx> {
-    NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
+    NonLocalInputType(Vec<(Ty<'tcx>, IsFirstInputType)>),
     UncoveredTy(Ty<'tcx>, Option<Ty<'tcx>>),
 }
 
@@ -754,7 +769,7 @@ struct OrphanChecker<'tcx, F> {
     /// Ignore orphan check failures and exclusively search for the first
     /// local type.
     search_first_local_ty: bool,
-    non_local_tys: Vec<(Ty<'tcx>, bool)>,
+    non_local_tys: Vec<(Ty<'tcx>, IsFirstInputType)>,
 }
 
 impl<'tcx, F, E> OrphanChecker<'tcx, F>
@@ -772,7 +787,7 @@ where
     }
 
     fn found_non_local_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<OrphanCheckEarlyExit<'tcx, E>> {
-        self.non_local_tys.push((t, self.in_self_ty));
+        self.non_local_tys.push((t, self.in_self_ty.into()));
         ControlFlow::Continue(())
     }
 

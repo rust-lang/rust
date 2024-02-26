@@ -1,6 +1,7 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![allow(non_local_definitions)]
 #![feature(unsize, coerce_unsized)]
 
 #[repr(packed)]

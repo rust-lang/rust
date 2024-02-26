@@ -81,7 +81,7 @@ pub enum Variants {
 // @hasraw - '<code>Some</code>: 4 bytes'
 pub enum WithNiche {
     None,
-    Some(std::num::NonZeroU32),
+    Some(std::num::NonZero<u32>),
 }
 
 // @hasraw type_layout/enum.Uninhabited.html 'Size: '

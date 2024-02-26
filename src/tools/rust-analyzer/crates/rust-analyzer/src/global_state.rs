@@ -301,19 +301,12 @@ impl GlobalState {
                 if let Some(path) = vfs_path.as_path() {
                     let path = path.to_path_buf();
                     if reload::should_refresh_for_change(&path, file.kind()) {
-                        workspace_structure_change = Some((
-                            path.clone(),
-                            false,
-                            AsRef::<std::path::Path>::as_ref(&path).ends_with("build.rs"),
-                        ));
+                        workspace_structure_change = Some((path.clone(), false));
                     }
                     if file.is_created_or_deleted() {
                         has_structure_changes = true;
-                        workspace_structure_change = Some((
-                            path,
-                            self.crate_graph_file_dependencies.contains(vfs_path),
-                            false,
-                        ));
+                        workspace_structure_change =
+                            Some((path, self.crate_graph_file_dependencies.contains(vfs_path)));
                     } else if path.extension() == Some("rs".as_ref()) {
                         modified_rust_files.push(file.file_id);
                     }
@@ -365,16 +358,11 @@ impl GlobalState {
             // FIXME: ideally we should only trigger a workspace fetch for non-library changes
             // but something's going wrong with the source root business when we add a new local
             // crate see https://github.com/rust-lang/rust-analyzer/issues/13029
-            if let Some((path, force_crate_graph_reload, build_scripts_touched)) =
-                workspace_structure_change
-            {
+            if let Some((path, force_crate_graph_reload)) = workspace_structure_change {
                 self.fetch_workspaces_queue.request_op(
                     format!("workspace vfs file change: {path}"),
                     force_crate_graph_reload,
                 );
-                if build_scripts_touched {
-                    self.fetch_build_data_queue.request_op(format!("build.rs changed: {path}"), ());
-                }
             }
         }
 

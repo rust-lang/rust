@@ -396,6 +396,7 @@ pub trait AsMut<T: ?Sized> {
 /// For example, take this code:
 ///
 /// ```
+/// # #![cfg_attr(not(bootstrap), allow(non_local_definitions))]
 /// struct Wrapper<T>(Vec<T>);
 /// impl<T> From<Wrapper<T>> for Vec<T> {
 ///     fn from(w: Wrapper<T>) -> Vec<T> {

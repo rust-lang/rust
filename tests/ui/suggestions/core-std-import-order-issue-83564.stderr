@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: use of undeclared type `NonZeroU32`
-  --> $DIR/core-std-import-order-issue-83564.rs:8:14
+error[E0433]: failed to resolve: use of undeclared type `NonZero`
+  --> $DIR/core-std-import-order-issue-83564.rs:9:14
    |
-LL |     let _x = NonZeroU32::new(5).unwrap();
-   |              ^^^^^^^^^^ use of undeclared type `NonZeroU32`
+LL |     let _x = NonZero::new(5u32).unwrap();
+   |              ^^^^^^^ use of undeclared type `NonZero`
    |
 help: consider importing one of these items
    |
-LL + use core::num::NonZeroU32;
+LL + use core::num::NonZero;
    |
-LL + use std::num::NonZeroU32;
+LL + use std::num::NonZero;
    |
 
 error: aborting due to 1 previous error

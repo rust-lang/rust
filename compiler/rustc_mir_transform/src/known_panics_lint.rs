@@ -585,20 +585,32 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 val.into()
             }
 
-            Aggregate(ref kind, ref fields) => Value::Aggregate {
-                fields: fields
-                    .iter()
-                    .map(|field| self.eval_operand(field).map_or(Value::Uninit, Value::Immediate))
-                    .collect(),
-                variant: match **kind {
-                    AggregateKind::Adt(_, variant, _, _, _) => variant,
-                    AggregateKind::Array(_)
-                    | AggregateKind::Tuple
-                    | AggregateKind::Closure(_, _)
-                    | AggregateKind::Coroutine(_, _)
-                    | AggregateKind::CoroutineClosure(_, _) => VariantIdx::new(0),
-                },
-            },
+            Aggregate(ref kind, ref fields) => {
+                // Do not const pop union fields as they can be
+                // made to produce values that don't match their
+                // underlying layout's type (see ICE #121534).
+                // If the last element of the `Adt` tuple
+                // is `Some` it indicates the ADT is a union
+                if let AggregateKind::Adt(_, _, _, _, Some(_)) = **kind {
+                    return None;
+                };
+                Value::Aggregate {
+                    fields: fields
+                        .iter()
+                        .map(|field| {
+                            self.eval_operand(field).map_or(Value::Uninit, Value::Immediate)
+                        })
+                        .collect(),
+                    variant: match **kind {
+                        AggregateKind::Adt(_, variant, _, _, _) => variant,
+                        AggregateKind::Array(_)
+                        | AggregateKind::Tuple
+                        | AggregateKind::Closure(_, _)
+                        | AggregateKind::Coroutine(_, _)
+                        | AggregateKind::CoroutineClosure(_, _) => VariantIdx::new(0),
+                    },
+                }
+            }
 
             Repeat(ref op, n) => {
                 trace!(?op, ?n);

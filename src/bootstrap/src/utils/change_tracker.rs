@@ -131,4 +131,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The \"codegen\"/\"llvm\" profile has been removed and replaced with \"compiler\", use it instead for the same behavior.",
     },
+    ChangeInfo {
+        change_id: 118724,
+        severity: ChangeSeverity::Info,
+        summary: "`x install` now skips providing tarball sources (under 'build/dist' path) to speed up the installation process.",
+    },
 ];

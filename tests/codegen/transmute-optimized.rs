@@ -1,6 +1,6 @@
 //@ compile-flags: -O -Z merge-functions=disabled
-
 #![crate_type = "lib"]
+#![feature(generic_nonzero)]
 
 // This tests that LLVM can optimize based on the niches in the source or
 // destination types for transmutes.
@@ -33,7 +33,7 @@ pub fn non_null_is_null(x: std::ptr::NonNull<i32>) -> bool {
 
 // CHECK-LABEL: i1 @non_zero_is_null(
 #[no_mangle]
-pub fn non_zero_is_null(x: std::num::NonZeroUsize) -> bool {
+pub fn non_zero_is_null(x: std::num::NonZero<usize>) -> bool {
     // CHECK: ret i1 false
     let p: *const i32 = unsafe { std::mem::transmute(x) };
     p.is_null()
@@ -72,7 +72,7 @@ pub fn normal_div(a: u32, b: u32) -> u32 {
 
 // CHECK-LABEL: i32 @div_transmute_nonzero(i32
 #[no_mangle]
-pub fn div_transmute_nonzero(a: u32, b: std::num::NonZeroI32) -> u32 {
+pub fn div_transmute_nonzero(a: u32, b: std::num::NonZero<i32>) -> u32 {
     // CHECK-NOT: call core::panicking::panic
     // CHECK: %[[R:.+]] = udiv i32 %a, %b
     // CHECK-NEXT: ret i32 %[[R]]

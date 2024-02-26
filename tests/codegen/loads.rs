@@ -1,9 +1,9 @@
 //@ compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0
-
 #![crate_type = "lib"]
+#![feature(generic_nonzero)]
 
 use std::mem::MaybeUninit;
-use std::num::NonZeroU16;
+use std::num::NonZero;
 
 pub struct Bytes {
     a: u8,
@@ -99,14 +99,14 @@ pub fn load_int(x: &u16) -> u16 {
 
 // CHECK-LABEL: @load_nonzero_int
 #[no_mangle]
-pub fn load_nonzero_int(x: &NonZeroU16) -> NonZeroU16 {
+pub fn load_nonzero_int(x: &NonZero<u16>) -> NonZero<u16> {
     // CHECK: load i16, ptr %x, align 2, !range ![[NONZEROU16_RANGE:[0-9]+]], !noundef !{{[0-9]+}}
     *x
 }
 
 // CHECK-LABEL: @load_option_nonzero_int
 #[no_mangle]
-pub fn load_option_nonzero_int(x: &Option<NonZeroU16>) -> Option<NonZeroU16> {
+pub fn load_option_nonzero_int(x: &Option<NonZero<u16>>) -> Option<NonZero<u16>> {
     // CHECK: load i16, ptr %x, align 2, !noundef ![[NOUNDEF]]{{$}}
     *x
 }

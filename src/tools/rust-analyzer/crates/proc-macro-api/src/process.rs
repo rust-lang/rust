@@ -45,7 +45,7 @@ impl ProcMacroProcessSrv {
             })
         };
         let mut srv = create_srv(true)?;
-        tracing::info!("sending version check");
+        tracing::info!("sending proc-macro server version check");
         match srv.version_check() {
             Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
                 io::ErrorKind::Other,
@@ -55,14 +55,15 @@ impl ProcMacroProcessSrv {
                 ),
             )),
             Ok(v) => {
-                tracing::info!("got version {v}");
+                tracing::info!("Proc-macro server version: {v}");
                 srv = create_srv(false)?;
                 srv.version = v;
-                if srv.version > RUST_ANALYZER_SPAN_SUPPORT {
+                if srv.version >= RUST_ANALYZER_SPAN_SUPPORT {
                     if let Ok(mode) = srv.enable_rust_analyzer_spans() {
                         srv.mode = mode;
                     }
                 }
+                tracing::info!("Proc-macro server span mode: {:?}", srv.mode);
                 Ok(srv)
             }
             Err(e) => {

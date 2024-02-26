@@ -49,6 +49,7 @@ fn test_iterator_step_by_nth() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(non_local_definitions))]
 fn test_iterator_step_by_nth_overflow() {
     #[cfg(target_pointer_width = "16")]
     type Bigger = u32;

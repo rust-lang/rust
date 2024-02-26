@@ -134,6 +134,7 @@ impl GlobalState {
         let token = lsp_types::ProgressToken::String(
             cancel_token.unwrap_or_else(|| format!("rustAnalyzer/{title}")),
         );
+        tracing::debug!(?token, ?state, "report_progress {message:?}");
         let work_done_progress = match state {
             Progress::Begin => {
                 self.send_request::<lsp_types::request::WorkDoneProgressCreate>(

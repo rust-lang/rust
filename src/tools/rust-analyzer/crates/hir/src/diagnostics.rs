@@ -64,6 +64,7 @@ diagnostics![
     MissingUnsafe,
     MovedOutOfRef,
     NeedMut,
+    NonExhaustiveLet,
     NoSuchField,
     PrivateAssocItem,
     PrivateField,
@@ -86,6 +87,7 @@ diagnostics![
     UnresolvedMacroCall,
     UnresolvedMethodCall,
     UnresolvedModule,
+    UnresolvedIdent,
     UnresolvedProcMacro,
     UnusedMut,
     UnusedVariable,
@@ -242,6 +244,11 @@ pub struct UnresolvedAssocItem {
 }
 
 #[derive(Debug)]
+pub struct UnresolvedIdent {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+}
+
+#[derive(Debug)]
 pub struct PrivateField {
     pub expr: InFile<AstPtr<ast::Expr>>,
     pub field: Field,
@@ -277,6 +284,12 @@ pub struct MismatchedArgCount {
 #[derive(Debug)]
 pub struct MissingMatchArms {
     pub scrutinee_expr: InFile<AstPtr<ast::Expr>>,
+    pub uncovered_patterns: String,
+}
+
+#[derive(Debug)]
+pub struct NonExhaustiveLet {
+    pub pat: InFile<AstPtr<ast::Pat>>,
     pub uncovered_patterns: String,
 }
 
@@ -456,6 +469,22 @@ impl AnyDiagnostic {
                     Err(SyntheticSyntax) => (),
                 }
             }
+            BodyValidationDiagnostic::NonExhaustiveLet { pat, uncovered_patterns } => {
+                match source_map.pat_syntax(pat) {
+                    Ok(source_ptr) => {
+                        if let Some(ast_pat) = source_ptr.value.cast::<ast::Pat>() {
+                            return Some(
+                                NonExhaustiveLet {
+                                    pat: InFile::new(source_ptr.file_id, ast_pat),
+                                    uncovered_patterns,
+                                }
+                                .into(),
+                            );
+                        }
+                    }
+                    Err(SyntheticSyntax) => {}
+                }
+            }
             BodyValidationDiagnostic::RemoveTrailingReturn { return_expr } => {
                 if let Ok(source_ptr) = source_map.expr_syntax(return_expr) {
                     // Filters out desugared return expressions (e.g. desugared try operators).
@@ -564,6 +593,10 @@ impl AnyDiagnostic {
                     ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
                 };
                 UnresolvedAssocItem { expr_or_pat }.into()
+            }
+            &InferenceDiagnostic::UnresolvedIdent { expr } => {
+                let expr = expr_syntax(expr);
+                UnresolvedIdent { expr }.into()
             }
             &InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break, bad_value_break } => {
                 let expr = expr_syntax(expr);

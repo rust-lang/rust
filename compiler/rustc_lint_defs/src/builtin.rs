@@ -32,7 +32,6 @@ declare_lint_pass! {
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
         CONST_ITEM_MUTATION,
-        CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
         DEAD_CODE,
         DEPRECATED,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
@@ -2339,57 +2338,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #120362 <https://github.com/rust-lang/rust/issues/120362>",
-    };
-}
-
-declare_lint! {
-    /// The `const_patterns_without_partial_eq` lint detects constants that are used in patterns,
-    /// whose type does not implement `PartialEq`.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(const_patterns_without_partial_eq)]
-    ///
-    /// trait EnumSetType {
-    ///    type Repr;
-    /// }
-    ///
-    /// enum Enum8 { }
-    /// impl EnumSetType for Enum8 {
-    ///     type Repr = u8;
-    /// }
-    ///
-    /// #[derive(PartialEq, Eq)]
-    /// struct EnumSet<T: EnumSetType> {
-    ///     __enumset_underlying: T::Repr,
-    /// }
-    ///
-    /// const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
-    ///
-    /// fn main() {
-    ///     match CONST_SET {
-    ///         CONST_SET => { /* ok */ }
-    ///         _ => panic!("match fell through?"),
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Previous versions of Rust accepted constants in patterns, even if those constants' types
-    /// did not have `PartialEq` implemented. The compiler falls back to comparing the value
-    /// field-by-field. In the future we'd like to ensure that pattern matching always
-    /// follows `PartialEq` semantics, so that trait bound will become a requirement for
-    /// matching on constants.
-    pub CONST_PATTERNS_WITHOUT_PARTIAL_EQ,
-    Warn,
-    "constant in pattern does not implement `PartialEq`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #116122 <https://github.com/rust-lang/rust/issues/116122>",
     };
 }
 

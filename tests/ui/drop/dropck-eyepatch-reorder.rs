@@ -1,5 +1,6 @@
 //@ run-pass
 #![feature(dropck_eyepatch)]
+#![allow(non_local_definitions)]
 
 // The point of this test is to test uses of `#[may_dangle]` attribute
 // where the formal declaration order (in the impl generics) does not
