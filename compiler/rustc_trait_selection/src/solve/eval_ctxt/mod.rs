@@ -904,7 +904,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             &ObligationCause::dummy(),
             param_env,
             hidden_ty,
-            true,
             &mut obligations,
         )?;
         self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));

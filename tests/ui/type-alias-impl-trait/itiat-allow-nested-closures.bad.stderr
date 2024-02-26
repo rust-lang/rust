@@ -8,6 +8,9 @@ LL |         let _: i32 = closure();
    |                ---   ^^^^^^^^^ expected `i32`, found opaque type
    |                |
    |                expected due to this
+   |
+   = note:     expected type `i32`
+           found opaque type `<() as Foo>::Assoc`
 
 error[E0308]: mismatched types
   --> $DIR/itiat-allow-nested-closures.rs:22:9

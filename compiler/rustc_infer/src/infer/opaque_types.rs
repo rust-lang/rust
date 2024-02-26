@@ -102,7 +102,7 @@ impl<'tcx> InferCtxt<'tcx> {
             return Ok(InferOk { value: (), obligations: vec![] });
         }
         let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
-        let process = |a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected| match *a.kind() {
+        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
                 match self.defining_use_anchor {
@@ -169,14 +169,13 @@ impl<'tcx> InferCtxt<'tcx> {
                     cause.clone(),
                     param_env,
                     b,
-                    a_is_expected,
                 ))
             }
             _ => None,
         };
-        if let Some(res) = process(a, b, true) {
+        if let Some(res) = process(a, b) {
             res
-        } else if let Some(res) = process(b, a, false) {
+        } else if let Some(res) = process(b, a) {
             res
         } else {
             let (a, b) = self.resolve_vars_if_possible((a, b));
@@ -520,7 +519,6 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        a_is_expected: bool,
     ) -> InferResult<'tcx, ()> {
         let mut obligations = Vec::new();
 
@@ -529,7 +527,6 @@ impl<'tcx> InferCtxt<'tcx> {
             &cause,
             param_env,
             hidden_ty,
-            a_is_expected,
             &mut obligations,
         )?;
 
@@ -558,7 +555,6 @@ impl<'tcx> InferCtxt<'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
-        a_is_expected: bool,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Result<(), TypeError<'tcx>> {
         // Ideally, we'd get the span where *this specific `ty` came
@@ -586,7 +582,7 @@ impl<'tcx> InferCtxt<'tcx> {
             if let Some(prev) = prev {
                 obligations.extend(
                     self.at(cause, param_env)
-                        .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
+                        .eq(DefineOpaqueTypes::Yes, prev, hidden_ty)?
                         .obligations,
                 );
             }
