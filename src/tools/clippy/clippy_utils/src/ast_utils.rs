@@ -143,7 +143,8 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
     match (&l.kind, &r.kind) {
         (Paren(l), _) => eq_expr(l, r),
         (_, Paren(r)) => eq_expr(l, r),
-        (Err, Err) => true,
+        (Err(_), Err(_)) => true,
+        (Dummy, _) | (_, Dummy) => unreachable!("comparing `ExprKind::Dummy`"),
         (Try(l), Try(r)) | (Await(l, _), Await(r, _)) => eq_expr(l, r),
         (Array(l), Array(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),

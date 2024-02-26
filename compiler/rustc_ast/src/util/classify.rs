@@ -89,7 +89,8 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<&ast::Expr> {
             | Paren(_)
             | Try(_)
             | Yeet(None)
-            | Err => break None,
+            | Err(_)
+            | Dummy => break None,
         }
     }
 }

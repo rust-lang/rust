@@ -532,7 +532,7 @@ impl MacResult for MacEager {
 /// after hitting errors.
 #[derive(Copy, Clone)]
 pub struct DummyResult {
-    is_error: bool,
+    guar: Option<ErrorGuaranteed>,
     span: Span,
 }
 
@@ -541,20 +541,24 @@ impl DummyResult {
     ///
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
-    pub fn any(span: Span) -> Box<dyn MacResult + 'static> {
-        Box::new(DummyResult { is_error: true, span })
+    pub fn any(span: Span, guar: ErrorGuaranteed) -> Box<dyn MacResult + 'static> {
+        Box::new(DummyResult { guar: Some(guar), span })
     }
 
     /// Same as `any`, but must be a valid fragment, not error.
     pub fn any_valid(span: Span) -> Box<dyn MacResult + 'static> {
-        Box::new(DummyResult { is_error: false, span })
+        Box::new(DummyResult { guar: None, span })
     }
 
     /// A plain dummy expression.
-    pub fn raw_expr(sp: Span, is_error: bool) -> P<ast::Expr> {
+    pub fn raw_expr(sp: Span, guar: Option<ErrorGuaranteed>) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(ThinVec::new()) },
+            kind: if let Some(guar) = guar {
+                ast::ExprKind::Err(guar)
+            } else {
+                ast::ExprKind::Tup(ThinVec::new())
+            },
             span: sp,
             attrs: ast::AttrVec::new(),
             tokens: None,
@@ -582,7 +586,7 @@ impl DummyResult {
 
 impl MacResult for DummyResult {
     fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
-        Some(DummyResult::raw_expr(self.span, self.is_error))
+        Some(DummyResult::raw_expr(self.span, self.guar))
     }
 
     fn make_pat(self: Box<DummyResult>) -> Option<P<ast::Pat>> {
@@ -608,7 +612,7 @@ impl MacResult for DummyResult {
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
         Some(smallvec![ast::Stmt {
             id: ast::DUMMY_NODE_ID,
-            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
+            kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.guar)),
             span: self.span,
         }])
     }
@@ -884,17 +888,19 @@ impl SyntaxExtension {
         }
     }
 
+    /// A dummy bang macro `foo!()`.
     pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
         fn expander<'cx>(
-            _: &'cx mut ExtCtxt<'_>,
+            cx: &'cx mut ExtCtxt<'_>,
             span: Span,
             _: TokenStream,
         ) -> Box<dyn MacResult + 'cx> {
-            DummyResult::any(span)
+            DummyResult::any(span, cx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"))
         }
         SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
     }
 
+    /// A dummy derive macro `#[derive(Foo)]`.
     pub fn dummy_derive(edition: Edition) -> SyntaxExtension {
         fn expander(
             _: &mut ExtCtxt<'_>,
@@ -1066,7 +1072,7 @@ pub struct ExtCtxt<'a> {
     pub sess: &'a Session,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub num_standard_library_imports: usize,
-    pub reduced_recursion_limit: Option<Limit>,
+    pub reduced_recursion_limit: Option<(Limit, ErrorGuaranteed)>,
     pub root_path: PathBuf,
     pub resolver: &'a mut dyn ResolverExpand,
     pub current_expansion: ExpansionData,
@@ -1244,7 +1250,7 @@ pub fn resolve_path(
 /// Extracts a string literal from the macro expanded version of `expr`,
 /// returning a diagnostic error of `err_msg` if `expr` is not a string literal.
 /// The returned bool indicates whether an applicable suggestion has already been
-/// added to the diagnostic to avoid emitting multiple suggestions. `Err(None)`
+/// added to the diagnostic to avoid emitting multiple suggestions. `Err(Err(ErrorGuaranteed))`
 /// indicates that an ast error was encountered.
 // FIXME(Nilstrieb) Make this function setup translatable
 #[allow(rustc::untranslatable_diagnostic)]
@@ -1252,7 +1258,10 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
     err_msg: &'static str,
-) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a>, bool)>> {
+) -> Result<
+    (Symbol, ast::StrStyle, Span),
+    Result<(DiagnosticBuilder<'a>, bool /* has_suggestions */), ErrorGuaranteed>,
+> {
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
@@ -1269,35 +1278,33 @@ pub fn expr_to_spanned_string<'a>(
                     "",
                     Applicability::MaybeIncorrect,
                 );
-                Some((err, true))
+                Ok((err, true))
             }
-            Ok(ast::LitKind::Err(_)) => None,
-            Err(err) => {
-                report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
-                None
-            }
-            _ => Some((cx.dcx().struct_span_err(expr.span, err_msg), false)),
+            Ok(ast::LitKind::Err(guar)) => Err(guar),
+            Err(err) => Err(report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span)),
+            _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
         },
-        ast::ExprKind::Err => None,
-        _ => Some((cx.dcx().struct_span_err(expr.span, err_msg), false)),
+        ast::ExprKind::Err(guar) => Err(guar),
+        ast::ExprKind::Dummy => {
+            cx.dcx().span_bug(expr.span, "tried to get a string literal from `ExprKind::Dummy`")
+        }
+        _ => Ok((cx.dcx().struct_span_err(expr.span, err_msg), false)),
     })
 }
 
 /// Extracts a string literal from the macro expanded version of `expr`,
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
-/// compilation on error, merely emits a non-fatal error and returns `None`.
+/// compilation on error, merely emits a non-fatal error and returns `Err`.
 pub fn expr_to_string(
     cx: &mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
     err_msg: &'static str,
-) -> Option<(Symbol, ast::StrStyle)> {
+) -> Result<(Symbol, ast::StrStyle), ErrorGuaranteed> {
     expr_to_spanned_string(cx, expr, err_msg)
-        .map_err(|err| {
-            err.map(|(err, _)| {
-                err.emit();
-            })
+        .map_err(|err| match err {
+            Ok((err, _)) => err.emit(),
+            Err(guar) => guar,
         })
-        .ok()
         .map(|(symbol, style, _)| (symbol, style))
 }
 
@@ -1311,32 +1318,30 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str
     }
 }
 
-/// Parse an expression. On error, emit it, advancing to `Eof`, and return `None`.
-pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
-    match p.parse_expr() {
-        Ok(e) => return Some(e),
-        Err(err) => {
-            err.emit();
-        }
-    }
+/// Parse an expression. On error, emit it, advancing to `Eof`, and return `Err`.
+pub fn parse_expr(p: &mut parser::Parser<'_>) -> Result<P<ast::Expr>, ErrorGuaranteed> {
+    let guar = match p.parse_expr() {
+        Ok(expr) => return Ok(expr),
+        Err(err) => err.emit(),
+    };
     while p.token != token::Eof {
         p.bump();
     }
-    None
+    Err(guar)
 }
 
 /// Interpreting `tts` as a comma-separated sequence of expressions,
-/// expect exactly one string literal, or emit an error and return `None`.
+/// expect exactly one string literal, or emit an error and return `Err`.
 pub fn get_single_str_from_tts(
     cx: &mut ExtCtxt<'_>,
     span: Span,
     tts: TokenStream,
     name: &str,
-) -> Option<Symbol> {
+) -> Result<Symbol, ErrorGuaranteed> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
-        return None;
+        let guar = cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
+        return Err(guar);
     }
     let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
@@ -1348,8 +1353,11 @@ pub fn get_single_str_from_tts(
 }
 
 /// Extracts comma-separated expressions from `tts`.
-/// On error, emit it, and return `None`.
-pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<P<ast::Expr>>> {
+/// On error, emit it, and return `Err`.
+pub fn get_exprs_from_tts(
+    cx: &mut ExtCtxt<'_>,
+    tts: TokenStream,
+) -> Result<Vec<P<ast::Expr>>, ErrorGuaranteed> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
@@ -1364,11 +1372,11 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<
             continue;
         }
         if p.token != token::Eof {
-            cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
-            return None;
+            let guar = cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
+            return Err(guar);
         }
     }
-    Some(es)
+    Ok(es)
 }
 
 pub fn parse_macro_name_and_helper_attrs(

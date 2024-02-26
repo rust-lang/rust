@@ -6,7 +6,7 @@ use rustc_ast::{attr, walk_list, EnumDef, VariantData};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -83,16 +83,19 @@ fn default_enum_substructure(
     trait_span: Span,
     enum_def: &EnumDef,
 ) -> BlockOrExpr {
-    let expr = if let Ok(default_variant) = extract_default_variant(cx, enum_def, trait_span)
-        && let Ok(_) = validate_default_attribute(cx, default_variant)
-    {
-        // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
-        cx.expr_path(cx.path(
-            default_variant.span,
-            vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
-        ))
-    } else {
-        DummyResult::raw_expr(trait_span, true)
+    let expr = match try {
+        let default_variant = extract_default_variant(cx, enum_def, trait_span)?;
+        validate_default_attribute(cx, default_variant)?;
+        default_variant
+    } {
+        Ok(default_variant) => {
+            // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
+            cx.expr_path(cx.path(
+                default_variant.span,
+                vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+            ))
+        }
+        Err(guar) => DummyResult::raw_expr(trait_span, Some(guar)),
     };
     BlockOrExpr::new_expr(expr)
 }
@@ -101,7 +104,7 @@ fn extract_default_variant<'a>(
     cx: &mut ExtCtxt<'_>,
     enum_def: &'a EnumDef,
     trait_span: Span,
-) -> Result<&'a rustc_ast::Variant, ()> {
+) -> Result<&'a rustc_ast::Variant, ErrorGuaranteed> {
     let default_variants: SmallVec<[_; 1]> = enum_def
         .variants
         .iter()
@@ -120,9 +123,9 @@ fn extract_default_variant<'a>(
             let suggs = possible_defaults
                 .map(|v| errors::NoDefaultVariantSugg { span: v.span, ident: v.ident })
                 .collect();
-            cx.dcx().emit_err(errors::NoDefaultVariant { span: trait_span, suggs });
+            let guar = cx.dcx().emit_err(errors::NoDefaultVariant { span: trait_span, suggs });
 
-            return Err(());
+            return Err(guar);
         }
         [first, rest @ ..] => {
             let suggs = default_variants
@@ -140,28 +143,28 @@ fn extract_default_variant<'a>(
                         .then_some(errors::MultipleDefaultsSugg { spans, ident: variant.ident })
                 })
                 .collect();
-            cx.dcx().emit_err(errors::MultipleDefaults {
+            let guar = cx.dcx().emit_err(errors::MultipleDefaults {
                 span: trait_span,
                 first: first.span,
                 additional: rest.iter().map(|v| v.span).collect(),
                 suggs,
             });
-            return Err(());
+            return Err(guar);
         }
     };
 
     if !matches!(variant.data, VariantData::Unit(..)) {
-        cx.dcx().emit_err(errors::NonUnitDefault { span: variant.ident.span });
-        return Err(());
+        let guar = cx.dcx().emit_err(errors::NonUnitDefault { span: variant.ident.span });
+        return Err(guar);
     }
 
     if let Some(non_exhaustive_attr) = attr::find_by_name(&variant.attrs, sym::non_exhaustive) {
-        cx.dcx().emit_err(errors::NonExhaustiveDefault {
+        let guar = cx.dcx().emit_err(errors::NonExhaustiveDefault {
             span: variant.ident.span,
             non_exhaustive: non_exhaustive_attr.span,
         });
 
-        return Err(());
+        return Err(guar);
     }
 
     Ok(variant)
@@ -170,7 +173,7 @@ fn extract_default_variant<'a>(
 fn validate_default_attribute(
     cx: &mut ExtCtxt<'_>,
     default_variant: &rustc_ast::Variant,
-) -> Result<(), ()> {
+) -> Result<(), ErrorGuaranteed> {
     let attrs: SmallVec<[_; 1]> =
         attr::filter_by_name(&default_variant.attrs, kw::Default).collect();
 
@@ -183,7 +186,7 @@ fn validate_default_attribute(
             let sugg = errors::MultipleDefaultAttrsSugg {
                 spans: rest.iter().map(|attr| attr.span).collect(),
             };
-            cx.dcx().emit_err(errors::MultipleDefaultAttrs {
+            let guar = cx.dcx().emit_err(errors::MultipleDefaultAttrs {
                 span: default_variant.ident.span,
                 first: first.span,
                 first_rest: rest[0].span,
@@ -192,13 +195,13 @@ fn validate_default_attribute(
                 sugg,
             });
 
-            return Err(());
+            return Err(guar);
         }
     };
     if !attr.is_word() {
-        cx.dcx().emit_err(errors::DefaultHasArg { span: attr.span });
+        let guar = cx.dcx().emit_err(errors::DefaultHasArg { span: attr.span });
 
-        return Err(());
+        return Err(guar);
     }
     Ok(())
 }

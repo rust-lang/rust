@@ -11,7 +11,7 @@ use rustc_errors::{Applicability, DiagCtxt, DiagnosticBuilder, DiagnosticMessage
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 use std::borrow::Cow;
 
 use super::macro_rules::{parser_from_cx, NoopTracker};
@@ -47,7 +47,7 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
     else {
-        return DummyResult::any(sp);
+        return DummyResult::any(sp, cx.dcx().span_delayed_bug(sp, "failed to match a macro"));
     };
 
     let span = token.span.substitute_dummy(sp);
@@ -106,9 +106,9 @@ pub(super) fn failed_to_match_macro<'cx>(
             }
         }
     }
-    err.emit();
+    let guar = err.emit();
     cx.trace_macros_diag();
-    DummyResult::any(sp)
+    DummyResult::any(sp, guar)
 }
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
@@ -180,10 +180,10 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                self.cx.dcx().span_err(span, msg.clone());
-                self.result = Some(DummyResult::any(span));
+                let guar = self.cx.dcx().span_err(span, msg.clone());
+                self.result = Some(DummyResult::any(span, guar));
             }
-            ErrorReported(_) => self.result = Some(DummyResult::any(self.root_span)),
+            ErrorReported(guar) => self.result = Some(DummyResult::any(self.root_span, *guar)),
         }
     }
 
@@ -224,7 +224,7 @@ pub(super) fn emit_frag_parse_err(
     site_span: Span,
     arm_span: Span,
     kind: AstFragmentKind,
-) {
+) -> ErrorGuaranteed {
     // FIXME(davidtwco): avoid depending on the error message text
     if parser.token == token::Eof
         && let DiagnosticMessage::Str(message) = &e.messages[0].0
@@ -282,7 +282,7 @@ pub(super) fn emit_frag_parse_err(
         },
         _ => annotate_err_with_kind(&mut e, kind, site_span),
     };
-    e.emit();
+    e.emit()
 }
 
 pub(crate) fn annotate_err_with_kind(

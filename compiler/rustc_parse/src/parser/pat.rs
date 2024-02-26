@@ -388,7 +388,7 @@ impl<'a> Parser<'a> {
         // Parse `?`, `.f`, `(arg0, arg1, ...)` or `[expr]` until they've all been eaten.
         if let Ok(expr) = snapshot
             .parse_expr_dot_or_call_with(
-                self.mk_expr_err(pat_span), // equivalent to transforming the parsed pattern into an `Expr`
+                self.mk_expr(pat_span, ExprKind::Dummy), // equivalent to transforming the parsed pattern into an `Expr`
                 pat_span,
                 AttrVec::new(),
             )
@@ -566,7 +566,7 @@ impl<'a> Parser<'a> {
             match self.parse_literal_maybe_minus() {
                 Ok(begin) => {
                     let begin = match self.maybe_recover_trailing_expr(begin.span, false) {
-                        Some(_) => self.mk_expr_err(begin.span),
+                        Some(guar) => self.mk_expr_err(begin.span, guar),
                         None => begin,
                     };
 
@@ -719,7 +719,7 @@ impl<'a> Parser<'a> {
                     self.parse_pat_range_begin_with(begin.clone(), form)
                 }
                 // recover ranges with parentheses around the `(start)..`
-                PatKind::Err(_)
+                PatKind::Err(guar)
                     if self.may_recover()
                         && let Some(form) = self.parse_range_end() =>
                 {
@@ -731,7 +731,7 @@ impl<'a> Parser<'a> {
                         },
                     });
 
-                    self.parse_pat_range_begin_with(self.mk_expr(pat.span, ExprKind::Err), form)
+                    self.parse_pat_range_begin_with(self.mk_expr_err(pat.span, *guar), form)
                 }
 
                 // (pat) with optional parentheses
@@ -886,7 +886,7 @@ impl<'a> Parser<'a> {
         Ok(PatKind::Range(Some(begin), end, re))
     }
 
-    pub(super) fn inclusive_range_with_incorrect_end(&mut self) {
+    pub(super) fn inclusive_range_with_incorrect_end(&mut self) -> ErrorGuaranteed {
         let tok = &self.token;
         let span = self.prev_token.span;
         // If the user typed "..==" instead of "..=", we want to give them
@@ -905,15 +905,13 @@ impl<'a> Parser<'a> {
                     let _ = self.parse_pat_range_end().map_err(|e| e.cancel());
                 }
 
-                self.dcx().emit_err(InclusiveRangeExtraEquals { span: span_with_eq });
+                self.dcx().emit_err(InclusiveRangeExtraEquals { span: span_with_eq })
             }
             token::Gt if no_space => {
                 let after_pat = span.with_hi(span.hi() - rustc_span::BytePos(1)).shrink_to_hi();
-                self.dcx().emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat });
+                self.dcx().emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat })
             }
-            _ => {
-                self.dcx().emit_err(InclusiveRangeNoEnd { span });
-            }
+            _ => self.dcx().emit_err(InclusiveRangeNoEnd { span }),
         }
     }
 
@@ -987,7 +985,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(match recovered {
-            Some(_) => self.mk_expr_err(bound.span),
+            Some(guar) => self.mk_expr_err(bound.span, guar),
             None => bound,
         })
     }

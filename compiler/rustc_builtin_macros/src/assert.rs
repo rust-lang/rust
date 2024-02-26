@@ -23,8 +23,8 @@ pub fn expand_assert<'cx>(
     let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
         Err(err) => {
-            err.emit();
-            return DummyResult::any(span);
+            let guar = err.emit();
+            return DummyResult::any(span, guar);
         }
     };
 
