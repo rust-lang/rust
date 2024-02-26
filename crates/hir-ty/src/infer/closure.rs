@@ -177,15 +177,7 @@ impl InferenceContext<'_> {
     }
 
     fn fn_trait_kind_from_trait_id(&self, trait_id: hir_def::TraitId) -> Option<FnTrait> {
-        utils::fn_traits(self.db.upcast(), self.owner.module(self.db.upcast()).krate())
-            .enumerate()
-            .find_map(|(i, t)| (t == trait_id).then_some(i))
-            .map(|i| match i {
-                0 => FnTrait::Fn,
-                1 => FnTrait::FnMut,
-                2 => FnTrait::FnOnce,
-                _ => unreachable!(),
-            })
+        FnTrait::from_lang_item(self.db.lang_attr(trait_id.into())?)
     }
 }
 
