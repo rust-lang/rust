@@ -1,7 +1,7 @@
 //@ build-fail
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
     fn simd_masked_store<M, P, T>(mask: M, pointer: P, values: T) -> ();
 }

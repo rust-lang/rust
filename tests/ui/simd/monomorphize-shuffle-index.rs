@@ -1,10 +1,10 @@
 //@[old]run-pass
 //@[generic_with_fn]run-pass
 //@ revisions: old generic generic_with_fn
-#![feature(repr_simd, platform_intrinsics, adt_const_params, generic_const_exprs)]
+#![feature(repr_simd, intrinsics, adt_const_params, generic_const_exprs)]
 #![allow(incomplete_features)]
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     #[cfg(old)]
     fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
     #[cfg(any(generic, generic_with_fn))]

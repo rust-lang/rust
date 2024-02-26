@@ -1,8 +1,6 @@
-#![feature(platform_intrinsics, repr_simd)]
+#![feature(core_intrinsics, repr_simd)]
 
-extern "platform-intrinsic" {
-    pub(crate) fn simd_reduce_any<T>(x: T) -> bool;
-}
+use std::intrinsics::simd::simd_reduce_any;
 
 #[repr(simd)]
 #[allow(non_camel_case_types)]

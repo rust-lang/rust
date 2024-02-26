@@ -1,4 +1,4 @@
-#![feature(float_gamma, portable_simd, core_intrinsics, platform_intrinsics)]
+#![feature(float_gamma, portable_simd, core_intrinsics)]
 use std::collections::HashSet;
 use std::fmt;
 use std::hash::Hash;
@@ -524,12 +524,6 @@ fn test_casts() {
 fn test_simd() {
     use std::intrinsics::simd::*;
     use std::simd::*;
-
-    extern "platform-intrinsic" {
-        fn simd_fsqrt<T>(x: T) -> T;
-        fn simd_ceil<T>(x: T) -> T;
-        fn simd_fma<T>(x: T, y: T, z: T) -> T;
-    }
 
     let nan = F32::nan(Neg, Quiet, 0).as_f32();
     check_all_outcomes(

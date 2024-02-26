@@ -1,8 +1,6 @@
-#![feature(platform_intrinsics, repr_simd)]
+#![feature(core_intrinsics, repr_simd)]
 
-extern "platform-intrinsic" {
-    pub(crate) fn simd_shr<T>(x: T, y: T) -> T;
-}
+use std::intrinsics::simd::simd_shr;
 
 #[repr(simd)]
 #[allow(non_camel_case_types)]

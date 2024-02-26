@@ -54,7 +54,6 @@ pub enum Abi {
     },
     RustIntrinsic,
     RustCall,
-    PlatformIntrinsic,
     Unadjusted,
     /// For things unlikely to be called, where reducing register pressure in
     /// `extern "Rust"` callers is worth paying extra cost in the callee.
@@ -129,7 +128,6 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::System { unwind: true }, name: "system-unwind" },
     AbiData { abi: Abi::RustIntrinsic, name: "rust-intrinsic" },
     AbiData { abi: Abi::RustCall, name: "rust-call" },
-    AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
     AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
     AbiData { abi: Abi::RustCold, name: "rust-cold" },
     AbiData { abi: Abi::RiscvInterruptM, name: "riscv-interrupt-m" },
@@ -198,10 +196,6 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
         "rust-intrinsic" => Err(AbiDisabled::Unstable {
             feature: sym::intrinsics,
             explain: "intrinsics are subject to change",
-        }),
-        "platform-intrinsic" => Err(AbiDisabled::Unstable {
-            feature: sym::platform_intrinsics,
-            explain: "platform intrinsics are experimental and possibly buggy",
         }),
         "vectorcall" => Err(AbiDisabled::Unstable {
             feature: sym::abi_vectorcall,
@@ -299,11 +293,10 @@ impl Abi {
             System { unwind: true } => 28,
             RustIntrinsic => 29,
             RustCall => 30,
-            PlatformIntrinsic => 31,
-            Unadjusted => 32,
-            RustCold => 33,
-            RiscvInterruptM => 34,
-            RiscvInterruptS => 35,
+            Unadjusted => 31,
+            RustCold => 32,
+            RiscvInterruptM => 33,
+            RiscvInterruptS => 34,
         };
         debug_assert!(
             AbiDatas

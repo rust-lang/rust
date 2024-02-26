@@ -3,7 +3,7 @@
 
 //@ pretty-expanded FIXME #23616
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -13,7 +13,7 @@ struct S([i32; 4]);
 #[derive(Copy, Clone)]
 struct T<const N: usize>([i32; N]);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
     fn simd_extract<T, E>(x: T, idx: u32) -> E;
 }

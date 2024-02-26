@@ -1,6 +1,6 @@
 //@ build-fail
 //@ ignore-emscripten
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, intrinsics)]
 #![allow(non_camel_case_types)]
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -14,7 +14,7 @@ pub struct x4<T>(pub T, pub T, pub T, pub T);
 #[derive(Copy, Clone)]
 pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
-extern "platform-intrinsic" {
+extern "rust-intrinsic" {
     fn simd_saturating_add<T>(x: T, y: T) -> T;
     fn simd_saturating_sub<T>(x: T, y: T) -> T;
 }
