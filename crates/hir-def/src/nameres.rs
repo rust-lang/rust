@@ -469,6 +469,12 @@ impl DefMap {
         CrateRootModuleId { krate: self.krate }
     }
 
+    /// This is the same as [`Self::crate_root`] for crate def maps, but for block def maps, it
+    /// returns the root block module.
+    pub fn root_module_id(&self) -> ModuleId {
+        self.module_id(Self::ROOT)
+    }
+
     pub(crate) fn resolve_path(
         &self,
         db: &dyn DefDatabase,

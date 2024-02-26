@@ -570,7 +570,7 @@ impl CrateGraph {
                 .arena
                 .iter_mut()
                 .take(m)
-                .find_map(|(id, data)| merge((id, data), (topo, &crate_data)).then_some(id));
+                .find_map(|(id, data)| merge((id, data), (topo, crate_data)).then_some(id));
 
             let new_id =
                 if let Some(res) = res { res } else { self.arena.alloc(crate_data.clone()) };

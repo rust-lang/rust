@@ -993,10 +993,6 @@ pub struct Struct;
 }
 
 #[test]
-#[cfg_attr(
-    not(all(unix, target_pointer_width = "64")),
-    ignore = "depends on `DefaultHasher` outputs"
-)]
 fn test_rainbow_highlighting() {
     check_highlighting(
         r#"
@@ -1015,6 +1011,35 @@ fn bar() {
 "#,
         expect_file!["./test_data/highlight_rainbow.html"],
         true,
+    );
+}
+
+#[test]
+fn test_block_mod_items() {
+    check_highlighting(
+        r#"
+macro_rules! foo {
+    ($foo:ident) => {
+        mod y {
+            struct $foo;
+        }
+    };
+}
+fn main() {
+    foo!(Foo);
+    mod module {
+        // FIXME: IDE layer has this unresolved
+        foo!(Bar);
+        fn func() {
+            mod inner {
+                struct Innerest<const C: usize> { field: [(); {C}] }
+            }
+        }
+    }
+}
+"#,
+        expect_file!["./test_data/highlight_block_mod_items.html"],
+        false,
     );
 }
 
