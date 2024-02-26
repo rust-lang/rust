@@ -450,6 +450,9 @@ impl Read for &Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
     }
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.lock().read_buf(buf)
+    }
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.lock().read_vectored(bufs)
     }
