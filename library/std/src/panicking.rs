@@ -508,12 +508,12 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // Access to the union's fields: this is `std` and we know that the `r#try`
     // intrinsic fills in the `r` or `p` union field based on its return value.
     //
-    // The call to `intrinsics::r#try` is made safe by:
+    // The call to `intrinsics::catch_unwind` is made safe by:
     // - `do_call`, the first argument, can be called with the initial `data_ptr`.
     // - `do_catch`, the second argument, can be called with the `data_ptr` as well.
     // See their safety preconditions for more information
     unsafe {
-        return if intrinsics::r#try(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
+        return if intrinsics::catch_unwind(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
             Ok(ManuallyDrop::into_inner(data.r))
         } else {
             Err(ManuallyDrop::into_inner(data.p))
@@ -540,7 +540,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // Its must contains a valid `f` (type: F) value that can be use to fill
     // `data.r`.
     //
-    // This function cannot be marked as `unsafe` because `intrinsics::r#try`
+    // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
     // expects normal function pointers.
     #[inline]
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
@@ -562,7 +562,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // Since this uses `cleanup` it also hinges on a correct implementation of
     // `__rustc_panic_cleanup`.
     //
-    // This function cannot be marked as `unsafe` because `intrinsics::r#try`
+    // This function cannot be marked as `unsafe` because `intrinsics::catch_unwind`
     // expects normal function pointers.
     #[inline]
     #[rustc_nounwind] // `intrinsic::r#try` requires catch fn to be nounwind

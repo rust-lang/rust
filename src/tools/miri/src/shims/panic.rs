@@ -3,9 +3,9 @@
 //! The core pieces of the runtime are:
 //! - An implementation of `__rust_maybe_catch_panic` that pushes the invoked stack frame with
 //!   some extra metadata derived from the panic-catching arguments of `__rust_maybe_catch_panic`.
-//! - A hack in `libpanic_unwind` that calls the `miri_start_panic` intrinsic instead of the
+//! - A hack in `libpanic_unwind` that calls the `miri_start_unwind` intrinsic instead of the
 //!   target-native panic runtime. (This lives in the rustc repo.)
-//! - An implementation of `miri_start_panic` that stores its argument (the panic payload), and then
+//! - An implementation of `miri_start_unwind` that stores its argument (the panic payload), and then
 //!   immediately returns, but on the *unwind* edge (not the normal return edge), thus initiating unwinding.
 //! - A hook executed each time a frame is popped, such that if the frame pushed by `__rust_maybe_catch_panic`
 //!   gets popped *during unwinding*, we take the panic payload and store it according to the extra
@@ -44,9 +44,9 @@ impl VisitProvenance for CatchUnwindData<'_> {
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    /// Handles the special `miri_start_panic` intrinsic, which is called
+    /// Handles the special `miri_start_unwind` intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
-    fn handle_miri_start_panic(
+    fn handle_miri_start_unwind(
         &mut self,
         abi: Abi,
         link_name: Symbol,
@@ -55,7 +55,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        trace!("miri_start_panic: {:?}", this.frame().instance);
+        trace!("miri_start_unwind: {:?}", this.frame().instance);
 
         // Get the raw pointer stored in arg[0] (the panic payload).
         let [payload] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -69,7 +69,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Handles the `try` intrinsic, the underlying implementation of `std::panicking::try`.
-    fn handle_try(
+    fn handle_catch_unwind(
         &mut self,
         args: &[OpTy<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
@@ -85,7 +85,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // what that is), and returns 1.
         // The `payload` is passed (by libstd) to `__rust_panic_cleanup`, which is then expected to
         // return a `Box<dyn Any + Send + 'static>`.
-        // In Miri, `miri_start_panic` is passed exactly that type, so we make the `payload` simply
+        // In Miri, `miri_start_unwind` is passed exactly that type, so we make the `payload` simply
         // a pointer to `Box<dyn Any + Send + 'static>`.
 
         // Get all the arguments.
@@ -141,7 +141,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // We set the return value of `try` to 1, since there was a panic.
             this.write_scalar(Scalar::from_i32(1), &catch_unwind.dest)?;
 
-            // The Thread's `panic_payload` holds what was passed to `miri_start_panic`.
+            // The Thread's `panic_payload` holds what was passed to `miri_start_unwind`.
             // This is exactly the second argument we need to pass to `catch_fn`.
             let payload = this.active_thread_mut().panic_payloads.pop().unwrap();
 

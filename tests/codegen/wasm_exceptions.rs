@@ -35,7 +35,7 @@ pub fn test_cleanup() {
 #[no_mangle]
 pub fn test_rtry() {
     unsafe {
-        core::intrinsics::r#try(|_| {
+        core::intrinsics::catch_unwind(|_| {
             may_panic();
         }, core::ptr::null_mut(), |data, exception| {
             log_number(data as usize);
