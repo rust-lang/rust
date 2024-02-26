@@ -800,9 +800,8 @@ impl<'a> Parser<'a> {
                 {
                     Ok(next_attr) => next_attr,
                     Err(inner_err) => {
-                        err.cancel();
                         inner_err.cancel();
-                        return self.dcx().span_delayed_bug(expr.span, "not a tail expression");
+                        return err.emit();
                     }
                 }
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
@@ -813,9 +812,8 @@ impl<'a> Parser<'a> {
                 let next_expr = match snapshot.parse_expr() {
                     Ok(next_expr) => next_expr,
                     Err(inner_err) => {
-                        err.cancel();
                         inner_err.cancel();
-                        return self.dcx().span_delayed_bug(expr.span, "not a tail expression");
+                        return err.emit();
                     }
                 };
                 // We have for sure
