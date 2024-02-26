@@ -836,7 +836,6 @@ impl<'tcx> InferCtxt<'tcx> {
         CombineFields {
             infcx: self,
             trace,
-            cause: None,
             param_env,
             obligations: PredicateObligations::new(),
             define_opaque_types,

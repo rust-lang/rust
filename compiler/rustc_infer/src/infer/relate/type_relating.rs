@@ -4,12 +4,10 @@ use crate::infer::{
 };
 use crate::traits::{Obligation, PredicateObligations};
 
-use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::visit::TypeVisitableExt;
+use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
-use std::mem;
 
 /// Enforce that `a` is equal to or a subtype of `b`.
 pub struct TypeRelating<'combine, 'a, 'tcx> {
@@ -43,18 +41,6 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         self.a_is_expected
     }
 
-    fn with_cause<F, R>(&mut self, cause: Cause, f: F) -> R
-    where
-        F: FnOnce(&mut Self) -> R,
-    {
-        debug!("sub with_cause={:?}", cause);
-        let old_cause = mem::replace(&mut self.fields.cause, Some(cause));
-        let r = f(self);
-        debug!("sub old_cause={:?}", old_cause);
-        self.fields.cause = old_cause;
-        r
-    }
-
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
@@ -84,12 +70,6 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
 
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
-                // Shouldn't have any LBR here, so we can safely put
-                // this under a binder below without fear of accidental
-                // capture.
-                assert!(!a.has_escaping_bound_vars());
-                assert!(!b.has_escaping_bound_vars());
-
                 match self.ambient_variance {
                     ty::Covariant => {
                         // can't make progress on `A <: B` if both A and B are
@@ -191,7 +171,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        debug!("{}.regions({:?}, {:?}) self.cause={:?}", self.tag(), a, b, self.fields.cause);
+        debug!("{}.regions({:?}, {:?})", self.tag(), a, b);
 
         // FIXME -- we have more fine-grained information available
         // from the "cause" field, we could perhaps give more tailored

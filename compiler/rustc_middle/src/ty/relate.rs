@@ -30,13 +30,6 @@ pub trait TypeRelation<'tcx>: Sized {
     /// relation. Just affects error messages.
     fn a_is_expected(&self) -> bool;
 
-    fn with_cause<F, R>(&mut self, _cause: Cause, f: F) -> R
-    where
-        F: FnOnce(&mut Self) -> R,
-    {
-        f(self)
-    }
-
     /// Generic relation routine suitable for most anything.
     fn relate<T: Relate<'tcx>>(&mut self, a: T, b: T) -> RelateResult<'tcx, T> {
         Relate::relate(self, a, b)
@@ -452,10 +445,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (&ty::Dynamic(a_obj, a_region, a_repr), &ty::Dynamic(b_obj, b_region, b_repr))
             if a_repr == b_repr =>
         {
-            let region_bound = relation.with_cause(Cause::ExistentialRegionBound, |relation| {
-                relation.relate(a_region, b_region)
-            })?;
-            Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
+            Ok(Ty::new_dynamic(
+                tcx,
+                relation.relate(a_obj, b_obj)?,
+                relation.relate(a_region, b_region)?,
+                a_repr,
+            ))
         }
 
         (&ty::Coroutine(a_id, a_args), &ty::Coroutine(b_id, b_args)) if a_id == b_id => {
