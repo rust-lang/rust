@@ -608,8 +608,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
     /// Is the projection predicate is of the form `exists<T> <Ty as Trait>::Assoc = T`.
     ///
-    /// This is the case if the `term` is an inference variable in the innermost universe
-    /// and does not occur in any other part of the predicate.
+    /// This is the case if the `term` does not occur in any other part of the predicate
+    /// and is able to name all other placeholder and inference variables.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn term_is_fully_unconstrained(
         &self,
@@ -632,55 +632,67 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         };
 
-        // Guard against `<T as Trait<?0>>::Assoc = ?0>`.
         struct ContainsTermOrNotNameable<'a, 'tcx> {
             term: ty::Term<'tcx>,
             universe_of_term: ty::UniverseIndex,
             infcx: &'a InferCtxt<'tcx>,
         }
+
+        impl<'a, 'tcx> ContainsTermOrNotNameable<'a, 'tcx> {
+            fn check_nameable(&self, universe: ty::UniverseIndex) -> ControlFlow<()> {
+                if self.universe_of_term.can_name(universe) {
+                    ControlFlow::Continue(())
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
+        }
+
         impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsTermOrNotNameable<'_, 'tcx> {
             type BreakTy = ();
             fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let Some(vid) = t.ty_vid() {
-                    if let ty::TermKind::Ty(term) = self.term.unpack()
-                        && let Some(term_vid) = term.ty_vid()
-                        && self.infcx.root_var(vid) == self.infcx.root_var(term_vid)
-                    {
-                        ControlFlow::Break(())
-                    } else if self
-                        .universe_of_term
-                        .cannot_name(self.infcx.universe_of_ty(vid).unwrap())
-                    {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(())
+                match *t.kind() {
+                    ty::Infer(ty::TyVar(vid)) => {
+                        if let ty::TermKind::Ty(term) = self.term.unpack()
+                            && let Some(term_vid) = term.ty_vid()
+                            && self.infcx.root_var(vid) == self.infcx.root_var(term_vid)
+                        {
+                            ControlFlow::Break(())
+                        } else {
+                            self.check_nameable(self.infcx.universe_of_ty(vid).unwrap())
+                        }
                     }
-                } else if t.has_non_region_infer() {
-                    t.super_visit_with(self)
-                } else {
-                    ControlFlow::Continue(())
+                    ty::Placeholder(p) => self.check_nameable(p.universe),
+                    _ => {
+                        if t.has_non_region_infer() || t.has_placeholders() {
+                            t.super_visit_with(self)
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    }
                 }
             }
 
             fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-                if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = c.kind() {
-                    if let ty::TermKind::Const(term) = self.term.unpack()
-                        && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
-                        && self.infcx.root_const_var(vid) == self.infcx.root_const_var(term_vid)
-                    {
-                        ControlFlow::Break(())
-                    } else if self
-                        .universe_of_term
-                        .cannot_name(self.infcx.universe_of_ct(vid).unwrap())
-                    {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(())
+                match c.kind() {
+                    ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
+                        if let ty::TermKind::Const(term) = self.term.unpack()
+                            && let ty::ConstKind::Infer(ty::InferConst::Var(term_vid)) = term.kind()
+                            && self.infcx.root_const_var(vid) == self.infcx.root_const_var(term_vid)
+                        {
+                            ControlFlow::Break(())
+                        } else {
+                            self.check_nameable(self.infcx.universe_of_ct(vid).unwrap())
+                        }
                     }
-                } else if c.has_non_region_infer() {
-                    c.super_visit_with(self)
-                } else {
-                    ControlFlow::Continue(())
+                    ty::ConstKind::Placeholder(p) => self.check_nameable(p.universe),
+                    _ => {
+                        if c.has_non_region_infer() || c.has_placeholders() {
+                            c.super_visit_with(self)
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    }
                 }
             }
         }
