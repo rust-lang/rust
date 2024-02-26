@@ -310,8 +310,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .collect(),
                 Condition::IfTransmutable { src, dst } => {
                     let trait_def_id = obligation.predicate.def_id();
-                    let scope = predicate.trait_ref.args.type_at(2);
-                    let assume_const = predicate.trait_ref.args.const_at(3);
+                    let assume_const = predicate.trait_ref.args.const_at(2);
                     let make_obl = |from_ty, to_ty| {
                         let trait_ref1 = ty::TraitRef::new(
                             tcx,
@@ -319,7 +318,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             [
                                 ty::GenericArg::from(to_ty),
                                 ty::GenericArg::from(from_ty),
-                                ty::GenericArg::from(scope),
                                 ty::GenericArg::from(assume_const),
                             ],
                         );
@@ -355,7 +353,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let Some(assume) = rustc_transmute::Assume::from_const(
             self.infcx.tcx,
             obligation.param_env,
-            predicate.trait_ref.args.const_at(3),
+            predicate.trait_ref.args.const_at(2),
         ) else {
             return Err(Unimplemented);
         };
@@ -367,7 +365,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let maybe_transmutable = transmute_env.is_transmutable(
             obligation.cause.clone(),
             rustc_transmute::Types { dst, src },
-            predicate.trait_ref.args.type_at(2),
             assume,
         );
 

@@ -8,9 +8,9 @@
 mod assert {
     use std::mem::{Assume, BikeshedIntrinsicFrom};
 
-    pub fn is_transmutable<Src, Dst, Context>()
+    pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, Context, {
+        Dst: BikeshedIntrinsicFrom<Src, {
             Assume::ALIGNMENT
                 .and(Assume::LIFETIMES)
                 .and(Assume::SAFETY)
@@ -38,8 +38,7 @@ enum Lopsided {
 #[repr(C)] struct Dst(Lopsided, V2);
 
 fn should_pad_variants() {
-    struct Context;
     // If the implementation (incorrectly) fails to pad `Lopsided::Smol` with
     // an uninitialized byte, this transmutation might be (wrongly) accepted:
-    assert::is_transmutable::<Src, Dst, Context>(); //~ ERROR cannot be safely transmuted
+    assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot be safely transmuted
 }

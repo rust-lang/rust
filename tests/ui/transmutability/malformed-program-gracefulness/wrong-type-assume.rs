@@ -13,7 +13,6 @@ mod assert {
     pub fn is_transmutable<
         Src,
         Dst,
-        Context,
         const ASSUME_ALIGNMENT: bool,
         const ASSUME_LIFETIMES: bool,
         const ASSUME_SAFETY: bool,
@@ -22,7 +21,6 @@ mod assert {
     where
         Dst: BikeshedIntrinsicFrom<
             Src,
-            Context,
             { from_options(ASSUME_ALIGNMENT, ASSUME_LIFETIMES, ASSUME_SAFETY, ASSUME_VALIDITY) }
         >,
     {}
@@ -43,11 +41,10 @@ mod assert {
 }
 
 fn test() {
-    struct Context;
     #[repr(C)] struct Src;
     #[repr(C)] struct Dst;
-    assert::is_transmutable::<Src, Dst, Context, {0u8}, false, false, false>(); //~ ERROR mismatched types
-    assert::is_transmutable::<Src, Dst, Context, false, {0u8}, false, false>(); //~ ERROR mismatched types
-    assert::is_transmutable::<Src, Dst, Context, false, false, {0u8}, false>(); //~ ERROR mismatched types
-    assert::is_transmutable::<Src, Dst, Context, false, false, false, {0u8}>(); //~ ERROR mismatched types
+    assert::is_transmutable::<Src, Dst, {0u8}, false, false, false>(); //~ ERROR mismatched types
+    assert::is_transmutable::<Src, Dst, false, {0u8}, false, false>(); //~ ERROR mismatched types
+    assert::is_transmutable::<Src, Dst, false, false, {0u8}, false>(); //~ ERROR mismatched types
+    assert::is_transmutable::<Src, Dst, false, false, false, {0u8}>(); //~ ERROR mismatched types
 }
