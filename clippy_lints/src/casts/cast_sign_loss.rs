@@ -192,7 +192,6 @@ fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'
 /// Returns the sign of the list of peeled expressions.
 fn expr_muldiv_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
     let mut negative_count = 0;
-    let mut uncertain_count = 0;
 
     // Peel off possible binary expressions, for example:
     // x * x / y => [x, x, y]
@@ -201,18 +200,17 @@ fn expr_muldiv_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
     for expr in exprs {
         match expr_sign(cx, expr, None) {
             Sign::Negative => negative_count += 1,
-            Sign::Uncertain => uncertain_count += 1,
+            // A mul/div is:
+            // - uncertain if there are any uncertain values (because they could be negative or positive),
+            Sign::Uncertain => return Sign::Uncertain,
             Sign::ZeroOrPositive => (),
         };
     }
 
     // A mul/div is:
-    // - uncertain if there are any uncertain values (because they could be negative or positive),
     // - negative if there are an odd number of negative values,
     // - positive or zero otherwise.
-    if uncertain_count > 0 {
-        Sign::Uncertain
-    } else if negative_count % 2 == 1 {
+    if negative_count % 2 == 1 {
         Sign::Negative
     } else {
         Sign::ZeroOrPositive
@@ -225,7 +223,6 @@ fn expr_muldiv_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
 /// Returns the sign of the list of peeled expressions.
 fn expr_add_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
     let mut negative_count = 0;
-    let mut uncertain_count = 0;
     let mut positive_count = 0;
 
     // Peel off possible binary expressions, for example:
@@ -234,19 +231,19 @@ fn expr_add_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
     for expr in exprs {
         match expr_sign(cx, expr, None) {
             Sign::Negative => negative_count += 1,
-            Sign::Uncertain => uncertain_count += 1,
+            // A sum is:
+            // - uncertain if there are any uncertain values (because they could be negative or positive),
+            Sign::Uncertain => return Sign::Uncertain,
             Sign::ZeroOrPositive => positive_count += 1,
         };
     }
 
     // A sum is:
-    // - uncertain if there are any uncertain values (because they could be negative or positive),
     // - positive or zero if there are only positive (or zero) values,
-    // - negative if there are only negative (or zero) values.
+    // - negative if there are only negative (or zero) values, or
+    // - uncertain if there are both.
     // We could split Zero out into its own variant, but we don't yet.
-    if uncertain_count > 0 {
-        Sign::Uncertain
-    } else if negative_count == 0 {
+    if negative_count == 0 {
         Sign::ZeroOrPositive
     } else if positive_count == 0 {
         Sign::Negative
