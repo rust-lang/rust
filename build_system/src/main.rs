@@ -4,6 +4,7 @@ use std::process;
 mod build;
 mod cargo;
 mod clean;
+mod clone_gcc;
 mod config;
 mod info;
 mod prepare;
@@ -27,19 +28,21 @@ fn usage() {
         "\
 Available commands for build_system:
 
-    cargo    : Run cargo command
-    clean    : Run clean command
-    prepare  : Run prepare command
-    build    : Run build command
-    test     : Run test command
-    info:    : Run info command
-    --help   : Show this message"
+    cargo     : Run cargo command
+    clean     : Run clean command
+    prepare   : Run prepare command
+    build     : Run build command
+    test      : Run test command
+    info      : Run info command
+    clone-gcc : Run clone-gcc command
+    --help    : Show this message"
     );
 }
 
 pub enum Command {
     Cargo,
     Clean,
+    CloneGcc,
     Prepare,
     Build,
     Test,
@@ -58,6 +61,7 @@ fn main() {
         Some("build") => Command::Build,
         Some("test") => Command::Test,
         Some("info") => Command::Info,
+        Some("clone-gcc") => Command::CloneGcc,
         Some("--help") => {
             usage();
             process::exit(0);
@@ -77,6 +81,7 @@ fn main() {
         Command::Build => build::run(),
         Command::Test => test::run(),
         Command::Info => info::run(),
+        Command::CloneGcc => clone_gcc::run(),
     } {
         eprintln!("Command failed to run: {e}");
         process::exit(1);

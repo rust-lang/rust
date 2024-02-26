@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Output};
 
 fn get_command_inner(
@@ -254,20 +254,12 @@ pub struct CloneResult {
     pub repo_dir: String,
 }
 
-pub fn git_clone(
+fn git_clone_inner(
     to_clone: &str,
-    dest: Option<&Path>,
+    dest: &Path,
     shallow_clone: bool,
+    repo_name: String,
 ) -> Result<CloneResult, String> {
-    let repo_name = to_clone.split('/').last().unwrap();
-    let repo_name = match repo_name.strip_suffix(".git") {
-        Some(n) => n.to_string(),
-        None => repo_name.to_string(),
-    };
-
-    let dest = dest
-        .map(|dest| dest.join(&repo_name))
-        .unwrap_or_else(|| Path::new(&repo_name).into());
     if dest.is_dir() {
         return Ok(CloneResult {
             ran_clone: false,
@@ -287,6 +279,47 @@ pub fn git_clone(
         repo_name,
         repo_dir: dest.display().to_string(),
     })
+}
+
+fn get_repo_name(url: &str) -> String {
+    let repo_name = url.split('/').last().unwrap();
+    match repo_name.strip_suffix(".git") {
+        Some(n) => n.to_string(),
+        None => repo_name.to_string(),
+    }
+}
+
+pub fn git_clone(
+    to_clone: &str,
+    dest: Option<&Path>,
+    shallow_clone: bool,
+) -> Result<CloneResult, String> {
+    let repo_name = get_repo_name(to_clone);
+    let tmp: PathBuf;
+
+    let dest = match dest {
+        Some(dest) => dest,
+        None => {
+            tmp = repo_name.clone().into();
+            &tmp
+        }
+    };
+    git_clone_inner(to_clone, dest, shallow_clone, repo_name)
+}
+
+pub fn git_clone_root_dir(
+    to_clone: &str,
+    dest_parent_dir: &Path,
+    shallow_clone: bool,
+) -> Result<CloneResult, String> {
+    let repo_name = get_repo_name(to_clone);
+
+    git_clone_inner(
+        to_clone,
+        &dest_parent_dir.join(&repo_name),
+        shallow_clone,
+        repo_name,
+    )
 }
 
 pub fn walk_dir<P, D, F>(dir: P, mut dir_cb: D, mut file_cb: F) -> Result<(), String>

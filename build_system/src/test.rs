@@ -1,7 +1,7 @@
 use crate::build;
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    get_toolchain, git_clone, remove_file, run_command, run_command_with_env,
+    get_toolchain, git_clone, git_clone_root_dir, remove_file, run_command, run_command_with_env,
     run_command_with_output_and_env, rustc_version_info, split_args, walk_dir,
 };
 
@@ -487,15 +487,10 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
     );
     let rust_dir_path = Path::new(crate::BUILD_DIR).join("rust");
     // If the repository was already cloned, command will fail, so doesn't matter.
-    let _ = run_command_with_output_and_env(
-        &[
-            &"git",
-            &"clone",
-            &"https://github.com/rust-lang/rust.git",
-            &rust_dir_path,
-        ],
-        None,
-        Some(env),
+    let _ = git_clone(
+        "https://github.com/rust-lang/rust.git",
+        Some(&rust_dir_path),
+        false,
     );
     let rust_dir: Option<&Path> = Some(&rust_dir_path);
     run_command(&[&"git", &"checkout", &"--", &"tests/"], rust_dir)?;
@@ -720,7 +715,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
 
     let run_tests = |projects_path, iter: &mut dyn Iterator<Item = &&str>| -> Result<(), String> {
         for project in iter {
-            let clone_result = git_clone(project, Some(projects_path), true)?;
+            let clone_result = git_clone_root_dir(project, projects_path, true)?;
             let repo_path = Path::new(&clone_result.repo_dir);
             run_cargo_command(&[&"build", &"--release"], Some(repo_path), env, args)?;
             run_cargo_command(&[&"test"], Some(repo_path), env, args)?;
