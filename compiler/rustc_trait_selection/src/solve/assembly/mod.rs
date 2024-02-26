@@ -777,6 +777,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     // FIXME(@lcnr): The current structure here makes me unhappy and feels ugly. idk how
     // to improve this however. However, this should make it fairly straightforward to refine
     // the filtering going forward, so it seems alright-ish for now.
+    #[instrument(level = "debug", skip(self, goal))]
     fn discard_impls_shadowed_by_env<G: GoalKind<'tcx>>(
         &mut self,
         goal: Goal<'tcx, G>,
@@ -799,7 +800,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 // This feels dangerous.
                 Certainty::Yes => {
                     candidates.retain(|c| match c.source {
-                        CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_) => false,
+                        CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_) => {
+                            debug!(?c, "discard impl candidate");
+                            false
+                        }
                         CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => true,
                     });
                 }
@@ -807,6 +811,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 // to be ambig and wait for inference constraints. See
                 // tests/ui/traits/next-solver/env-shadows-impls/ambig-env-no-shadow.rs
                 Certainty::Maybe(cause) => {
+                    debug!(?cause, "force ambiguity");
                     *candidates = self.forced_ambiguity(cause);
                 }
             }
