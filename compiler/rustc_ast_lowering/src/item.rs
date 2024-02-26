@@ -189,6 +189,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (ty, body_id)) = self.lower_generics(
                     generics,
                     Const::No,
+                    false,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
@@ -219,7 +220,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
-                        this.lower_generics(generics, header.constness, id, itctx, |this| {
+                        this.lower_generics(generics, header.constness, false, id, itctx, |this| {
                             this.lower_fn_decl(
                                 decl,
                                 id,
@@ -263,6 +264,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, ty) = self.lower_generics(
                     &generics,
                     Const::No,
+                    false,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| match ty {
@@ -285,6 +287,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, variants) = self.lower_generics(
                     generics,
                     Const::No,
+                    false,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
@@ -299,6 +302,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, struct_def) = self.lower_generics(
                     generics,
                     Const::No,
+                    false,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, struct_def),
@@ -309,6 +313,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, vdata) = self.lower_generics(
                     generics,
                     Const::No,
+                    false,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| this.lower_variant_data(hir_id, vdata),
@@ -340,7 +345,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // parent lifetime.
                 let itctx = ImplTraitContext::Universal;
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.lower_generics(ast_generics, Const::No, id, itctx, |this| {
+                    self.lower_generics(ast_generics, Const::No, false, id, itctx, |this| {
                         let modifiers = TraitBoundModifiers {
                             constness: BoundConstness::Never,
                             asyncness: BoundAsyncness::Normal,
@@ -392,6 +397,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, (unsafety, items, bounds)) = self.lower_generics(
                     generics,
                     Const::No,
+                    false,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
@@ -412,6 +418,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, bounds) = self.lower_generics(
                     generics,
                     Const::No,
+                    false,
                     id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
@@ -646,7 +653,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let fdec = &sig.decl;
                     let itctx = ImplTraitContext::Universal;
                     let (generics, (fn_dec, fn_args)) =
-                        self.lower_generics(generics, Const::No, i.id, itctx, |this| {
+                        self.lower_generics(generics, Const::No, false, i.id, itctx, |this| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(
@@ -774,6 +781,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, kind) = self.lower_generics(
                     generics,
                     Const::No,
+                    false,
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
@@ -822,6 +830,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, kind) = self.lower_generics(
                     &generics,
                     Const::No,
+                    false,
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| {
@@ -893,7 +902,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_impl_item(
         &mut self,
         i: &AssocItem,
-        impl_constness: Const,
+        constness_of_trait: Const,
     ) -> &'hir hir::ImplItem<'hir> {
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
@@ -905,6 +914,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => self.lower_generics(
                 generics,
                 Const::No,
+                false,
                 i.id,
                 ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 |this| {
@@ -929,7 +939,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_kind,
-                    impl_constness,
+                    constness_of_trait,
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -940,6 +950,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_generics(
                     &generics,
                     Const::No,
+                    false,
                     i.id,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     |this| match ty {
@@ -1350,9 +1361,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let constness =
             if kind == FnDeclKind::Inherent { sig.header.constness } else { parent_constness };
         let itctx = ImplTraitContext::Universal;
-        let (generics, decl) = self.lower_generics(generics, constness, id, itctx, |this| {
-            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
-        });
+        let (generics, decl) =
+            self.lower_generics(generics, constness, kind == FnDeclKind::Impl, id, itctx, |this| {
+                this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
+            });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
@@ -1427,6 +1439,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         constness: Const,
+        force_append_constness: bool,
         parent_node_id: NodeId,
         itctx: ImplTraitContext,
         f: impl FnOnce(&mut Self) -> T,
@@ -1487,7 +1500,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // if the effects feature is enabled. This needs to be done before we lower where
         // clauses since where clauses need to bind to the DefId of the host param
         let host_param_parts = if let Const::Yes(span) = constness
-            && self.tcx.features().effects
+            // if this comes from implementing a `const` trait, we must force constness to be appended
+            // to the impl item, no matter whether effects is enabled.
+            && (self.tcx.features().effects || force_append_constness)
         {
             let span = self.lower_span(span);
             let param_node_id = self.next_node_id();
