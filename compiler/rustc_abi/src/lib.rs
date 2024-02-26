@@ -41,7 +41,7 @@ bitflags! {
         // Internal only for now. If true, don't reorder fields.
         const IS_LINEAR          = 1 << 3;
         // If true, the type's layout can be randomized using
-        // the seed stored in `ReprOptions.layout_seed`
+        // the seed stored in `ReprOptions.field_shuffle_seed`
         const RANDOMIZE_LAYOUT   = 1 << 4;
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits()

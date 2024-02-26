@@ -2256,7 +2256,7 @@ extern "C" {
     pub fn LLVMRustUnpackInlineAsmDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
         level_out: &mut DiagnosticLevel,
-        cookie_out: &mut c_uint,
+        cookie_out: &mut u64,
         message_out: &mut Option<&'a Twine>,
     );
 

@@ -1262,7 +1262,7 @@ enum class LLVMRustDiagnosticLevel {
 extern "C" void
 LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI,
                                   LLVMRustDiagnosticLevel *LevelOut,
-                                  unsigned *CookieOut,
+                                  uint64_t *CookieOut,
                                   LLVMTwineRef *MessageOut) {
   // Undefined to call this not on an inline assembly diagnostic!
   llvm::DiagnosticInfoInlineAsm *IA =

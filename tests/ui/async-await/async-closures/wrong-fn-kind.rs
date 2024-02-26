@@ -1,7 +1,5 @@
 //@ edition:2021
 
-// FIXME(async_closures): This needs a better error message!
-
 #![feature(async_closure)]
 
 fn main() {
@@ -11,5 +9,11 @@ fn main() {
     needs_async_fn(async || {
         //~^ ERROR expected a closure that implements the `async Fn` trait, but this closure only implements `async FnMut`
         x += 1;
+    });
+
+    let x = String::new();
+    needs_async_fn(move || async move {
+        //~^ ERROR expected a closure that implements the `async Fn` trait, but this closure only implements `async FnOnce`
+        println!("{x}");
     });
 }
