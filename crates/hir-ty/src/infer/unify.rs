@@ -457,6 +457,7 @@ impl<'a> InferenceTable<'a> {
     }
 
     /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
+    #[tracing::instrument(skip_all)]
     pub(crate) fn unify<T: ?Sized + Zip<Interner>>(&mut self, ty1: &T, ty2: &T) -> bool {
         let result = match self.try_unify(ty1, ty2) {
             Ok(r) => r,

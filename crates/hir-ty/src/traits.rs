@@ -139,6 +139,7 @@ fn solve(
     block: Option<BlockId>,
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<Interner>>>,
 ) -> Option<chalk_solve::Solution<Interner>> {
+    let _p = tracing::span!(tracing::Level::INFO, "solve", ?krate, ?block).entered();
     let context = ChalkContext { db, krate, block };
     tracing::debug!("solve goal: {:?}", goal);
     let mut solver = create_chalk_solver();

@@ -4239,6 +4239,10 @@ impl Type {
         }
     }
 
+    pub fn fingerprint_for_trait_impl(&self) -> Option<TyFingerprint> {
+        TyFingerprint::for_trait_impl(&self.ty)
+    }
+
     pub(crate) fn canonical(&self) -> Canonical<Ty> {
         hir_ty::replace_errors_with_variables(&self.ty)
     }
