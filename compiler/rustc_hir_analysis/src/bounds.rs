@@ -3,6 +3,7 @@
 
 use rustc_hir::{def::DefKind, LangItem};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
+use rustc_span::sym;
 use rustc_span::{def_id::DefId, Span};
 
 /// Collects together a list of type bounds. These lists of bounds occur in many places
@@ -62,17 +63,34 @@ impl<'tcx> Bounds<'tcx> {
                 Some(tcx.expected_host_effect_param_for_body(defining_def_id))
             }
 
-            (_, ty::BoundConstness::NotConst) => None,
+            (_, ty::BoundConstness::NotConst) => {
+                tcx.has_attr(trait_ref.def_id(), sym::const_trait).then_some(tcx.consts.true_)
+            }
 
             // if the defining_def_id is a trait, we wire it differently than others by equating the effects.
             (
-                kind @ (DefKind::Trait | DefKind::Impl { of_trait: true }),
+                kind @ (DefKind::Trait | DefKind::Impl { of_trait: true } | DefKind::AssocTy),
                 ty::BoundConstness::ConstIfConst,
             ) => {
-                let trait_we_are_in = if let DefKind::Trait = kind {
-                    ty::TraitRef::identity(tcx, defining_def_id)
+                let parent_def_id = if kind == DefKind::AssocTy {
+                    let did = tcx.parent(defining_def_id);
+                    if !matches!(
+                        tcx.def_kind(did),
+                        DefKind::Trait | DefKind::Impl { of_trait: true }
+                    ) {
+                        tcx.dcx().span_delayed_bug(span, "invalid `~const` encountered");
+                        return;
+                    }
+                    did
                 } else {
-                    tcx.impl_trait_ref(defining_def_id).unwrap().instantiate_identity()
+                    defining_def_id
+                };
+                let trait_we_are_in = match tcx.def_kind(parent_def_id) {
+                    DefKind::Trait => ty::TraitRef::identity(tcx, parent_def_id),
+                    DefKind::Impl { of_trait: true } => {
+                        tcx.impl_trait_ref(parent_def_id).unwrap().instantiate_identity()
+                    }
+                    _ => unreachable!(),
                 };
                 // create a new projection type `<T as TraitForBound>::Effects`
                 let Some(assoc) = tcx.associated_type_for_effects(trait_ref.def_id()) else {
