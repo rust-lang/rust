@@ -36,6 +36,11 @@ pub(crate) fn fill_record_pattern_fields(acc: &mut Assists, ctx: &AssistContext<
 
     let missing_fields = ctx.sema.record_pattern_missing_fields(&record_pat);
 
+    if missing_fields.is_empty() {
+        cov_mark::hit!(no_missing_fields);
+        return None;
+    }
+
     let old_field_list = record_pat.record_pat_field_list()?;
     let new_field_list = make::record_pat_field_list(old_field_list.fields()).clone_for_update();
     for (f, _) in missing_fields.iter() {
@@ -229,6 +234,41 @@ fn bar(foo: Foo) {
         Foo::A(_) => false,
         Foo::$0B{..} => true,
     };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_when_no_missing_fields() {
+        // This is still possible even though it's meaningless
+        cov_mark::check!(no_missing_fields);
+        check_assist_not_applicable(
+            fill_record_pattern_fields,
+            r#"
+enum Foo {
+    A(X),
+    B{y: Y, z: Z}
+}
+
+fn bar(foo: Foo) {
+    match foo {
+        Foo::A(_) => false,
+        Foo::B{y, z, ..$0} => true,
+    };
+}
+"#,
+        );
+        check_assist_not_applicable(
+            fill_record_pattern_fields,
+            r#"
+struct Bar {
+    y: Y,
+    z: Z,
+}
+
+fn foo(bar: Bar) {
+    let Bar { y, z, ..$0 } = bar;
 }
 "#,
         );
