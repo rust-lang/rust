@@ -1,0 +1,30 @@
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:3:1
+   |
+LL | / #[allow(unused)]
+LL | | fn foo1() {
+LL | |     #![allow(unused)]
+   | |_____________________^
+   |
+   = note: `-D clippy::mixed-attributes-style` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_attributes_style)]`
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:17:1
+   |
+LL | / /// linux
+LL | |
+LL | | fn foo4() {
+LL | |     //! windows
+   | |_______________^
+
+error: item has both inner and outer attributes
+  --> tests/ui/mixed_attributes_style.rs:32:1
+   |
+LL | / #[allow(unused)]
+LL | | mod bar {
+LL | |     #![allow(unused)]
+   | |_____________________^
+
+error: aborting due to 3 previous errors
+
