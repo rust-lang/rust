@@ -40,6 +40,7 @@ pub unsafe fn _Unwind_DeleteException(exception: *mut _Unwind_Exception) {
 }
 
 pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
+    #[cfg(panic = "unwind")]
     extern "C" {
         /// LLVM lowers this intrinsic to the `throw` instruction.
         // FIXME(coolreader18): move to stdarch
@@ -52,5 +53,13 @@ pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwi
     // via integers, with 0 corresponding to C++ exceptions and 1 to C setjmp()/longjmp().
     // Ideally, we'd be able to choose something unique for Rust, but for now,
     // we pretend to be C++ and implement the Itanium exception-handling ABI.
-    wasm_throw(0, exception.cast())
+    cfg_if::cfg_if! {
+        // for now, unless we're -Zbuild-std with panic=unwind, never codegen a throw.
+        if #[cfg(panic = "unwind")] {
+            wasm_throw(0, exception.cast())
+        } else {
+            let _ = exception;
+            core::arch::wasm32::unreachable()
+        }
+    }
 }
