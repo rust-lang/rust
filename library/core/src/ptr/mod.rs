@@ -83,7 +83,7 @@
 //! - `base + size <= usize::MAX`
 //! - `size <= isize::MAX`
 //!
-//! As a consequence of these guarantees, given any address, `a`, within the set
+//! As a consequence of these guarantees, given any address `a` within the set
 //! of addresses of an allocated object:
 //! - It is guaranteed that `a - base` does not overflow `isize`
 //! - It is guaranteed that `a - base` is non-negative
