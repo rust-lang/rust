@@ -91,8 +91,8 @@ impl<'tcx> Region<'tcx> {
 
     /// Constructs a `RegionKind::ReError` region.
     #[track_caller]
-    pub fn new_error(tcx: TyCtxt<'tcx>, reported: ErrorGuaranteed) -> Region<'tcx> {
-        tcx.intern_region(ty::ReError(reported))
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Region<'tcx> {
+        tcx.intern_region(ty::ReError(guar))
     }
 
     /// Constructs a `RegionKind::ReError` region and registers a delayed bug to ensure it gets

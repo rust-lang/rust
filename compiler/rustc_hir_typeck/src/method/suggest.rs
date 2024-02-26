@@ -2194,59 +2194,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let [seg1, seg2] = segs else {
             return;
         };
-        let Some(mut diag) =
-            self.dcx().steal_diagnostic(seg1.ident.span, StashKey::CallAssocMethod)
-        else {
-            return;
-        };
-
-        let map = self.infcx.tcx.hir();
-        let body_id = self.tcx.hir().body_owned_by(self.body_id);
-        let body = map.body(body_id);
-        struct LetVisitor<'a> {
-            result: Option<&'a hir::Expr<'a>>,
-            ident_name: Symbol,
-        }
-
-        // FIXME: This really should be taking scoping, etc into account.
-        impl<'v> Visitor<'v> for LetVisitor<'v> {
-            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                if let hir::StmtKind::Local(hir::Local { pat, init, .. }) = &ex.kind
-                    && let Binding(_, _, ident, ..) = pat.kind
-                    && ident.name == self.ident_name
-                {
-                    self.result = *init;
-                } else {
-                    hir::intravisit::walk_stmt(self, ex);
+        self.dcx().try_steal_modify_and_emit_err(
+            seg1.ident.span,
+            StashKey::CallAssocMethod,
+            |err| {
+                let map = self.infcx.tcx.hir();
+                let body_id = self.tcx.hir().body_owned_by(self.body_id);
+                let body = map.body(body_id);
+                struct LetVisitor<'a> {
+                    result: Option<&'a hir::Expr<'a>>,
+                    ident_name: Symbol,
                 }
-            }
-        }
 
-        let mut visitor = LetVisitor { result: None, ident_name: seg1.ident.name };
-        visitor.visit_body(body);
+                // FIXME: This really should be taking scoping, etc into account.
+                impl<'v> Visitor<'v> for LetVisitor<'v> {
+                    fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                        if let hir::StmtKind::Local(hir::Local { pat, init, .. }) = &ex.kind
+                            && let Binding(_, _, ident, ..) = pat.kind
+                            && ident.name == self.ident_name
+                        {
+                            self.result = *init;
+                        } else {
+                            hir::intravisit::walk_stmt(self, ex);
+                        }
+                    }
+                }
 
-        if let Node::Expr(call_expr) = self.tcx.parent_hir_node(seg1.hir_id)
-            && let Some(expr) = visitor.result
-            && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
-        {
-            let probe = self.lookup_probe_for_diagnostic(
-                seg2.ident,
-                self_ty,
-                call_expr,
-                ProbeScope::TraitsInScope,
-                None,
-            );
-            if probe.is_ok() {
-                let sm = self.infcx.tcx.sess.source_map();
-                diag.span_suggestion_verbose(
-                    sm.span_extend_while(seg1.ident.span.shrink_to_hi(), |c| c == ':').unwrap(),
-                    "you may have meant to call an instance method",
-                    ".",
-                    Applicability::MaybeIncorrect,
-                );
-            }
-        }
-        diag.emit();
+                let mut visitor = LetVisitor { result: None, ident_name: seg1.ident.name };
+                visitor.visit_body(body);
+
+                if let Node::Expr(call_expr) = self.tcx.parent_hir_node(seg1.hir_id)
+                    && let Some(expr) = visitor.result
+                    && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
+                {
+                    let probe = self.lookup_probe_for_diagnostic(
+                        seg2.ident,
+                        self_ty,
+                        call_expr,
+                        ProbeScope::TraitsInScope,
+                        None,
+                    );
+                    if probe.is_ok() {
+                        let sm = self.infcx.tcx.sess.source_map();
+                        err.span_suggestion_verbose(
+                            sm.span_extend_while(seg1.ident.span.shrink_to_hi(), |c| c == ':')
+                                .unwrap(),
+                            "you may have meant to call an instance method",
+                            ".",
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            },
+        );
     }
 
     /// Suggest calling a method on a field i.e. `a.field.bar()` instead of `a.bar()`

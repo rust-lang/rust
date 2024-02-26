@@ -772,10 +772,6 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
         if let Some(guar) = self.fcx.dcx().has_errors() {
             guar
-        } else if self.fcx.dcx().stashed_err_count() > 0 {
-            // Without this case we sometimes get uninteresting and extraneous
-            // "type annotations needed" errors.
-            self.fcx.dcx().delayed_bug("error in Resolver")
         } else {
             self.fcx
                 .err_ctxt()
