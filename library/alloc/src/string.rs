@@ -896,7 +896,7 @@ impl String {
         self.vec.into_raw_parts()
     }
 
-    /// Creates a new `String` from a length, capacity, and pointer.
+    /// Creates a new `String` from a pointer, a length and a capacity.
     ///
     /// # Safety
     ///
