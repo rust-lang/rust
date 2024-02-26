@@ -1798,4 +1798,25 @@ fn _hash2(self_: &u64, state: &mut u64) {
 "#,
         )
     }
+
+    #[test]
+    fn inline_into_callers_in_macros_not_applicable() {
+        check_assist_not_applicable(
+            inline_into_callers,
+            r#"
+fn foo() -> u32 {
+    42
+}
+
+macro_rules! bar {
+    ($x:expr) => {
+      $x
+    };
+}
+
+fn f() {
+    bar!(foo$0());
+}
+"#);
+    }
 }
