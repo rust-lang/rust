@@ -596,10 +596,11 @@ fn infer_placeholder_type<'a>(
     // then the user may have written e.g. `const A = 42;`.
     // In this case, the parser has stashed a diagnostic for
     // us to improve in typeck so we do that now.
-    match tcx.dcx().steal_diagnostic(span, StashKey::ItemNoType) {
-        Some(mut err) => {
+    let guar = tcx
+        .dcx()
+        .try_steal_modify_and_emit_err(span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
-                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic)
+                // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
                 let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
 
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
@@ -622,12 +623,8 @@ fn infer_placeholder_type<'a>(
                     ));
                 }
             }
-
-            err.emit();
-            // diagnostic stashing loses the information of whether something is a hard error.
-            Ty::new_error_with_message(tcx, span, "ItemNoType is a hard error")
-        }
-        None => {
+        })
+        .unwrap_or_else(|| {
             let mut diag = bad_placeholder(tcx, vec![span], kind);
 
             if !ty.references_error() {
@@ -645,10 +642,9 @@ fn infer_placeholder_type<'a>(
                     ));
                 }
             }
-
-            Ty::new_error(tcx, diag.emit())
-        }
-    }
+            diag.emit()
+        });
+    Ty::new_error(tcx, guar)
 }
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {

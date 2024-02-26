@@ -484,12 +484,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
-                    && let Some(mut diag) =
-                        self.dcx().steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
                 {
-                    // Try suggesting `foo(a)` -> `a.foo()` if possible.
-                    self.suggest_call_as_method(&mut diag, segment, arg_exprs, call_expr, expected);
-                    diag.emit();
+                    self.dcx().try_steal_modify_and_emit_err(
+                        segment.ident.span,
+                        StashKey::CallIntoMethod,
+                        |err| {
+                            // Try suggesting `foo(a)` -> `a.foo()` if possible.
+                            self.suggest_call_as_method(
+                                err, segment, arg_exprs, call_expr, expected,
+                            );
+                        },
+                    );
                 }
 
                 let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
@@ -601,7 +606,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// and suggesting the fix if the method probe is successful.
     fn suggest_call_as_method(
         &self,
-        diag: &mut Diag<'_, ()>,
+        diag: &mut Diag<'_>,
         segment: &'tcx hir::PathSegment<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         call_expr: &'tcx hir::Expr<'tcx>,
