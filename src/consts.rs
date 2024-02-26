@@ -349,7 +349,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(
     cx.const_struct(&llvals, true)
 }
 
-pub fn codegen_static_initializer<'gcc, 'tcx>(
+fn codegen_static_initializer<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     def_id: DefId,
 ) -> Result<(RValue<'gcc>, ConstAllocation<'tcx>), ErrorHandled> {
