@@ -1918,7 +1918,7 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Wrustc::internal");
         }
 
-        if self.config.rust_frame_pointers {
+        if self.config.rust_frame_pointers && target != "x86_64-fortanix-unknown-sgx" {
             rustflags.arg("-Cforce-frame-pointers=true");
         }
 
