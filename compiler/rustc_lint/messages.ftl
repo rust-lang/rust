@@ -414,6 +414,29 @@ lint_non_fmt_panic_unused =
     }
     .add_fmt_suggestion = or add a "{"{"}{"}"}" format string to use the message literally
 
+lint_non_local_definitions_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of the `{$crate_name}` crate, try updating your dependency with `cargo update -p {$crate_name}`
+
+lint_non_local_definitions_deprecation = this lint may become deny-by-default in the edition 2024 and higher, see the tracking issue <https://github.com/rust-lang/rust/issues/120363>
+
+lint_non_local_definitions_impl = non-local `impl` definition, they should be avoided as they go against expectation
+    .help =
+        move this `impl` block outside the of the current {$body_kind_descr} {$depth ->
+            [one] `{$body_name}`
+           *[other] `{$body_name}` and up {$depth} bodies
+        }
+    .non_local = an `impl` definition is non-local if it is nested inside an item and neither the type nor the trait are at the same nesting level as the `impl` block
+    .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module and anon-const at the same nesting as the trait or type
+    .const_anon = use a const-anon item to suppress this lint
+
+lint_non_local_definitions_macro_rules = non-local `macro_rules!` definition, they should be avoided as they go against expectation
+    .help =
+        remove the `#[macro_export]` or move this `macro_rules!` outside the of the current {$body_kind_descr} {$depth ->
+            [one] `{$body_name}`
+           *[other] `{$body_name}` and up {$depth} bodies
+        }
+    .non_local = a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
+    .exception = one exception to the rule are anon-const (`const _: () = {"{"} ... {"}"}`) at top-level module
+
 lint_non_snake_case = {$sort} `{$name}` should have a snake case name
     .rename_or_convert_suggestion = rename the identifier or convert it to a snake case raw identifier
     .cannot_convert_note = `{$sc}` cannot be used as a raw identifier

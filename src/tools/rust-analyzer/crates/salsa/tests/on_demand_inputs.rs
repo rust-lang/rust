@@ -111,7 +111,7 @@ fn on_demand_input_durability() {
         }
     "#]].assert_debug_eq(&events);
 
-    db.salsa_runtime_mut().synthetic_write(Durability::LOW);
+    db.synthetic_write(Durability::LOW);
     events.replace(vec![]);
     assert_eq!(db.c(1), 10);
     assert_eq!(db.c(2), 20);
@@ -128,7 +128,7 @@ fn on_demand_input_durability() {
         }
     "#]].assert_debug_eq(&events);
 
-    db.salsa_runtime_mut().synthetic_write(Durability::HIGH);
+    db.synthetic_write(Durability::HIGH);
     events.replace(vec![]);
     assert_eq!(db.c(1), 10);
     assert_eq!(db.c(2), 20);

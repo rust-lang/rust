@@ -86,7 +86,11 @@ impl Metrics {
     fn measure_rustc_tests(&mut self, sh: &Shell) -> anyhow::Result<()> {
         eprintln!("\nMeasuring rustc tests");
 
-        cmd!(sh, "git clone --depth=1 https://github.com/rust-lang/rust").run()?;
+        cmd!(
+            sh,
+            "git clone --depth=1 --branch 1.76.0 https://github.com/rust-lang/rust.git --single-branch"
+        )
+        .run()?;
 
         let output = cmd!(sh, "./target/release/rust-analyzer rustc-tests ./rust").read()?;
         for (metric, value, unit) in parse_metrics(&output) {

@@ -198,12 +198,9 @@ pub(crate) fn check_diagnostics(ra_fixture: &str) {
 }
 
 #[track_caller]
-pub(crate) fn check_diagnostics_with_disabled(
-    ra_fixture: &str,
-    disabled: impl Iterator<Item = String>,
-) {
+pub(crate) fn check_diagnostics_with_disabled(ra_fixture: &str, disabled: &[&str]) {
     let mut config = DiagnosticsConfig::test_sample();
-    config.disabled.extend(disabled);
+    config.disabled.extend(disabled.iter().map(|&s| s.to_owned()));
     check_diagnostics_with_config(config, ra_fixture)
 }
 

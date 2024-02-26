@@ -2106,9 +2106,16 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             return Ok(args[0].immediate());
         }
 
+        #[derive(Copy, Clone)]
+        enum Sign {
+            Unsigned,
+            Signed,
+        }
+        use Sign::*;
+
         enum Style {
             Float,
-            Int(/* is signed? */ bool),
+            Int(Sign),
             Unsupported,
         }
 
@@ -2116,11 +2123,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             // vectors of pointer-sized integers should've been
             // disallowed before here, so this unwrap is safe.
             ty::Int(i) => (
-                Style::Int(true),
+                Style::Int(Signed),
                 i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Uint(u) => (
-                Style::Int(false),
+                Style::Int(Unsigned),
                 u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Float(f) => (Style::Float, f.bit_width()),
@@ -2128,11 +2135,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
         let (out_style, out_width) = match out_elem.kind() {
             ty::Int(i) => (
-                Style::Int(true),
+                Style::Int(Signed),
                 i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Uint(u) => (
-                Style::Int(false),
+                Style::Int(Unsigned),
                 u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
             ),
             ty::Float(f) => (Style::Float, f.bit_width()),
@@ -2140,31 +2147,31 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         };
 
         match (in_style, out_style) {
-            (Style::Int(in_is_signed), Style::Int(_)) => {
+            (Style::Int(sign), Style::Int(_)) => {
                 return Ok(match in_width.cmp(&out_width) {
                     Ordering::Greater => bx.trunc(args[0].immediate(), llret_ty),
                     Ordering::Equal => args[0].immediate(),
-                    Ordering::Less => {
-                        if in_is_signed {
-                            bx.sext(args[0].immediate(), llret_ty)
-                        } else {
-                            bx.zext(args[0].immediate(), llret_ty)
-                        }
-                    }
+                    Ordering::Less => match sign {
+                        Sign::Signed => bx.sext(args[0].immediate(), llret_ty),
+                        Sign::Unsigned => bx.zext(args[0].immediate(), llret_ty),
+                    },
                 });
             }
-            (Style::Int(in_is_signed), Style::Float) => {
-                return Ok(if in_is_signed {
-                    bx.sitofp(args[0].immediate(), llret_ty)
-                } else {
-                    bx.uitofp(args[0].immediate(), llret_ty)
-                });
+            (Style::Int(Sign::Signed), Style::Float) => {
+                return Ok(bx.sitofp(args[0].immediate(), llret_ty));
             }
-            (Style::Float, Style::Int(out_is_signed)) => {
-                return Ok(match (out_is_signed, name == sym::simd_as) {
-                    (false, false) => bx.fptoui(args[0].immediate(), llret_ty),
-                    (true, false) => bx.fptosi(args[0].immediate(), llret_ty),
-                    (_, true) => bx.cast_float_to_int(out_is_signed, args[0].immediate(), llret_ty),
+            (Style::Int(Sign::Unsigned), Style::Float) => {
+                return Ok(bx.uitofp(args[0].immediate(), llret_ty));
+            }
+            (Style::Float, Style::Int(sign)) => {
+                return Ok(match (sign, name == sym::simd_as) {
+                    (Sign::Unsigned, false) => bx.fptoui(args[0].immediate(), llret_ty),
+                    (Sign::Signed, false) => bx.fptosi(args[0].immediate(), llret_ty),
+                    (_, true) => bx.cast_float_to_int(
+                        matches!(sign, Sign::Signed),
+                        args[0].immediate(),
+                        llret_ty,
+                    ),
                 });
             }
             (Style::Float, Style::Float) => {

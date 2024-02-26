@@ -427,6 +427,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.gen_random(ptr, len.into())?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
+            "ProcessPrng" => {
+                let [ptr, len] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                this.gen_random(ptr, len.into())?;
+                this.write_scalar(Scalar::from_i32(1), dest)?;
+            }
             "BCryptGenRandom" => {
                 let [algorithm, ptr, len, flags] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;

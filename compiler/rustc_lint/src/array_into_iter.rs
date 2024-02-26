@@ -70,11 +70,15 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
 
             // Check if the method call actually calls the libcore
             // `IntoIterator::into_iter`.
-            let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
-            match cx.tcx.trait_of_item(def_id) {
-                Some(trait_id) if cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_id) => {}
-                _ => return,
-            };
+            let trait_id = cx
+                .typeck_results()
+                .type_dependent_def_id(expr.hir_id)
+                .and_then(|did| cx.tcx.trait_of_item(did));
+            if trait_id.is_none()
+                || !cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_id.unwrap())
+            {
+                return;
+            }
 
             // As this is a method call expression, we have at least one argument.
             let receiver_ty = cx.typeck_results().expr_ty(receiver_arg);

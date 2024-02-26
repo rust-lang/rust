@@ -2,6 +2,7 @@
 //@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
 #![warn(clashing_extern_declarations)]
+#![feature(generic_nonzero)]
 
 mod redeclared_different_signature {
     mod a {
@@ -265,7 +266,7 @@ mod missing_return_type {
 mod non_zero_and_non_null {
     mod a {
         extern "C" {
-            fn non_zero_usize() -> core::num::NonZeroUsize;
+            fn non_zero_usize() -> core::num::NonZero<usize>;
             fn non_null_ptr() -> core::ptr::NonNull<usize>;
         }
     }
@@ -285,36 +286,33 @@ mod non_zero_and_non_null {
 // See #75739
 mod non_zero_transparent {
     mod a1 {
-        use std::num::NonZeroUsize;
         extern "C" {
-            fn f1() -> NonZeroUsize;
+            fn f1() -> std::num::NonZero<usize>;
         }
     }
 
     mod b1 {
         #[repr(transparent)]
-        struct X(NonZeroUsize);
-        use std::num::NonZeroUsize;
+        struct X(std::num::NonZero<usize>);
+
         extern "C" {
             fn f1() -> X;
         }
     }
 
     mod a2 {
-        use std::num::NonZeroUsize;
         extern "C" {
-            fn f2() -> NonZeroUsize;
+            fn f2() -> std::num::NonZero<usize>;
         }
     }
 
     mod b2 {
         #[repr(transparent)]
-        struct X1(NonZeroUsize);
+        struct X1(std::num::NonZero<usize>);
 
         #[repr(transparent)]
         struct X(X1);
 
-        use std::num::NonZeroUsize;
         extern "C" {
             // Same case as above, but with two layers of newtyping.
             fn f2() -> X;
@@ -325,7 +323,6 @@ mod non_zero_transparent {
         #[repr(transparent)]
         struct X(core::ptr::NonNull<i32>);
 
-        use std::num::NonZeroUsize;
         extern "C" {
             fn f3() -> X;
         }
@@ -340,7 +337,7 @@ mod non_zero_transparent {
     mod a4 {
         #[repr(transparent)]
         enum E {
-            X(std::num::NonZeroUsize),
+            X(std::num::NonZero<usize>),
         }
         extern "C" {
             fn f4() -> E;
@@ -349,7 +346,7 @@ mod non_zero_transparent {
 
     mod b4 {
         extern "C" {
-            fn f4() -> std::num::NonZeroUsize;
+            fn f4() -> std::num::NonZero<usize>;
         }
     }
 }
@@ -369,8 +366,8 @@ mod null_optimised_enums {
         extern "C" {
             // This should be allowed, because these conversions are guaranteed to be FFI-safe (see
             // #60300)
-            fn option_non_zero_usize() -> Option<core::num::NonZeroUsize>;
-            fn option_non_zero_isize() -> Option<core::num::NonZeroIsize>;
+            fn option_non_zero_usize() -> Option<core::num::NonZero<usize>>;
+            fn option_non_zero_isize() -> Option<core::num::NonZero<isize>>;
             fn option_non_null_ptr() -> Option<core::ptr::NonNull<usize>>;
 
             // However, these should be incorrect (note isize instead of usize)
@@ -415,16 +412,16 @@ mod hidden_niche {
     }
     mod b {
         use std::cell::UnsafeCell;
-        use std::num::NonZeroUsize;
+        use std::num::NonZero;
 
         #[repr(transparent)]
         struct Transparent {
-            x: NonZeroUsize,
+            x: NonZero<usize>,
         }
 
         #[repr(transparent)]
         struct TransparentNoNiche {
-            y: UnsafeCell<NonZeroUsize>,
+            y: UnsafeCell<NonZero<usize>>,
         }
 
         extern "C" {
@@ -434,7 +431,7 @@ mod hidden_niche {
             //~^ WARN redeclared with a different signature
             //~| WARN block uses type `Option<TransparentNoNiche>`, which is not FFI-safe
 
-            fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZeroUsize>>;
+            fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usize>>>;
             //~^ WARN redeclared with a different signature
             //~| WARN block uses type `Option<UnsafeCell<NonZero<usize>>>`, which is not FFI-safe
         }

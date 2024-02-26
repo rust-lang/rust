@@ -1235,12 +1235,16 @@ impl Config {
         // Infer the rest of the configuration.
 
         // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-        // running on a completely machine from where it was compiled.
+        // running on a completely different machine from where it was compiled.
         let mut cmd = Command::new("git");
-        // NOTE: we cannot support running from outside the repository because the only path we have available
-        // is set at compile time, which can be wrong if bootstrap was downloaded from source.
+        // NOTE: we cannot support running from outside the repository because the only other path we have available
+        // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
         // We still support running outside the repository if we find we aren't in a git directory.
-        cmd.arg("rev-parse").arg("--show-toplevel");
+
+        // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used an absolute path,
+        // and end up using MSYS's git rather than git-for-windows, we would get a unix-y MSYS path. But as bootstrap
+        // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
+        cmd.arg("rev-parse").arg("--show-cdup");
         // Discard stderr because we expect this to fail when building from a tarball.
         let output = cmd
             .stderr(std::process::Stdio::null())
@@ -1248,13 +1252,18 @@ impl Config {
             .ok()
             .and_then(|output| if output.status.success() { Some(output) } else { None });
         if let Some(output) = output {
-            let git_root = String::from_utf8(output.stdout).unwrap();
-            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes.
-            let git_root = PathBuf::from(git_root.trim()).canonicalize().unwrap();
+            let git_root_relative = String::from_utf8(output.stdout).unwrap();
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
+            // and to resolve any relative components.
+            let git_root = env::current_dir()
+                .unwrap()
+                .join(PathBuf::from(git_root_relative.trim()))
+                .canonicalize()
+                .unwrap();
             let s = git_root.to_str().unwrap();
 
             // Bootstrap is quite bad at handling /? in front of paths
-            let src = match s.strip_prefix("\\\\?\\") {
+            let git_root = match s.strip_prefix("\\\\?\\") {
                 Some(p) => PathBuf::from(p),
                 None => git_root,
             };
@@ -1264,8 +1273,8 @@ impl Config {
             //
             // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
             // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
-            if src.join("src").join("stage0.json").exists() {
-                config.src = src;
+            if git_root.join("src").join("stage0.json").exists() {
+                config.src = git_root;
             }
         } else {
             // We're building from a tarball, not git sources.

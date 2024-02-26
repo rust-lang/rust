@@ -2,7 +2,10 @@ use hir::{db::ExpandDatabase, diagnostics::RemoveUnnecessaryElse, HirFileIdExt};
 use ide_db::{assists::Assist, source_change::SourceChange};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::IndentLevel},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+    },
     AstNode, SyntaxToken, TextRange,
 };
 use text_edit::TextEdit;
@@ -41,10 +44,15 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
         indent = indent + 1;
     }
     let else_replacement = match if_expr.else_branch()? {
-        ast::ElseBranch::Block(ref block) => {
-            block.statements().map(|stmt| format!("\n{indent}{stmt}")).join("")
-        }
-        ast::ElseBranch::IfExpr(ref nested_if_expr) => {
+        ast::ElseBranch::Block(block) => block
+            .statements()
+            .map(|stmt| format!("\n{indent}{stmt}"))
+            .chain(block.tail_expr().map(|tail| format!("\n{indent}{tail}")))
+            .join(""),
+        ast::ElseBranch::IfExpr(mut nested_if_expr) => {
+            if has_parent_if_expr {
+                nested_if_expr = nested_if_expr.indent(IndentLevel(1))
+            }
             format!("\n{indent}{nested_if_expr}")
         }
     };
@@ -87,15 +95,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &RemoveUnnecessaryElse) -> Option<Vec<
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_diagnostics_with_disabled, check_fix};
-
-    fn check_diagnostics_with_needless_return_disabled(ra_fixture: &str) {
-        check_diagnostics_with_disabled(ra_fixture, std::iter::once("needless_return".to_owned()));
-    }
+    use crate::tests::{check_diagnostics_with_disabled, check_fix};
 
     #[test]
     fn remove_unnecessary_else_for_return() {
-        check_diagnostics_with_needless_return_disabled(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     if foo {
@@ -106,6 +110,7 @@ fn test() {
     }
 }
 "#,
+            &["needless_return", "E0425"],
         );
         check_fix(
             r#"
@@ -130,7 +135,7 @@ fn test() {
 
     #[test]
     fn remove_unnecessary_else_for_return2() {
-        check_diagnostics_with_needless_return_disabled(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     if foo {
@@ -143,6 +148,7 @@ fn test() {
     }
 }
 "#,
+            &["needless_return", "E0425"],
         );
         check_fix(
             r#"
@@ -172,8 +178,44 @@ fn test() {
     }
 
     #[test]
+    fn remove_unnecessary_else_for_return3() {
+        check_diagnostics_with_disabled(
+            r#"
+fn test(a: bool) -> i32 {
+    if a {
+        return 1;
+    } else {
+    //^^^^ 💡 weak: remove unnecessary else block
+        0
+    }
+}
+"#,
+            &["needless_return", "E0425"],
+        );
+        check_fix(
+            r#"
+fn test(a: bool) -> i32 {
+    if a {
+        return 1;
+    } else$0 {
+        0
+    }
+}
+"#,
+            r#"
+fn test(a: bool) -> i32 {
+    if a {
+        return 1;
+    }
+    0
+}
+"#,
+        );
+    }
+
+    #[test]
     fn remove_unnecessary_else_for_return_in_child_if_expr() {
-        check_diagnostics_with_needless_return_disabled(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     if foo {
@@ -186,6 +228,7 @@ fn test() {
     }
 }
 "#,
+            &["needless_return", "E0425"],
         );
         check_fix(
             r#"
@@ -215,8 +258,43 @@ fn test() {
     }
 
     #[test]
+    fn remove_unnecessary_else_for_return_in_child_if_expr2() {
+        check_fix(
+            r#"
+fn test() {
+    if foo {
+        do_something();
+    } else if qux {
+        return bar;
+    } else$0 if quux {
+        do_something_else();
+    } else {
+        do_something_else2();
+    }
+}
+"#,
+            r#"
+fn test() {
+    if foo {
+        do_something();
+    } else {
+        if qux {
+            return bar;
+        }
+        if quux {
+            do_something_else();
+        } else {
+            do_something_else2();
+        }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn remove_unnecessary_else_for_break() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     loop {
@@ -229,6 +307,7 @@ fn test() {
     }
 }
 "#,
+            &["E0425"],
         );
         check_fix(
             r#"
@@ -257,7 +336,7 @@ fn test() {
 
     #[test]
     fn remove_unnecessary_else_for_continue() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     loop {
@@ -270,6 +349,7 @@ fn test() {
     }
 }
 "#,
+            &["E0425"],
         );
         check_fix(
             r#"
@@ -298,7 +378,7 @@ fn test() {
 
     #[test]
     fn remove_unnecessary_else_for_never() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     if foo {
@@ -313,6 +393,7 @@ fn never() -> ! {
     loop {}
 }
 "#,
+            &["E0425"],
         );
         check_fix(
             r#"
@@ -345,7 +426,7 @@ fn never() -> ! {
 
     #[test]
     fn no_diagnostic_if_no_else_branch() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     if foo {
@@ -355,12 +436,13 @@ fn test() {
     do_something_else();
 }
 "#,
+            &["E0425"],
         );
     }
 
     #[test]
     fn no_diagnostic_if_no_divergence() {
-        check_diagnostics(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     if foo {
@@ -370,12 +452,13 @@ fn test() {
     }
 }
 "#,
+            &["E0425"],
         );
     }
 
     #[test]
     fn no_diagnostic_if_no_divergence_in_else_branch() {
-        check_diagnostics_with_needless_return_disabled(
+        check_diagnostics_with_disabled(
             r#"
 fn test() {
     if foo {
@@ -385,6 +468,43 @@ fn test() {
     }
 }
 "#,
+            &["needless_return", "E0425"],
+        );
+    }
+
+    #[test]
+    fn no_diagnostic_if_not_expr_stmt() {
+        check_diagnostics_with_disabled(
+            r#"
+fn test1() {
+    let _x = if a {
+        return;
+    } else {
+        1
+    };
+}
+
+fn test2() {
+    let _x = if a {
+        return;
+    } else if b {
+        return;
+    } else if c {
+        1
+    } else {
+        return;
+    };
+}
+"#,
+            &["needless_return", "E0425"],
+        );
+        check_diagnostics_with_disabled(
+            r#"
+fn test3() -> u8 {
+    foo(if a { return 1 } else { 0 })
+}
+"#,
+            &["E0425"],
         );
     }
 }

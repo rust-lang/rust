@@ -656,7 +656,7 @@ impl TokenStream {
                 DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Bracket,
                 [
-                    TokenTree::token_alone(token::Ident(sym::doc, false), span),
+                    TokenTree::token_alone(token::Ident(sym::doc, token::IdentIsRaw::No), span),
                     TokenTree::token_alone(token::Eq, span),
                     TokenTree::token_alone(
                         TokenKind::lit(token::StrRaw(num_of_hashes), data, None),

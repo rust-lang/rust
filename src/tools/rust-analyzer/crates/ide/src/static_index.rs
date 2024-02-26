@@ -186,7 +186,7 @@ impl StaticIndex<'_> {
             } else {
                 let it = self.tokens.insert(TokenStaticData {
                     documentation: documentation_for_definition(&sema, def, &node),
-                    hover: hover_for_definition(&sema, file_id, def, &node, &hover_config),
+                    hover: Some(hover_for_definition(&sema, file_id, def, &node, &hover_config)),
                     definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
                     }),
@@ -196,7 +196,7 @@ impl StaticIndex<'_> {
                     enclosing_moniker: current_crate
                         .zip(def.enclosing_definition(self.db))
                         .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
-                    signature: def.label(self.db),
+                    signature: Some(def.label(self.db)),
                     kind: def_to_kind(self.db, def),
                 });
                 self.def_map.insert(def, it);

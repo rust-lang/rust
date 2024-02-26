@@ -70,6 +70,7 @@ mod methods;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
+mod non_local_def;
 mod nonstandard_style;
 mod noop_method_call;
 mod opaque_hidden_inferred_bound;
@@ -105,6 +106,7 @@ use methods::*;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
+use non_local_def::*;
 use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
@@ -229,6 +231,7 @@ late_lint_methods!(
             MissingDebugImplementations: MissingDebugImplementations,
             MissingDoc: MissingDoc,
             AsyncFnInTrait: AsyncFnInTrait,
+            NonLocalDefinitions: NonLocalDefinitions::default(),
         ]
     ]
 );
@@ -526,6 +529,11 @@ fn register_builtins(store: &mut LintStore) {
         "suspicious_auto_trait_impls",
         "no longer needed, see #93367 \
          <https://github.com/rust-lang/rust/issues/93367> for more information",
+    );
+    store.register_removed(
+        "const_patterns_without_partial_eq",
+        "converted into hard error, see RFC #3535 \
+         <https://rust-lang.github.io/rfcs/3535-constants-in-patterns.html> for more information",
     );
 }
 

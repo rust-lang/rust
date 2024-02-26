@@ -15,7 +15,7 @@ impl NonZeroU32 {
     }
 }
 
-//pub const FOO_ATOM: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(7) };
+// pub const FOO_ATOM: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(7) };
 pub const FOO_ATOM: NonZeroU32 = unsafe { NonZeroU32 { value: 7 } };
 
 fn main() {

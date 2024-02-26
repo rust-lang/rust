@@ -1,13 +1,12 @@
 // This test checks that calling `mem::{uninitialized,zeroed}` with certain types results
 // in a lint.
-
-#![feature(never_type, rustc_attrs)]
 #![allow(deprecated)]
 #![deny(invalid_value)]
+#![feature(generic_nonzero, never_type, rustc_attrs)]
 
 use std::mem::{self, MaybeUninit};
 use std::ptr::NonNull;
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 enum Void {}
 
@@ -36,7 +35,7 @@ enum OneFruit {
 
 enum OneFruitNonZero {
     Apple(!),
-    Banana(NonZeroU32),
+    Banana(NonZero<u32>),
 }
 
 enum TwoUninhabited {
@@ -92,8 +91,8 @@ fn main() {
         let _val: NonNull<i32> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: NonNull<i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
-        let _val: (NonZeroU32, i32) = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: (NonZeroU32, i32) = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: (NonZero<u32>, i32) = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: (NonZero<u32>, i32) = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
         let _val: *const dyn Send = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: *const dyn Send = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
@@ -151,7 +150,7 @@ fn main() {
         // Transmute-from-0
         let _val: &'static i32 = mem::transmute(0usize); //~ ERROR: does not permit zero-initialization
         let _val: &'static [i32] = mem::transmute((0usize, 0usize)); //~ ERROR: does not permit zero-initialization
-        let _val: NonZeroU32 = mem::transmute(0); //~ ERROR: does not permit zero-initialization
+        let _val: NonZero<u32> = mem::transmute(0); //~ ERROR: does not permit zero-initialization
 
         // `MaybeUninit` cases
         let _val: NonNull<i32> = MaybeUninit::zeroed().assume_init(); //~ ERROR: does not permit zero-initialization

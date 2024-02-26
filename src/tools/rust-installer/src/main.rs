@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{self, Parser};
+use clap::Parser;
 
 #[derive(Parser)]
 struct CommandLine {

@@ -1,5 +1,6 @@
 //@ run-pass
 
+#![allow(non_local_definitions)]
 #![warn(indirect_structural_match)]
 
 // This test is checking our logic for structural match checking by enumerating

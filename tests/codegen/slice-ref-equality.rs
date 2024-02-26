@@ -1,8 +1,8 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
-
 #![crate_type = "lib"]
+#![feature(generic_nonzero)]
 
-use std::num::{NonZeroI16, NonZeroU32};
+use std::num::NonZero;
 
 // #71602 reported a simple array comparison just generating a loop.
 // This was originally fixed by ensuring it generates a single bcmp,
@@ -70,7 +70,7 @@ fn eq_slice_of_i32(x: &[i32], y: &[i32]) -> bool {
 // CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %1
 // CHECK-SAME: [[USIZE]] noundef %3
 #[no_mangle]
-fn eq_slice_of_nonzero(x: &[NonZeroU32], y: &[NonZeroU32]) -> bool {
+fn eq_slice_of_nonzero(x: &[NonZero<i32>], y: &[NonZero<i32>]) -> bool {
     // CHECK: icmp eq [[USIZE]] %1, %3
     // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 2
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}(ptr
@@ -82,7 +82,7 @@ fn eq_slice_of_nonzero(x: &[NonZeroU32], y: &[NonZeroU32]) -> bool {
 // CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %1
 // CHECK-SAME: [[USIZE]] noundef %3
 #[no_mangle]
-fn eq_slice_of_option_of_nonzero(x: &[Option<NonZeroI16>], y: &[Option<NonZeroI16>]) -> bool {
+fn eq_slice_of_option_of_nonzero(x: &[Option<NonZero<i16>>], y: &[Option<NonZero<i16>>]) -> bool {
     // CHECK: icmp eq [[USIZE]] %1, %3
     // CHECK: %[[BYTES:.+]] = shl nsw [[USIZE]] %1, 1
     // CHECK: tail call{{( noundef)?}} i32 @{{bcmp|memcmp}}(ptr

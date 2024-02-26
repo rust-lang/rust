@@ -1,5 +1,6 @@
 //!
 use tracing::debug;
+use triomphe::ThinArc;
 
 use crate::durability::Durability;
 use crate::runtime::ActiveQuery;
@@ -7,7 +8,6 @@ use crate::runtime::Revision;
 use crate::Cycle;
 use crate::DatabaseKeyIndex;
 use std::cell::RefCell;
-use triomphe::Arc;
 
 /// State that is specific to a single execution thread.
 ///
@@ -43,7 +43,7 @@ pub(crate) struct QueryRevisions {
 #[derive(Debug, Clone)]
 pub(crate) enum QueryInputs {
     /// Non-empty set of inputs, fully known
-    Tracked { inputs: Arc<[DatabaseKeyIndex]> },
+    Tracked { inputs: ThinArc<(), DatabaseKeyIndex> },
 
     /// Empty set of inputs, fully known.
     NoInputs,
@@ -145,8 +145,7 @@ impl LocalState {
     /// the current thread is blocking. The stack must be restored
     /// with [`Self::restore_query_stack`] when the thread unblocks.
     pub(super) fn take_query_stack(&self) -> Vec<ActiveQuery> {
-        assert!(self.query_stack.borrow().is_some(), "query stack already taken");
-        self.query_stack.take().unwrap()
+        self.query_stack.take().expect("query stack already taken")
     }
 
     /// Restores a query stack taken with [`Self::take_query_stack`] once

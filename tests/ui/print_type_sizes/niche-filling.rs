@@ -1,24 +1,24 @@
+//! This file illustrates how niche-filling enums are handled,
+//! modelled after cases like `Option<&u32>`, `Option<bool>` and such.
+//!
+//! It uses `NonZero<u32>` rather than `&_` or `Unique<_>`, because
+//! the test is not set up to deal with target-dependent pointer width.
+//!
+//! It avoids using `u64`/`i64` because on some targets that is only 4-byte
+//! aligned (while on most it is 8-byte aligned) and so the resulting
+//! padding and overall computed sizes can be quite different.
+//!
 //@ compile-flags: -Z print-type-sizes --crate-type lib
 //@ ignore-debug: debug assertions will print more types
 //@ build-pass
 //@ ignore-pass
-// ^-- needed because `--pass check` does not emit the output needed.
-//     FIXME: consider using an attribute instead of side-effects.
-
-// This file illustrates how niche-filling enums are handled,
-// modelled after cases like `Option<&u32>`, `Option<bool>` and such.
-//
-// It uses NonZeroU32 rather than `&_` or `Unique<_>`, because
-// the test is not set up to deal with target-dependent pointer width.
-//
-// It avoids using u64/i64 because on some targets that is only 4-byte
-// aligned (while on most it is 8-byte aligned) and so the resulting
-// padding and overall computed sizes can be quite different.
-
-#![feature(rustc_attrs)]
+//  ^-- needed because `--pass check` does not emit the output needed.
+//      FIXME: consider using an attribute instead of side-effects.
 #![allow(dead_code)]
+#![feature(generic_nonzero)]
+#![feature(rustc_attrs)]
 
-use std::num::NonZeroU32;
+use std::num::NonZero;
 
 pub enum MyOption<T> { None, Some(T) }
 
@@ -34,7 +34,7 @@ impl<T> Default for MyOption<T> {
 
 pub enum EmbeddedDiscr {
     None,
-    Record { pre: u8, val: NonZeroU32, post: u16 },
+    Record { pre: u8, val: NonZero<u32>, post: u16 },
 }
 
 impl Default for EmbeddedDiscr {
@@ -50,13 +50,13 @@ pub struct IndirectNonZero {
 
 pub struct NestedNonZero {
     pre: u8,
-    val: NonZeroU32,
+    val: NonZero<u32>,
     post: u16,
 }
 
 impl Default for NestedNonZero {
     fn default() -> Self {
-        NestedNonZero { pre: 0, val: unsafe { NonZeroU32::new_unchecked(1) }, post: 0 }
+        NestedNonZero { pre: 0, val: unsafe { NonZero::new_unchecked(1) }, post: 0 }
     }
 }
 
@@ -77,7 +77,7 @@ pub union Union2<A: Copy, B: Copy> {
 }
 
 pub fn test() {
-    let _x: MyOption<NonZeroU32> = Default::default();
+    let _x: MyOption<NonZero<u32>> = Default::default();
     let _y: EmbeddedDiscr = Default::default();
     let _z: MyOption<IndirectNonZero> = Default::default();
     let _a: MyOption<bool> = Default::default();
@@ -90,9 +90,9 @@ pub fn test() {
     let _h: MyOption<MyNotNegativeOne> = Default::default();
 
     // Unions do not currently participate in niche filling.
-    let _i: MyOption<Union2<NonZeroU32, u32>> = Default::default();
+    let _i: MyOption<Union2<NonZero<u32>, u32>> = Default::default();
 
     // ...even when theoretically possible.
-    let _j: MyOption<Union1<NonZeroU32>> = Default::default();
-    let _k: MyOption<Union2<NonZeroU32, NonZeroU32>> = Default::default();
+    let _j: MyOption<Union1<NonZero<u32>>> = Default::default();
+    let _k: MyOption<Union2<NonZero<u32>, NonZero<u32>>> = Default::default();
 }

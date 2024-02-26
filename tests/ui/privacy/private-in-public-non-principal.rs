@@ -1,5 +1,6 @@
 #![feature(auto_traits)]
 #![feature(negative_impls)]
+#![allow(non_local_definitions)]
 
 pub trait PubPrincipal {}
 auto trait PrivNonPrincipal {}
