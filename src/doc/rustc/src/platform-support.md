@@ -33,19 +33,17 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1, glibc 2.17+) [^missing-stack-probes]
-`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support] [^x86_32-floats-return-ABI]
+`i686-pc-windows-gnu` | 32-bit MinGW (Windows 10+) [^x86_32-floats-return-ABI]
+`i686-pc-windows-msvc` | 32-bit MSVC (Windows 10+) [^x86_32-floats-return-ABI]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+) [^x86_32-floats-return-ABI]
 `x86_64-apple-darwin` | 64-bit macOS (10.12+, Sierra+)
-`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
-`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
+`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 10+)
+`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 10+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
 
 [^missing-stack-probes]: Stack probes support is missing on
   `aarch64-unknown-linux-gnu`, but it's planned to be implemented in the near
   future. The implementation is tracked on [issue #77071][77071].
-
-[^windows-support]: Only Windows 10 currently undergoes automated testing. Earlier versions of Windows rely on testing and support from the community.
 
 [^x86_32-floats-return-ABI]: Due to limitations of the C ABI, floating-point support on `i686` targets is non-compliant: floating-point return values are passed via an x87 register, so NaN payload bits can be lost. See [issue #114479][x86-32-float-issue].
 
@@ -292,7 +290,6 @@ target | std | host | notes
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS  [^x86_32-floats-return-ABI]
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86, restricted to Pentium
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+) [^x86_32-floats-return-ABI]
-`i686-pc-windows-msvc` | * |  | 32-bit Windows XP support [^x86_32-floats-return-ABI]
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ | [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku [^x86_32-floats-return-ABI]
 [`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd [^x86_32-floats-return-ABI]
@@ -367,7 +364,6 @@ target | std | host | notes
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
-`x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
