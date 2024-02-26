@@ -120,7 +120,6 @@ impl<'me, 'bccx, 'tcx> NllTypeRelating<'me, 'bccx, 'tcx> {
     fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let infcx = self.type_checker.infcx;
         debug_assert!(!infcx.next_trait_solver());
-        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
         // `handle_opaque_type` cannot handle subtyping, so to support subtyping
         // we instead eagerly generalize here. This is a bit of a mess but will go
         // away once we're using the new solver.

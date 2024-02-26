@@ -12,7 +12,6 @@ use rustc_span::Span;
 /// Enforce that `a` is equal to or a subtype of `b`.
 pub struct TypeRelating<'combine, 'a, 'tcx> {
     fields: &'combine mut CombineFields<'a, 'tcx>,
-    a_is_expected: bool,
     structurally_relate_aliases: StructurallyRelateAliases,
     ambient_variance: ty::Variance,
 }
@@ -20,11 +19,10 @@ pub struct TypeRelating<'combine, 'a, 'tcx> {
 impl<'combine, 'infcx, 'tcx> TypeRelating<'combine, 'infcx, 'tcx> {
     pub fn new(
         f: &'combine mut CombineFields<'infcx, 'tcx>,
-        a_is_expected: bool,
         structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
     ) -> TypeRelating<'combine, 'infcx, 'tcx> {
-        TypeRelating { fields: f, a_is_expected, structurally_relate_aliases, ambient_variance }
+        TypeRelating { fields: f, structurally_relate_aliases, ambient_variance }
     }
 }
 
@@ -38,7 +36,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
     }
 
     fn a_is_expected(&self) -> bool {
-        self.a_is_expected
+        true
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -79,7 +77,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
                             self.fields.trace.cause.clone(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                                a_is_expected: self.a_is_expected,
+                                a_is_expected: true,
                                 a,
                                 b,
                             })),
@@ -93,7 +91,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
                             self.fields.trace.cause.clone(),
                             self.fields.param_env,
                             ty::Binder::dummy(ty::PredicateKind::Subtype(ty::SubtypePredicate {
-                                a_is_expected: !self.a_is_expected,
+                                a_is_expected: false,
                                 a: b,
                                 b: a,
                             })),
@@ -109,18 +107,12 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
             }
 
             (&ty::Infer(TyVar(a_vid)), _) => {
-                infcx.instantiate_ty_var(
-                    self,
-                    self.a_is_expected,
-                    a_vid,
-                    self.ambient_variance,
-                    b,
-                )?;
+                infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?;
             }
             (_, &ty::Infer(TyVar(b_vid))) => {
                 infcx.instantiate_ty_var(
                     self,
-                    !self.a_is_expected,
+                    false,
                     b_vid,
                     self.ambient_variance.xform(ty::Contravariant),
                     a,
@@ -147,13 +139,7 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
             {
                 self.fields.obligations.extend(
                     infcx
-                        .handle_opaque_type(
-                            a,
-                            b,
-                            self.a_is_expected,
-                            &self.fields.trace.cause,
-                            self.param_env(),
-                        )?
+                        .handle_opaque_type(a, b, true, &self.fields.trace.cause, self.param_env())?
                         .obligations,
                 );
             }
@@ -239,14 +225,14 @@ impl<'tcx> TypeRelation<'tcx> for TypeRelating<'_, '_, 'tcx> {
         } else {
             match self.ambient_variance {
                 ty::Covariant => {
-                    self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
+                    self.fields.higher_ranked_sub(a, b, true)?;
                 }
                 ty::Contravariant => {
-                    self.fields.higher_ranked_sub(b, a, !self.a_is_expected)?;
+                    self.fields.higher_ranked_sub(b, a, false)?;
                 }
                 ty::Invariant => {
-                    self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
-                    self.fields.higher_ranked_sub(b, a, !self.a_is_expected)?;
+                    self.fields.higher_ranked_sub(a, b, true)?;
+                    self.fields.higher_ranked_sub(b, a, false)?;
                 }
                 ty::Bivariant => {
                     unreachable!("Expected bivariance to be handled in relate_with_variance")

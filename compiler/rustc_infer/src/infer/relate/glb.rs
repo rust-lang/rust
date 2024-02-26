@@ -13,15 +13,11 @@ use crate::traits::{ObligationCause, PredicateObligations};
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
-    a_is_expected: bool,
 }
 
 impl<'combine, 'infcx, 'tcx> Glb<'combine, 'infcx, 'tcx> {
-    pub fn new(
-        fields: &'combine mut CombineFields<'infcx, 'tcx>,
-        a_is_expected: bool,
-    ) -> Glb<'combine, 'infcx, 'tcx> {
-        Glb { fields, a_is_expected }
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'tcx>) -> Glb<'combine, 'infcx, 'tcx> {
+        Glb { fields }
     }
 }
 
@@ -35,7 +31,7 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
     }
 
     fn a_is_expected(&self) -> bool {
-        self.a_is_expected
+        true
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -46,13 +42,11 @@ impl<'tcx> TypeRelation<'tcx> for Glb<'_, '_, 'tcx> {
         b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
-            ty::Invariant => {
-                self.fields.equate(StructurallyRelateAliases::No, self.a_is_expected).relate(a, b)
-            }
+            ty::Invariant => self.fields.equate(StructurallyRelateAliases::No).relate(a, b),
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a),
-            ty::Contravariant => self.fields.lub(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.fields.lub().relate(a, b),
         }
     }
 
@@ -126,7 +120,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Glb<'combine, 'infcx, 
     }
 
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let mut sub = self.fields.sub(self.a_is_expected);
+        let mut sub = self.fields.sub();
         sub.relate(v, a)?;
         sub.relate(v, b)?;
         Ok(())

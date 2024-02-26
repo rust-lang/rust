@@ -13,15 +13,11 @@ use rustc_span::Span;
 /// "Least upper bound" (common supertype)
 pub struct Lub<'combine, 'infcx, 'tcx> {
     fields: &'combine mut CombineFields<'infcx, 'tcx>,
-    a_is_expected: bool,
 }
 
 impl<'combine, 'infcx, 'tcx> Lub<'combine, 'infcx, 'tcx> {
-    pub fn new(
-        fields: &'combine mut CombineFields<'infcx, 'tcx>,
-        a_is_expected: bool,
-    ) -> Lub<'combine, 'infcx, 'tcx> {
-        Lub { fields, a_is_expected }
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'tcx>) -> Lub<'combine, 'infcx, 'tcx> {
+        Lub { fields }
     }
 }
 
@@ -35,7 +31,7 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
     }
 
     fn a_is_expected(&self) -> bool {
-        self.a_is_expected
+        true
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -46,13 +42,11 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         b: T,
     ) -> RelateResult<'tcx, T> {
         match variance {
-            ty::Invariant => {
-                self.fields.equate(StructurallyRelateAliases::No, self.a_is_expected).relate(a, b)
-            }
+            ty::Invariant => self.fields.equate(StructurallyRelateAliases::No).relate(a, b),
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a),
-            ty::Contravariant => self.fields.glb(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.fields.glb().relate(a, b),
         }
     }
 
@@ -126,7 +120,7 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 
     }
 
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let mut sub = self.fields.sub(self.a_is_expected);
+        let mut sub = self.fields.sub();
         sub.relate(a, v)?;
         sub.relate(b, v)?;
         Ok(())

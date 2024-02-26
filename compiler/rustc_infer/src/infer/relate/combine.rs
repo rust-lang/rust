@@ -321,21 +321,24 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     pub fn equate<'a>(
         &'a mut self,
         structurally_relate_aliases: StructurallyRelateAliases,
-        a_is_expected: bool,
     ) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, a_is_expected, structurally_relate_aliases, ty::Invariant)
+        TypeRelating::new(self, structurally_relate_aliases, ty::Invariant)
     }
 
-    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> TypeRelating<'a, 'infcx, 'tcx> {
-        TypeRelating::new(self, a_is_expected, StructurallyRelateAliases::No, ty::Covariant)
+    pub fn sub<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
+        TypeRelating::new(self, StructurallyRelateAliases::No, ty::Covariant)
     }
 
-    pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'tcx> {
-        Lub::new(self, a_is_expected)
+    pub fn sup<'a>(&'a mut self) -> TypeRelating<'a, 'infcx, 'tcx> {
+        TypeRelating::new(self, StructurallyRelateAliases::No, ty::Contravariant)
     }
 
-    pub fn glb<'a>(&'a mut self, a_is_expected: bool) -> Glb<'a, 'infcx, 'tcx> {
-        Glb::new(self, a_is_expected)
+    pub fn lub<'a>(&'a mut self) -> Lub<'a, 'infcx, 'tcx> {
+        Lub::new(self)
+    }
+
+    pub fn glb<'a>(&'a mut self) -> Glb<'a, 'infcx, 'tcx> {
+        Glb::new(self)
     }
 
     pub fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {

@@ -49,7 +49,13 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             debug!("b_prime={:?}", sup_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = self.sub(sub_is_expected).relate(sub_prime, sup_prime);
+            // Reorder the inputs so that the expected is passed first.
+            let result = if sub_is_expected {
+                self.sub().relate(sub_prime, sup_prime)
+            } else {
+                self.sup().relate(sup_prime, sub_prime)
+            };
+
             if result.is_ok() {
                 debug!("OK result={result:?}");
             }

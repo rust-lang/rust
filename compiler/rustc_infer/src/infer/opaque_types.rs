@@ -522,13 +522,7 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> InferResult<'tcx, ()> {
         let mut obligations = Vec::new();
 
-        self.insert_hidden_type(
-            opaque_type_key,
-            &cause,
-            param_env,
-            hidden_ty,
-            &mut obligations,
-        )?;
+        self.insert_hidden_type(opaque_type_key, &cause, param_env, hidden_ty, &mut obligations)?;
 
         self.add_item_bounds_for_hidden_type(
             opaque_type_key.def_id.to_def_id(),
