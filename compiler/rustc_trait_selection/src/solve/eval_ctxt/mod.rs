@@ -708,7 +708,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<(), NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .eq(DefineOpaqueTypes::No, lhs, rhs)
+            // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+            .eq(DefineOpaqueTypes::Yes, lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
                 self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
@@ -727,7 +728,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<(), NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .sub(DefineOpaqueTypes::No, sub, sup)
+            // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+            .sub(DefineOpaqueTypes::Yes, sub, sup)
             .map(|InferOk { value: (), obligations }| {
                 self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
@@ -747,7 +749,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<(), NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .relate(DefineOpaqueTypes::No, lhs, variance, rhs)
+            // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+            .relate(DefineOpaqueTypes::Yes, lhs, variance, rhs)
             .map(|InferOk { value: (), obligations }| {
                 self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
@@ -771,7 +774,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> Result<Vec<Goal<'tcx, ty::Predicate<'tcx>>>, NoSolution> {
         self.infcx
             .at(&ObligationCause::dummy(), param_env)
-            .eq(DefineOpaqueTypes::No, lhs, rhs)
+            // New solver ignores DefineOpaqueTypes, so choose Yes for consistency
+            .eq(DefineOpaqueTypes::Yes, lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
                 obligations.into_iter().map(|o| o.into()).collect()
             })

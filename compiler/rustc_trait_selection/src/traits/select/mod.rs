@@ -921,7 +921,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
                                     .trace(c1, c2)
-                                    .eq(DefineOpaqueTypes::No, a.args, b.args)
+                                    // Can define opaque types as this is only reachable with
+                                    // `generic_const_exprs`
+                                    .eq(DefineOpaqueTypes::Yes, a.args, b.args)
                                 {
                                     return self.evaluate_predicates_recursively(
                                         previous_stack,
@@ -934,7 +936,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
-                                    .eq(DefineOpaqueTypes::No, c1, c2)
+                                    // Can define opaque types as this is only reachable with
+                                    // `generic_const_exprs`
+                                    .eq(DefineOpaqueTypes::Yes, c1, c2)
                                 {
                                     return self.evaluate_predicates_recursively(
                                         previous_stack,
@@ -964,7 +968,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
                             match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                                DefineOpaqueTypes::No,
+                                // Can define opaque types as this is only reachable with
+                                // `generic_const_exprs`
+                                DefineOpaqueTypes::Yes,
                                 c1,
                                 c2,
                             ) {
@@ -997,7 +1003,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
-                        DefineOpaqueTypes::No,
+                        // Only really excercised by generic_const_exprs
+                        DefineOpaqueTypes::Yes,
                         ct.ty(),
                         ty,
                     ) {

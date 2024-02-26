@@ -1,0 +1,85 @@
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/opaque_type.rs:4:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires computing type of opaque `Foo::{opaque#0}`...
+  --> $DIR/opaque_type.rs:4:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+note: ...which requires borrow-checking `with_bound`...
+  --> $DIR/opaque_type.rs:7:1
+   |
+LL | / fn with_bound<const N: usize>() -> Foo
+LL | | where
+LL | |     [u8; (N / 2) as usize]: Sized,
+   | |__________________________________^
+note: ...which requires promoting constants in MIR for `with_bound`...
+  --> $DIR/opaque_type.rs:7:1
+   |
+LL | / fn with_bound<const N: usize>() -> Foo
+LL | | where
+LL | |     [u8; (N / 2) as usize]: Sized,
+   | |__________________________________^
+note: ...which requires preparing `with_bound` for borrow checking...
+  --> $DIR/opaque_type.rs:7:1
+   |
+LL | / fn with_bound<const N: usize>() -> Foo
+LL | | where
+LL | |     [u8; (N / 2) as usize]: Sized,
+   | |__________________________________^
+note: ...which requires checking if `with_bound` contains FFI-unwind calls...
+  --> $DIR/opaque_type.rs:7:1
+   |
+LL | / fn with_bound<const N: usize>() -> Foo
+LL | | where
+LL | |     [u8; (N / 2) as usize]: Sized,
+   | |__________________________________^
+note: ...which requires building MIR for `with_bound`...
+  --> $DIR/opaque_type.rs:7:1
+   |
+LL | / fn with_bound<const N: usize>() -> Foo
+LL | | where
+LL | |     [u8; (N / 2) as usize]: Sized,
+   | |__________________________________^
+note: ...which requires match-checking `with_bound`...
+  --> $DIR/opaque_type.rs:7:1
+   |
+LL | / fn with_bound<const N: usize>() -> Foo
+LL | | where
+LL | |     [u8; (N / 2) as usize]: Sized,
+   | |__________________________________^
+note: ...which requires evaluating type-level constant...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `with_bound::{constant#1}`...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+note: ...which requires caching mir of `with_bound::{constant#1}` for CTFE...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `with_bound::{constant#1}`...
+  --> $DIR/opaque_type.rs:11:17
+   |
+LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
+   |                 ^^^^^^^^^^^^^^
+   = note: ...which requires normalizing `Foo`...
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking that `Foo::{opaque#0}` is well-formed
+  --> $DIR/opaque_type.rs:4:12
+   |
+LL | type Foo = impl Sized;
+   |            ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.
