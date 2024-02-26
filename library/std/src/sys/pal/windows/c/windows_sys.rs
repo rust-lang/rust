@@ -346,6 +346,10 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
+    pub fn GetSystemTimePreciseAsFileTime(lpsystemtimeasfiletime: *mut FILETIME) -> ();
+}
+#[link(name = "kernel32")]
+extern "system" {
     pub fn GetTempPathW(nbufferlength: u32, lpbuffer: PWSTR) -> u32;
 }
 #[link(name = "kernel32")]
