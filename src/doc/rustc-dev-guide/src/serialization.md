@@ -1,15 +1,16 @@
 # Serialization in Rustc
 
-Rustc has to [serialize] and deserialize various data during compilation.
-Specifically:
+Rust's compiler has to [serialize] and deserialize various data during
+compilation. Specifically:
 
-- "Crate metadata", mainly query outputs, are serialized in a binary
-  format into `rlib` and `rmeta` files that are output when compiling a library
-  crate, these are then deserialized by crates that depend on that library.
+- Certain crate metadata, consisting mainly of query outputs, are serialized
+  from a binary format into `rlib` and `rmeta` files that are output when
+  compiling a library crate. These `rlib` and `rmeta` files are then
+  deserialized by the crates which depend on that library.
 - Certain query outputs are serialized in a binary format to
   [persist incremental compilation results].
-- [`CrateInfo`] is serialized to json when the `-Z no-link` flag is used, and
-  deserialized from json when the `-Z link-only` flag is used.
+- [`CrateInfo`] is serialized to `JSON` when the `-Z no-link` flag is used, and
+  deserialized from `JSON` when the `-Z link-only` flag is used.
 
 ## The `Encodable` and `Decodable` traits
 
@@ -30,7 +31,7 @@ types, `bool`, `char`, `str` and various common standard library types.
 
 For types that are constructed from those types, `Encodable` and `Decodable` are
 usually implemented by [derives]. These generate implementations that forward
-deserialization to the fields of the struct or enum. For a struct those impls
+deserialization to the fields of the `struct` or `enum`. For a `struct` those `impl`s
 look something like this:
 
 ```rust,ignore
@@ -51,6 +52,7 @@ impl<E: Encoder> Encodable<E> for MyStruct {
         })
     }
 }
+
 impl<D: Decoder> Decodable<D> for MyStruct {
     fn decode(s: &mut D) -> Result<MyStruct, D::Error> {
         s.read_struct("MyStruct", 2, |d| {
@@ -65,13 +67,13 @@ impl<D: Decoder> Decodable<D> for MyStruct {
 
 ## Encoding and Decoding arena allocated types
 
-Rustc has a lot of [arena allocated types]. Deserializing these types isn't
-possible without access to the arena that they need to be allocated on. The
-[`TyDecoder`] and [`TyEncoder`] traits are supertraits of `Decoder` and
+Rust's compiler has a lot of [arena allocated types]. Deserializing these types
+isn't possible without access to the `arena` that they need to be allocated on.
+The [`TyDecoder`] and [`TyEncoder`] `trait`s are supertraits of `Decoder` and
 `Encoder` that allow access to a `TyCtxt`.
 
-Types which contain arena allocated types can then bound the type parameter of
-their `Encodable` and `Decodable` implementations with these traits. For
+Types which contain `arena` allocated types can then bound the type parameter
+of their `Encodable` and `Decodable` implementations with these `trait`s. For
 example
 
 ```rust,ignore
@@ -83,7 +85,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for MyStruct<'tcx> {
 The `TyEncodable` and `TyDecodable` [derive macros][derives] will expand to such
 an implementation.
 
-Decoding the actual arena allocated type is harder, because some of the
+Decoding the actual `arena` allocated type is harder, because some of the
 implementations can't be written due to the orphan rules. To work around this,
 the [`RefDecodable`] trait is defined in `rustc_middle`. This can then be
 implemented for any type. The `TyDecodable` macro will call `RefDecodable` to
@@ -117,7 +119,7 @@ and `Encodable`.
 `Ty` can be deeply recursive, if each `Ty` was encoded naively then crate
 metadata would be very large. To handle this, each `TyEncoder` has a cache of
 locations in its output where it has serialized types. If a type being encoded
-is in the cache, then instead of serializing the type as usual, the byte offset
+is in cache, then instead of serializing the type as usual, the byte offset
 within the file being written is encoded instead. A similar scheme is used for
 `ty::Predicate`.
 
@@ -131,7 +133,7 @@ The [`LazyValue<T>`] type wraps the (relative) offset in the crate metadata wher
 The `LazyArray<[T]>` and `LazyTable<I, T>` types provide some functionality over
 `Lazy<Vec<T>>` and `Lazy<HashMap<I, T>>`:
 
-- It's possible to encode a `LazyArray<T>` directly from an iterator, without
+- It's possible to encode a `LazyArray<T>` directly from an `Iterator`, without
   first collecting into a `Vec<T>`.
 - Indexing into a `LazyTable<I, T>` does not require decoding entries other
   than the one being read.
@@ -142,15 +144,9 @@ time. Instead the query system is the main way of caching these results.
 ## Specialization
 
 A few types, most notably `DefId`, need to have different implementations for
-different `Encoder`s. This is currently handled by ad-hoc specializations:
-`DefId` has a `default` implementation of `Encodable<E>` and a specialized one
-for `Encodable<CacheEncoder>`.
-
-[arena allocated types]: memory.md
-[AST]: the-parser.md
-[derives]: #derive-macros
-[persist incremental compilation results]: queries/incremental-compilation-in-detail.md#the-real-world-how-persistence-makes-everything-complicated
-[serialize]: https://en.wikipedia.org/wiki/Serialization
+different `Encoder`s. This is currently handled by ad-hoc specializations, for
+example: `DefId` has a `default` implementation of `Encodable<E>` and a
+specialized one for `Encodable<CacheEncoder>`.
 
 [`CrateInfo`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/struct.CrateInfo.html
 [`LazyArray<T>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/struct.LazyValue.html
@@ -162,3 +158,8 @@ for `Encodable<CacheEncoder>`.
 [`rustc_serialize`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/index.html
 [`TyDecoder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/codec/trait.TyDecoder.html
 [`TyEncoder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/codec/trait.TyEncoder.html
+[arena allocated types]: memory.md
+[AST]: the-parser.md
+[derives]: #derive-macros
+[persist incremental compilation results]: queries/incremental-compilation-in-detail.md#the-real-world-how-persistence-makes-everything-complicated
+[serialize]: https://en.wikipedia.org/wiki/Serialization
