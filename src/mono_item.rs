@@ -1,7 +1,9 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute};
 use rustc_codegen_ssa::traits::PreDefineMethods;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
@@ -23,7 +25,14 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     ) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
         let instance = Instance::mono(self.tcx, def_id);
-        let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+        let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
+        // Nested statics do not have a type, so pick a random type and let `define_static` figure out
+        // the gcc type from the actual evaluated initializer.
+        let ty = if nested {
+            self.tcx.types.unit
+        } else {
+            instance.ty(self.tcx, ty::ParamEnv::reveal_all())
+        };
         let gcc_type = self.layout_of(ty).gcc_type(self);
 
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
