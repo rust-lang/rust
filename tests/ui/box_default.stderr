@@ -17,7 +17,7 @@ error: `Box::new(_)` of default value
   --> tests/ui/box_default.rs:24:16
    |
 LL |     let _vec = Box::new(Vec::<u8>::new());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec<u8>>::default()`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec::<u8>>::default()`
 
 error: `Box::new(_)` of default value
   --> tests/ui/box_default.rs:25:17
@@ -97,5 +97,17 @@ error: `Box::new(_)` of default value
 LL |             Some(Box::new(Foo::default()))
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Foo>::default()`
 
-error: aborting due to 16 previous errors
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:119:18
+   |
+LL |         let _b = Box::new(outer::Inner::default());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<outer::Inner>::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:120:18
+   |
+LL |         let _b = Box::new(std::collections::HashSet::<i32>::new());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::collections::HashSet::<i32>>::default()`
+
+error: aborting due to 18 previous errors
 
