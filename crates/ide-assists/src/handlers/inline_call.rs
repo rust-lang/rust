@@ -1817,6 +1817,7 @@ macro_rules! bar {
 fn f() {
     bar!(foo$0());
 }
-"#);
+"#,
+        );
     }
 }
