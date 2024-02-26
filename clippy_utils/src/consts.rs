@@ -13,6 +13,7 @@ use rustc_middle::mir::interpret::{alloc_range, Scalar};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::{self, EarlyBinder, FloatTy, GenericArgsRef, IntTy, List, ScalarInt, Ty, TyCtxt, UintTy};
 use rustc_middle::{bug, mir, span_bug};
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::SyntaxContext;
 use rustc_target::abi::Size;
@@ -482,11 +483,21 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     }
 
     /// Simple constant folding to determine if an expression is an empty slice, str, array, …
+    /// `None` will be returned if the constness cannot be determined, or if the resolution
+    /// leaves the local crate.
     pub fn expr_is_empty(&mut self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
             ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr_is_empty(self.lcx.tcx.hir().body(body).value),
             ExprKind::DropTemps(e) => self.expr_is_empty(e),
             ExprKind::Path(ref qpath) => {
+                if !self
+                    .typeck_results
+                    .qpath_res(qpath, e.hir_id)
+                    .opt_def_id()
+                    .is_some_and(DefId::is_local)
+                {
+                    return None;
+                }
                 self.fetch_path_and_apply(qpath, e.hir_id, self.typeck_results.expr_ty(e), |this, result| {
                     mir_is_empty(this.lcx, result)
                 })

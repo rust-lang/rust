@@ -167,3 +167,8 @@ fn const_expressions() {
     let _ = const_rand().is_empty();
     // Do not lint, we do not recurse into functions
 }
+
+fn constant_from_external_crate() {
+    let _ = std::env::consts::EXE_EXTENSION.is_empty();
+    // Do not lint, `exe_ext` comes from the `std` crate
+}
