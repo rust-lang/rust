@@ -79,6 +79,15 @@ interested in:
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
 
+The last way to allow/disallow lints is to use `Cargo.toml` using [the lints section](https://doc.rust-lang.org/nightly/cargo/reference/manifest.html#the-lints-section)):
+
+To deny `clippy::enum_glob_use`
+
+```toml
+[lints.clippy]
+enum_glob_use = "deny"
+```
+
 ### Specifying the minimum supported Rust version
 
 Projects that intend to support old versions of Rust can disable lints pertaining to newer features by specifying the
