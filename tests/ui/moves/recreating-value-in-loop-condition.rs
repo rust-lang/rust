@@ -31,6 +31,7 @@ fn qux() {
     loop {
         if let Some(item) = iter(vec).next() { //~ ERROR use of moved value
             println!("{:?}", item);
+            break;
         }
     }
 }
@@ -42,6 +43,7 @@ fn zap() {
                 loop {
                     if let Some(item) = iter(vec).next() { //~ ERROR use of moved value
                         println!("{:?}", item);
+                        break;
                     }
                 }
             }

@@ -99,7 +99,7 @@ LL ~         if let Some(item) = value.next() {
    |
 
 error[E0382]: use of moved value: `vec`
-  --> $DIR/recreating-value-in-loop-condition.rs:43:46
+  --> $DIR/recreating-value-in-loop-condition.rs:44:46
    |
 LL |         let vec = vec!["one", "two", "three"];
    |             --- move occurs because `vec` has type `Vec<&str>`, which does not implement the `Copy` trait
@@ -119,6 +119,21 @@ LL | fn iter<T>(vec: Vec<T>) -> impl Iterator<Item = T> {
    |    ----         ^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
+note: verify that your loop breaking logic is correct
+  --> $DIR/recreating-value-in-loop-condition.rs:46:25
+   |
+LL |     loop {
+   |     ----
+LL |         let vec = vec!["one", "two", "three"];
+LL |         loop {
+   |         ----
+LL |             loop {
+   |             ----
+LL |                 loop {
+   |                 ----
+...
+LL |                         break;
+   |                         ^^^^^ this `break` exits the loop at line 43
 help: consider moving the expression out of the loop so it is only moved once
    |
 LL ~         let mut value = iter(vec);

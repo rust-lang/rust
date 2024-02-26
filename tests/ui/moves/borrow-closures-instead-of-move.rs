@@ -1,5 +1,5 @@
 fn takes_fn(f: impl Fn()) {
-    loop { //~ HELP consider moving the expression out of the loop so it is only computed once
+    loop {
         takes_fnonce(f);
         //~^ ERROR use of moved value
         //~| HELP consider borrowing

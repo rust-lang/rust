@@ -15,12 +15,6 @@ LL | fn takes_fnonce(_: impl FnOnce()) {}
    |    ------------    ^^^^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
-help: consider moving the expression out of the loop so it is only moved once
-   |
-LL ~     let mut value = takes_fnonce(f);
-LL ~     loop {
-LL ~         value;
-   |
 help: consider borrowing `f`
    |
 LL |         takes_fnonce(&f);

@@ -16,12 +16,6 @@ LL | fn take(_x: Box<isize>) {}
    |    ----     ^^^^^^^^^^ this parameter takes ownership of the value
    |    |
    |    in this function
-help: consider moving the expression out of the loop so it is only moved once
-   |
-LL ~     let mut value = take(x);
-LL ~     loop {
-LL ~         value;
-   |
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |         take(x.clone());

@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{codes::*, struct_span_code_err, Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
+use rustc_hir::intravisit::{walk_block, walk_expr, Map, Visitor};
 use rustc_hir::{CoroutineDesugaring, PatField};
 use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -799,9 +799,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let e = match node {
                 hir::Node::Expr(e) => e,
                 hir::Node::Local(hir::Local { els: Some(els), .. }) => {
-                    let mut finder = BreakFinder { found_break: false };
+                    let mut finder = BreakFinder { found_breaks: vec![], found_continues: vec![] };
                     finder.visit_block(els);
-                    if finder.found_break {
+                    if !finder.found_breaks.is_empty() {
                         // Don't suggest clone as it could be will likely end in an infinite
                         // loop.
                         // let Some(_) = foo(non_copy.clone()) else { break; }
@@ -850,51 +850,148 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 _ => {}
             }
         }
+        let loop_count: usize = tcx
+            .hir()
+            .parent_iter(expr.hir_id)
+            .map(|(_, node)| match node {
+                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Loop(..), .. }) => 1,
+                _ => 0,
+            })
+            .sum();
 
         /// Look for `break` expressions within any arbitrary expressions. We'll do this to infer
         /// whether this is a case where the moved value would affect the exit of a loop, making it
         /// unsuitable for a `.clone()` suggestion.
         struct BreakFinder {
-            found_break: bool,
+            found_breaks: Vec<(hir::Destination, Span)>,
+            found_continues: Vec<(hir::Destination, Span)>,
         }
         impl<'hir> Visitor<'hir> for BreakFinder {
             fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
-                if let hir::ExprKind::Break(..) = ex.kind {
-                    self.found_break = true;
+                match ex.kind {
+                    hir::ExprKind::Break(destination, _) => {
+                        self.found_breaks.push((destination, ex.span));
+                    }
+                    hir::ExprKind::Continue(destination) => {
+                        self.found_continues.push((destination, ex.span));
+                    }
+                    _ => {}
                 }
                 hir::intravisit::walk_expr(self, ex);
             }
         }
-        if let Some(in_loop) = outer_most_loop
-            && let Some(parent) = parent
-            && let hir::ExprKind::MethodCall(..) | hir::ExprKind::Call(..) = parent.kind
-        {
-            // FIXME: We could check that the call's *parent* takes `&mut val` to make the
-            // suggestion more targeted to the `mk_iter(val).next()` case. Maybe do that only to
-            // check for wheter to suggest `let value` or `let mut value`.
 
-            let span = in_loop.span;
-            let mut finder = BreakFinder { found_break: false };
+        let sm = tcx.sess.source_map();
+        if let Some(in_loop) = outer_most_loop {
+            let mut finder = BreakFinder { found_breaks: vec![], found_continues: vec![] };
             finder.visit_expr(in_loop);
-            let sm = tcx.sess.source_map();
-            if (finder.found_break || true)
-                && let Ok(value) = sm.span_to_snippet(parent.span)
-            {
-                // We know with high certainty that this move would affect the early return of a
-                // loop, so we suggest moving the expression with the move out of the loop.
-                let indent = if let Some(indent) = sm.indentation_before(span) {
-                    format!("\n{indent}")
-                } else {
-                    " ".to_string()
+            // All of the spans for `break` and `continue` expressions.
+            let spans = finder
+                .found_breaks
+                .iter()
+                .chain(finder.found_continues.iter())
+                .map(|(_, span)| *span)
+                .filter(|span| {
+                    !matches!(
+                        span.desugaring_kind(),
+                        Some(DesugaringKind::ForLoop | DesugaringKind::WhileLoop)
+                    )
+                })
+                .collect::<Vec<Span>>();
+            // All of the spans for the loops above the expression with the move error.
+            let loop_spans: Vec<_> = tcx
+                .hir()
+                .parent_iter(expr.hir_id)
+                .filter_map(|(_, node)| match node {
+                    hir::Node::Expr(hir::Expr { span, kind: hir::ExprKind::Loop(..), .. }) => {
+                        Some(*span)
+                    }
+                    _ => None,
+                })
+                .collect();
+            // It is possible that a user written `break` or `continue` is in the wrong place. We
+            // point them out at the user for them to make a determination. (#92531)
+            if !spans.is_empty() && loop_count > 1 {
+                // Getting fancy: if the spans of the loops *do not* overlap, we only use the line
+                // number when referring to them. If there *are* overlaps (multiple loops on the
+                // same line) then we use the more verbose span output (`file.rs:col:ll`).
+                let mut lines: Vec<_> =
+                    loop_spans.iter().map(|sp| sm.lookup_char_pos(sp.lo()).line).collect();
+                lines.sort();
+                lines.dedup();
+                let fmt_span = |span: Span| {
+                    if lines.len() == loop_spans.len() {
+                        format!("line {}", sm.lookup_char_pos(span.lo()).line)
+                    } else {
+                        sm.span_to_diagnostic_string(span)
+                    }
                 };
-                err.multipart_suggestion(
-                    "consider moving the expression out of the loop so it is only moved once",
-                    vec![
-                        (parent.span, "value".to_string()),
-                        (span.shrink_to_lo(), format!("let mut value = {value};{indent}")),
-                    ],
-                    Applicability::MaybeIncorrect,
-                );
+                let mut spans: MultiSpan = spans.clone().into();
+                // Point at all the `continue`s and explicit `break`s in the relevant loops.
+                for (desc, elements) in [
+                    ("`break` exits", &finder.found_breaks),
+                    ("`continue` advances", &finder.found_continues),
+                ] {
+                    for (destination, sp) in elements {
+                        if let Ok(hir_id) = destination.target_id
+                            && let hir::Node::Expr(expr) = tcx.hir().hir_node(hir_id)
+                            && !matches!(
+                                sp.desugaring_kind(),
+                                Some(DesugaringKind::ForLoop | DesugaringKind::WhileLoop)
+                            )
+                        {
+                            spans.push_span_label(
+                                *sp,
+                                format!("this {desc} the loop at {}", fmt_span(expr.span)),
+                            );
+                        }
+                    }
+                }
+                // Point at all the loops that are between this move and the parent item.
+                for span in loop_spans {
+                    spans.push_span_label(sm.guess_head_span(span), "");
+                }
+
+                // note: verify that your loop breaking logic is correct
+                //   --> $DIR/nested-loop-moved-value-wrong-continue.rs:41:17
+                //    |
+                // 28 |     for foo in foos {
+                //    |     ---------------
+                // ...
+                // 33 |         for bar in &bars {
+                //    |         ----------------
+                // ...
+                // 41 |                 continue;
+                //    |                 ^^^^^^^^ this `continue` advances the loop at line 33
+                err.span_note(spans, "verify that your loop breaking logic is correct");
+            }
+            if let Some(parent) = parent
+                && let hir::ExprKind::MethodCall(..) | hir::ExprKind::Call(..) = parent.kind
+            {
+                // FIXME: We could check that the call's *parent* takes `&mut val` to make the
+                // suggestion more targeted to the `mk_iter(val).next()` case. Maybe do that only to
+                // check for wheter to suggest `let value` or `let mut value`.
+
+                let span = in_loop.span;
+                if !finder.found_breaks.is_empty()
+                    && let Ok(value) = sm.span_to_snippet(parent.span)
+                {
+                    // We know with high certainty that this move would affect the early return of a
+                    // loop, so we suggest moving the expression with the move out of the loop.
+                    let indent = if let Some(indent) = sm.indentation_before(span) {
+                        format!("\n{indent}")
+                    } else {
+                        " ".to_string()
+                    };
+                    err.multipart_suggestion(
+                        "consider moving the expression out of the loop so it is only moved once",
+                        vec![
+                            (parent.span, "value".to_string()),
+                            (span.shrink_to_lo(), format!("let mut value = {value};{indent}")),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         }
         can_suggest_clone
