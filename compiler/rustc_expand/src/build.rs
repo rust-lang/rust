@@ -165,6 +165,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             kind: LocalKind::Init(ex),
             span: sp,
+            colon_sp: None,
             attrs: AttrVec::new(),
             tokens: None,
         });
@@ -194,6 +195,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             kind: LocalKind::Init(ex),
             span: sp,
+            colon_sp: None,
             attrs: AttrVec::new(),
             tokens: None,
         });
@@ -208,6 +210,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             kind: LocalKind::Decl,
             span,
+            colon_sp: None,
             attrs: AttrVec::new(),
             tokens: None,
         });
