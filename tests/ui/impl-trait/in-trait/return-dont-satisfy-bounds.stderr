@@ -5,11 +5,11 @@ LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
    |                                  ^^^^^^^^^^^^ the trait `Foo<char>` is not implemented for `impl Foo<u8>`
    |
    = help: the trait `Foo<char>` is implemented for `Bar`
-note: required by a bound in `Foo::{opaque#0}`
+note: required by a bound in `Foo::{synthetic#0}`
   --> $DIR/return-dont-satisfy-bounds.rs:2:30
    |
 LL |     fn foo<F2>(self) -> impl Foo<T>;
-   |                              ^^^^^^ required by this bound in `Foo::{opaque#0}`
+   |                              ^^^^^^ required by this bound in `Foo::{synthetic#0}`
 
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/return-dont-satisfy-bounds.rs:8:16
