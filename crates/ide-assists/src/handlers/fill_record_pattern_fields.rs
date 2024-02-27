@@ -42,7 +42,8 @@ pub(crate) fn fill_record_pattern_fields(acc: &mut Assists, ctx: &AssistContext<
     }
 
     let old_field_list = record_pat.record_pat_field_list()?;
-    let new_field_list = make::record_pat_field_list(old_field_list.fields()).clone_for_update();
+    let new_field_list =
+        make::record_pat_field_list(old_field_list.fields(), None).clone_for_update();
     for (f, _) in missing_fields.iter() {
         let field =
             make::record_pat_field_shorthand(make::name_ref(&f.name(ctx.sema.db).to_smol_str()));
