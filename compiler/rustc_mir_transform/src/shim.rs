@@ -1018,6 +1018,7 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
 
+// TODO: StorageDead within unwind branches
 fn build_async_destructor_ctor_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -1044,6 +1045,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
         Empty,
         AsyncDropProjection,
         Slice { elem_ty: Ty<'tcx>, is_array: bool },
+        Chain { elem_tys: &'tcx ty::List<Ty<'tcx>> },
     }
 
     let strategy = match *self_ty.kind() {
@@ -1051,7 +1053,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
             GlueStrategy::Slice { is_array: matches!(kind, ty::Array(..)), elem_ty }
         }
 
-        ty::Tuple(_) => todo!("impl AsyncDestruct for (Tn, ...) {{ ... }}"),
+        ty::Tuple(elem_tys) if !elem_tys.is_empty() => GlueStrategy::Chain { elem_tys },
 
         // TODO: Reject bad ones
         ty::Foreign(_)
@@ -1084,7 +1086,8 @@ fn build_async_destructor_ctor_shim<'tcx>(
         | ty::Ref(_, _, _)
         | ty::FnDef(_, _)
         | ty::FnPtr(_)
-        | ty::Never => GlueStrategy::Empty,
+        | ty::Never
+        | ty::Tuple(_) => GlueStrategy::Empty,
     };
 
     let mut blocks;
@@ -1126,7 +1129,7 @@ fn build_async_destructor_ctor_shim<'tcx>(
             let self_mut_ref_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, self_ty);
             let self_pin_mut_ref_ty = tcx
                 .type_of(tcx.require_lang_item(LangItem::Pin, Some(span)))
-                .instantiate(tcx, &[self_mut_ref_ty.into()]); // TODO: no lifetime argument?
+                .instantiate(tcx, &[self_mut_ref_ty.into()]);
 
             locals.raw.reserve(2);
             let self_mut_ref =
@@ -1245,6 +1248,219 @@ fn build_async_destructor_ctor_shim<'tcx>(
                 blocks[return_bb].statements =
                     vec![Statement { source_info, kind: StatementKind::StorageDead(slice_ptr) }];
             }
+            blocks[return_bb].terminator =
+                Some(Terminator { source_info, kind: TerminatorKind::Return });
+        }
+        GlueStrategy::Chain { elem_tys } => {
+            let elem_count = elem_tys.len();
+
+            let ready_unit_ty = tcx
+                .type_of(tcx.require_lang_item(LangItem::FutureReadyUnit, Some(span)))
+                .instantiate_identity();
+            let ready_unit_fn = tcx.require_lang_item(LangItem::FutureReadyUnitCtor, Some(span));
+            let deferred_async_drop_ty =
+                tcx.type_of(tcx.require_lang_item(LangItem::DeferredAsyncDrop, Some(span)));
+            let deferred_async_drop_fn =
+                tcx.require_lang_item(LangItem::DeferredAsyncDropCtor, Some(span));
+            let future_chain_ty =
+                tcx.type_of(tcx.require_lang_item(LangItem::FutureChain, Some(span)));
+            let future_chain_fn = tcx.require_lang_item(LangItem::FutureChainCtor, Some(span));
+
+            locals.raw.reserve(1 + LOCALS_PER_ELEM * elem_count);
+
+            // this local is right before element locals
+            let ready_unit_local =
+                locals.push(LocalDecl::with_source_info(ready_unit_ty, source_info));
+
+            let locals_base = locals.len();
+            let mut last_chain_ty = ready_unit_ty;
+            locals.extend(
+                elem_tys
+                    .iter()
+                    .rev()
+                    .flat_map(|elem_ty| -> [Ty<'tcx>; LOCALS_PER_ELEM] {
+                        let elem_ptr_ty = Ty::new_mut_ptr(tcx, elem_ty);
+                        let deferred_async_drop_ty = deferred_async_drop_ty
+                            .instantiate(tcx, &[tcx.lifetimes.re_erased.into(), elem_ty.into()]);
+                        last_chain_ty = future_chain_ty.instantiate(
+                            tcx,
+                            &[deferred_async_drop_ty.into(), last_chain_ty.into()],
+                        );
+                        [elem_ptr_ty, deferred_async_drop_ty, last_chain_ty]
+                    })
+                    .map(|ty| LocalDecl::with_source_info(ty, source_info)),
+            );
+
+            blocks =
+                IndexVec::from_elem_n(BasicBlockData::new(None), 2 + BBS_PER_ELEM * elem_count);
+            let ready_unit_bb = BasicBlock::new(0);
+            let bbs_base = 1;
+            // this basic block is right after element basic blocks
+            let return_bb = blocks.last_index().unwrap();
+
+            #[derive(Clone, Copy)]
+            struct ChainNode<'tcx> {
+                field: FieldIdx,
+                elem_ty: Ty<'tcx>,
+
+                elem_ptr_local: Local,
+                deferred_dtor_local: Local,
+                chain_local: Local,
+                previous_chain_local: Local,
+
+                deferred_dtor_bb: BasicBlock,
+                future_chain_bb: BasicBlock,
+                goto_bb: BasicBlock,
+                next_bb: BasicBlock,
+            }
+
+            const LOCALS_PER_ELEM: usize = 3;
+            const BBS_PER_ELEM: usize = 3;
+
+            debug_assert_eq!(ready_unit_local, Local::new(locals_base - 1));
+            let chain_nodes = || {
+                elem_tys.iter().rev().enumerate().map(|(i, elem_ty)| ChainNode {
+                    field: FieldIdx::new(elem_count - i - 1),
+                    elem_ty,
+
+                    previous_chain_local: Local::new(locals_base + LOCALS_PER_ELEM * i - 1),
+                    elem_ptr_local: Local::new(locals_base + LOCALS_PER_ELEM * i),
+                    deferred_dtor_local: Local::new(locals_base + LOCALS_PER_ELEM * i + 1),
+                    chain_local: Local::new(locals_base + LOCALS_PER_ELEM * i + 2),
+
+                    deferred_dtor_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i),
+                    future_chain_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i + 1),
+                    goto_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i + 2),
+                    next_bb: BasicBlock::new(bbs_base + BBS_PER_ELEM * i + 3),
+                })
+            };
+
+            blocks[ready_unit_bb].statements =
+                vec![Statement { source_info, kind: StatementKind::StorageLive(ready_unit_local) }];
+            blocks[ready_unit_bb].terminator = Some(Terminator {
+                source_info,
+                kind: TerminatorKind::Call {
+                    func: Operand::function_handle(
+                        tcx,
+                        ready_unit_fn,
+                        [/* HOST */ tcx.consts.false_.into()],
+                        span,
+                    ),
+                    args: Vec::new(),
+                    destination: ready_unit_local.into(),
+                    target: Some(chain_nodes().next().unwrap().deferred_dtor_bb),
+                    unwind: UnwindAction::Continue,
+                    call_source: CallSource::Misc,
+                    fn_span: span,
+                },
+            });
+
+            chain_nodes().for_each(|node| {
+                blocks[node.deferred_dtor_bb].statements = vec![
+                    Statement {
+                        source_info,
+                        kind: StatementKind::StorageLive(node.elem_ptr_local),
+                    },
+                    Statement {
+                        source_info,
+                        kind: StatementKind::Assign(Box::new((
+                            node.elem_ptr_local.into(),
+                            Rvalue::AddressOf(
+                                Mutability::Mut,
+                                tcx.mk_place_field(
+                                    tcx.mk_place_deref(self_ptr.into()),
+                                    node.field,
+                                    node.elem_ty,
+                                ),
+                            ),
+                        ))),
+                    },
+                    Statement {
+                        source_info,
+                        kind: StatementKind::StorageLive(node.deferred_dtor_local),
+                    },
+                ];
+                blocks[node.deferred_dtor_bb].terminator = Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Call {
+                        func: Operand::function_handle(
+                            tcx,
+                            deferred_async_drop_fn,
+                            [
+                                tcx.lifetimes.re_erased.into(),
+                                node.elem_ty.into(),
+                                /* HOST */ tcx.consts.false_.into(),
+                            ],
+                            span,
+                        ),
+                        args: vec![respan(span, Operand::Move(node.elem_ptr_local.into()))],
+                        destination: node.deferred_dtor_local.into(),
+                        target: Some(node.future_chain_bb),
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::Misc,
+                        fn_span: span,
+                    },
+                });
+
+                blocks[node.future_chain_bb].statements = vec![
+                    Statement {
+                        source_info,
+                        kind: StatementKind::StorageDead(node.elem_ptr_local),
+                    },
+                    Statement { source_info, kind: StatementKind::StorageLive(node.chain_local) },
+                ];
+                blocks[node.future_chain_bb].terminator = Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Call {
+                        func: Operand::function_handle(
+                            tcx,
+                            future_chain_fn,
+                            [
+                                locals[node.deferred_dtor_local].ty.into(),
+                                locals[node.previous_chain_local].ty.into(),
+                                /* HOST */ tcx.consts.false_.into(),
+                            ],
+                            span,
+                        ),
+                        args: vec![
+                            respan(span, Operand::Move(node.deferred_dtor_local.into())),
+                            respan(span, Operand::Move(node.previous_chain_local.into())),
+                        ],
+                        destination: node.chain_local.into(),
+                        target: Some(node.goto_bb),
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::Misc,
+                        fn_span: span,
+                    },
+                });
+
+                blocks[node.goto_bb].statements = vec![
+                    Statement {
+                        source_info,
+                        kind: StatementKind::StorageDead(node.deferred_dtor_local),
+                    },
+                    Statement {
+                        source_info,
+                        kind: StatementKind::StorageDead(node.previous_chain_local),
+                    },
+                ];
+                blocks[node.goto_bb].terminator = Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Goto { target: node.next_bb },
+                });
+            });
+
+            let last_chain_local = chain_nodes().next_back().unwrap().chain_local;
+            blocks[return_bb].statements = vec![
+                Statement {
+                    source_info,
+                    kind: StatementKind::Assign(Box::new((
+                        return_local.into(),
+                        Rvalue::Use(Operand::Move(last_chain_local.into())),
+                    ))),
+                },
+                Statement { source_info, kind: StatementKind::StorageDead(last_chain_local) },
+            ];
             blocks[return_bb].terminator =
                 Some(Terminator { source_info, kind: TerminatorKind::Return });
         }
