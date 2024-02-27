@@ -417,8 +417,7 @@ fn inline(
         let mut insert_let_stmt = || {
             let param_ty = param_ty.clone().map(|param_ty| {
                 if sema.hir_file_for(param_ty.syntax()).is_macro() {
-                    ast::Type::cast(insert_ws_into(param_ty.syntax().clone()))
-                        .unwrap_or_else(|| param_ty)
+                    ast::Type::cast(insert_ws_into(param_ty.syntax().clone())).unwrap_or(param_ty)
                 } else {
                     param_ty
                 }
