@@ -2373,8 +2373,7 @@ dependencies = [
 [[package]]
 name = "memchr"
 version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76fc44e2588d5b436dbc3c6cf62aef290f90dab6235744a93dfe1cc18f451e2c"
+source = "git+https://github.com/flip1995/memchr.git#f2e2936815bf211ece60a0251b53a617e1d678ac"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
